@@ -3186,3 +3186,178 @@ NOT TAKEN:  One shared function - cleanup beyond this task's scope.
 COST OF REVERSING: one function and four call sites.
 
 STATE:      OPEN.
+
+## PARK-Y1 - a second in-memory EntryDao, in commonTest  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R482).
+
+WHAT IT IS: R482 places the download's tests in :shared's commonTest "with the
+in-memory DAO, so iOS inherits them". :app's FakeEntryDao lives in :app's JVM test
+source set, which commonTest cannot see - PARK-M1 recorded exactly that and left
+"a second FakeEntryDao in commonTest" to the task that first needed one. This task
+is that task: android/shared/src/commonTest/.../data/sync/DownloadRig.kt holds
+InMemoryEntryDao, keyed on the whole primary key like FakeEntryDao, plus what the
+download's tests turn on (a write counter, the account tag of every read, a planted
+write failure, an all-or-nothing transaction over its rows).
+
+TAKEN:      A second fake, named differently, for the download's suite only. The
+record path's suite stays on FakeEntryDao in :app (PARK-M1 unchanged).
+
+NOT TAKEN:  Moving FakeEntryDao to commonTest (:app's fifteen-plus test files cannot
+see commonTest), or a shared test-fixtures source set (a build change no ruling
+asked for).
+
+COST OF REVERSING: the PARK-M1 move, when it is made, absorbs InMemoryEntryDao - the
+two fakes then differ only in the four instruments above.
+
+STATE:      OPEN - folded into PARK-M1's question.
+
+## PARK-Y2 - a FAILED row is kept, not replaced by the server's row  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R483).
+
+WHAT IT IS: R483 keeps "local PENDING (or any not-yet-sent state)" and replaces a
+SYNCED row the server holds differently. A FAILED row was sent and refused (R296):
+it is neither. The download keeps it untouched and counts it as kept unsynced.
+
+TAKEN:      The conservative reading - only a SYNCED row is the server's to replace.
+A FAILED row is the person's refused choice, loud and out of the queue; replacing it
+would drop it in silence, and AN-POLISH's sign-out names it by date.
+
+NOT TAKEN:  Replacing a FAILED row with the server's (the server is the record).
+
+COST OF REVERSING: one condition in EntriesDownload.apply and one test
+(aRowTheServerRefusedIsKeptToo).
+
+STATE:      OPEN - the operator's call.
+
+## PARK-Y3 - no read-back of the year after a queue drain  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R485).
+
+WHAT IT IS: docs/api-v1.md 6.4 tells a client to read the year back after a queue
+drain, because the server orders writes by receipt. R485 asks for it "or, if that is
+too much for this task, PARK it with the reason; do not half-do it". Not built.
+
+THE REASON. (1) The POST answer already carries the current state of every day a
+drain sent (R217), and SyncEngine reconciles each sent row from it. (2) A full-year
+GET after every drain is the second round trip R217 was added to remove, on the call
+the app makes most often. (3) The reversion it would catch is the two-device case;
+6.4's own AN5 evidence records it as unreachable from one device. (4) A background
+writer after every drain is a new way to write into the store sign-out is clearing:
+it needs the stop-before-clear guard the foreground download got (YearDownloads.stop)
+inside WorkManager, whose cancel is asynchronous.
+
+WHAT IT COST HERE: R489 step 3 asks to "trigger a download" without signing out. On
+an account holding both years, nothing does: the start check fires only for an empty
+year and the retry only after a failure. Step 3 ran the start check, which (rightly)
+fetched nothing; the pending-day rule under a real download is proven in commonTest
+(aPendingDaySurvivesTheDownload), not on the device (REPORT-AN-PULL, R489).
+
+COST OF REVERSING: in SyncWorker, after a Settled drain that wrote at least one row,
+download the years of the rows sent (read from the queue before the drain); not on
+sign-out's syncNow; the stop-before-clear guard for the worker; tests for "a drain
+that wrote nothing reads nothing back".
+
+STATE:      OPEN.
+
+## PARK-Y4 - an empty server year is fetched again at every start  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R485).
+
+WHAT IT IS: The start check downloads each tax year (current, previous) that holds
+NO local row for the account. For a year the server holds nothing for either - a
+first-year worker's previous year - the check fires at every process start and
+fetches an empty year (read from the code). Seen on the S9 with sam.bernard: the
+start check asked for 2025 on both starts made (offline by design, so both failed);
+online, GET ?year=2025 answered "entries":[] in 63-402 ms, about a hundred bytes.
+
+TAKEN:      No marker. "Fetched once" would be new per-account state on the phone
+that sign-out must clear (R295) and the erasure census must cover.
+
+NOT TAKEN:  A per-account, per-year marker; reading the cached dossier to infer an
+empty year.
+
+COST OF REVERSING: one key per account in an existing prefs file, its clear in
+DeviceLocalStore.clearForSignOut, and ErasureCensusTest.
+
+STATE:      OPEN.
+
+## PARK-Y5 - a link sign-in on a phone whose settings survived skips the sign-in download  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R481).
+
+WHAT IT IS: Both sign-in paths reach RESOLVING after a sign-out (it clears the
+settings), and RESOLVING runs the sign-in download. A session that EXPIRED without a
+sign-out keeps the settings, so a magic-link sign-in relaunches MainActivity straight
+into MAIN: it gets the start check, which fires only for an empty year - and the
+record survived, so no year is empty. The SYNCED rows are not reconciled with the
+server on that sign-in.
+
+TAKEN:      Unchanged. The person's record is on the phone; only rows changed on the
+server since (another device) are not refreshed.
+
+NOT TAKEN:  A sign-in signal from CallbackActivity to MainActivity.
+
+COST OF REVERSING: a "just signed in" flag written by CallbackController and read
+once by MainActivity's start.
+
+STATE:      OPEN.
+
+## PARK-Y6 - the failure notice is on Aujourd'hui, not on the calendar  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R484).
+
+WHAT IT IS: R484: "says so in words on the screen that is waiting for it". The notice
+is on Aujourd'hui, the screen every sign-in and start lands on. The calendar, which
+shows the same store, shows no notice.
+
+TAKEN:      Aujourd'hui only - one surface, two new baselines.
+
+NOT TAKEN:  The same notice on the calendar.
+
+COST OF REVERSING: one parameter on CalendrierScreen, the same YearDownloadNotice,
+two baselines.
+
+STATE:      OPEN.
+
+## PARK-Y7 - a value this build does not know fails the whole year  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R484).
+
+WHAT IT IS: KMP-3's mapping (ServerEntry.toSyncedEntity) reads each enum with
+valueOf, so a sixth kind or a fourth portion in a served row throws. The download
+maps the whole year before any write, so such a year is Failed - nothing changed,
+the notice and its retry shown - and the retry fails the same way until the app is
+updated.
+
+TAKEN:      Whole or not at all (R484). The local store cannot hold an unknown kind,
+and 6.5 forbids guessing it into a known one.
+
+NOT TAKEN:  Skipping the unknown rows (a partial year, which 6.2 forbids by name).
+
+COST OF REVERSING: none needed while the enums are frozen (6, FROZEN AS OF FW23).
+
+STATE:      OPEN.
+
+## PARK-Y8 - a synced row the server does not hold is kept and logged, not shown  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R483).
+
+WHAT IT IS: Entries have no DELETE, so a row this phone holds as SYNCED for the
+account and year, which the server's year does not contain, is an anomaly - a row
+the server once acknowledged and no longer serves. R483: keep it, record it "a
+counted log line and a PARK in the report", and do not show it as a problem.
+
+TAKEN:      Kept untouched. The download counts it (YearDownload.Applied.absent-
+FromServer) and :app logs the count per year - "N synced on this phone but absent
+from the server (kept, R483)" - counts and years only, never a day. Nothing on any
+screen. A PENDING row the server lacks is not counted: it has not been sent yet.
+On the S9 the count was 0 in every download (Camille x2, Sam x3).
+
+NOT TAKEN:  Deleting it (the server's absence is not an instruction - there is no
+delete to have caused it); showing it.
+
+COST OF REVERSING: none to keep it; showing it would be a screen state and copy.
+
+STATE:      OPEN - nothing to act on unless the count is ever non-zero.

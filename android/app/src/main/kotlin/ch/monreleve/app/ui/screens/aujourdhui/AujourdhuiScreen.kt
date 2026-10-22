@@ -86,6 +86,8 @@ data class AujourdhuiActions(
     val onNavigateToCalendrier: () -> Unit = {},
     // AN-FORECAST: the year card's « Voir ma prevision », under the year notes (not replacing them).
     val onNavigateToForecast: () -> Unit = {},
+    // AN-PULL (R484): « Réessayer » under the notice that the year could not be brought down.
+    val onRetryDownload: () -> Unit = {},
 )
 
 @Composable
@@ -93,12 +95,17 @@ fun AujourdhuiScreen(
     state: AujourdhuiState,
     actions: AujourdhuiActions,
     modifier: Modifier = Modifier,
+    // AN-PULL (R484): the server's year could not be brought down to the phone. Not part of AujourdhuiState - the
+    // controller computes the day from the store; whether the store has been FILLED is the download's to say.
+    yearDownloadFailed: Boolean = false,
 ) {
     Column(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.space20),
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         Header(state.today, state.holderName) // Section A
+        // AN-PULL (R484): first, because it explains everything below it - a year that looks emptier than the record.
+        if (yearDownloadFailed) YearDownloadNotice(actions.onRetryDownload)
         val autoMode = state.loggingMode == LoggingMode.AUTO_DETECT
         Text(
             text = if (autoMode) DetectionCopy.MODE_AUTO else AujourdhuiCopy.MODE_MANUAL,

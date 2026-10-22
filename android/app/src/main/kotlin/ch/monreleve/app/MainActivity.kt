@@ -70,8 +70,13 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.data.repo.RhythmRepository
+import ch.monreleve.app.data.sync.ShellYearDownload
 import ch.monreleve.app.data.sync.SyncScheduler
+import ch.monreleve.app.data.sync.YearDownloadStatus
+import ch.monreleve.app.data.sync.buildEntriesDownload
 import ch.monreleve.app.data.sync.buildSyncEngine
+import ch.monreleve.app.data.sync.processYearDownloads
+import ch.monreleve.app.data.sync.taxYearsToDownload
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
@@ -216,6 +221,16 @@ class MainActivity : ComponentActivity() {
         val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
         // AN12 increment 2 (R295): the device-wide erasure (built by buildLocalStore, below).
         val localStore = buildLocalStore(context, tokenStore, settingsStore, dossierCache, pending, accountStore)
+        // AN-PULL (R481-R485): the server's year, brought down to the phone. Built on THIS activity's session, so
+        // its GET shares the single-flight refresh with /me and the dossier (R210); the coordinator is the
+        // process's, so a download and its status outlive a rotation.
+        val entriesDownload = buildEntriesDownload(context, session::authenticatedGet)
+        val yearDownload =
+            ShellYearDownload(
+                status = processYearDownloads.status,
+                atStart = { processYearDownloads.atStart(entriesDownload, taxYearsToDownload(clock)) },
+                retry = { processYearDownloads.retry(entriesDownload) },
+            )
         // R28: the tax year is the Paris calendar year, not the device's. The composition root is
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value
@@ -250,7 +265,13 @@ class MainActivity : ComponentActivity() {
                                 lifecycleScope,
                                 onSignedIn = { destination = Destination.RESOLVING },
                             )
-                        Destination.RESOLVING ->
+                        Destination.RESOLVING -> {
+                            // R481: every route here follows a sign-in (the code path's onSignedIn, or the link's
+                            // relaunch with its settings cleared), so this is where BOTH years come down. It does
+                            // not block the /me decision below; the shell shows its outcome (R484).
+                            LaunchedEffect(Unit) {
+                                processYearDownloads.afterSignIn(entriesDownload, taxYearsToDownload(clock))
+                            }
                             ResolvingRoute(session, settingsStore) { decision ->
                                 when (decision) {
                                     StartDecision.Main -> destination = Destination.MAIN
@@ -261,6 +282,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                        }
                         Destination.ONBOARDING ->
                             OnboardingRoute(session, settingsStore, taxYear, lifecycleScope, seed = onboardingSeed) {
                                 destination = Destination.MAIN
@@ -289,6 +311,7 @@ class MainActivity : ComponentActivity() {
                                 localStore = localStore,
                                 authenticatedPost = session::authenticatedPost,
                                 employerStore = employerStore,
+                                yearDownload = yearDownload,
                                 // R295/R289: sign-out or deletion has wiped the local store; return to first-run.
                                 // A re-auth restarts this activity, and `start` recomputes the destination.
                                 onSignedOut = { destination = Destination.SIGN_IN },
@@ -561,6 +584,8 @@ internal fun MainShell(
     localStore: LocalStore,
     authenticatedPost: suspend (String, String) -> PostOutcome,
     employerStore: EmployerFigureStore,
+    // AN-PULL (R484/R485): the year download's status, start check and retry. No default (R291).
+    yearDownload: ShellYearDownload,
     onSignedOut: () -> Unit,
 ) {
     // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
@@ -596,6 +621,10 @@ internal fun MainShell(
     }
 
     val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
+    // AN-PULL (R485): once per process, the years that are empty on the phone come down. A sign-in download
+    // already ran in this process makes this a no-op (YearDownloads.atStart).
+    LaunchedEffect(Unit) { yearDownload.atStart() }
+    val yearDownloadStatus by yearDownload.status.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
     val releveState by controllers.releve.state.collectAsState()
     val parametresState by controllers.parametres.state.collectAsState()
@@ -764,7 +793,10 @@ internal fun MainShell(
                                 onNavigateToCalendrier = { tab = AppTab.CALENDRIER },
                                 // AN-FORECAST: the year card's « Voir ma prevision » opens the forecast overlay.
                                 onNavigateToForecast = { forecastRoute = ForecastRoute.PREVISION },
+                                // AN-PULL (R484): the person asks again for the years that failed.
+                                onRetryDownload = yearDownload.retry,
                             ),
+                        yearDownloadFailed = yearDownloadStatus is YearDownloadStatus.Failed,
                     )
                 AppTab.CALENDRIER ->
                     CalendrierScreen(
@@ -968,7 +1000,12 @@ private fun buildLocalStore(
         accountStore = accountStore,
         // R315: clear the detection logging-mode cache on sign-out/deletion (restored from /me on re-sign-in).
         detectionModeStore = SharedPrefsDetectionModeStore(context),
-        clearRecord = { withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() } },
+        clearRecord = {
+            // AN-PULL: a year still arriving is stopped BEFORE the record is cleared, so it cannot land in the store
+            // this sign-out empties (YearDownloads.stop says why it is a cancel, not a join).
+            processYearDownloads.stop()
+            withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() }
+        },
         cancelSync = { SyncScheduler.cancel(context) },
         clearExports = { java.io.File(context.cacheDir, EXPORTS_DIR).deleteRecursively() },
     )

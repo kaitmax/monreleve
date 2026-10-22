@@ -18,6 +18,8 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
+import ch.monreleve.app.data.sync.ShellYearDownload
+import ch.monreleve.app.data.sync.YearDownloadStatus
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.Fr
@@ -121,6 +123,9 @@ class StatePreservationInstrumentedTest {
                 // preservation across a rebuild and never reads an employer figure, so an
                 // empty in-memory store is the right double rather than a new fake.
                 employerStore = InMemoryEmployerFigureStore(),
+                // AN-PULL: MainShell takes the year download without a default (R291). This test never signs
+                // in and asserts state across a rebuild, so a quiet status and inert triggers are the double.
+                yearDownload = ShellYearDownload(MutableStateFlow(YearDownloadStatus.Quiet), atStart = {}, retry = {}),
                 onSignedOut = {},
             )
         }

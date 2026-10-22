@@ -1,58 +1,174 @@
-AN-PULL SESSION PROMPT - Mon Releve
-A NEW PHONE SHOWS THE PERSON'S YEAR
-Paste into a fresh Claude Code session at the repository root, after
-ENGINE-PARITY. The physical phone (Galaxy S9, API 29) is connected.
+AN-PULL SESSION PROMPT (v2, supersedes relay/AN-PULL.txt of 12 Oct) -
+Mon Releve
+A PERSON WHO SIGNS IN SEES THEIR YEAR
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared. REQUIRES THE S9. Run after an-calendar is merged.
+Replace relay/AN-PULL.txt with this file in the first commit, keeping
+the old one's text in the commit message's body for history.
 
 ====================================================================
 HOW THIS SESSION RUNS
 ====================================================================
-Do not stop to report progress or ask a question; judgment calls go to
-the advisors, recorded in the report; if an advisor does not answer,
-take the conservative, reversible option (R156). R334: never delete,
-overwrite or reset what you did not create; untracked files reported,
-not removed; your own worktree; a report states only what has happened.
-R300; R270. Restore every phone setting changed. No red commit.
-Ends with REPORT-AN-PULL.txt committed and pushed.
-HARD BOUNDARIES: no change to either engine; /v1 additive only (GET
-/api/v1/entries?year= already exists - use it); D16, D18.
+R241: the only thing that ends this session is REPORT-AN-PULL.txt,
+committed and pushed. Unclear? R156: conservative, reversible, a PARK
+entry, continue. Ends early: R156's boundary; a red gate you cannot
+fix; a path reaching a real person; a degraded context. R300, R270
+apply. R334, R349, R392: your OWN worktree at C:/wt/an-pull, your lock
+in it. Stage BY NAME. READ before writing. R391 governs STATUS. R393's
+guard is live. ABSENCE NEEDS A POSITIVE CONTROL. New park ids follow
+R456. Restore every phone setting changed.
 
-R273. Check tasks/todo.md. Read REPORT-SEED-RELEVE.txt's "A NEW PHONE"
-    section and REPORT-AN-FIX.txt (account scoping).
-R1. pnpm gate:clone and :app:gate green on origin/main's HEAD.
+Rulings R481-R489. The v1 prompt called its rule "R347 (new)"; that
+number has since been used - it is R481 here (R162). Renumber any
+that are taken.
+
+R273. Read the v1 text (relay/AN-PULL.txt), REPORT-SEED-RELEVE.txt
+    ("A NEW PHONE"), REPORT-AN-FIX.txt (account scoping), docs/api-v1.md
+    section 6.2 (GET /api/v1/entries?year=) and 6.4 (replay and order:
+    "read the year back after a queue drain"), REPORT-KMP-3 and -4
+    (where the sync engine, the record path, the DAO and the reconcile
+    logic now live - :shared), REPORT-AN-ACCOUNT-TAG, REPORT-AN-POLISH
+    (sign-out), REPORT-AN-CALENDAR (writes only what changed), and
+    KMP-4's NOTICED 5. Named AN-PULL.
+R1. origin/main contains kmp-4 and an-calendar; FULL :app:gate green
+    on its HEAD (--rerun-tasks); gate:clone green (web is untouched,
+    but the endpoint is part of the contract); the S9 listed (USB or
+    adb over Wi-Fi), stay_on READ.
+
+HARD BOUNDARIES: no change to either engine; no server change - GET
+/api/v1/entries?year= exists and is used as it is (/v1 additive only,
+and nothing is added); no Room schema change (EntryEntity already holds
+every field the GET returns - confirm it field by field; if one is
+missing, STOP and ask); the account tag read at write time (R303,
+AN-ACCOUNT-TAG); the KMP-1 wire goldens unedited; D16 (the person's tap
+is the only thing that RECORDS a day), D18 (no coordinate anywhere).
 
 ====================================================================
 WHY
 ====================================================================
-SEED-RELEVE confirmed there is no server-to-phone pull. Someone who
-changes phone or reinstalls sees their releve (the server's) but an
-empty calendar and an empty Aujourd'hui, and would reasonably think
-their record was lost.
+There is no server-to-phone pull. Someone who reinstalls, changes
+phone, or signs out and back in sees the Releve - fetched from the
+server, so correct - but an EMPTY calendar and an empty Aujourd'hui.
+KMP-4 saw it on the S9: eleven rows on the server, none on the phone.
+They would reasonably believe their record was lost. And docs/api-v1.md
+6.4 already tells clients to read the year back after a queue drain,
+because the server orders writes by receipt.
 
-R347 (new). ON SIGN-IN, THE APP DOWNLOADS THE ACCOUNT'S YEAR.
-  - The current and the previous tax year, from GET /api/v1/entries,
-    into the local store, tagged with the signed-in account (R303), with
-    the server's values - provenance, detectedKind, firstRecordedAt,
-    recordedAt - exactly as stored. It is not a new record: nothing is
-    queued, nothing is sent back.
-  - A DAY ALREADY WAITING TO SYNC ON THE PHONE IS KEPT: it is the newer
-    choice and will sync. The download never overwrites a pending row.
-  - Rows SET ASIDE for another account (R303) are never touched or shown.
-  - Also on app start when a year the server has is empty locally - a
-    cheap check, not a full download every time.
-  - A failed download leaves the local store as it was and says so in
-    words; the person can retry.
+====================================================================
+THE RULINGS
+====================================================================
+R481. ON SIGN-IN, THE APP DOWNLOADS THE ACCOUNT'S YEARS. The current and
+    the previous tax year, from GET /api/v1/entries?year=, into the
+    local store, tagged with the signed-in account, with the server's
+    values EXACTLY as returned - provenance, detectedKind, detectedAt,
+    clientClaimedAt, firstRecordedAt, lastModifiedAt, clientMutationId,
+    serverId. A downloaded row is SYNCED. It is not a new record:
+    nothing is queued, nothing is sent back, no mutation id is minted,
+    no event reaches the server's trail.
 
-TESTS (test-first): a fresh install receives both years; a pending day
-survives the download; another account's set-aside rows are untouched;
-a failed download changes nothing; the download writes nothing to the
-mutation queue (R340's shape - assert it).
-THE PHONE: uninstall, reinstall, sign in as a SEED-RELEVE account
-(camille.martin@example.invalid via R284); the calendar and Aujourd'hui
-show the year, and Aujourd'hui's rate equals the releve's (R281). Record
-a day offline, sign out and in, see it kept. Every screen opened and
-described.
+R482. THE LOGIC LIVES IN :shared. The download and the reconciliation
+    sit beside the sync engine in commonMain, using the API client, the
+    DAO and the account provider already there; KMP-3's "reconcile from
+    the server's row" is reused, not re-written. :app only TRIGGERS it
+    (after sign-in; on start, R485). Tests in commonTest with KMP-1's
+    fake HttpTransport and the in-memory DAO, so iOS inherits them.
 
-REPORT - REPORT-AN-PULL.txt: HOW IT ENDED / R273 / R347 (each rule, its
-test) / THE PHONE / UNTRACKED FILES LEFT ALONE / ADVISOR DECISIONS /
-PHONE SETTINGS RESTORED / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+R483. RECONCILIATION RULES, keyed on (dayDate, portion) as 6.2 says -
+    never on id:
+      - local PENDING (or any not-yet-sent state) -> KEPT, untouched:
+        it is the person's newer choice and will sync;
+      - local SYNCED and the server's row differs -> the SERVER's row
+        replaces it (the server is the record; 6.4: the last write sent
+        is not necessarily the one kept);
+      - local SYNCED and identical -> no write at all (AN-CALENDAR's
+        rule: nothing changed, nothing written);
+      - server row, no local row -> inserted, SYNCED;
+      - local SYNCED for this account and year, ABSENT from the server
+        -> NOT deleted. Entries have no DELETE, so this is an anomaly:
+        keep the row, record it (a counted log line and a PARK in the
+        report), and do not show it as a problem to the person;
+      - rows tagged UNOWNED or another account -> never read, changed or
+        shown (R303).
+    FULL rows beside AM/PM for the same day (a granularity change; 6.2
+    allows it) are stored as the server holds them; how they display is
+    AN-CALENDAR's rule, not changed here.
+
+R484. A YEAR ARRIVES WHOLE OR NOT AT ALL. 6.2: a year that cannot be
+    served whole is read_failed, never partial. The local apply for one
+    year is ONE Room transaction: a failure part-way leaves the store as
+    it was. A failed download changes nothing and says so in words on
+    the screen that is waiting for it, with a retry; propose that copy
+    (fr/, quoted verbatim). A 401 goes through KMP-3's refresh like any
+    call; Unauthenticated ends quietly as sign-out would.
+
+R485. ON START, ONLY WHEN NEEDED. On app start, a signed-in account whose
+    current (or previous) tax year has NO local rows while the server
+    may have some gets that year downloaded - a cheap local check, not
+    a full download every launch. Say exactly what the check is and
+    what it costs. Also after a queue drain that sent at least one row,
+    read that year back (6.4) - or, if that is too much for this task,
+    PARK it with the reason; do not half-do it.
+
+R486. THE DOWNLOAD MAKES NO WRITES THE PERSON DID NOT MAKE. Tests: the
+    mutation queue is empty after a download (assert it, R340's shape);
+    the fake transport received only GETs; the account tag on every
+    inserted row is the signed-in account; the server's firstRecordedAt
+    is preserved byte for byte.
+
+R487. TESTS FIRST, RED ON main: a fresh store receives both years; a
+    pending day survives the download; a SYNCED row the server changed
+    is updated; an identical row is not rewritten; a server-absent
+    SYNCED row is kept and counted; another account's and UNOWNED rows
+    are untouched; a failure mid-year leaves the store unchanged; the
+    queue is empty afterwards; the start check downloads only when the
+    year is empty locally.
+
+R488. THE SAME NUMBER EVERYWHERE. After a download, Aujourd'hui's rate
+    equals the Releve's (R281) for the same account - a test where it
+    can be one, and the device check below.
+
+R489. ON THE S9, AGAINST THE LOCAL STACK (audit build,
+    -PfrontalierHost=127.0.0.1, adb reverse tcp:3000 tcp:3000, NEVER
+    production, real clock and zone):
+      1. A SEED-RELEVE account (camille.martin@example.invalid via R284):
+         uninstall, reinstall, sign in by code - the calendar and
+         Aujourd'hui show the year; Aujourd'hui's rate equals the
+         Releve's; the server's EntryEvent count for the account is
+         UNCHANGED by the download (positive control: the same query's
+         count before).
+      2. Record a day with the reverse removed (pending), sign out -
+         AN-POLISH's flow sends it first - then sign in again: the day is
+         there, from the server.
+      3. Record a day offline, then restore the reverse WITHOUT signing
+         out and trigger a download: the pending day is kept and syncs;
+         nothing else changes.
+      4. Every screen opened and described; logcat with a positive
+         control. READ the device data before anything that uninstalls.
+         Leave the phone as found (reverse removed, stay_on restored,
+         auto-time on, timezone unchanged, a working app).
+
+====================================================================
+THE WORK
+====================================================================
+0. R273, R1.  1. The field-by-field check of EntryEntity against 6.2.
+2. R487 tests RED.  3. R482-R484 in :shared, R486. GREEN. Commit per
+step.  4. The triggers in :app (sign-in, R485). Commit.  5. R484's copy.
+Commit.  6. R488.  7. R489 on the S9. FULL :app:gate --rerun-tasks;
+gate:clone. Push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+Any server or endpoint change. Pagination. Deleting rows. Changing how
+FULL beside AM/PM displays. iOS code. Engine changes.
+
+====================================================================
+REPORT - REPORT-AN-PULL.txt
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / THE FIELD CHECK / R481-R488 (each
+rule and its test, red then green) / R489 (each step, the EntryEvent
+counts before and after, screens, logcat with its positive control,
+phone left as found) / NEW COPY / UNTRACKED FILES LEFT ALONE / PARKED /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+
 END OF AN-PULL PROMPT
