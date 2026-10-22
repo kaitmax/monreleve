@@ -72,6 +72,7 @@ import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.sync.ShellYearDownload
 import ch.monreleve.app.data.sync.SyncScheduler
+import ch.monreleve.app.data.sync.YearDownloadStatus
 import ch.monreleve.app.data.sync.buildEntriesDownload
 import ch.monreleve.app.data.sync.buildSyncEngine
 import ch.monreleve.app.data.sync.processYearDownloads
@@ -623,6 +624,7 @@ internal fun MainShell(
     // AN-PULL (R485): once per process, the years that are empty on the phone come down. A sign-in download
     // already ran in this process makes this a no-op (YearDownloads.atStart).
     LaunchedEffect(Unit) { yearDownload.atStart() }
+    val yearDownloadStatus by yearDownload.status.collectAsState()
     val calendarState by controllers.calendar.state.collectAsState()
     val releveState by controllers.releve.state.collectAsState()
     val parametresState by controllers.parametres.state.collectAsState()
@@ -791,7 +793,10 @@ internal fun MainShell(
                                 onNavigateToCalendrier = { tab = AppTab.CALENDRIER },
                                 // AN-FORECAST: the year card's « Voir ma prevision » opens the forecast overlay.
                                 onNavigateToForecast = { forecastRoute = ForecastRoute.PREVISION },
+                                // AN-PULL (R484): the person asks again for the years that failed.
+                                onRetryDownload = yearDownload.retry,
                             ),
+                        yearDownloadFailed = yearDownloadStatus is YearDownloadStatus.Failed,
                     )
                 AppTab.CALENDRIER ->
                     CalendrierScreen(

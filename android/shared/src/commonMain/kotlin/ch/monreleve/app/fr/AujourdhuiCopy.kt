@@ -54,6 +54,15 @@ object AujourdhuiCopy {
     const val EMPTY_YEAR = "Aucune journée enregistrée cette année pour le moment."
     const val PARTIAL_YEAR = "Ce taux couvre votre période d’activité, pas l’année entière."
 
+    // AN-PULL (R484) - THE YEAR COULD NOT BE BROUGHT DOWN. Shown on Aujourd'hui, the screen a sign-in lands on,
+    // when the server's year could not be loaded onto the phone: it says what the person is looking at (an
+    // emptier calendar than their record), that nothing changed (the download is whole or nothing), and what to
+    // do. The button beside it is SignInCopy.RETRY, the one home for that word (R206). It claims nothing about the
+    // server's copy it has not just failed to read.
+    const val YEAR_DOWNLOAD_FAILED =
+        "Vos journées déjà enregistrées n’ont pas pu être chargées sur ce téléphone : le calendrier ne les " +
+            "affiche pas encore. Rien n’a été modifié. Réessayez dans un instant."
+
     /**
      * The pending line (R286). It names the unsynced count and ESCALATES as the oldest unsynced day
      * nears the late-saisie threshold - APPROACHING, then OVERDUE - before the threshold is crossed.

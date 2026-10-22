@@ -345,12 +345,16 @@ class AujourdhuiScreenScreenshotTest {
     private val holderName = "Camille Martin"
 
     @Composable
-    private fun host(state: AujourdhuiState) {
+    private fun host(
+        state: AujourdhuiState,
+        yearDownloadFailed: Boolean = false,
+    ) {
         FrontierTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 AujourdhuiScreen(
                     state = state.copy(holderName = state.holderName ?: holderName),
                     actions = AujourdhuiActions(onRecord = { _, _, _ -> }),
+                    yearDownloadFailed = yearDownloadFailed,
                 )
             }
         }
@@ -359,6 +363,20 @@ class AujourdhuiScreenScreenshotTest {
     @Test
     fun aujourdhuiEmpty() {
         paparazzi.snapshot { host(dayEmpty) }
+    }
+
+    // AN-PULL (R484): the server's year could not be brought down to the phone - the notice and its retry, first,
+    // above a day that is otherwise the empty one (the state a failed download leaves the screen in). NEW baselines;
+    // every existing one is unchanged, because the notice is absent unless the flag is set.
+    @Test
+    fun aujourdhuiYearDownloadFailed() {
+        paparazzi.snapshot { host(dayEmpty, yearDownloadFailed = true) }
+    }
+
+    @Test
+    fun aujourdhuiYearDownloadFailedLarge() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(dayEmpty, yearDownloadFailed = true) }
     }
 
     @Test
