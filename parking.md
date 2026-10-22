@@ -3268,8 +3268,9 @@ RAISED BY:  REPORT-AN-PULL.txt (R485).
 WHAT IT IS: The start check downloads each tax year (current, previous) that holds
 NO local row for the account. For a year the server holds nothing for either - a
 first-year worker's previous year - the check fires at every process start and
-fetches an empty year. Measured on the S9 with sam.bernard: GET ?year=2025 answered
-"entries":[] in 63-402 ms, about a hundred bytes.
+fetches an empty year (read from the code). Seen on the S9 with sam.bernard: the
+start check asked for 2025 on both starts made (offline by design, so both failed);
+online, GET ?year=2025 answered "entries":[] in 63-402 ms, about a hundred bytes.
 
 TAKEN:      No marker. "Fetched once" would be new per-account state on the phone
 that sign-out must clear (R295) and the erasure census must cover.
@@ -3338,3 +3339,25 @@ NOT TAKEN:  Skipping the unknown rows (a partial year, which 6.2 forbids by name
 COST OF REVERSING: none needed while the enums are frozen (6, FROZEN AS OF FW23).
 
 STATE:      OPEN.
+
+## PARK-Y8 - a synced row the server does not hold is kept and logged, not shown  [AN-PULL, 2026-10-22]
+
+RAISED BY:  REPORT-AN-PULL.txt (R483).
+
+WHAT IT IS: Entries have no DELETE, so a row this phone holds as SYNCED for the
+account and year, which the server's year does not contain, is an anomaly - a row
+the server once acknowledged and no longer serves. R483: keep it, record it "a
+counted log line and a PARK in the report", and do not show it as a problem.
+
+TAKEN:      Kept untouched. The download counts it (YearDownload.Applied.absent-
+FromServer) and :app logs the count per year - "N synced on this phone but absent
+from the server (kept, R483)" - counts and years only, never a day. Nothing on any
+screen. A PENDING row the server lacks is not counted: it has not been sent yet.
+On the S9 the count was 0 in every download (Camille x2, Sam x3).
+
+NOT TAKEN:  Deleting it (the server's absence is not an instruction - there is no
+delete to have caused it); showing it.
+
+COST OF REVERSING: none to keep it; showing it would be a screen state and copy.
+
+STATE:      OPEN - nothing to act on unless the count is ever non-zero.

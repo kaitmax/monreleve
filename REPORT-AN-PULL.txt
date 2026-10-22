@@ -1,0 +1,728 @@
+================================================================================
+REPORT-AN-PULL
+A PERSON WHO SIGNS IN SEES THEIR YEAR
+================================================================================
+
+TASK     relay/AN-PULL.txt v2 (rulings R481-R489; all free when taken - a scan of
+         parking.md, every REPORT-*.txt and every relay/*.txt found no prior
+         R481-R489, so none needed renumbering under R162).
+BASE     70190ff (origin/main; contains kmp-4 and an-calendar)
+BRANCH   an-pull, worktree C:/wt/an-pull (R349), created by this session from
+         origin/main with its upstream unset (a bare push could not aim at main);
+         .session-lock.json written there, gitignored, never committed, removed at
+         the end. PENDING MERGE - not merged.
+DEVICE   SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, USB only,
+         Africa/Casablanca, auto_time 1, the clock real and never moved.
+
+NOTE ON ACCENTS. Pure ASCII by the transport constraint R155/R168 describe.
+French copy quoted here is TRANSLITERATED; the accented original lives in
+:shared's fr/AujourdhuiCopy.kt (YEAR_DOWNLOAD_FAILED) and is authoritative.
+Nothing was copied FROM this file into source.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+A sign-in now brings the account's two tax years down from the server into the
+phone's store, so the calendar and Aujourd'hui show the record the Releve
+already showed. On the S9 a fresh install signed in by code as Camille Martin
+and the phone logged "year 2026: applied - 207 inserted" and "year 2025:
+applied - 258 inserted" - 465 rows, exactly the server's 465 - while the
+server's EntryEvent count for the account stayed 471 (it read 471 before; it
+read 0 before the seed, which is the query's positive control). Aujourd'hui and
+the Releve both read 26,25 %, then both 26,66 % after a day was added.
+
+WHERE IT LIVES (R482). The download and the reconciliation are EntriesDownload,
+beside SyncEngine in :shared commonMain, on what was already there: the
+session's authenticated GET (DossierApi's seam, so a 401 goes through KMP-3's
+refresh), the EntryDao, the account read at use, and KMP-3's one mapping,
+ServerEntry.toSyncedEntity. The year's writes run in ONE transaction the
+platform supplies (Room's withTransaction on Android). :app only triggers it:
+after every sign-in (both years), on start (only a year empty on the phone),
+and on the person's retry; sign-out stops a year still in flight before it
+clears the store.
+
+TESTED FIRST. Twenty commonTest cases (R487's list, R484, R486, R488) were
+written against a skeleton with no behaviour and failed on their own
+assertions; then green. Two plants proved the transaction and pending-day
+tests bite. On the S9, against REAL Room, a year whose second write throws a
+real SQLiteException is rolled back - and a plant that removes the transaction
+turns that test red.
+
+WHAT THE DEVICE CHANGED. The failure copy was rewritten after the S9 showed the
+first wording asserting days that do not exist (an empty server year fetched by
+the start check, offline). 6.4's read-back after a queue drain is PARKED whole
+(PARK-Y3), and that is why R489 step 3 has no download to trigger once both
+years are on the phone - stated as such below, not dressed up.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+COMPLETE - with each gate stated for the commit it ran on (R391).
+
+FULL :app:gate --rerun-tasks, run IN THIS SESSION on 38af405 - the last commit
+before this report, carrying every line of code, test, baseline and register
+entry PARK-Y1..Y7 this branch has - after ./gradlew --stop, the tree verified
+clean before and after:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1256 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 2s
+    225 actionable tasks: 225 executed
+    GATE_EXIT=0
+  1256 = R1's 1245 + 9 (YearDownloadsTest) + 2 (the notice's baselines): the
+  whole :app suite ran. :shared's suite ran inside the same gate: 85 tests, 0
+  failures, 20 of them this task's.
+
+THE FINAL TIP IS NOT 38af405. It is the commit whose subject is "AN-PULL: the
+report, and PARK-Y8", and it differs from 38af405 ONLY in REPORT-AN-PULL.txt
+and parking.md - the PARK-Y8 entry added, and one sentence of PARK-Y4 made to
+say what was measured rather than what the code implies - the two documents
+RegisterCoverageTest reads.
+register-coverage.mjs was run directly on the final text (PUSH PROOF).
+
+gate:clone runs on the final tip before its push (R199): a report cannot carry
+the result of a gate run on the commit that carries it, so that result is in
+the handback. web/ is unchanged on this branch (`git diff origin/main...HEAD --
+web/` is empty); R1's gate:clone on 70190ff is quoted under R1.
+
+Every increment was checked before it was committed (fast check = R390's
+`./gradlew fastCheck`; counts read from the JUnit XML, each task EXECUTED):
+    81d6f10  the download, in :shared   fastCheck + :app:testDebugUnitTest
+                                        3m 16s; :shared 85/0, :app 1245/0
+    43a4925  :app triggers              fastCheck + :app:testDebugUnitTest +
+                                        compileDebugAndroidTestKotlin; 4m 20s;
+                                        :shared 85/0, :app 1254/0 (checked on
+                                        its own tree, the UI files set aside)
+    cb632ff  the notice and its copy    fastCheck + YearDownloadsTest +
+                                        compileDebugAndroidTestKotlin (1m 21s);
+                                        :app:testDebugUnitTest +
+                                        verifyPaparazziDebug (2m 34s); :app 1256/0
+    4fb50d4  R484 on real Room          compileDebugAndroidTestKotlin +
+                                        ktlintAndroidTest + detekt (49s); on the
+                                        S9: 4 of 4
+    d970907  the notice reworded        fastCheck + :app:testDebugUnitTest +
+                                        verifyPaparazziDebug (1m 47s); :shared
+                                        85/0, :app 1256/0
+    38af405  PARK-Y1..Y7                register-coverage OK; THE FULL GATE above
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
+--------------------------------------------------------------------------------
+relay/AN-PULL.txt v2 in full - from the MAIN CHECKOUT's working tree, where it
+existed only as an uncommitted modification - and the v1 text it replaces (the
+committed relay/AN-PULL.txt of 12 October). CLAUDE.md at the REPO ROOT (not the
+one in the parent Downloads/ folder, which belongs to a Morocco travel platform
+and was ignored as this repository's CLAUDE.md instructs) and README.md.
+
+REPORT-SEED-RELEVE.txt "A NEW PHONE": no server-to-local pull exists; the
+calendar and Aujourd'hui read Room, the Releve reads the server; its sketch of
+the fix ("a one-way GET of the year's entries ... idempotent on (dayDate,
+portion), with the server's firstRecordedAt/provenance preserved").
+REPORT-AN-FIX.txt (account scoping): the accountTag in the primary key, UNOWNED
+never sent or shown, set-aside rows released when their account signs back in.
+docs/api-v1.md 6.2 (the GET: the year is the page, never truncated, read_failed
+rather than partial; every key present; one parser with 6.1) and 6.4 (replay
+and order; "read the year back after a queue drain"; AN5's evidence that the
+reversion needs two devices). REPORT-KMP-3 and -4: SyncEngine, EntriesMapping
+(toSyncedEntity - "reconcile from the server's row"), SessionManager,
+LocalEntryRepository, EntryDao and the account provider now in :shared
+commonMain; PARK-M1 (the record path's suite runs on the JVM because FakeEntryDao
+lives in :app). KMP-4's NOTICED 5: "A SIGN-IN DOES NOT BRING THE RECORD BACK ...
+the server held eleven for the account". REPORT-AN-ACCOUNT-TAG (the account is a
+provider read at write time, and the fence on the shape of that call).
+REPORT-AN-POLISH (sign-out sends what it can first, inside requestSignOut,
+before the confirmation). REPORT-AN-CALENDAR (a save writes only what changed;
+R473's comparison).
+
+Named AN-PULL.
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS, RE-VERIFIED RATHER THAN TRUSTED
+--------------------------------------------------------------------------------
+(a) origin/main = 70190ff after `git fetch`, and each is an ancestor:
+      kmp-4 (57303a9)        ANCESTOR of origin/main
+      an-calendar (021e225)  ANCESTOR of origin/main
+
+(b) FULL :app:gate --rerun-tasks ON 70190ff, run IN THIS SESSION, in this
+    worktree, after ./gradlew --stop, with the tree at exactly 70190ff (v2's copy
+    was put aside until the gate finished; tree clean before and after):
+      [clean-worktree] OK: no unstaged changes to tracked files (R393)
+      test floor OK: 1245 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 14m 52s
+      225 actionable tasks: 225 executed
+      GATE_EXIT=0
+    1245 is AN-CALENDAR's floor - the whole suite ran. 1.39 GB was free at its
+    start.
+
+(c) gate:clone on 70190ff: NOT RE-RUN here. Quoted with its provenance - run by
+    the orchestrating session on exactly 70190ff: "GATE:CLONE PASSED", exit 0,
+    register-coverage, fixture-coverage, install, typecheck, lint, test, build,
+    size, db:deploy, test:db, test:container:write; the clone removed, no
+    scratch database left behind.
+
+(d) THE S9, read before anything was written (00:57 UTC, phone 01:57 +01):
+      adb devices -l   232bcd8c300c7ece device product:starltexx model:SM_G960F
+                       transport_id:5 (USB)
+      stay_on_while_plugged_in 0 | airplane_mode_on 0 | auto_time 1 |
+      auto_time_zone 1 | Africa/Casablanca | adb reverse: empty
+      installed: ch.monreleve.app only, 0.1.0 (1), pkgFlags [ HAS_CODE
+                 ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ] - not debuggable,
+                 lastUpdateTime 2026-10-21 15:05:05
+      base.apk (pulled) sha256 a46dde8a11fb2d6ea5de17e15ad29f6140b7f099506b273cb91de3e79c52d256
+                 = AN-CALENDAR's audit build of 0c9ba90, as its report records
+      certificate (apksigner on the pulled APK): CN=Android Debug, SHA-256
+                 ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+      on screen: the welcome screen ("Commencer") - signed out.
+    THE DEVICE DATA, READ BEFORE ANYTHING UNINSTALLED IT: the database could not
+    be read - "run-as: package not debuggable: ch.monreleve.app", twice. The
+    screen says signed out, and AN-CALENDAR's sign-out erased the record by
+    design. Nothing in this report rests on a device database read: every write
+    is read from the SERVER (Entry, EntryEvent), the screen and the app's log.
+
+--------------------------------------------------------------------------------
+THE FIELD CHECK - EntryEntity AGAINST 6.2, FIELD BY FIELD
+--------------------------------------------------------------------------------
+NO STOP. Every field GET /api/v1/entries?year= returns has a column, the enum
+values are identical to the server's Prisma enums, and the nullability is the
+same or wider on the phone:
+
+  6.2 field         EntryEntity column   server            phone
+  id                serverId             String, non-null  String?  (wider)
+  clientMutationId  clientMutationId     String, non-null  String
+  dayDate           dayDate              @db.Date -> ISO   String (YYYY-MM-DD)
+  portion           portion              FULL AM PM        Portion: FULL AM PM
+  kind              kind                 CH HOME MISSION_FR MISSION_THIRD ABSENT
+                                                           EntryKind: the same five
+  absenceReason     absenceReason        CONGE MALADIE FERIE AUTRE, nullable
+                                                           AbsenceReason?: same
+  note              note                 String?           String?
+  provenance        provenance           MANUAL DETECTED_CONFIRMED
+                                         DETECTED_CORRECTED
+                                                           Provenance: the same
+  detectedKind      detectedKind         EntryKind?        EntryKind?
+  detectedAt        detectedAt           instant or null   String?
+  clientClaimedAt   clientClaimedAt      instant or null   String?
+  firstRecordedAt   firstRecordedAt      instant, non-null String?  (wider)
+  lastModifiedAt    lastModifiedAt       derived, nullable String?
+
+The two local-only columns, syncState and accountTag, are set by the download
+(SYNCED; the signed-in account). Instants are stored as the Strings the server
+sent, so "byte for byte" is literal. ServerEntry (EntriesWire.kt) already
+modelled exactly these thirteen keys for the POST answer (6.1: "the same object,
+from the same code"), so the GET reuses it rather than a second parser.
+
+--------------------------------------------------------------------------------
+R481-R488 - EACH RULE, ITS TESTS, RED THEN GREEN
+--------------------------------------------------------------------------------
+THE RED RUN (R487). The twenty commonTest cases were written against a SKELETON
+of EntriesDownload - its API present, download() answering Failed and
+emptyLocally() answering nothing - so each fails on its OWN assertion rather
+than on a missing symbol (AN-ACCOUNT-TAG: a compile failure is a poor red). Run
+on :shared:testDebugUnitTest: "20 tests completed, 19 failed". The one that
+passed, withNoAccountTheStartCheckFindsNothingToFetch, was an absence with no
+positive control - satisfied by a skeleton that does nothing. It gained one
+(signed in, a fresh store has both years to fetch) and was run RED on its own:
+"expected:<[2026, 2025]> but was:<[]>". Then the implementation; GREEN: 20 of
+20, :shared 85 tests, 0 failures.
+
+Every test that asserts something was NOT written also asserts that the GET was
+made, or that the rest of the year DID land - which is what made each red.
+
+R481 - ON SIGN-IN, THE APP DOWNLOADS THE ACCOUNT'S YEARS
+  aFreshStoreReceivesBothYears
+    RED   expected:<[Applied(year=2026, inserted=3, ...), Applied(year=2025,
+          inserted=1, ...)]> but was:<[Failed(year=2026), Failed(year=2025)]>
+    GREEN both years, every row the server's row through toSyncedEntity, and
+          exactly GET ?year=2026 then GET ?year=2025.
+  :app YearDownloadsTest "after a sign-in BOTH years come down, whatever the
+  phone already holds" (2026 had a row; both fetched; "1 inserted, 0 replaced,
+  1 unchanged").
+
+R482 - THE LOGIC LIVES IN :shared
+  EntriesDownload.kt beside SyncEngine.kt; the read DTO EntriesYearResponse in
+  EntriesWire.kt, reusing ServerEntry; KMP-3's toSyncedEntity does the mapping.
+  The suite is commonTest: the REAL SessionManager and AuthApi over a recording
+  HttpTransport, and an in-memory EntryDao. KMP-1's FakeTransport is private to
+  a golden file this task leaves unedited and keeps only the last request, so a
+  recording sibling of the same seam was written; FakeEntryDao is in :app, which
+  commonTest cannot see, so a second fake exists (PARK-Y1, folding into PARK-M1).
+  :app holds only YearDownloads (when) and buildEntriesDownload (one
+  construction, R206).
+
+R483 - THE RECONCILIATION, KEYED ON (dayDate, portion)
+  aPendingDaySurvivesTheDownload
+    RED   expected:<Applied(... inserted=2 ... keptUnsynced=1 ...)> but
+          was:<Failed(year=2026)>
+    GREEN the PENDING row byte-identical; the rest of the year landed round it.
+  aRowTheServerRefusedIsKeptToo (FAILED kept - PARK-Y2)
+    RED   expected:<Applied(... keptUnsynced=1 ...)> but was:<Failed(year=2026)>
+  aSyncedRowTheServerChangedIsReplacedByTheServersRow
+    RED   expected:<Applied(year=2026, inserted=2, replaced=1, ...)> but
+          was:<Failed(year=2026)>
+  anIdenticalRowIsNotRewritten (exactly ONE write: the missing row)
+    RED   expected:<Applied(year=2026, inserted=1, replaced=0, unchanged=2, ...)>
+          but was:<Failed(year=2026)>
+  aSyncedRowTheServerDoesNotHoldIsKeptAndCounted (a PENDING row the server
+  lacks is NOT an anomaly and is not counted)
+    RED   expected:<Applied(... absentFromServer=1)> but was:<Failed(year=2026)>
+  anotherAccountsRowsAndUnownedRowsAreNeverReadChangedOrShown - the in-memory
+  DAO logs the account of EVERY read, and every read named the signed-in
+  account (positive control: reads happened); A's 7 April sits beside B's.
+    RED   expected:<Applied(year=2026, inserted=3, ...)> but was:<Failed(year=2026)>
+  The anomaly is a COUNTED log line in :app ("N synced on this phone but absent
+  from the server (kept, R483)") - commonMain has no logger, so the count is in
+  the outcome and the trigger logs it: YearDownloadsTest "a synced row the
+  server lacks is kept, and COUNTED in the log line". The PARK R483 asks for is
+  PARK-Y8. On the S9 the count was 0 in every download.
+  FULL beside AM/PM: stored as served - the key is (dayDate, portion).
+
+R484 - A YEAR ARRIVES WHOLE OR NOT AT ALL
+  aWriteThatFailsPartWayThroughTheYearLeavesTheStoreAsItWas - the second write
+  throws; positive control: the first write DID land, and was taken back.
+    RED   Expected an exception of class java.lang.IllegalStateException to be
+          thrown, but was completed successfully.
+  aYearTheServerCannotServeWholeChangesNothing (500 read_failed)
+    RED   the server was asked expected:<[GET /api/v1/entries?year=2026]> but
+          was:<[]>
+  aBodyThatIsNotTheWholeYearChangesNothing - six bodies: another year, a row
+  outside the year, a sixth kind (6.5; PARK-Y7), a (dayDate, portion) twice, a
+  refusal envelope, truncated JSON. Each Failed, the server asked, nothing
+  written. RED: "the server was asked: {..."
+  anUnreachableServerChangesNothing
+    RED   the GET was attempted expected:<1> but was:<0>
+  anExpiredAccessTokenIsRefreshedOnceAndTheYearStillArrives - GET 401
+  expired_token, POST /api/v1/auth/refresh 200, GET 200: KMP-3's refresh, the
+  rotated pair stored.
+    RED   expected:<Applied(...inserted=3...)> but was:<Failed(year=2026)>
+  aSessionThatCannotBeRefreshedEndsQuietlyAndWritesNothing - Unauthenticated,
+  and the second year is not tried.
+    RED   expected:<[Unauthenticated(year=2026)]> but was:<[Failed(year=2026),
+          Failed(year=2025)]>
+  withNoAccountNothingIsFetched; anAccountThatChangesWhileTheYearIsInFlight
+  WritesNothing (the account is read before the GET AND inside the transaction;
+  positive control: the GET was made).
+    RED   expected:<Unauthenticated(year=2026)> but was:<Failed(year=2026)>
+  THE ONE TRANSACTION ON REAL ROOM - YearDownloadRoomTransactionInstrumentedTest
+  on the S9 (connectedDebugAndroidTest filtered to it and to
+  StatePreservationInstrumentedTest, whose MainShell call gained an argument):
+  4 of 4 passed. A Room DAO delegate throws a real
+  android.database.sqlite.SQLiteException on the second write; the seam is
+  exactly buildEntriesDownload's (db.withTransaction); Room takes the first
+  write back; the coordinator shows the year Failed with "the local write
+  failed (SQLiteException)". Positive control: the same year over Room's own
+  DAO lands whole. It passed on its first run, so it was planted (below).
+  THE SCREEN (R484): Aujourd'hui shows the notice, first, with "Reessayer"
+  (NEW COPY). Two new Paparazzi baselines. On the S9: shown, retried, cleared -
+  under R489, "R484 ON THE DEVICE".
+
+R485 - ON START, ONLY WHEN NEEDED
+  THE CHECK: of the current and previous Paris tax years, those in which the
+  signed-in account holds NO row on the phone. WHAT IT COSTS: one SELECT of the
+  account's rows (EntryDao.observeAllForAccount - the entry table's primary key
+  leads with accountTag) read once into memory, and NO network unless a year is
+  empty - then one GET per empty year. Once per process; a no-op after a
+  sign-in download in the same process; nothing at all with no account.
+  Measured on the S9: Camille, both years on the phone, restart -> no entries
+  request at all (dev server log) and no YearDownload line (logcat). Sam
+  (2026 only), two restarts -> the start check asked for 2025 on both (offline
+  by design, so both failed and showed the notice); online that year answers
+  "entries":[]. That it asks again at every start for an account whose
+  previous year is empty on the server is the code's behaviour, read from it,
+  not a measurement (PARK-Y4).
+  theStartCheckFindsOnlyTheYearThatIsEmptyLocally (B's 2025 row does not make
+  A's 2025 present)
+    RED   expected:<[2025]> but was:<[]>
+  theStartCheckFetchesNothingWhenBothYearsAreOnThePhone
+    RED   Expected value to be true. (the positive control: the check read A's
+          rows)
+  withNoAccountTheStartCheckFindsNothingToFetch - RED as above.
+  :app YearDownloadsTest: "on start only the year that is EMPTY on the phone is
+  fetched", "with both years on the phone the start check sends nothing at
+  all", "the start check runs once per process, and not after a sign-in
+  download", "R28: the tax years are Paris's, whatever zone the phone is in".
+  6.4's READ-BACK AFTER A QUEUE DRAIN: PARKED WHOLE, NOT HALF-DONE (PARK-Y3).
+  The POST answer already carries every row a drain sent (R217) and SyncEngine
+  reconciles from it; a full-year GET after every drain is the second round trip
+  R217 removed; the reorder it catches is the two-device case 6.4 records as
+  unreachable from one device; and a background writer after every drain needs
+  the stop-before-clear guard inside WorkManager, whose cancel is asynchronous.
+
+R486 - THE DOWNLOAD MAKES NO WRITES THE PERSON DID NOT MAKE
+  theDownloadMakesNoWritesThePersonDidNotMake - positive control first (four
+  rows arrived), then: no row PENDING (R340's shape, asserted); every request a
+  GET; every row tagged with the signed-in account; firstRecordedAt
+  "2026-04-07T18:44:09.311Z" byte for byte; the server's clientMutationId (none
+  minted) and id; clientClaimedAt, detectedAt and lastModifiedAt as served;
+  0 writes outside a transaction; one transaction per year.
+    RED   expected:<4> but was:<0>
+  On the S9: every entries request in the dev server log during the downloads
+  is a GET; the only two POSTs to /api/v1/entries are the person's own (step 2's
+  sign-out send-first, step 3's drain); EntryEvent never moved across a
+  download.
+
+R487 - TESTS FIRST, RED ON MAIN: the RED run above; all nine named cases are
+  among the twenty.
+
+R488 - THE SAME NUMBER EVERYWHERE
+  DownloadRateParityTest (commonTest): every case of fixtures/aggregation-
+  cases.json - the file the TypeScript suite reads (R281) - goes out as a GET
+  body, comes down through the real download into the store, and is aggregated
+  the way AujourdhuiController.computeYear aggregates it, FROM THE STORE. The
+  result equals the fixture's expected TeleworkInput (what the server's
+  aggregation produces for the Releve), and so does the engine's declarable
+  rate.
+    RED   case full-days-simple: Failed(year=2026). Expected value to be of type
+          <...YearDownload$Applied ...>
+    GREEN all seven cases.
+  On the S9: Aujourd'hui 26,25 % = Releve 26,25 % (step 1), and 26,66 % = 26,66 %
+  (step 2).
+
+THE PLANTS (R180) - each verified at the line before its result was read, each
+reverted and verified byte-identical with cmp:
+  EntriesDownload: the writes moved OUTSIDE the transaction -> 3 RED
+    (aWriteThatFails...: "a year arrives whole or not at all expected:<{(acct-a-
+    tag, 2026-04-08, AM)=...}"; theDownloadMakesNoWrites...: "expected:<0> but
+    was:<4>"; anAccountThatChanges...: "...but was:<Applied(year=2026,
+    inserted=3, ...)>")
+  EntriesDownload: PENDING no longer kept -> aPendingDaySurvivesTheDownload RED:
+    "...keptUnsynced=1...> but was:<Applied(... replaced=1, ... keptUnsynced=0
+    ...)>"
+  YearDownloads: the start check ignores the phone -> 2 RED ("expected:
+    <["/api/v1/entries?year=2025"]> but was:<[...2026", "...2025"]>";
+    "Collection should be empty but contained .../entries?year=2026")
+  YearDownloads: stop() no longer cancels -> "nothing lands after the stop" RED
+    ("expected:<0> but was:<3>")
+  ON THE S9, the Room test's seam made non-transactional ({ block -> block() })
+    -> both Room tests RED: "Room took the first write back: the store is as it
+    was expected:<[EntryEntity(clientMutationId=pending-1, ...)]>" and "nothing
+    landed expected:<0> but was:<1>".
+
+--------------------------------------------------------------------------------
+R489 - ON THE S9, AGAINST THE LOCAL STACK
+--------------------------------------------------------------------------------
+SETUP. Local stack: `PORT=3000 pnpm dev` from the main checkout's web/
+(DEVIATION 1). R169: /api/health -> {"service":"monreleve","instance":null,
+"status":"ok",...}; /api/ready 200. NEVER production. The seed account did not
+exist (users=0); `pnpm db:seed` (main checkout) created it: "camille.martin
+@example.invalid (Camille Martin) - 465 entries, 471 events" (2026: 207, 2025:
+258). Audit build of 4fb50d4 with -PfrontalierHost=127.0.0.1, sha256
+05bf24bc5e670fb22fe717ef40c74378c0e7600a14d2ef5439a746b181db81ed - its dex holds
+http://127.0.0.1:3000 and no http://10.0.2.2:3000 (grepped, not trusted).
+stay_on read 0, written 3 for the device phase, restored. Sign-in codes read
+from the dev server's stdout (sendMail prints an undelivered message there).
+
+THE COUNT QUERY, and its positive control - user frontalier, every Prisma name
+double-quoted:
+    docker exec frontalier-postgres psql -U frontalier -d frontalier -c "<sql>"
+    SELECT count(*) FROM "EntryEvent" e JOIN "User" u ON u.id = e."userId"
+    WHERE u.email = 'camille.martin@example.invalid';
+  The SAME query read 0 before the seed and 471 after it (and other accounts'
+  counts through the same join read 13, 7, 6 ...): it is pointed at the right
+  rows, so "unchanged" below is a reading, not an absence.
+
+  EntryEvent for camille.martin@example.invalid, at every step:
+    before the seed                                    0
+    after the seed                                   471   <- positive control
+    STEP 1 before the reinstall                      471
+           after the sign-in DOWNLOAD                471   UNCHANGED
+           after the sheet save, unchanged (sec. 6)  471   UNCHANGED
+    STEP 2 day recorded offline                      471   (nothing sent)
+           sign-out sends it first                   472   CREATED 2026-10-22
+                                                           FULL HOME 08:21:29.74
+           after the second sign-in DOWNLOAD         472   UNCHANGED
+    STEP 3 day edited offline (pending)              472
+           restart, start check                      472   UNCHANGED (no GET)
+           online: WorkManager drains it             473   MODIFIED 2026-10-20
+                                                           FULL CH 08:29:36.144
+  Every event in it is a write the person made.
+
+STEP 1 - UNINSTALL, REINSTALL, SIGN IN BY CODE (clocks: phone 09:13 +01, UTC
+08:13, Paris 10:13)
+  The app was already uninstalled (connectedDebugAndroidTest uninstalls; `adb
+  uninstall` answered Unknown package); installed the audit build; reverse
+  tcp:3000 listed. Commencer -> the address -> "Recevoir mon lien de connexion"
+  -> the code 544011 -> six digits.
+  Server, in order: POST /api/v1/auth/code 200, GET /api/v1/entries?year=2026
+  200, GET /api/v1/me 200, GET /api/v1/entries?year=2025 200, then the Releve's
+  two dossier reads.
+  The phone (pid 4536):
+    09:15:31.277 I YearDownload: year 2026: applied - 207 inserted, 0 replaced,
+      0 unchanged, 0 kept unsynced, 0 synced on this phone but absent from the
+      server (kept, R483)
+    09:15:31.277 I YearDownload: year 2025: applied - 258 inserted, ... 0 ...
+  207 + 258 = 465 = the server's rows for the account.
+  SCREENS. Aujourd'hui: "Bonjour Camille / Jeudi 22 octobre 2026 / Saisie
+  manuelle", today's question, "A traiter - 1 jour non renseigne ce mois"; the
+  year card: "Sous les deux seuils", 26,25 % "Taux a declarer a l'AFC", 26,3 %
+  "Part de jours hors de Suisse", rail at 26,25 %, 33 days before 40,0 %, 56,5
+  before 49,9 %. Releve 2026 (provisional, "Annee en cours au 22.10.2026"):
+  Camille Martin, GE, 100 %, Forfait de 240 jours, Annee 2026 entiere, 33
+  absences; tiles 240 / 111 Suisse / 56 Teletravail / 7 Missions; 26,25 % "Taux a
+  declarer a l'AFC", 26,3 %. AUJOURD'HUI'S RATE EQUALS THE RELEVE'S: 26,25 % and
+  26,25 %. Calendrier, octobre 2026: every recorded day there, with the server's
+  provenance - 1 Domicile and 2 Suisse "detection confirmee", 5-9 Absence
+  "saisie manuelle", 12/14/16/19/21 Suisse and 15/20 Domicile "detection
+  confirmee", 13 "Non renseigne, non enregistre"; tiles Suisse 6, Domicile 3,
+  Mission 0, Absence 5, Non renseigne 1; "1 jour a completer en octobre".
+  SECTION 6's CROSS-CHECK: 21 octobre (downloaded, SYNCED, Suisse) opened in the
+  sheet - "Mercredi 21 octobre 2026", the four kinds, "Origine de la saisie",
+  "Premiere saisie enregistree le 21.10.2026 a 20:00" - and saved UNCHANGED with
+  "Enregistrer": the sheet closed, the dev server logged NO request, EntryEvent
+  stayed 471, and the cell still read "Suisse, enregistre a temps, detection
+  confirmee". AN-CALENDAR's R473 and this task's R486 meet on that row and hold.
+
+STEP 2 - A DAY RECORDED WITH THE REVERSE REMOVED, SIGN OUT, SIGN IN AGAIN
+  Airplane ON (read 0 first) and the reverse removed - genuinely offline.
+  Aujourd'hui: Domicile for today (22 Oct) -> "Enregistre sur le telephone, en
+  attente d'envoi", "1 journee en attente d'envoi." EntryEvent 471.
+  The reverse restored, airplane still ON (WorkManager's constraint unmet, so
+  the day stayed pending deterministically). Parametres -> "Se deconnecter":
+  AN-POLISH's flow sent it FIRST - POST /api/v1/entries 200, EntryEvent 472
+  (CREATED 2026-10-22 FULL HOME, mutation 41764ef4-...) - then the PLAIN
+  confirmation (nothing left pending); confirmed -> POST /api/v1/auth/sign-out
+  200, the welcome screen.
+  Signed in again by code (the first attempt was mistyped - DEVIATION 3):
+  POST /api/v1/auth/code 200, GET ?year=2026 200, GET /api/v1/me 200, GET
+  ?year=2025 200; the phone, in the SAME process 4536 (no restart):
+    09:27:09.901 I YearDownload: year 2026: applied - 208 inserted, ...
+    09:27:09.901 I YearDownload: year 2025: applied - 258 inserted, ...
+  THE DAY IS THERE, FROM THE SERVER: Aujourd'hui "Domicile / Enregistre" (synced
+  - it was downloaded, nothing recorded it on this phone since the wipe).
+  EntryEvent 472, unchanged by the download. Aujourd'hui 26,66 % = Releve 26,66 %
+  (26,7 % raw).
+
+STEP 3 - A DAY RECORDED OFFLINE, THE REVERSE RESTORED WITHOUT SIGNING OUT
+  WHAT COULD BE DONE, SAID PLAINLY. With the read-back after a drain parked
+  (PARK-Y3), this build has three download triggers: a sign-in, the start check
+  (only for a year empty on the phone) and the retry (only after a failure).
+  Without a sign-out, on an account holding both years, none of them fetches -
+  so step 3's "trigger a download" ran the start check, which rightly fetched
+  nothing. The rule step 3 exists to show on the device - a pending day kept
+  through a real download - is proven in commonTest
+  (aPendingDaySurvivesTheDownload, and its plant), not on the S9. A way to
+  force a failed sign-in download (and so a retry with a pending day) was
+  tried and REFUSED by the session's permission system: an exclusive lock on
+  the shared dev database's Entry table. Not worked around. (QUESTION 1.)
+  THE RUN: reverse removed (airplane still ON). 20 octobre - downloaded,
+  server HOME / DETECTED_CONFIRMED - opened in the sheet ("Domicile" checked)
+  and changed to "En Suisse" -> "Jour 20, Suisse, en attente de
+  synchronisation, saisie manuelle". EntryEvent 472. Reverse restored, airplane
+  ON. force-stop (am_kill 4536 09:28:56.124) and relaunch (am_proc_start 11932
+  09:28:58.960): NO entries request in the dev server log (only the Releve's two
+  dossier reads), NO YearDownload line from pid 11932 (positive control: 55
+  other lines from 11932 in the same capture, and 4 YearDownload lines in the
+  buffer); Aujourd'hui "1 journee en attente d'envoi." - KEPT. Airplane OFF ->
+  WorkManager drained it: POST /api/v1/entries 200, EntryEvent 473, MODIFIED
+  2026-10-20 FULL CH MANUAL (mutation 6e30d06d-...); the server row now CH,
+  detectedKind HOME kept, firstRecordedAt unchanged (2026-10-20 18:00). The
+  calendar: "Jour 20, Suisse, enregistre a temps, saisie manuelle"; Suisse 7,
+  Domicile 3. NOTHING ELSE CHANGED: Entry for the account 466 throughout; the
+  requests from the restart on were the Releve's two dossier reads (GET
+  /api/v1/dossier?year=2026 and ?year=2025 - reads this task does not touch)
+  and the drain's one POST.
+
+R484 ON THE DEVICE (beyond R489's list, because it is what this task built):
+  Camille signed out (tunnel up, nothing pending: sign-out 200). Signed in as
+  sam.bernard@example.invalid (seeded; 2026 only - EntryEvent 174): "year 2026:
+  applied - 173 inserted", "year 2025: applied - 0 inserted". Airplane ON,
+  reverse removed, relaunch (pid 1792): "year 2025: not downloaded - nothing
+  changed" and the NOTICE on Aujourd'hui, first, with "Reessayer". It read, in
+  the first wording, "Vos journees deja enregistrees n'ont pas pu etre chargees
+  sur ce telephone : le calendrier ne les affiche pas encore." - for a year in
+  which Sam has NO days. So the copy was rewritten (d970907; NEW COPY), the
+  audit build rebuilt from d970907 (sha256 d417d0210819aab14aebfaf7089a25c5dc1
+  43403d2348b1be34ed6182a081034; 127.0.0.1 in the dex; the new sentence in it,
+  the old one not) and installed with install -r (data kept). Offline relaunch
+  (pid 8656): the notice in the final words, "year 2025: not downloaded -
+  nothing changed". Reverse restored, "Reessayer": GET ?year=2025 200, "year
+  2025: applied - 0 inserted", the notice gone. Sam's EntryEvent 174 throughout.
+
+LOGCAT, WITH ITS POSITIVE CONTROL. The YearDownload lines quoted above are the
+positive control - the log was captured where the app's own lines were, and
+they are there (step 1 at 09:15:31, step 2 at 09:27:09, Sam 09:32-09:43). The
+session capture 09:13:18-09:44:30 (76 187 lines; the ring had rotated past
+steps 1-2, which were captured as they happened): FATAL EXCEPTION naming
+ch.monreleve.app 0; crash buffer lines naming it 0; am_crash/am_anr for it 0;
+coordinate-shaped words in the app's lines 0 (D18). Control: 586 AndroidRuntime
+lines from the adb tools prove the log machinery was recording. Four process
+starts of the app, each accounted for (the install, step 3's restart, Sam's
+offline restart, the reinstall's restart).
+
+THE PHONE, LEFT AS FOUND - end state read at 09:44:48 +01:
+  adb reverse: empty | stay_on_while_plugged_in 0 (read 0, written 3, restored)
+  | airplane_mode_on 0 (read 0; ON during steps 2-3 and the R484 check;
+  restored) | auto_time 1, auto_time_zone 1, Africa/Casablanca - never touched
+  | the clock never moved.
+  Signed out through the app WITH the tunnel up (POST /api/v1/auth/sign-out
+  200): the welcome screen - as found.
+  Installed: ch.monreleve.app only, 0.1.0 (1), not debuggable - THIS branch's
+  audit build of d970907 (pulled back: sha256 d417d021...081034), same debug
+  certificate. AN-CALENDAR's build is not the one installed.
+  USB: transport_id 5 at the start, 6 at the end - the phone re-enumerated once,
+  unseen; every network step listed the reverse first and every request it
+  made is in the server log.
+  Local stack: the dev server stopped (TaskStop); its surviving node process
+  (64944 - R179: TaskStop kills the shell, not the tree) killed; port 3000:
+  0 listeners (control: 58 other listeners visible), curl exit 7.
+
+--------------------------------------------------------------------------------
+NEW COPY
+--------------------------------------------------------------------------------
+ONE sentence (fr/AujourdhuiCopy.YEAR_DOWNLOAD_FAILED - accented, U+2019
+apostrophes; transliterated here):
+  "Les journees de votre compte n'ont pas pu etre chargees sur ce telephone :
+  le calendrier peut en afficher moins que votre releve. Rien n'a ete modifie.
+  Reessayez dans un instant."
+The button beside it is SignInCopy.RETRY ("Reessayer") - the one home for that
+word (R206), as the Releve's error state already uses; no second constant.
+SUPERSEDED IN THIS TASK (never on main): "Vos journees deja enregistrees n'ont
+pas pu etre chargees sur ce telephone : le calendrier ne les affiche pas encore.
+Rien n'a ete modifie. Reessayez dans un instant." - true of the sign-in it was
+written for, false on the S9 for an empty server year.
+
+--------------------------------------------------------------------------------
+UNTRACKED FILES LEFT ALONE
+--------------------------------------------------------------------------------
+The main checkout - the orchestrator's, carrying its lock - was read and used
+only for the dev server and the seed: no git state written there. At the start
+and at the end, the same: HEAD 70190ff; " M docs/deploy.md" and " M
+relay/AN-PULL.txt" (the orchestrator's and the operator's - v2 was COPIED from
+it, never edited); 47 untracked files (24 android/scripts/*.mjs, 23
+relay/*.txt). Every other C:/wt/* worktree untouched. The stale copy under
+.claude/worktrees/ left alone and outside every scan. In this worktree, nothing
+untracked but the lock (ignored).
+
+--------------------------------------------------------------------------------
+PARKED (R456: series Y, claimed from the register - letters in use A B C D F G
+I K L M P R S U V; no heading and no citation of PARK-Y*; the pattern
+PARK(?:AN)?-[A-Z]?\d+ sees PARK-Y1)
+--------------------------------------------------------------------------------
+PARK-Y1  a second in-memory EntryDao, in commonTest - folds into PARK-M1.
+PARK-Y2  a FAILED row is kept, not replaced by the server's row.
+PARK-Y3  no read-back of the year after a queue drain (6.4) - parked whole,
+         with the reason; it is why R489 step 3 had nothing to trigger.
+PARK-Y4  an empty server year is fetched again at every start (no marker).
+PARK-Y5  a link sign-in on a phone whose settings survived skips the sign-in
+         download.
+PARK-Y6  the failure notice is on Aujourd'hui, not on the calendar.
+PARK-Y7  a value this build does not know fails the whole year (6.5).
+PARK-Y8  a synced row the server does not hold is kept and logged, not shown -
+         R483's anomaly, recorded as R483 asks; it did not occur on the S9.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE WEB SERVER RAN FROM THE MAIN CHECKOUT, read-only as git is concerned, to
+   avoid a second install: `git diff origin/main...HEAD -- web/` is EMPTY. pnpm
+   dev regenerated the Prisma client and copied the fonts there (ignored files),
+   as for every session that runs it. Its stdout went to a scratchpad log, which
+   is where the sign-in codes came from. `pnpm db:seed` ran there too, against
+   the local frontalier database only (its deletes are scoped to its own seed
+   addresses).
+2. "COMMIT PER STEP" WITHOUT A RED COMMIT. Steps 2 (tests RED) and 3 (GREEN) are
+   one commit, because CLAUDE.md commits only on green; the RED run is recorded
+   above and in that commit's message. The R488 test went in the same commit.
+   Steps 4 and 5 are separate commits, each checked on its own tree (the copy/UI
+   files were set aside, the triggers-only tree checked and committed, then the
+   files restored byte-identical and committed).
+3. THE SECOND SIGN-IN WAS MISTYPED ONCE. `adb shell input text` dropped the code's
+   first digit; correcting it filled the boxes to six and the screen
+   auto-submitted a WRONG code: POST /api/v1/auth/code 400 ("Ce code n'est pas
+   valable..."). One failed attempt recorded on the dev server for Camille's
+   address. A fresh code ("Renvoyer un code", 202), typed one digit at a time and
+   read back before the sixth, signed in.
+4. THE MACHINE SLEPT ~7 HOURS during the first audit build (UTC 01:00 -> 08:12;
+   Gradle's "BUILD SUCCESSFUL in 7h 7m 19s" is the wall clock across the
+   sleep, not a build time). The phone's clock moved with real time.
+5. A PERMISSION REFUSAL: holding an exclusive lock on the dev database's Entry
+   table (to make a sign-in download time out) was denied as a modification of a
+   shared resource. Not worked around; step 3 ran as described.
+6. THE DEVICE DATABASE WAS NOT READ: the audit build R489 names is not
+   debuggable, and no debug build was installed over it for a read - the
+   server's rows, the app's counted log lines and the screens carry every claim.
+7. A SECOND INSTALL, FOR gate:clone ONLY. gate-clone.mjs imports `pg` from its
+   own location to create its scratch database, and this worktree's web/ had no
+   node_modules, so `pnpm install --frozen-lockfile` ran in C:/wt/an-pull/web
+   (53 s, the store warm; node_modules is gitignored and the tree stayed clean).
+   gate:clone was handed DATABASE_URL from the main checkout's web/.env in its
+   environment - this worktree has no .env - which is how it finds the local
+   PostgreSQL; the clone itself never sees it.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. THE CALENDAR SHEET SAYS "Saisie manuelle" OF A DETECTED DAY. CalendarEdit-
+   Sheet's provenance block states "Saisie manuelle" for every recorded day
+   ("Every entry is Saisie manuelle (manual product)"), so 21 octobre - DETECTED_
+   CONFIRMED on the server, "detection confirmee" in the calendar cell - read
+   "Origine de la saisie: Saisie manuelle" in the sheet. Pre-existing; downloaded
+   rows make it visible on every detected day.
+2. GET /api/v1/dossier?year=2025 answered 500 for sam.bernard (no activity in
+   2025) when the Releve read its previous year. Pre-existing server behaviour.
+3. SyncWorker's comment says "a fresh sign-in enqueues another sync"; nothing
+   does - a sync is requested only when a day is recorded. A day left PENDING by
+   an ended session waits for the next tap after the re-sign-in.
+4. SyncWorker builds its own SessionManager; MainActivity has another. Refresh
+   is single-flight per instance, so the two can race one refresh token (R210).
+   The download is built on the ACTIVITY's session so it adds no third.
+5. Editing a DETECTED_CONFIRMED day in the sheet records it MANUAL (the server
+   row became MANUAL with detectedKind HOME kept). Pre-existing calendar
+   behaviour; whether a correction of a detected day should be DETECTED_CORRECTED
+   is not this task's to decide.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 R489 step 3 - "trigger a download" without signing out. On an account holding
+   both years nothing in this build fetches without a sign-out (PARK-Y3). Build
+   the read-back after a drain (PARK-Y3's cost), or add another trigger, or is
+   the start check's correct no-op the intended reading?
+Q2 The failure copy (NEW COPY) is a proposal, as R484 asks. Accept it?
+Q3 PARK-Y2: should the server's row replace a FAILED local row?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED AND NOT MERGED. an-pull -> origin/an-pull, every push
+with an explicit target (`git push origin an-pull`; the first `git push -u
+origin an-pull`), the branch's upstream unset at creation so that a bare push
+could never aim at main. PENDING MERGE - the merge, and promoting production,
+are the operator's (R334). `production` was never pushed; Coolify's API was
+never called.
+
+THE COMMITS, in order, each pushed when made:
+    81b3b0e  relay/AN-PULL.txt replaced by v2, byte-identical      * [new branch]
+             (the committed blob's sha256 55a4ea3fea952457c9837ecbeffa38e32e43cce
+             315487e279753f9301a9a9cea = the main checkout's copy, cmp
+             identical; v1's full text in the body, cmp-identical to
+             70190ff:relay/AN-PULL.txt)
+    81d6f10  the download, in :shared (R481-R487)        81b3b0e..81d6f10
+    43a4925  :app triggers (R481, R485)                   81d6f10..43a4925
+    cb632ff  the failure notice and its copy (R484)       43a4925..cb632ff
+    4fb50d4  R484 on real Room (instrumented)              cb632ff..4fb50d4
+    d970907  the notice reworded after the S9              4fb50d4..d970907
+    38af405  PARK-Y1..Y7 - THE GATED COMMIT                d970907..38af405
+    <final>  "AN-PULL: the report, and PARK-Y8" - REPORT-AN-PULL.txt and
+             parking.md only. A report cannot print its own SHA; the final tip,
+             its gate:clone and its push are in the handback.
+
+    git diff --stat 38af405..<final>  ->  REPORT-AN-PULL.txt, parking.md
+
+REGISTER COVERAGE ON THE FINAL TEXT (web/scripts/register-coverage.mjs, the
+check RegisterCoverageTest shells out to, run directly on this report and
+parking.md as committed):
+    register coverage: OK - 120 cited id(s) across 123 report(s), all have
+    headings in parking.md
+
+ISOLATION (R334, R349, R392). All work in C:/wt/an-pull, this session's worktree,
+created from origin/main, carrying .session-lock.json (gitignored, never
+committed, removed as the last act). Staging by name throughout; every new file
+checked with git check-ignore before it was added. Nothing was committed,
+stashed, reset or removed in any other C:/wt/* directory or in the main
+checkout, which still holds its own lock, its two modified files and its 47
+untracked files - the same list at the end as at the start. Its web/ served the
+dev server and the seed (DEVIATION 1). The stale copy under .claude/worktrees/
+was left alone.
+
+================================================================================
+END OF REPORT-AN-PULL
+================================================================================
