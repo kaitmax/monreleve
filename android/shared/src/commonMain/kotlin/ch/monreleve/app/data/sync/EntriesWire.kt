@@ -88,3 +88,44 @@ data class EntriesResponse(
 private fun decodeEntriesResponse(body: String) = wireJson.decodeFromString<EntriesResponse>(body)
 
 fun parseEntriesResponse(body: String): EntriesResponse? = runCatching { decodeEntriesResponse(body) }.getOrNull()
+
+// ---------------------------------------------------------------------------------------------------------------
+// AN-PULL (R481). THE READ PATH'S WIRE HALF - GET /api/v1/entries?year=YYYY (docs/api-v1.md 6.2).
+//
+// ONE PARSER FOR ONE OBJECT (R206). Each row of the year is decoded into the SAME [ServerEntry] the POST answer
+// carries, because 6.1 says the POST's `entries` is "exactly the shape and order 6.2 specifies - the same object,
+// from the same code, so a client needs one parser rather than two". So the download maps a row exactly the way
+// the drain's reconcile does (EntriesMapping.toSyncedEntity), and nothing about a row is parsed twice.
+//
+// THE ENVELOPE IS CHECKED, NOT ASSUMED. SessionManager.authenticatedGet hands its caller the BODY and not the HTTP
+// status (DossierApi reads it the same way). The route sends "status":"ok" with a 200 and nothing else; every
+// refusal - read_failed, invalid_year, unknown_parameter - is {"status":"error","code":...}. So a body is the year
+// only if it says "ok" AND names the year that was asked for; anything else is not a year, whatever it parses as.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** The only success marker the entries routes send (6.2). */
+private const val STATUS_OK = "ok"
+
+/** The read path for one tax year: GET /api/v1/entries?year=YYYY, exactly `year`, once (6.2's strict query). */
+fun entriesYearPath(year: Int): String = "$ENTRIES_PATH?year=$year"
+
+/**
+ * The 200 body of GET /api/v1/entries?year=YYYY (6.2): the year it answers and EVERY row of it. "The year is the
+ * page": the server never truncates, and a year it cannot serve whole is read_failed, never a short array.
+ */
+@Serializable
+data class EntriesYearResponse(
+    val status: String,
+    val year: Int,
+    val entries: List<ServerEntry>,
+)
+
+/**
+ * The year's 200 body, or null when the body is not a whole year: a refusal envelope (read_failed and the rest
+ * carry "status":"error" and no `entries`), a body missing a mandatory field (coerceInputValues=false throws, and
+ * runCatching turns it into null - the same rule as [parseEntriesResponse]), or a status other than "ok".
+ */
+fun parseEntriesYearResponse(body: String): EntriesYearResponse? =
+    runCatching { wireJson.decodeFromString<EntriesYearResponse>(body) }
+        .getOrNull()
+        ?.takeIf { it.status == STATUS_OK }
