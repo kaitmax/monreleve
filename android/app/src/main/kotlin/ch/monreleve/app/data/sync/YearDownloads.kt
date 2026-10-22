@@ -164,9 +164,9 @@ val processYearDownloads: YearDownloads by lazy {
 }
 
 /**
- * The ONE construction of the download (R206), beside buildSyncEngine. [get] is the CALLER's session - the activity's
- * own SessionManager, whose refresh is single-flight, so the download never races the screens' calls into a second
- * refresh of one token (R210). The account is read when it is used (R303); the transaction is Room's.
+ * The ONE construction of the download (R206), beside buildSyncEngine. [get] is the CALLER's session - the process's
+ * one SessionManager (R507), whose refresh is single-flight, so the download never races the screens' calls or a drain
+ * into a second refresh of one token (R210). The account is read when it is used (R303); the transaction is Room's.
  */
 internal fun buildEntriesDownload(
     context: Context,

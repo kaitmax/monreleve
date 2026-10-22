@@ -57,6 +57,7 @@ import ch.monreleve.app.auth.SignInController
 import ch.monreleve.app.auth.SignInPhase
 import ch.monreleve.app.auth.SignInSnapshot
 import ch.monreleve.app.auth.TokenStore
+import ch.monreleve.app.auth.processSession
 import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SharedPrefsDossierCache
@@ -186,7 +187,9 @@ class MainActivity : ComponentActivity() {
         val context = applicationContext
         val api = AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL)
         val tokenStore = KeystoreTokenStore(context)
-        val session = SessionManager(api, tokenStore)
+        // AN-TOKEN-RACE (R507): the PROCESS's session, not this activity's own. SyncWorker drains through the same
+        // instance, so a screen and a drain meeting one expired token share ONE refresh instead of racing two (R210).
+        val session = processSession(context)
         val settingsStore: SettingsStore = SharedPrefsSettingsStore(context)
         val pending = SharedPrefsPendingSignInStore(context)
         val accountStore = SharedPrefsAccountStore(context)
@@ -221,9 +224,9 @@ class MainActivity : ComponentActivity() {
         val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
         // AN12 increment 2 (R295): the device-wide erasure (built by buildLocalStore, below).
         val localStore = buildLocalStore(context, tokenStore, settingsStore, dossierCache, pending, accountStore)
-        // AN-PULL (R481-R485): the server's year, brought down to the phone. Built on THIS activity's session, so
-        // its GET shares the single-flight refresh with /me and the dossier (R210); the coordinator is the
-        // process's, so a download and its status outlive a rotation.
+        // AN-PULL (R481-R485): the server's year, brought down to the phone. Built on the process's session (R507),
+        // so its GET shares the single-flight refresh with /me, the dossier and the sync drain (R210); the coordinator
+        // is the process's, so a download and its status outlive a rotation.
         val entriesDownload = buildEntriesDownload(context, session::authenticatedGet)
         val yearDownload =
             ShellYearDownload(

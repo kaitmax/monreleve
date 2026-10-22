@@ -61,6 +61,31 @@ private suspend fun CoroutineScope.raceAtExpiry(
 }
 
 class TokenRaceTest : FunSpec({
+    test("R506 - the screen and the worker meet an expired access token at once: ONE rotation, the session lives") {
+        runTest {
+            val server = TokenServer()
+            val first = server.openSession(ACCOUNT)
+            server.expireAccess(first)
+            val store = OneTokenStore(first)
+            val build = { SessionManager(AuthApi(server, TOKEN_SERVER_BASE), store) }
+            val process = SessionHolder()
+
+            // THE TWO SITES, receiving what the app gives them since R507: the process's ONE SessionManager. At 935c1ac
+            // each received its own - build() - and this test was RED: two refreshes, TOKEN_REPLAYED, both calls lost.
+            val screenSession = process.get(build) // MainActivity: processSession(context)
+            val workerSession = process.get(build) // buildSyncEngine: processSession(context)
+
+            raceAtExpiry(screenSession, workerSession, server, store, first) shouldBe
+                RaceOutcome(
+                    refreshesReachingTheServer = 1,
+                    sessionRevokedBecause = null,
+                    screen = "Ok",
+                    worker = "Ok",
+                    deviceHoldsTheLivePair = true,
+                )
+        }
+    }
+
     test("hazard control - TWO SessionManagers over one store, raced the same way, DO end the session") {
         // Why the fence exists, and the presence half of R506's absence: with a second instance the same race MUST
         // reach the server twice and end the session. If it ever stops doing so, TokenServer has stopped modelling
