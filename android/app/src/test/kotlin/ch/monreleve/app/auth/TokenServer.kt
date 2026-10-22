@@ -7,6 +7,7 @@ import ch.monreleve.app.data.remote.HttpTransport
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URLDecoder
 
 // AN-TOKEN-RACE (R506). THE SERVER'S TOKEN RULES, PLAYED BY A FAKE THAT KEEPS STATE THE WAY tokens.ts DOES - so a
 // client race meets the answer the real server gives it, not an answer a test author found convenient.
@@ -26,15 +27,17 @@ import org.json.JSONObject
 // before its first suspension, which is the same atomicity. The latency is what lets two clients each send ONE
 // refresh token before either has received its successor - the race, exactly, and nothing a test has to stage.
 //
-// IT ALSO SERVES THE FEW ROUTES THE FORCED SIGN-OUT FLOW CROSSES (R509): the code exchange (a new session, as
-// issueTokenPair opens one), GET /api/v1/me, the entries POST (each row written under the session's account and
-// echoed back as the server's row, R217) and the year GET (6.2). Bodies are org.json, the JSON :app's tests have.
+// IT ALSO SERVES THE FEW ROUTES THE FORCED SIGN-OUT FLOW CROSSES (R509): the code exchange and the link callback
+// (each a new session, as issueTokenPair opens one), GET /api/v1/me, the entries POST (each row written under the
+// session's account and echoed back as the server's row, R217) and the year GET (6.2). Bodies are org.json, the JSON
+// :app's tests have.
 
 internal const val TOKEN_SERVER_BASE = "http://127.0.0.1:3000"
 
 private const val HTTP_OK = 200
 private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_NOT_FOUND = 404
+private const val HTTP_SERVER_ERROR = 500
 private const val DEFAULT_LATENCY_MS = 50L
 private const val ACCESS_EXPIRES = "2026-10-22T10:15:00.000Z"
 private const val REFRESH_EXPIRES = "2027-01-20T10:00:00.000Z"
@@ -82,6 +85,9 @@ internal class TokenServer(
     /** Every request, as "METHOD /path", in the order it ARRIVED. */
     val requests = mutableListOf<String>()
 
+    /** The next POST /api/v1/entries is answered 500 and writes nothing - a drain that could not send (R509, R483). */
+    var refuseNextEntriesPost = false
+
     /** How many refresh requests reached the server - a second one for one token is the replay. */
     var refreshRequests = 0
         private set
@@ -128,13 +134,18 @@ internal class TokenServer(
         request: HttpRequest,
         path: String,
     ): HttpResponse =
-        when (path) {
-            "/api/v1/auth/refresh" -> refresh(bodyOf(request).optString("refreshToken"))
-            "/api/v1/auth/code" -> pairBody(openSession(bodyOf(request).getString("email")))
+        when {
+            path == "/api/v1/auth/refresh" -> refresh(bodyOf(request).optString("refreshToken"))
+            path == "/api/v1/auth/code" -> pairBody(openSession(bodyOf(request).getString("email")))
+            path.startsWith("/api/v1/auth/callback?") -> pairBody(openSession(emailOf(path)))
             else -> authenticated(request, path)
         }
 
     private fun bodyOf(request: HttpRequest): JSONObject = JSONObject(request.body ?: "{}")
+
+    /** The callback carries the address in its query (callback/route.ts). */
+    private fun emailOf(path: String): String =
+        URLDecoder.decode(path.substringAfter("email=").substringBefore('&'), "UTF-8")
 
     private fun refresh(token: String): HttpResponse {
         refreshRequests++
@@ -183,6 +194,10 @@ internal class TokenServer(
             request.method == HttpMethod.POST && path == "/api/v1/auth/sign-out" -> {
                 if (session.revokedReason == null) session.revokedReason = SIGNED_OUT
                 HttpResponse(HTTP_OK, """{"status":"ok"}""")
+            }
+            request.method == HttpMethod.POST && path == "/api/v1/entries" && refuseNextEntriesPost -> {
+                refuseNextEntriesPost = false
+                HttpResponse(HTTP_SERVER_ERROR, """{"status":"error","code":"write_failed"}""")
             }
             request.method == HttpMethod.POST && path == "/api/v1/entries" -> write(session.account, request.body)
             request.method == HttpMethod.GET && path.startsWith("/api/v1/entries?year=") ->

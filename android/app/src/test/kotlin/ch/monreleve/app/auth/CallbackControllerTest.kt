@@ -91,7 +91,8 @@ private fun controller(
     account: AccountStore = FakeAccountStore(),
 ): CallbackController {
     val api = AuthApi(CbTransport(response, throwable), "http://10.0.2.2:3000")
-    return CallbackController(api, store, pending, scope, account)
+    // R509's send is not this suite's subject - no day is held here; ForcedSignOutTest drives it end to end.
+    return CallbackController(api, store, pending, scope, account, syncNow = {})
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -17,6 +17,7 @@ import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
+import ch.monreleve.app.data.sync.buildSyncEngine
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.ui.screens.signin.CallbackScreen
 
@@ -46,6 +47,8 @@ class CallbackActivity : ComponentActivity() {
                 pending = SharedPrefsPendingSignInStore(context),
                 scope = lifecycleScope,
                 accountStore = SharedPrefsAccountStore(context),
+                // AN-TOKEN-RACE (R509): the link's sign-in sends the account's held days, through the worker's drain.
+                syncNow = { buildSyncEngine(context).sync() },
             )
         controller.handle(intent?.data?.toString())
         setContent {

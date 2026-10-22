@@ -399,7 +399,20 @@ private fun CodeRoute(
     val context = LocalContext.current
     // AN-STATE (R310): the typed digits and a stable phase survive a rebuild.
     var saved by rememberSaveable { mutableStateOf<CodeSnapshot?>(null) }
-    val controller = remember { CodeController(api, tokenStore, pending, accountStore, email, scope, restored = saved) }
+    // AN-TOKEN-RACE (R509): the sign-in sends the account's held days through the worker's own drain (R206).
+    val controller =
+        remember {
+            CodeController(
+                api,
+                tokenStore,
+                pending,
+                accountStore,
+                email,
+                scope,
+                syncNow = { buildSyncEngine(context).sync() },
+                restored = saved,
+            )
+        }
     val state by controller.state.collectAsState()
     LaunchedEffect(controller) { controller.state.collect { saved = CodeSnapshot(it.code, it.phase) } }
     LaunchedEffect(state.phase) { if (state.phase == CodePhase.SIGNED) onSignedIn() }
