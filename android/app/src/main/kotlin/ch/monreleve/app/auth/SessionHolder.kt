@@ -47,11 +47,15 @@ private val processHolder = SessionHolder()
 /**
  * THE PROCESS'S SessionManager: the screens', every sync drain's and the debug probe's. Only the first call reads
  * [context], for its application context - the Keystore prefs file is the application's, whoever asks.
+ *
+ * AN-FORCED-SIGNOUT (R520): a session the SERVER ends is recorded on the process's [processSessionEnds], whoever met
+ * it - a screen or the worker - so an open shell leaves for sign-in (SessionEnds.kt).
  */
 internal fun processSession(context: Context): SessionManager =
     processHolder.get {
         SessionManager(
             AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL),
             KeystoreTokenStore(context.applicationContext),
+            onEnded = { processSessionEnds.record() },
         )
     }

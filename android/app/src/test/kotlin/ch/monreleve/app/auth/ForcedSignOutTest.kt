@@ -1,9 +1,11 @@
 package ch.monreleve.app.auth
 
+import ch.monreleve.app.Destination
 import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.accountTagOf
 import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.repo.FakeEntryDao
@@ -13,6 +15,8 @@ import ch.monreleve.app.data.sync.EntriesDownload
 import ch.monreleve.app.data.sync.SyncEngine
 import ch.monreleve.app.data.sync.SyncOutcome
 import ch.monreleve.app.data.sync.YearDownload
+import ch.monreleve.app.destinationAfterSessionEnd
+import ch.monreleve.app.fr.SignInCopy
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.parametres.AccountEvent
 import ch.monreleve.app.parametres.ParametresController
@@ -22,6 +26,7 @@ import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -49,6 +54,7 @@ private const val CODE = "123456"
 private const val TAX_YEAR = 2026
 private const val DAY = "2026-10-21"
 private const val OTHER_DAY = "2026-10-20"
+private const val THIRD_DAY = "2026-10-19"
 private val TAG_A: String = checkNotNull(accountTagOf(EMAIL_A))
 private val TAG_B: String = checkNotNull(accountTagOf(EMAIL_B))
 private val CLOCK: Clock = Clock.fixed(Instant.parse("2026-10-22T10:00:00Z"), ZoneId.of("Europe/Paris"))
@@ -119,7 +125,10 @@ private class Device(
     val tokens = OneTokenStore(firstPair)
     val accounts = MemoryAccountStore(TAG_A)
     val dao = FakeEntryDao()
-    val session = SessionManager(AuthApi(server, TOKEN_SERVER_BASE), tokens)
+
+    // R520: the process's session-end record, and the session told of each ending - processSession's wiring.
+    val ends = SessionEnds()
+    val session = SessionManager(AuthApi(server, TOKEN_SERVER_BASE), tokens, onEnded = { ends.record() })
     val repository =
         LocalEntryRepository(
             dao,
@@ -206,6 +215,36 @@ private class Device(
     fun listen(scope: CoroutineScope): Job = scope.launch { parametres.accountEvents.collect { events += it } }
 }
 
+/** R295's two wipes - what PARK-T1's way out reached. Neither may run on a sign-out nobody asked for (R520). */
+private val R295_WIPES = setOf("clearForSignOut", "clearForDeletion")
+
+/**
+ * AN-FORCED-SIGNOUT (R520). THE DESTINATION MainActivity HOLDS WHILE ITS SHELL IS OPEN, wired the way MainActivity
+ * wires it - one job per thing that moves it. It replaces [Device.listen] in the tests that use it: the account
+ * events are a Channel, so two collectors would split them.
+ */
+private class Shell(
+    scope: CoroutineScope,
+    device: Device,
+) {
+    var destination: Destination = Destination.MAIN
+        private set
+
+    private val jobs =
+        listOf(
+            // R295: a sign-out or a deletion COMPLETED - MainShell's accountEvents collector (onSignedOut).
+            scope.launch { device.parametres.accountEvents.collect { destination = Destination.SIGN_IN } },
+            // R520: the server ended the session - MainActivity's processSessionEnds collector.
+            scope.launch {
+                device.ends.ends.collect {
+                    destination = destinationAfterSessionEnd(destination, device.session.isSignedIn())
+                }
+            },
+        )
+
+    fun close() = jobs.forEach { it.cancel() }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ForcedSignOutTest : FunSpec({
     test("R508 - a session the server ENDED does not reach R295's wipe: the unsent day survives, still tagged") {
@@ -239,10 +278,15 @@ class ForcedSignOutTest : FunSpec({
         }
     }
 
-    test("R508 - the one path that loses it: « Se déconnecter » in the dead shell cannot send, warns, then wipes") {
+    test("R508 - the voluntary sign-out's controller, driven after a forced sign-out, still warns and wipes") {
         // The positive control for the absences above (R169's corollary): the SAME device, the SAME forced sign-out,
         // and the voluntary sign-out - unchanged, AN-POLISH's R440 - DOES reach the wipe and DOES tell the shell.
         // Its "send first" has nothing to send with: the session is gone, so the warning names the day.
+        //
+        // AN-FORCED-SIGNOUT (R520): this WAS "the one path that loses it" - PARK-T1, the dead shell's only exit. The
+        // controller is deliberately unchanged (the voluntary sign-out is AN-POLISH's), so driven directly it still
+        // does exactly this; what R520 removed is the shell that offered it - a forced sign-out now lands on sign-in
+        // (the R520 PARK-T1 test below). This stays as the control: the wipe the PARK-T1 test proves unreached.
         runTest {
             val device = Device(this)
             val listener = device.listen(this)
@@ -264,6 +308,99 @@ class ForcedSignOutTest : FunSpec({
             device.wipe.calls shouldBe listOf("clearForSignOut")
             device.events shouldBe listOf(AccountEvent.SignedOut)
             listener.cancel()
+        }
+    }
+
+    test("R520 - PARK-T1: the server ends the session, the person looks for a way out, and the held day survives") {
+        // PARK-T1 exactly, on a real forced sign-out (the product's own replay detection, R508): the person is on
+        // the screen the app left them on, and takes the way out it offers. On the shell that is Parametres'
+        // « Se déconnecter » - AN-POLISH's voluntary sign-out - confirmed if it asks. The sign-in screen offers
+        // no sign-out at all.
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.anotherHolderRotatesFirst()
+            device.drain() // the worker meets the replay: the server ends the session
+            advanceUntilIdle()
+
+            if (shell.destination == Destination.MAIN) {
+                device.parametres.requestSignOut()
+                advanceUntilIdle()
+                if (device.parametres.state.value.signOutPrompt != null) device.parametres.confirmSignOut()
+                advanceUntilIdle()
+            }
+
+            // THE HELD DAY SURVIVES: on the phone, PENDING, still A's - R295's wipe never reached ...
+            device.wipe.calls.filter { it in R295_WIPES } shouldBe emptyList()
+            device.accounts.current() shouldBe TAG_A
+            device.dao.all().map { Triple(it.dayDate, it.syncState, it.accountTag) } shouldBe
+                listOf(Triple(DAY, SyncState.PENDING, TAG_A))
+            // ... because the person was taken to sign-in, where nothing wipes.
+            shell.destination shouldBe Destination.SIGN_IN
+            shell.close()
+        }
+    }
+
+    test("R520 / R225 - the sign-in screen it lands on names the days waiting, counted from the record") {
+        // R225: the question « where are my days? » is raised by landing on sign-in; the answer is asserted where
+        // the screen gets it - the forced state and the count MainActivity's SIGN_IN route hands RequestLinkScreen,
+        // read from the same stores it reads, after a real forced sign-out - never as a constant.
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            // Three of A's rows on TWO dates - half-day mode writes two rows for one date - and one of B's.
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME, portion = Portion.AM))
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.CH, portion = Portion.PM))
+            device.repository.record(RecordCommand(dayDate = OTHER_DAY, kind = EntryKind.HOME))
+            device.accounts.setCurrent(TAG_B)
+            device.repository.record(RecordCommand(dayDate = THIRD_DAY, kind = EntryKind.CH))
+            device.accounts.setCurrent(TAG_A)
+            // THE CONTROL: while the session lives, nothing is named and the shell stays where it is.
+            sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe false
+            shell.destination shouldBe Destination.MAIN
+
+            device.anotherHolderRotatesFirst()
+            device.drain()
+            advanceUntilIdle()
+
+            shell.destination shouldBe Destination.SIGN_IN
+            sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe true
+            val named = heldDays(device.repository.observePending().first())
+            // TWO DAYS: A's two dates, the half-day pair counted once, B's row never (R303).
+            named shouldBe 2
+            SignInCopy.sessionClosed(named) shouldContain "2 journées"
+            shell.close()
+        }
+    }
+
+    test("R520 - a VOLUNTARY sign-out records no server ending: the signal is the server's alone") {
+        // The absence half of R520's signal, with its presence control in the same run: the voluntary sign-out
+        // from a live session reaches R295's wipe and leaves - and SessionManager reported nothing; the forced
+        // sign-out above reports one. A signal that also fired here would send the voluntary path to a notice
+        // about days it has just wiped.
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.recordOnline(EntryKind.HOME)
+
+            device.parametres.requestSignOut()
+            advanceUntilIdle()
+            device.parametres.confirmSignOut()
+            advanceUntilIdle()
+
+            device.wipe.calls shouldBe listOf("clearForSignOut")
+            shell.destination shouldBe Destination.SIGN_IN
+            device.ends.ends.value shouldBe 0
+            device.server.revocationOf(device.firstPair) shouldBe TokenServer.SIGNED_OUT
+            // THE PRESENCE CONTROL: another device, a held day, a server ending - counted. (A drain with nothing held
+            // makes no request, so it would meet no ending at all: the day is what makes this a control.)
+            val other = Device(this)
+            other.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            other.anotherHolderRotatesFirst()
+            other.drain()
+            other.ends.ends.value shouldBe 1
+            shell.close()
         }
     }
 

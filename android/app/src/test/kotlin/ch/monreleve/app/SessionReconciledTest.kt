@@ -26,4 +26,16 @@ class SessionReconciledTest : FunSpec({
     test("a restored in-flight RESOLVING is re-decided from start, never left as a stale spinner") {
         sessionReconciled(saved = Destination.RESOLVING, start = Destination.MAIN) shouldBe Destination.MAIN
     }
+
+    // AN-FORCED-SIGNOUT (R520): the server ended the session while the app was open. Every signed-in screen leaves
+    // for sign-in - the shell (PARK-T1), onboarding, RESOLVING - and a person already on sign-in stays there.
+    test("R520: a session the server ended takes every screen to SIGN_IN") {
+        Destination.entries.map { destinationAfterSessionEnd(current = it, signedIn = false) } shouldBe
+            Destination.entries.map { Destination.SIGN_IN }
+    }
+
+    test("R520: still signed in when the signal is read (a new sign-in saved its pair first) - nobody moves") {
+        Destination.entries.map { destinationAfterSessionEnd(current = it, signedIn = true) } shouldBe
+            Destination.entries.toList()
+    }
 })

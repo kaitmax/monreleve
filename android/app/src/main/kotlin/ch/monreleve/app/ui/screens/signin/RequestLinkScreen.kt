@@ -1,5 +1,6 @@
 package ch.monreleve.app.ui.screens.signin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -27,6 +30,7 @@ import ch.monreleve.app.auth.SignInPhase
 import ch.monreleve.app.auth.SignInState
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
+import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.LicencesCopy
@@ -43,10 +47,15 @@ import ch.monreleve.app.ui.screens.onboarding.PrimaryButton
 // After submit the flow moves to the CODE screen (the LINK_SENT phase is handled by the caller, which
 // navigates); this screen renders only the form and any error. No string literal here (fence 4).
 
+// AN-FORCED-SIGNOUT (R520): [sessionClosedHeldDays] is non-null when the person is here because the SERVER ended their
+// session, and is then the number of days still waiting on this phone - counted from the record by the caller when
+// this renders, never stored (R181). Null on every other arrival (a fresh install, a voluntary sign-out, a deletion),
+// and the screen is then exactly what it was. No default (R291): a caller that forgot it would silently say nothing.
 @Composable
 fun RequestLinkScreen(
     state: SignInState,
     actions: SignInActions,
+    sessionClosedHeldDays: Int?,
     modifier: Modifier = Modifier,
 ) {
     val submitting = state.phase == SignInPhase.SUBMITTING
@@ -65,6 +74,7 @@ fun RequestLinkScreen(
         ) {
             LogoMark(contentDescription = Fr.LOGO, diameter = Spacing.space40)
             Text(text = SignInCopy.TITLE, style = FrontierType.h1, color = LightColors.textPrimary)
+            if (sessionClosedHeldDays != null) SessionClosedNotice(sessionClosedHeldDays)
             Text(text = SignInCopy.PROMPT, style = FrontierType.bodyL, color = LightColors.textSecondary)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
                 Text(text = SignInCopy.EMAIL_LABEL, style = FrontierType.caption, color = LightColors.textPrimary)
@@ -92,6 +102,23 @@ fun RequestLinkScreen(
             ConsentLine(onOpenCgu = actions.onOpenCgu, onOpenPrivacy = actions.onOpenPrivacy)
         }
     }
+}
+
+// R520: why the person is here, and what waits. The info treatment of YearDownloadNotice - a fact to know, not an
+// alarm (R210's copy rule): nothing was lost, and nothing on this screen can lose it.
+@Composable
+private fun SessionClosedNotice(heldDays: Int) {
+    Text(
+        text = SignInCopy.sessionClosed(heldDays),
+        style = FrontierType.body,
+        color = LightColors.textPrimary,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.md))
+                .background(LightColors.infoBg)
+                .padding(Spacing.space12),
+    )
 }
 
 @Composable

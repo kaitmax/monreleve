@@ -57,7 +57,10 @@ import ch.monreleve.app.auth.SignInController
 import ch.monreleve.app.auth.SignInPhase
 import ch.monreleve.app.auth.SignInSnapshot
 import ch.monreleve.app.auth.TokenStore
+import ch.monreleve.app.auth.heldDays
 import ch.monreleve.app.auth.processSession
+import ch.monreleve.app.auth.processSessionEnds
+import ch.monreleve.app.auth.sessionClosedByServer
 import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SharedPrefsDossierCache
@@ -148,6 +151,7 @@ import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Year
@@ -258,16 +262,34 @@ class MainActivity : ComponentActivity() {
                     // carried into OnboardingRoute. Saveable so a rebuild during onboarding keeps the same subset.
                     var onboardingSeed by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
                     LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
+                    // AN-FORCED-SIGNOUT (R520): a session the SERVER ends - met by a screen or by the worker, in this
+                    // process (R507) - takes the person to sign-in from whatever screen is open (PARK-T1).
+                    LaunchedEffect(Unit) {
+                        processSessionEnds.ends.collect {
+                            destination = destinationAfterSessionEnd(destination, session.isSignedIn())
+                        }
+                    }
                     when (destination) {
-                        Destination.SIGN_IN ->
+                        Destination.SIGN_IN -> {
+                            // R520: arrived here because the server ended the session? Read when sign-in opens, from
+                            // the stores (SessionEnds.kt) - and then the days still waiting, counted from the record
+                            // as the screen renders (R181), the current account's own (R303).
+                            val closed =
+                                remember { sessionClosedByServer(session.isSignedIn(), accountStore.current()) }
+                            val pendingRows by
+                                remember { if (closed) repository.observePending() else flowOf(null) }
+                                    .collectAsState(initial = null)
                             SignInRoute(
                                 api,
                                 tokenStore,
                                 pending,
                                 accountStore,
                                 lifecycleScope,
+                                sessionClosed = closed,
+                                sessionClosedHeldDays = pendingRows?.let(::heldDays),
                                 onSignedIn = { destination = Destination.RESOLVING },
                             )
+                        }
                         Destination.RESOLVING -> {
                             // R481: every route here follows a sign-in (the code path's onSignedIn, or the link's
                             // relaunch with its settings cleared), so this is where BOTH years come down. It does
@@ -343,10 +365,14 @@ private fun SignInRoute(
     pending: SharedPrefsPendingSignInStore,
     accountStore: AccountStore,
     scope: CoroutineScope,
+    // AN-FORCED-SIGNOUT (R520): the server ended the session - open on the sign-in screen itself, with the notice,
+    // never on Bienvenue, which is a first-run pitch and says nothing of why the person is here.
+    sessionClosed: Boolean,
+    sessionClosedHeldDays: Int?,
     onSignedIn: () -> Unit,
 ) {
     val context = LocalContext.current
-    var step by rememberSaveable { mutableStateOf(SignInStep.WELCOME) }
+    var step by rememberSaveable { mutableStateOf(if (sessionClosed) SignInStep.EMAIL else SignInStep.WELCOME) }
     // AN-STATE (R310): the typed email and a stable phase survive a rebuild.
     var saved by rememberSaveable { mutableStateOf<SignInSnapshot?>(null) }
     val controller = remember { SignInController(api, pending, scope, restored = saved) }
@@ -360,6 +386,8 @@ private fun SignInRoute(
         SignInStep.EMAIL ->
             RequestLinkScreen(
                 state = state,
+                // R520: named only while the server-ended state holds; null on any other arrival.
+                sessionClosedHeldDays = if (sessionClosed) sessionClosedHeldDays else null,
                 actions =
                     SignInActions(
                         onEmailChange = controller::onEmailChange,

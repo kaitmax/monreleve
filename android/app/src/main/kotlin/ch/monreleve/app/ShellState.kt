@@ -57,6 +57,17 @@ internal fun sessionReconciled(
     start: Destination,
 ): Destination = if (start == Destination.SIGN_IN || saved == Destination.RESOLVING) start else saved
 
+// AN-FORCED-SIGNOUT (R520). WHERE THE PERSON GOES WHEN THE SERVER ENDS THE SESSION WHILE THE APP IS OPEN: to sign-in,
+// from any screen - the shell, onboarding, RESOLVING - never left on a signed-in screen whose only way out was the
+// voluntary sign-out that wipes the days this keeps (PARK-T1). `start` above decides it at launch; this decides it on
+// the process's session-end signal, which arrives while the app is already open. Still signed in by the time the
+// signal is read (a new sign-in saved its pair first) leaves the person where they are. Pure, so
+// SessionReconciledTest's shape covers it on the JVM.
+internal fun destinationAfterSessionEnd(
+    current: Destination,
+    signedIn: Boolean,
+): Destination = if (signedIn) current else Destination.SIGN_IN
+
 /**
  * The selected bottom-navigation tab. The operator's finding: with `remember` this reset to Aujourd'hui on
  * every rebuild. rememberSaveable keeps it across ALL FOUR triggers - rotation, a text-size change, a

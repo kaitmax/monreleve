@@ -41,9 +41,13 @@ class SignInScreensScreenshotTest {
     private fun welcome() = WelcomeScreen(onStart = {})
 
     @Composable
-    private fun connexion(state: SignInState) =
+    private fun connexion(
+        state: SignInState,
+        sessionClosedHeldDays: Int? = null,
+    ) {
         RequestLinkScreen(
             state = state,
+            sessionClosedHeldDays = sessionClosedHeldDays,
             actions =
                 SignInActions(
                     onEmailChange = {},
@@ -54,6 +58,7 @@ class SignInScreensScreenshotTest {
                     onOpenPrivacy = {},
                 ),
         )
+    }
 
     @Composable
     private fun code(state: CodeState) =
@@ -82,6 +87,20 @@ class SignInScreensScreenshotTest {
     @Test fun connexionLarge() {
         large()
         paparazzi.snapshot { frame { connexion(SignInState(email = "camille.martin@exemple.ch")) } }
+    }
+
+    // AN-FORCED-SIGNOUT (R520): the sign-in screen a sign-out nobody asked for lands on - the notice and its N, at
+    // two days, at none (the sentence still says what happened), and at 200 percent. NEW baselines, no existing one
+    // regenerated: a null N renders nothing, so connexionDefault/connexionLarge/connexionRateLimited are unchanged.
+    @Test fun connexionSessionClosedTwoDays() =
+        paparazzi.snapshot { frame { connexion(SignInState(), sessionClosedHeldDays = 2) } }
+
+    @Test fun connexionSessionClosedNoDays() =
+        paparazzi.snapshot { frame { connexion(SignInState(), sessionClosedHeldDays = 0) } }
+
+    @Test fun connexionSessionClosedLarge() {
+        large()
+        paparazzi.snapshot { frame { connexion(SignInState(), sessionClosedHeldDays = 2) } }
     }
 
     @Test fun connexionRateLimited() =
