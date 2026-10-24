@@ -16,12 +16,15 @@
 // implementation that agrees until the day it does not, and the surface it
 // would disagree with is the one an auditor reads.
 
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { GET } from '@/app/api/v1/dossier/route';
+import { GET as csvExport } from '@/app/api/v1/export/csv/route';
+import { GET as pdfExport } from '@/app/api/v1/export/pdf/route';
 import { buildDossierFor } from '@/lib/dossier/load';
 import { DOSSIER_RESPONSE_FIELDS } from '@/lib/dossier/service';
+import { parisDayOf } from '@/lib/entries/day';
 
 const ORIGIN = 'https://monreleve.ch';
 
@@ -271,5 +274,177 @@ describe('AC1: the payload is honest about what it covers', () => {
     const zone = payload.zone as { warnings: Array<{ code: string }> };
 
     expect(zone.warnings.some((warning) => warning.code === 'RULE_SET_FALLBACK')).toBe(false);
+  });
+});
+
+// ============================================================================
+// FW-DOSSIER-EMPTY (R514): A YEAR WITH NO DAYS, AND ITS NEIGHBOURS
+// ============================================================================
+//
+// REPORT-AN-PULL saw GET /dossier?year=2025 answer 500 for the seeded Sam
+// Bernard, who has no entries in 2025. The empty year ITSELF is not the cause:
+// 'is HONEST about an empty year' above already proves a year with no entries
+// answers 200 (R268: referenced, not repeated). Sam's 2025 is different in one
+// fact - it ends BEFORE his activityStartDate - and that is what is reproduced
+// here, with the server's own log line captured as the cause.
+//
+// THE CAUSE, read from the source and confirmed by that line:
+//   remainingYearFraction (lib/ui/core/period.ts) returns 0 for a start date in
+//   a LATER year -> periodFractionOf hands 0 to the engine -> validateInput
+//   refuses it (PERIOD_OUT_OF_RANGE, and TOTAL_WORK_DAYS_NOT_POSITIVE because
+//   240 x 0 is 0) -> `unwrap` in lib/dossier/monthly.ts throws
+//   `the engine refused this input: ...` from annualResult -> the route's catch
+//   answers 500 read_failed.
+//
+// The engine is right to refuse: SPEC 7.4 forbids a zero period, and NEITHER
+// engine defines a rate over a zero basis. How such a year should be answered
+// is R515's question to the operator, so the tests marked KNOWN pin today's
+// answer exactly - the next session flips them with the ruling (PARK-H1..H3).
+
+/** Every console.error line a request writes, captured rather than printed. */
+function captureErrors(): string[] {
+  const lines: string[] = [];
+
+  vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+  });
+
+  return lines;
+}
+
+describe('FW-DOSSIER-EMPTY R514: a year with no days, and its neighbours', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('KNOWN (PARK-H1, R515 pending): a year ending before the activity start answers 500, the engine refusing a zero period', async () => {
+    // Sam's shape: started partway through the NEXT year, nothing in this one.
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activityStartDate: new Date('2026-03-02T00:00:00.000Z') },
+    });
+
+    const lines = captureErrors();
+    const response = await GET(get('?year=2025'));
+
+    expect(response.status).toBe(500);
+    expect((await body(response)).code).toBe('read_failed');
+
+    // THE CAUSE, from the server's own log line - not inferred from the code.
+    expect(lines).toEqual([
+      '[dossier] 2025 failed: the engine refused this input: ' +
+        '{"code":"PERIOD_OUT_OF_RANGE"}; {"code":"TOTAL_WORK_DAYS_NOT_POSITIVE"}',
+    ]);
+  });
+
+  it('KNOWN (PARK-H1): the three surfaces answer that year three different ways', async () => {
+    // What the ruling has to make consistent. The PDF route already catches a
+    // failed build and names it; the dossier and the CSV do not.
+    process.env.AUTH_SECRET ??= 'dossier-route-test-secret';
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activityStartDate: new Date('2026-03-02T00:00:00.000Z') },
+    });
+    captureErrors();
+
+    const csv = await csvExport(
+      new Request(`${ORIGIN}/api/v1/export/csv?year=2025`, {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+    const pdf = await pdfExport(
+      new Request(`${ORIGIN}/api/v1/export/pdf?year=2025`, {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+
+    expect([csv.status, (await body(csv)).code]).toEqual([500, 'read_failed']);
+    expect([pdf.status, (await body(pdf)).code]).toEqual([422, 'dossier_incomplete']);
+  });
+
+  it('the FIRST year of the activity answers 200, prorated: the refusal above is about the year before', async () => {
+    // The boundary of the cause, from the other side (R196): the same person's
+    // FIRST year answers 200, so the refusal above is about the year before.
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activityStartDate: new Date('2026-03-02T00:00:00.000Z') },
+    });
+
+    const response = await GET(get('?year=2026'));
+    const payload = await body(response);
+
+    expect(response.status).toBe(200);
+    expect(payload.recordedEntries).toBe(0);
+    expect((payload.period as { fraction: number }).fraction).toBeGreaterThan(0);
+  });
+
+  it('a year with only absences answers 200: the absences counted, the rate over a real basis', async () => {
+    await seed(userId, '2025-08-04', { kind: 'ABSENT', absenceReason: 'CONGE' });
+    await seed(userId, '2025-08-05', { kind: 'ABSENT', absenceReason: 'CONGE' });
+
+    const response = await GET(get('?year=2025'));
+    const payload = await body(response);
+    const tiles = payload.tiles as { workedDays: number; teleworkDays: number };
+    const zone = payload.zone as { declarableRate: number };
+
+    expect(response.status).toBe(200);
+    expect(payload.recordedEntries).toBe(2);
+    expect(payload.absenceDays).toBe(2);
+    expect(tiles.teleworkDays).toBe(0);
+    // 0 % IS THE ENGINE'S ANSWER, NOT A PLACEHOLDER: the basis it divided by is
+    // positive, so nothing here invents a rate over nothing (R515).
+    expect(tiles.workedDays).toBeGreaterThan(0);
+    expect(zone.declarableRate).toBe(0);
+  });
+
+  it('KNOWN (PARK-H2): a year with entries but no canton answers 500, not a named refusal', async () => {
+    // "No employment settings": canton is the one setting that is null until
+    // onboarding - the rate and the method have defaults, and the name has its
+    // own refusal (titulaire_missing).
+    await prisma.user.update({ where: { id: userId }, data: { canton: null } });
+    await seed(userId, '2025-03-03');
+
+    const lines = captureErrors();
+    const response = await GET(get('?year=2025'));
+
+    expect(response.status).toBe(500);
+    expect((await body(response)).code).toBe('read_failed');
+    expect(lines.join('\n')).toContain('the dossier needs a canton');
+  });
+
+  it('the current year on 1 January answers 200 with an empty document', async () => {
+    // A CONTROLLED CLOCK, Date only: noon on New Year's Day is 1 January in
+    // UTC and in Paris alike. The token is issued under the same clock, or the
+    // bearer check would be measuring the real date instead.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2027-01-01T11:00:00.000Z'));
+
+    const bearer = (await issueTokenPair(userId)).accessToken;
+    const response = await GET(get('?year=2027', bearer));
+    const payload = await body(response);
+
+    expect(response.status).toBe(200);
+    expect(payload.taxYear).toBe(2027);
+    expect(payload.recordedEntries).toBe(0);
+  });
+
+  it('KNOWN (PARK-H3): in the first hour of 1 January (Paris) the current year is refused as future_year', async () => {
+    // 23:30 UTC on 31 December is 00:30 on 1 January in Paris - the year the
+    // Android client asks for (Year.now(Europe/Paris)). The guard reads the
+    // UTC year, so for that hour the new year "has not happened".
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-12-31T23:30:00.000Z'));
+
+    // R171: the Paris year is DERIVED from the instant, never typed beside it.
+    const parisYear = Number(parisDayOf(new Date()).slice(0, 4));
+
+    expect(parisYear).toBe(2027);
+
+    const bearer = (await issueTokenPair(userId)).accessToken;
+    const response = await GET(get(`?year=${parisYear}`, bearer));
+
+    expect(response.status).toBe(400);
+    expect((await body(response)).code).toBe('future_year');
   });
 });

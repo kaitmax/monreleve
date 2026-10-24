@@ -3723,3 +3723,90 @@ AN-RELEVE-FRESH: after a sync sends days the cached Releve is marked stale; open
 online fetches it again; while days are unsent the screen says how many are not yet
 sent rather than letting the document look complete. The Releve shows the SERVER's
 record only, never local pending days.
+
+## PARK-H1 - a year that ends before activityStartDate answers 500: no rate is defined over a zero basis  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R514, R515). First seen in REPORT-AN-PULL.txt
+(NOTICED 2): GET /api/v1/dossier?year=2025 answered 500 for the seeded Sam Bernard.
+
+WHAT IT IS: Not the empty year. A year with no entries answers 200 (dossier-route.test.ts,
+"is HONEST about an empty year"; Camille 2024 on the device). The 500 is a year that ends
+BEFORE the account's activityStartDate - Sam started 2026-03-02, so 2025 is such a year.
+remainingYearFraction (web/lib/ui/core/period.ts) returns 0 when the start year is later
+than the tax year; periodFractionOf hands that 0 to the engine; validateInput refuses it
+with PERIOD_OUT_OF_RANGE and TOTAL_WORK_DAYS_NOT_POSITIVE (240 x 0); `unwrap` in
+web/lib/dossier/monthly.ts throws "the engine refused this input: ..."; the route answers
+500 read_failed and logs
+  [dossier] 2025 failed: the engine refused this input: {"code":"PERIOD_OUT_OF_RANGE"};
+  {"code":"TOTAL_WORK_DAYS_NOT_POSITIVE"}
+The three surfaces disagree today: /dossier 500 read_failed, /export/csv 500 read_failed,
+/export/pdf 422 dossier_incomplete. Every account whose activity began THIS year gets the
+500 on the Android Releve's previous-year probe each time the Releve opens (harmless on
+screen: ReleveController treats any non-document answer as "no days" and does not offer
+the year). An activityStartDate in a LATER year than the current one would put the
+CURRENT year in the same state, and there the app shows its server-error state.
+
+TAKEN:      Nothing in code. R515 says a rate over a zero denominator is NOT invented as
+0 %, and that if the contract and the engines define nothing for "no denominator" the
+session STOPS and asks. They define nothing: both engines REFUSE a zero period (web
+validate.ts, :shared ValidationError.PeriodOutOfRange), and docs/api-v1.md 8.1 types every
+rate as a number. The question is in REPORT-FW-DOSSIER-EMPTY.txt. Two tests pin today's
+answers exactly, marked KNOWN (PARK-H1), so the ruling's session flips them.
+
+NOT TAKEN:  (A) 200 with null rates: not additive under /v1 (a number becomes
+number-or-null), and :shared's parseDossier reads every rate with json.double(), so the
+Android app would show "the server did not return a document" - an Android task.
+(B) a named 4xx refusal (the future_year precedent): contradicts R515's "200 with the same
+envelope"; Android already handles it as it handles the 500. (C) computing the year as if
+whole (fraction 1): the "meaningless" 0 % over a full basis that future_year exists to
+refuse.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN - awaiting the operator's ruling on R515's question.
+
+## PARK-H2 - a year with entries but no canton answers 500 read_failed, not a named refusal  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R514, the neighbour "entries but no employment
+settings").
+
+WHAT IT IS: canton is the one employment setting that is null until onboarding (the rate
+and the method have column defaults; the name has titulaire_missing). With canton null,
+toTeleworkInput (web/lib/dossier/aggregate.ts) throws "the dossier needs a canton ...",
+and /dossier and /export/csv answer 500 read_failed - R198's misleading code, sending a
+reader to the database for a settings gap. /export/pdf already answers 422
+dossier_incomplete for the same state.
+
+TAKEN:      Pinned by a KNOWN test in dossier-route.test.ts; no code change. A new refusal
+code is a contract decision (additive, but named by the operator), and it is not the
+task's empty year.
+
+NOT TAKEN:  Adding e.g. 422 canton_missing (or reusing dossier_incomplete) to /dossier and
+/export/csv.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN.
+
+## PARK-H3 - for the first hour of 1 January (Paris) GET /dossier refuses the current year as future_year  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R514, the neighbour "the current year on 1
+January").
+
+WHAT IT IS: The dossier route's guard is `query.year > new Date().getUTCFullYear()`. The
+Android client asks for Year.now(ZoneId.of("Europe/Paris")) (MainActivity). From 00:00 to
+01:00 Paris time on 1 January (CET, UTC+1) the UTC year is still the old one, so the
+current year is refused with 400 future_year and the Releve shows its server-error state
+for that hour. At noon on 1 January the same request answers 200 with an empty document
+(tested). Every calendar day elsewhere in the product is a Paris day (R28;
+lib/entries/day.ts has parisDayOf).
+
+TAKEN:      Pinned by a KNOWN test (a Date-only fake clock at 2026-12-31T23:30Z); no code
+change. The guard's clock is a contract behaviour, and changing it is the operator's.
+
+NOT TAKEN:  `Number(parisDayOf(new Date()).slice(0, 4))` in the guard - one line, and the
+KNOWN test flips to 200.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN.
