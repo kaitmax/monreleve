@@ -6,11 +6,25 @@ agp = "8.10.1"
 # 1.8.0. KMP-2 stopped there. Room 2.7.1 and 2.7.0 fail identically, and the
 # stdlib layer that IS pinnable is not the layer that blocks.
 #
-# 2.1.10 AND NOT NEWER: it is the compiler that built that klib, so it is the
-# smallest move that can work rather than the newest available. The Compose and
-# serialization COMPILER PLUGINS track this ref and move with it by themselves;
-# nothing else in this file moved.
-kotlin = "2.1.10"
+# KMP-UP chose 2.1.10 AND NOT NEWER: the compiler that built that klib, the
+# smallest move that could work.
+#
+# KMP-UP2 (R539-R548). MOVED FROM 2.1.10 TO 2.2.21, the OLDEST Kotlin meeting all
+# four of R540's conditions, each read from the publisher on 2026-10-24:
+#   1. Xcode 26 (which Apple requires for App Store / TestFlight uploads): "Starting
+#      with Kotlin 2.2.21, the Kotlin/Native compiler supports Xcode 26" (What's new
+#      in Kotlin 2.2.20); the KMP compatibility table pairs 2.2.21 with Xcode 26.0
+#      and 2.2.20 with Xcode 16.4.
+#   2. Compose Multiplatform 1.10.x is declared for it ("Kotlin 2.2 is required for
+#      native and web platforms"; 1.11 requires Kotlin 2.3).
+#   3. KSP 2.2.21-2.0.4 runs in the CURRENT mode, KSP1 (see the ksp comment).
+#   4. Released 2025-10-23 - a year, not two weeks.
+# AGP 8.10.1 and Gradle 8.11.1 sit inside 2.2.21's documented ranges (AGP
+# 7.3.1-8.11.1, Gradle 7.6.3-8.14), which is why nothing else had to move. 2.2.21 is
+# also the LAST Kotlin with a KSP1-capable KSP: the next Kotlin move is a KSP-mode
+# decision too. The Compose and serialization COMPILER PLUGINS track this ref and
+# move with it by themselves; nothing else in this file moved.
+kotlin = "2.2.21"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -38,7 +52,9 @@ coroutines = "1.8.1"
 # plugin; its klib metadata is consumable by this compiler) and far more than two
 # weeks old (released 2024-08, R371). VALIDATED EMPIRICALLY - it resolves and
 # compileCommonMainKotlinMetadata + :shared tests are green on 2.0.21 - not trusted
-# from a matrix (the AN2 Kotest discipline).
+# from a matrix (the AN2 Kotest discipline). Still 0.6.1 on Kotlin 2.2.21 (KMP-UP2):
+# the hard boundary keeps it, and the 2.2.21 compiler builds and tests against it on
+# the JVM and on the iOS simulator. 0.7.x stays a task of its own (R384's inventory).
 kotlinx-datetime = "0.6.1"
 # KMP-1 increment 1 (R380/R136). kotlinx.serialization is the multiplatform JSON
 # runtime the MOVED wire code (data/remote, the data/sync wire DTOs, the dossier
@@ -49,10 +65,12 @@ kotlinx-datetime = "0.6.1"
 #   - 1.8.0-RC moved to Kotlin 2.1.0 (the kotlinx.serialization CHANGELOG); through
 #     all of 1.7.x the runtime is built against and compatible with Kotlin 2.0.x.
 #     This project WAS pinned to Kotlin 2.0.21 when that was written, which made
-#     1.7.3 the highest runtime available with no toolchain bump. KMP-UP moved the
-#     compiler to 2.1.10, so that particular ceiling is gone - and 1.7.3 STAYS,
-#     because KMP-UP's hard boundary moves Kotlin and KSP and nothing else. The
-#     reason to revisit it is now the second argument below, not this one.
+#     1.7.3 the highest runtime available with no toolchain bump. KMP-UP (2.1.10)
+#     and KMP-UP2 (2.2.21) moved the compiler, so that particular ceiling is gone -
+#     and 1.7.3 STAYS, because both tasks' hard boundary moves Kotlin and KSP and
+#     nothing else. The 2.2.21 serialization plugin compiles against it and KMP-1's
+#     wire goldens pass unedited (KMP-UP2 R545). The reason to revisit it is now the
+#     second argument below, not this one.
 #   - the "mature stable, not bleeding edge" discipline the catalog applies to
 #     datetime/work/kotest/browser: 1.7.3 is the settled last-of-line for 2.0.x.
 # Released 2024-10 (far more than two weeks old, R380). Verified via the
@@ -63,17 +81,31 @@ kotlinx-datetime = "0.6.1"
 kotlinx-serialization = "1.7.3"
 # AN5: KSP must start with the Kotlin version (compiler-plugin API).
 #
-# KMP-UP: 1.0.31 is the newest of the 1.0.x line for Kotlin 2.1.10, AND THE LINE
-# IS THE POINT. The 1.0.x releases are KSP1-capable; the 2.0.x releases (from
-# 2.1.20-2.0.0 onward) are KSP2-only. The hard boundary forbids changing the KSP
-# MODE, and ksp.useKSP2 is unset, so staying inside 1.0.x is what keeps that true
-# across the Kotlin move. Read off Maven Central's maven-metadata.xml rather than
-# recalled - the AN2 Kotest 5.9.1 discipline.
+# The hard boundary forbids changing the KSP MODE (KSP1). The 2.0.x releases (from
+# 2.1.20-2.0.0) are NOT KSP2-only - read from KSP's own source rather than inferred
+# from the version number: their Gradle plugin keeps KSP1 and flips only the
+# DEFAULT ("enabled KSP2 by default", 2.1.20-2.0.0 release notes;
+# useKsp2.convention(... orElse(true)) in KspSubplugin.kt). So the mode is pinned by
+# ksp.useKSP2=false in gradle.properties, not by a line whose default happens to
+# match. Verified after the move: :shared:help --task kspDebugKotlinAndroid still
+# reports KspTaskJvm (KSP1), and the iOS tasks KspTaskNative.
 #
-# KSP1 IS NOT REMOVED AT THIS VERSION. It was deprecated in KSP 2.3.0, whose
-# notice names Kotlin 2.3.0 and AGP 9.0 as the incompatible toolchains. Neither
-# is in play here, and both are a later decision than this one.
-ksp = "2.1.10-1.0.31"
+# KMP-UP2: 2.2.21-2.0.4 (published 2025-10-28) is the first stable KSP for Kotlin
+# 2.2.21 - the version prefix must equal the compiler's or KSP1 warns that it is
+# too old or too new. 2.2.21-2.0.5 (2026-02-02) differs from it by ONE change, a
+# gradle property that mutes KSP1's deprecation warning (google/ksp compare
+# 2.2.21-2.0.4...2.2.21-2.0.5: "Remove KSP1 deprecation warning logic"). Muting a
+# warning is forbidden here, so 2.0.5 would buy nothing but the means to break that
+# rule. Read off google/ksp's releases and Maven Central, not recalled.
+#
+# KSP1 IS DEPRECATED AND THIS VERSION SAYS SO on every configuration: "We noticed
+# you are using KSP1 which is deprecated ... KSP1 will no longer be compatible with
+# Android Gradle Plugin 9.0.0 (and above) and Kotlin 2.3.0 (and above)". KSP's own
+# ksp2.md at this tag: "KSP1 will not fully support Kotlin 2.2". The warning is
+# left visible and asked about (REPORT-KMP-UP2 QUESTIONS), never muted: its only fix
+# is the mode change the boundary forbids. KSP 2.3.x - the only KSP for Kotlin 2.3 -
+# is KSP2-only.
+ksp = "2.2.21-2.0.4"
 room = "2.7.2"
 # AN5 increment 3: the offline-queue drain. The relay mandates WorkManager
 # ("network-constrained, with backoff"), and the server's own schema.ts names it
@@ -98,9 +130,13 @@ ktlint = "12.1.1"
 detekt = "1.23.7"
 paparazzi = "1.3.5"
 # AN2: last stable pre-6.x release. Kotest 6.0+ requires Kotlin 2.2 (kotest.io
-# docs, release6) - this project is pinned to Kotlin 2.0.21 (AN1), so 6.x is
-# not an option without a toolchain upgrade this task is not authorised to
-# make. Verified via web search rather than guessed - see REPORT-AN2.txt.
+# docs, release6) - this project was pinned to Kotlin 2.0.21 (AN1), so 6.x was
+# not an option without a toolchain upgrade AN2 was not authorised to make.
+# Verified via web search rather than guessed - see REPORT-AN2.txt.
+# KMP-UP2 moved Kotlin to 2.2.21, so THAT reason no longer binds as written.
+# 5.9.1 STAYS because KMP-UP2's hard boundary moves Kotlin and KSP and nothing
+# else; it runs unchanged on 2.2.21 (the :app test floor is the same count).
+# Revisiting it is its own task, not a side effect of this one.
 kotest = "5.9.1"
 # Bridges the existing JUnit 4 test files (CanaryTest.kt, RadiusTest.kt,
 # ThemeCensusTest.kt, FencesTest.kt, the screenshot test) onto the JUnit
@@ -143,7 +179,7 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 # transitively for the boundary mapping (the ONE pin; :app keeps java.time otherwise).
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
 # KMP-0 increment 1 (R368). The multiplatform common-test assertion library (kotlin.test), used by
-# :shared's commonTest. Versioned with the Kotlin compiler (kotlin = 2.0.21) because kotlin-test ships
+# :shared's commonTest. Versioned with the Kotlin compiler (the kotlin ref above) because kotlin-test ships
 # in lockstep with the compiler, the same reasoning kotlin-reflect above follows.
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 # KMP-1 increment 1 (R380). The multiplatform JSON runtime for :shared commonMain -
@@ -179,7 +215,7 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 # KMP-1 increment 1 (R380/R136). The kotlinx.serialization compiler plugin, applied to
-# :shared only. Pinned to the Kotlin version (2.0.21) because the serialization plugin
+# :shared only. Pinned to the Kotlin version (the kotlin ref) because the serialization plugin
 # ships in lockstep with the compiler - a plugin built for another compiler cannot run
 # in this one. It generates the @Serializable serializers the moved wire DTOs use; the
 # runtime library (kotlinx-serialization-json) is versioned independently above.

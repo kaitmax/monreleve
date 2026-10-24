@@ -3584,4 +3584,126 @@ NOT TAKEN:  Any version change.
 
 COST OF REVERSING: not applicable; it is a question for iOS-1 (QUESTIONS in the report).
 
-STATE:      OPEN.
+STATE:      THE KOTLIN HALF CLOSED 24 OCTOBER 2026 BY KMP-UP2. Kotlin is 2.2.21 (KSP
+2.2.21-2.0.4, still KSP1) and .github/workflows/ios-shared.yml builds with Xcode 26.0.1
+(17A400): run 40125022003 green, 82 tests, the same names as on Xcode 16.2. THE UPLOAD
+ITSELF stays iOS-1's - nothing is signed or uploaded yet, so Apple's side is unproven.
+
+## PARK-X1 - a new compiler warning on LiveLocation's deprecated override, a known Kotlin 2.2 bug  [KMP-UP2, 2026-10-24]
+
+RAISED BY:  REPORT-KMP-UP2.txt (R545).
+
+WHAT IT IS: On Kotlin 2.2.21 :app compiles with, once per variant (debug and release):
+  w: app/src/main/kotlin/ch/monreleve/app/detection/LiveLocation.kt:134:30
+     [OVERRIDE_DEPRECATION] This declaration overrides a deprecated member but is not
+     marked as deprecated itself.
+The override (onStatusChanged, in an anonymous LocationListener) IS annotated
+@Deprecated. It is Kotlin's own bug KT-80399, "Anonymous Kotlin class incorrectly warns
+about deprecated java override despite '@Deprecated' annotation" (YouTrack: affected
+2.2.20-RC, fixed in 2.3.0-Beta1; "There is no warning if the class is a standard named
+class"). Kotlin 2.1.10 did not report it.
+
+TAKEN:      Nothing. Left visible and asked about (R545): no @Suppress, no rule disabled.
+
+NOT TAKEN:  Turning the anonymous listener into a named local class, which avoids the
+false positive on both versions. It is a workaround for a compiler bug in location
+detection code, would have had to land BEFORE the bump (R544), and the next Kotlin move
+(2.3, which KSP1 cannot follow - PARK-X2) removes the bug anyway.
+
+COST OF REVERSING: one local class in LiveLocation.kt, or nothing at Kotlin 2.3.
+
+STATE:      OPEN - a question for the operator (REPORT-KMP-UP2 QUESTIONS).
+
+## PARK-X2 - KSP1 is deprecated, says so on every build, and ends at Kotlin 2.2.21  [KMP-UP2, 2026-10-24]
+
+RAISED BY:  REPORT-KMP-UP2.txt (R540, R545).
+
+WHAT IT IS: ksp 2.2.21-2.0.4 keeps KSP1 only behind ksp.useKSP2=false and logs, once per
+build: "We noticed you are using KSP1 which is deprecated and support for it will be
+removed soon - please migrate to KSP2 as soon as possible. KSP1 will no longer be
+compatible with Android Gradle Plugin 9.0.0 (and above) and Kotlin 2.3.0 (and above)".
+KSP's ksp2.md at that tag: "KSP1 will not fully support Kotlin 2.2". On iOS each KSP1
+native task also prints "w: Language version 1.9 is deprecated and its support will be
+removed in a future version of Kotlin" (KSP1 analyses at language version 1.9; seen twice
+in runs 40122560911 and 40125022003, never in the Windows gate). KSP 2.3.x - the only KSP
+for Kotlin 2.3 - is KSP2-only, and 2.2.21-2.0.5's only change is a property that MUTES
+the KSP1 warning.
+
+TAKEN:      The mode was kept (the hard boundary) and stated: ksp.useKSP2=false in
+android/gradle.properties (8c5c6ac). Both warnings left visible; nothing muted.
+
+NOT TAKEN:  The move to KSP2, which changes Room's code generation for the Android app
+and is its own decision.
+
+COST OF REVERSING: one property line; the KSP2 move itself is a task (Room 2.7 supports
+KSP2; schemas 1-6 and the identity hashes are the check).
+
+STATE:      OPEN - the next Kotlin move is a KSP-mode decision, and this is its
+precondition.
+
+## PARK-X3 - the Windows gate now compiles :shared's iOS klibs, without Room's generated code  [KMP-UP2, 2026-10-24]
+
+RAISED BY:  REPORT-KMP-UP2.txt (R545, the task diff of the two gates).
+
+WHAT IT IS: Kotlin 2.2.20 made cross-platform klib compilation stable and on by default
+("The feature is available by default", What's new in Kotlin 2.2.20). So on 2.2.21 the
+Windows :app:gate runs :shared:downloadKotlinNativeDistribution (~657 MB unpacked under
+~/.konan on a fresh host), compileKotlinIosArm64 and compileKotlinIosSimulatorArm64 -
+reached through :shared:ktlintCheck -> KSP's iOS test tasks -> the main klib. KSP's
+iOS tasks stay SKIPPED off a Mac, so those klibs lack Room's generated actual of
+MonReleveDatabaseConstructor (the expect carries @Suppress("NO_ACTUAL_FOR_EXPECT"), so
+the compile does not fail). 225 -> 236 actionable tasks. The same is expected on the
+ubuntu job in ci.yml the day it runs. The gate text that said these tasks are not run
+here was false on 2.2.21 and was corrected (4685d2c).
+
+TAKEN:      Text only: the gate's SKIPPED entry and three comments now say what runs.
+
+NOT TAKEN:  kotlin.native.enableKlibsCrossCompilation=false (restores 2.1.10's
+behaviour), or excluding the iOS ktlint source sets. Either is a gate-policy change no
+ruling asked for; the versions did not force it.
+
+COST OF REVERSING: one gradle property, proven by the next gate's task list.
+
+STATE:      OPEN - a question: should the Windows gate compile iOS klibs it cannot make
+complete?
+
+## PARK-X4 - :app's kotlinOptions did not warn on 2.2.21 where :probe's identical block did  [KMP-UP2, 2026-10-24]
+
+RAISED BY:  REPORT-KMP-UP2.txt (R545, the build-script warnings).
+
+WHAT IT IS: Forcing each build script to recompile on both versions, Kotlin 2.2.21 added
+one script warning - probe/build.gradle.kts:27:9 'jvmTarget: String' is deprecated - and
+:probe moved to compilerOptions before the bump (f790626). :app's own
+android { kotlinOptions { jvmTarget = "17" } } (app/build.gradle.kts:171) produced no
+warning in the same compile. Why one and not the other was not found. Kotlin 2.2.0's
+notes say the kotlinOptions{} block is deprecated at ERROR level, which neither block
+hit.
+
+TAKEN:      Nothing in :app - nothing forced it.
+
+NOT TAKEN:  Moving :app to compilerOptions to match - a change with no warning or error
+behind it, outside "only what the bump forces".
+
+COST OF REVERSING: three lines in :app's build file, as :probe's.
+
+STATE:      OPEN - an observation; likely an error at a later Kotlin.
+
+## PARK-X5 - the Releve shows its sign-in snapshot after a day is recorded, until relaunch  [KMP-UP2, 2026-10-24]
+
+RAISED BY:  REPORT-KMP-UP2.txt (R546, the S9 drive).
+
+WHAT IT IS: On the S9 (audit build, local stack), a day recorded and synced at 19:36Z
+(POST /api/v1/entries 200) left the Releve tab showing the dossier fetched at sign-in
+(generated 19:35, "Aucune journee n'a encore ete enregistree", 0,00 %) while Aujourd'hui
+read 0,41 % beside it. After a relaunch the Releve fetched again (generated 19:37,
+Teletravail 1, 0,41 %). ReleveController.load() runs on init, on a year switch and on
+retry (ReleveController.kt:161-182), so this is the code as it stands on main, not the
+Kotlin move - observed, not diagnosed further.
+
+TAKEN:      Recorded; no code change (any behaviour change is out of scope).
+
+NOT TAKEN:  A refetch after a successful sync.
+
+COST OF REVERSING: not applicable.
+
+STATE:      OPEN - a question of intended behaviour for the operator.

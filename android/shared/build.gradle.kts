@@ -6,7 +6,8 @@
 //
 // SETUP (R368/R136): com.android.library + org.jetbrains.kotlin.multiplatform, chosen for the reasons in
 // the version catalog's comment on android-library. No version upgrade (the hard boundary): this reuses the
-// AGP 8.10.1 and Kotlin 2.0.21 already on the classpath.
+// AGP and Kotlin already on the classpath (2.0.21 when KMP-0 wrote this; the version catalog holds the
+// current versions).
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -20,8 +21,8 @@ plugins {
     alias(libs.plugins.detekt)
     // KMP-2b increment 1 (R400). KSP, so Room's compiler can process @Entity/@Dao/@Database in this
     // module. Applied on its own, with NOTHING moved yet, so the toolchain change is reviewable
-    // separately from the code that will depend on it. Version from the catalog (ksp 2.1.10-1.0.31,
-    // KMP-UP) - the hard boundary forbids a version change, and this is not one.
+    // separately from the code that will depend on it. Version from the catalog (the ksp ref; KMP-UP2
+    // moved it with Kotlin) - this line names no version, so it does not move with one.
     alias(libs.plugins.ksp)
 }
 
@@ -124,11 +125,14 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
-    // R369: the iOS targets are DECLARED now but NOT compiled on this Windows host - Kotlin/Native cannot
-    // produce iOS binaries off a Mac. The proof the moved code is platform-free is the COMMON METADATA
-    // compilation (compileCommonMainKotlinMetadata), which compiles commonMain against the common stdlib only
-    // and so rejects any java./android. reference; that task runs in :app:gate. The iOS compile tasks are
-    // printed in the gate's "skipped, with reason" list rather than silently omitted (R133).
+    // R369: the iOS targets are DECLARED here; their binaries, Room's iOS code generation and the simulator
+    // test run need a Mac (.github/workflows/ios-shared.yml). KMP-UP2: since Kotlin 2.2.20 a Windows host
+    // DOES compile the iOS klibs (cross-platform klib compilation, stable and on by default), and the gate
+    // runs compileKotlinIos* through ktlint -> KSP's test tasks - but kspKotlinIos* is skipped here, so those
+    // klibs lack Room's generated actual and are not iOS proof. The proof the moved code is platform-free is
+    // the COMMON METADATA compilation (compileCommonMainKotlinMetadata), which compiles commonMain against the
+    // common stdlib only and so rejects any java./android. reference; that task runs in :app:gate. What only a
+    // Mac can prove is printed in the gate's "skipped, with reason" list rather than silently omitted (R133).
     iosArm64()
     iosSimulatorArm64()
 
@@ -179,17 +183,19 @@ kotlin {
 
 // KMP-2b increment 1 (R400). THE iOS TARGETS ARE DECLARED FOR ROOM, NOT BUILT. KSP runs per TARGET, not per
 // source set, so the Room compiler is added to each target's own configuration - the documented Room KMP
-// form. The two iOS entries cannot run on this Windows host (Kotlin/Native needs a Mac for an iOS target),
-// which is the point of declaring them NOW: the day a Mac builds this, no build file changes.
+// form. The two iOS entries do not run on this Windows host - KSP's iOS tasks are SKIPPED off a Mac, still
+// true on Kotlin 2.2.21 although the iOS klib compile itself now runs here (KMP-UP2) - which is the point of
+// declaring them NOW: the day a Mac builds this, no build file changes.
 //
 // WHAT REMAINS UNPROVEN UNTIL A MAC RUNS IT, stated plainly rather than implied by silence (R133):
 // that Room's compiler actually GENERATES a working implementation for iosArm64 and iosSimulatorArm64.
 // This file declares the wiring; only a Mac executes it. The Android half is proven by the gate.
 //
-// NO KSP MODE CHANGE. ksp.useKSP2 is not set anywhere and is not set here - the hard boundary forbids it.
-// Room 2.7 ADDED KSP2 support and recommends it; it does not require it, so KSP1 (what ksp 2.1.10-1.0.31
-// selects by default) stands. If Room's compiler ever demands KSP2, that is a STOP and a question, never
-// a flag quietly flipped.
+// NO KSP MODE CHANGE. The mode is KSP1, and since KMP-UP2 it is STATED rather than defaulted:
+// ksp.useKSP2=false in android/gradle.properties, because from KSP 2.1.20-2.0.0 the default is KSP2 and an
+// unset flag would have changed the mode silently with the version. It is not set here, and it is never
+// flipped to reach green. Room 2.7 ADDED KSP2 support and recommends it; it does not require it, so KSP1
+// stands. If Room's compiler ever demands KSP2, that is a STOP and a question, never a flag quietly flipped.
 dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)

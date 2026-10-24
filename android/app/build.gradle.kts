@@ -957,7 +957,8 @@ tasks.register("gate") {
         // call the Android gate exactly as before).
         //   - compileCommonMainKotlinMetadata: compiles commonMain as COMMON code against the common stdlib
         //     only, which rejects any java./android. reference - the platform-free proof on this Windows host
-        //     (Kotlin/Native cannot build the iOS targets here; those are declared and printed as skipped).
+        //     (Room's iOS generation and the iOS test run need a Mac and are printed as skipped; since
+        //     Kotlin 2.2.20 the iOS klibs themselves compile here, without Room's generated code - KMP-UP2).
         //   - testDebugUnitTest: runs :shared's commonTest + Android unit-test source set on the JVM.
         //   - ktlintCheck, detekt: the same style and static-analysis fences :app runs, over :shared's sources.
         ":shared:compileCommonMainKotlinMetadata",
@@ -1017,14 +1018,18 @@ tasks.register("gate") {
             |    compileDebugAndroidTestKotlin above. The distinction is the whole
             |    point: while the gate skipped both, this source set stopped
             |    compiling and nothing said so (KMP-2).
-            |  - :shared's iOS compilations (KMP-0 R369/R133): compileKotlinIosArm64
-            |    and compileKotlinIosSimulatorArm64 (plus their link and test tasks).
-            |    Kotlin/Native cannot produce iOS binaries off a Mac, so these
-            |    targets are DECLARED (R368) but not compiled on this Windows host.
-            |    The platform-free guarantee is proved instead by the common
-            |    metadata compilation above, which is host-independent; the day the
-            |    iOS targets build on a Mac, the same commonMain and the Geneva
-            |    conformance test in commonTest (R370) compile and run for iOS too.
+            |  - :shared on iOS, AS PROOF (KMP-0 R369/R133; KMP-UP2): Room's iOS
+            |    code generation (kspKotlinIosArm64, kspKotlinIosSimulatorArm64),
+            |    the test link and the simulator run (linkDebugTestIosSimulatorArm64,
+            |    iosSimulatorArm64Test). They need a Mac, so they run in
+            |    .github/workflows/ios-shared.yml, not here. SINCE KOTLIN 2.2.20 this
+            |    host DOES compile :shared's iOS klibs - compileKotlinIosArm64 and
+            |    compileKotlinIosSimulatorArm64 appear above as executed, pulled in
+            |    by :shared:ktlintCheck through KSP's test tasks - but with Room's
+            |    iOS generation skipped, so those klibs lack the generated actual of
+            |    MonReleveDatabaseConstructor and prove nothing the common metadata
+            |    compilation above does not. The platform-free guarantee here is
+            |    that metadata compilation; the iOS one is ios-shared.yml's.
             """.trimMargin(),
         )
     }

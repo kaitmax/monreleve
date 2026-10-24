@@ -55,31 +55,44 @@ permissions:
 jobs:
   ios-shared-tests:
     name: ios-shared-tests
-    # THE RUNNER, AND WHY THIS ONE (R530).
-    #   - ARM64 IS REQUIRED, not merely faster. The Kotlin Gradle plugin
-    #     (2.1.10, KotlinNativeTestRunFactories) ENABLES iosSimulatorArm64Test
-    #     only when the host's architecture equals the target's. On an Intel
-    #     runner the task is disabled, exits 0 and runs ZERO tests - which is
-    #     why the step after Gradle refuses a run with no results.
+    # THE RUNNER, AND WHY THIS ONE (R530; re-read for Kotlin 2.2.21, KMP-UP2).
+    #   - ARM64 IS REQUIRED, not merely faster. The Kotlin Gradle plugin's
+    #     KotlinNativeTestRunFactories ENABLES iosSimulatorArm64Test only when
+    #     the host's architecture equals the target's (`HostManager.hostIsMac &&
+    #     HostManager.host.architecture == ...` - the same line at v2.1.10 and
+    #     v2.2.21). On an Intel runner the task is disabled, exits 0 and runs
+    #     ZERO tests - which is why the step after Gradle refuses a run with no
+    #     results.
     #   - macos-15 (arm64, M1, 3 cores, 7 GB) and not macos-latest: a label that
     #     moves underneath a pinned toolchain is a version change nobody chose.
     #   - not macos-14: its images are deprecated and fully unsupported from
     #     2026-11-02 (actions/runner-images#13518).
-    #   - not macos-26: it carries only Xcode 26.x, far outside what Kotlin
-    #     2.1.10 supports (see DEVELOPER_DIR below).
+    #   - macos-15 rather than macos-26, though both now carry the Xcode below:
+    #     the macos-15-arm64 image (20260907.0337.1; actions/runner-images
+    #     readme committed 2026-09-11) lists Xcode 26.0.1, 26.1.1, 26.2 and 26.3
+    #     beside the 16.x line, so moving to Xcode 26 moves ONLY the Xcode -
+    #     not the machine, its OS or the simulators iOS-0 measured on.
+    #     macos-26-arm64 (20261013.0424.1) also lists 26.0.1 but defaults to
+    #     26.6.
     #   - a STANDARD runner: larger runners cannot use the included minutes.
     runs-on: macos-15
     # A cold run downloads the Kotlin/Native toolchain and builds its caches
     # before compiling anything; this bounds a hang, not a normal run.
     timeout-minutes: 50
     env:
-      # THE XCODE, AND WHY THIS ONE. Kotlin's compatibility table lists Xcode
-      # 16.0 for Kotlin 2.1.0-2.1.10; Xcode 16.3 and later (the iOS 18.4 SDK)
-      # conflict with Kotlin 2.1.20 and earlier. macos-15's DEFAULT is 16.4, so
-      # inheriting it would be the conflict. 16.2 is the newest Xcode on this
-      # image below 16.3. Set at JOB level so xcrun, simctl and the Kotlin
-      # Gradle plugin all see the same one.
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      # THE XCODE, AND WHY THIS ONE (KMP-UP2 R547). Apple requires Xcode 26
+      # for App Store / TestFlight uploads (PARK-N4). Kotlin 2.2.21 is the first
+      # Kotlin documented for it: "Starting with Kotlin 2.2.21, the
+      # Kotlin/Native compiler supports Xcode 26" (What's new in Kotlin
+      # 2.2.20), and the Kotlin Multiplatform compatibility table pairs 2.2.21
+      # with Xcode 26.0. 26.0.1 (build 17A400) is this image's Xcode in that
+      # 26.0 line - the table's version rather than the newest, the reasoning
+      # iOS-0 applied to 16.x (iOS-0 ran 16.2 because 16.3+ conflicted with
+      # Kotlin 2.1.x). macos-15's DEFAULT is still 16.4, so inheriting it would
+      # not be Xcode 26 at all. Set at JOB level so xcrun, simctl and the
+      # Kotlin Gradle plugin all see the same one; the diagnostic step prints
+      # `xcodebuild -version` on every run.
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
     defaults:
       run:
         working-directory: android
@@ -123,7 +136,8 @@ jobs:
 
       # Printed BEFORE Gradle, so a red run still says which machine, which
       # Xcode, which simulators and which time-zone database it had. The Kotlin
-      # Gradle plugin (2.1.10, XcodeDefaultTestDevicesValueSource) walks
+      # Gradle plugin's XcodeDefaultTestDevicesValueSource (byte-identical at
+      # v2.1.10 and v2.2.21) walks
       # `simctl list devices available` and keeps, for iOS, the first device
       # under EACH "-- iOS x --" heading, each overwriting the last - so the
       # device is the first one listed under the LAST iOS runtime.
@@ -144,23 +158,25 @@ jobs:
           echo "/var/db/timezone/zoneinfo +VERSION: $(cat /var/db/timezone/zoneinfo/+VERSION 2>/dev/null)"
           exit 0
 
-      # android/gradlew is tracked as 100644 (not executable). Made executable
-      # here, in the runner's checkout only; the tracked mode is not changed.
-      - name: Make the wrapper executable
-        run: chmod +x gradlew
-
       # R532 CAUSE 1 (run 40107915183). On a machine with no ~/.konan, Room's
       # KSP task for an iOS target failed before anything compiled:
       #   kspKotlinIosSimulatorArm64 / kspKotlinIosArm64 FAILED
       #   java.lang.ClassNotFoundException: org.jetbrains.kotlin.cli.utilities.MainKt
       #   Can't find env_blacklist file at ~/.konan/kotlin-native-prebuilt-...
-      # KSP 2.1.10-1.0.31 registers its own native task (KspTaskNative), which
-      # runs the Kotlin/Native compiler from the toolchain directory but does
-      # not PROVISION it; the Kotlin plugin's own native tasks do. KSP runs
-      # first, so on a fresh machine the directory does not exist yet. The
-      # commonizer is a Kotlin-plugin native task that provisions the toolchain
+      # KSP registers its own KSP1 native task (KspTaskNative, KotlinFactories.kt
+      # - in 2.1.10-1.0.31 and still in 2.2.21-2.0.4), which runs the
+      # Kotlin/Native compiler from the toolchain directory but does not
+      # PROVISION it; the Kotlin plugin's own native tasks do. KSP runs first,
+      # so on a fresh machine the directory does not exist yet. The commonizer
+      # is a Kotlin-plugin native task that provisions the toolchain
       # (NativeDistributionCommonizerTask), and :shared:commonize depends on
-      # it. Nothing in :shared changes; no version changes.
+      # it. Nothing in :shared changes; no version changes. Kept on Kotlin
+      # 2.2.21 because nothing has shown it unnecessary (PARK-N1).
+      #
+      # THIS IS ALSO THE FIRST STEP TO EXECUTE ./gradlew. The wrapper is tracked
+      # executable (100755) since KMP-UP2 R539, so the chmod step iOS-0 needed
+      # is gone and this step is its positive control: a lost mode fails here
+      # with "Permission denied" instead of being repaired unseen.
       - name: Provision the Kotlin/Native toolchain
         run: |
           ./gradlew :shared:commonize --no-daemon --stacktrace
