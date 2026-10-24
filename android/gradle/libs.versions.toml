@@ -63,12 +63,16 @@ kotlinx-datetime = "0.6.1"
 kotlinx-serialization = "1.7.3"
 # AN5: KSP must start with the Kotlin version (compiler-plugin API).
 #
-# KMP-UP: 1.0.31 is the newest of the 1.0.x line for Kotlin 2.1.10, AND THE LINE
-# IS THE POINT. The 1.0.x releases are KSP1-capable; the 2.0.x releases (from
-# 2.1.20-2.0.0 onward) are KSP2-only. The hard boundary forbids changing the KSP
-# MODE, and ksp.useKSP2 is unset, so staying inside 1.0.x is what keeps that true
-# across the Kotlin move. Read off Maven Central's maven-metadata.xml rather than
-# recalled - the AN2 Kotest 5.9.1 discipline.
+# KMP-UP: 1.0.31 is the newest of the 1.0.x line for Kotlin 2.1.10. Read off
+# Maven Central's maven-metadata.xml rather than recalled - the AN2 Kotest 5.9.1
+# discipline. The hard boundary forbids changing the KSP MODE (KSP1).
+#
+# KMP-UP2 CORRECTION, read from KSP's own source rather than inferred from the
+# version number: the 2.0.x releases (from 2.1.20-2.0.0) are NOT KSP2-only. Their
+# Gradle plugin keeps KSP1 and flips only the DEFAULT ("enabled KSP2 by default",
+# 2.1.20-2.0.0 release notes; useKsp2.convention(... orElse(true)) in
+# KspSubplugin.kt). So the mode is now pinned by ksp.useKSP2=false in
+# gradle.properties instead of by staying on a line whose default happens to match.
 #
 # KSP1 IS NOT REMOVED AT THIS VERSION. It was deprecated in KSP 2.3.0, whose
 # notice names Kotlin 2.3.0 and AGP 9.0 as the incompatible toolchains. Neither

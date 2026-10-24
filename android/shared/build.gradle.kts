@@ -186,10 +186,11 @@ kotlin {
 // that Room's compiler actually GENERATES a working implementation for iosArm64 and iosSimulatorArm64.
 // This file declares the wiring; only a Mac executes it. The Android half is proven by the gate.
 //
-// NO KSP MODE CHANGE. ksp.useKSP2 is not set anywhere and is not set here - the hard boundary forbids it.
-// Room 2.7 ADDED KSP2 support and recommends it; it does not require it, so KSP1 (what ksp 2.1.10-1.0.31
-// selects by default) stands. If Room's compiler ever demands KSP2, that is a STOP and a question, never
-// a flag quietly flipped.
+// NO KSP MODE CHANGE. The mode is KSP1, and since KMP-UP2 it is STATED rather than defaulted:
+// ksp.useKSP2=false in android/gradle.properties, because from KSP 2.1.20-2.0.0 the default is KSP2 and an
+// unset flag would have changed the mode silently with the version. It is not set here, and it is never
+// flipped to reach green. Room 2.7 ADDED KSP2 support and recommends it; it does not require it, so KSP1
+// stands. If Room's compiler ever demands KSP2, that is a STOP and a question, never a flag quietly flipped.
 dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
