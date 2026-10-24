@@ -768,6 +768,67 @@ class ForcedSignOutTest : FunSpec({
         }
     }
 
+    // ---------------------------------------------------------------------------------------------------------
+    // R523 - THE WORKER STOPS CLEANLY.
+    // ---------------------------------------------------------------------------------------------------------
+
+    test("R523 - the worker settles without retrying, asks the server nothing more, wipes nothing; the sign-in sends") {
+        runTest {
+            val device = Device(this)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.repository.record(RecordCommand(dayDate = OTHER_DAY, kind = EntryKind.CH))
+            val held = device.dao.all().map { it.clientMutationId }.sorted()
+            device.anotherHolderRotatesFirst()
+
+            // The run that meets the ending: Unauthenticated - which SyncWorker maps to success(), never retry()
+            // (SyncWorkerResultMappingTest pins that mapping; this pins the outcome it is given).
+            device.drain() shouldBe SyncOutcome.Unauthenticated
+            val afterTheEnding = device.server.requests.size
+            // Every later run - WorkManager re-running the unique work, a new trigger - settles at once: no session, so
+            // no request, no second ending, nothing cleared again.
+            repeat(3) { device.drain() shouldBe SyncOutcome.Unauthenticated }
+            device.server.requests.size shouldBe afterTheEnding
+            device.ends.ends.value shouldBe 1
+            // NOTHING WIPED: both days on the phone, PENDING, A's.
+            device.recordCleared shouldBe false
+            device.syncCancelled shouldBe false
+            device.wipe.calls.filter { it in R295_WIPES } shouldBe emptyList()
+            device.dao.all().map { it.syncState to it.accountTag } shouldBe
+                listOf(SyncState.PENDING to TAG_A, SyncState.PENDING to TAG_A)
+
+            // The same account signs in: both go up with the sign-in (R509).
+            device.signInByCode(EMAIL_A, this)
+            advanceUntilIdle()
+            device.server.mutationsOf(EMAIL_A).sorted() shouldBe held
+            device.dao.all().map { it.syncState } shouldBe listOf(SyncState.SYNCED, SyncState.SYNCED)
+        }
+    }
+
+    test(
+        "R523 - the sign-in's send refused: the days wait, and the existing trigger - a day recorded - sends them all",
+    ) {
+        runTest {
+            val device = Device(this)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.anotherHolderRotatesFirst()
+            device.drain() shouldBe SyncOutcome.Unauthenticated
+            device.server.refuseNextEntriesPost = true
+
+            device.signInByCode(EMAIL_A, this)
+            advanceUntilIdle()
+            // The sign-in TRIED and was refused (PARK-T4): the day is still only on the phone.
+            device.server.mutationsOf(EMAIL_A) shouldBe emptyList()
+            device.dao.all().map { it.syncState } shouldBe listOf(SyncState.PENDING)
+
+            // The existing trigger: recording a day enqueues the drain (SPEC 13.2), and the drain takes the account's
+            // whole queue - the held day with the new one.
+            device.repository.record(RecordCommand(dayDate = OTHER_DAY, kind = EntryKind.CH))
+            device.drain() shouldBe SyncOutcome.Settled(written = 2, defects = 0)
+            device.server.mutationsOf(EMAIL_A).size shouldBe 2
+            device.dao.all().map { it.syncState } shouldBe listOf(SyncState.SYNCED, SyncState.SYNCED)
+        }
+    }
+
     test("R509 - the SAME account signs back in by code: its held day is sent BEFORE the year comes down") {
         runTest {
             val device = Device(this)
