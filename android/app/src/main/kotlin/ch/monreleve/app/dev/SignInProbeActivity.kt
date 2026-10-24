@@ -17,14 +17,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import ch.monreleve.app.BuildConfig
 import ch.monreleve.app.auth.AuthedOutcome
-import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.RefreshOutcome
 import ch.monreleve.app.auth.SessionManager
-import ch.monreleve.app.data.remote.AuthApi
+import ch.monreleve.app.auth.processSession
 import ch.monreleve.app.data.remote.ME_PATH
-import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.Spacing
@@ -46,11 +43,9 @@ internal data class ProbeRow(val step: String, val outcome: String)
 class SignInProbeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val session =
-            SessionManager(
-                AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL),
-                KeystoreTokenStore(applicationContext),
-            )
+        // AN-TOKEN-RACE (R507): the process's session. A probe with its own SessionManager would race the app's
+        // screens and drains for the same refresh token - on exactly the debug builds every walkthrough runs.
+        val session = processSession(applicationContext)
         val rows = MutableStateFlow<List<ProbeRow>>(emptyList())
         lifecycleScope.launch { runProbe(session, rows) }
         setContent {

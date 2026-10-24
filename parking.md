@@ -3361,3 +3361,144 @@ delete to have caused it); showing it.
 COST OF REVERSING: none to keep it; showing it would be a screen state and copy.
 
 STATE:      OPEN - nothing to act on unless the count is ever non-zero.
+
+## PARK-T1 - after a forced sign-out the shell stays open, and its only exit is the sign-out that wipes  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R508).
+
+WHAT IT IS: When the server ends the session while the shell is open, SessionManager
+clears the tokens and nothing else (R508): the shell stays on MAIN, each screen shows
+its "session ended" copy on its next call, and nothing routes to sign-in until the
+activity is re-created (sessionReconciled runs at composition only). The one control
+that looks like "reconnect" is Parametres' "Se deconnecter" - AN-POLISH's voluntary
+sign-out. Its R440 send has no session to send with, so its warning names the held
+days as lost, and confirming wipes them (ForcedSignOutTest, the second R508 case).
+
+TAKEN:      Nothing. The voluntary sign-out is a hard boundary of this task, and
+routing a forced sign-out to sign-in is a navigation decision with copy attached.
+Relaunching keeps the days (start = SIGN_IN, nothing wiped), and R509 now sends them
+at the next sign-in.
+
+NOT TAKEN:  Routing the shell to sign-in, record kept, the moment a call meets an
+ended session (one session per process now makes the worker's discovery visible to
+the screens); changing what "Se deconnecter" does when the session is already gone.
+
+COST OF REVERSING: one shell effect and a session signal; the voluntary flow untouched.
+
+STATE:      OPEN - a QUESTION in REPORT-AN-TOKEN-RACE.txt.
+
+## PARK-T2 - what another account inherits after a forced sign-out: settings and the cached releve  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R508, R509).
+
+WHAT IT IS: A forced sign-out keeps everything but the tokens (R508). The days are
+safe from the next account - tagged, held, never shown or sent (R303; R509's
+other-account test). Two stores are not account-scoped: the calculation settings, and
+SharedPrefsDossierCache, keyed by YEAR only. So when ANOTHER account signs in, the
+previous one's settings stand until GET /api/v1/me replaces them - and a LINK sign-in
+on a phone whose settings survived goes straight to MAIN (PARK-Y5's shape), running on
+them - and an offline Releve can show the previous account's cached copy.
+
+TAKEN:      Nothing changed; recorded from the source, the R508 facts asserted.
+
+NOT TAKEN:  Scoping the cache and the settings to the account tag, or clearing them
+when a DIFFERENT account signs in - a decision about R303's reach beyond the record.
+
+COST OF REVERSING: an account key on two stores, or a clear on an account change.
+
+STATE:      OPEN - a QUESTION in REPORT-AN-TOKEN-RACE.txt.
+
+## PARK-T3 - a drain landing during a year download is overwritten by the stale year  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R509).
+
+WHAT IT IS: EntriesDownload GETs a year, then applies it in a transaction, replacing
+a SYNCED local row the server "changed" (R483). A drain that posts and reconciles a
+correction BETWEEN that GET and that transaction leaves the row SYNCED with the new
+value - and the transaction writes the GET's OLDER copy over it. The server is right;
+the phone shows the old value until the next download of that year (and R485's start
+check fetches only EMPTY years).
+
+TAKEN:      R509 does not create it: the sign-in sends its held days BEFORE it
+reports SIGNED, so the sign-in's own download starts after the send has landed
+(auth/SignInSync.kt). The pre-existing way in - a day recorded while a sign-in
+download is in flight - is untouched.
+
+NOT TAKEN:  Serialising the drain and the download on one lock, or a staleness check
+in the download (EntriesDownload is AN-PULL's, and R483's rule).
+
+COST OF REVERSING: a process lock round two calls, or one comparison in apply().
+
+STATE:      OPEN.
+
+## PARK-T4 - a sign-in whose send fails leaves the days for the next drain  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R509).
+
+WHAT IT IS: The sign-in's send is bounded (8 s) and never fails the sign-in. A send
+that is refused or times out leaves the days PENDING - kept by the download (R483,
+tested) - and nothing sends them until the next drain, which today is the next day
+recorded.
+
+TAKEN:      No WorkManager request on failure: it would race the sign-in's download
+(PARK-T3), and the days are safe where they are.
+
+NOT TAKEN:  A follow-up request once the download has finished.
+
+COST OF REVERSING: one request at the end of YearDownloads' sign-in run.
+
+STATE:      OPEN.
+
+## PARK-T5 - a rebuild during a sign-in that is sending held days lands on sign-in  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R509).
+
+WHAT IT IS: Between saving the tokens and reporting SIGNED, the code screen now waits
+for the held days to go up - a local read when none are held, up to 8 s when some
+are. A rebuild in that window (a rotation) cancels the submit with the session and
+the account already saved; sessionReconciled then honours the saved SIGN_IN
+destination, so the person sees the sign-in screen while signed in. The window
+existed before, as the gap between two writes; it is wider only when days are held.
+
+TAKEN:      Accepted for the order R509 needs (PARK-T3).
+
+NOT TAKEN:  Letting sessionReconciled prefer a signed-in `start` over a saved SIGN_IN.
+
+COST OF REVERSING: one condition in ShellState.kt and its JVM test.
+
+STATE:      OPEN.
+
+## PARK-T6 - any refused refresh is a sign-out, a server error included  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R508).
+
+WHAT IT IS: AuthApi.refresh maps every non-200 to RefreshResult.Invalid, so a 500 or
+a 429 from /api/v1/auth/refresh clears the tokens exactly as a revocation does. Since
+R508/R509 that sign-out keeps the days, but the person still has to sign in again
+over a server hiccup.
+
+TAKEN:      Nothing - the wire mapping is KMP-1's, and its goldens are unedited here.
+
+NOT TAKEN:  Treating 5xx/429 from the refresh as a network failure (keep the tokens).
+
+COST OF REVERSING: one branch in AuthApi.refresh and its golden.
+
+STATE:      OPEN.
+
+## PARK-T7 - a late refusal can clear a pair a new sign-in has just saved  [AN-TOKEN-RACE, 2026-10-22]
+
+RAISED BY:  REPORT-AN-TOKEN-RACE.txt (R507).
+
+WHAT IT IS: SessionManager.applyRefresh clears the store UNCONDITIONALLY when a
+refresh is refused. If a sign-in saves a new pair while a refresh of the old, dead
+session is still in flight, the late refusal erases the new session. One instance per
+process (R507) makes it rarer - the sign-in screens save through their own store
+object, outside the session's lock - but does not close it.
+
+TAKEN:      Nothing; it needs a sign-in racing a dead session's refresh.
+
+NOT TAKEN:  Clearing only when the stored refresh token is still the one refused.
+
+COST OF REVERSING: one comparison in applyRefresh, in :shared, and a test.
+
+STATE:      OPEN.

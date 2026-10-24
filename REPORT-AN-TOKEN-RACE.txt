@@ -1,0 +1,699 @@
+================================================================================
+REPORT-AN-TOKEN-RACE
+ONE SESSION PER PROCESS, AND A SIGN-OUT NOBODY ASKED FOR KEEPS THE DAYS
+================================================================================
+
+TASK     relay/AN-TOKEN-RACE.txt, rulings R506-R512 (all free when taken: a scan
+         of the main checkout's *.txt, parking.md, CLAUDE.md and relay/*.txt
+         found R506-R512 nowhere but the prompt itself - no renumbering, R162).
+         The prompt is UNTRACKED and lives only in the main checkout; it was read
+         from there and is not committed here.
+BASE     935c1ac (origin/main, containing an-pull)
+BRANCH   an-token-race, worktree C:/wt/an-token-race (R349), lock file held in
+         it, never committed (.gitignore line 62), removed at the end.
+DEVICE   SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, Africa/Casablanca,
+         auto-time ON, clock REAL and never moved. USB only. It LEFT USB for
+         about half an hour mid-session (see R511) and came back.
+PURE ASCII. French below is a transliteration, never the source (R155): each
+quotation names the file and constant holding the accented original, or says
+that the accents are restored when it lands.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+The race was real and is reproduced. MainActivity and SyncWorker each built a
+SessionManager, the single-flight refresh is a Mutex per INSTANCE, and the
+server ends the whole session on a replayed refresh token. A JVM test with two
+instances over one store, both meeting an expired access token against a fake
+that keeps tokens.ts's rules, went RED exactly as predicted: two refreshes,
+TOKEN_REPLAYED, the screen's call SessionEnded, the worker's SessionExpired. The
+server half was proven against the LOCAL stack, not a fake: one refresh token
+presented twice - the second refused, the whole session revoked TOKEN_REPLAYED,
+the successor pair dead on both halves.
+
+The process now holds ONE SessionManager (auth/SessionHolder.kt). All three
+construction sites in main and debug sources - MainActivity, SyncWorker's
+buildSyncEngine, the debug sign-in probe - ask processSession(context). A fence
+on FenceRoot refuses a second site; it was RED on the original wiring naming
+exactly those three, and is green. The race test is green with its two sites
+receiving the process's session; its race and expected values are byte-
+identical to the RED run.
+
+A forced sign-out, established BEFORE anything changed (R508), does NOT reach
+R295's wipe: only the tokens go; the day stays PENDING and tagged. What was
+missing was the way back: nothing sent the held days when the same person signed
+in again. Both ways in - code and link - now send them, through the worker's own
+drain, after the account is set and before SIGNED, so the sign-in's year
+download finds them already there. Another account's sign-in never shows or
+sends them. The voluntary sign-out is unchanged.
+
+ON THE S9, against the local stack, the whole sequence ran: a correction held
+offline; the session ended by the product's own replay detection (the host
+rotated the phone's refresh token first, the phone's own refresh was the
+replay); the day still on the phone, PENDING, tagged; the same account signed
+back in BY CODE through the real screens - and the server log shows the held
+day POSTed BETWEEN the code exchange and RESOLVING, the EntryEvent count moving
+1 -> 2, and the year download logging "1 unchanged".
+
+The one path that still loses held days is the voluntary "Se deconnecter" in a
+shell whose session has died - a QUESTION (PARK-T1), not a change: the
+voluntary sign-out is a hard boundary. And after a forced sign-out the person is
+told nothing on the screen they land on - a sentence is proposed, not shipped.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+GREEN, with each gate stated for the commit it ran on.
+
+FULL :app:gate --rerun-tasks, run IN THIS SESSION on bd9612f - the last commit
+carrying code, tests and the register entries PARK-T1..T7 - after
+./gradlew --stop, the tree clean before and after:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1268 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 12m 6s
+    225 actionable tasks: 225 executed
+    GATE_EXIT=0
+  1268 = R1's 1256 + 12 added here (TokenRaceTest 3, ForcedSignOutTest 6,
+  OneSessionPerProcessFenceTest 3), read from the JUnit XML: :app 1268 / 0
+  failures, :shared 85 / 0 failures. Each new class has a timestamp from this
+  run (13:05-13:07).
+
+pnpm gate:clone, run IN THIS SESSION on bd9612f, after the Gradle gate, Gradle
+stopped and no dev server running:
+    commit    bd9612fd177d2bdf350db55204b0fe9d54da03f6
+    tree      clean - HEAD is everything you have
+    swept     no stale clones (older than 4h) found
+    --- database: scratch database monreleve_gate_clone_bd9612fd created ---
+    GATE:CLONE PASSED
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test,
+            build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage,
+            install, typecheck, lint, test, build, size, db:deploy, test:db,
+            test:container:write from a clean checkout
+    GATE_CLONE_EXIT=0
+  NOT RUN THERE, as it prints: test:e2e and test:visual (browser / container),
+  each with the claim it is therefore not making. It also printed "CI
+  readiness: quiet - the repository is private and CI_FULL is unset - jobs will
+  skip", stated here because R248 assumed a public repository.
+
+THE FINAL TIP IS NOT bd9612f: it is the commit carrying this report.
+`git diff bd9612f..<final> --stat` is this one file and nothing else - stated in
+the commit that carries it and in the handback. The only gate task that READS
+it is RegisterCoverageTest (it shells out to web/scripts/register-coverage.mjs
+over parking.md and every REPORT-*.txt), so both are re-run on the final tip
+after this text is final (R182) - their result is in the handback, because a
+report cannot carry the result of a gate run on the commit that carries it.
+
+--------------------------------------------------------------------------------
+R273
+--------------------------------------------------------------------------------
+Read before anything was written: CLAUDE.md's R210 (and the rest of the root
+CLAUDE.md - NOT the parent folder's, a different project); README.md;
+web/lib/auth/tokens.ts (rotation; the revoke with TOKEN_REPLAYED), with the
+refresh, sign-out, revoke-all, code and callback routes and bearer.ts's codes;
+REPORT-KMP-1b (cancellation, the uncancellable sign-out wipe); REPORT-KMP-3
+(SessionManager in :shared, R451's four cases); REPORT-AN-POLISH (R440: send
+first, warn, then wipe; the debug session injection, D3); REPORT-AN-PULL
+(R483; NOTICED 3 "nothing enqueues a sync after a sign-in"; NOTICED 4, the two
+session managers); REPORT-AN-ACCOUNT-TAG (the tag read at write time; R303's
+held rows). Then the source: SessionManager, TokenStore, KeystoreTokenStore,
+MainActivity, SyncWorker/SyncEngine/SyncScheduler, YearDownloads/
+EntriesDownload, LocalStore, ParametresController, CodeController,
+CallbackController/Activity, ShellState, StartupDecider, FenceRoot and the
+fences built on it.
+
+--------------------------------------------------------------------------------
+R1
+--------------------------------------------------------------------------------
+origin/main = 935c1ac; `git merge-base --is-ancestor f18fc67 origin/main` true -
+it contains an-pull.
+
+FULL :app:gate --rerun-tasks ON 935c1ac, run IN THIS SESSION before any change,
+after ./gradlew --stop, the worktree clean:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1256 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 8m 49s
+    225 actionable tasks: 225 executed
+    GATE_EXIT=0
+  1256 is the last floor exactly (AN-PULL's); :shared ran 85, 0 failures.
+
+The S9 LISTED: `232bcd8c300c7ece device product:starltexx model:SM_G960F`.
+stay_on_while_plugged_in READ: 0.
+
+--------------------------------------------------------------------------------
+R506 - THE RACE, REPRODUCED FIRST
+--------------------------------------------------------------------------------
+THE FAKE (android/app/src/test/.../auth/TokenServer.kt) keeps tokens.ts's rules
+with state: a refresh token rotates once and takes its sibling access token
+with it; a consumed refresh token presented again revokes the WHOLE session,
+TOKEN_REPLAYED, behind the route's one 401 invalid_refresh_token; access tokens
+are judged in inspectAccessToken's order (unknown, revoked_session,
+rotated_token, expired_token). It DECIDES EACH REQUEST WHEN IT ARRIVES and
+answers after a latency - the server's one-statement consumption - which is
+what lets two clients each send one refresh token before either holds its
+successor.
+
+THE TEST (TokenRaceTest "R506 - the screen and the worker meet an expired access
+token at once: ONE rotation, the session lives"): two sites, one store (the
+Keystore prefs file is one file), one expired access token; the screen GETs
+/api/v1/me while the worker POSTs a batch. On 935c1ac's wiring each site
+received its own SessionManager, as MainActivity.kt:189 and SyncWorker.kt:41
+built them:
+
+  RED  data class diff for RaceOutcome
+       refreshesReachingTheServer: expected:<1> but was:<2>
+       sessionRevokedBecause: Expected null but actual was "TOKEN_REPLAYED"
+       screen: expected:<"Ok"> but was:<"SessionEnded">
+       worker: expected:<"Ok"> but was:<"SessionExpired">
+       deviceHoldsTheLivePair: expected:<true> but was:<false>
+
+THE POSITIVE CONTROL, in the same run, UNEDITED: SessionManagerTest
+"single-flight: ten concurrent refreshes rotate EXACTLY ONCE" - green (7/7 in
+SessionManagerTest). SessionManagerTest has no diff on this branch.
+
+TWO MORE CASES, green from the start, kept permanently:
+  - the hazard control: TWO SessionManagers over one store, raced the same way,
+    reach the server twice and end the session. It is the presence half of the
+    R506 test's absence - if TokenServer ever stopped modelling the replay, the
+    R506 test would pass whatever the app constructs (R169's corollary).
+  - the fake's fidelity: rotate, replay -> Invalid, TOKEN_REPLAYED, and the
+    successor dead on both halves (refresh refused, GET 401 revoked_session).
+
+THE SERVER HALF, AGAINST THE LOCAL STACK (PORT=3000 pnpm dev, the main checkout,
+D1). R169 first:
+    /api/health -> 200 {"service":"monreleve","instance":null,"status":"ok",
+                        "reasons":[],"origin":null,"runtime":false}
+Account an-token-race@monreleve.test, created for this session (it did not
+exist: `SELECT count(*) FROM "User" WHERE email = ...` -> 0; the operator's
+address was never used), signed in BY CODE through the API, the code read from
+the dev server's own printed mail (R284). No token value was printed anywhere -
+sha256 prefixes only:
+    POST /api/v1/auth/magic-link                      -> 202 accepted
+    POST /api/v1/auth/code                            -> 200 ok   (pair P0)
+    POSITIVE CONTROL GET /api/v1/me with P0.access    -> 200
+    1st POST /api/v1/auth/refresh with P0.refresh     -> 200 ok   (pair P1)
+    2nd POST /api/v1/auth/refresh with P0.refresh     -> 401 invalid_refresh_token
+    POST /api/v1/auth/refresh with P1.refresh         -> 401 invalid_refresh_token
+    GET /api/v1/me with P1.access                     -> 401 revoked_session
+and the server's own record (psql as frontalier, Prisma names quoted):
+     revokedReason  | revoked | tokens_in_session | consumed
+    ----------------+---------+-------------------+----------
+     TOKEN_REPLAYED | t       |                 4 |        2
+The session was ended by the PRODUCT's replay detection, never by a row edit.
+
+--------------------------------------------------------------------------------
+R507 - ONE SessionManager PER PROCESS
+--------------------------------------------------------------------------------
+EVERY CONSTRUCTION SITE in main and debug sources at 935c1ac (grep
+"SessionManager(" outside tests, then the fence below), and what became of it:
+
+  MainActivity.kt:189            val session = SessionManager(api, tokenStore)
+                                 -> processSession(context)
+  data/sync/SyncWorker.kt:41     val session = SessionManager(api,
+                                 KeystoreTokenStore(context)), inside
+                                 buildSyncEngine - which every SyncWorker run
+                                 AND the voluntary sign-out's bounded drain
+                                 call, so each drain built a fresh instance
+                                 -> processSession(context)
+  dev/SignInProbeActivity.kt:50  the debug sign-in probe - in MAIN sources,
+                                 declared only in the debug manifest
+                                 -> processSession(applicationContext)
+  src/debug/kotlin               none (SessionInjectionActivity writes the token
+                                 store directly; it builds no SessionManager)
+Test sources keep their own constructions over fakes (SessionManagerTest, the
+two sign-out tests, ParametresAccountTest, :shared's DownloadRig).
+
+THE HOLDER, auth/SessionHolder.kt: MonReleveDatabase.get's double-checked
+locking round a @Volatile field, the factory an argument so a JVM test can hold
+one over a fake. Only the SessionManager is shared: AuthApi and
+KeystoreTokenStore hold no state of their own (every KeystoreTokenStore reads
+the one prefs file), so the sign-in screens keep building theirs. First named
+ProcessSession.kt; detekt's MatchingDeclarationName asked for the class's name.
+
+THE FENCE, fences/OneSessionPerProcessFenceTest, built on FenceRoot over three
+roots, each found and pinned on its own: src/main/kotlin (MainActivity.kt),
+../shared/src/commonMain/kotlin (SessionManager.kt), src/debug/kotlin
+(SessionInjectionActivity.kt - R507 names main sources; debug is scanned too,
+because a debug-only second instance races on exactly the builds every device
+walkthrough runs). Constructions of SessionManager( AND of SessionHolder(,
+outside comments and declarations, must EQUAL [SessionHolder.kt] - an empty list
+fails as loudly as a second site.
+  RED on the original wiring, before any main code of R507 existed (the holder
+  was then to be named ProcessSession.kt):
+    expected:<[ProcessSession.kt]> but was:<[SyncWorker.kt,
+      SignInProbeActivity.kt, MainActivity.kt]>
+      SyncWorker.kt:41  val session = SessionManager(api, KeystoreTokenStore(context))
+      SignInProbeActivity.kt:50  SessionManager(
+      MainActivity.kt:189  val session = SessionManager(api, tokenStore)
+  and the holder case: expected:<[ProcessSession.kt]> but was:<[]>
+  GREEN after: 3/3 - the roots found, one SessionManager site, one holder.
+
+R506 GREEN. The race test's two sites now receive process.get(build) where the
+RED run gave each build(). Diffed against the saved RED form: the ONLY lines
+that differ are the holder's declaration and the two site lines; the race and
+every expected value are byte-identical. TokenRaceTest 3/3; R451's test
+unedited and green.
+
+Comments R507 made false were corrected: MainActivity's AN-PULL note and
+buildEntriesDownload's KDoc said the download used "the activity's own"
+session; SessionManager.refresh's KDoc now says single-flight is PER INSTANCE,
+for the next platform to read.
+
+--------------------------------------------------------------------------------
+R508 - WHAT A FORCED SIGN-OUT DID, BEFORE ANYTHING CHANGED
+--------------------------------------------------------------------------------
+ESTABLISHED BY A TEST AS WELL AS THE SOURCE (ForcedSignOutTest, the two R508
+cases, run on this branch while its production code was still 935c1ac's). One
+device signed in as A, built the way the app builds it over TokenServer: the
+worker's drain (buildSyncEngine's shape), the session, Parametres with its
+LocalStore - the one home of R295's wipe - and the record repository. A day is
+recorded and held; another holder rotates the refresh token first, so the
+phone's own refresh is the replay (TOKEN_REPLAYED); a screen call follows.
+
+FOUND:
+  1. SessionManager clears the TOKENS and nothing else (TokenStore.clear in
+     applyRefresh's Invalid branch, onUnauthorized, retryWith).
+  2. R295's wipe is NOT reached, and the shell is NOT told to leave: no
+     AccountEvent. LocalStore.clearForSignOut is reachable only from
+     confirmSignOut (the voluntary sign-out) and runDelete (deletion).
+  3. UNSENT DAYS SURVIVE: on the phone, PENDING, tagged with their account; the
+     account tag stays current. The worker returns success() quietly.
+  4. What the person is shown: the next screen call's "session ended" copy
+     (Parametres: OnboardingCopy.ERROR_SESSION_ENDED; Releve: ReleveCopy's
+     session copies). Nothing routes to sign-in until the activity is
+     re-created; the next launch opens Bienvenue with no word of why. In the
+     worker-noticed case the person is TOLD NOTHING - the S9 showed exactly
+     that (R511 step 3).
+  5. THE ONE PATH THAT LOSES THE DAYS: "Se deconnecter" in that dead shell -
+     AN-POLISH's voluntary sign-out. Its R440 send has no session to send with,
+     so the warning names the days as lost (ParametresCopy.stillPendingWarning)
+     and confirming reaches the wipe. Unchanged here (a hard boundary); PARK-T1.
+  6. Two comments said otherwise: buildSyncEngine and SyncEngine.sync claimed
+     an ended session "has no current account". It keeps it. Corrected with
+     R509, which depends on it.
+
+THE SECOND CASE IS THE POSITIVE CONTROL for the first case's absences - and it
+earned that on its first run. The AccountEvent listener had been launched in
+backgroundScope, which advanceUntilIdle did not drive, so "no AccountEvent" was
+being satisfied by a deaf listener. The control failed
+(expected:<[SignedOut]> but was:<[]>); the listener now runs in the test's own
+scope, cancelled at the end.
+
+A PIN THAT PASSES FIRST TIME PROVES NOTHING, SO A PLANT (R180): the session-
+ended branch of ParametresController.setAutoDetection given
+localStore.clearForSignOut() - "a forced sign-out takes R295's path". Verified
+at line 696, inside setAutoDetection, before the run was read:
+    RED  expected:<[]> but was:<["clearForSignOut"]>
+Reverted with git checkout; `git diff --quiet` confirmed the file identical to
+HEAD; green again.
+
+--------------------------------------------------------------------------------
+R509 - A FORCED SIGN-OUT KEEPS THE PENDING DAYS
+--------------------------------------------------------------------------------
+THE CHANGE. CodeController and CallbackController take a REQUIRED syncNow - the
+worker's own drain, buildSyncEngine(context).sync() (R206), no default (R291) -
+and call auth/SignInSync.kt's sendHeldDays once the account is current and
+before reporting SIGNED. Bounded at 8 s (R440's bound and reasoning) and never
+failing the sign-in; cancellation re-thrown (KMP-1b). With nothing held it is
+one local read and no request.
+
+WHY THERE AND THEN - a design decision under R156, stated so it can be
+challenged. The obvious fix, a WorkManager request at sign-in, would run the
+drain CONCURRENTLY with RESOLVING's year download (R481). A drain that lands
+between that download's GET and its transaction is overwritten by the GET's
+OLDER copy - the server right, the phone showing the old value (PARK-T3, which
+exists today for a day recorded during a download). Sent first, the year that
+comes down already holds the day. Sent and refused, the day is still PENDING
+when the year arrives, and R483 keeps it. And the account is set BEFORE the
+send, or a sign-in by another account would post the previous one's days under
+the new token.
+
+TESTS FIRST (ForcedSignOutTest), written against the UNCHANGED sign-in
+signatures and run while production was untouched, so each RED is behavioural:
+
+  same account, by code - held day sent BEFORE the year comes down
+    RED   expected:<["POST /api/v1/auth/code", "POST /api/v1/entries",
+          "GET /api/v1/entries", "GET /api/v1/entries"]> but was:<["POST
+          /api/v1/auth/code", "GET /api/v1/entries", "GET /api/v1/entries"]>
+    GREEN the held CH correction is the server's row; local SYNCED CH, tag A;
+          the 2026 download: Applied(unchanged=1, keptUnsynced=0).
+  the sign-in could not send it (the server refuses that POST once)
+    RED   the same request diff - no attempt was made at all
+    GREEN one POST refused; the download, finding the server's older HOME,
+          KEPT the held CH: Applied(keptUnsynced=1) - R483 while the day was
+          still only on the phone; the next drain Settled(written=1) sends it.
+  ANOTHER account signs in
+    RED   on the CONTROL: B's own held day expected:<[b5960a2b-...]> but
+          was:<[]> - no drain ran at all
+    GREEN B's held day sent (the control - "nothing of A's was sent" is not
+          satisfied by a drain that never ran); A's never sent, never in B's
+          observeAll, still PENDING under A (R303).
+  same account, by LINK
+    RED   expected:<["GET /api/v1/auth/callback", "POST /api/v1/entries"]>
+          but was:<["GET /api/v1/auth/callback"]>
+    GREEN sent; local SYNCED, tag A.
+  forced -> kept and still tagged: R508's first case, unchanged, green.
+  a VOLUNTARY sign-out -> exactly AN-POLISH's behaviour: SignOutSyncFirstTest
+    (7), ParametresAccountTest (11), SignOutNotCancellableTest (1),
+    SignOutWipesOnRevokeFailureTest (2) - no diff on this branch, all green;
+    plus R508's second case (the voluntary path after a forced sign-out), and
+    on the S9 the plain confirmation and its wipe (R511 step 5).
+
+THE ORDER IS GUARDED, BY A PLANT (R180): sendHeldDays moved BEFORE
+accountStore.setCurrent in CodeController (verified at the line: 122 before
+125, the later call removed). The other-account case went RED - B's new token
+carried A's held day:
+    expected:<["5d326902-..."]> but was:<["092ba4b7-..."]>
+Restored from the pre-plant copy (cmp identical); green again.
+
+The seams the compiler then required in tests: ForcedSignOutTest's two sign-in
+helpers pass the device's drain; CallbackControllerTest's one helper passes a
+no-op (no day is held in that suite). TokenServer gained the link callback and
+a one-shot refusal of the entries POST.
+
+WHAT THE PERSON IS TOLD - TODAY, NOTHING, in the case that matters: the worker
+notices, and the next launch opens Bienvenue with no word of why (seen on the
+S9, R511 step 4). PROPOSED, NOT SHIPPED - no copy was added (Q3) - for that
+screen when the phone still holds the account's tag; ASCII here, accents
+restored when it lands (R155):
+    "Votre session a ete fermee. Les journees enregistrees sur ce telephone y
+     sont conservees : reconnectez-vous avec la meme adresse pour les envoyer."
+It claims no more than the record supports: "conservees" is R508's finding;
+"pour les envoyer" states the purpose, not a promise - the send can fail and
+the days then wait for the next drain (PARK-T4).
+
+--------------------------------------------------------------------------------
+R510 - THE SERVER GRACE WINDOW: NOT BUILT, A QUESTION
+--------------------------------------------------------------------------------
+No server file changed (`git diff origin/main...HEAD -- web/` is empty).
+
+THE PROPOSAL: accept a refresh token presented again within N seconds of its own
+rotation, instead of revoking the session.
+
+WHAT IT REMOVES, for any client still holding the just-rotated token:
+  - the in-process race R506 reproduced - which R507 has ALREADY removed in this
+    app at its source;
+  - THE LOST RESPONSE, which nothing on a client can remove: the client sends
+    R0, the server rotates (R0 and its access token consumed), the response
+    never arrives - a dropped connection, the transport's read timeout, the
+    process killed mid-response. The client still holds R0; its next refresh is
+    today a replay, and the session ends. With R507 in place this is the
+    remaining way this app can sign itself out;
+  - a future second process, or an iOS client with its own concurrency error.
+
+WHAT IT COSTS: R210, inside the window. A replay presented within N seconds is
+no longer caught at that moment - a thief who captured R0 and presents it inside
+the window after the real client's rotation, or the real client presenting it
+after a thief rotated first.
+
+THE EXACT BEHAVIOUR, and the two are not equivalent:
+  (a) THE SAME NEW PAIR - the second presentation receives exactly the pair the
+      first did. One chain survives, so when the two holders later diverge,
+      reuse detection fires as it does today: a theft inside the window is
+      detected LATER, not never. COST: tokens.ts stores hashes only ("THE HASH
+      IS STORED, NEVER THE TOKEN"), so the server cannot hand the pair out
+      again unless it keeps the successor's plaintext for the window
+      (encrypted, then deleted) or DERIVES the successor from the presented
+      token and a server secret (an HMAC), recomputing it without storing it.
+  (b) A FRESH PAIR - the session forks into two independent live chains whose
+      refreshes never collide, so a theft inside the window is NEVER detected.
+
+RECOMMENDED (the operator's decision - it softens R210): (a), the same pair,
+DERIVED rather than stored; a window of 60 SECONDS; every in-window acceptance
+logged with its session, so the window's use is measured and reversible. Why not
+"a few seconds": the race a few seconds would cover is gone (R507). What remains
+is the lost response, and its retry cannot arrive before the client's read
+timeout (UrlConnectionTransport: 15 s connect, 15 s read), then waits for the
+next call or WorkManager's backoff (MIN_BACKOFF_MILLIS, 10 s) - 15 to 30 s after
+the rotation by the code's own constants. Five seconds would cover none of it.
+THE ALTERNATIVE, equally defensible: no window until the server records a
+TOKEN_REPLAYED that R507 does not explain - it is recorded per session, so it is
+measurable before it is softened.
+
+--------------------------------------------------------------------------------
+R511 - ON THE S9, AGAINST THE LOCAL STACK
+--------------------------------------------------------------------------------
+TIMES are the host's; the phone's local time read one hour later (+01).
+
+THE PHONE LEFT USB, AND THAT IS RECORDED RATHER THAN SMOOTHED. At about 12:50,
+before R511's first command, every adb read answered "device not found"
+(NO RESULT, not values). `adb kill-server` / `start-server` found no device;
+Windows listed "SAMSUNG Android ADB Interface", "SAMSUNG Mobile USB Composite
+Device" and "Galaxy S9 de khalid" all Present=False (read again at 13:20:17).
+The final gates ran meanwhile (they change nothing on the phone). A wait loop
+saw it return at 13:21:27; R511 ran from 13:23. `adb reverse` was re-checked
+after the return (empty - a drop clears it).
+
+AS FOUND (read 13:23:56, before anything was written): ch.monreleve.app 0.1.0
+(versionCode 1), flags [HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP] - NOT
+debuggable, `run-as` -> "package not debuggable" - installed 09:42:31 phone
+time. Its base.apk, pulled, hashes sha256 d417d021...081034, byte-identical to
+C:/wt/an-pull/android/app/build/outputs/apk/audit/app-audit.apk (AN-PULL's
+audit build; read there, nothing written there). stay_on 0, airplane 0,
+auto_time 1, auto_time_zone 1, font_scale 1.0, persist.sys.timezone
+Africa/Casablanca, adb reverse empty. Display off, keyguard up.
+
+WHICH BUILD SERVED WHICH STEP: every step below ran on the DEBUG build of
+bd9612f, assembled with -PfrontalierHost=127.0.0.1 (BuildConfig.API_BASE_URL
+"http://127.0.0.1:3000"), installed with `adb install -r` over the audit build
+after `apksigner verify --print-certs` showed the SAME signer on both
+(CN=Android Debug, sha256 ef336db5...e373d1) - so nothing was uninstalled and
+no data lost. Debuggable, so the device database was READ at every step
+(exec-out run-as ..., the -wal pulled, the -shm not, node:sqlite). Read through
+it, the data the audit build had left: 0 entry rows, no account tag, no tokens.
+The as-found audit build was reinstalled at the end (below).
+
+STACK: PORT=3000 pnpm dev, the main checkout (D1); R169 before anything:
+/api/health -> {"service":"monreleve",...,"status":"ok",...}. Bridge: adb
+reverse tcp:3000 tcp:3000 ("UsbFfs tcp:3000 tcp:3000"). NEVER production.
+stay_on READ 0, set to 7 for the run (the screen kept sleeping mid-drive),
+RESTORED to 0.
+
+SIGN-IN FOR THE RUN (D9): the host signed an-token-race@monreleve.test in BY
+CODE through the API, PATCHed /api/v1/me with complete settings (so the phone
+would resolve to MAIN, not onboarding), and handed the phone that pair through
+AN-POLISH's debug-only SessionInjectionActivity with the email extra - the
+account tag set by the same function a sign-in uses ("SESSION INJECTED +
+ACCOUNT"). That is what made the phone's refresh token reachable for step 2.
+No token value was printed; the scratch file holding it was deleted. The app
+opened through RESOLVING (GET /api/v1/me, both years' download) to Aujourd'hui:
+"Bonjour Course", "Jeudi 22 octobre 2026", "Saisie manuelle", the question
+(AujourdhuiCopy) with En Suisse / Domicile / Mission / "Declarer une absence".
+
+THE POSITIVE CONTROL FOR THE COUNTS: today recorded ONLINE as "Domicile" -
+POST /api/v1/entries 200; EntryEvent count for the account 0 -> 1; server row
+2026-10-22 FULL HOME stamped; device row SYNCED, tag 451087c141a3c81a... (the
+account's tag, computed independently: sha256 of the address, first 16 hex).
+The card: "Domicile", "Enregistre", "Modifier"; the year card "Sous les deux
+seuils", 0,41 %.
+
+STEP 1 - A DAY HELD. `adb reverse --remove-all` (verified empty - airplane alone
+is not offline here), "Modifier" -> "En Suisse". The card: "En Suisse",
+"Enregistre sur le telephone, en attente d'envoi"; "A traiter": "1 journee en
+attente d'envoi." Device: 2026-10-22 FULL CH PENDING, tag 451087c1..., a new
+mutation (6b45eb51...). Server: still HOME, EntryEvents still 1.
+
+STEP 2 - THE SESSION ENDED SERVER-SIDE, THROUGH THE PRODUCT. At 13:32:05 the
+host, as "the other holder", refreshed the phone's refresh token: 200 - a
+rotation, which also consumed the phone's access token. The reverse restored at
+13:32:21; at 13:32:57 the WORKER's own backoff retry did the rest:
+    POST /api/v1/entries 401      (the rotated access token)
+    POST /api/v1/auth/refresh 401 (the phone's own refresh: the REPLAY)
+and the server recorded that session (created 13:27:55) TOKEN_REPLAYED. The
+race's server half, end to end, with the phone as the losing holder. No row was
+edited.
+
+STEP 3 - THE APP NOTICED; THE DAY IS STILL THERE AND STILL TAGGED. Device
+(debug build, run-as): 2026-10-22 FULL CH PENDING, tag 451087c1..., mutation
+6b45eb51 - the same row; monreleve.account.xml still holds the tag;
+monreleve.auth.xml EMPTY (the tokens - and only they - went). The screen did
+NOT move: Aujourd'hui still showed the day "en attente d'envoi", and the
+Releve showed its cached copy from launch ("Releve provisoire", "1 jour
+enregistre sur cet appareil n'est pas encore synchronise et ne figure pas dans
+ce releve", and a stale "Aucune journee n'a encore ete enregistree pour cette
+annee" from before the first record) without a request - PARK-T1 on a real
+phone. Relaunched, the app opened Bienvenue ("Mon Releve", "Vos jours de
+teletravail, prets pour votre declaration.", three feature lines,
+"Commencer") - nothing about the ended session or the held day.
+
+STEP 4 - THE SAME ACCOUNT SIGNS IN; THE DAY SYNCS. Through the REAL screens:
+"Commencer" -> "Se connecter a Mon Releve" (the address typed with adb input
+and read back exactly before submitting) -> "Recevoir mon lien de connexion"
+(the phone's POST /api/v1/auth/magic-link 202) -> "Verifiez votre messagerie",
+"Nous avons envoye un lien et un code a an-token-race@monreleve.test", six
+digit boxes -> the code, read from the dev log by the host and typed, never
+printed. The server's log from that moment, in order:
+    POST /api/v1/auth/code 200
+    POST /api/v1/entries 200        <- the held day, sent BEFORE SIGNED (R509)
+    GET /api/v1/me 200              <- RESOLVING
+    GET /api/v1/entries?year=2026 200, ?year=2025 200   <- the sign-in download
+    GET /api/v1/dossier?year=2025 200, ?year=2026 200
+EntryEvent count 1 -> 2 (the positive control's 0 -> 1 above is what makes the
+1 -> 2 a measurement). Server row 2026-10-22 FULL CH. Device row SYNCED CH, the
+same mutation 6b45eb51, the same tag; a new session (13:35:12) alive. The card:
+"En Suisse", "Enregistre", the year card 0,00 %.
+LOGCAT, captured from just before the code was typed: 3248 lines, 127 from the
+app's PID 13148 (the positive control - the capture saw the app):
+    I/YearDownload: year 2026: applied - 0 inserted, 0 replaced, 1 unchanged,
+      0 kept unsynced, 0 synced on this phone but absent from the server
+      (kept, R483)
+    I/YearDownload: year 2025: applied - 0 inserted, 0 replaced, 0 unchanged,
+      0 kept unsynced, 0 synced on this phone but absent from the server
+      (kept, R483)
+"1 unchanged" is the JVM test's Applied(unchanged=1) on a phone: the held day
+went up first, so the year that came down already held it. FATAL EXCEPTION 0;
+"account tag unresolved" (R425) 0; SyncWorker 0 - the send was the sign-in's
+own inline drain, not the worker.
+
+STEP 5 - EVERY SCREEN, DESCRIBED.
+  Aujourd'hui  as above at each step.
+  Calendrier   "Octobre 2026"; day 22 announced "Aujourd'hui, Jour 22, Suisse,
+               enregistre a temps, saisie manuelle."; the legend (Suisse,
+               Domicile, Mission, Absence, Non renseigne); "15 jours a completer
+               en octobre"; "Selectionner plusieurs jours".
+  Releve       regenerated 22.10.2026 13:35: "Releve provisoire", Nom Course,
+               GE, 100 %, "Forfait de 240 jours", "Annee 2026 entiere",
+               Absences 0; tiles Jours ouvres 240, Jours en Suisse 1,
+               Teletravail 0 - the server counts the held day; the
+               "not yet synchronised" notice gone.
+  Parametres   Geneve, 100 %, Forfait de 240 jours, Journees entieres, Toute
+               l'annee; "Votre rythme habituel"; "Detection automatique
+               (beta)"; Compte: "Se deconnecter", "Exporter mes donnees",
+               "Supprimer mon compte".
+  Sign-out     nothing pending, so AN-POLISH's PLAIN confirmation: "Se
+               deconnecter ?" with the erasure sentence and "Rester connecte" /
+               "Se deconnecter". Confirmed: POST /api/v1/auth/sign-out 200, the
+               session SIGNED_OUT, the device 0 rows, no tag, no tokens,
+               Bienvenue.
+
+THE RACE ITSELF ON THE DEVICE - NOT PRODUCED, and said so. On this build it
+cannot happen (one SessionManager per process - the point of R507); on the
+pre-fix build it needs the worker's refresh and a foreground call to meet one
+expired token within the same few milliseconds, which adb cannot time. R506 is
+the proof, as the prompt provides. What the device DID reproduce is the race's
+server half with a real second holder (step 2).
+
+THE PHONE, LEFT AS FOUND - every value read before it was written:
+  the build      the as-found audit APK reinstalled with `adb install -r`
+                 (same signer); the installed base.apk re-pulled: sha256
+                 d417d021...081034 - identical to the one found; not debuggable
+  the app        signed out (the voluntary sign-out wiped the record, the tag
+                 and the tokens), its MainActivity on the welcome screen
+  stay_on        read 0, set 7 for the run, RESTORED to 0
+  adb reverse    EMPTY (--remove-all, verified)
+  airplane, auto_time, auto_time_zone, font_scale, timezone
+                 0, 1, 1, 1.0, Africa/Casablanca - read, NEVER written
+  display        off, keyguard up, as found
+  never run      connectedAndroidTest (it uninstalls the app and its data)
+Screenshots and logs are in this session's scratchpad and will not survive it;
+the facts above are the record.
+
+THE DEV SERVER was stopped: TaskStop killed the shell; the surviving node
+PID 56468 (named by the log's own scheduler line) was killed by this session,
+and port 3000 verified free against 5436 as the positive control (R179).
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+Series T, claimed FROM THE REGISTER (R456): node web/scripts/register-coverage.mjs
+and parking.md's headings showed A B C D F G I K L M P R S U V Y in use; T was
+free. Entries in parking.md, committed bd9612f.
+
+PARK-T1  after a forced sign-out the shell stays open, and its only exit is the
+         sign-out that wipes (R508; seen on the S9) - Q1.
+PARK-T2  what another account inherits after a forced sign-out: the settings
+         (a link sign-in with surviving settings goes straight to MAIN on them,
+         PARK-Y5's shape) and SharedPrefsDossierCache, keyed by year only - Q2.
+PARK-T3  a drain landing during a year download is overwritten by the stale
+         year; R509's sign-in send is ordered so it never creates it - Q4.
+PARK-T4  a sign-in whose send fails leaves the days for the next drain.
+PARK-T5  a rebuild during a sign-in that is sending held days lands on sign-in.
+PARK-T6  any refused refresh is a sign-out, a server error included
+         (AuthApi.refresh maps every non-200 to Invalid).
+PARK-T7  a late refusal can clear a pair a new sign-in has just saved
+         (applyRefresh clears unconditionally).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+D1  THE DEV SERVER WAS THE MAIN CHECKOUT'S (PORT=3000 pnpm dev), twice - the
+    server half, then R511 - each stopped by this session (TaskStop, then the
+    surviving node PID: 57828, then 56468, each named by its own log), port
+    3000 verified free both times. `git diff origin/main...HEAD -- web/` is
+    EMPTY, so it served exactly what this worktree would. The main checkout's
+    status afterwards: only the orchestrator's docs/deploy.md modification and
+    its untracked prompts/scripts, as at the start.
+D2  ONE PUSH, AT THE END, rather than one per increment (README rule 5). R199
+    puts a gate:clone before every push, and with this machine's memory a clone
+    per increment was a hazard; the commits sat in this worktree, which
+    persists.
+D3  THE R506 TEST WAS NOT COMMITTED RED - a red commit is a bounce (R132). Step
+    1's commit carried the fake, the fidelity test and the hazard control; the
+    R506 test landed with R507 in its green form. Its RED run is above and its
+    RED form was diffed against the green one.
+D4  THE FENCE SCANS src/debug AS WELL AS MAIN - stricter than R507's words, and
+    argued under R507.
+D5  COMMENTS OUTSIDE THE BARE CHANGE were corrected where this work made them
+    false: buildEntriesDownload's KDoc (YearDownloads.kt), SyncEngine.sync's
+    comment (:shared), SessionManager.refresh's KDoc (:shared). Comment-only.
+D6  R509 IS SENT INLINE, NOT ENQUEUED - a design decision taken under R156 and
+    argued under R509; its cost is PARK-T5.
+D7  A SECOND pnpm INSTALL, FOR gate:clone ONLY, as AN-PULL's D7: gate-clone.mjs
+    imports pg from its own location and this worktree's web/ had no
+    node_modules, so `pnpm install --frozen-lockfile` ran in
+    C:/wt/an-token-race/web (1m 10s; node_modules is ignored, the tree stayed
+    clean). gate:clone was handed DATABASE_URL from the main checkout's
+    web/.env through its environment, never printed; the clone itself never
+    sees it.
+D8  THE DEVICE RAN THE DEBUG BUILD, NOT THE AUDIT BUILD - R321 and AN-POLISH's
+    D2: run-as needs a debuggable build and the phone needs the host override,
+    which the debug build gives together. The audit build found on the phone
+    was reinstalled at the end, byte-identical.
+D9  THE PHONE'S FIRST SESSION WAS INJECTED (AN-POLISH's D3 recipe, by code
+    instead of a planted VerificationToken), so that its refresh token was
+    reachable for a real replay. The RE-SIGN-IN that R509 is about went through
+    the product's own code screens.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  PARK-T1. When the server ends the session while the shell is open, should
+    the app go to sign-in at once, keeping the record - rather than leave a
+    shell whose only exit is the voluntary sign-out that warns and wipes?
+Q2  PARK-T2. Should the settings and the cached releve be scoped to the account
+    tag (or cleared when a DIFFERENT account signs in), as the record is?
+Q3  The sentence proposed under R509 for Bienvenue after a forced sign-out -
+    accept it, reword it, or tell the person nothing?
+Q4  PARK-T3. Serialise a drain and a year download (one lock), or have the
+    download skip a row that changed after its GET?
+Q5  R510. Adopt a grace window - and if so, the same pair (derived), 60 s, as
+    recommended? Or keep R210 strict until a TOKEN_REPLAYED is seen that R507
+    does not explain?
+
+NOTICED, NOT TOUCHED: two untracked prompts appeared in the main checkout at
+13:05 during this session - relay/AN-SESSION-RACE.txt and
+relay/FW-DOSSIER-EMPTY.txt. Not written, read or acted on by this session.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED BY THE STEP AFTER THIS COMMIT, NOT BY THIS TEXT - so this
+reads "pending push" until it is true, and the push's own output is in the
+handback (R334: a report states only what has happened). Target, explicit:
+`git push -u origin an-token-race`, upstream unset at creation so that a bare
+push could never aim at main. PENDING MERGE - the merge, and promoting
+production, are the operator's. `production` was never pushed; Coolify's API was
+never called.
+
+THE COMMITS, in order, on 935c1ac:
+    13a958a  a fake that answers a replay the way tokens.ts does (R506)
+    2348c9a  what a forced sign-out does today, established and pinned (R508)
+    56b5c21  one SessionManager per process, and a fence for it (R507, R506 green)
+    39c3fc5  a forced sign-out keeps the pending days, and the next sign-in
+             sends them (R509)
+    bd9612f  PARK-T1..T7 in the register          <- both gates ran here
+    <final>  this report
+Every increment was checked before it was committed - fastCheck (R390) plus
+the :app tests it does not run, counts read from the JUnit XML, and for R509
+:app:compileDebugAndroidTestKotlin (EXECUTED on that code) - and the FULL gate
+and gate:clone ran on bd9612f as stated under STATUS.

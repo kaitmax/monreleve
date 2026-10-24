@@ -39,6 +39,9 @@ class CallbackController(
     // account tag is set here, from it, at the moment B signs in - which is exactly when A's pending
     // days must stop being this device's current record.
     private val accountStore: AccountStore,
+    // AN-TOKEN-RACE (R509): the worker's drain, run once the account is current and before SIGNED - the link's half of
+    // what CodeController does, so a forced sign-out's held days go up with either way back in. No default (R291).
+    private val syncNow: suspend () -> Unit,
 ) {
     private val mutableState = MutableStateFlow(CallbackState())
     val state: StateFlow<CallbackState> = mutableState.asStateFlow()
@@ -73,6 +76,8 @@ class CallbackController(
                         // than setting a blank tag two people could share.
                         accountTagOf(parsed.email)?.let { accountStore.setCurrent(it) }
                         pending.clear()
+                        // R509: the account's held days go up NOW - after the account is current, before SIGNED.
+                        sendHeldDays(syncNow)
                         CallbackPhase.SIGNED
                     }
                     CallbackResult.InvalidLink -> CallbackPhase.INVALID_LINK

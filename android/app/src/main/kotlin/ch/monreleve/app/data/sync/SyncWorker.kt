@@ -3,14 +3,10 @@ package ch.monreleve.app.data.sync
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import ch.monreleve.app.BuildConfig
 import ch.monreleve.app.account.SharedPrefsAccountStore
-import ch.monreleve.app.auth.KeystoreTokenStore
-import ch.monreleve.app.auth.SessionManager
+import ch.monreleve.app.auth.processSession
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.get
-import ch.monreleve.app.data.remote.AuthApi
-import ch.monreleve.app.data.remote.UrlConnectionTransport
 
 // AN5 increment 3. The thin CoroutineWorker: it builds the engine from the app
 // context and maps the drain's outcome onto WorkManager's Result. All the logic is in
@@ -29,19 +25,21 @@ class SyncWorker(
             is SyncOutcome.Settled -> Result.success()
             // Network or a garbled response: retry with the request's exponential backoff.
             SyncOutcome.Retryable -> Result.retry()
-            // No usable session: the rows stay PENDING and a fresh sign-in enqueues another
-            // sync. Retrying now would back off forever against an absent session.
+            // No usable session: the rows stay PENDING, tagged, and the next sign-in sends them (R509 -
+            // auth/SignInSync.kt). Retrying now would back off forever against an absent session.
             SyncOutcome.Unauthenticated -> Result.success()
         }
 }
 
 internal fun buildSyncEngine(context: Context): SyncEngine {
     val dao = MonReleveDatabase.get(context).entryDao()
-    val api = AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL)
-    val session = SessionManager(api, KeystoreTokenStore(context))
-    // AN-FIX F4 / R303: the drain is scoped to the account signed in RIGHT NOW. An expired session that
-    // has not signed back in has no current account, so SyncEngine drains nothing (fail closed) rather
-    // than posting the previous account's queue under the next account's token.
+    // AN-TOKEN-RACE (R507): the PROCESS's session - the one the screens use - never a drain's own. A SessionManager
+    // built here raced the screens' refresh of the same token, and the server ended the session on the replay (R210).
+    val session = processSession(context)
+    // AN-FIX F4 / R303: the drain is scoped to the account signed in RIGHT NOW, read here, at drain time. A session
+    // the server ENDED keeps its account tag - only the tokens go (R508) - so its drain posts nothing for want of a
+    // session; and the next sign-in sets the tag BEFORE it sends (R509), so one account's queue never goes up under
+    // another's token. A null account (nobody ever signed in, or a sign-out cleared it) drains nothing.
     val currentAccount = SharedPrefsAccountStore(context).current()
     return SyncEngine(dao, session, currentAccount)
 }

@@ -123,6 +123,10 @@ class SessionManager(
      * pair rather than refreshing again. A second refresh of an already-rotated
      * token IS a replay, and a replay ends the whole session (R210 turned against
      * ourselves) - so two requests racing an expiry must never both refresh.
+     *
+     * SINGLE-FLIGHT PER INSTANCE: the guard is this object's Mutex. Two instances over one token store race each
+     * other into exactly that replay, so a process holds ONE (AN-TOKEN-RACE, R507 - :app's SessionHolder.kt, and a
+     * fence refusing a second construction). An iOS app owes the same: one SessionManager per process.
      */
     suspend fun refresh(): RefreshOutcome {
         val before = tokenStore.load() ?: return RefreshOutcome.NoSession

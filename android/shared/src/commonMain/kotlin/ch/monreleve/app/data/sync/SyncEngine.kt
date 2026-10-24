@@ -61,9 +61,9 @@ class SyncEngine(
     private val batchLimit: Int = MAX_BATCH_ITEMS,
 ) {
     suspend fun sync(): SyncOutcome {
-        // AN-FIX F4 / R303: no active account -> nothing to drain. An expired session that never signed
-        // back in has no account here, so its queue stays PENDING rather than draining under whoever is
-        // next.
+        // AN-FIX F4 / R303: no active account -> nothing to drain. A session the server ended is NOT that case:
+        // its account stays current and only its tokens go (AN-TOKEN-RACE, R508), so its POST below meets no
+        // session and the queue stays PENDING; the next sign-in sets the account before it drains (R509).
         if (currentAccount == null) return SyncOutcome.Unauthenticated
         var written = 0
         var defects = 0

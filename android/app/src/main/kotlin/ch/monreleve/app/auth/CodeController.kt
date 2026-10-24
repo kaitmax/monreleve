@@ -72,6 +72,10 @@ class CodeController(
     private val accountStore: AccountStore,
     private val email: String,
     private val scope: CoroutineScope,
+    // AN-TOKEN-RACE (R509): the drain the worker runs (buildSyncEngine), run once the account is current and before
+    // SIGNED, so days a forced sign-out left held go up with the sign-in (SignInSync.kt says why there and then).
+    // No default (R291): a sign-in that forgot it would leave them waiting for the next tap again.
+    private val syncNow: suspend () -> Unit,
     restored: CodeSnapshot? = null,
 ) {
     private val mutableState =
@@ -119,6 +123,9 @@ class CodeController(
                         // pending address (the same order and reason as CallbackController, AN-FIX F4 / R303).
                         accountTagOf(email)?.let { accountStore.setCurrent(it) }
                         pending.clear()
+                        // R509: what this phone holds for the account goes up NOW - after the account is
+                        // current, before SIGNED sends the screen on to the year download.
+                        sendHeldDays(syncNow)
                         CodePhase.SIGNED
                     }
                     CodeExchangeResult.WrongCode -> CodePhase.WRONG_CODE
