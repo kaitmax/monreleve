@@ -112,6 +112,16 @@ class GenevaConformanceTest {
                 result.value.swissTaxedDays + result.value.frenchTaxedDays,
                 "case ${case.id}: day partition",
             )
+            // IOS-0 (R534). One line per case, printed only AFTER every assertion above held for it, so the test
+            // report's captured output names each case that executed and passed - on the JVM and on the iOS
+            // simulator alike. A failing case throws before this line and prints nothing. Output only: no
+            // assertion, fixture or expected value changes.
+            println(
+                "GENEVA case ${case.id}: declarableRate=${result.value.declarableRate} " +
+                    "swissTaxedDays=${result.value.swissTaxedDays} " +
+                    "frenchTaxedDays=${result.value.frenchTaxedDays} " +
+                    "regimeApplies=${result.value.regimeApplies} - all assertions held",
+            )
         }
     }
 }
