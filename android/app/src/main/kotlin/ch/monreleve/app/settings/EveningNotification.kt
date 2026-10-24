@@ -1,6 +1,7 @@
 package ch.monreleve.app.settings
 
 import android.content.Context
+import android.content.SharedPreferences
 
 // R323 / PARKAN-36. The evening proposal notification's device state: the OPT-IN (separate from the detection
 // toggle, OFF by default - D19's safe default) and the DAY LAST NOTIFIED, which enforces "at most one per working
@@ -49,8 +50,13 @@ private const val EVENING_PREFS = "monreleve.detection"
 private const val KEY_ENABLED = "evening.enabled"
 private const val KEY_LAST_DAY = "evening.lastNotifiedDay"
 
-class SharedPrefsEveningNotificationStore(context: Context) : EveningNotificationStore {
-    private val prefs = context.applicationContext.getSharedPreferences(EVENING_PREFS, Context.MODE_PRIVATE)
+class SharedPrefsEveningNotificationStore internal constructor(
+    private val prefs: SharedPreferences,
+) : EveningNotificationStore {
+    // AN-FORCED-SIGNOUT (R527): the shared file as an argument, so a JVM test can read what a clear leaves of it.
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(EVENING_PREFS, Context.MODE_PRIVATE),
+    )
 
     override fun isEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, false)
 

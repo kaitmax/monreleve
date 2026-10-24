@@ -1,6 +1,7 @@
 package ch.monreleve.app.settings
 
 import android.content.Context
+import android.content.SharedPreferences
 
 // AN-ALERT. The threshold alert's device state and its two plain types. A LOCAL notification that needs no
 // server: it fires the FIRST time the year-end FORECAST would cross a regulatory threshold (40 % fiscal or
@@ -92,8 +93,13 @@ private const val KEY_SOCIAL = "alert.socialCrossed"
 private const val KEY_ALERTED_DAY = "alert.alertedDay"
 private const val KEY_ALERTED_THRESHOLD = "alert.alertedThreshold"
 
-class SharedPrefsThresholdAlertStore(context: Context) : ThresholdAlertStore {
-    private val prefs = context.applicationContext.getSharedPreferences(ALERT_PREFS, Context.MODE_PRIVATE)
+class SharedPrefsThresholdAlertStore internal constructor(
+    private val prefs: SharedPreferences,
+) : ThresholdAlertStore {
+    // AN-FORCED-SIGNOUT (R527): the shared file as an argument, so a JVM test can read what a clear leaves of it.
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(ALERT_PREFS, Context.MODE_PRIVATE),
+    )
 
     override fun isEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, false)
 

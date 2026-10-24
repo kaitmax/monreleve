@@ -25,16 +25,23 @@ import ch.monreleve.app.data.sync.SyncEngine
 import ch.monreleve.app.data.sync.SyncOutcome
 import ch.monreleve.app.data.sync.YearDownload
 import ch.monreleve.app.destinationAfterSessionEnd
+import ch.monreleve.app.detection.SharedPrefsNearBorderNoticeStore
 import ch.monreleve.app.fr.SignInCopy
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.parametres.AccountEvent
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresPhase
 import ch.monreleve.app.parametres.SignOutPrompt
-import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.AlertThreshold
 import ch.monreleve.app.settings.LoggingMode
+import ch.monreleve.app.settings.MemoryPrefsFile
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
+import ch.monreleve.app.settings.SharedPrefsEmployerFigureStore
+import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
+import ch.monreleve.app.settings.SharedPrefsThresholdAlertStore
+import ch.monreleve.app.settings.ThresholdCrossing
 import ch.monreleve.app.startDestination
 import ch.monreleve.app.startup.StartDecision
 import ch.monreleve.app.startup.decideStartAfterSignIn
@@ -212,7 +219,17 @@ private class Device(
     val settings = MemorySettingsStore(SETTINGS)
     val cache = MemoryDossierCache().apply { save(TAX_YEAR, dossierBody("Camille Rey")) }
     val pending = MemoryPendingSignIn(null)
-    val detectionMode = InMemoryDetectionModeStore(LoggingMode.AUTO_DETECT)
+
+    // R527: monreleve.detection - ONE file, and the app's own five stores over it, so a clear is measured on what it
+    // leaves of the file. A's phone has automatic mode on, as it did before every earlier test here.
+    val detectionFile = MemoryPrefsFile()
+    val detectionMode = SharedPrefsDetectionModeStore(detectionFile).apply { save(LoggingMode.AUTO_DETECT) }
+    val evening = SharedPrefsEveningNotificationStore(detectionFile)
+    val alert = SharedPrefsThresholdAlertStore(detectionFile)
+    val nearBorder = SharedPrefsNearBorderNoticeStore(detectionFile)
+
+    /** The employer figures, read as the account the phone holds NOW - SharedPrefsEmployerFigureStore's own lambda. */
+    val employer = SharedPrefsEmployerFigureStore(detectionFile) { accounts.current() }
     var recordCleared = false
     var syncCancelled = false
     var exportsCleared = false
@@ -690,11 +707,109 @@ class ForcedSignOutTest : FunSpec({
             device.accounts.current() shouldBe TAG_A
             device.dao.all().map { Triple(it.dayDate, it.syncState, it.accountTag) } shouldBe
                 listOf(Triple(DAY, SyncState.PENDING, TAG_A))
-            // ... and the detection file, whose loggingMode /me carries but nothing restores (a QUESTION, kept), and
-            // the pending sign-in, which is not account data.
-            device.detectionMode.load() shouldBe LoggingMode.AUTO_DETECT
+            // ... and the pending sign-in, which is not account data. The detection file was a QUESTION here (Q1);
+            // R527 answered it - cleared but for the employer figures - and the R527 tests below own that half. Its
+            // mode is the one line kept here: this test used to assert the opposite, and it says so.
+            device.detectionMode.load() shouldBe LoggingMode.MANUAL
             device.pending.pending() shouldBe EMAIL_A
             device.ends.ends.value shouldBe 1
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // R527 - THE DETECTION FILE, ANSWERED (Q1 -> (b), with one exception). A forced sign-out clears monreleve.detection
+    // - the mode, the evening and alert opt-ins, the alert's crossing state, the near-border flag - EXCEPT the
+    // employer figures, "employer.<accountTag>.<year>": their account's own, on this phone only, restored by nothing.
+    // ---------------------------------------------------------------------------------------------------------
+
+    test("R527 - forced: the mode, both opt-ins, the alert state and the near-border flag go; A's figures stay") {
+        runTest {
+            val device = Device(this)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            // A's typed figures, and the keys they wrote read off the file - not typed here (R181).
+            val withoutFigures = device.detectionFile.all.keys.toSet()
+            device.employer.save(TAX_YEAR - 1, 41.25)
+            device.employer.save(TAX_YEAR - 2, 38.0)
+            val figureKeys = device.detectionFile.all.keys - withoutFigures
+            // Every other flag the file holds, each written by the store that owns it.
+            device.evening.setEnabled(true)
+            device.evening.markNotified(DAY)
+            device.alert.setEnabled(true)
+            device.alert.saveCrossing(ThresholdCrossing(fiscal = true))
+            device.alert.markAlerted(DAY, AlertThreshold.FISCAL)
+            device.nearBorder.markShown()
+            // THE CONTROL: all of it is there before - the two figures, and the flags beside them.
+            figureKeys.size shouldBe 2
+            (device.detectionFile.all.keys - figureKeys).size shouldBe 9
+            device.detectionMode.load() shouldBe LoggingMode.AUTO_DETECT
+
+            device.anotherHolderRotatesFirst()
+            device.drain() // the worker meets the replay: the server ends the session
+
+            device.ends.ends.value shouldBe 1
+            // CLEARED: no detection consent outlives the session. The same person comes back in manual mode with
+            // both notifications off.
+            device.detectionMode.load() shouldBe LoggingMode.MANUAL
+            device.evening.isEnabled() shouldBe false
+            device.evening.lastNotifiedDay() shouldBe null
+            device.alert.isEnabled() shouldBe false
+            device.alert.crossing() shouldBe ThresholdCrossing()
+            device.alert.activeThresholdToday(DAY) shouldBe null
+            device.nearBorder.hasShown() shouldBe false
+            // KEPT: A's figures, and NOTHING ELSE of the file - so a flag added to it later is cleared with the rest.
+            device.detectionFile.all.keys shouldBe figureKeys
+            device.employer.figureFor(TAX_YEAR - 1) shouldBe 41.25
+            device.employer.figureFor(TAX_YEAR - 2) shouldBe 38.0
+        }
+    }
+
+    test("R527 - ANOTHER account signs in after it: no previous mode, opt-in, crossing or figure; A's stay A's") {
+        runTest {
+            val device = Device(this)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.employer.save(TAX_YEAR - 1, 41.25)
+            device.evening.setEnabled(true)
+            device.alert.setEnabled(true)
+            device.alert.saveCrossing(ThresholdCrossing(fiscal = true, social = true))
+            device.nearBorder.markShown()
+            device.anotherHolderRotatesFirst()
+            device.drain()
+
+            val signIn = device.signInByCode(EMAIL_B, this)
+            advanceUntilIdle()
+
+            signIn.state.value.phase shouldBe CodePhase.SIGNED
+            device.accounts.current() shouldBe TAG_B
+            device.detectionMode.load() shouldBe LoggingMode.MANUAL
+            device.evening.isEnabled() shouldBe false
+            device.alert.isEnabled() shouldBe false
+            device.alert.crossing() shouldBe ThresholdCrossing()
+            device.nearBorder.hasShown() shouldBe false
+            device.employer.figureFor(TAX_YEAR - 1) shouldBe null
+            // THE CONTROL that B's null is the account scope and not an empty file: A's figure is on the phone still,
+            // and reads back under A's tag.
+            device.accounts.setCurrent(TAG_A)
+            device.employer.figureFor(TAX_YEAR - 1) shouldBe 41.25
+        }
+    }
+
+    test("R527 - the voluntary sign-out and the deletion still sweep the whole file, the figures included") {
+        // R527 changes the forced scope only. The other direction (R196): both of R295/R289's wipes, over the same file
+        // and the same stores, still leave nothing of it - the employer figures included.
+        runTest {
+            val signOut = Device(this)
+            signOut.employer.save(TAX_YEAR - 1, 41.25)
+            signOut.evening.setEnabled(true)
+            signOut.detectionFile.all.size shouldBe 3
+            signOut.deviceStore.clearForSignOut()
+            signOut.detectionFile.all shouldBe emptyMap()
+
+            val deletion = Device(this)
+            deletion.employer.save(TAX_YEAR - 1, 41.25)
+            deletion.evening.setEnabled(true)
+            deletion.detectionFile.all.size shouldBe 3
+            deletion.deviceStore.clearForDeletion()
+            deletion.detectionFile.all shouldBe emptyMap()
         }
     }
 

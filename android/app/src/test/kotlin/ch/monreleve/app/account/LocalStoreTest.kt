@@ -165,7 +165,11 @@ class LocalStoreTest : FunSpec({
     // so the days wait for the same person (R509) and stay invisible to anybody else (R303). What goes is what the
     // next account must not inherit and the same one gets back - the settings (/me) and the cached releve (the
     // dossier GET) - with the exports, the cached record in another form.
-    test("R521: a server-ended session clears the settings, the cache, the exports and the tokens - nothing else") {
+    //
+    // R527 ADDS THE DETECTION FILE to that scope, but for the employer figures - which this fixture's in-memory mode
+    // store does not hold, so the figures' half is ForcedSignOutTest's, over one file and the app's own stores. Here:
+    // the mode goes. This test asserted AUTO_DETECT kept while the file was a QUESTION (Q1); R527 answered it.
+    test("R521/R527: a server-ended session clears the settings, the cache, the exports, the tokens and the mode") {
         runTest {
             val f = Fixture()
             f.store.clearForSessionEnd()
@@ -174,13 +178,12 @@ class LocalStoreTest : FunSpec({
             f.cache.load(2026) shouldBe null
             f.exportsCleared.shouldBeTrue()
             f.tokens.load() shouldBe null
-            // KEPT: the record and its tag, the queued sync, the pending sign-in - and the detection file, whose
-            // loggingMode /me carries but nothing restores (a QUESTION in REPORT-AN-FORCED-SIGNOUT.txt).
+            f.detectionMode.load() shouldBe LoggingMode.MANUAL
+            // KEPT: the record and its tag, the queued sync, the pending sign-in.
             f.recordCleared shouldBe false
             f.account.current() shouldBe "acct-tag"
             f.syncCancelled shouldBe false
             f.pending.pending().shouldNotBeNull()
-            f.detectionMode.load() shouldBe LoggingMode.AUTO_DETECT
         }
     }
 

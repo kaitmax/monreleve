@@ -92,11 +92,14 @@ class DeviceLocalStore(
      *   - the calculation settings - every key GET /api/v1/me restores at the next sign-in (StartupDecider);
      *   - the cached releve - refetched from the server by the Releve's next load;
      *   - the exported files - the cached record in another form, never read back by the app;
-     *   - the tokens - already cleared by SessionManager; cleared again because this scope must not depend on it.
-     * NOT the detection file (monreleve.detection): it is one file swept by one clear(), and the loggingMode in it is
-     * carried by /me but restored by nothing, beside six device-only keys /me does not carry at all - so it is a
-     * QUESTION (REPORT-AN-FORCED-SIGNOUT.txt, R521), neither cleared nor kept silently. Not the queued sync: the
-     * worker settles an unauthenticated drain without retrying (R523). Not the pending sign-in: not account data.
+     *   - the tokens - already cleared by SessionManager; cleared again because this scope must not depend on it;
+     *   - R527: the detection file (monreleve.detection) - the mode, the evening and alert opt-ins, the alert's
+     *     crossing state, the near-border flag - so the next account inherits no detection consent. Nothing restores
+     *     them today (PARK-E7): the same person comes back in manual mode with notifications off, and loses nothing
+     *     recorded. EXCEPT the employer figures, "employer.<accountTag>.<year>", which share that file: already their
+     *     account's own, so no other account reads them, and on this phone only, so nothing would bring them back.
+     * Not the queued sync: the worker settles an unauthenticated drain without retrying (R523). Not the pending
+     * sign-in: not account data.
      *
      * NOT ON THE LocalStore INTERFACE, deliberately: the screens that hold a LocalStore - Parametres - only ever end
      * a session voluntarily or delete it. The one caller of this is the process's session (onServerEndedSession).
@@ -106,5 +109,6 @@ class DeviceLocalStore(
         dossierCache.clear()
         clearExports()
         settingsStore.clear()
+        detectionModeStore.clearForSessionEnd()
     }
 }
