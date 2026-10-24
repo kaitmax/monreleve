@@ -10,9 +10,12 @@ import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.remote.AuthApi
+import ch.monreleve.app.data.remote.AuthServerCode
+import ch.monreleve.app.data.remote.AuthedResult
 import ch.monreleve.app.data.remote.DossierApi
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.remote.ME_PATH
+import ch.monreleve.app.data.remote.RefreshResult
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
@@ -348,6 +351,29 @@ private class Shell(
     fun close() = jobs.forEach { it.cancel() }
 }
 
+/**
+ * AN-FORCED-SIGNOUT (R522): R520's path, asserted the same way whichever way the session ended - the person on sign-in,
+ * ONE ending recorded, R521's clear done, R295's wipe never reached, the held day still on the phone, PENDING and A's,
+ * and the sign-in screen's forced state readable from the stores.
+ */
+private suspend fun assertTookTheForcedPath(
+    device: Device,
+    shell: Shell,
+) {
+    shell.destination shouldBe Destination.SIGN_IN
+    device.ends.ends.value shouldBe 1
+    device.tokens.load() shouldBe null
+    device.settings.load() shouldBe null
+    device.cache.load(TAX_YEAR) shouldBe null
+    device.recordCleared shouldBe false
+    device.wipe.calls.filter { it in R295_WIPES } shouldBe emptyList()
+    device.accounts.current() shouldBe TAG_A
+    device.dao.all().map { Triple(it.dayDate, it.syncState, it.accountTag) } shouldBe
+        listOf(Triple(DAY, SyncState.PENDING, TAG_A))
+    sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe true
+    heldDays(device.repository.observePending().first()) shouldBe 1
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ForcedSignOutTest : FunSpec({
     test("R508 - a session the server ENDED does not reach R295's wipe: the unsent day survives, still tagged") {
@@ -628,6 +654,117 @@ class ForcedSignOutTest : FunSpec({
 
             // The link's relaunch: signed in, no settings on the phone - RESOLVING asks /me for B's own.
             startDestination(device.session.isSignedIn(), device.settings.isOnboarded()) shouldBe Destination.RESOLVING
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // R522 - THE OTHER ENDINGS. Each produced by the product's own rule on TokenServer, never by setting a field the
+    // app reads; each reaches the phone through the call the worker makes; each takes R520's path.
+    // ---------------------------------------------------------------------------------------------------------
+
+    test("R522 - REVOKE-ALL from another device: the next call meets revoked_session, and R520's path follows") {
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            // Another device of the same account signs in and ends every session, through revoke-all/route.ts.
+            val other = device.server.openSession(EMAIL_A)
+            AuthApi(device.server, TOKEN_SERVER_BASE)
+                .authenticatedPost("/api/v1/auth/revoke-all", "{}", other.accessToken)
+                .shouldBeInstanceOf<AuthedResult.Ok<String>>()
+            val before = device.server.requests.size
+
+            device.drain()
+            advanceUntilIdle()
+
+            // One request, no refresh: revoked_session says the refresh token is dead too (bearer.ts).
+            device.server.requests.drop(before) shouldBe listOf("POST /api/v1/entries")
+            device.server.revocationOf(device.firstPair) shouldBe TokenServer.REVOKED_ALL
+            device.server.revocationOf(other) shouldBe TokenServer.REVOKED_ALL
+            assertTookTheForcedPath(device, shell)
+            shell.close()
+        }
+    }
+
+    test("R522 - a REFRESH THE SERVER REFUSES (the refresh token expired): R520's path, nothing revoked") {
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.server.expireAccess(device.firstPair)
+            device.server.expireRefresh(device.firstPair)
+            val before = device.server.requests.size
+
+            device.drain()
+            advanceUntilIdle()
+
+            // expired_token -> one refresh -> the route's one refusal. The session was never revoked: it lapsed.
+            device.server.requests.drop(before) shouldBe listOf("POST /api/v1/entries", "POST /api/v1/auth/refresh")
+            device.server.revocationOf(device.firstPair) shouldBe null
+            assertTookTheForcedPath(device, shell)
+            shell.close()
+        }
+    }
+
+    test("R522 - a 401 THE REFRESH CANNOT RECOVER (revoked between the rotation and the retry): R520's path") {
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.server.expireAccess(device.firstPair)
+            device.server.revokeAfterNextRotation = TokenServer.REVOKED_ALL
+            val before = device.server.requests.size
+
+            device.drain()
+            advanceUntilIdle()
+
+            // The refresh SUCCEEDED and the retry was still refused - SessionManager.retryWith's 401.
+            device.server.requests.drop(before) shouldBe
+                listOf("POST /api/v1/entries", "POST /api/v1/auth/refresh", "POST /api/v1/entries")
+            device.server.revocationOf(device.firstPair) shouldBe TokenServer.REVOKED_ALL
+            assertTookTheForcedPath(device, shell)
+            shell.close()
+        }
+    }
+
+    test(
+        "R522 - ACCOUNT DELETED elsewhere: today it takes R520's path too, because the phone cannot tell (a QUESTION)",
+    ) {
+        // PINNED AS FOUND, NOT AS DECIDED. Deletion requires the account's local data to be erased; this phone keeps
+        // the deleted account's held day, because nothing it receives says "deleted" - and R210 forbids the server
+        // telling an unauthenticated caller which case fired. REPORT-AN-FORCED-SIGNOUT.txt carries the options.
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            val held = device.heldMutation()
+            device.server.deleteAccount(EMAIL_A) // lib/account/delete.ts: the cascade destroys every token
+            val before = device.server.requests.size
+
+            device.drain()
+            advanceUntilIdle()
+
+            device.server.requests.drop(before) shouldBe listOf("POST /api/v1/entries")
+            assertTookTheForcedPath(device, shell)
+
+            // WHY THE PHONE CANNOT TELL. A deleted account's access token meets unknown_token ...
+            val api = AuthApi(device.server, TOKEN_SERVER_BASE)
+            api.authenticatedGet(ME_PATH, device.firstPair.accessToken) shouldBe
+                AuthedResult.Unauthorized(AuthServerCode.UNKNOWN_TOKEN)
+            // ... and so does a CORRUPTED stored token on an account that still exists (bearer.ts: unknown_token "also
+            // fires for a corrupted stored token") - while the refresh route refuses both with its one answer.
+            val live = device.server.openSession(EMAIL_B)
+            api.authenticatedGet(ME_PATH, live.accessToken + "-corrupted") shouldBe
+                AuthedResult.Unauthorized(AuthServerCode.UNKNOWN_TOKEN)
+            api.refresh(device.firstPair.refreshToken) shouldBe RefreshResult.Invalid
+            api.refresh(live.refreshToken + "-corrupted") shouldBe RefreshResult.Invalid
+
+            // WHAT IT COSTS, as the code stands: the same address signing in again is a NEW account (code/route.ts
+            // upserts the user), and the deleted account's held day goes up into it.
+            device.signInByCode(EMAIL_A, this)
+            advanceUntilIdle()
+            device.server.mutationsOf(EMAIL_A) shouldBe listOf(held)
+            shell.close()
         }
     }
 

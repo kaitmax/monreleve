@@ -97,6 +97,13 @@ internal class TokenServer(
     var refreshRequests = 0
         private set
 
+    /**
+     * AN-FORCED-SIGNOUT (R522): the next successful rotation is followed AT ONCE by a revoke of its session - a
+     * revoke-all landing between a refresh and the request it was for, which is what "a 401 the refresh cannot
+     * recover" is on the real server. Null: no such revoke.
+     */
+    var revokeAfterNextRotation: String? = null
+
     /** Open a session for [account] and issue its first pair - issueTokenPair, and what the code exchange does. */
     fun openSession(account: String): TokenPair {
         val id = sessions.size + 1
@@ -107,6 +114,24 @@ internal class TokenServer(
     /** The access token of [pair] has outlived its fifteen minutes. */
     fun expireAccess(pair: TokenPair) {
         tokens.getValue(pair.accessToken).expired = true
+    }
+
+    /** R522: the refresh token of [pair] has outlived its ninety days (tokens.ts: expiresAt <= now -> refused). */
+    fun expireRefresh(pair: TokenPair) {
+        tokens.getValue(pair.refreshToken).expired = true
+    }
+
+    /**
+     * R522: FW26's deletion, as lib/account/delete.ts performs it - a CASCADE, not a revoke. Every token of every
+     * session of [account] ceases to exist ("TOKENS ARE REVOKED BY BEING DESTROYED", R193), and the account's rows,
+     * settings and dossiers with them. The sessions stay in the map only so a later session's id stays unique; no
+     * token resolves to them, so an access token meets `unknown_token` and a refresh the route's one refusal.
+     */
+    fun deleteAccount(account: String) {
+        tokens.entries.removeAll { (_, row) -> sessions.getValue(row.session).account == account }
+        rowsByAccount.remove(account)
+        meByAccount.remove(account)
+        dossiersByAccount.remove(account)
     }
 
     /** Why the session [pair] belongs to was ended, or null while it is alive. */
@@ -181,12 +206,19 @@ internal class TokenServer(
                 session.revokedReason = TOKEN_REPLAYED
                 refused()
             }
+            // R522: tokens.ts checks the expiry after the replay - an expired refresh token is refused, nothing more.
+            row.expired -> refused()
             else -> {
                 row.consumed = true
                 tokens.values
                     .filter { it.session == row.session && it.kind == Kind.ACCESS }
                     .forEach { it.consumed = true }
-                pairBody(mint(row.session))
+                val successor = pairBody(mint(row.session))
+                revokeAfterNextRotation?.let { reason ->
+                    session.revokedReason = reason
+                    revokeAfterNextRotation = null
+                }
+                successor
             }
         }
     }
@@ -234,6 +266,13 @@ internal class TokenServer(
                 HttpResponse(HTTP_SERVER_ERROR, """{"status":"error","code":"write_failed"}""")
             }
             path == "/api/v1/entries" -> write(session.account, request.body)
+            // R522: revoke-all/route.ts - every session of the token's account ends, the caller's own included.
+            path == "/api/v1/auth/revoke-all" -> {
+                sessions.values
+                    .filter { it.account == session.account && it.revokedReason == null }
+                    .forEach { it.revokedReason = REVOKED_ALL }
+                HttpResponse(HTTP_OK, """{"status":"ok"}""")
+            }
             else -> notScripted()
         }
 
@@ -348,5 +387,6 @@ internal class TokenServer(
         /** prisma SessionRevocation, as tokens.ts writes it. */
         const val TOKEN_REPLAYED = "TOKEN_REPLAYED"
         const val SIGNED_OUT = "SIGNED_OUT"
+        const val REVOKED_ALL = "REVOKED_ALL"
     }
 }
