@@ -818,6 +818,25 @@ the one an auditor reads.
   0 % telework. One means the person logged nothing. A client that renders the
   rate without this distinction shows somebody a clean result for a year they
   never filled in.
+- **A year with no day recorded is answered like any other year: `200`, the
+  same envelope.** `recordedEntries` is `0`, every `annex` row is
+  `recorded: false`, every tile and month counts no day, and
+  `zone.declarableRate` is `0` — the engine's answer over the year's own basis,
+  which `tiles.workedDays` states and which is positive. It is a computed figure
+  over a real denominator, not a placeholder; what keeps the year honest is
+  `recordedEntries`, above. The PDF says it in a sentence (§11.4) and the CSV on
+  every row (§12.2). This holds for the current year on 1 January too, and for
+  the first year of an activity that began partway through it (`period.fraction`
+  below 1). FW-DOSSIER-EMPTY.
+- **A year that ends before the account's `activityStartDate` is NOT yet a
+  contract — it is an open question.** Its period is zero; both engines refuse a
+  zero period (`PERIOD_OUT_OF_RANGE`), so no rate is defined over it, and a rate
+  over a zero basis is not invented as 0 %. Today this route answers `500
+  read_failed`, the CSV `500 read_failed` and the PDF `422 dossier_incomplete`.
+  How such a year is answered awaits the operator (FW-DOSSIER-EMPTY, PARK-H1); a
+  client must not build on any of the three. The Android client's previous-year
+  probe treats any answer that is not a document as "no days", so nothing on its
+  screen depends on them.
 - **`annex` contains unlogged days.** A row with `recorded: false` carries a
   `dayDate` and nothing else — no portion, no kind, no timestamp. SPEC §12
   item 5 requires them printed rather than skipped.
@@ -852,12 +871,19 @@ the one an auditor reads.
 | `invalid_year` | 400 | not four digits |
 | `future_year` | 400 | a year that has not happened |
 | `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
+| `read_failed` | 500 | ours: the year could not be built. Today that includes two account states with no code of their own — a year before the activity start (§8.2, PARK-H1) and an account with no canton (PARK-H2) |
 
 **`future_year` is its own code and not `invalid_year`.** The engine would
 answer for 2031 — a full basis, nothing logged, 0 % declared — and that answer
 is not so much wrong as *meaningless*, which is worse, because it looks like a
 compliant year. `invalid_year` would send a client author to check their
 parser.
+
+**"Has not happened" is read from the server's UTC clock**, while every
+calendar day elsewhere in this contract is a Paris day. So for the first hour
+of 1 January, Paris time, the year a Paris-dated client asks for is refused as
+`future_year`; from 01:00 it is the empty year §8.2 describes. Recorded as
+PARK-H3, not changed.
 
 ---
 
@@ -1145,6 +1171,7 @@ the values.
 | `invalid_year` | 400 | `year` absent, repeated, or not exactly four digits |
 | `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
 | `not_configured` | 503 | `AUTH_SECRET` is unset or is the placeholder `.env.example` ships |
+| `dossier_incomplete` | 422 | the dossier for that year could not be built, checked **before** a browser is launched — an account with no canton, or a year before the activity start (§8.2, open) |
 | `renderer_busy` | 503 | one render is running and both waiting places are taken; `Retry-After: 30` |
 | `renderer_timeout` | 503 | waited 30 s for a slot without reaching the front; `Retry-After: 60` |
 | `renderer_unavailable` | 503 | Chromium would not start, or the print route did not answer 200 |
@@ -1177,13 +1204,13 @@ document nobody looked at. It is R205's rule on a renderer: served only when it
 can be believed, not when it can be parsed.
 
 **`renderer_unavailable` also covers a print route that answered anything but
-200**, which is how one *account* state reaches a *machine* code. `User.canton`
-is nullable and is an ordinary §9 setting; the dossier refuses to compute
-without one, and that refusal is not `MissingTitulaireError`, so the print page
-rethrows it, answers 500, and the renderer reports the page it could not fetch.
-**A named account that has never set a canton is therefore told
-`renderer_unavailable`** — the code whose whole purpose, per the paragraph above
-about the titulaire check, is to mean *the browser is missing*.
+200.** That is no longer how an *account* state reaches it: since FW-VERIFY the
+route builds the dossier itself before it launches a browser (the issuance
+record's figures are read from it), so a named account that has never set a
+canton — and a year before the activity start — is refused `422
+dossier_incomplete` without a render. This paragraph used to say such an
+account was told `renderer_unavailable`; FW-DOSSIER-EMPTY measured the route
+and corrected it.
 
 **From the titulaire check onward the French message is the same one**
 (`AUTH_API_COPY.readFailed`, also §8.3's), while the three earlier refusals each
@@ -1225,6 +1252,13 @@ never on the French.
   obligation §6.5 and §8.2 both state — surface every warning, never only the
   figures — is one a client discharges from the dossier response, not by handing
   somebody the file.
+- **A year with no day recorded is a document, issued like any other.** The
+  file is produced (`200`) and opens with one sentence saying no day is
+  recorded for that year and that its rates reflect an absence of recording, not
+  a situation (`DOSSIER_COPY.emptyYear`, keyed on `recordedEntries === 0` — so a
+  year holding only absences does not say it). Its issuance is recorded exactly
+  as for any year: a verification code, and the hash of the bytes returned.
+  FW-DOSSIER-EMPTY (R516).
 
 ## 12. `GET /api/v1/export/csv?year=YYYY` — the annex as a spreadsheet
 
@@ -1322,6 +1356,12 @@ quotation marks.
 
 **A null is an empty cell, never the word `null`.**
 
+**A year with no day recorded is a file, not a refusal**: the header, then one
+row per working day of the year, every one with an empty `portion`. The CSV
+carries no sentence saying so, as the PDF does (§11.4) — its columns are SPEC
+§12's and frozen, and a prose row would break RFC 4180 for every reader that is
+not Excel (§6.7) — so the empty `portion` on every row is how this file says it.
+
 **Order is `dayDate` ascending, then `FULL`, `AM`, `PM`** — §6.2's order,
 because these are §6.2's rows. **The year window is inclusive at both ends**,
 `YYYY-01-01` through `YYYY-12-31`, built by the same function the read path
@@ -1366,8 +1406,10 @@ author reading §8.3 would reasonably expect the pair to agree.
 **`read_failed` covers more than a database being down.** The account row
 vanishing mid-request lands here, and so does an account with **no canton** —
 the column is nullable and the dossier refuses to build without one, through a
-path that has no code of its own. A client meeting a 500 on an export should
-not assume the server is unwell before checking that the account is set up.
+path that has no code of its own. So, today, does a year that ends before the
+account's activity start (§8.2, open). A client meeting a 500 on an export
+should not assume the server is unwell before checking that the account is set
+up.
 
 ### 12.4 What §6.7 already settles, and is not repeated here
 

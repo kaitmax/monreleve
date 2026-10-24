@@ -411,6 +411,25 @@ describe('FW-DOSSIER-EMPTY R514: a year with no days, and its neighbours', () =>
     expect(response.status).toBe(500);
     expect((await body(response)).code).toBe('read_failed');
     expect(lines.join('\n')).toContain('the dossier needs a canton');
+
+    // AND THE EXPORTS, measured because docs/api-v1.md 11.3 said the PDF told
+    // this account `renderer_unavailable`. Since FW-VERIFY the PDF route builds
+    // the dossier before any browser, so it is 422 dossier_incomplete.
+    process.env.AUTH_SECRET ??= 'dossier-route-test-secret';
+
+    const csv = await csvExport(
+      new Request(`${ORIGIN}/api/v1/export/csv?year=2025`, {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+    const pdf = await pdfExport(
+      new Request(`${ORIGIN}/api/v1/export/pdf?year=2025`, {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+
+    expect([csv.status, (await body(csv)).code]).toEqual([500, 'read_failed']);
+    expect([pdf.status, (await body(pdf)).code]).toEqual([422, 'dossier_incomplete']);
   });
 
   it('the current year on 1 January answers 200 with an empty document', async () => {

@@ -3810,3 +3810,26 @@ KNOWN test flips to 200.
 COST OF REVERSING: none - nothing changed.
 
 STATE:      OPEN.
+
+## PARK-H4 - the verification page of an empty-year releve shows 0,00 % without saying no day was recorded  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R516, the walkthrough).
+
+WHAT IT IS: R516 made the PDF of a year with no day recorded say so in its first line,
+and kept the issuance (a verification code) as for any year. The page that code leads to,
+/verifier/<code>, shows the figures stored on the IssuanceRecord - for Camille's empty
+2024 on the walkthrough: "Taux a declarer a l'AFC 0,00 %", "Teletravail 0", the period
+"Du 02.09.2024 au 31 decembre 2024" - and nothing that says the year had no recorded day.
+The page "n'affiche que ce qui figure sur le document", and the document now carries a
+sentence the record has no column for: IssuanceRecord stores the name, the declarable
+rate, the day counts and the period, not recordedEntries.
+
+TAKEN:      Nothing. Storing the fact needs a column (a schema change and a migration),
+which this task's boundary forbids.
+
+NOT TAKEN:  An IssuanceRecord.recordedEntries column (or a boolean), written by
+figuresFromDossier, and the verifier rendering DOSSIER_COPY.emptyYear when it is 0.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN.
