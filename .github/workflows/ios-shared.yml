@@ -170,15 +170,18 @@ jobs:
           fi
           ls -d "$HOME"/.konan/kotlin-native-prebuilt-macos-*
 
-      # A timestamp the simulator check below compares against.
-      - name: Mark the start of the iOS run
-        run: touch "$RUNNER_TEMP/ios-tests-start"
-
-      # THE SCRIPT (R530), with ONE addition: --continue, so a red test task
-      # does not stop compileKotlinIosArm64 from also reporting in the same
-      # paid run.
+      # THE SCRIPT (R530), with TWO additions, neither of which changes what
+      # is compiled or run:
+      #   --continue  a red test task does not stop compileKotlinIosArm64 from
+      #               also reporting in the same paid run;
+      #   --info      Gradle then logs the exact command each test process was
+      #               started with, which is how the step after this one names
+      #               the simulator from the machine rather than from the
+      #               plugin's source. The output is also kept in a file for it.
       - name: iOS - simulator tests and device compile
-        run: ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64 --no-daemon --stacktrace --continue
+        run: |
+          set -o pipefail
+          ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64 --no-daemon --stacktrace --continue --info 2>&1 | tee "$RUNNER_TEMP/gradle-ios.log"
 
       - name: Save the Kotlin/Native toolchain
         if: always() && steps.konan.outputs.cache-hit != 'true'
@@ -218,33 +221,24 @@ jobs:
             exit 1
           fi
 
-      # WHICH SIMULATOR RAN THE TESTS, read from the machine rather than
-      # inferred from the plugin's documented behaviour. The test task runs
-      # `xcrun simctl spawn --standalone <device>`, which boots that device,
-      # and a booting device writes files into its own data directory. So the
-      # devices with files NEWER than the marker touched before Gradle are the
-      # ones that booted during the run. (A first version compared directory
-      # mtimes; those do not move on boot, so it named an arbitrary device -
-      # run 40108753078, recorded as NO RESULT.)
+      # WHICH SIMULATOR RAN THE TESTS, read from the command Gradle actually
+      # started (logged at --info) rather than inferred from the plugin's
+      # source. Two earlier versions read the device's files instead and both
+      # found nothing to read - directory mtimes do not move, and `simctl spawn
+      # --standalone` writes nothing into the device's data directory (runs
+      # 40108753078 and 40109536305, both recorded as NO RESULT, not evidence).
       - name: Which simulator ran (positive signal)
         if: always()
         run: |
           set +e
-          devices="$HOME/Library/Developer/CoreSimulator/Devices"
-          marker="$RUNNER_TEMP/ios-tests-start"
-          if [ ! -f "$marker" ]; then echo "NO RESULT: no start marker"; exit 0; fi
-          found=0
-          for d in "$devices"/*/; do
-            udid=$(basename "$d")
-            n=$(find "$d" -newer "$marker" -type f 2>/dev/null | wc -l | tr -d ' ')
-            if [ "$n" -gt 0 ]; then
-              found=$((found + 1))
-              echo "BOOTED DURING THE RUN: $udid - $n file(s) written - $(xcrun simctl list devices | grep "$udid" | sed 's/^ *//')"
-              runtime=$(xcrun simctl list devices | awk -v u="$udid" '/^-- /{h=$0} index($0,u){print h; exit}')
-              echo "  under runtime heading: $runtime"
-            fi
-          done
-          [ "$found" -eq 0 ] && echo "NO RESULT: no simulator device wrote a file after the marker"
+          log="$RUNNER_TEMP/gradle-ios.log"
+          cmd=$(grep -m1 "simctl spawn" "$log")
+          if [ -z "$cmd" ]; then echo "NO RESULT: no 'simctl spawn' command in the Gradle log"; exit 0; fi
+          echo "THE TEST PROCESS WAS STARTED AS:"
+          echo "$cmd" | sed 's/ --ktest_.*//' | cut -c1-400
+          udid=$(echo "$cmd" | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' | head -1)
+          echo "DEVICE: $(xcrun simctl list devices | grep "$udid" | sed 's/^ *//')"
+          echo "RUNTIME: $(xcrun simctl list devices | awk -v u="$udid" '/^-- /{h=$0} index($0,u){print h; exit}')"
           exit 0
 
       # What Room's compiler generated for each iOS target - the R400 question
