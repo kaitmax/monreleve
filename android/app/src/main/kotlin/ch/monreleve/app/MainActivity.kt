@@ -41,15 +41,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import ch.monreleve.app.account.AccountStore
-import ch.monreleve.app.account.DeviceLocalStore
+import ch.monreleve.app.account.EXPORTS_DIR
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.SharedPrefsAccountStore
+import ch.monreleve.app.account.deviceLocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.CodeController
 import ch.monreleve.app.auth.CodePhase
 import ch.monreleve.app.auth.CodeSnapshot
 import ch.monreleve.app.auth.KeystoreTokenStore
-import ch.monreleve.app.auth.PendingSignInStore
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
@@ -57,8 +57,10 @@ import ch.monreleve.app.auth.SignInController
 import ch.monreleve.app.auth.SignInPhase
 import ch.monreleve.app.auth.SignInSnapshot
 import ch.monreleve.app.auth.TokenStore
+import ch.monreleve.app.auth.heldDays
 import ch.monreleve.app.auth.processSession
-import ch.monreleve.app.data.local.DossierCache
+import ch.monreleve.app.auth.processSessionEnds
+import ch.monreleve.app.auth.sessionClosedByServer
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SharedPrefsDossierCache
 import ch.monreleve.app.data.local.get
@@ -112,7 +114,6 @@ import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.releve.ReleveState
 import ch.monreleve.app.settings.EmployerFigureStore
 import ch.monreleve.app.settings.SettingsStore
-import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEmployerFigureStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
@@ -148,6 +149,7 @@ import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Year
@@ -172,11 +174,6 @@ internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
 // AN-FORECAST: the forecast screens reached from within the shell (not bottom-nav tabs) - a small overlay
 // route beside the AppTab state, null when a tab is showing. AN-SIM adds the simulator, reached from Prevision.
 internal enum class ForecastRoute { RYTHME, PREVISION, SIMULATION }
-
-// AN12: the cacheDir subdirectory an export is written to before the share sheet. ONE home (R206): shareFile
-// writes here and the device erasure deletes here, so a rendered export - the account JSON is the whole record
-// - cannot outlive the account it belongs to (R289).
-private const val EXPORTS_DIR = "exports"
 
 class MainActivity : ComponentActivity() {
     // LongMethod suppressed as MainShell is: this is the composition root - store/seam construction and the
@@ -222,8 +219,9 @@ class MainActivity : ComponentActivity() {
         // caches the last body per year so an offline reader gets a dated copy rather than a blank screen (R288).
         val dossierCache = SharedPrefsDossierCache(context)
         val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
-        // AN12 increment 2 (R295): the device-wide erasure (built by buildLocalStore, below).
-        val localStore = buildLocalStore(context, tokenStore, settingsStore, dossierCache, pending, accountStore)
+        // AN12 increment 2 (R295): the device-wide erasure - the ONE construction the process's session uses too, for
+        // a session the server ended (AN-FORCED-SIGNOUT, R521; account/DeviceLocalStores.kt).
+        val localStore: LocalStore = deviceLocalStore(context)
         // AN-PULL (R481-R485): the server's year, brought down to the phone. Built on the process's session (R507),
         // so its GET shares the single-flight refresh with /me, the dossier and the sync drain (R210); the coordinator
         // is the process's, so a download and its status outlive a rotation.
@@ -238,36 +236,48 @@ class MainActivity : ComponentActivity() {
         // the one place a clock is allowed; the engine and the aggregation stay clock-free.
         val taxYear = Year.now(ZoneId.of("Europe/Paris")).value
 
-        val start =
-            when {
-                !session.isSignedIn() -> Destination.SIGN_IN
-                settingsStore.isOnboarded() -> Destination.MAIN
-                // R297: signed in but no local settings - a fresh account, or a re-sign-in after sign-out
-                // cleared them. Consult the server (GET /api/v1/me) before onboarding, so settings the server
-                // holds are restored rather than re-asked.
-                else -> Destination.RESOLVING
-            }
+        val start = startDestination(signedIn = session.isSignedIn(), onboarded = settingsStore.isOnboarded())
 
         setContent {
             FrontierTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     // AN-STATE (R310): the destination survives a rebuild, reconciled against the session (see
                     // sessionReconciled). `start`, recomputed in onCreate from the session, is the authority.
-                    var destination by rememberSaveable { mutableStateOf(start) }
+                    // AN-FORCED-SIGNOUT (R521): reconciled AS IT IS RESTORED (destinationSaver), so a restored MAIN
+                    // with no session never composes - the LaunchedEffect below is then a no-op kept for its R310 role.
+                    var destination by rememberSaveable(stateSaver = destinationSaver(start)) { mutableStateOf(start) }
                     // R335: the onboarding prefill (the steps owed + their /me values) the RESOLVING step computes,
                     // carried into OnboardingRoute. Saveable so a rebuild during onboarding keeps the same subset.
                     var onboardingSeed by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
                     LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
+                    // AN-FORCED-SIGNOUT (R520): a session the SERVER ends - met by a screen or by the worker, in this
+                    // process (R507) - takes the person to sign-in from whatever screen is open (PARK-T1).
+                    LaunchedEffect(Unit) {
+                        processSessionEnds.ends.collect {
+                            destination = destinationAfterSessionEnd(destination, session.isSignedIn())
+                        }
+                    }
                     when (destination) {
-                        Destination.SIGN_IN ->
+                        Destination.SIGN_IN -> {
+                            // R520: arrived here because the server ended the session? Read when sign-in opens, from
+                            // the stores (SessionEnds.kt) - and then the days still waiting, counted from the record
+                            // as the screen renders (R181), the current account's own (R303).
+                            val closed =
+                                remember { sessionClosedByServer(session.isSignedIn(), accountStore.current()) }
+                            val pendingRows by
+                                remember { if (closed) repository.observePending() else flowOf(null) }
+                                    .collectAsState(initial = null)
                             SignInRoute(
                                 api,
                                 tokenStore,
                                 pending,
                                 accountStore,
                                 lifecycleScope,
+                                sessionClosed = closed,
+                                sessionClosedHeldDays = pendingRows?.let(::heldDays),
                                 onSignedIn = { destination = Destination.RESOLVING },
                             )
+                        }
                         Destination.RESOLVING -> {
                             // R481: every route here follows a sign-in (the code path's onSignedIn, or the link's
                             // relaunch with its settings cleared), so this is where BOTH years come down. It does
@@ -343,10 +353,14 @@ private fun SignInRoute(
     pending: SharedPrefsPendingSignInStore,
     accountStore: AccountStore,
     scope: CoroutineScope,
+    // AN-FORCED-SIGNOUT (R520): the server ended the session - open on the sign-in screen itself, with the notice,
+    // never on Bienvenue, which is a first-run pitch and says nothing of why the person is here.
+    sessionClosed: Boolean,
+    sessionClosedHeldDays: Int?,
     onSignedIn: () -> Unit,
 ) {
     val context = LocalContext.current
-    var step by rememberSaveable { mutableStateOf(SignInStep.WELCOME) }
+    var step by rememberSaveable { mutableStateOf(if (sessionClosed) SignInStep.EMAIL else SignInStep.WELCOME) }
     // AN-STATE (R310): the typed email and a stable phase survive a rebuild.
     var saved by rememberSaveable { mutableStateOf<SignInSnapshot?>(null) }
     val controller = remember { SignInController(api, pending, scope, restored = saved) }
@@ -360,6 +374,8 @@ private fun SignInRoute(
         SignInStep.EMAIL ->
             RequestLinkScreen(
                 state = state,
+                // R520: named only while the server-ended state holds; null on any other arrival.
+                sessionClosedHeldDays = if (sessionClosed) sessionClosedHeldDays else null,
                 actions =
                     SignInActions(
                         onEmailChange = controller::onEmailChange,
@@ -992,39 +1008,6 @@ internal fun MainShell(
         }
     }
 }
-
-// AN12 increment 2 (R295): the device-wide erasure. clearAllTables() is derived from @Database, so it sweeps
-// every Room table (entry + daily_tally) with no per-DAO list to drift, and runs off the main thread (it
-// throws on it). Sign-out clears the record, cache, tokens and queued sync; deletion adds the settings and
-// pending sign-in (R289). Extracted from onCreate to keep it within its length budget.
-// The erasure's dependency list - these ARE the device's stores (the same reasoning as DeviceLocalStore's
-// own suppression); bundling them into a holder would only move the list.
-@Suppress("LongParameterList")
-private fun buildLocalStore(
-    context: Context,
-    tokenStore: TokenStore,
-    settingsStore: SettingsStore,
-    dossierCache: DossierCache,
-    pending: PendingSignInStore,
-    accountStore: AccountStore,
-): LocalStore =
-    DeviceLocalStore(
-        tokenStore = tokenStore,
-        settingsStore = settingsStore,
-        dossierCache = dossierCache,
-        pendingSignIn = pending,
-        accountStore = accountStore,
-        // R315: clear the detection logging-mode cache on sign-out/deletion (restored from /me on re-sign-in).
-        detectionModeStore = SharedPrefsDetectionModeStore(context),
-        clearRecord = {
-            // AN-PULL: a year still arriving is stopped BEFORE the record is cleared, so it cannot land in the store
-            // this sign-out empties (YearDownloads.stop says why it is a cancel, not a join).
-            processYearDownloads.stop()
-            withContext(Dispatchers.IO) { MonReleveDatabase.get(context).clearAllTables() }
-        },
-        cancelSync = { SyncScheduler.cancel(context) },
-        clearExports = { java.io.File(context.cacheDir, EXPORTS_DIR).deleteRecursively() },
-    )
 
 // AN12: the Parametres screen's callbacks, built from the controller's method references. A top-level helper
 // (not inline in MainShell) so the shell composable stays within its length budget; a plain mapping, not a

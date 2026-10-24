@@ -84,4 +84,31 @@ class DeviceLocalStore(
         clearForSignOut()
         pendingSignIn.clear()
     }
+
+    /**
+     * AN-FORCED-SIGNOUT (R521). A session the SERVER ended - a sign-out nobody asked for. Not R295's wipe: it KEEPS
+     * the record and its account tag, so the days wait for the same person (R509) and stay invisible to anybody
+     * else (R303). It clears what the next account must not inherit and the same account loses nothing by:
+     *   - the calculation settings - every key GET /api/v1/me restores at the next sign-in (StartupDecider);
+     *   - the cached releve - refetched from the server by the Releve's next load;
+     *   - the exported files - the cached record in another form, never read back by the app;
+     *   - the tokens - already cleared by SessionManager; cleared again because this scope must not depend on it;
+     *   - R527: the detection file (monreleve.detection) - the mode, the evening and alert opt-ins, the alert's
+     *     crossing state, the near-border flag - so the next account inherits no detection consent. Nothing restores
+     *     them today (PARK-E7): the same person comes back in manual mode with notifications off, and loses nothing
+     *     recorded. EXCEPT the employer figures, "employer.<accountTag>.<year>", which share that file: already their
+     *     account's own, so no other account reads them, and on this phone only, so nothing would bring them back.
+     * Not the queued sync: the worker settles an unauthenticated drain without retrying (R523). Not the pending
+     * sign-in: not account data.
+     *
+     * NOT ON THE LocalStore INTERFACE, deliberately: the screens that hold a LocalStore - Parametres - only ever end
+     * a session voluntarily or delete it. The one caller of this is the process's session (onServerEndedSession).
+     */
+    suspend fun clearForSessionEnd() {
+        tokenStore.clear()
+        dossierCache.clear()
+        clearExports()
+        settingsStore.clear()
+        detectionModeStore.clearForSessionEnd()
+    }
 }

@@ -111,6 +111,16 @@ interface AuthenticatedPoster {
 class SessionManager(
     private val api: AuthApi,
     private val tokenStore: TokenStore,
+    /**
+     * AN-FORCED-SIGNOUT (R520). Told when the SERVER ends the session - a refused refresh (a replay, an expiry, a
+     * revoke), a dead session's 401, a 401 the refresh could not recover - after the tokens are cleared, and ONLY
+     * then. Those three clears are the forced endings and nothing else reaches them: the voluntary sign-out wipes
+     * through the platform's LocalStore and never passes here, and [signOut] does not call it. Run NonCancellable,
+     * because whatever it owes the device must not be skipped by a caller that left (KMP-1b's reasoning). It may run
+     * more than once for one ending - two calls meeting one dead session each see it - so it must be idempotent.
+     * Defaulted to nothing, so a session in a test that does not ask is told nothing.
+     */
+    private val onEnded: suspend () -> Unit = {},
 ) : AuthenticatedPoster {
     private val refreshMutex = Mutex()
 
@@ -147,11 +157,19 @@ class SessionManager(
                 RefreshOutcome.Refreshed(result.pair)
             }
             RefreshResult.Invalid -> {
-                tokenStore.clear()
+                end()
                 RefreshOutcome.Expired
             }
+            // R526: the server could not answer (a 5xx, a 429, a body that does not parse, no network) - TRY LATER. The
+            // tokens stay, nobody is told, and the caller's own retry - the worker's backoff - asks again.
             is RefreshResult.Failed -> RefreshOutcome.NetworkError
         }
+
+    /** A session the server ended: the tokens go, then whoever asked is told (R520) - the one shape of all three. */
+    private suspend fun end() {
+        tokenStore.clear()
+        withContext(NonCancellable) { onEnded() }
+    }
 
     /**
      * An authenticated GET that refreshes ONCE on an expired/rotated access token
@@ -190,7 +208,7 @@ class SessionManager(
             retryAfterRefresh(request)
         } else {
             // revoked_session, unknown_token, or anything else: the session is dead.
-            tokenStore.clear()
+            end()
             Attempt.SessionEnded
         }
 
@@ -210,7 +228,7 @@ class SessionManager(
             is AuthedResult.Ok -> Attempt.Ok(retry.status, retry.value)
             is AuthedResult.Failed -> Attempt.NetworkError
             is AuthedResult.Unauthorized -> {
-                tokenStore.clear()
+                end()
                 Attempt.SessionEnded
             }
         }

@@ -43,6 +43,9 @@ private class ModeStoreFake(initial: LoggingMode = LoggingMode.MANUAL) : Detecti
     override fun clear() {
         mode = LoggingMode.MANUAL
     }
+
+    // AN-FORCED-SIGNOUT (R527): the mode alone lives here, so the session-end clear is the whole clear.
+    override fun clearForSessionEnd() = clear()
 }
 
 private class AutoSettingsStoreFake(private val initial: Settings) : SettingsStore {

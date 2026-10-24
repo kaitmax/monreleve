@@ -1,6 +1,7 @@
 package ch.monreleve.app.settings
 
 import android.content.Context
+import android.content.SharedPreferences
 
 // AN-RECON (R342). THE EMPLOYER FIGURE STAYS ON THE PHONE. The attestation rate the person types for a completed
 // year is kept here - tagged with the account, per year - so it survives a background kill (R310) and returning
@@ -16,6 +17,18 @@ import android.content.Context
 //
 // FAIL CLOSED (R303). With no active account the tag is null: figureFor returns null and save is a no-op, so an
 // unresolved account never writes a figure a later account could read.
+//
+// AN-FORCED-SIGNOUT (R527). A SIGN-OUT NOBODY ASKED FOR KEEPS THESE KEYS, and only these, from that file
+// (SharedPrefsDetectionModeStore.clearForSessionEnd). They are already scoped to their account, so no other account
+// can read them, and they exist only on this phone - nothing of them reaches the server, so nothing would bring them
+// back. Clearing them would erase the same person's typed figures with no way back. The voluntary sign-out and the
+// deletion still sweep the whole file, these keys included.
+
+/**
+ * The prefix every employer-figure key in monreleve.detection starts with - "employer.<accountTag>.<year>". ONE home
+ * (R206): the store writes under it and the session-end clear keeps exactly the keys that start with it.
+ */
+internal const val EMPLOYER_KEY_PREFIX = "employer."
 
 /** The employer attestation rate the current account entered for a given year - phone-only (R342). */
 interface EmployerFigureStore {
@@ -60,13 +73,18 @@ class InMemoryEmployerFigureStore(
 // plain decimal) so a two-decimal percentage keeps its precision; a missing key reads as null (no figure).
 private const val EMPLOYER_PREFS = "monreleve.detection"
 
-class SharedPrefsEmployerFigureStore(
-    context: Context,
+class SharedPrefsEmployerFigureStore internal constructor(
+    private val prefs: SharedPreferences,
     private val accountTag: () -> String?,
 ) : EmployerFigureStore {
-    private val prefs = context.applicationContext.getSharedPreferences(EMPLOYER_PREFS, Context.MODE_PRIVATE)
+    // AN-FORCED-SIGNOUT (R527): the file is a constructor argument so a JVM test can hand every store that shares
+    // it ONE in-memory file - the only way to see what a clear leaves of it. The app builds it from the Context.
+    constructor(context: Context, accountTag: () -> String?) : this(
+        context.applicationContext.getSharedPreferences(EMPLOYER_PREFS, Context.MODE_PRIVATE),
+        accountTag,
+    )
 
-    private fun keyFor(year: Int): String? = accountTag()?.let { "employer.$it.$year" }
+    private fun keyFor(year: Int): String? = accountTag()?.let { "$EMPLOYER_KEY_PREFIX$it.$year" }
 
     override fun figureFor(year: Int): Double? {
         val key = keyFor(year) ?: return null

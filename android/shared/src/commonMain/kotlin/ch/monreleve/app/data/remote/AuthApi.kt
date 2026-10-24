@@ -88,6 +88,12 @@ sealed interface CodeExchangeResult {
  * (docs/api-v1.md 1.5). The client cannot tell a replay from an expiry HERE; it
  * learns a replay only when a still-held access token later returns revoked_session
  * (R210), which is why SessionManager keeps those two paths distinct.
+ *
+ * AN-FORCED-SIGNOUT (R526): `Invalid` is THAT answer and nothing else - a 401 carrying
+ * invalid_refresh_token, the server saying the session is over. Every other answer is
+ * `Failed`, which the session treats as "try later" and never as an ending: a 5xx (the
+ * page Next serves while the database restarts), a 429, a proxy's page, a 200 or a 401
+ * whose body does not parse, the route's 400 malformed_body, a timeout, no network.
  */
 sealed interface RefreshResult {
     data class Rotated(val pair: TokenPair) : RefreshResult
@@ -240,7 +246,15 @@ class AuthApi(
         }
     }
 
-    /** Rotate a refresh token for a new pair. The refresh token travels in the BODY (docs/api-v1.md 1.3). */
+    /**
+     * Rotate a refresh token for a new pair. The refresh token travels in the BODY (docs/api-v1.md 1.3).
+     *
+     * ONLY THE ROUTE'S OWN REFUSAL IS [RefreshResult.Invalid] (R526): a 401 whose code is invalid_refresh_token. It
+     * used to be every non-200, so a server that could not answer - a 500 while its database restarted, a 429 - ended
+     * the session exactly as a revocation does, and since R520/R521 that sends the person to sign-in and clears their
+     * settings. Anything else is [RefreshResult.Failed], with the status and whatever code the body carried kept
+     * (ApiFailure.Server), and SessionManager answers it with "try later".
+     */
     suspend fun refresh(refreshToken: String): RefreshResult {
         val response =
             try {
@@ -259,7 +273,7 @@ class AuthApi(
             HTTP_OK ->
                 parseTokenPair(response.body)?.let { RefreshResult.Rotated(it) }
                     ?: RefreshResult.Failed(ApiFailure.Malformed("refresh 200 carried no token pair"))
-            else -> RefreshResult.Invalid
+            else -> refreshRefusalOf(parseServerFailure(response.status, response.body))
         }
     }
 
@@ -455,6 +469,19 @@ internal fun filenameOf(headers: Map<String, String>): String? {
             ?: return null
     return FILENAME.find(disposition)?.groupValues?.get(1)?.trim()?.ifEmpty { null }
 }
+
+/**
+ * AN-FORCED-SIGNOUT (R526): a refresh answer that is not a 200. ONLY the route's own refusal - 401
+ * invalid_refresh_token, refresh/route.ts's one answer for an unknown, expired, already rotated, revoked or replayed
+ * refresh token - says the session is over. Everything else is the server, or something in front of it, unable to
+ * answer; it is kept whole (status, code, raw code) so a log can say which.
+ */
+private fun refreshRefusalOf(failure: ApiFailure.Server): RefreshResult =
+    if (failure.status == HTTP_UNAUTHORIZED && failure.code == AuthServerCode.INVALID_REFRESH_TOKEN) {
+        RefreshResult.Invalid
+    } else {
+        RefreshResult.Failed(failure)
+    }
 
 /**
  * AN-ONBOARD: map a code-exchange refusal to its result. Branch on the RAW wire code, not AuthServerCode:

@@ -23,6 +23,30 @@ object SignInCopy {
     const val CONSENT_AND = " et la "
     const val CONSENT_SUFFIX = "."
 
+    /**
+     * AN-FORCED-SIGNOUT (R520). What this screen says when the person did not end their session - the server did:
+     * a refused renewal, a revoke-all, a replayed token. It says what happened and how many days wait on this
+     * phone, a live count read from the record when the screen renders (R181), never typed.
+     *
+     * IT DOES NOT ALARM (R210's copy rule). « fermée », never « volée » or « compromise »: the same sentence has to
+     * be true for somebody whose session merely could not be renewed, and it must not say which case fired.
+     * « pour les envoyer » states the purpose, not a promise - a send can fail, and the days then wait for the
+     * next one (PARK-T4).
+     *
+     * AT ZERO IT STILL SPEAKS. « Votre session a été fermée » is true with nothing held, and it is the only thing
+     * that tells somebody why they are looking at a sign-in screen they did not ask for; only the days clause goes.
+     */
+    fun sessionClosed(heldDays: Int): String =
+        when (heldDays) {
+            0 -> "Votre session a été fermée. Reconnectez-vous pour continuer."
+            1 ->
+                "Votre session a été fermée. 1 journée enregistrée sur ce téléphone attend d’être envoyée : " +
+                    "reconnectez-vous avec la même adresse pour l’envoyer."
+            else ->
+                "Votre session a été fermée. $heldDays journées enregistrées sur ce téléphone attendent d’être " +
+                    "envoyées : reconnectez-vous avec la même adresse pour les envoyer."
+        }
+
     const val RATE_LIMITED = "Trop de demandes de connexion. Patientez quelques minutes avant de réessayer."
     const val NETWORK_ERROR = "Connexion impossible. Vérifiez votre connexion, puis réessayez."
     const val GENERIC_ERROR = "Une erreur s’est produite. Réessayez."

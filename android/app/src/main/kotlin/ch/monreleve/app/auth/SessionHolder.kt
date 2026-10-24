@@ -2,6 +2,7 @@ package ch.monreleve.app.auth
 
 import android.content.Context
 import ch.monreleve.app.BuildConfig
+import ch.monreleve.app.account.deviceLocalStore
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 
@@ -47,11 +48,19 @@ private val processHolder = SessionHolder()
 /**
  * THE PROCESS'S SessionManager: the screens', every sync drain's and the debug probe's. Only the first call reads
  * [context], for its application context - the Keystore prefs file is the application's, whoever asks.
+ *
+ * AN-FORCED-SIGNOUT (R520, R521): a session the SERVER ends - met by a screen or by the worker - first clears what the
+ * next account must not inherit (DeviceLocalStore.clearForSessionEnd: the settings, the cached releve, the exports;
+ * never the record or its tag), then is recorded on the process's [processSessionEnds], so an open shell leaves for
+ * sign-in (SessionEnds.kt). Through the device's one LocalStore construction (account/DeviceLocalStores.kt).
  */
 internal fun processSession(context: Context): SessionManager =
     processHolder.get {
+        // The APPLICATION context, bound once: onEnded lives as long as the process, and must not hold an Activity.
+        val app = context.applicationContext
         SessionManager(
             AuthApi(UrlConnectionTransport(), BuildConfig.API_BASE_URL),
-            KeystoreTokenStore(context.applicationContext),
+            KeystoreTokenStore(app),
+            onEnded = { onServerEndedSession(deviceLocalStore(app), processSessionEnds) },
         )
     }

@@ -1,6 +1,7 @@
 package ch.monreleve.app.detection
 
 import android.content.Context
+import android.content.SharedPreferences
 
 // AN-AUTO increment 5 (R313). The "told once" flag for the near-border suggestion.
 //
@@ -37,8 +38,13 @@ class InMemoryNearBorderNoticeStore(private var shown: Boolean = false) : NearBo
 private const val DETECTION_PREFS = "monreleve.detection"
 private const val KEY_NEAR_BORDER_SHOWN = "nearBorderNoticeShown"
 
-class SharedPrefsNearBorderNoticeStore(context: Context) : NearBorderNoticeStore {
-    private val prefs = context.applicationContext.getSharedPreferences(DETECTION_PREFS, Context.MODE_PRIVATE)
+class SharedPrefsNearBorderNoticeStore internal constructor(
+    private val prefs: SharedPreferences,
+) : NearBorderNoticeStore {
+    // AN-FORCED-SIGNOUT (R527): the shared file as an argument, so a JVM test can read what a clear leaves of it.
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(DETECTION_PREFS, Context.MODE_PRIVATE),
+    )
 
     override fun hasShown(): Boolean = prefs.getBoolean(KEY_NEAR_BORDER_SHOWN, false)
 

@@ -97,7 +97,7 @@ class LocalStoreTest : FunSpec({
         var recordCleared = false
         var syncCancelled = false
         var exportsCleared = false
-        val store: LocalStore =
+        val store: DeviceLocalStore =
             DeviceLocalStore(
                 tokenStore = tokens,
                 settingsStore = settings,
@@ -158,6 +158,32 @@ class LocalStoreTest : FunSpec({
             f.pending.pending() shouldBe null
             // ...and the account tag (deletion is a superset of sign-out).
             f.account.current() shouldBe null
+        }
+    }
+
+    // AN-FORCED-SIGNOUT (R521). A session the SERVER ended is not R295's sign-out: the record and its account tag stay,
+    // so the days wait for the same person (R509) and stay invisible to anybody else (R303). What goes is what the
+    // next account must not inherit and the same one gets back - the settings (/me) and the cached releve (the
+    // dossier GET) - with the exports, the cached record in another form.
+    //
+    // R527 ADDS THE DETECTION FILE to that scope, but for the employer figures - which this fixture's in-memory mode
+    // store does not hold, so the figures' half is ForcedSignOutTest's, over one file and the app's own stores. Here:
+    // the mode goes. This test asserted AUTO_DETECT kept while the file was a QUESTION (Q1); R527 answered it.
+    test("R521/R527: a server-ended session clears the settings, the cache, the exports, the tokens and the mode") {
+        runTest {
+            val f = Fixture()
+            f.store.clearForSessionEnd()
+
+            f.settings.load() shouldBe null
+            f.cache.load(2026) shouldBe null
+            f.exportsCleared.shouldBeTrue()
+            f.tokens.load() shouldBe null
+            f.detectionMode.load() shouldBe LoggingMode.MANUAL
+            // KEPT: the record and its tag, the queued sync, the pending sign-in.
+            f.recordCleared shouldBe false
+            f.account.current() shouldBe "acct-tag"
+            f.syncCancelled shouldBe false
+            f.pending.pending().shouldNotBeNull()
         }
     }
 

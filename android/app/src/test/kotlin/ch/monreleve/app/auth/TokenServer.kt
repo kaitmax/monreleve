@@ -4,6 +4,7 @@ import ch.monreleve.app.data.remote.HttpMethod
 import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
+import ch.monreleve.app.data.remote.TransportException
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,6 +44,19 @@ private const val ACCESS_EXPIRES = "2026-10-22T10:15:00.000Z"
 private const val REFRESH_EXPIRES = "2027-01-20T10:00:00.000Z"
 private const val RECORDED_AT = "2026-10-22T10:00:00.000Z"
 
+/**
+ * AN-FORCED-SIGNOUT (R526). What answers POST /api/v1/auth/refresh while the server CANNOT apply its token rules -
+ * its database restarting (Prisma throws, Next answers 500), the edge limiting (429), a proxy's own page - or what the
+ * phone meets when nothing answers at all. None of them reaches tokens.ts, so none consumes or revokes anything.
+ */
+internal sealed interface RefreshFault {
+    /** The server, or something in front of it, answered this instead of the route's own answer. */
+    data class Answer(val response: HttpResponse) : RefreshFault
+
+    /** No answer: the transport's timeout or a network that is not there - what UrlConnectionTransport throws. */
+    data class Unreachable(val cause: Throwable) : RefreshFault
+}
+
 /** One pair, or none, exactly as TokenStore specifies - ONE store, because the Keystore prefs file is one file. */
 internal class OneTokenStore(
     private var pair: TokenPair?,
@@ -80,6 +94,11 @@ internal class TokenServer(
     private val tokens = mutableMapOf<String, Row>()
     private val sessions = mutableMapOf<Int, Session>()
     private val rowsByAccount = mutableMapOf<String, MutableList<JSONObject>>()
+
+    // AN-FORCED-SIGNOUT (R521): what GET /api/v1/me and GET /api/v1/dossier answer for each account - the two things
+    // a sign-in brings back after a forced sign-out cleared them on the phone.
+    private val meByAccount = mutableMapOf<String, JSONObject>()
+    private val dossiersByAccount = mutableMapOf<String, MutableMap<Int, String>>()
     private var minted = 0
 
     /** Every request, as "METHOD /path", in the order it ARRIVED. */
@@ -92,6 +111,20 @@ internal class TokenServer(
     var refreshRequests = 0
         private set
 
+    /**
+     * AN-FORCED-SIGNOUT (R522): the next successful rotation is followed AT ONCE by a revoke of its session - a
+     * revoke-all landing between a refresh and the request it was for, which is what "a 401 the refresh cannot
+     * recover" is on the real server. Null: no such revoke.
+     */
+    var revokeAfterNextRotation: String? = null
+
+    /**
+     * AN-FORCED-SIGNOUT (R526): while set, EVERY refresh is answered by this fault instead of the token rules - the
+     * fifteen seconds a database restart lasts, or longer. An [RefreshFault.Unreachable] request never arrives, so it
+     * is not in [requests]; an [RefreshFault.Answer] arrived and is. Null: the rules answer.
+     */
+    var refreshFault: RefreshFault? = null
+
     /** Open a session for [account] and issue its first pair - issueTokenPair, and what the code exchange does. */
     fun openSession(account: String): TokenPair {
         val id = sessions.size + 1
@@ -102,6 +135,24 @@ internal class TokenServer(
     /** The access token of [pair] has outlived its fifteen minutes. */
     fun expireAccess(pair: TokenPair) {
         tokens.getValue(pair.accessToken).expired = true
+    }
+
+    /** R522: the refresh token of [pair] has outlived its ninety days (tokens.ts: expiresAt <= now -> refused). */
+    fun expireRefresh(pair: TokenPair) {
+        tokens.getValue(pair.refreshToken).expired = true
+    }
+
+    /**
+     * R522: FW26's deletion, as lib/account/delete.ts performs it - a CASCADE, not a revoke. Every token of every
+     * session of [account] ceases to exist ("TOKENS ARE REVOKED BY BEING DESTROYED", R193), and the account's rows,
+     * settings and dossiers with them. The sessions stay in the map only so a later session's id stays unique; no
+     * token resolves to them, so an access token meets `unknown_token` and a refresh the route's one refusal.
+     */
+    fun deleteAccount(account: String) {
+        tokens.entries.removeAll { (_, row) -> sessions.getValue(row.session).account == account }
+        rowsByAccount.remove(account)
+        meByAccount.remove(account)
+        dossiersByAccount.remove(account)
     }
 
     /** Why the session [pair] belongs to was ended, or null while it is alive. */
@@ -121,11 +172,31 @@ internal class TokenServer(
     fun mutationsOf(account: String): List<String> =
         rowsByAccount[account].orEmpty().map { it.getString("clientMutationId") }
 
+    /** R521: the settings row GET /api/v1/me serialises for [account] (lib/me/read.ts's flat field object). */
+    fun holdSettings(
+        account: String,
+        me: JSONObject,
+    ) {
+        meByAccount[account] = me
+    }
+
+    /** R521: the body GET /api/v1/dossier?year=[year] returns for [account]. */
+    fun holdDossier(
+        account: String,
+        year: Int,
+        body: String,
+    ) {
+        dossiersByAccount.getOrPut(account) { mutableMapOf() }[year] = body
+    }
+
     override suspend fun execute(request: HttpRequest): HttpResponse {
         val path = request.url.removePrefix(TOKEN_SERVER_BASE)
+        // R526: a refresh while the server cannot answer it - nothing arrives, or something else answers.
+        val fault = refreshFault.takeIf { path == "/api/v1/auth/refresh" }
+        if (fault is RefreshFault.Unreachable) throw TransportException("unreachable (R526)", fault.cause)
         requests += "${request.method} ${path.substringBefore('?')}"
         // Decided NOW, answered after the latency (see the header).
-        val response = decide(request, path)
+        val response = (fault as? RefreshFault.Answer)?.response ?: decide(request, path)
         delay(latencyMs)
         return response
     }
@@ -159,12 +230,19 @@ internal class TokenServer(
                 session.revokedReason = TOKEN_REPLAYED
                 refused()
             }
+            // R522: tokens.ts checks the expiry after the replay - an expired refresh token is refused, nothing more.
+            row.expired -> refused()
             else -> {
                 row.consumed = true
                 tokens.values
                     .filter { it.session == row.session && it.kind == Kind.ACCESS }
                     .forEach { it.consumed = true }
-                pairBody(mint(row.session))
+                val successor = pairBody(mint(row.session))
+                revokeAfterNextRotation?.let { reason ->
+                    session.revokedReason = reason
+                    revokeAfterNextRotation = null
+                }
+                successor
             }
         }
     }
@@ -185,26 +263,65 @@ internal class TokenServer(
         }
     }
 
+    // One function per verb (AN-FORCED-SIGNOUT): the routes this fake serves outgrew one `when`.
     private fun route(
         request: HttpRequest,
         path: String,
         session: Session,
     ): HttpResponse =
+        when (request.method) {
+            HttpMethod.POST -> post(request, path, session)
+            HttpMethod.GET -> get(path, session)
+            else -> notScripted()
+        }
+
+    private fun post(
+        request: HttpRequest,
+        path: String,
+        session: Session,
+    ): HttpResponse =
         when {
-            request.method == HttpMethod.POST && path == "/api/v1/auth/sign-out" -> {
+            path == "/api/v1/auth/sign-out" -> {
                 if (session.revokedReason == null) session.revokedReason = SIGNED_OUT
                 HttpResponse(HTTP_OK, """{"status":"ok"}""")
             }
-            request.method == HttpMethod.POST && path == "/api/v1/entries" && refuseNextEntriesPost -> {
+            path == "/api/v1/entries" && refuseNextEntriesPost -> {
                 refuseNextEntriesPost = false
                 HttpResponse(HTTP_SERVER_ERROR, """{"status":"error","code":"write_failed"}""")
             }
-            request.method == HttpMethod.POST && path == "/api/v1/entries" -> write(session.account, request.body)
-            request.method == HttpMethod.GET && path.startsWith("/api/v1/entries?year=") ->
-                year(session.account, path.substringAfter("?year=").toInt())
-            request.method == HttpMethod.GET && path == "/api/v1/me" -> HttpResponse(HTTP_OK, """{"status":"ok"}""")
-            else -> HttpResponse(HTTP_NOT_FOUND, """{"status":"error","code":"not_scripted"}""")
+            path == "/api/v1/entries" -> write(session.account, request.body)
+            // R522: revoke-all/route.ts - every session of the token's account ends, the caller's own included.
+            path == "/api/v1/auth/revoke-all" -> {
+                sessions.values
+                    .filter { it.account == session.account && it.revokedReason == null }
+                    .forEach { it.revokedReason = REVOKED_ALL }
+                HttpResponse(HTTP_OK, """{"status":"ok"}""")
+            }
+            else -> notScripted()
         }
+
+    private fun get(
+        path: String,
+        session: Session,
+    ): HttpResponse =
+        when {
+            path.startsWith("/api/v1/entries?year=") -> year(session.account, path.substringAfter("?year=").toInt())
+            // R521: the account's settings, flat as serialiseMe writes them - or, for an account that has none, the
+            // body every earlier test was given (no canton: onboarding).
+            path == "/api/v1/me" ->
+                HttpResponse(HTTP_OK, meByAccount[session.account]?.toString() ?: """{"status":"ok"}""")
+            path.startsWith("/api/v1/dossier?year=") ->
+                dossiersByAccount[session.account]?.get(path.substringAfter("?year=").toInt())
+                    ?.let { HttpResponse(HTTP_OK, it) }
+                    ?: notScripted()
+            else -> notScripted()
+        }
+
+    private fun notScripted(): HttpResponse =
+        HttpResponse(
+            HTTP_NOT_FOUND,
+            """{"status":"error","code":"not_scripted"}""",
+        )
 
     /** R217: each row written under the SESSION's account and echoed back as the server's row. */
     private fun write(
@@ -294,5 +411,6 @@ internal class TokenServer(
         /** prisma SessionRevocation, as tokens.ts writes it. */
         const val TOKEN_REPLAYED = "TOKEN_REPLAYED"
         const val SIGNED_OUT = "SIGNED_OUT"
+        const val REVOKED_ALL = "REVOKED_ALL"
     }
 }

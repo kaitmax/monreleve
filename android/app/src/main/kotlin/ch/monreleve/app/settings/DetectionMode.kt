@@ -1,6 +1,7 @@
 package ch.monreleve.app.settings
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.json.JSONObject
 
 // AN-AUTO increment 2 (R315). The logging mode and the consent that gates it.
@@ -58,6 +59,15 @@ interface DetectionModeStore {
      * the six calculation settings (R297).
      */
     fun clear()
+
+    /**
+     * AN-FORCED-SIGNOUT (R527): a session the SERVER ended. Erase the mode and every other flag the detection file
+     * holds - the evening and alert opt-ins, the alert's crossing state, the near-border "told once" - so the next
+     * account inherits no detection consent and the same person comes back in manual mode with notifications off.
+     * EXCEPT the employer figures (EMPLOYER_KEY_PREFIX): already scoped to their account, on this phone only, and
+     * brought back by nothing if erased. [clear] - the voluntary sign-out and the deletion - still takes them too.
+     */
+    fun clearForSessionEnd()
 }
 
 /** The default used by JVM tests and as a safe fallback; the app injects the SharedPreferences store. */
@@ -71,13 +81,22 @@ class InMemoryDetectionModeStore(private var mode: LoggingMode = LoggingMode.MAN
     override fun clear() {
         mode = LoggingMode.MANUAL
     }
+
+    // It holds the mode alone - no employer figure lives here - so the session-end clear is the whole clear.
+    override fun clearForSessionEnd() = clear()
 }
 
 private const val MODE_PREFS = "monreleve.detection"
 private const val KEY_MODE = "loggingMode"
 
-class SharedPrefsDetectionModeStore(context: Context) : DetectionModeStore {
-    private val prefs = context.applicationContext.getSharedPreferences(MODE_PREFS, Context.MODE_PRIVATE)
+class SharedPrefsDetectionModeStore internal constructor(
+    private val prefs: SharedPreferences,
+) : DetectionModeStore {
+    // AN-FORCED-SIGNOUT (R527): the file is a constructor argument so a JVM test can hand every store that shares
+    // it ONE in-memory file - the only way to see what a clear leaves of it. The app builds it from the Context.
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(MODE_PREFS, Context.MODE_PRIVATE),
+    )
 
     override fun load(): LoggingMode =
         runCatching { LoggingMode.valueOf(prefs.getString(KEY_MODE, null) ?: LoggingMode.MANUAL.name) }
@@ -89,5 +108,13 @@ class SharedPrefsDetectionModeStore(context: Context) : DetectionModeStore {
 
     override fun clear() {
         prefs.edit().clear().commit()
+    }
+
+    // R527: every key of the file EXCEPT the employer figures - read from the file itself, so a flag added to it later
+    // is cleared with the rest rather than kept by a list that forgot it.
+    override fun clearForSessionEnd() {
+        val editor = prefs.edit()
+        prefs.all.keys.filterNot { it.startsWith(EMPLOYER_KEY_PREFIX) }.forEach { editor.remove(it) }
+        editor.commit()
     }
 }

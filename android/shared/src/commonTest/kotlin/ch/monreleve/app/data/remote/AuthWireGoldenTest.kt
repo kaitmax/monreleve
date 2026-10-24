@@ -165,8 +165,11 @@ class AuthWireGoldenTest {
             )
         }
 
+    // AN-FORCED-SIGNOUT (R526). This golden was named "...AndEveryNon200IsTheSingleInvalid" and asserted the 401 alone,
+    // so it pinned the half of the old mapping that was right and named the half that was not. Invalid is now the
+    // route's ONE refusal and nothing else; every other answer is Failed, its status and code kept.
     @Test
-    fun goldenRefresh200IsRotatedAndEveryNon200IsTheSingleInvalid() =
+    fun goldenRefresh200IsRotatedAndOnlyThe401InvalidRefreshTokenIsInvalid() =
         runTest {
             assertIs<RefreshResult.Rotated>(
                 AuthApi(FakeTransport(HttpResponse(200, PAIR_BODY)), BASE).refresh("r"),
@@ -174,6 +177,35 @@ class AuthWireGoldenTest {
             assertEquals(
                 RefreshResult.Invalid,
                 AuthApi(FakeTransport(HttpResponse(401, """{"code":"invalid_refresh_token"}""")), BASE).refresh("r"),
+            )
+        }
+
+    @Test
+    fun goldenRefreshEveryOtherAnswerIsFailedWithItsStatusKept() =
+        runTest {
+            val answers =
+                listOf(
+                    HttpResponse(500, "<!DOCTYPE html><html><body>Internal Server Error</body></html>") to null,
+                    HttpResponse(503, "") to null,
+                    HttpResponse(429, "") to null,
+                    HttpResponse(401, "<html>Unauthorized</html>") to null,
+                    HttpResponse(400, """{"code":"malformed_body"}""") to AuthServerCode.MALFORMED_BODY,
+                )
+            for ((response, code) in answers) {
+                val failure = AuthApi(FakeTransport(response), BASE).refresh("r")
+                val server = assertIs<ApiFailure.Server>(assertIs<RefreshResult.Failed>(failure).failure)
+                assertEquals(response.status, server.status)
+                assertEquals(code, server.code)
+            }
+            assertIs<ApiFailure.Malformed>(
+                assertIs<RefreshResult.Failed>(
+                    AuthApi(FakeTransport(HttpResponse(200, "<html>portal</html>")), BASE).refresh("r"),
+                ).failure,
+            )
+            assertIs<ApiFailure.Network>(
+                assertIs<RefreshResult.Failed>(
+                    AuthApi(FakeTransport(error = TransportException("timeout")), BASE).refresh("r"),
+                ).failure,
             )
         }
 

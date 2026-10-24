@@ -3385,7 +3385,12 @@ the screens); changing what "Se deconnecter" does when the session is already go
 
 COST OF REVERSING: one shell effect and a session signal; the voluntary flow untouched.
 
-STATE:      OPEN - a QUESTION in REPORT-AN-TOKEN-RACE.txt.
+STATE:      CLOSED by AN-FORCED-SIGNOUT (R520), on branch an-forced-signout,
+pending merge (REPORT-AN-FORCED-SIGNOUT.txt). The operator ruled Q1: a session
+the server ends lands on sign-in, with a notice naming the days waiting, and
+nothing from that state offers the voluntary sign-out. SessionManager tells the
+process when the SERVER ends the session; the shell leaves any screen for
+sign-in. The voluntary sign-out's controller is unchanged.
 
 ## PARK-T2 - what another account inherits after a forced sign-out: settings and the cached releve  [AN-TOKEN-RACE, 2026-10-22]
 
@@ -3406,7 +3411,10 @@ when a DIFFERENT account signs in - a decision about R303's reach beyond the rec
 
 COST OF REVERSING: an account key on two stores, or a clear on an account change.
 
-STATE:      OPEN - a QUESTION in REPORT-AN-TOKEN-RACE.txt.
+STATE:      CLOSED by AN-FORCED-SIGNOUT (R521), on branch an-forced-signout,
+pending merge (REPORT-AN-FORCED-SIGNOUT.txt). A forced sign-out now clears the
+settings (every key GET /me restores), the cached releve and the exports; the
+record and its tag stay. The detection file is NOT cleared and is PARK-E1.
 
 ## PARK-T3 - a drain landing during a year download is overwritten by the stale year  [AN-TOKEN-RACE, 2026-10-22]
 
@@ -3483,7 +3491,11 @@ NOT TAKEN:  Treating 5xx/429 from the refresh as a network failure (keep the tok
 
 COST OF REVERSING: one branch in AuthApi.refresh and its golden.
 
-STATE:      OPEN.
+STATE:      CLOSED by AN-FORCED-SIGNOUT (R526), on branch an-forced-signout,
+pending merge (REPORT-AN-FORCED-SIGNOUT.txt). AuthApi.refresh answers Invalid for
+the route's one refusal only - 401 invalid_refresh_token; every other answer is
+Failed, which the session treats as try later: the tokens stay, nothing is
+cleared, and the worker's backoff asks again.
 
 ## PARK-T7 - a late refusal can clear a pair a new sign-in has just saved  [AN-TOKEN-RACE, 2026-10-22]
 
@@ -3723,3 +3735,235 @@ AN-RELEVE-FRESH: after a sync sends days the cached Releve is marked stale; open
 online fetches it again; while days are unsent the screen says how many are not yet
 sent rather than letting the document look complete. The Releve shows the SERVER's
 record only, never local pending days.
+
+## PARK-E1 - the detection file survives a forced sign-out: /me carries its loggingMode, and nothing restores it  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R521).
+
+WHAT IT IS: R521 clears, on a sign-out nobody asked for, every settings key GET
+/api/v1/me restores at the next sign-in. monreleve.detection is ONE file, swept by
+ONE prefs clear() (SharedPrefsDetectionModeStore), and none of its keys is restored
+by the app: loggingMode IS carried by /me (with detectionConsentAt) but
+parseLoggingMode has no caller in main sources, so nothing reads it back; and
+nearBorderNoticeShown, evening.enabled, evening.lastNotifiedDay, alert.enabled,
+alert.fiscalCrossed, alert.socialCrossed, alert.alertedDay, alert.alertedThreshold
+and employer.<accountTag>.<year> are device-only - /me does not carry them at all
+(the employer figure is already keyed by account tag, so another account cannot
+read it). Cleared, the same person would lose automatic mode, both opt-ins and the
+"told once" flag; kept, the NEXT account inherits the mode, the opt-ins and the
+crossing state.
+
+TAKEN:      Kept, and raised as a QUESTION - R521 forbids clearing or keeping such
+a key silently.
+
+NOT TAKEN:  Clearing the file on a forced sign-out; restoring loggingMode from /me
+at sign-in (parseLoggingMode exists for it); keying the device-only flags by
+account tag, as the employer figure already is.
+
+COST OF REVERSING: one line in DeviceLocalStore.clearForSessionEnd(), or a /me
+read at RESOLVING and an account key on four flags.
+
+STATE:      CLOSED by AN-FORCED-SIGNOUT (R527: Q1 -> (b), with one exception), on
+branch an-forced-signout, pending merge. A forced sign-out now clears the
+detection file EXCEPT the keys employer.<accountTag>.<year> (already scoped to
+their account, device-only, restored by nothing). The voluntary sign-out and the
+deletion still sweep the whole file. Restoring the mode from /me and keying the
+device flags by account is PARK-E7.
+
+## PARK-E2 - a deleted account cannot be told from a revoked session or a corrupted token, so its held days are kept  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R522).
+
+WHAT IT IS: Deletion requires the account's local data to be erased. A deletion
+made on ANOTHER device reaches this phone as unknown_token (lib/account/delete.ts
+destroys the tokens by cascade); a corrupted stored token on a live account gets
+the same unknown_token (bearer.ts says so), and the refresh route refuses both
+with its one invalid_refresh_token. So the phone takes R520's path: the deleted
+account's held days stay, tagged, never shown to anyone else - and if the same
+address signs in again, the server creates a NEW account (user.upsert) and the
+days go up into it. ForcedSignOutTest pins this AS FOUND.
+
+TAKEN:      Nothing decided - the ruling says STOP and ask.
+
+NOT TAKEN:  Erasing on unknown_token (a corrupted token or a restored server
+database would then erase held days - the loss R520 exists to prevent); a server
+signal (out of scope: no server change, and R210 forbids telling an
+unauthenticated caller which case fired).
+
+COST OF REVERSING: depends on the option chosen; see the report's question.
+
+STATE:      DECIDED by R529 (Q2 -> (a): never erase on a guess). Today's behaviour
+stays; ForcedSignOutTest's deletion test is retitled as decided, body unchanged.
+Honouring a deletion made on another device needs a server signal designed with
+R210 in mind - its own task, PARK-E8.
+
+## PARK-E3 - the phone's logging mode is set by Parametres alone; four comments say /me restores it  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R521's key census).
+
+WHAT IT IS: SharedPrefsDetectionModeStore.save is called only by
+ParametresController (the toggle, and the permission-revoked fallback). Onboarding's
+automatic choice PATCHes loggingMode and consent to the server but never saves the
+mode on the phone or starts the sampler; and no sign-in reads loggingMode back
+from /me (parseLoggingMode has no caller). The comments in LocalStore.kt,
+DetectionMode.kt, LocalStoreTest.kt and ErasureCensusTest.kt say the mode is
+"restored from /me on re-sign-in". It is not. AN-FORCED-SIGNOUT dropped the claim
+only from the comment it moved (account/DeviceLocalStores.kt).
+
+TAKEN:      Nothing - pre-existing, outside R520-R525.
+
+NOT TAKEN:  Saving the mode at onboarding's save and at RESOLVING; correcting the
+four comments.
+
+COST OF REVERSING: two calls and their tests, and four comment edits.
+
+STATE:      OPEN - to be taken with PARK-E7, whose restore from /me is this entry's
+first half; the four comments are corrected there.
+
+## PARK-E4 - daily_tally carries no account tag, so the next account sees the previous one's detection tallies  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R521).
+
+WHAT IT IS: The record and the rhythm are account-tagged; daily_tally (the
+coordinate-free check tally Aujourd'hui's automatic surface reads) is keyed by
+day alone. A voluntary sign-out clears it with the database; a forced sign-out
+keeps the database for the held days, so the tally stays too, and another account
+signing in reads it.
+
+TAKEN:      Nothing - tagging the table is a Room schema change, which this task's
+boundary sends to the operator.
+
+NOT TAKEN:  An accountTag column on daily_tally; clearing the tally table alone on
+a forced sign-out (it is not the record, but it is detection data the same person
+may want back).
+
+COST OF REVERSING: a migration and a DAO filter, or one DAO delete.
+
+STATE:      OPEN.
+
+## PARK-E5 - a refresh refused by a server error now lands on sign-in and clears the settings  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R520, R521).
+
+WHAT IT IS: PARK-T6, with its cost raised. AuthApi.refresh maps every non-200 to
+Invalid, so a 500 or a 429 from /api/v1/auth/refresh is a forced sign-out. Before
+this task the person saw a "session ended" line; now they land on sign-in with the
+notice, and the settings and the cached releve are cleared (restored at the next
+sign-in, so nothing is lost but a sign-in).
+
+TAKEN:      Nothing - PARK-T6 is out of this task's scope by ruling.
+
+NOT TAKEN:  Treating 5xx/429 from the refresh as a network failure (PARK-T6's own
+remedy).
+
+COST OF REVERSING: PARK-T6's: one branch in AuthApi.refresh and its golden.
+
+STATE:      CLOSED by AN-FORCED-SIGNOUT (R526 - a regression this branch made, so
+fixed here rather than parked), on branch an-forced-signout, pending merge. A 5xx,
+a 429, a timeout, no network or an unparseable answer to the refresh now keeps the
+person signed in with nothing cleared; the server's explicit refusals still end the
+session (REPORT-AN-FORCED-SIGNOUT.txt lists both).
+
+## PARK-E6 - a drain racing this phone's own sign-out or deletion can show the forced notice instead  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R520).
+
+WHAT IT IS: The voluntary sign-out revokes the session, then wipes; this phone's
+deletion deletes the account, then wipes. A worker drain that posts in between
+meets the session those have just ended, SessionManager reports a server ending,
+and the shell lands on sign-in - possibly with « Votre session a été fermée »
+read before the wipe cleared the tag - instead of the voluntary outcome or the
+deletion receipt. The wipe itself still completes (it runs in NonCancellable on
+the activity's scope). Not observed; read from the order of the calls.
+
+TAKEN:      Nothing - the voluntary sign-out and the deletion are AN-POLISH's and
+AN12's, unchanged by ruling.
+
+NOT TAKEN:  Cancelling the queued sync before the revoke or the delete, as the
+wipe already does after it.
+
+COST OF REVERSING: one cancelSync() call moved earlier in two flows, and a test.
+
+STATE:      OPEN.
+
+## PARK-E7 - after a forced sign-out nothing restores the detection mode or the opt-ins  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R527).
+
+WHAT IT IS: R527 clears monreleve.detection on a sign-out nobody asked for, except
+the employer figures, so the next account inherits no detection consent. The cost
+falls on the same person: they come back in MANUAL with the evening and alert
+notifications off and the near-border notice unshown, until they turn them on
+again in Parametres. GET /api/v1/me carries loggingMode and detectionConsentAt,
+but nothing reads them back (parseLoggingMode has no caller - PARK-E3); the
+opt-ins, the crossing state and the near-border flag are device-only and not keyed
+by account, which is why clearing them is the only way today to keep another
+account from inheriting them.
+
+TAKEN:      Nothing - R527 parks it as its own task.
+
+NOT TAKEN:  Restoring loggingMode from /me at RESOLVING (fail-closed, as
+parseLoggingMode reads it, with the sampler started where the permission is
+held); keying the device-only flags by account tag, as the employer figure already
+is - after which a forced sign-out could keep them for the same person and still
+hide them from another.
+
+COST OF REVERSING: a /me read at RESOLVING and the sampler start, an account key
+on the flag stores with a migration of the existing keys, and their tests;
+PARK-E3 goes with it.
+
+STATE:      OPEN - its own task, by ruling.
+
+## PARK-E8 - a deletion made on another device is never honoured on this phone  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R529, on R522's Q2).
+
+WHAT IT IS: Deletion requires the account's local data to be erased. A deletion
+made on another device reaches this phone as unknown_token, or as the refresh
+route's one refusal - the answers a corrupted stored token or a restored server
+database also give - so the phone cannot tell it apart and, by R529, never erases
+on that guess: the deleted account's held days stay on this phone, tagged and
+never shown to anybody else, and if the same address signs in again they go up
+into the NEW account the server creates for it.
+
+TAKEN:      R529: today's behaviour stays (PARK-E2, decided).
+
+NOT TAKEN:  A server-side signal designed with R210 in mind - nothing told to an
+unauthenticated caller about which case fired. One shape raised in the report: at
+the NEXT sign-in, an authenticated fact about the account (its creation time on
+/me) that the phone compares with when its held rows were written, so it drops
+held days before they reach an account they never belonged to.
+
+COST OF REVERSING: a server change (outside AN-FORCED-SIGNOUT's scope), a
+phone-side check at sign-in before R509's send, and tests both ways.
+
+STATE:      OPEN - its own task, by ruling.
+
+## PARK-E9 - answers that fit neither of R526's lists, kept or ended pending a ruling  [AN-FORCED-SIGNOUT, 2026-10-24]
+
+RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R526).
+
+WHAT IT IS: R526 ends a session only on the server's explicit refusals and makes
+everything else "try later"; an answer that fits neither list is a question. Two
+kinds were found in the source:
+  - the refresh route's other refusal, 400 malformed_body (the body it was sent
+    is not JSON - a defect in this client), and a 401 on that route that does not
+    carry invalid_refresh_token in a body that parses: KEPT, as try later, because
+    ending on them would end on a guess (R529). If one were permanent, the worker
+    would retry on its backoff and the screens would show a network error.
+  - a bearer 401 carrying missing_token or malformed_authorization (client
+    defects, docs/api-v1.md 1.4), a code this build does not know (contract 6.5:
+    terminal, never guessed into a known one), or no code at all: that is not a
+    failed refresh, and SessionManager.onUnauthorized ENDS the session on every
+    one, as it did before this branch - unchanged, pinned as found in
+    SessionManagerTest.
+
+TAKEN:      The refresh's 400 kept (conservative, reversible); the bearer 401s
+left as they were.
+
+NOT TAKEN:  Ending on the refresh's 400; treating the bearer 401s as try later.
+
+COST OF REVERSING: one branch in AuthApi's refresh mapping or in
+SessionManager.onUnauthorized, and the pinning tests.
+
+STATE:      OPEN - a QUESTION in REPORT-AN-FORCED-SIGNOUT.txt.
