@@ -77,7 +77,23 @@ THE ANDROID GATE (the baseline every fix must keep):
            225 actionable tasks: 225 executed
            GATE_EXIT=0
 
-  FINAL TIP: GATE PENDING - filled in by the next commit of this report.
+  d085979  the commit carrying this report and PARK-N1..N4 - every file the
+           gate reads, android/ included, as on the final tip
+           ./gradlew :app:gate --rerun-tasks   (after ./gradlew --stop)
+           [clean-worktree] OK: no unstaged changes to tracked files (R393)
+           test floor OK: 1268 unit tests observed (>= 10)
+           BUILD SUCCESSFUL in 10m 12s
+           225 actionable tasks: 225 executed
+           GATE_EXIT=0
+           (HEAD read as d08597938d13b2d0a96575799d9d92f161da60c8 before and
+           after the run)
+
+  THE FINAL TIP IS NOT d085979, and the narrow claim goes where the broad one
+  would: the final tip differs from d085979 ONLY in REPORT-IOS-0.txt (this
+  wording). RegisterCoverageTest is the one gated test that reads it; its
+  script was re-run against the final text (PUSH PROOF). Nothing under
+  android/ or .github/ has changed since 074dc8c, the SHA the iOS run above
+  executed on.
 
 gate:clone NOT RUN and not claimed: nothing under web/ changed
 (`git diff origin/main...HEAD -- web/` is empty - PUSH PROOF).
@@ -335,7 +351,10 @@ SOURCES OF THE COUNTS:
        testDebugUnitTest, copied aside before anything else ran): 85 tests in
        14 files, of which CommonMainFenceTest (3) is androidUnitTest - it reads
        commonMain as text with java.io.File and is not commonTest. 85 - 3 = 82.
-       Recounted on the final tip under STATUS when that gate has run.
+       RECOUNTED on d085979 from the final gate's own XML: 14 files, 85 tests,
+       82 commonTest - and its GenevaConformanceTest system-out carries the
+       same six GENEVA lines, 39.16 and 4.16 included. Matched by name against
+       the iOS artifact again: 82 and 82, 0 on one side only.
   iOS  the JUnit XML in run 40109727655's artifact ios-shared-test-results
        (test-results/iosSimulatorArm64Test): 13 files, 82 tests.
 MATCHED BY NAME, not only by count: every one of the 82 (class, test) pairs is
@@ -575,7 +594,8 @@ minute" - Actions runner pricing):
   40110013004  ios-0-plant  d2a7329  failure     3m53s     4   R531 plant, cold
   TOTAL                                          12m22s    15 macOS minutes
 
-The runs API's `billable.MACOS.total_ms` returned 0 for every run, so the
+The runs API's `billable.MACOS.total_ms` returned 0 for every run (queried for
+all six), so the
 billed column is computed from the job times by the published rounding rule,
 not read from GitHub.
 
@@ -695,7 +715,48 @@ Q4 R538. The billing API needs the gh `user` scope, which the token lacks, so
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-PENDING - written with the final gate, by the next commit of this report.
+THE BRANCH IS PUSHED AND NOT MERGED. ios-0 -> origin/ios-0. PENDING MERGE - the
+merge is the operator's. Its upstream was unset right after the worktree was
+created from origin/main, then set to origin/ios-0 by the first push.
+
+THE COMMITS, in order, each pushed when made:
+    344f0bb  R530 - the iOS workflow                   } push: * [new branch]
+    d22324b  R534 - the Geneva test names each case     }   ios-0 -> ios-0
+    8572876  R532 cause 1 - provision the K/N toolchain   (d22324b..8572876)
+    ba8d922  the simulator check, first version         (8572876..ba8d922)
+    b682faa  the simulator check, second version        (ba8d922..b682faa)
+    074dc8c  the simulator from the logged command      (b682faa..074dc8c)
+             - THE iOS GATE RUN 40109727655 executed on it
+    d085979  this report and PARK-N1..N4               (074dc8c..d085979)
+             - started no CI run (paths-ignore): the newest run listed for
+               ios-0 afterwards was still 40109727655 on 074dc8c
+             - FULL :app:gate GREEN on it
+    <this>   the report completed - REPORT-IOS-0.txt only. A report cannot
+             print its own SHA; its push is in the handback.
+  and on the throwaway branch, deleted: d2a7329 (R531 plant, parent 074dc8c;
+  push: * [new branch] ios-0-plant -> ios-0-plant; then - [deleted]).
+
+WHAT THE BRANCH CHANGES, against main:
+    git diff --stat c4336db..HEAD -- android/
+      .../kotlin/ch/monreleve/app/calc/GenevaConformanceTest.kt | 10 ++++++++++
+    plus .github/workflows/ios-shared.yml (new), parking.md (+83 lines, the
+    N series) and REPORT-IOS-0.txt (new).
+    git diff --stat 074dc8c..d085979
+      REPORT-IOS-0.txt | 701 ++++   parking.md | 83 ++++
+    git diff origin/main...HEAD -- web/      -> empty (0 lines): no web change,
+                                                so gate:clone is not owed (R199).
+
+REGISTER, against this final text:
+    $ node web/scripts/register-coverage.mjs
+    register coverage: OK - 131 cited id(s) across 125 report(s), all have
+    headings in parking.md
+
+ISOLATION (R334, R349, R392). All work in C:/wt/ios-0, this session's
+worktree, created from origin/main and carrying .session-lock.json
+(gitignored, never committed, removed at the end). Files staged by name only.
+Nothing was committed, stashed, reset or removed in any other C:/wt/* or in the
+main checkout, which was read for relay/IOS-0.txt and for a YAML parser in its
+web/node_modules, and written to never.
 
 ================================================================================
 END OF REPORT-IOS-0
