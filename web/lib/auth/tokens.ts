@@ -186,6 +186,39 @@ export async function revokeSession(
   });
 }
 
+/**
+ * R549: the fixed start of the replay-delta line. The whole line is this
+ * prefix followed by a whole number of seconds - nothing else, and in
+ * particular no identifier of any kind.
+ *
+ * An operator reads these lines in the app container's log and greps for
+ * exactly this string; tests/db/replay-delta-log.test.ts reads it from here
+ * rather than typing it beside the code (R181).
+ */
+export const REPLAY_DELTA_LOG_PREFIX = '[auth] refresh replay delta_seconds=';
+
+/**
+ * R549: one line, the whole seconds between a refresh token's rotation and its
+ * replay - the data the operator asked for before deciding whether R210 needs a
+ * grace window ("keep R210 strict, and measure").
+ *
+ * FLOORED, because "whole seconds since" is elapsed time: 37.9 s after the
+ * rotation, 38 seconds have not yet passed. Raw otherwise - a clock that has
+ * moved backwards shows as a negative number rather than being tidied away.
+ *
+ * IT NEVER THROWS INTO THE REQUEST. It runs after the revocation, and a log
+ * sink that fails is caught here: a failure to log is not a failure to refuse.
+ */
+function logReplayDelta(consumedAt: Date): void {
+  try {
+    const seconds = Math.floor((Date.now() - consumedAt.getTime()) / 1000);
+
+    console.warn(`${REPLAY_DELTA_LOG_PREFIX}${seconds}`);
+  } catch {
+    // Deliberately nothing: the refusal above has already happened.
+  }
+}
+
 /** End every session a person has. Sign-out-everywhere, and FW26's deletion. */
 export async function revokeAllSessions(
   userId: string,
@@ -246,6 +279,10 @@ export async function rotateRefreshToken(token: string): Promise<TokenPair | nul
   if (row.consumedAt !== null) {
     // THE REPLAY. Everything in this session stops working.
     await revokeSession(row.sessionId, 'TOKEN_REPLAYED');
+
+    // R549: measured AFTER the refusal is in place, and from the consumedAt
+    // this row already carries - no identifier reaches the line.
+    logReplayDelta(row.consumedAt);
 
     return null;
   }
