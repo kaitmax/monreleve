@@ -147,6 +147,27 @@ jobs:
       - name: Make the wrapper executable
         run: chmod +x gradlew
 
+      # R532 CAUSE 1 (run 40107915183). On a machine with no ~/.konan, Room's
+      # KSP task for an iOS target failed before anything compiled:
+      #   kspKotlinIosSimulatorArm64 / kspKotlinIosArm64 FAILED
+      #   java.lang.ClassNotFoundException: org.jetbrains.kotlin.cli.utilities.MainKt
+      #   Can't find env_blacklist file at ~/.konan/kotlin-native-prebuilt-...
+      # KSP 2.1.10-1.0.31 registers its own native task (KspTaskNative), which
+      # runs the Kotlin/Native compiler from the toolchain directory but does
+      # not PROVISION it; the Kotlin plugin's own native tasks do. KSP runs
+      # first, so on a fresh machine the directory does not exist yet. The
+      # commonizer is a Kotlin-plugin native task that provisions the toolchain
+      # (NativeDistributionCommonizerTask), and :shared:commonize depends on
+      # it. Nothing in :shared changes; no version changes.
+      - name: Provision the Kotlin/Native toolchain
+        run: |
+          ./gradlew :shared:commonize --no-daemon --stacktrace
+          if ! ls "$HOME"/.konan/kotlin-native-prebuilt-macos-*/tools/env_blacklist >/dev/null 2>&1; then
+            echo "NO RESULT: the Kotlin/Native toolchain is still absent from ~/.konan after :shared:commonize."
+            exit 1
+          fi
+          ls -d "$HOME"/.konan/kotlin-native-prebuilt-macos-*
+
       # THE SCRIPT (R530), with ONE addition: --continue, so a red test task
       # does not stop compileKotlinIosArm64 from also reporting in the same
       # paid run.
