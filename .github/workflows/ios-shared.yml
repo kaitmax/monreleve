@@ -123,8 +123,10 @@ jobs:
 
       # Printed BEFORE Gradle, so a red run still says which machine, which
       # Xcode, which simulators and which time-zone database it had. The Kotlin
-      # Gradle plugin runs the tests on the FIRST available device under the
-      # first "-- iOS x --" heading of `simctl list devices available`.
+      # Gradle plugin (2.1.10, XcodeDefaultTestDevicesValueSource) walks
+      # `simctl list devices available` and keeps, for iOS, the first device
+      # under EACH "-- iOS x --" heading, each overwriting the last - so the
+      # device is the first one listed under the LAST iOS runtime.
       # kotlinx-datetime 0.6.1 on the simulator reads its zone rules from
       # /usr/share/zoneinfo.default (its darwinSimulator defaultTzdbPath).
       - name: Environment (diagnostic)
@@ -167,6 +169,10 @@ jobs:
             exit 1
           fi
           ls -d "$HOME"/.konan/kotlin-native-prebuilt-macos-*
+
+      # A timestamp the simulator check below compares against.
+      - name: Mark the start of the iOS run
+        run: touch "$RUNNER_TEMP/ios-tests-start"
 
       # THE SCRIPT (R530), with ONE addition: --continue, so a red test task
       # does not stop compileKotlinIosArm64 from also reporting in the same
@@ -214,22 +220,31 @@ jobs:
 
       # WHICH SIMULATOR RAN THE TESTS, read from the machine rather than
       # inferred from the plugin's documented behaviour. The test task runs
-      # `xcrun simctl spawn --standalone <device>`, which boots that device; a
-      # booted device's data directory is written to, so the most recently
-      # modified device directories after the run name the one that booted.
+      # `xcrun simctl spawn --standalone <device>`, which boots that device,
+      # and a booting device writes files into its own data directory. So the
+      # devices with files NEWER than the marker touched before Gradle are the
+      # ones that booted during the run. (A first version compared directory
+      # mtimes; those do not move on boot, so it named an arbitrary device -
+      # run 40108753078, recorded as NO RESULT.)
       - name: Which simulator ran (positive signal)
         if: always()
         run: |
           set +e
           devices="$HOME/Library/Developer/CoreSimulator/Devices"
-          echo "Most recently modified simulator devices after the run:"
-          ls -lt "$devices" | grep -E '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' | head -3
-          newest=$(ls -t "$devices" | grep -E '^[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}$' | head -1)
-          echo "newest: $newest"
-          xcrun simctl list devices | grep "$newest"
-          ls -la "$devices/$newest/data" 2>/dev/null | head -8
-          echo "CoreSimulator per-device logs, newest first:"
-          ls -lt "$HOME/Library/Logs/CoreSimulator" 2>/dev/null | head -5
+          marker="$RUNNER_TEMP/ios-tests-start"
+          if [ ! -f "$marker" ]; then echo "NO RESULT: no start marker"; exit 0; fi
+          found=0
+          for d in "$devices"/*/; do
+            udid=$(basename "$d")
+            n=$(find "$d" -newer "$marker" -type f 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$n" -gt 0 ]; then
+              found=$((found + 1))
+              echo "BOOTED DURING THE RUN: $udid - $n file(s) written - $(xcrun simctl list devices | grep "$udid" | sed 's/^ *//')"
+              runtime=$(xcrun simctl list devices | awk -v u="$udid" '/^-- /{h=$0} index($0,u){print h; exit}')
+              echo "  under runtime heading: $runtime"
+            fi
+          done
+          [ "$found" -eq 0 ] && echo "NO RESULT: no simulator device wrote a file after the marker"
           exit 0
 
       # What Room's compiler generated for each iOS target - the R400 question
