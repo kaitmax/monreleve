@@ -97,7 +97,7 @@ class LocalStoreTest : FunSpec({
         var recordCleared = false
         var syncCancelled = false
         var exportsCleared = false
-        val store: LocalStore =
+        val store: DeviceLocalStore =
             DeviceLocalStore(
                 tokenStore = tokens,
                 settingsStore = settings,
@@ -158,6 +158,29 @@ class LocalStoreTest : FunSpec({
             f.pending.pending() shouldBe null
             // ...and the account tag (deletion is a superset of sign-out).
             f.account.current() shouldBe null
+        }
+    }
+
+    // AN-FORCED-SIGNOUT (R521). A session the SERVER ended is not R295's sign-out: the record and its account tag stay,
+    // so the days wait for the same person (R509) and stay invisible to anybody else (R303). What goes is what the
+    // next account must not inherit and the same one gets back - the settings (/me) and the cached releve (the
+    // dossier GET) - with the exports, the cached record in another form.
+    test("R521: a server-ended session clears the settings, the cache, the exports and the tokens - nothing else") {
+        runTest {
+            val f = Fixture()
+            f.store.clearForSessionEnd()
+
+            f.settings.load() shouldBe null
+            f.cache.load(2026) shouldBe null
+            f.exportsCleared.shouldBeTrue()
+            f.tokens.load() shouldBe null
+            // KEPT: the record and its tag, the queued sync, the pending sign-in - and the detection file, whose
+            // loggingMode /me carries but nothing restores (a QUESTION in REPORT-AN-FORCED-SIGNOUT.txt).
+            f.recordCleared shouldBe false
+            f.account.current() shouldBe "acct-tag"
+            f.syncCancelled shouldBe false
+            f.pending.pending().shouldNotBeNull()
+            f.detectionMode.load() shouldBe LoggingMode.AUTO_DETECT
         }
     }
 

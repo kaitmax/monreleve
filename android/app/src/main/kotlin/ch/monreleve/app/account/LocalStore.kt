@@ -84,4 +84,27 @@ class DeviceLocalStore(
         clearForSignOut()
         pendingSignIn.clear()
     }
+
+    /**
+     * AN-FORCED-SIGNOUT (R521). A session the SERVER ended - a sign-out nobody asked for. Not R295's wipe: it KEEPS
+     * the record and its account tag, so the days wait for the same person (R509) and stay invisible to anybody
+     * else (R303). It clears what the next account must not inherit and the same account loses nothing by:
+     *   - the calculation settings - every key GET /api/v1/me restores at the next sign-in (StartupDecider);
+     *   - the cached releve - refetched from the server by the Releve's next load;
+     *   - the exported files - the cached record in another form, never read back by the app;
+     *   - the tokens - already cleared by SessionManager; cleared again because this scope must not depend on it.
+     * NOT the detection file (monreleve.detection): it is one file swept by one clear(), and the loggingMode in it is
+     * carried by /me but restored by nothing, beside six device-only keys /me does not carry at all - so it is a
+     * QUESTION (REPORT-AN-FORCED-SIGNOUT.txt, R521), neither cleared nor kept silently. Not the queued sync: the
+     * worker settles an unauthenticated drain without retrying (R523). Not the pending sign-in: not account data.
+     *
+     * NOT ON THE LocalStore INTERFACE, deliberately: the screens that hold a LocalStore - Parametres - only ever end
+     * a session voluntarily or delete it. The one caller of this is the process's session (onServerEndedSession).
+     */
+    suspend fun clearForSessionEnd() {
+        tokenStore.clear()
+        dossierCache.clear()
+        clearExports()
+        settingsStore.clear()
+    }
 }

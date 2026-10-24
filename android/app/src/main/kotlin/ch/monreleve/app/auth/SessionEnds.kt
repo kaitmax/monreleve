@@ -1,5 +1,6 @@
 package ch.monreleve.app.auth
 
+import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.data.local.EntryEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,19 @@ internal class SessionEnds {
 
 /** THE PROCESS'S record of server-ended sessions, beside its one session (SessionHolder.kt). */
 internal val processSessionEnds = SessionEnds()
+
+/**
+ * WHAT THE PROCESS DOES WHEN THE SERVER ENDS ITS SESSION - SessionManager's onEnded, for the process's session
+ * (SessionHolder.kt) and for every test device built the way the app is. R521's clear FIRST, so a shell that the
+ * signal moves to sign-in finds the settings and the cached releve already gone; then the signal (R520).
+ */
+internal suspend fun onServerEndedSession(
+    store: DeviceLocalStore,
+    ends: SessionEnds,
+) {
+    store.clearForSessionEnd()
+    ends.record()
+}
 
 /**
  * R520: is this the state a sign-out nobody asked for leaves behind - no session, yet an account still current?

@@ -6,6 +6,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +57,30 @@ internal fun sessionReconciled(
     saved: Destination,
     start: Destination,
 ): Destination = if (start == Destination.SIGN_IN || saved == Destination.RESOLVING) start else saved
+
+// AN-FORCED-SIGNOUT (R521). THE DESTINATION'S SAVER RECONCILES AS IT RESTORES. sessionReconciled ran only in a
+// LaunchedEffect - AFTER the first frame had composed the restored destination. A MAIN restored with no session then
+// built the shell's controllers for one frame, and ParametresController requires settings (checkNotNull): R521 clears
+// them on a sign-out nobody asked for, so a session the worker ended in the background, then a process death, would
+// restore MAIN onto no settings and crash before the reconcile ran. Reconciled here, the first frame is already right.
+internal fun destinationSaver(start: Destination): Saver<Destination, Destination> =
+    Saver(save = { it }, restore = { sessionReconciled(saved = it, start = start) })
+
+// The destination decided once at launch, from two facts - is there a session, and is this device onboarded. Moved
+// out of MainActivity.onCreate unchanged (AN-FORCED-SIGNOUT, R521) so a JVM test can ask it: PARK-T2's link half was a
+// sign-in by link on a phone whose settings had survived a forced sign-out, which this sent straight to MAIN on them.
+internal fun startDestination(
+    signedIn: Boolean,
+    onboarded: Boolean,
+): Destination =
+    when {
+        !signedIn -> Destination.SIGN_IN
+        onboarded -> Destination.MAIN
+        // R297: signed in but no local settings - a fresh account, or a re-sign-in after a sign-out cleared them.
+        // Consult the server (GET /api/v1/me) before onboarding, so settings the server holds are restored rather
+        // than re-asked.
+        else -> Destination.RESOLVING
+    }
 
 // AN-FORCED-SIGNOUT (R520). WHERE THE PERSON GOES WHEN THE SERVER ENDS THE SESSION WHILE THE APP IS OPEN: to sign-in,
 // from any screen - the shell, onboarding, RESOLVING - never left on a signed-in screen whose only way out was the

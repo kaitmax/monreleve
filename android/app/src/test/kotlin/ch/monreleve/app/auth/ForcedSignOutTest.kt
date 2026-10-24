@@ -2,12 +2,17 @@ package ch.monreleve.app.auth
 
 import ch.monreleve.app.Destination
 import ch.monreleve.app.account.AccountStore
+import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.accountTagOf
+import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.remote.AuthApi
+import ch.monreleve.app.data.remote.DossierApi
+import ch.monreleve.app.data.remote.DossierResult
+import ch.monreleve.app.data.remote.ME_PATH
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
@@ -22,11 +27,19 @@ import ch.monreleve.app.parametres.AccountEvent
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresPhase
 import ch.monreleve.app.parametres.SignOutPrompt
+import ch.monreleve.app.settings.InMemoryDetectionModeStore
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.startDestination
+import ch.monreleve.app.startup.StartDecision
+import ch.monreleve.app.startup.decideStartAfterSignIn
+import ch.monreleve.app.startup.meFetchOf
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -35,6 +48,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.json.JSONObject
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -58,7 +72,68 @@ private const val THIRD_DAY = "2026-10-19"
 private val TAG_A: String = checkNotNull(accountTagOf(EMAIL_A))
 private val TAG_B: String = checkNotNull(accountTagOf(EMAIL_B))
 private val CLOCK: Clock = Clock.fixed(Instant.parse("2026-10-22T10:00:00Z"), ZoneId.of("Europe/Paris"))
-private val SETTINGS = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null)
+
+// R521: A's settings are COMPLETE (a name included), as an onboarded account's are - so a launch on them is MAIN.
+private val SETTINGS = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null, name = "Camille Rey")
+
+/** R521: the six manual settings and the name, as GET /api/v1/me serialises a complete row (lib/me/read.ts). */
+private fun meOf(settings: Settings): JSONObject =
+    JSONObject()
+        .put("name", settings.name)
+        .put("canton", settings.canton)
+        .put("employmentRate", settings.employmentRate)
+        .put("denominatorKind", settings.denominatorKind)
+        .put("exactTotalWorkDays", settings.exactTotalWorkDays ?: JSONObject.NULL)
+        .put("granularity", settings.granularity)
+        .put("activityStartDate", settings.activityStartDate ?: JSONObject.NULL)
+        .put("reminderTime", JSONObject.NULL)
+        .put("reminderEnabled", false)
+        .put("loggingMode", "MANUAL")
+        .put("detectionConsentAt", JSONObject.NULL)
+
+/** R521: a dossier body the app parses - DossierApiTest's, with the titulaire and year this test names. */
+private fun dossierBody(
+    titulaire: String,
+    year: Int = TAX_YEAR,
+): String =
+    """
+    {
+      "taxYear": $year,
+      "period": { "fraction": 1.0, "startDate": null },
+      "titulaire": "$titulaire",
+      "generatedAt": "2026-10-22T09:00:00.000Z",
+      "canton": "GE",
+      "employmentRate": 100,
+      "denominatorKind": "SIMPLIFIED240",
+      "tiles": { "workedDays": 240, "swissDays": 75, "teleworkDays": 43, "missionDays": 1 },
+      "zone": {
+        "declarableRate": 42.70, "rawRate": 43.60, "ratesDiffer": true,
+        "fiscalCeilingDays": 96, "remainingToFiscal": 5.5, "remainingToSocial": 20, "warnings": []
+      },
+      "months": [],
+      "annex": [],
+      "absenceDays": 3,
+      "recordedEntries": 5,
+      "creditedMissionDays": 1,
+      "rateWithoutMissions": 42.08
+    }
+    """.trimIndent()
+
+/** R521: the cached releve - SharedPrefsDossierCache's contract, in memory. */
+private class MemoryDossierCache : DossierCache {
+    private val years = mutableMapOf<Int, String>()
+
+    override fun load(year: Int): String? = years[year]
+
+    override fun save(
+        year: Int,
+        body: String,
+    ) {
+        years[year] = body
+    }
+
+    override fun clear() = years.clear()
+}
 
 internal class MemoryAccountStore(
     private var tag: String?,
@@ -126,9 +201,37 @@ private class Device(
     val accounts = MemoryAccountStore(TAG_A)
     val dao = FakeEntryDao()
 
-    // R520: the process's session-end record, and the session told of each ending - processSession's wiring.
+    // R521: the stores a forced sign-out clears and keeps, and DeviceLocalStore over them - the class the app builds
+    // (deviceLocalStore). The Room clear, the sync cancel and the exports delete are spies, as in LocalStoreTest.
+    val settings = MemorySettingsStore(SETTINGS)
+    val cache = MemoryDossierCache().apply { save(TAX_YEAR, dossierBody("Camille Rey")) }
+    val pending = MemoryPendingSignIn(null)
+    val detectionMode = InMemoryDetectionModeStore(LoggingMode.AUTO_DETECT)
+    var recordCleared = false
+    var syncCancelled = false
+    var exportsCleared = false
+    val deviceStore =
+        DeviceLocalStore(
+            tokenStore = tokens,
+            settingsStore = settings,
+            dossierCache = cache,
+            pendingSignIn = pending,
+            accountStore = accounts,
+            detectionModeStore = detectionMode,
+            clearRecord = { recordCleared = true },
+            cancelSync = { syncCancelled = true },
+            clearExports = { exportsCleared = true },
+        )
+
+    // R520/R521: the process's session-end record, and the session told of each ending - processSession's wiring,
+    // through the same handler the app runs (onServerEndedSession: the clear, then the signal).
     val ends = SessionEnds()
-    val session = SessionManager(AuthApi(server, TOKEN_SERVER_BASE), tokens, onEnded = { ends.record() })
+    val session =
+        SessionManager(
+            AuthApi(server, TOKEN_SERVER_BASE),
+            tokens,
+            onEnded = { onServerEndedSession(deviceStore, ends) },
+        )
     val repository =
         LocalEntryRepository(
             dao,
@@ -140,7 +243,7 @@ private class Device(
     val parametres =
         ParametresController(
             SessionSettingsSaver(session),
-            MemorySettingsStore(SETTINGS),
+            settings,
             repository,
             TAX_YEAR,
             scope,
@@ -401,6 +504,130 @@ class ForcedSignOutTest : FunSpec({
             other.drain()
             other.ends.ends.value shouldBe 1
             shell.close()
+        }
+    }
+
+    test("R521 - forced: the settings, the cached releve and the exports go; the days, their tag and the rest stay") {
+        runTest {
+            val device = Device(this)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.cache.save(TAX_YEAR - 1, dossierBody("Camille Rey", TAX_YEAR - 1))
+            device.pending.remember(EMAIL_A)
+            // THE CONTROL: every one of them is there before.
+            device.settings.load() shouldBe SETTINGS
+            device.cache.load(TAX_YEAR) shouldNotBe null
+            device.cache.load(TAX_YEAR - 1) shouldNotBe null
+
+            device.anotherHolderRotatesFirst()
+            device.drain() // the worker meets the replay: the server ends the session
+
+            // CLEARED: what /me and the dossier GET bring back at the next sign-in, and the exports nothing reads back.
+            device.settings.load() shouldBe null
+            device.cache.load(TAX_YEAR) shouldBe null
+            device.cache.load(TAX_YEAR - 1) shouldBe null
+            device.exportsCleared shouldBe true
+            device.tokens.load() shouldBe null
+            // KEPT: the days and their tag (R509) - R295's record clear and the sync cancel never ran ...
+            device.recordCleared shouldBe false
+            device.syncCancelled shouldBe false
+            device.accounts.current() shouldBe TAG_A
+            device.dao.all().map { Triple(it.dayDate, it.syncState, it.accountTag) } shouldBe
+                listOf(Triple(DAY, SyncState.PENDING, TAG_A))
+            // ... and the detection file, whose loggingMode /me carries but nothing restores (a QUESTION, kept), and
+            // the pending sign-in, which is not account data.
+            device.detectionMode.load() shouldBe LoggingMode.AUTO_DETECT
+            device.pending.pending() shouldBe EMAIL_A
+            device.ends.ends.value shouldBe 1
+        }
+    }
+
+    test("R521 - the SAME account signs back in: its settings come back from /me, its releve from the server") {
+        runTest {
+            val device = Device(this)
+            device.server.holdSettings(EMAIL_A, meOf(SETTINGS))
+            device.server.holdDossier(EMAIL_A, TAX_YEAR, dossierBody("Camille Rey"))
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            val held = device.heldMutation()
+            device.anotherHolderRotatesFirst()
+            device.drain()
+            device.settings.load() shouldBe null
+
+            val signIn = device.signInByCode(EMAIL_A, this)
+            advanceUntilIdle()
+            // RESOLVING, as MainActivity runs it after a code sign-in, then the Releve's first load.
+            val decision =
+                decideStartAfterSignIn({ meFetchOf(device.session.authenticatedGet(ME_PATH)) }, device.settings)
+            val releve = DossierApi(device.session::authenticatedGet, device.cache).fetch(TAX_YEAR)
+
+            signIn.state.value.phase shouldBe CodePhase.SIGNED
+            decision shouldBe StartDecision.Main
+            device.settings.load() shouldBe SETTINGS
+            releve.shouldBeInstanceOf<DossierResult.Loaded>().document.titulaire shouldBe "Camille Rey"
+            device.cache.load(TAX_YEAR) shouldBe dossierBody("Camille Rey")
+            // R509, unchanged: the held day went up with the sign-in.
+            device.server.mutationsOf(EMAIL_A) shouldBe listOf(held)
+        }
+    }
+
+    test("R521 - ANOTHER account signs in: none of the previous one's settings, and none of its releve") {
+        runTest {
+            val device = Device(this)
+            val settingsB = Settings("VD", 80, "SIMPLIFIED240", null, "HALF_DAY", null, name = "Dominique Bovet")
+            device.server.holdSettings(EMAIL_B, meOf(settingsB))
+            device.server.holdDossier(EMAIL_B, TAX_YEAR, dossierBody("Dominique Bovet"))
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.anotherHolderRotatesFirst()
+            device.drain()
+
+            device.signInByCode(EMAIL_B, this)
+            advanceUntilIdle()
+            // OFFLINE before B's releve arrives: no copy at all - A's was cleared, so none is offered as B's (R288).
+            DossierApi({ AuthedOutcome.NetworkError }, device.cache).fetch(TAX_YEAR) shouldBe DossierResult.NetworkError
+            val decision =
+                decideStartAfterSignIn({ meFetchOf(device.session.authenticatedGet(ME_PATH)) }, device.settings)
+            val releve = DossierApi(device.session::authenticatedGet, device.cache).fetch(TAX_YEAR)
+
+            decision shouldBe StartDecision.Main
+            device.settings.load() shouldBe settingsB
+            releve.shouldBeInstanceOf<DossierResult.Loaded>().document.titulaire shouldBe "Dominique Bovet"
+            device.cache.load(TAX_YEAR) shouldBe dossierBody("Dominique Bovet")
+        }
+    }
+
+    test("R521 - another account with NO settings on the server is onboarded - it never runs on the previous one's") {
+        runTest {
+            val device = Device(this)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.anotherHolderRotatesFirst()
+            device.drain()
+
+            device.signInByCode(EMAIL_B, this)
+            advanceUntilIdle()
+            val decision =
+                decideStartAfterSignIn({ meFetchOf(device.session.authenticatedGet(ME_PATH)) }, device.settings)
+
+            decision.shouldBeInstanceOf<StartDecision.Onboard>()
+            device.settings.load() shouldBe null
+        }
+    }
+
+    test(
+        "R521 - PARK-T2's link half: a sign-in BY LINK after a forced sign-out asks /me, never opens on old settings",
+    ) {
+        runTest {
+            val device = Device(this)
+            // THE CONTROL: on these settings a launch is MAIN - which is what the link's relaunch did with them.
+            startDestination(device.session.isSignedIn(), device.settings.isOnboarded()) shouldBe Destination.MAIN
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+            device.anotherHolderRotatesFirst()
+            device.drain()
+            startDestination(device.session.isSignedIn(), device.settings.isOnboarded()) shouldBe Destination.SIGN_IN
+
+            device.signInByLink(EMAIL_B, this)
+            advanceUntilIdle()
+
+            // The link's relaunch: signed in, no settings on the phone - RESOLVING asks /me for B's own.
+            startDestination(device.session.isSignedIn(), device.settings.isOnboarded()) shouldBe Destination.RESOLVING
         }
     }
 

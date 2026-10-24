@@ -34,6 +34,18 @@ class SessionReconciledTest : FunSpec({
             Destination.entries.map { Destination.SIGN_IN }
     }
 
+    // AN-FORCED-SIGNOUT (R521): the saved destination is reconciled AS IT IS RESTORED - not one frame later - so a MAIN
+    // saved before a session ended (and its settings cleared) is never composed: ParametresController requires them.
+    test("R521: a saved MAIN restores as SIGN_IN when there is no session - before the first frame, not after it") {
+        destinationSaver(start = Destination.SIGN_IN).restore(Destination.MAIN) shouldBe Destination.SIGN_IN
+        destinationSaver(start = Destination.SIGN_IN).restore(Destination.ONBOARDING) shouldBe Destination.SIGN_IN
+    }
+
+    test("R521: with a session, the restore honours what was saved, exactly as sessionReconciled does") {
+        destinationSaver(start = Destination.MAIN).restore(Destination.MAIN) shouldBe Destination.MAIN
+        destinationSaver(start = Destination.RESOLVING).restore(Destination.ONBOARDING) shouldBe Destination.ONBOARDING
+    }
+
     test("R520: still signed in when the signal is read (a new sign-in saved its pair first) - nobody moves") {
         Destination.entries.map { destinationAfterSessionEnd(current = it, signedIn = true) } shouldBe
             Destination.entries.toList()

@@ -80,6 +80,11 @@ internal class TokenServer(
     private val tokens = mutableMapOf<String, Row>()
     private val sessions = mutableMapOf<Int, Session>()
     private val rowsByAccount = mutableMapOf<String, MutableList<JSONObject>>()
+
+    // AN-FORCED-SIGNOUT (R521): what GET /api/v1/me and GET /api/v1/dossier answer for each account - the two things
+    // a sign-in brings back after a forced sign-out cleared them on the phone.
+    private val meByAccount = mutableMapOf<String, JSONObject>()
+    private val dossiersByAccount = mutableMapOf<String, MutableMap<Int, String>>()
     private var minted = 0
 
     /** Every request, as "METHOD /path", in the order it ARRIVED. */
@@ -120,6 +125,23 @@ internal class TokenServer(
     /** The clientMutationIds the server holds for [account], in the order they were written. */
     fun mutationsOf(account: String): List<String> =
         rowsByAccount[account].orEmpty().map { it.getString("clientMutationId") }
+
+    /** R521: the settings row GET /api/v1/me serialises for [account] (lib/me/read.ts's flat field object). */
+    fun holdSettings(
+        account: String,
+        me: JSONObject,
+    ) {
+        meByAccount[account] = me
+    }
+
+    /** R521: the body GET /api/v1/dossier?year=[year] returns for [account]. */
+    fun holdDossier(
+        account: String,
+        year: Int,
+        body: String,
+    ) {
+        dossiersByAccount.getOrPut(account) { mutableMapOf() }[year] = body
+    }
 
     override suspend fun execute(request: HttpRequest): HttpResponse {
         val path = request.url.removePrefix(TOKEN_SERVER_BASE)
@@ -185,26 +207,58 @@ internal class TokenServer(
         }
     }
 
+    // One function per verb (AN-FORCED-SIGNOUT): the routes this fake serves outgrew one `when`.
     private fun route(
         request: HttpRequest,
         path: String,
         session: Session,
     ): HttpResponse =
+        when (request.method) {
+            HttpMethod.POST -> post(request, path, session)
+            HttpMethod.GET -> get(path, session)
+            else -> notScripted()
+        }
+
+    private fun post(
+        request: HttpRequest,
+        path: String,
+        session: Session,
+    ): HttpResponse =
         when {
-            request.method == HttpMethod.POST && path == "/api/v1/auth/sign-out" -> {
+            path == "/api/v1/auth/sign-out" -> {
                 if (session.revokedReason == null) session.revokedReason = SIGNED_OUT
                 HttpResponse(HTTP_OK, """{"status":"ok"}""")
             }
-            request.method == HttpMethod.POST && path == "/api/v1/entries" && refuseNextEntriesPost -> {
+            path == "/api/v1/entries" && refuseNextEntriesPost -> {
                 refuseNextEntriesPost = false
                 HttpResponse(HTTP_SERVER_ERROR, """{"status":"error","code":"write_failed"}""")
             }
-            request.method == HttpMethod.POST && path == "/api/v1/entries" -> write(session.account, request.body)
-            request.method == HttpMethod.GET && path.startsWith("/api/v1/entries?year=") ->
-                year(session.account, path.substringAfter("?year=").toInt())
-            request.method == HttpMethod.GET && path == "/api/v1/me" -> HttpResponse(HTTP_OK, """{"status":"ok"}""")
-            else -> HttpResponse(HTTP_NOT_FOUND, """{"status":"error","code":"not_scripted"}""")
+            path == "/api/v1/entries" -> write(session.account, request.body)
+            else -> notScripted()
         }
+
+    private fun get(
+        path: String,
+        session: Session,
+    ): HttpResponse =
+        when {
+            path.startsWith("/api/v1/entries?year=") -> year(session.account, path.substringAfter("?year=").toInt())
+            // R521: the account's settings, flat as serialiseMe writes them - or, for an account that has none, the
+            // body every earlier test was given (no canton: onboarding).
+            path == "/api/v1/me" ->
+                HttpResponse(HTTP_OK, meByAccount[session.account]?.toString() ?: """{"status":"ok"}""")
+            path.startsWith("/api/v1/dossier?year=") ->
+                dossiersByAccount[session.account]?.get(path.substringAfter("?year=").toInt())
+                    ?.let { HttpResponse(HTTP_OK, it) }
+                    ?: notScripted()
+            else -> notScripted()
+        }
+
+    private fun notScripted(): HttpResponse =
+        HttpResponse(
+            HTTP_NOT_FOUND,
+            """{"status":"error","code":"not_scripted"}""",
+        )
 
     /** R217: each row written under the SESSION's account and echoed back as the server's row. */
     private fun write(
