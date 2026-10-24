@@ -3502,3 +3502,86 @@ NOT TAKEN:  Clearing only when the stored refresh token is still the one refused
 COST OF REVERSING: one comparison in applyRefresh, in :shared, and a test.
 
 STATE:      OPEN.
+
+## PARK-N1 - KSP's iOS task does not provision the Kotlin/Native toolchain on a fresh machine  [IOS-0, 2026-10-24]
+
+RAISED BY:  REPORT-IOS-0.txt (R532, run 40107915183).
+
+WHAT IT IS: On a machine with no ~/.konan, `:shared:kspKotlinIosSimulatorArm64` and
+`:shared:kspKotlinIosArm64` fail before anything compiles, with
+`java.lang.ClassNotFoundException: org.jetbrains.kotlin.cli.utilities.MainKt` and
+"Can't find env_blacklist file at ~/.konan/kotlin-native-prebuilt-macos-aarch64-2.1.10".
+KSP 2.1.10-1.0.31 registers its own native task (KspTaskNative), which runs the
+Kotlin/Native compiler from the toolchain directory without provisioning it; the
+Kotlin plugin's own native tasks provision it, and KSP runs before any of them.
+
+TAKEN:      CI only - .github/workflows/ios-shared.yml runs `:shared:commonize` first
+(it depends on the root commonizeNativeDistribution, which provisions the toolchain)
+and refuses to continue if the toolchain is still absent. No build file changed.
+
+NOT TAKEN:  A dependsOn in android/shared/build.gradle.kts from the kspKotlinIos* tasks
+to the commonizer, which would make a fresh Mac work with no extra command. It is a
+build change no ruling asked for, and only a Mac could prove it.
+
+COST OF REVERSING: one configureEach block in :shared's build file, proven by one CI
+run with the provisioning step removed.
+
+STATE:      OPEN - for iOS-1, whose first local Mac build meets it.
+
+## PARK-N2 - the simulator that runs commonTest is chosen by the runner image, not pinned  [IOS-0, 2026-10-24]
+
+RAISED BY:  REPORT-IOS-0.txt (R530/R533).
+
+WHAT IT IS: Kotlin 2.1.10's XcodeDefaultTestDevicesValueSource keeps the first device
+under EACH "-- iOS x --" heading of `simctl list devices available`, the last one
+overwriting the rest. On macos-15 image 20260907.0337.1 that is iPhone 17 Pro on the
+iOS 26.2 runtime (read from the `simctl spawn --standalone <udid>` command Gradle
+logged). A runner image that adds or drops a runtime moves the device - and the
+runtime - with no change in this repository.
+
+TAKEN:      Nothing pinned; the workflow prints the device and runtime it used on
+every run, so a move is visible.
+
+NOT TAKEN:  `--device <udid or name>` on the Gradle command (the task's own option).
+
+COST OF REVERSING: one argument in the workflow.
+
+STATE:      OPEN.
+
+## PARK-N3 - the simulator and a real iPhone read different time-zone databases  [IOS-0, 2026-10-24]
+
+RAISED BY:  REPORT-IOS-0.txt (R535).
+
+WHAT IT IS: kotlinx-datetime 0.6.1 reads its zone rules from a fixed path per platform:
+/usr/share/zoneinfo.default on a simulator (darwinSimulator defaultTzdbPath), and
+/var/db/timezone/zoneinfo on a device (darwinDevices). On the CI runner the first
+reports +VERSION 2024a and the second 2026c. Every Paris-day and Casablanca golden
+passed on the simulator against 2024a; that proves the code, not the tzdata a phone
+will carry. Morocco's Ramadan offset is a tzdata PREDICTION (R472 item 2).
+
+TAKEN:      Recorded; no code change.
+
+NOT TAKEN:  Nothing to take in iOS-0 - a device run belongs to iOS-1.
+
+COST OF REVERSING: not applicable.
+
+STATE:      OPEN - iOS-1's first device run reads the goldens against the phone's tzdata.
+
+## PARK-N4 - an App Store upload needs Xcode 26, which Kotlin 2.1.10 does not list  [IOS-0, 2026-10-24]
+
+RAISED BY:  REPORT-IOS-0.txt (R530/R537).
+
+WHAT IT IS: iOS-0 builds with Xcode 16.2: Kotlin's compatibility table pairs Kotlin
+2.1.0-2.1.10 with Xcode 16.0, and Xcode 16.3 and later conflict with Kotlin 2.1.20 and
+earlier. Apple's upcoming-requirements page says that since 2026-04-28 apps uploaded
+to App Store Connect must be built with Xcode 26 or later. The same Kotlin table first
+lists Xcode 26.0 against Kotlin 2.2.21. So the first TestFlight upload is expected to
+need a Kotlin version change - with KSP, and whatever Room needs, behind it.
+
+TAKEN:      Nothing - iOS-0 uploads nothing, and the hard boundary forbids the change.
+
+NOT TAKEN:  Any version change.
+
+COST OF REVERSING: not applicable; it is a question for iOS-1 (QUESTIONS in the report).
+
+STATE:      OPEN.
