@@ -6,7 +6,8 @@
 //
 // SETUP (R368/R136): com.android.library + org.jetbrains.kotlin.multiplatform, chosen for the reasons in
 // the version catalog's comment on android-library. No version upgrade (the hard boundary): this reuses the
-// AGP 8.10.1 and Kotlin 2.0.21 already on the classpath.
+// AGP and Kotlin already on the classpath (2.0.21 when KMP-0 wrote this; the version catalog holds the
+// current versions).
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -20,8 +21,8 @@ plugins {
     alias(libs.plugins.detekt)
     // KMP-2b increment 1 (R400). KSP, so Room's compiler can process @Entity/@Dao/@Database in this
     // module. Applied on its own, with NOTHING moved yet, so the toolchain change is reviewable
-    // separately from the code that will depend on it. Version from the catalog (ksp 2.1.10-1.0.31,
-    // KMP-UP) - the hard boundary forbids a version change, and this is not one.
+    // separately from the code that will depend on it. Version from the catalog (the ksp ref; KMP-UP2
+    // moved it with Kotlin) - this line names no version, so it does not move with one.
     alias(libs.plugins.ksp)
 }
 
