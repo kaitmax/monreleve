@@ -1,0 +1,701 @@
+================================================================================
+REPORT-IOS-0
+THE SHARED CODE COMPILES FOR iOS AND ITS TESTS PASS ON AN iPHONE SIMULATOR
+================================================================================
+TASK     relay/IOS-0.txt, rulings R530-R538 (a scan of parking.md, every
+         REPORT-*.txt and every relay/*.txt found no prior R530-R538, so none
+         needed renumbering under R162).
+BRANCH   ios-0, branched from origin/main at c4336db. PENDING MERGE - not merged.
+WORKTREE C:/wt/ios-0, created by this session; its .session-lock.json is
+         gitignored and never committed.
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334). Every CI number below is read
+from the run's own log or artifact, never from the absence of an error.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+"Unproven until a Mac" is now a pass. On a GitHub-hosted macOS runner (macos-15,
+arm64, Xcode 16.2):
+
+  - :shared's commonMain compiled to native for BOTH iOS targets
+    (compileKotlinIosSimulatorArm64, compileKotlinIosArm64);
+  - Room's compiler GENERATED the iOS code R400 left unproven - for each of
+    iosArm64 and iosSimulatorArm64: MonReleveDatabaseConstructor (the `actual`
+    of our one `expect`), MonReleveDatabase_Impl, EntryDao_Impl, TallyDao_Impl,
+    RhythmDao_Impl - and it compiled;
+  - commonTest was linked into a simulator test executable and RUN on an iPhone
+    simulator - iPhone 17 Pro, iOS 26.2 runtime, named from the exact
+    `xcrun simctl spawn --standalone <udid>` command Gradle logged:
+    82 tests, 0 failures, 0 errors, 0 skipped;
+  - those 82 are the SAME 82 commonTest tests the JVM runs, matched by class and
+    test name, with no difference to explain (R533);
+  - all six Geneva cases executed and passed on the simulator, 39.16 and 4.16
+    included, each printing its line only after its assertions held (R534);
+  - every Paris-day test passed, Casablanca's Ramadan offset, both 2026 DST
+    changes and New Year's Eve among them (R535);
+  - and a planted false assertion turned the iOS run RED naming the test, with a
+    Kotlin/Native stack frame, so the green is not vacuous (R531).
+
+ONE failure was met and fixed (R532 cause 1): KSP's iOS task does not provision
+the Kotlin/Native toolchain on a fresh machine. The fix is in the workflow only.
+
+WHAT CHANGED IN :shared FOR iOS: nothing in commonMain, no build file, no iosMain
+(none was needed - no stub exists). One commonTest file gained a println per
+Geneva case (R534's evidence; output only). NO VERSION CHANGED and none was
+required.
+
+Six CI runs, 12m22s of job time, 15 billed macOS minutes (R538).
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+THE iOS GATE, per the prompt, is the CI run on the pushed SHA:
+
+  run 40109727655  https://github.com/kaitmax/monreleve/actions/runs/40109727655
+  SHA 074dc8cb225c2e3f2aa42837690571d1f26502dd (the last commit carrying code or
+      workflow; see PUSH PROOF for the commits after it)
+  conclusion: success
+    > Task :shared:iosSimulatorArm64Test
+    > Task :shared:compileKotlinIosArm64
+    BUILD SUCCESSFUL in 28s
+    8 actionable tasks: 8 executed
+    iOS SIMULATOR TESTS EXECUTED: 82      (13 classes, failures=0 errors=0
+                                           skipped=0 in every class)
+    Command: /usr/bin/xcrun simctl spawn --standalone
+      E952A9B0-CC78-435C-BF08-06AD47FE1076 .../debugTest/test.kexe --
+    DEVICE: iPhone 17 Pro (E952A9B0-CC78-435C-BF08-06AD47FE1076)
+    RUNTIME: -- iOS 26.2 --
+
+THE ANDROID GATE (the baseline every fix must keep):
+
+  c4336db  R1(a), origin/main's HEAD, before a file was touched
+           ./gradlew :app:gate --rerun-tasks
+           [clean-worktree] OK: no unstaged changes to tracked files (R393)
+           test floor OK: 1268 unit tests observed (>= 10)
+           BUILD SUCCESSFUL in 12m
+           225 actionable tasks: 225 executed
+           GATE_EXIT=0
+
+  FINAL TIP: GATE PENDING - filled in by the next commit of this report.
+
+gate:clone NOT RUN and not claimed: nothing under web/ changed
+(`git diff origin/main...HEAD -- web/` is empty - PUSH PROOF).
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
+--------------------------------------------------------------------------------
+relay/IOS-0.txt in full (from the main checkout - it is untracked there);
+CLAUDE.md at the REPO ROOT (not the one in the parent Downloads/ folder, which
+belongs to a different project and was ignored as this repository's CLAUDE.md
+instructs); README.md.
+
+REPORT-KMP-0 (R369: the iOS targets declared, never built; the gate's skipped
+list; the fixtures generator R370); REPORT-KMP-2b (R400: Room's compiler wired
+for kspIosArm64/kspIosSimulatorArm64, "unproven until a Mac"); REPORT-KMP-3
+(R455's iOS-1 list); REPORT-KMP-4 (R472's updated list, PARK-M1, and item 2:
+the Casablanca goldens are tzdata-dependent); REPORT-KMP-1 (R383: the in-memory
+HttpTransport fake behind AuthApi's commonTest suite);
+docs/kmp/room-shared-wiring.kts.txt (the Room wiring and the ABI history that
+fixed Kotlin at 2.1.10). android/shared/build.gradle.kts, the version catalog,
+and every commonTest file were read before the workflow was written.
+
+Named IOS-0.
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS
+--------------------------------------------------------------------------------
+(a) origin/main = c4336db after `git fetch`. FULL :app:gate --rerun-tasks run IN
+    THIS SESSION in C:/wt/ios-0 after `./gradlew --stop`, tree clean - GREEN,
+    lines under STATUS. Floor 1268, as the operator said.
+(b) The operator CHOSE GitHub Actions macOS runners (not Codemagic).
+(c) `gh auth status`: logged in to github.com as kaitmax, scopes repo and
+    workflow. Runs were started by pushing ios-* branches and read with
+    `gh run view --log`, `gh run download` and the runs API. No token was
+    printed, written or needed in any file.
+
+The repository is PRIVATE (`gh repo view`: isPrivate true), so the runs below
+are billed against the account's allowance (R538).
+
+--------------------------------------------------------------------------------
+R530 - THE WORKFLOW
+--------------------------------------------------------------------------------
+FILE  .github/workflows/ios-shared.yml - one workflow, one job
+      (ios-shared-tests). ci.yml is NOT touched.
+
+TRIGGERS  workflow_dispatch (works once the file is on the default branch -
+      GitHub dispatches only workflows that exist there) and `push` to ios-*
+      branches ONLY. paths-ignore REPORT-*.txt and parking.md, so a
+      report-only push starts nothing. concurrency: one group per ref,
+      cancel-in-progress. timeout-minutes 50. permissions: contents read.
+      checkout with persist-credentials false. NO secret, token, key or
+      signing material anywhere in it; it reads no secret and no variable.
+
+THE RUNNER  macos-15 - arm64 (M1), 3 cores, 7 GB, a STANDARD runner. Why:
+  - ARM64 IS REQUIRED. Kotlin 2.1.10's KotlinNativeTestRunFactories enables
+    iosSimulatorArm64Test only when the host architecture equals the target's
+    (`HostManager.hostIsMac && host.architecture == konanTarget.architecture`).
+    On an Intel runner the task is disabled and exits 0 with zero tests.
+  - not macos-14: its images are deprecated and "fully unsupported by
+    November 2nd" (actions/runner-images#13518, quoted in the macos-14 image
+    readme);
+  - not macos-26: it carries only Xcode 26.x;
+  - not macos-latest: a label that moves under a pinned toolchain;
+  - standard, not larger: "Included minutes cannot be used for larger
+    runners" (docs.github.com, Actions runner pricing).
+  The run reported: Image macos-15-arm64, Version 20260907.0337.1.
+
+THE XCODE  16.2, pinned through DEVELOPER_DIR at job level. Kotlin's
+  compatibility table pairs Kotlin 2.1.0-2.1.10 with Xcode 16.0; Xcode 16.3
+  and later (the iOS 18.4 SDK) conflict with Kotlin 2.1.20 and earlier
+  (spmforkmp.eu troubleshooting, "_stddef"); the image's DEFAULT is 16.4. 16.2
+  is the newest Xcode on the image below 16.3. The run reported
+  `Xcode 16.2 / Build version 16C5032a`. It is NOT the table's 16.0
+  (DEVIATION 2).
+
+JDK  Temurin 17 (the run: 17.0.21+9), matching :app's JVM target.
+
+THE SCRIPT  exactly R530's, plus two flags that change nothing compiled or run:
+      ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64
+                --no-daemon --stacktrace --continue --info
+  --continue so a red test task does not hide the device compile in the same
+  paid run (the plant run proves it: compileKotlinIosArm64 ran after the red
+  test task); --info so Gradle logs the command that started the test process,
+  which is how the simulator is named from the machine (DEVIATION 1).
+
+STEPS AROUND IT  a diagnostic step BEFORE Gradle (uname, Xcode, JDK, simulator
+  runtimes and devices, the two zoneinfo +VERSION files); the toolchain
+  provisioning step (R532 cause 1); AFTER Gradle, always: a step that REFUSES a
+  run whose XML is missing or records zero tests (a disabled task exits 0 -
+  absence needs a positive control), prints every class's counts and the
+  Geneva lines; a step that prints the logged `simctl spawn` command with the
+  device and runtime it names; a listing of Room's generated iOS sources; the
+  artifact upload (android/shared/build/test-results and reports, 14 days).
+
+CACHES  setup-gradle with cache-provider basic (the open-source provider; the
+  default "enhanced" one is a commercial component offered to private
+  repositories as a free preview - setup-gradle v6.4.0 README) and
+  cache-read-only false (its default is read-only on every branch but the
+  default one). ~/.konan (the Kotlin/Native toolchain, which setup-gradle does
+  not cover) through actions/cache restore + save, split so a RED run still
+  saves it.
+
+EVERY ACTION PINNED to the full commit SHA of a release, release named beside
+it, each release at least two weeks old on 2026-10-24:
+  actions/checkout              3d3c42e5aac5ba805825da76410c181273ba90b1  v7.0.1  2026-07-20
+  actions/setup-java            de7274f081f381c8f8158605e0321c36c376e2e6  v6.0.1  2026-09-09
+  gradle/actions/setup-gradle   3f5f9adaf7d9fecd50b5935e54106014257a94e6  v6.4.0  2026-09-28
+  actions/cache (restore/save)  55cc8345863c7cc4c66a329aec7e433d2d1c52a9  v6.1.0  2026-06-26
+  actions/upload-artifact       cf430e030ddbb5b0abf93d22962f4752f3646cd9  v7.0.2  2026-10-07
+  (setup-java's newest, v6.1.0 of 2026-10-14, was ten days old and not taken.)
+
+android/gradlew is tracked as mode 100644, so the job runs `chmod +x gradlew`
+in the runner's checkout; the tracked mode is NOT changed (NOTICED 1).
+
+--------------------------------------------------------------------------------
+R531 - THE RED RUN
+--------------------------------------------------------------------------------
+THE PLANT, on the throwaway branch ios-0-plant at d2a7329 (parent 074dc8c), one
+line in commonTest:
+    -  assertEquals(case.expectedDeclarableRate, result.value.declarableRate, ...
+    +  assertEquals(case.expectedDeclarableRate + 1.0, result.value.declarableRate, ...
+VERIFIED BEFORE IT WAS PUSHED (R180): `git diff -U0` showed that one line at
+GenevaConformanceTest.kt:105 and nothing else, and the JVM run of the same test
+failed at GenevaConformanceTest.kt:105.
+
+run 40110013004  https://github.com/kaitmax/monreleve/actions/runs/40110013004
+conclusion: failure
+    ch.monreleve.app.calc.GenevaConformanceTest.everyPublishedCaseProducesTheAfcResult[iosSimulatorArm64] FAILED
+        kotlin.AssertionError: case a: declarableRate. Expected <31.0>, actual <30.0>.
+            at kotlin.AssertionError#<init>(/opt/buildAgent/work/.../kotlin/kotlin-native/runtime/src/main/kotlin/kotlin/Exceptions.kt:132)
+    82 tests completed, 1 failed
+    > Task :shared:iosSimulatorArm64Test FAILED
+    > Task :shared:compileKotlinIosArm64
+    BUILD FAILED in 1m 2s
+  Results step: GenevaConformanceTest tests=2 failures=1; every other class
+  failures=0; "iOS SIMULATOR TESTS EXECUTED: 82"; and "NO RESULT: no GENEVA
+  case line captured" - the println sits after the assertions, so a failing
+  case prints nothing, which is the design.
+  Simulator: the same iPhone 17 Pro, iOS 26.2, from the logged command.
+
+The stack frame is Kotlin/NATIVE's runtime (kotlin-native/runtime/...), so the
+red came from the native test binary, not from a JVM. The test that went red is
+the one that matters most.
+
+COST: one extra run, 3m53s of job time, 4 billed minutes - more than the green
+runs because ios-0-plant could not read ios-0's caches (GitHub scopes caches to
+the branch that wrote them, plus the default branch): ~/.konan and Gradle were
+cold.
+
+CLEANUP: `git push origin --delete ios-0-plant` (" - [deleted] ios-0-plant"),
+`git branch -D ios-0-plant`, and the two caches that run created
+(1 461 887 910 and 421 553 413 bytes, ref refs/heads/ios-0-plant) deleted with
+`gh cache delete`. All three were this session's. `git ls-remote --heads origin
+'ios-*'` then listed refs/heads/ios-0 only.
+
+--------------------------------------------------------------------------------
+R532 - WHAT BROKE, ONE CAUSE AT A TIME
+--------------------------------------------------------------------------------
+CAUSE 1 - KSP's iOS task ran before the Kotlin/Native toolchain existed.
+  RUN    40107915183 on d22324b, failure, 1m 24s of Gradle:
+           > Task :shared:kspKotlinIosSimulatorArm64 FAILED
+           Can't find env_blacklist file at
+             /Users/runner/.konan/kotlin-native-prebuilt-macos-aarch64-2.1.10/tools/env_blacklist.
+           > Task :shared:kspKotlinIosArm64 FAILED
+           Execution failed for task ':shared:kspKotlinIosSimulatorArm64'.
+           > java.lang.ClassNotFoundException: org.jetbrains.kotlin.cli.utilities.MainKt
+         ~/.konan did not exist at all: the cache save afterwards reported
+         "Path(s) specified in the action for caching do(es) not exist".
+  CAUSE  Not in the source. KSP 2.1.10-1.0.31 registers its own native task
+         (KspTaskNative extends KotlinNativeCompile, KotlinFactories.kt), which
+         runs the Kotlin/Native compiler from the toolchain directory but does
+         not provision it; the Kotlin plugin's own native tasks do
+         (KotlinNativeBundleBuildService). On a fresh machine KSP runs first.
+  FIX    Workflow only, commit 8572876: a step runs
+         `./gradlew :shared:commonize` first - it depends on the root
+         commonizeNativeDistribution (NativeDistributionCommonizerTask, which
+         provisions the toolchain; confirmed locally with --dry-run:
+         ":commonizeNativeDistribution SKIPPED / :shared:commonize SKIPPED" on
+         Windows) - and refuses to continue unless
+         ~/.konan/kotlin-native-prebuilt-macos-*/tools/env_blacklist exists.
+         Smallest possible: no file under android/ changes, so :app:gate is
+         untouched by it. PARK-N1 records the build-file alternative.
+  RERUN  40108404916 on 8572876, SUCCESS:
+           > Task :commonizeNativeDistribution ... BUILD SUCCESSFUL in 46s
+           /Users/runner/.konan/kotlin-native-prebuilt-macos-aarch64-2.1.10
+           > Task :shared:kspKotlinIosSimulatorArm64
+           > Task :shared:compileKotlinIosSimulatorArm64
+           > Task :shared:compileTestKotlinIosSimulatorArm64
+           > Task :shared:linkDebugTestIosSimulatorArm64
+           > Task :shared:iosSimulatorArm64Test
+           > Task :shared:kspKotlinIosArm64
+           > Task :shared:compileKotlinIosArm64
+           BUILD SUCCESSFUL in 49s
+           8 actionable tasks: 8 executed
+
+THE EXPECTED CANDIDATES, CONFIRMED OR RULED OUT BY THAT RUN:
+  - an `expect` with no iOS actual: RULED OUT. There is exactly one `expect` in
+    :shared (MonReleveDatabaseConstructor); Room's KSP generated its actual for
+    both targets (listing below) and both compiled. Nothing KMP-0..4 added
+    needed an actual: every other seam is an INTERFACE, which needs none.
+  - Room's KSP not running for iOS: RULED OUT once provisioned (cause 1 was
+    the toolchain, not Room): "[ksp] loaded provider(s):
+    [androidx.room.RoomKspProcessor$Provider]" for each iOS task, and
+      shared/build/generated/ksp/iosArm64/iosArm64Main/kotlin/ch/monreleve/app/data/local/
+        EntryDao_Impl.kt  MonReleveDatabase_Impl.kt  MonReleveDatabaseConstructor.kt
+        RhythmDao_Impl.kt  TallyDao_Impl.kt
+      shared/build/generated/ksp/iosSimulatorArm64/iosSimulatorArm64Main/kotlin/ch/monreleve/app/data/local/
+        (the same five files)
+  - a JVM-only API the metadata compile missed: RULED OUT - commonMain and
+    commonTest compiled for both native targets with no error.
+  - kotlinx-datetime time-zone data: RULED OUT for every zone the tests use
+    (R535).
+  - the FixtureJson generator's output on native: RULED OUT -
+    FixtureGeneratorTest 2/2 and every fixture-reading test passed.
+  - a test relying on JVM behaviour (Double formatting, Locale, escaping,
+    paths): RULED OUT - all 82 passed; the wire goldens' exact strings and the
+    Geneva doubles (39.16, 4.16) printed identically to the JVM.
+
+MOVED TO THE ANDROID-ONLY TEST SOURCE SET: NONE. Deleted: none. @Ignore'd: none.
+
+THE THREE COMMITS AFTER THE FIX are workflow-only and change nothing compiled:
+  ba8d922  a "which simulator ran" step that compared device directory mtimes -
+           run 40108753078 green (82/0), and the step named an arbitrary Apple
+           Watch because no mtime had moved: NO RESULT, not evidence.
+  b682faa  the same step reading files newer than a marker - run 40109536305
+           green (82/0), and "NO RESULT: no simulator device wrote a file after
+           the marker": `simctl spawn --standalone` writes nothing there.
+  074dc8c  --info on the Gradle command, and the step prints the logged
+           `simctl spawn` command - run 40109727655 green (82/0), device named.
+  Two attempts that measured nothing are recorded as NO RESULT rather than
+  tuned into agreement (R391).
+
+--------------------------------------------------------------------------------
+R533 - THE SAME TESTS RAN
+--------------------------------------------------------------------------------
+                                    JVM (commonTest)   iOS simulator
+  GenevaConformanceTest                    2                2
+  CalendarDayGoldenTest                    9                9
+  StoredEnumNamesTest                      6                6
+  AuthWireGoldenTest                      18               18
+  CancellationTest                         5                5
+  RhythmRepositoryPinTest                  6                6
+  DownloadRateParityTest                   1                1
+  EntriesDownloadTest                     19               19
+  EntriesWireGoldenTest                    6                6
+  DossierWireGoldenTest                    5                5
+  ParisDayDstTest                          2                2
+  SharedModuleTest                         1                1
+  FixtureGeneratorTest                     2                2
+  TOTAL                                   82               82
+
+SOURCES OF THE COUNTS:
+  JVM  the JUnit XML of :shared:testDebugUnitTest from the FULL :app:gate
+       --rerun-tasks on c4336db (android/shared/build/test-results/
+       testDebugUnitTest, copied aside before anything else ran): 85 tests in
+       14 files, of which CommonMainFenceTest (3) is androidUnitTest - it reads
+       commonMain as text with java.io.File and is not commonTest. 85 - 3 = 82.
+       Recounted on the final tip under STATUS when that gate has run.
+  iOS  the JUnit XML in run 40109727655's artifact ios-shared-test-results
+       (test-results/iosSimulatorArm64Test): 13 files, 82 tests.
+MATCHED BY NAME, not only by count: every one of the 82 (class, test) pairs is
+in both sets once the target suffix "[iosSimulatorArm64]" is removed; 0 on one
+side only. No difference to explain; no test moved (R532).
+
+WHAT THE 82 DO NOT COVER, unchanged from PARK-M1: the entry repository's
+behaviour suite (RecordPathPinTest, AccountScopeTest, EntryRepositoryTest, ...)
+is :app JVM code over FakeEntryDao, not commonTest, so it is in neither column.
+
+--------------------------------------------------------------------------------
+R534 - THE GENEVA CASES ON iOS
+--------------------------------------------------------------------------------
+From run 40109727655's artifact,
+test-results/iosSimulatorArm64Test/TEST-ch.monreleve.app.calc.GenevaConformanceTest.xml:
+  testsuite tests="2" skipped="0" failures="0" errors="0"
+  readsAllSixPublishedCasesSoItCannotPassVacuously[iosSimulatorArm64]  passed
+      (asserts the fixture yields exactly a, b, c, d, e, special)
+  everyPublishedCaseProducesTheAfcResult[iosSimulatorArm64]            passed
+  and its <system-out>, one line per case, each printed only after every
+  assertion for that case held (declarableRate, swissTaxedDays,
+  frenchTaxedDays, regimeApplies and the day partition):
+    GENEVA case a: declarableRate=30.0 swissTaxedDays=240.0 frenchTaxedDays=0.0 regimeApplies=true - all assertions held
+    GENEVA case b: declarableRate=40.0 swissTaxedDays=237.0 frenchTaxedDays=3.0 regimeApplies=true - all assertions held
+    GENEVA case c: declarableRate=39.16 swissTaxedDays=226.0 frenchTaxedDays=14.0 regimeApplies=true - all assertions held
+    GENEVA case d: declarableRate=40.0 swissTaxedDays=230.0 frenchTaxedDays=10.0 regimeApplies=true - all assertions held
+    GENEVA case e: declarableRate=60.0 swissTaxedDays=91.0 frenchTaxedDays=149.0 regimeApplies=false - all assertions held
+    GENEVA case special: declarableRate=4.16 swissTaxedDays=220.0 frenchTaxedDays=20.0 regimeApplies=true - all assertions held
+
+AGAINST fixtures/geneva-cases.json (expected):
+    a        30     240    0    true        d        40     230   10    true
+    b        40     237    3    true        e        60      91  149    false
+    c        39.16  226   14    true        special   4.16  220   20    true
+  Every case, every field, equal. THE TWO TRUNCATIONS HOLD ON iOS: case c
+  39,16 % and case special 4,16 %.
+
+WHY THE PRINT EXISTS: the conformance test is one looping method, so without it
+the artifact could say only "1 test passed". Commit d22324b adds one println per
+case after the assertions - output only, no assertion, fixture or expected value
+changed, test count unchanged; verified on the JVM first (six lines in the JVM
+XML's system-out). The R531 plant shows the other half: a failing case prints
+nothing.
+
+--------------------------------------------------------------------------------
+R535 - PARIS TIME ON iOS
+--------------------------------------------------------------------------------
+From the same artifact, every test passed (failures=0 errors=0 in both files):
+  ParisDayDstTest (KMP-0)
+    parisDayOf_resolvesTheParisDayAcrossBothDstChangesAndNearMidnight[iosSimulatorArm64]
+      - winter, summer, spring-forward 29 Mar 2026, fall-back 25 Oct 2026
+    localDateArithmetic_matchesTheJavaTimeSemanticsTheMovedCodeReliesOn[iosSimulatorArm64]
+  CalendarDayGoldenTest (KMP-4)
+    aCasablancaDeviceAt2330InParisSummerTimeRecordsTheParisDay[iosSimulatorArm64]
+    casablancaIsNotAFixedOffsetSoNeitherIsItsClaim[iosSimulatorArm64]   (Ramadan, +00:00)
+    theParisDayAndClaimAcrossTheMarch2026Change[iosSimulatorArm64]
+    theParisDayAndClaimAcrossTheOctober2026Change[iosSimulatorArm64]
+    newYearsEve[iosSimulatorArm64]
+    aWholeMinuteKeepsItsZeroSecondsAndMilliseconds[iosSimulatorArm64]
+    aZeroOffsetIsWrittenPlusZeroZeroNeverZ[iosSimulatorArm64]
+    negativeAndHalfHourOffsetsAreWrittenInFull[iosSimulatorArm64]   (LA -08:00, Kolkata +05:30)
+    aSubMillisecondInstantIsTruncatedNeverRounded[iosSimulatorArm64]
+
+THE SIMULATOR'S TIME-ZONE DATABASE LACKED NOTHING these tests use (Europe/Paris,
+Africa/Casablanca, UTC, America/Los_Angeles, Asia/Kolkata). WHICH database it
+was: kotlinx-datetime 0.6.1 reads zone rules from a fixed path -
+/usr/share/zoneinfo.default on a simulator (core/darwinSimulator,
+defaultTzdbPath) - and on the runner that path reports
+    zoneinfo.default +VERSION: 2024a
+while the macOS host's live database reports
+    /var/db/timezone/zoneinfo +VERSION: 2026c.
+The goldens were pinned on the JVM's tzdata 2024b; they pass against 2024a. A
+real iPhone reads /var/db/timezone/zoneinfo (core/darwinDevices) - the OS's
+current tzdata - so the device question R472 item 2 raised is still iOS-1's
+(PARK-N3).
+
+--------------------------------------------------------------------------------
+R536 - THE iOS-1 LIST, RE-MEASURED
+--------------------------------------------------------------------------------
+"Compiled as a stub": NO STUB WAS WRITTEN OR NEEDED. :shared has no iosMain
+directory. Its only `expect` (MonReleveDatabaseConstructor) received Room's
+generated actual for both targets; every other seam is an interface, and an
+interface needs no actual to compile. So for every item below: "not stubbed -
+compilation required nothing", and the commonMain code that USES each
+interface compiled for iosArm64 and iosSimulatorArm64.
+
+A. iosMain implementations of interfaces already in commonMain
+   HttpTransport   (data/remote/Http.kt) -> NSURLSession (a data task wrapped in
+                   suspendCancellableCoroutine, cancelled with the coroutine;
+                   NSURLErrorDomain failures -> TransportException only).
+                   CancellationTest ran on iOS against the fake (5/5); it is
+                   the spec the real one must meet.
+   TokenStore      (auth/TokenStore.kt) -> Keychain Services (SecItemAdd /
+                   SecItemCopyMatching / SecItemUpdate / SecItemDelete,
+                   kSecClassGenericPassword, ONE item; an "after first unlock"
+                   accessibility class for "no unlock needed"; unreadable ->
+                   null AND clear).
+   SettingsStore   (settings/SettingsStore.kt) -> NSUserDefaults (absent and
+                   null both round-trip as null; never override isOnboarded).
+   DossierCache    (data/local/DossierCache.kt) -> NSFileManager + NSData, one
+                   file per year under Application Support (raw body;
+                   clear() erases every year).
+   EntryDao, TallyDao, RhythmDao -> NOTHING TO WRITE: Room generated them for
+                   iOS in this task (R532 listing).
+   AuthenticatedPoster, EntryRepository, RhythmRepository -> NOTHING TO WRITE:
+                   implemented in commonMain (SessionManager,
+                   LocalEntryRepository, LocalRhythmRepository).
+
+B. platform code with no shared interface yet
+   the database builder -> Room.databaseBuilder<MonReleveDatabase>(name = a path
+                   under NSDocumentDirectory) - with MonReleveDatabaseConstructor
+                   now PROVEN generated for iOS. NEW, MISSED BY R455/R472:
+                   on every non-Android platform Room needs a SQLiteDriver
+                   (setDriver), and the catalog has none -
+                   androidx.sqlite:sqlite-bundled (BundledSQLiteDriver) or
+                   sqlite-framework (NativeSQLiteDriver, the system libsqlite3).
+                   That is a NEW DEPENDENCY: Ask first (QUESTION Q2).
+   the sync trigger -> BGTaskScheduler (BGProcessingTaskRequest with
+                   requiresNetworkConnectivity; Settled -> done, Retryable ->
+                   reschedule, Unauthenticated -> done, NOT a retry).
+   the account tag -> SHA-256 via CommonCrypto CC_SHA256 (reachable from
+                   Kotlin/Native as platform.CoreCrypto) or CryptoKit from
+                   Swift; AccountStore; the UNOWNED rule.
+   the pending sign-in store -> Keychain (a credential in this threat model).
+   the local wipe -> the composition of the stores above, scope as R455 states.
+   the /me codec -> kotlinx.serialization (PARK-D3) - encoding, not an Apple API.
+   fr/format -> NSNumberFormatter / NSDateFormatter with a French NSLocale.
+   the record path's four seams (R472 item 1) -> kotlinx Clock.System; the zone
+                   captured when the controller is built (the R472 decision);
+                   the canary (assertionFailure in debug, NSLog/os_log in
+                   release); the mint (NSUUID().UUIDString, lower-cased -
+                   Q1 of REPORT-KMP-4 still open).
+
+C. ALSO FOUND BY iOS-0, NOT ON THE LIST
+   1. A fresh Mac needs the Kotlin/Native toolchain provisioned before KSP's
+      iOS task (PARK-N1) - iOS-1's first local build meets it.
+   2. An App Store / TestFlight upload must be built with Xcode 26 (Apple,
+      since 2026-04-28); Kotlin's table first pairs Xcode 26.0 with Kotlin
+      2.2.21. iOS-1's first upload is expected to need a Kotlin version change
+      (PARK-N4, QUESTION Q1).
+   3. The simulator and a device read different tzdata paths (PARK-N3).
+   4. The simulator runtime is chosen by the runner image (PARK-N2) - today
+      iOS 26.2 under Xcode 16.2's tools.
+   5. Detection and notifications are not on R455/R472's lists at all (R455
+      called them "platform clients, later tasks"): CoreLocation's region and
+      visit APIs, UNUserNotificationCenter. Named so their absence is a
+      decision, not an omission.
+
+--------------------------------------------------------------------------------
+R537 - COMPOSE MULTIPLATFORM, RESEARCH ONLY (no code, no dependency added)
+--------------------------------------------------------------------------------
+THE ANSWER: Compose Multiplatform 1.8.2 is the newest release usable with
+Kotlin 2.1.10 without changing any version on the hard-boundary list. On
+Android it WOULD move Jetpack Compose itself (below).
+
+THE EVIDENCE, each read 2026-10-24:
+  - Kotlin compatibility (kotlinlang.org/docs/multiplatform/
+    compose-compatibility-and-versioning.html, page dated 15 October 2026):
+    "Starting with Compose Multiplatform 1.8.0, the UI framework fully
+    transitioned to the K2 compiler. To use the latest Compose Multiplatform
+    release: use at least Kotlin 2.1.0 ... upgrade to Kotlin 2.2.20 for
+    projects targeting platforms with rapidly evolving support, such as iOS
+    and web." The current release there is 1.12.2.
+  - JetBrains/compose-multiplatform CHANGELOG.md: "1.8.0 (May 2025) ... native
+    and web klibs can be consumed only with Kotlin 2.1.0 or newer"; "1.8.2
+    (June 2025)"; "1.9.0 (September 2025) ... Kotlin 2.1 is required for all
+    platforms including JVM ... kotlinx-datetime is updated to 0.7.1".
+  - THE KLIBS THEMSELVES (Maven Central, the iOS-simulator artefact's
+    default/manifest, Last-Modified as the publication date):
+      runtime-uikitsimarm64 1.7.3   compiler 1.9.24  abi 1.8.0    2024-12-19
+      runtime-uikitsimarm64 1.8.2   compiler 2.1.21  abi 1.201.0  2025-06-17
+      runtime-uikitsimarm64 1.9.3   compiler 2.1.21  abi 1.201.0  2025-11-06
+      ui-uikitsimarm64      1.10.3  compiler 2.2.20  abi 2.2.0
+    ABI 1.201.0 is the ABI of Room 2.7.2's klib, which Kotlin 2.1.10 already
+    reads in this build; ABI 2.2.0 is a newer one - the KMP-2 failure shape
+    (an older compiler refusing a newer klib), so 1.10 and later force a Kotlin
+    change.
+  - WHAT EACH WOULD PULL (the published .module files):
+      1.8.2  material3 -> kotlinx-datetime 0.6.0 (we have 0.6.1: no change);
+             runtime/ui -> kotlinx-coroutines-core 1.8.0 (we have 1.8.1: no
+             change); kotlin-stdlib declared with no version (no upward
+             constraint - not KMP-2's layer 1).
+      1.9.x  material3 1.9.0 -> kotlinx-datetime 0.7.1: a DATETIME CHANGE,
+             forbidden, and exactly the 0.7 line the catalog's comment
+             rejected (DayOfWeek/Month stop being java.time typealiases).
+      1.10+  Kotlin change (ABI above).
+  - 1.8.2 is sixteen months old - well past two weeks.
+
+WHAT 1.8.2 WOULD STILL FORCE ON ANDROID (not on the hard-boundary list, but not
+nothing): its Android artefacts are Google's, at Runtime/UI/Foundation 1.8.2
+and Material3 1.3.2 (CHANGELOG "Dependencies"), where the app's BOM 2024.09.00
+pins Compose 1.7.0 and Material3 1.3.0 (read from the BOM's pom). The Android
+UI libraries would move one minor version - any Paparazzi baseline whose pixels
+move is then a regeneration with a stated reason (R135/R207) - plus JetBrains' lifecycle
+(2.9.1) and navigation forks. And the docs' own recommendation for iOS is
+Kotlin 2.2.20; with PARK-N4's Xcode 26 requirement, a Kotlin move is likely
+before an iOS UI ships anyway, which reopens 1.10+.
+
+MOVING THE FOUR SCREENS (Aujourd'hui, Calendrier, Releve, Parametres), HIGH
+LEVEL:
+  1. A UI module (or :shared) applies org.jetbrains.compose 1.8.2 and the
+     kotlin.plugin.compose already in the catalog; androidx.compose.* imports
+     keep their package names (CMP republishes them).
+  2. design/ (tokens, FrontierTheme, typography, DayCell, MetricTile, the
+     rail) and ui/screens/* move to commonMain. ui/ holds 53 Kotlin files;
+     of all :app files declaring @Composable, 18 reference Android APIs (android.*,
+     LocalContext, painterResource/R., LocalLifecycleOwner,
+     collectAsStateWithLifecycle, activity) - MainActivity, ShellState,
+     AppBottomBar, DayCell, ZoneBadge, AnswerIcon, ChoiceMotion, the
+     onboarding kit, Prevision, Rythme, Comparison, the sign-in screens, the
+     dev activities - each needs CMP resources, JetBrains lifecycle, or an
+     expect/actual.
+  3. The controllers keep java.time and Android stores (KMP-4: the java.time
+     bridge is Android-only by design); iOS controllers call the shared
+     kotlinx functions with the same seams.
+  4. fr/format (CLDR French formatting) has no common equivalent (KMP-0's
+     ruling) and the screens use it.
+  5. The fences that scan app/src/main and the Paparazzi baselines are rooted
+     in :app; they must follow the files (R269, AN-FENCE-ROOTS) before the
+     first file moves.
+  6. iOS gets a ComposeUIViewController in iosMain and a thin Xcode app - iOS-1.
+  The SwiftUI alternative instead writes the four screens twice, against the
+  same shared engine, copy, wire and stores.
+
+--------------------------------------------------------------------------------
+R538 - THE COST, WRITTEN DOWN
+--------------------------------------------------------------------------------
+EVERY RUN (job startedAt -> completedAt from `gh run view --json jobs`; GitHub
+"rounds the minutes and partial minutes each job uses up to the nearest whole
+minute" - Actions runner pricing):
+
+  run id       branch       SHA      conclusion  job time  billed
+  40107915183  ios-0        d22324b  failure     2m00s     2   R532 cause 1
+  40108404916  ios-0        8572876  success     2m31s     3   first green
+  40108753078  ios-0        ba8d922  success     1m18s     2   (NO RESULT step)
+  40109536305  ios-0        b682faa  success     1m17s     2   (NO RESULT step)
+  40109727655  ios-0        074dc8c  success     1m23s     2   THE GATE RUN
+  40110013004  ios-0-plant  d2a7329  failure     3m53s     4   R531 plant, cold
+  TOTAL                                          12m22s    15 macOS minutes
+
+The runs API's `billable.MACOS.total_ms` returned 0 for every run, so the
+billed column is computed from the job times by the published rounding rule,
+not read from GitHub.
+
+THE PRICE, AS PUBLISHED (read 2026-10-24):
+  docs.github.com/en/billing/concepts/product-billing/github-actions:
+    GitHub Free: 2,000 minutes per month, 500 MB artifact storage, 10 GB cache
+    per repository; "GitHub Actions usage is free for ... public repositories
+    that use standard GitHub-hosted runners".
+    Per-minute rates: Linux 2-core (x64) actions_linux $0.006;
+    macOS 3-core or 4-core (M1 or Intel) actions_macos $0.062.
+  docs.github.com/en/billing/reference/actions-runner-pricing: the same rates,
+    and the whole-minute rounding quoted above.
+  THE PAGE NO LONGER STATES A MINUTE MULTIPLIER. The published rates make
+  macOS 10.3x Linux ($0.062 / $0.006). The operator's 10x figure gives 150 of
+  the 2,000 included minutes (7.5%) for this session; at the published macOS
+  rate the 15 minutes are $0.93 of list price. Which of the two the account's
+  bill shows was NOT readable from here: the billing API needs the `user`
+  scope, which this gh token does not have (QUESTION Q4).
+STORAGE: caches left on refs/heads/ios-0: ~/.konan 421 557 975 bytes, Gradle
+  823 676 981 bytes (of the 10 GB per repository). Artifacts: five (run
+  40107915183 had nothing to upload), 42-44 KB each, 14-day retention.
+A FUTURE RUN, measured: about 1m20s on ios-0 with warm caches (2 billed
+minutes); about 4 minutes on a new ios-* branch, which cannot read another
+branch's caches.
+
+--------------------------------------------------------------------------------
+OPERATOR STEPS
+--------------------------------------------------------------------------------
+None were needed to finish: R1(b) and R1(c) were in place. After the merge,
+`gh workflow run ios-shared.yml --ref main` (workflow_dispatch) runs it on
+demand; until then a push to any ios-* branch does.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+NEW, written into parking.md. THE N SERIES WAS CONFIRMED FREE (R456):
+web/scripts/register-coverage.mjs reported OK with A B C D F G I K L M P R S T U
+V Y in use on main; E is claimed by the unmerged an-forced-signout; and a scan
+of parking.md on EVERY remote branch found no PARK-N. The citation pattern
+PARK(?:AN)?-[A-Z]?d+ sees PARK-N1 (one letter).
+
+  PARK-N1  KSP's iOS task does not provision the Kotlin/Native toolchain on a
+           fresh machine; CI provisions it first.
+  PARK-N2  the simulator that runs commonTest is chosen by the runner image,
+           not pinned.
+  PARK-N3  the simulator and a real iPhone read different time-zone databases.
+  PARK-N4  an App Store upload needs Xcode 26, which Kotlin 2.1.10 does not
+           list.
+
+UNCHANGED, and confirmed rather than closed: PARK-M1 (the entry repository's
+behaviour suite is not in commonTest, so it did not run on iOS).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE R530 SCRIPT CARRIES TWO EXTRA FLAGS, --continue and --info. Neither
+   changes what is compiled or run: --continue lets the device compile report
+   in a red run (the plant run used it), --info logs the command that names the
+   simulator. Reversible by deleting two words.
+2. XCODE 16.2, NOT THE 16.0 KOTLIN'S TABLE LISTS FOR 2.1.10. 16.2 is on the
+   image, below the 16.3 conflict, and every run was green with it. 16.0 is
+   also on the image; switching is one line (DEVELOPER_DIR).
+3. ONE commonTest FILE CHANGED (GenevaConformanceTest: a println per case), to
+   make R534 readable from the artifact. Output only; JVM and iOS counts
+   unchanged.
+4. TWO RUNS (40108753078, 40109536305) CARRIED A SIMULATOR CHECK THAT MEASURED
+   NOTHING. Both runs' tests are real (82/0 each); only the extra step was NO
+   RESULT, and it was replaced, not adjusted until it agreed.
+5. A PROVISIONING STEP the R530 text does not name (R532 cause 1), in the
+   workflow rather than in :shared.
+6. THREE OF THIS SESSION'S OWN GITHUB OBJECTS WERE DELETED: the ios-0-plant
+   branch (R531 says to) and the two caches its run created. Nothing else was
+   deleted anywhere.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. android/gradlew IS TRACKED AS 100644. ci.yml's android job runs
+   `./gradlew gate` on ubuntu-latest and has never executed (its own comment
+   says so); on its first run it would fail with "Permission denied". This
+   workflow chmods in the runner instead of changing the tracked mode.
+   `git update-index --chmod=+x android/gradlew` is the one-line fix.
+2. :app:gate's "SKIPPED, with reason" text still says the iOS compilations are
+   proved only "the day the iOS targets build on a Mac". They now build in
+   ios-shared.yml; the Windows gate still cannot run them, so the text is not
+   wrong, only incomplete. Not edited (:app build file, out of scope).
+3. `sw_vers` printed empty ProductName/ProductVersion on the runner (the job's
+   "Runner Image" block names macos-15-arm64 20260907.0337.1, so nothing
+   depended on it).
+4. setup-gradle's basic provider stores its Gradle cache under a key beginning
+   "setup-java-macOS-arm64-gradle-"; harmless, odd to read in `gh cache list`.
+5. The main checkout carries the operator's lock, an uncommitted
+   docs/deploy.md and untracked relay/*.txt and android/scripts/*.mjs files;
+   C:/wt/an-forced-signout carries a stale lock. Read from, never written;
+   reported, not touched.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-N4. iOS-1's first TestFlight upload must be built with Xcode 26, which
+   Kotlin's table first pairs with Kotlin 2.2.21. Is a Kotlin move (and KSP,
+   and possibly Room, behind it) to be planned as its own task before iOS-1,
+   or decided inside iOS-1?
+Q2 Room on iOS needs a SQLiteDriver artefact the catalog lacks:
+   androidx.sqlite:sqlite-bundled (ships SQLite inside the app) or
+   sqlite-framework (NativeSQLiteDriver, iOS's own libsqlite3, which also needs
+   the -lsqlite3 linker option - developer.android.com/kotlin/multiplatform/room,
+   read 2026-10-24). Which does iOS-1a add? Either is a new dependency - Ask first.
+Q3 PARK-N2. Should the workflow pin the simulator (--device) so a runner image
+   update cannot move the iOS runtime silently, or is "printed every run"
+   enough?
+Q4 R538. The billing API needs the gh `user` scope, which the token lacks, so
+   the account's remaining October minutes could not be read. Grant it
+   (`gh auth refresh -s user`) for the next session that runs macOS, or keep
+   reading cost from job times as here?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+PENDING - written with the final gate, by the next commit of this report.
+
+================================================================================
+END OF REPORT-IOS-0
