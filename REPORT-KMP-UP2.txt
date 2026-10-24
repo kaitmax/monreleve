@@ -1,0 +1,869 @@
+================================================================================
+REPORT-KMP-UP2
+ONE KOTLIN UPGRADE: FAR ENOUGH FOR XCODE 26 AND COMPOSE MULTIPLATFORM, NO FURTHER
+================================================================================
+TASK     relay/KMP-UP2.txt, rulings R539-R548 (free: R520-R529 are
+         AN-FORCED-SIGNOUT's, R530-R538 IOS-0's; none renumbered, R162).
+BASE     d7dd715 (origin/main, the merge of ios-0)
+BRANCH   kmp-up2, worktree C:/wt/kmp-up2 (R349), lock held in it, upstream unset
+         after creation; every push was `git push origin kmp-up2`. PENDING
+         MERGE - not merged; the merge is the operator's.
+DEVICE   SM-G960F (Galaxy S9), Android 10, API 29, serial 232bcd8c300c7ece
+CLOUD    GitHub Actions, .github/workflows/ios-shared.yml (the operator's choice
+         in IOS-0 R1(b); the prompt's CODEMAGIC_API_TOKEN line was stale and no
+         Codemagic call was made). gh used its own credential store; no token
+         was printed, written or needed in any file.
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334). Every CI number is read from
+the run's own log or artifact, never from the absence of an error.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+    kotlin  2.1.10        -> 2.2.21
+    ksp     2.1.10-1.0.31 -> 2.2.21-2.0.4    (still KSP1: ksp.useKSP2=false)
+
+Nothing else in the catalog moved. 2.2.21 is the OLDEST Kotlin that Kotlin/Native
+documents for Xcode 26, has a Compose Multiplatform line declared for it (1.10.x),
+has a KSP that still runs KSP1, and is a year old - and it is also the LAST
+Kotlin with a KSP1-capable KSP. Both probes held (Room 2.7.2 generated its files
+for Android and both iOS targets; a Compose Multiplatform 1.10.3 @Composable
+compiled for Android and iosSimulatorArm64). The iOS workflow now builds with
+Xcode 26.0.1 and runs the same 82 tests, all six Geneva cases included. On the
+S9 the 9-path migration matrix is green and the audit build signed in by code,
+recorded and synced a day, and showed the Releve and the forecast against the
+local stack. Test counts, Room schemas 1-6, the wire goldens and every Paparazzi
+baseline are unchanged.
+
+What the move costs, said plainly: one new compiler warning that is a known
+Kotlin bug (KT-80399, PARK-X1), KSP1's deprecation warning on every build
+(PARK-X2), and a Windows gate that now compiles :shared's iOS klibs - without
+Room's generated code - because Kotlin 2.2.20 made that the default (PARK-X3).
+Each is visible, explained and asked about; none was silenced.
+
+Three macOS runs, 12m14s of job time, 13 billed minutes (R538's rounding),
+plus the run on the report commit recorded under STATUS.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+SEE THE COMPLETION BLOCK AT THE END OF THIS SECTION, written after both gates
+ran on the commit that carries this report.
+
+THE CODE TIP is 7a0ebfa: every commit after it changes only REPORT-KMP-UP2.txt
+and parking.md.
+
+ON THE BUMP CONTENT (staged tree feb564ff = commit aa4650a), after
+./gradlew --stop:
+    ./gradlew :app:gate --rerun-tasks
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1268 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 43s
+    236 actionable tasks: 236 executed
+    GATE_EXIT=0
+    (HEAD f790626 with the bump staged; index tree read before and after the
+    run as feb564ff44c112dc47fa6b26638e1382ebd0382e; committed as aa4650a.)
+
+ON 7a0ebfa, THE iOS RUN (R547):
+    run 40125022003  https://github.com/kaitmax/monreleve/actions/runs/40125022003
+    head_sha 7a0ebfa14a4e0573b7cd51c588126bb4dd183739, conclusion: success
+    Image: macos-15-arm64 / Version: 20260907.0337.1
+    Xcode 26.0.1 / Build version 17A400
+    BUILD SUCCESSFUL in 1m 10s
+    10 actionable tasks: 10 executed
+    iOS SIMULATOR TESTS EXECUTED: 82   (13 classes, failures=0 errors=0
+                                        skipped=0 in every class)
+    DEVICE: iPhone 17 Pro (E952A9B0-CC78-435C-BF08-06AD47FE1076)
+    RUNTIME: -- iOS 26.2 --
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
+--------------------------------------------------------------------------------
+relay/KMP-UP2.txt in full, by absolute path from the main checkout (it is
+untracked there and was never copied into the worktree or committed). The
+repository's CLAUDE.md (the parent-directory one belongs to another project and
+was ignored, as this repository's CLAUDE.md instructs).
+
+REPORT-KMP-UP.txt (the method: the probe decides first, every tool proven,
+warnings counted, one versions-only commit with its stale comments);
+REPORT-IOS-0.txt (Q1: TestFlight needs Xcode 26, which Kotlin 2.1.10 does not
+list; R537: Compose Multiplatform 1.8.2 for 2.1.10, 1.9.x pulls kotlinx-datetime
+0.7.1, 1.10+ needs a newer Kotlin; R538's cost method; R531's throwaway-branch
+plant, which is how the probes here reached a runner); REPORT-KMP-1.txt R384
+(the DayOfWeek-typealias inventory that a kotlinx-datetime 0.7 move would need);
+docs/kmp/room-shared-wiring.kts.txt (the probe's wiring; KMP-2b has since moved
+the real database into :shared, so the wiring is now the build file itself).
+Also, for R546's procedure: REPORT-AN-FORCED-SIGNOUT.txt's R524 section, read
+from origin/an-forced-signout without checking it out. Named KMP-UP2.
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS
+--------------------------------------------------------------------------------
+(a) origin/main contains ios-0                          PASS
+    `git fetch`; origin/main = d7dd715 (Merge ios-0); origin/ios-0 (6834170)
+    is an ancestor of it. No branch named kmp-up2 existed locally or on origin.
+
+(b) FULL :app:gate --rerun-tasks on d7dd715             PASS - the BEFORE
+    run IN THIS SESSION in C:/wt/kmp-up2 after ./gradlew --stop, tree clean:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1268 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 55s
+    225 actionable tasks: 225 executed
+    GATE_EXIT=0
+    HEAD d7dd7159fa6cd6eb93d36566d4fc052bc71eefca before and after.
+    From its JUnit XML: :app 1268 tests / 170 files, :shared 85 / 14 files, 0
+    failures; release APK 1,970,881 bytes; detekt 0 findings in both modules.
+
+(c) the iOS workflow green on d7dd715, run by this session - the BEFORE on iOS
+    `gh workflow run ios-shared.yml --ref main`
+    run 40119240539  https://github.com/kaitmax/monreleve/actions/runs/40119240539
+    head_sha d7dd715..., event workflow_dispatch, conclusion: success
+    Image: macos-15-arm64 / Version: 20260907.0337.1
+    Xcode 16.2 / Build version 16C5032a      (what iOS-0 recorded)
+    JDK: openjdk version "17.0.21"
+    BUILD SUCCESSFUL in 1m 2s, 8 actionable tasks: 8 executed
+    iOS SIMULATOR TESTS EXECUTED: 82 - 13 classes, every class failures=0:
+      GenevaConformanceTest 2, CalendarDayGoldenTest 9, StoredEnumNamesTest 6,
+      AuthWireGoldenTest 18, CancellationTest 5, RhythmRepositoryPinTest 6,
+      DownloadRateParityTest 1, EntriesDownloadTest 19, EntriesWireGoldenTest 6,
+      DossierWireGoldenTest 5, ParisDayDstTest 2, FixtureGeneratorTest 2,
+      SharedModuleTest 1
+    the six GENEVA lines, 39.16 and 4.16 included; iPhone 17 Pro, iOS 26.2.
+    The 82 (class, test) names were extracted from the run's artifact and kept
+    as the list R547 is matched against.
+
+(d) THE BEFORE VERSIONS, read from the repository, not recalled:
+    android/gradle/libs.versions.toml:
+      agp 8.10.1 | kotlin 2.1.10 | coreKtx 1.15.0 | junit 4.13.2
+      junitVersion 1.2.1 | espressoCore 3.6.1 | lifecycleRuntimeKtx 2.8.7
+      activityCompose 1.9.3 | composeBom 2024.09.00 | coroutines 1.8.1
+      kotlinx-datetime 0.6.1 | kotlinx-serialization 1.7.3
+      ksp 2.1.10-1.0.31 | room 2.7.2 | work 2.10.1 | browser 1.8.0
+      ktlint 12.1.1 | detekt 1.23.7 | paparazzi 1.3.5 | kotest 5.9.1
+      junitVintage 5.10.2 | jsonOrg 20260814
+      kotlin-compose, kotlin-serialization, kotlin-android, kotlin-multiplatform
+      plugins and kotlin-test/kotlin-reflect: version.ref = kotlin.
+    Gradle wrapper: gradle-8.11.1-bin.zip (gradle-wrapper.properties).
+    JDK: `./gradlew --version` - Launcher JVM 26 (the PATH java), Daemon JVM
+      C:\Program Files\Android\Android Studio\jbr (from org.gradle.java.home
+      in ~/.gradle/gradle.properties) = OpenJDK 21.0.6. THE DAEMON IS WHAT
+      COMPILES; KMP-UP's "JDK 26" named the launcher. CI: Temurin 17.0.21.
+    KSP MODE: ksp.useKSP2 set NOWHERE (gradle.properties, build files, grep of
+      android/); ksp 2.1.10-1.0.31 defaults useKsp2 to false, and
+      `./gradlew :shared:help --task kspDebugKotlinAndroid` reported
+      Type KspTaskJvm (com.google.devtools.ksp.gradle.KspTaskJvm) - KSP1.
+    Xcode of the iOS-0 run: 16.2 (16C5032a), from (c).
+
+(e) the S9 listed by adb                                PASS
+    232bcd8c300c7ece device product:starltexx model:SM_G960F (Android 10).
+    It dropped off USB twice during the session (R546); both are recorded.
+
+--------------------------------------------------------------------------------
+R539 - android/gradlew IS EXECUTABLE
+--------------------------------------------------------------------------------
+    78811e1  `git update-index --chmod=+x android/gradlew`, alone in its commit
+    before:  100644 4f906e0c811fc9e230eb44819f509cd0627f2600 0  android/gradlew
+    after:   100755 4f906e0c811fc9e230eb44819f509cd0627f2600 0  android/gradlew
+    `git show --stat 78811e1`: android/gradlew | 0 - mode only, same blob.
+The workflow comment that described the old mode, and the chmod step it
+justified, were removed in the later workflow commit (7a0ebfa, R547). The
+step was dropped rather than kept because with the mode tracked it would only
+repair a regression unseen; now the provisioning step - the first to run
+./gradlew - fails with "Permission denied" if the mode is ever lost. Run
+40125022003 ran ./gradlew with no chmod: 0 "Permission denied" lines.
+
+--------------------------------------------------------------------------------
+R540 - WHICH KOTLIN (chosen, rejected, sources and dates, all read 2026-10-24)
+--------------------------------------------------------------------------------
+CHOSEN
+    Kotlin                    2.2.21        released 2025-10-23
+    KSP                       2.2.21-2.0.4  published 2025-10-28 (KSP1 kept)
+    Compose Multiplatform     1.10.3        published 2026-03-19 (probe only)
+
+(1) KOTLIN/NATIVE DOCUMENTS XCODE 26
+    kotlinlang.org/docs/whatsnew2220.html, section "Support for Xcode 26":
+      "Starting with Kotlin 2.2.21, the Kotlin/Native compiler supports Xcode
+      26 - the latest stable version of Xcode."
+    kotlinlang.org/docs/releases.html, the 2.2.21 row:
+      "Released: October 23, 2025 ... A bug fix release containing support for
+      Xcode 26, along with other improvements and bug fixes."
+    kotlinlang.org/docs/multiplatform/multiplatform-compatibility-guide.html
+    (page dated 08 October 2026), the version table:
+      Kotlin   Gradle         AGP            Xcode
+      2.3.0    7.6.3-9.0.0    8.2.2-8.13.0   26.0
+      2.2.21   7.6.3-8.14     7.3.1-8.11.1   26.0
+      2.2.20   7.6.3-8.14     7.3.1-8.11.1   16.4
+      2.2.0-2.2.10            7.3.1-8.10.0   16.3
+      2.1.21                  7.3.1-8.7.2    16.3
+      2.1.0-2.1.10            7.4.2-8.7.2    16.0
+    AGP 8.10.1 and Gradle 8.11.1 are INSIDE 2.2.21's ranges - the evidence that
+    nothing else has to move. GitHub JetBrains/kotlin release v2.2.21:
+    published_at 2025-10-23T10:35:10Z.
+
+(2) A COMPOSE MULTIPLATFORM RELEASE DECLARED COMPATIBLE
+    JetBrains/compose-multiplatform CHANGELOG.md:
+      "1.10.0 (January 2026) ... Migration Notes ... Kotlin 2.2 is required for
+      native and web platforms"
+      "1.11.0 (May 2026) ... Kotlin 2.3 is required for native and web
+      platforms"
+    So 1.10.x is the line declared for Kotlin 2.2.x and 1.11 is not. 1.10.3 is
+    that line's last release (GitHub release v1.10.3 published
+    2026-03-19T14:01:35Z; Maven Central compose-gradle-plugin-1.10.3.pom
+    Last-Modified 2026-03-18). The docs page "Compatibility and versions"
+    (dated 15 October 2026) adds: "upgrade to Kotlin 2.2.20 for projects
+    targeting platforms with rapidly evolving support, such as iOS and web."
+
+(3) A KSP RELEASE IN THE CURRENT MODE (KSP1)
+    google/ksp releases (GitHub API):
+      2.1.20-2.0.0 (2025-04-08): "Bumped version to 2.0.0 and enabled KSP2 by
+        default!"
+      2.2.21-2.0.4 (2025-10-28): "Kotlin version: 2.2.21"
+      2.2.21-2.0.5 (2026-02-02): "A new Gradle property flag was added to mute
+        the warnings about KSP1 usage."
+      2.3.0 (2025-10-22): "KSP1 has been deprecated ... KSP is no longer a
+        compiler plugin (like KSP1)."
+    KSP's OWN SOURCE at tag 2.2.21-2.0.4 (KspSubplugin.kt): useKsp2.convention(
+    ... gradleProperty("ksp.useKSP2") ... .orElse(true)) and a full
+    `if (useKSP2) ... else` branch - KSP1 is still there, behind the flag. At
+    2.1.10-1.0.31 the same convention ends .orElse(false).
+    KMP-UP's catalog comment "the 2.0.x releases ... are KSP2-only" was WRONG
+    by that source; it was corrected (8c5c6ac).
+    2.2.21-2.0.4 OVER 2.0.5: `gh api repos/google/ksp/compare/2.2.21-2.0.4...
+    2.2.21-2.0.5` is two commits, "Remove KSP1 deprecation warning logic" and
+    "Remove test" - the opt-in mute. The boundary forbids muting a warning, so
+    2.0.5 offers nothing usable; 2.0.4 is the first stable KSP for 2.2.21.
+    Maven Central: symbol-processing-gradle-plugin, symbol-processing (KSP1)
+    and symbol-processing-aa-embeddable 2.2.21-2.0.4 all present, Last-Modified
+    2025-10-28.
+
+(4) TWO WEEKS OLD (published on or before 2026-10-10)
+    Kotlin 2.2.21 2025-10-23, KSP 2.2.21-2.0.4 2025-10-28, CMP 1.10.3
+    2026-03-19. All three pass by far more than two weeks.
+
+REJECTED
+    2.1.10 (current), 2.1.20, 2.1.21  table: Xcode 16.0 / 16.0 / 16.3 - fails (1)
+    2.2.0, 2.2.10                      table: Xcode 16.3 - fails (1)
+    2.2.20                             table: Xcode 16.4; the 2.2.20 notes
+                                       themselves say "Starting with Kotlin
+                                       2.2.21" - fails (1)
+    2.3.0 and later                    newer than 2.2.21, so not the oldest;
+                                       and fails (3) besides: the only KSP for
+                                       Kotlin 2.3 is 2.3.x, KSP2-only, and
+                                       2.2.21-2.0.4's own KSP1 notice says KSP1
+                                       "will no longer be compatible with ...
+                                       Kotlin 2.3.0 (and above)".
+    KSP 2.2.21-2.0.5                   see (3): its one change is the mute.
+    CMP 1.9.x                          works with Kotlin 2.1+, but its
+                                       material3 pulls kotlinx-datetime 0.7.1
+                                       (iOS-0 R537; CHANGELOG 1.9.0) - and
+                                       1.10.x is the line declared for 2.2.
+    CMP 1.11.x and later               "Kotlin 2.3 is required" - fails (2).
+
+--------------------------------------------------------------------------------
+R541 - THE ROOM PROBE STILL HOLDS
+--------------------------------------------------------------------------------
+THE PROBE: android/shared/src/commonMain/kotlin/ch/monreleve/app/kmpup2probe/
+ProbeDatabase.kt - @Entity ProbeEntity, @Dao ProbeDao (one suspend @Query),
+@Database(exportSchema = false) ProbeDatabase with
+@ConstructedBy(ProbeDatabaseConstructor::class) and its `expect object` - the
+form docs/kmp/room-shared-wiring.kts.txt records. The Room wiring itself is
+already the committed :shared build file (KMP-2b), so nothing was re-applied.
+On Kotlin 2.2.21 / KSP 2.2.21-2.0.4 (KSP1) / Room 2.7.2:
+
+ANDROID, locally (Windows):
+    ./gradlew :shared:compileCommonMainKotlinMetadata :shared:kspDebugKotlinAndroid
+              :shared:compileDebugKotlinAndroid :cmpprobe:compileDebugKotlinAndroid
+              --rerun-tasks
+    BUILD SUCCESSFUL in 47s, EXIT=0; no e: line, no KLIB-resolver line
+    shared/build/generated/ksp/android/androidDebug/kotlin/ch/monreleve/app/kmpup2probe/
+      ProbeDao_Impl.kt  ProbeDatabaseConstructor.kt  ProbeDatabase_Impl.kt
+    and ProbeDatabaseConstructor.kt reads
+      public actual object ProbeDatabaseConstructor : RoomDatabaseConstructor<ProbeDatabase> {
+        actual override fun initialize(): ProbeDatabase =
+            ch.monreleve.app.kmpup2probe.ProbeDatabase_Impl()
+    `:shared:help --task kspDebugKotlinAndroid` on that state: KspTaskJvm (KSP1).
+
+iOS, in the cloud (run 40122560911, below):
+    > Task :shared:kspKotlinIosSimulatorArm64
+    > Task :shared:compileKotlinIosSimulatorArm64
+    > Task :shared:kspKotlinIosArm64
+    > Task :shared:compileKotlinIosArm64
+    and the listing step:
+      shared/build/generated/ksp/iosSimulatorArm64/iosSimulatorArm64Main/kotlin/
+        ch/monreleve/app/kmpup2probe/ProbeDao_Impl.kt, ProbeDatabase_Impl.kt,
+        ProbeDatabaseConstructor.kt
+      shared/build/generated/ksp/iosArm64/iosArm64Main/kotlin/... the same three
+    The real MonReleveDatabase's five iOS files were generated in the same run
+    and again in R547's run 40125022003 - the stronger evidence (R178): Room
+    2.7.2 on Kotlin 2.2.21 generates and compiles the app's actual database for
+    both iOS targets, and its 82 tests pass on top of it.
+
+HOW "IN THE CLOUD" AND "DELETED BEFORE ANY COMMIT" WERE BOTH KEPT (DEVIATION 1):
+a runner checks out a commit, so the probe was committed on a THROWAWAY branch
+kmp-up2-probe cut from 78811e1 - commit 4044a0e: the bump, ksp.useKSP2=false,
+this probe, the R542 module and the workflow on Xcode 26.0.1 with
+:cmpprobe:compileKotlinIosSimulatorArm64 appended - pushed, dispatched with
+`gh workflow run ios-shared.yml --ref kmp-up2-probe`, read, then deleted:
+    git push origin --delete kmp-up2-probe   ->  - [deleted] kmp-up2-probe
+    git branch -D kmp-up2-probe              ->  Deleted branch kmp-up2-probe (was 4044a0e)
+    gh cache delete 9454896749 (gradle, 1,323,955,068 B) and 9454889309
+      (konan, 368,334,054 B), both ref refs/heads/kmp-up2-probe
+    `gh cache list --ref refs/heads/kmp-up2-probe --json id` -> []  (beside
+      main's two caches listed by the same command - the positive control)
+NOTHING OF THE PROBE EVER LANDED ON kmp-up2. Back on kmp-up2 the leftover build
+outputs were removed (android/cmpprobe/ and every shared/build path containing
+kmpup2probe) and `git status --porcelain --ignored`, minus build/ .gradle/
+.kotlin/ directories, listed only .session-lock.json and android/local.properties.
+
+--------------------------------------------------------------------------------
+R542 - THE COMPOSE MULTIPLATFORM PROBE
+--------------------------------------------------------------------------------
+A scratch module :cmpprobe (android/cmpprobe, included only on the throwaway
+branch): plugins android.library, kotlin.multiplatform, kotlin.compose (the
+catalog's, = Kotlin 2.2.21) and id("org.jetbrains.compose") version "1.10.3";
+targets androidTarget (JVM 17) and iosSimulatorArm64; commonMain depends on
+org.jetbrains.compose.runtime:runtime:1.10.3 ONLY (no material3, which would
+pull kotlinx-datetime 0.7.1); one file:
+    @Composable fun probeAnswer(): Int { val base = remember { 41 }; return base + 1 }
+ANDROID (local):  > Task :cmpprobe:compileDebugKotlinAndroid - BUILD SUCCESSFUL;
+    javap of ProbeComposableKt.class:
+      public static final int probeAnswer(androidx.compose.runtime.Composer, int);
+    - the Composer parameter is the Compose compiler's transform, so the plugin
+    pairing did real work rather than compiling a plain function.
+iOS (cloud, run 40122560911):  > Task :cmpprobe:compileKotlinIosSimulatorArm64,
+    then BUILD SUCCESSFUL in 1m 26s, 13 actionable tasks: 13 executed.
+ALSO SEEN, on Windows: :cmpprobe:compileKotlinIosSimulatorArm64 succeeds
+locally too (Kotlin 2.2.20's cross-platform klib compilation - PARK-X3).
+DELETED with the probe branch; nothing landed.
+
+THE PROBE RUN ITSELF, run 40122560911 on 4044a0e (throwaway):
+    Image macos-15-arm64 20260907.0337.1; Xcode 26.0.1 / Build version 17A400
+    iOS SIMULATOR TESTS EXECUTED: 82, every class failures=0; names identical
+    to R1(c)'s; six GENEVA lines; iPhone 17 Pro, iOS 26.2.
+    So the bump and Xcode 26 were proven together before either was committed.
+
+--------------------------------------------------------------------------------
+R543 - detekt IS NOT TURNED OFF
+--------------------------------------------------------------------------------
+detekt 1.23.7 did NOT fail on Kotlin 2.2.21, so no pin was needed and the
+escape hatch (stop if the only path is an upgrade) was not reached.
+    > Task :app:detekt       (executed, not UP-TO-DATE/NO-SOURCE/SKIPPED)
+    > Task :shared:detekt    (executed)
+    findings: app 0, shared 0 (count of <error in each detekt.xml, written at
+    19:04 and 19:08 by the bump gate) - the same zero as R1(b).
+WHY IT DID NOT FAIL, read rather than assumed: detekt resolves its own
+compiler on its own configuration -
+    ./gradlew :app:dependencies --configuration detekt
+      io.gitlab.arturbosch.detekt:detekt-cli:1.23.7
+        +--- org.jetbrains.kotlin:kotlin-compiler-embeddable:2.0.10
+- the project's 2.2.21 never reaches detekt's classpath, which is the
+separation detekt's documented pin exists to create. Nothing was added to make
+it so.
+
+--------------------------------------------------------------------------------
+R544 - THE UPGRADE IS ONE VERSIONS-ONLY COMMIT
+--------------------------------------------------------------------------------
+BEFORE IT, valid on both versions, each its own commit:
+    8c5c6ac  ksp.useKSP2=false in gradle.properties - the mode STATED. On
+             2.1.10-1.0.31 it equals the default: KspTaskJvm before and after.
+             Corrects the two comments it makes false (the catalog's
+             "KSP2-only"/"unset", :shared's "not set anywhere").
+    f790626  :probe sets jvmTarget 17 through compilerOptions. On 2.2.21 the
+             old block warned (below, R545); on 2.1.10 it did not. Probe
+             classes still major version 61 (Java 17).
+THE BUMP:
+    aa4650a  kotlin 2.1.10 -> 2.2.21, ksp 2.1.10-1.0.31 -> 2.2.21-2.0.4.
+             `git diff -U0` of the catalog's non-comment lines is exactly:
+               -kotlin = "2.1.10"            +kotlin = "2.2.21"
+               -ksp = "2.1.10-1.0.31"        +ksp = "2.2.21-2.0.4"
+             plus the comments that cited the old versions (R181): the kotlin
+             and ksp blocks; kotlinx-datetime and kotlinx-serialization, which
+             STAY and now say why on 2.2.21; Kotest, whose "6.x needs Kotlin
+             2.2" reason no longer binds and which STAYS by the boundary (the
+             comment would otherwise send the next reader to bump it - KMP-UP's
+             serialization-comment case); kotlin-test and the serialization
+             plugin, which still named 2.0.21; :shared's header and KSP plugin
+             comment.
+AFTER IT, valid only after, each its own commit:
+    4685d2c  the gate's printed SKIPPED list said compileKotlinIos* are "not
+             compiled on this Windows host"; on 2.2.21 the gate's own log shows
+             both EXECUTED. Text only (the gate's entry, its dependency comment,
+             two :shared comments). PARK-X3 holds the policy question.
+    7a0ebfa  the iOS workflow on Xcode 26.0.1 (R547).
+
+THE REVERT THAT UNDOES IT:
+    git revert --no-edit 7a0ebfa 4685d2c aa4650a
+THREE, NOT ONE, and why: reverting aa4650a alone puts Kotlin back on 2.1.10
+while the workflow still builds with Xcode 26.0.1 (which 2.1.10 does not
+support) and the gate text still describes 2.2.21. 8c5c6ac and f790626 stay -
+both are valid on 2.1.10 (proven by the fastCheck before the bump). Reverting
+7a0ebfa also restores the chmod step and its "tracked as 100644" comment, which
+R539 made false; the step is harmless, the comment would need a line.
+
+--------------------------------------------------------------------------------
+R545 - EVERY TOOL PROVEN, NOT ASSUMED
+--------------------------------------------------------------------------------
+Sources: the R1(b) gate on d7dd715 (BEFORE) and the bump gate on aa4650a's
+content (AFTER), both --rerun-tasks, their JUnit XML copied aside at once.
+
+TEST COUNTS PER MODULE        before         after
+    :app testDebugUnitTest    1268 (170)     1268 (170)   failures 0 / 0
+    :shared testDebugUnitTest   85 (14)        85 (14)    failures 0 / 0
+    iOS simulator               82 (13)        82 (13)    failures 0 / 0
+    MATCHED BY NAME, not only by count: the sorted class#test lists are
+    identical for :app, for :shared, and for iOS (R1(c) vs 40125022003).
+    The gate's own floor: "test floor OK: 1268" in both.
+
+COMPILER WARNINGS (`w:` lines in the full gate logs)
+    BEFORE 5: 2x LocalLifecycleOwner deprecated (MainActivity.kt:761),
+              2x Criteria deprecated (MockProviderReplay.kt:4),
+              1x "The following Kotlin/Native targets cannot be built on this
+              machine and are disabled"
+    AFTER 6:  the same four in app/ (PARK-U2, unchanged),
+              -1 the K/N disabled-targets line (gone: the targets now build -
+              PARK-X3),
+              +2 OVERRIDE_DEPRECATION at LiveLocation.kt:134:30 (debug and
+              release) - KT-80399, a Kotlin 2.2 false positive on an anonymous
+              class whose override IS @Deprecated; fixed in 2.3.0-Beta1.
+              ASKED ABOUT (PARK-X1, Q1); not suppressed.
+    NOT `w:` BUT NEW: the KSP1 deprecation notice, 1x per build (PARK-X2, Q2);
+              on iOS only, "w: Language version 1.9 is deprecated", 2x per run
+              (KSP1's two native tasks; 0 in R1(c), 2 in 40122560911 and in
+              40125022003).
+    BUILD-SCRIPT WARNINGS, measured separately because a gate only prints them
+    when a script recompiles (the BEFORE gate's scripts were cached): each
+    script was forced to recompile on 2.1.10 (a temporary trailing comment,
+    removed) and the bump recompiled them on 2.2.21:
+      2.1.10: app/build.gradle.kts:730:17 and :792:17 'exec(...)' deprecated
+      2.2.21: the same two, plus probe/build.gradle.kts:27:9 'jvmTarget:
+              String' is deprecated  -> FIXED BEFORE THE BUMP (f790626); the
+              probe script recompiled on 2.2.21 afterwards with no warning.
+    (`--recompile-scripts` does not exist in Gradle 8.11.1: "Unknown
+    command-line option" - recorded because it was tried.)
+
+PAPARAZZI   > Task :app:verifyPaparazziDebug ran in the AFTER gate; `git status`
+            afterwards listed only the two staged build files - zero
+            snapshots changed; `git diff --stat d7dd715..HEAD --
+            android/app/src/test` is empty.
+WIRE        > Task :app:checkMinifiedWireContract ran, green.
+GOLDENS     KMP-1's 29, green and unedited: AuthWireGoldenTest 18,
+            EntriesWireGoldenTest 6, DossierWireGoldenTest 5 (failures 0, from
+            the AFTER XML); `git diff --stat d7dd715..HEAD --
+            android/shared/src/commonTest` is empty. On iOS the same three
+            classes passed in 40125022003.
+ROOM        schemas 1-6 BYTE-IDENTICAL after a full KSP re-run: sha256 of
+            1.json..6.json equal before and after (8d975205.., 318a71a1..,
+            62742436.., b4157f5b.., 9225f552.., f2e5b3f6..); v6 identityHash
+            a08f54541b97835cb850e7d8e4b1cf2d - also what the S9's own
+            room_master_table held as found (R546).
+KSP MODE    `:shared:help --task kspDebugKotlinAndroid` on aa4650a itself:
+            KspTaskJvm; kspKotlinIosArm64: KspTaskNative. KSP1, as before.
+RELEASE APK app-release-unsigned.apk  1,970,881 -> 1,972,992 bytes (+2,111).
+            NOT IDENTICAL this time (KMP-UP measured identical), and why, from
+            `unzip -l` of both: classes.dex 3,245,484 -> 3,242,264 (-3,220,
+            the code got smaller); kotlin/*.kotlin_builtins 7 files 29,592 B ->
+            8 files 51,125 B (+21,533 uncompressed: stdlib 2.2.21's metadata,
+            with a new kotlin/concurrent/atomics/atomics.kotlin_builtins);
+            assets/dexopt/baseline.prof 4,736 -> 4,674. Every other entry is
+            the same size. The growth is the standard library's builtins
+            metadata, not app code.
+TASKS       225 -> 236 actionable: +downloadKotlinNativeDistribution,
+            compileKotlinIosArm64/IosSimulatorArm64, their MainKlibrary and
+            ProcessResources tasks, kmpPartiallyResolvedDependenciesChecker and
+            several SKIPPED ksp*Test/androidTest bookkeeping tasks (PARK-X3).
+
+--------------------------------------------------------------------------------
+R546 - ANDROID ON THE DEVICE
+--------------------------------------------------------------------------------
+TIMES are the host's, UTC; the phone runs Africa/Casablanca (+01). The Paris
+day (+02 until 01:00Z on 25 October) was 24 October throughout.
+
+AS FOUND, read before anything was written (19:03-19:23):
+    ch.monreleve.app 0.1.0, versionCode 1, targetSdk 36,
+    flags [HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP] - NOT debuggable
+    ("run-as: package not debuggable"); firstInstallTime 2026-10-22 09:13:15,
+    lastUpdateTime 2026-10-24 14:54:06 (phone time).
+    base.apk pulled: 2,012,241 bytes, sha256
+      d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+    - identical to AN-PULL's audit APK (C:/wt/an-pull/.../app-audit.apk,
+    read there, nothing written there), i.e. what AN-FORCED-SIGNOUT left.
+    DATA, read through a debuggable build: the gate's app-debug.apk (sha256
+    prefix 444f70f749b2a934), installed with `adb install -r` only after
+    `apksigner verify --print-certs` showed the SAME signer on both (CN=Android
+    Debug, SHA-256 ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1)
+    and never launched. monreleve.db + -wal pulled with `adb exec-out run-as`
+    (the -shm not), read with node:sqlite:
+      entry 0, daily_tally 0, weekly_rhythm 0, user_version 6,
+      room_master_table identity_hash a08f54541b97835cb850e7d8e4b1cf2d
+    shared_prefs: monreleve.account/auth/detection/dossier/pending/settings.xml,
+    all six `<map />`. A signed-out phone with nothing of anyone's on it.
+    Settings: stay_on_while_plugged_in 0, airplane_mode_on 0, auto_time 1,
+    auto_time_zone 1, mobile_data 0, wifi_on 1, font_scale 1.0,
+    persist.sys.timezone Africa/Casablanca, adb reverse EMPTY; display off
+    (Dozing), mDreamingLockscreen=true.
+
+THE MIGRATION MATRIX (KMP-2b's 9 paths), on 7a0ebfa, Kotlin 2.2.21:
+    ./gradlew :app:connectedDebugAndroidTest
+      -Pandroid.testInstrumentationRunnerArguments.class=ch.monreleve.app.data.local.MonReleveMigrationTest
+    Starting 9 tests on SM-G960F - 10
+    Finished 9 tests on SM-G960F - 10
+    BUILD SUCCESSFUL in 58s, EXIT=0
+    testsuite MonReleveMigrationTest tests="9" failures="0" errors="0" skipped="0":
+      migratesFromVersion1ToLatest, step1To2..., step2To3..., step3To4...,
+      step4To5..., migratesFromVersion2ToVersion3..., ...3ToVersion4...,
+      ...4ToVersion5..., migratesFromVersion5ToVersion6AddingTheRhythmTable...
+    As expected it then UNINSTALLED the app (`pm list packages | grep
+    monreleve` empty) - which is why the data was read first.
+
+THE AUDIT BUILD, on 7a0ebfa:
+    ./gradlew :app:assembleAudit -PfrontalierHost=127.0.0.1
+    BUILD SUCCESSFUL in 4m 6s; app-audit.apk 2,014,356 bytes, sha256
+      a0fdddbfeb21bfa7d6444d15b9e5b40d51a28b23fcec79c4c47f5370b0db19f7
+    signer: the same debug certificate (ef336db5...e373d1).
+    NEVER PRODUCTION, read from the minified dex: every API URL is
+      http://127.0.0.1:3000/api/v1/... ; the one "https://monreleve.ch" string
+      is present identically in the as-found audit APK's dex (not an API base).
+THE STACK: port 3000 had no listener first (5436 did - the control).
+    `PORT=3000 pnpm dev` in the MAIN checkout's web/ (d7dd715, the same web/ as
+    this branch - nothing under web/ changed). R169 before anything:
+      /api/health -> {"service":"monreleve","instance":null,"status":"ok",
+                      "reasons":[],"origin":null,"runtime":false}
+    Bridge: adb reverse tcp:3000 tcp:3000 ("UsbFfs tcp:3000 tcp:3000").
+THE ACCOUNT: kmp-up2@monreleve.test, new. Control first (psql in the
+    frontalier-postgres container): that address 0, beside 16 users and 1439
+    EntryEvents in all. The operator's address was never used; no other
+    account was touched. HOST SETUP, as AN-FORCED-SIGNOUT did: magic-link 202,
+    the code read from the dev server's own printed mail (R284), POST
+    /api/v1/auth/code 200, PATCH /api/v1/me 200 (name "Camille Kmpup", GE, 100,
+    SIMPLIFIED240, DAY, whole year; GET read it back), then that host session
+    signed out (200). Codes and tokens appear here only as sha256 prefixes
+    (code c28f568530c8, access 5c6b59ea6b21); see DEVIATION 4.
+THE PHONE, through the real screens (19:33-19:41Z), stay_on read 0 and set 7:
+    launch -> Bienvenue ("Mon Releve", "Vos jours de teletravail, prets pour
+    votre declaration.", the three feature lines, "Commencer") -> "Se connecter
+    a Mon Releve" -> the address typed and read back exactly ->
+    "Recevoir mon lien de connexion" (POST /api/v1/auth/magic-link 202) ->
+    "Verifiez votre messagerie", six digit boxes -> THE CODE (sha256 prefix
+    361f3fb3e5e4, from the printed mail) -> POST /api/v1/auth/code 200, then
+    GET /me, /entries?year=2026 and 2025, /dossier?year=2025 and 2026, all 200
+    -> "Bonjour Camille", "Samedi 24 octobre 2026", "Saisie manuelle", the
+    question, "17 jours non renseignes ce mois".
+  RECORD A DAY: "Domicile" -> the card "Domicile" "Enregistre", year card
+    "Sous les deux seuils" 0,41 %.
+  SYNC: POST /api/v1/entries 200. Server: one row for the account,
+    2026-10-24 FULL HOME MANUAL, firstRecordedAt 2026-10-24 19:36:04.876
+    (server-assigned); EntryEvent for the account 0 -> 1 (1439 -> 1440 in all).
+  THE RELEVE: first opened 35 s after the sync, it still showed the dossier
+    fetched at sign-in (generated 24.10.2026 19:35, "Aucune journee n'a encore
+    ete enregistree", 0,00 %) - ReleveController loads on init, year switch
+    and retry only; recorded as PARK-X5, not a Kotlin effect. After a relaunch:
+    "Releve provisoire", "Annee en cours au 24.10.2026", Camille Kmpup, GE,
+    100 %, "Forfait de 240 jours", "Annee 2026 entiere", Absences 0, generated
+    24.10.2026 19:37; tiles Jours ouvres 240, Jours en Suisse 0, Teletravail 1,
+    Missions 0; "Sous les deux seuils" 0,41 %.
+  THE FORECAST: Aujourd'hui's "Voir ma prevision" -> "Prevision", "Indiquez
+    votre rythme habituel..." -> "Indiquer mon rythme": Lundi Domicile,
+    Mardi-Vendredi Suisse ("Soit 1 jour par semaine a domicile") -> "Voir ma
+    prevision": "Si vous gardez ce rythme", today 0,41 %, end of December
+    projected 4,58 %, "Sous les deux seuils", 85 days of margin before 40 %,
+    108,5 before 49,9 %. Checked by hand: 10 Mondays from 26 Oct to 28 Dec + 1
+    = 11 / 240 = 4,58 %; 95 - 10 = 85; 118,5 - 10 = 108,5 (Aujourd'hui showed
+    95 and 118,5 before the rhythm).
+  SIGN-OUT: Parametres -> "Se deconnecter" -> the plain confirmation ("La
+    deconnexion efface les donnees de cet appareil...") -> POST
+    /api/v1/auth/sign-out 200 -> Bienvenue. Server: both of the account's
+    device sessions revokedReason SIGNED_OUT (host 19:32:50, phone 19:41:03).
+  LOGCAT: two segments (the first died with the USB drop), 22,747 and 51,171
+    lines, 222 and 812 lines naming monreleve (the positive control): FATAL
+    EXCEPTION 0, "account tag unresolved" 0 in both.
+
+THE PHONE LEFT USB, AND THAT IS RECORDED RATHER THAN SMOOTHED:
+    19:03:09 `device offline` on the first read; `adb reconnect offline` ->
+             `device` at 19:03:46 (one bounded try).
+    ~19:37:18 a uiautomator dump failed (exit 255) and `adb reverse --list`
+             then read EMPTY: the phone had dropped and come back. Reverse was
+             re-established at 19:37:32 and logcat restarted; nothing was
+             driven in the gap.
+
+THE PHONE, LEFT AS FOUND - every value read before it was written:
+    the build    the as-found APK reinstalled with `adb install -r` (same
+                 signer); the installed base.apk re-pulled: sha256
+                 d417d0210819...2a081034 - IDENTICAL; not debuggable. It is a
+                 re-install, so firstInstallTime is now 24 Oct (the matrix's
+                 uninstall) and lastUpdateTime 20:42:13 phone time.
+    the data     read through the debug reader build BEFORE that reinstall:
+                 entry 0, daily_tally 0, weekly_rhythm 0, user_version 6,
+                 identity a08f5454..., all six prefs files `<map />` - the
+                 same signed-out state it was found in.
+    stay_on      read 0, set 7 for the drive, RESTORED to 0 (read back)
+    adb reverse  EMPTY (--remove-all, read back)
+    airplane 0, auto_time 1, auto_time_zone 1, mobile_data 0, wifi_on 1,
+    font_scale 1.0, timezone Africa/Casablanca - read at the end, never written
+    display      off (Dozing); mDreamingLockscreen read false 2 s after sleep
+                 (true as found) - the keyguard re-arms on the phone's own
+                 timeout; nothing about the lock was changed
+    the clock    real throughout (auto_time 1, never touched)
+THE DEV SERVER was stopped: TaskStop ended the shell, the surviving node PID
+24400 (next start-server.js from the main checkout's web/, started 19:31 by
+this session) was stopped; port 3000 then had no listener while 5436 still
+did, and /api/health no longer answered (curl exit 7). The local database keeps
+the kmp-up2@monreleve.test account and its one day, as AN-FORCED-SIGNOUT's
+account remains - local stack only.
+
+--------------------------------------------------------------------------------
+R547 - iOS ON XCODE 26
+--------------------------------------------------------------------------------
+WHERE XCODE 26 LIVES, read from actions/runner-images (GitHub API, 2026-10-24),
+never from memory:
+    images/macos/macos-15-arm64-Readme.md, last commit 2026-09-11 (f95c0c791f,
+    "Updating readme file for macos-15-arm64 version 20260907.0337.1"):
+      26.3 17C529 | 26.2 17C52 | 26.1.1 17B100 | 26.0.1 17A400
+      (/Applications/Xcode_26.0.1.app, symlink Xcode_26.0.app) |
+      16.4 (default) | 16.3 | 16.2 16C5032a | 16.1 | 16.0
+    images/macos/macos-26-arm64-Readme.md, last commit 2026-10-19 (d490982abb,
+    version 20261013.0424.1): 26.6 (default) | 26.5 | 26.4.1 | 26.3 | 26.2 |
+      26.1.1 | 26.0.1
+THE CHOICE: runs-on stays macos-15 (both images carry 26.0.1; staying moves
+ONLY the Xcode - not the machine, its OS or the simulators iOS-0 measured on);
+DEVELOPER_DIR=/Applications/Xcode_26.0.1.app/Contents/Developer, the image's
+Xcode in the 26.0 line Kotlin's table pairs with 2.2.21 (the table's version,
+not the newest - iOS-0's 16.x reasoning). The simulator is NOT pinned; it is
+printed (PARK-N2).
+
+THE RUN, on 7a0ebfa: 40125022003 (STATUS has its header lines)
+    the diagnostic step: "Xcode 26.0.1" / "Build version 17A400";
+    openjdk 17.0.21; zoneinfo.default +VERSION 2024a
+    > Task :shared:kspKotlinIosSimulatorArm64   (w: Language version 1.9 ...)
+    > Task :shared:compileKotlinIosSimulatorArm64
+    > Task :shared:compileTestKotlinIosSimulatorArm64
+    > Task :shared:linkDebugTestIosSimulatorArm64
+    > Task :shared:iosSimulatorArm64Test
+    > Task :shared:kspKotlinIosArm64            (w: Language version 1.9 ...)
+    > Task :shared:compileKotlinIosArm64
+    BUILD SUCCESSFUL in 1m 10s, 10 actionable tasks: 10 executed
+    82 TESTS, THE SAME NAMES AS R1(c): the 82 class#test pairs from the
+    artifact, the "[iosSimulatorArm64]" suffix removed, `diff` against R1(c)'s
+    list: identical. 13 classes, failures 0, errors 0, skipped 0 in each.
+    EVERY GENEVA CASE, printed only after its assertions held:
+      GENEVA case a: declarableRate=30.0 swissTaxedDays=240.0 frenchTaxedDays=0.0 regimeApplies=true
+      GENEVA case b: declarableRate=40.0 swissTaxedDays=237.0 frenchTaxedDays=3.0 regimeApplies=true
+      GENEVA case c: declarableRate=39.16 swissTaxedDays=226.0 frenchTaxedDays=14.0 regimeApplies=true
+      GENEVA case d: declarableRate=40.0 swissTaxedDays=230.0 frenchTaxedDays=10.0 regimeApplies=true
+      GENEVA case e: declarableRate=60.0 swissTaxedDays=91.0 frenchTaxedDays=149.0 regimeApplies=false
+      GENEVA case special: declarableRate=4.16 swissTaxedDays=220.0 frenchTaxedDays=20.0 regimeApplies=true
+    (each line ends "- all assertions held"; 39,16 % and 4,16 % hold on
+    Xcode 26 as on 16.2.)
+    THE SIMULATOR, printed: iPhone 17 Pro (E952A9B0-CC78-435C-BF08-06AD47FE1076),
+    RUNTIME -- iOS 26.2 -- (the same device and runtime as under Xcode 16.2).
+    Room's generated iOS code listed for both targets: EntryDao_Impl,
+    MonReleveDatabase_Impl, MonReleveDatabaseConstructor, RhythmDao_Impl,
+    TallyDao_Impl.
+    The provisioning step (PARK-N1) still ran first and is kept: nothing has
+    shown it unnecessary on 2.2.21.
+
+THE COST (R538's method: job startedAt -> completedAt, whole minutes rounded up):
+    run id       ref            SHA      conclusion  job time  billed
+    40119240539  main           d7dd715  success     3m53s     4   R1(c) BEFORE, cold
+    40122560911  kmp-up2-probe  4044a0e  success     4m28s     5   R541/R542 + Xcode 26, cold
+    40125022003  kmp-up2        7a0ebfa  success     3m53s     4   R547
+    SUBTOTAL                                         12m14s    13 macOS minutes
+    (+ the run on the report commit, under STATUS's completion block)
+    The runs API's billable.MACOS.total_ms returned 0 for each, as for iOS-0,
+    so the billed column is computed, not read. At the published $0.062/min
+    the 13 minutes are $0.81 of list price; at the operator's 10x figure, 130
+    of the 2,000 included minutes. The two probes shared ONE run (one cold
+    toolchain download instead of two).
+    CACHES: the BEFORE run created main's first macOS caches (gradle
+    1,461,855,377 B, konan 421,555,868 B, ref refs/heads/main) - main's, left
+    in place; R547 created kmp-up2's (gradle 1,311,259,811 B, konan
+    368,313,338 B); the probe branch's two were deleted.
+
+--------------------------------------------------------------------------------
+R548 - WHAT THIS UNBLOCKS: THE RESUME NOTE FOR iOS-1a
+--------------------------------------------------------------------------------
+VERSIONS NOW IN FORCE (android/gradle/libs.versions.toml at 7a0ebfa):
+    kotlin 2.2.21 | ksp 2.2.21-2.0.4 with ksp.useKSP2=false (KSP1) | agp 8.10.1
+    room 2.7.2 | coroutines 1.8.1 | kotlinx-datetime 0.6.1
+    kotlinx-serialization 1.7.3 | composeBom 2024.09.00 | work 2.10.1
+    browser 1.8.0 | ktlint 12.1.1 | detekt 1.23.7 | paparazzi 1.3.5
+    kotest 5.9.1 | junitVintage 5.10.2 | jsonOrg 20260814 | coreKtx 1.15.0
+    lifecycleRuntimeKtx 2.8.7 | activityCompose 1.9.3 | junit 4.13.2
+    junitVersion 1.2.1 | espressoCore 3.6.1
+    Gradle 8.11.1 | Gradle daemon JDK: Android Studio JBR 21.0.6 | CI JDK
+    Temurin 17 | iOS: Xcode 26.0.1 (17A400) on macos-15-arm64 20260907.0337.1
+BOTH PROBES:
+    Room 2.7.2 on Kotlin 2.2.21 (KSP1): metadata compile green; Room generated
+    its three probe files for Android, iosArm64 and iosSimulatorArm64, and the
+    real database's five per iOS target, all compiling. HOLDS.
+    Compose Multiplatform 1.10.3 on Kotlin 2.2.21: a @Composable using
+    remember compiled for Android (Composer-transformed) and for
+    iosSimulatorArm64. THE PAIRING WORKS.
+RESUME NOTE FOR iOS-1a:
+  1. THE iOS SQLITE DRIVER - THE OPERATOR'S APPROVAL, RECORDED AS A RULING
+     (the operator: "Record it as a ruling"): iOS-0's Q2 is answered -
+     androidx.sqlite:sqlite-bundled (BundledSQLiteDriver) on iOS ONLY;
+     Android keeps its SQLite (Room's Android path, no driver set, unchanged).
+     It is the one new dependency iOS-1a may add for the database builder; its
+     version is iOS-1a's to read off the androidx.sqlite line that matches
+     Room 2.7.2 (room-runtime 2.7.2 already depends on androidx.sqlite 2.5.x).
+     No catalog line was added here.
+  2. XCODE 26 IS IN PLACE for a TestFlight build (PARK-N4's Kotlin half
+     closed); signing and the upload are iOS-1's and unproven.
+  3. COMPOSE MULTIPLATFORM, IF CHOSEN: 1.10.x is the line for Kotlin 2.2.21.
+     Its material3 (org.jetbrains.compose.material3 1.10.0-alpha05, the
+     version 1.10.3's CHANGELOG lists) REQUIRES kotlinx-datetime 0.7.1 (read
+     from its published .module: "requires":"0.7.1") - so landing the screens
+     on CMP with Material3 forces the datetime 0.7 move, i.e. R384's DayOfWeek
+     inventory, as its own task first. Its Android artefacts are Jetpack
+     Compose 1.10.5 (CHANGELOG table) against the BOM's 1.7.0: every Paparazzi
+     baseline that moves is a stated regeneration (R135/R207). runtime alone
+     (what the probe used) pulled neither.
+  4. KSP1 ENDS HERE (PARK-X2): any later Kotlin is also the KSP2 decision.
+  5. THE WINDOWS GATE NOW COMPILES iOS KLIBS WITHOUT ROOM'S CODE (PARK-X3):
+     never read a Windows iOS compile as iOS proof; ios-shared.yml is.
+  6. Unchanged from iOS-0's list: HttpTransport (NSURLSession), TokenStore
+     (Keychain), SettingsStore (NSUserDefaults), DossierCache (NSFileManager),
+     the database builder (now with the approved driver), BGTaskScheduler, the
+     account tag (CC_SHA256), the four seams; PARK-N1..N3 still open.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+NEW, written into parking.md. THE X SERIES WAS CONFIRMED FREE (R456):
+`node web/scripts/register-coverage.mjs` -> "register coverage: OK"; letters
+in use on main: A B C D F G I K L M N P R S T U V Y; E is claimed by the
+unmerged an-forced-signout (its parking.md read from origin); a scan of
+parking.md on every unmerged origin branch (an-forced-signout,
+fw-canton-required, fw34, kmp-up2) found no PARK-X; and the widened pattern
+PARK(?:AN)?-[A-Z]?\d+ was RUN against "PARK-X1" and matched it whole.
+    PARK-X1  OVERRIDE_DEPRECATION at LiveLocation.kt:134 - KT-80399, a Kotlin
+             2.2 false positive; left visible.
+    PARK-X2  KSP1 is deprecated, says so every build, and ends at Kotlin
+             2.2.21; LV-1.9 warnings on iOS.
+    PARK-X3  the Windows gate compiles :shared's iOS klibs without Room's
+             generated code; +657 MB K/N download on a fresh host.
+    PARK-X4  :app's kotlinOptions did not warn where :probe's identical block
+             did - unexplained, untouched.
+    PARK-X5  the Releve keeps its sign-in snapshot after a recorded day until
+             relaunch (observed on the S9; existing code, not the bump).
+UPDATED:
+    PARK-N4  THE KOTLIN HALF CLOSED (Kotlin 2.2.21, Xcode 26.0.1 green); the
+             upload stays iOS-1's.
+UNCHANGED, confirmed: PARK-U2 (the four app/ deprecation warnings, same text,
+same count), PARK-N1 (provisioning kept), PARK-N2 (simulator printed, not
+pinned), PARK-N3, PARK-M1.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE PROBES RAN "IN THE CLOUD" FROM A THROWAWAY BRANCH, not from the
+   worktree: a runner can only check out a commit. kmp-up2-probe (4044a0e) was
+   pushed, dispatched, read and deleted with its two caches; nothing of it
+   landed on kmp-up2 (R541 above). The reading is iOS-0's R531 plant's. Both
+   probes shared that ONE run, to spend one cold toolchain download, with
+   --continue so either could fail visibly without hiding the other.
+2. THE WORK ORDER WAS FOLLOWED WITH ONE OVERLAP: the probes (step 3) were
+   built on a local trial of the bump, and the trial is also where the two
+   pre-bump fixes were found. The probe branch carried the bump uncommitted
+   on kmp-up2; the fixes were committed after the probes, before the bump.
+3. ksp.useKSP2=false IS A NEW LINE IN gradle.properties. The boundary allows
+   "only what the two versions strictly force"; this line is forced by KSP's
+   flipped default, keeps the mode rather than changing it, and landed BEFORE
+   the bump as a change valid on both versions (8c5c6ac), so the operator can
+   reject it in isolation. It is also a QUESTION (Q2).
+4. ONE DIGIT OF A SIGN-IN CODE APPEARED IN THIS SESSION'S TOOL OUTPUT. A
+   uiautomator dump printed the text of one code box before the dump helper
+   masked single digits. The code was for kmp-up2@monreleve.test on the LOCAL
+   stack, single-use, and was consumed by the sign-in seconds later; the
+   screenshot and XML of that screen were deleted, and every later dump masks
+   digits. Recorded because the rule is "never print a code value", and one
+   digit is part of one.
+5. THE GATE TEXT WAS EDITED (4685d2c). Not a version change and not named by
+   the prompt; it is R544's "fixes valid only after" for a statement the bump
+   made false, and it changes no task.
+6. AN EXTRA iOS RUN ON THE REPORT COMMIT (STATUS's completion block), so that
+   the full gate and the iOS run name the same SHA; it changes the run count
+   from three to four.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. android/shared/build.gradle.kts, the KMP-2b comment "WHAT REMAINS UNPROVEN
+   UNTIL A MAC RUNS IT ... that Room's compiler actually GENERATES a working
+   implementation for iosArm64 and iosSimulatorArm64" has been stale since
+   iOS-0 proved exactly that; the bump did not make it so, so it was left.
+2. Stale lock files in other worktrees: C:/wt/an-account-tag/.session-lock.json
+   and C:/wt/fw-gate-clean/.session-lock.json (16 and 19 Oct, branches merged).
+   C:/wt/kmp-0 and C:/wt/kmp-1 exist as directories but are not registered
+   worktrees. Read, never written (R392).
+3. The main checkout carries the orchestrator's uncommitted docs/deploy.md and
+   ~50 untracked relay/*.txt and android/scripts/*.mjs files. It was read
+   (the prompt, AN-PULL's APK hash, a YAML parser in web/node_modules) and the
+   dev server ran from its web/ - which regenerated the Prisma client and
+   copied fonts into its ignored outputs, as every previous drive did. No git
+   command that writes ran there; `git status` there is as it was.
+4. The scratchpad's logs/ folder holds files from an earlier session of the
+   same conversation (build-before.log, gate-r1b.log, ...); this session used
+   its own kmp-up2/ subfolder and touched none of them.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-X1. The new OVERRIDE_DEPRECATION warning is Kotlin's KT-80399 (fixed in
+   2.3.0-Beta1). Leave it until the next Kotlin move, or accept a named local
+   class in LiveLocation.kt (valid on both versions) in a small task of its own?
+Q2 PARK-X2 / DEVIATION 3. KSP1 is kept by ksp.useKSP2=false and announces its
+   deprecation on every build; it cannot follow Kotlin past 2.2.21 or AGP past
+   8.x. Is the KSP2 move (Room 2.7 supports it; schemas 1-6 and the identity
+   hashes are the check) to be planned before the next Kotlin or AGP change -
+   and is the explicit `false` acceptable until then?
+Q3 PARK-X3. Since Kotlin 2.2.20 the Windows gate compiles :shared's iOS klibs
+   (without Room's generated code) and downloads the K/N distribution. Keep it
+   (it is extra compile coverage of commonMain against the iOS stdlib), or turn
+   klib cross-compilation off in the gate (one gradle property) because a
+   klib that is not the real one invites a wrong reading?
+Q4 R548.3. Landing screens on Compose Multiplatform with Material3 forces
+   kotlinx-datetime 0.7.1 (R384's inventory) and Jetpack Compose 1.10.x on
+   Android. Should the datetime move be scheduled ahead of any CMP decision?
+Q5 PARK-X5. Is the Releve meant to show its sign-in snapshot after a day is
+   recorded until the next launch, or should a settled sync refetch it?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED AND NOT MERGED. kmp-up2 -> origin/kmp-up2, every push
+`git push origin kmp-up2`, each gated on its own exit code. PENDING MERGE.
+
+THE COMMITS, in order, each pushed when made:
+    78811e1  R539 - android/gradlew 100755       * [new branch] kmp-up2 -> kmp-up2
+    8c5c6ac  R540/R544 - ksp.useKSP2=false        } 78811e1..f790626
+    f790626  R544 - :probe compilerOptions        }
+    aa4650a  R544 - THE BUMP                      f790626..aa4650a
+    4685d2c  R544 - the gate text, after          aa4650a..4685d2c
+    7a0ebfa  R547 - Xcode 26.0.1                  4685d2c..7a0ebfa
+             - iOS run 40125022003 executed on it
+    then the report commit(s), below.
+  and on the throwaway branch, deleted: 4044a0e (kmp-up2-probe, parent 78811e1).
+
+WHAT THE BRANCH CHANGES against d7dd715 (`git diff --stat d7dd715..7a0ebfa`):
+    .github/workflows/ios-shared.yml  | 70 ++++----
+    android/app/build.gradle.kts      | 23 ++-
+    android/gradle.properties         | 12 +-
+    android/gradle/libs.versions.toml | 86 ++++---
+    android/gradlew                   |  0  (mode)
+    android/probe/build.gradle.kts    | 15 +-
+    android/shared/build.gradle.kts   | 34 ++--
+    plus REPORT-KMP-UP2.txt (new) and parking.md (X1-X5, N4's state).
+gate:clone NOT RUN and not owed (R199): nothing under web/ changed -
+    `git diff --stat d7dd715..HEAD -- web/` prints nothing (0 lines).
+
+ISOLATION (R334, R349, R392). All work in C:/wt/kmp-up2, created by this
+session from origin/main with its lock (.session-lock.json, gitignored, never
+committed - `git check-ignore -v` names .gitignore:62); every file staged by
+name. Nothing was committed, stashed, reset or removed in any other C:/wt/* or
+in the main checkout. The only GitHub objects deleted are this session's own:
+the kmp-up2-probe branch and its two caches.
+
+================================================================================
+END OF REPORT-KMP-UP2
+================================================================================
