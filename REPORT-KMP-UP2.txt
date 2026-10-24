@@ -41,17 +41,48 @@ Kotlin bug (KT-80399, PARK-X1), KSP1's deprecation warning on every build
 Room's generated code - because Kotlin 2.2.20 made that the default (PARK-X3).
 Each is visible, explained and asked about; none was silenced.
 
-Three macOS runs, 12m14s of job time, 13 billed minutes (R538's rounding),
-plus the run on the report commit recorded under STATUS.
+Four macOS runs, 13m47s of job time, 15 billed minutes (R538's rounding).
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-SEE THE COMPLETION BLOCK AT THE END OF THIS SECTION, written after both gates
-ran on the commit that carries this report.
+STATUS: GREEN on 08e4527 - FULL :app:gate --rerun-tasks (BUILD SUCCESSFUL in
+8m 56s, 236 actionable tasks: 236 executed, GATE_EXIT=0) and iOS run
+40127022211 (success, 82 tests, Xcode 26.0.1) on that commit; the final tip
+differs from 08e4527 only in REPORT-KMP-UP2.txt (this completion text).
 
-THE CODE TIP is 7a0ebfa: every commit after it changes only REPORT-KMP-UP2.txt
-and parking.md.
+ON 08e4527 (the commit carrying this report and parking.md), after
+./gradlew --stop, tree clean:
+    ./gradlew :app:gate --rerun-tasks
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1268 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 8m 56s
+    236 actionable tasks: 236 executed
+    GATE_EXIT=0
+    HEAD 08e4527a6d055715c8adc2faeec3b94b5cc6ac3c before and after the run.
+    Its JUnit XML: :app 1268 / :shared 85, failures 0, names identical to
+    R1(b)'s; w: lines 6 and the KSP1 notice 1, as on the bump gate; release
+    APK 1,972,992 bytes, as on the bump gate; `git status` empty afterwards.
+
+    iOS run 40127022211  https://github.com/kaitmax/monreleve/actions/runs/40127022211
+    head_sha 08e4527a6d055715c8adc2faeec3b94b5cc6ac3c, conclusion: success
+    Image: macos-15-arm64 / Version: 20260907.0337.1 (warm: konan cache
+      restored from kmp-up2's key)
+    Xcode 26.0.1 / Build version 17A400
+    BUILD SUCCESSFUL in 26s
+    10 actionable tasks: 10 executed
+    iOS SIMULATOR TESTS EXECUTED: 82 - 13 classes, failures 0; the 82 names
+      identical to R1(c)'s; the six GENEVA lines, 39.16 and 4.16 included
+    DEVICE: iPhone 17 Pro (E952A9B0-CC78-435C-BF08-06AD47FE1076)
+    RUNTIME: -- iOS 26.2 --
+
+THE NARROW CLAIM, where the broad one would go: the final tip is NOT 08e4527.
+It differs from it only in REPORT-KMP-UP2.txt. The one gated reader of report
+text is RegisterCoverageTest (its inputs are every REPORT-*.txt and parking.md,
+app/build.gradle.kts:392-403), which runs web/scripts/register-coverage.mjs and
+asserts its exit; that script was re-run against the final text (PUSH PROOF).
+No iOS task reads either file. THE CODE TIP is 7a0ebfa: every commit after it
+changes only REPORT-KMP-UP2.txt and parking.md.
 
 ON THE BUMP CONTENT (staged tree feb564ff = commit aa4650a), after
 ./gradlew --stop:
@@ -225,7 +256,8 @@ CHOSEN
     KSP's OWN SOURCE at tag 2.2.21-2.0.4 (KspSubplugin.kt): useKsp2.convention(
     ... gradleProperty("ksp.useKSP2") ... .orElse(true)) and a full
     `if (useKSP2) ... else` branch - KSP1 is still there, behind the flag. At
-    2.1.10-1.0.31 the same convention ends .orElse(false).
+    2.1.10-1.0.31 the same convention ends .orElse(false) (KspSubplugin.kt
+    lines 212-217 at that tag, read).
     KMP-UP's catalog comment "the 2.0.x releases ... are KSP2-only" was WRONG
     by that source; it was corrected (8c5c6ac).
     2.2.21-2.0.4 OVER 2.0.5: `gh api repos/google/ksp/compare/2.2.21-2.0.4...
@@ -393,6 +425,13 @@ AFTER IT, valid only after, each its own commit:
 
 THE REVERT THAT UNDOES IT:
     git revert --no-edit 7a0ebfa 4685d2c aa4650a
+TESTED, not assumed: on a local branch cut from 08e4527 (never pushed, deleted
+after) the command applied cleanly (REVERT_EXIT=0); the catalog then read
+kotlin = "2.1.10" / ksp = "2.1.10-1.0.31", the workflow DEVELOPER_DIR
+Xcode_16.2 with the chmod step back, and `git diff --stat d7dd715` over
+android/ and .github/ listed only gradle.properties, the catalog's 8c5c6ac
+comment hunk, gradlew's mode, probe/build.gradle.kts and :shared's 8c5c6ac
+comment - the workflow identical to d7dd715's.
 THREE, NOT ONE, and why: reverting aa4650a alone puts Kotlin back on 2.1.10
 while the workflow still builds with Xcode 26.0.1 (which 2.1.10 does not
 support) and the gate text still describes 2.2.21. 8c5c6ac and f790626 stay -
@@ -666,17 +705,18 @@ THE COST (R538's method: job startedAt -> completedAt, whole minutes rounded up)
     40119240539  main           d7dd715  success     3m53s     4   R1(c) BEFORE, cold
     40122560911  kmp-up2-probe  4044a0e  success     4m28s     5   R541/R542 + Xcode 26, cold
     40125022003  kmp-up2        7a0ebfa  success     3m53s     4   R547
-    SUBTOTAL                                         12m14s    13 macOS minutes
-    (+ the run on the report commit, under STATUS's completion block)
+    40127022211  kmp-up2        08e4527  success     1m33s     2   the report commit, warm
+    TOTAL                                            13m47s    15 macOS minutes
     The runs API's billable.MACOS.total_ms returned 0 for each, as for iOS-0,
     so the billed column is computed, not read. At the published $0.062/min
-    the 13 minutes are $0.81 of list price; at the operator's 10x figure, 130
+    the 15 minutes are $0.93 of list price; at the operator's 10x figure, 150
     of the 2,000 included minutes. The two probes shared ONE run (one cold
     toolchain download instead of two).
     CACHES: the BEFORE run created main's first macOS caches (gradle
     1,461,855,377 B, konan 421,555,868 B, ref refs/heads/main) - main's, left
     in place; R547 created kmp-up2's (gradle 1,311,259,811 B, konan
-    368,313,338 B); the probe branch's two were deleted.
+    368,313,338 B; the report-commit run restored them); the probe branch's
+    two were deleted.
 
 --------------------------------------------------------------------------------
 R548 - WHAT THIS UNBLOCKS: THE RESUME NOTE FOR iOS-1a
@@ -842,7 +882,10 @@ THE COMMITS, in order, each pushed when made:
     4685d2c  R544 - the gate text, after          aa4650a..4685d2c
     7a0ebfa  R547 - Xcode 26.0.1                  4685d2c..7a0ebfa
              - iOS run 40125022003 executed on it
-    then the report commit(s), below.
+    08e4527  the report and parking.md            7a0ebfa..08e4527
+             - FULL :app:gate --rerun-tasks GREEN on it; iOS run 40127022211
+    <this>   the STATUS completion - REPORT-KMP-UP2.txt only. A report cannot
+             print its own SHA; its push is in the handback.
   and on the throwaway branch, deleted: 4044a0e (kmp-up2-probe, parent 78811e1).
 
 WHAT THE BRANCH CHANGES against d7dd715 (`git diff --stat d7dd715..7a0ebfa`):
@@ -857,12 +900,20 @@ WHAT THE BRANCH CHANGES against d7dd715 (`git diff --stat d7dd715..7a0ebfa`):
 gate:clone NOT RUN and not owed (R199): nothing under web/ changed -
     `git diff --stat d7dd715..HEAD -- web/` prints nothing (0 lines).
 
+REGISTER, against this final text:
+    $ node web/scripts/register-coverage.mjs
+    register coverage: OK - 136 cited id(s) across 126 report(s), all have
+    headings in parking.md
+
 ISOLATION (R334, R349, R392). All work in C:/wt/kmp-up2, created by this
 session from origin/main with its lock (.session-lock.json, gitignored, never
 committed - `git check-ignore -v` names .gitignore:62); every file staged by
 name. Nothing was committed, stashed, reset or removed in any other C:/wt/* or
 in the main checkout. The only GitHub objects deleted are this session's own:
-the kmp-up2-probe branch and its two caches.
+the kmp-up2-probe branch and its two caches. One more local branch,
+revert-check (R544's test), was created from 08e4527, never pushed, and deleted.
+The lock is removed after the final push; that removal, being after this text,
+is reported in the handback rather than here (R334).
 
 ================================================================================
 END OF REPORT-KMP-UP2
