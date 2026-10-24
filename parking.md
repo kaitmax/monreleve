@@ -3612,7 +3612,11 @@ detection code, would have had to land BEFORE the bump (R544), and the next Kotl
 
 COST OF REVERSING: one local class in LiveLocation.kt, or nothing at Kotlin 2.3.
 
-STATE:      OPEN - a question for the operator (REPORT-KMP-UP2 QUESTIONS).
+STATE:      OPEN - RULED by the operator, 24 October 2026, on merging kmp-up2: LEAVE
+IT. A known compiler false positive; refactoring working code to quiet a compiler bug
+adds risk and teaches nothing. Issue: https://youtrack.jetbrains.com/issue/KT-80399
+(read 2026-10-24). Recheck at the next Kotlin upgrade, which closes it if the warning
+is gone.
 
 ## PARK-X2 - KSP1 is deprecated, says so on every build, and ends at Kotlin 2.2.21  [KMP-UP2, 2026-10-24]
 
@@ -3638,8 +3642,11 @@ and is its own decision.
 COST OF REVERSING: one property line; the KSP2 move itself is a task (Room 2.7 supports
 KSP2; schemas 1-6 and the identity hashes are the check).
 
-STATE:      OPEN - the next Kotlin move is a KSP-mode decision, and this is its
-precondition.
+STATE:      OPEN - RULED by the operator, 24 October 2026, on merging kmp-up2: KSP2 is
+ITS OWN TASK, before the next Kotlin upgrade, not now; it does not block iOS. The
+explicit ksp.useKSP2=false stays - it turns an implicit default into a visible
+decision. The switch's proof: Room's generated code compared before and after, the
+identity hashes unchanged, and the 9-path migration suite on the S9.
 
 ## PARK-X3 - the Windows gate now compiles :shared's iOS klibs, without Room's generated code  [KMP-UP2, 2026-10-24]
 
@@ -3664,8 +3671,11 @@ ruling asked for; the versions did not force it.
 
 COST OF REVERSING: one gradle property, proven by the next gate's task list.
 
-STATE:      OPEN - a question: should the Windows gate compile iOS klibs it cannot make
-complete?
+STATE:      OPEN - RULED by the operator, 24 October 2026, on merging kmp-up2: DROP the
+Windows gate's iOS klib compilation - it proves nothing the common metadata compilation
+does not, and costs time on every gate - and REPLACE it with a rule, R573 in CLAUDE.md:
+any branch touching :shared gets the iOS cloud run before merge. The rule is in force
+now; the gate change is a task not yet scheduled, and this closes when it lands.
 
 ## PARK-X4 - :app's kotlinOptions did not warn on 2.2.21 where :probe's identical block did  [KMP-UP2, 2026-10-24]
 
@@ -3706,4 +3716,10 @@ NOT TAKEN:  A refetch after a successful sync.
 
 COST OF REVERSING: not applicable.
 
-STATE:      OPEN - a question of intended behaviour for the operator.
+STATE:      OPEN - RULED A DEFECT by the operator, 24 October 2026, on merging
+kmp-up2, of a different shape from the calendar's: the Releve comes from the server, so
+caching it is right for offline use; stale after recording a day is not. Its task is
+AN-RELEVE-FRESH: after a sync sends days the cached Releve is marked stale; opening it
+online fetches it again; while days are unsent the screen says how many are not yet
+sent rather than letting the document look complete. The Releve shows the SERVER's
+record only, never local pending days.
