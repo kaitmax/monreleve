@@ -1,0 +1,209 @@
+name: ios-shared
+
+# ===========================================================================
+# IOS-0 (R530). :shared COMPILED FOR iOS, AND ITS commonTest RUN ON AN iPHONE
+# SIMULATOR. One workflow, one job, no secrets.
+# ===========================================================================
+#
+# WHAT IT PROVES. Six KMP tasks proved :shared platform-free by compiling it as
+# COMMON METADATA on Windows. That rejects java.* and android.*; it does not
+# prove the code compiles to native iOS, that Room's compiler generates an iOS
+# implementation, that kotlinx-datetime finds Europe/Paris on iOS, or that the
+# Geneva cases give the same answers on an iPhone. This job runs:
+#
+#   :shared:iosSimulatorArm64Test   commonTest compiled to native, linked into
+#                                   a test executable and RUN on a simulator
+#   :shared:compileKotlinIosArm64   commonMain (plus Room's generated code)
+#                                   compiled for a real device
+#
+# NO SECRETS, NOTHING SIGNED. No Apple account, no certificate, no token: a
+# simulator test binary and a device klib need neither. permissions is
+# read-only and nothing here reads a secret or a repository variable.
+#
+# IT COSTS MONEY, SO IT RUNS ONLY WHEN ASKED. The repository is private and a
+# standard macOS runner is billed per minute at roughly ten times the Linux
+# rate (GitHub's own table: $0.062/min against $0.006/min, read 2026-10-24),
+# against the same monthly allowance ci.yml spends. So it runs on:
+#   - workflow_dispatch (GitHub dispatches only a workflow whose file is on the
+#     DEFAULT branch, so this trigger works once the file is merged);
+#   - a push to an ios-* branch - the only trigger available while the file
+#     lives on its own branch, and deliberately narrow: no other branch, and
+#     never main.
+# A push that changes only a report or the park register starts nothing
+# (paths-ignore). A newer push to the same branch cancels the run it
+# supersedes (concurrency), and a hung simulator cannot bill past the job's
+# timeout.
+#
+# ci.yml IS NOT TOUCHED and does not change behaviour because of this file.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'ios-*'
+    paths-ignore:
+      - 'REPORT-*.txt'
+      - 'parking.md'
+
+concurrency:
+  group: ios-shared-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ios-shared-tests:
+    name: ios-shared-tests
+    # THE RUNNER, AND WHY THIS ONE (R530).
+    #   - ARM64 IS REQUIRED, not merely faster. The Kotlin Gradle plugin
+    #     (2.1.10, KotlinNativeTestRunFactories) ENABLES iosSimulatorArm64Test
+    #     only when the host's architecture equals the target's. On an Intel
+    #     runner the task is disabled, exits 0 and runs ZERO tests - which is
+    #     why the step after Gradle refuses a run with no results.
+    #   - macos-15 (arm64, M1, 3 cores, 7 GB) and not macos-latest: a label that
+    #     moves underneath a pinned toolchain is a version change nobody chose.
+    #   - not macos-14: its images are deprecated and fully unsupported from
+    #     2026-11-02 (actions/runner-images#13518).
+    #   - not macos-26: it carries only Xcode 26.x, far outside what Kotlin
+    #     2.1.10 supports (see DEVELOPER_DIR below).
+    #   - a STANDARD runner: larger runners cannot use the included minutes.
+    runs-on: macos-15
+    # A cold run downloads the Kotlin/Native toolchain and builds its caches
+    # before compiling anything; this bounds a hang, not a normal run.
+    timeout-minutes: 50
+    env:
+      # THE XCODE, AND WHY THIS ONE. Kotlin's compatibility table lists Xcode
+      # 16.0 for Kotlin 2.1.0-2.1.10; Xcode 16.3 and later (the iOS 18.4 SDK)
+      # conflict with Kotlin 2.1.20 and earlier. macos-15's DEFAULT is 16.4, so
+      # inheriting it would be the conflict. 16.2 is the newest Xcode on this
+      # image below 16.3. Set at JOB level so xcrun, simctl and the Kotlin
+      # Gradle plugin all see the same one.
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      # Every action is pinned to the full commit SHA of a release, with the
+      # release named beside it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing after checkout talks to the repository, so the job token is
+          # not left in .git/config for the steps that follow.
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # The open-source provider (a thin wrapper over actions/cache), not
+          # the default "enhanced" one, which is a commercial component offered
+          # to private repositories as a free preview.
+          cache-provider: basic
+          # The default is READ-ONLY on every branch but the default one, which
+          # would make every ios-* run as cold as the first.
+          cache-read-only: false
+
+      # The Kotlin/Native compiler, its LLVM and its per-target caches live in
+      # ~/.konan, which setup-gradle does not cover. Keyed on the version
+      # catalog, so a Kotlin change starts a fresh cache. Restore and save are
+      # separate steps because the combined action saves only when the job
+      # SUCCEEDS - and the runs most likely to be followed by another are the
+      # red ones.
+      - name: Restore the Kotlin/Native toolchain
+        id: konan
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/gradle/libs.versions.toml') }}
+
+      # Printed BEFORE Gradle, so a red run still says which machine, which
+      # Xcode, which simulators and which time-zone database it had. The Kotlin
+      # Gradle plugin runs the tests on the FIRST available device under the
+      # first "-- iOS x --" heading of `simctl list devices available`.
+      # kotlinx-datetime 0.6.1 on the simulator reads its zone rules from
+      # /usr/share/zoneinfo.default (its darwinSimulator defaultTzdbPath).
+      - name: Environment (diagnostic)
+        run: |
+          set +e
+          uname -m
+          sw_vers
+          xcode-select -p
+          xcodebuild -version
+          java -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+          ls -la /usr/share/zoneinfo /usr/share/zoneinfo.default
+          echo "zoneinfo.default +VERSION: $(cat /usr/share/zoneinfo.default/+VERSION 2>/dev/null)"
+          echo "/var/db/timezone/zoneinfo +VERSION: $(cat /var/db/timezone/zoneinfo/+VERSION 2>/dev/null)"
+          exit 0
+
+      # android/gradlew is tracked as 100644 (not executable). Made executable
+      # here, in the runner's checkout only; the tracked mode is not changed.
+      - name: Make the wrapper executable
+        run: chmod +x gradlew
+
+      # THE SCRIPT (R530), with ONE addition: --continue, so a red test task
+      # does not stop compileKotlinIosArm64 from also reporting in the same
+      # paid run.
+      - name: iOS - simulator tests and device compile
+        run: ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64 --no-daemon --stacktrace --continue
+
+      - name: Save the Kotlin/Native toolchain
+        if: always() && steps.konan.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/gradle/libs.versions.toml') }}
+
+      # ABSENCE NEEDS A POSITIVE CONTROL. A disabled or skipped test task
+      # exits 0 with no results, which reads exactly like a pass. This step
+      # reads the results the run produced, prints them per class, and FAILS
+      # when there are none.
+      - name: Results - refuse a run that executed no tests
+        if: always()
+        run: |
+          dir=shared/build/test-results/iosSimulatorArm64Test
+          if ! ls "$dir"/*.xml >/dev/null 2>&1; then
+            echo "NO RESULT: no JUnit XML under android/$dir - the iOS tests did not run."
+            exit 1
+          fi
+          total=0
+          for f in "$dir"/*.xml; do
+            line=$(grep -o '<testsuite [^>]*' "$f" | head -1)
+            name=$(echo "$line" | sed -n 's/.* name="\([^"]*\)".*/\1/p')
+            tests=$(echo "$line" | sed -n 's/.* tests="\([0-9]*\)".*/\1/p')
+            failures=$(echo "$line" | sed -n 's/.* failures="\([0-9]*\)".*/\1/p')
+            errors=$(echo "$line" | sed -n 's/.* errors="\([0-9]*\)".*/\1/p')
+            skipped=$(echo "$line" | sed -n 's/.* skipped="\([0-9]*\)".*/\1/p')
+            echo "$name tests=$tests failures=$failures errors=$errors skipped=$skipped"
+            total=$((total + tests))
+          done
+          echo "iOS SIMULATOR TESTS EXECUTED: $total"
+          echo "--- captured output (the Geneva cases print one line each, after their assertions):"
+          grep -h "GENEVA case" "$dir"/*.xml || echo "NO RESULT: no GENEVA case line captured"
+          if [ "$total" -eq 0 ]; then
+            echo "NO RESULT: the XML exists but records zero tests."
+            exit 1
+          fi
+
+      # What Room's compiler generated for each iOS target - the R400 question
+      # ("unproven until a Mac") answered from the build directory itself.
+      - name: Room's generated iOS code (listing)
+        if: always()
+        run: |
+          find shared/build/generated/ksp -path '*ios*' -name '*.kt' 2>/dev/null | sort || true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ios-shared-test-results
+          path: |
+            android/shared/build/test-results/
+            android/shared/build/reports/
+          retention-days: 14
+          if-no-files-found: warn
