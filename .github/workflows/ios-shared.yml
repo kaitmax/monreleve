@@ -212,6 +212,26 @@ jobs:
             exit 1
           fi
 
+      # WHICH SIMULATOR RAN THE TESTS, read from the machine rather than
+      # inferred from the plugin's documented behaviour. The test task runs
+      # `xcrun simctl spawn --standalone <device>`, which boots that device; a
+      # booted device's data directory is written to, so the most recently
+      # modified device directories after the run name the one that booted.
+      - name: Which simulator ran (positive signal)
+        if: always()
+        run: |
+          set +e
+          devices="$HOME/Library/Developer/CoreSimulator/Devices"
+          echo "Most recently modified simulator devices after the run:"
+          ls -lt "$devices" | grep -E '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' | head -3
+          newest=$(ls -t "$devices" | grep -E '^[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}$' | head -1)
+          echo "newest: $newest"
+          xcrun simctl list devices | grep "$newest"
+          ls -la "$devices/$newest/data" 2>/dev/null | head -8
+          echo "CoreSimulator per-device logs, newest first:"
+          ls -lt "$HOME/Library/Logs/CoreSimulator" 2>/dev/null | head -5
+          exit 0
+
       # What Room's compiler generated for each iOS target - the R400 question
       # ("unproven until a Mac") answered from the build directory itself.
       - name: Room's generated iOS code (listing)
