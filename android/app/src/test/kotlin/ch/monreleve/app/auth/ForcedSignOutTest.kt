@@ -14,6 +14,7 @@ import ch.monreleve.app.data.remote.AuthServerCode
 import ch.monreleve.app.data.remote.AuthedResult
 import ch.monreleve.app.data.remote.DossierApi
 import ch.monreleve.app.data.remote.DossierResult
+import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.ME_PATH
 import ch.monreleve.app.data.remote.RefreshResult
 import ch.monreleve.app.data.repo.FakeEntryDao
@@ -52,6 +53,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -372,6 +375,134 @@ private suspend fun assertTookTheForcedPath(
         listOf(Triple(DAY, SyncState.PENDING, TAG_A))
     sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe true
     heldDays(device.repository.observePending().first()) shouldBe 1
+}
+
+/**
+ * AN-FORCED-SIGNOUT (R526). EVERY ANSWER TO A REFRESH THAT IS NOT THE SERVER ENDING THE SESSION - "try later". Each is
+ * what the phone meets while the server cannot apply its token rules: the page Next serves when Prisma throws (the
+ * fifteen-second database restart of 2026-10-24), a proxy's 502/503/504, an edge's 429, a 200 that is not the pair, a
+ * 401 that does not say invalid_refresh_token, and no answer at all - a timeout, no network (UrlConnectionTransport
+ * wraps both as TransportException).
+ */
+private val TRY_LATER: List<Pair<String, RefreshFault>> =
+    listOf(
+        "500, the page Next serves when Prisma throws" to
+            RefreshFault.Answer(HttpResponse(500, "<!DOCTYPE html><html><body>Internal Server Error</body></html>")),
+        "502 from the proxy, no body" to RefreshFault.Answer(HttpResponse(502, "")),
+        "503 from the proxy" to RefreshFault.Answer(HttpResponse(503, "Service Unavailable")),
+        "504 from the proxy" to RefreshFault.Answer(HttpResponse(504, "")),
+        "429 at the edge" to RefreshFault.Answer(HttpResponse(429, "")),
+        "200 whose body is not the pair" to RefreshFault.Answer(HttpResponse(200, "<html>portal</html>")),
+        "401 whose body does not parse" to RefreshFault.Answer(HttpResponse(401, "<html>Unauthorized</html>")),
+        "a timeout" to RefreshFault.Unreachable(SocketTimeoutException("Read timed out")),
+        "no network" to RefreshFault.Unreachable(ConnectException("Failed to connect to /127.0.0.1:3000")),
+    )
+
+/** R526: one way the server ends a session, produced by its own rule on TokenServer - never by a scripted status. */
+private class Ending(
+    val what: String,
+    val end: suspend (Device) -> Unit,
+)
+
+/**
+ * AN-FORCED-SIGNOUT (R526). EVERY ANSWER THAT IS THE SERVER ENDING THE SESSION: refresh/route.ts's ONE refusal, 401
+ * invalid_refresh_token, whatever made the refresh token unusable; and bearer.ts's revoked_session and unknown_token at
+ * any other door.
+ */
+private val SESSION_OVER: List<Ending> =
+    listOf(
+        Ending("refresh 401 invalid_refresh_token - the refresh token expired") { device ->
+            device.server.expireAccess(device.firstPair)
+            device.server.expireRefresh(device.firstPair)
+        },
+        Ending("refresh 401 invalid_refresh_token - the refresh token replayed (TOKEN_REPLAYED)") { device ->
+            device.anotherHolderRotatesFirst()
+        },
+        Ending("refresh 401 invalid_refresh_token - a refresh token the server does not hold") { device ->
+            device.server.expireAccess(device.firstPair)
+            device.tokens.save(device.firstPair.copy(refreshToken = "refresh-the-server-never-issued"))
+        },
+        Ending("bearer 401 revoked_session - every session revoked from another device") { device ->
+            AuthApi(device.server, TOKEN_SERVER_BASE)
+                .authenticatedPost("/api/v1/auth/revoke-all", "{}", device.server.openSession(EMAIL_A).accessToken)
+        },
+        Ending("bearer 401 unknown_token - the account deleted (the cascade destroys the tokens)") { device ->
+            device.server.deleteAccount(EMAIL_A)
+        },
+    )
+
+/** R526: a table row's failure, NAMED - so a RED run lists every row that failed, not only the first. */
+private suspend fun failureOf(
+    what: String,
+    row: suspend () -> Unit,
+): String? =
+    try {
+        row()
+        null
+    } catch (e: AssertionError) {
+        "$what -> ${e.message}"
+    }
+
+/**
+ * R526: one TRY LATER row, on a fresh device. The worker's drain meets an expired access token, so it refreshes, and
+ * the refresh meets [fault]. The person stays signed in with nothing cleared and the drain asks for the existing
+ * backoff (Retryable, which SyncWorker maps to retry() - SyncWorkerResultMappingTest); then the server answers again,
+ * and the backoff's next run refreshes with the SAME token and sends the day - the positive control that the session
+ * the phone kept is one that still works.
+ */
+private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
+    val device = Device(this)
+    val shell = Shell(this, device)
+    try {
+        device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+        val held = device.heldMutation()
+        device.server.expireAccess(device.firstPair)
+        device.server.refreshFault = fault
+        val before = device.server.requests.size
+
+        device.drain() shouldBe SyncOutcome.Retryable
+        advanceUntilIdle()
+
+        // The entries POST, then ONE refresh - which never arrives when nothing answers.
+        val refreshArrived = if (fault is RefreshFault.Answer) listOf("POST /api/v1/auth/refresh") else emptyList()
+        device.server.requests.drop(before) shouldBe listOf("POST /api/v1/entries") + refreshArrived
+        // STILL SIGNED IN - nothing cleared, nothing signalled, nothing revoked, the day held.
+        device.tokens.load() shouldBe device.firstPair
+        device.ends.ends.value shouldBe 0
+        shell.destination shouldBe Destination.MAIN
+        sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe false
+        device.settings.load() shouldBe SETTINGS
+        device.cache.load(TAX_YEAR) shouldNotBe null
+        device.exportsCleared shouldBe false
+        device.detectionMode.load() shouldBe LoggingMode.AUTO_DETECT
+        device.server.revocationOf(device.firstPair) shouldBe null
+        device.dao.all().map { Triple(it.dayDate, it.syncState, it.accountTag) } shouldBe
+            listOf(Triple(DAY, SyncState.PENDING, TAG_A))
+
+        device.server.refreshFault = null
+        device.drain() shouldBe SyncOutcome.Settled(written = 1, defects = 0)
+        device.server.mutationsOf(EMAIL_A) shouldBe listOf(held)
+        device.ends.ends.value shouldBe 0
+    } finally {
+        shell.close()
+    }
+}
+
+/** R526: one SESSION OVER row, on a fresh device - the server ends the session [ending]'s way; R520's path follows. */
+private suspend fun TestScope.assertSessionOver(ending: Ending) {
+    val device = Device(this)
+    val shell = Shell(this, device)
+    try {
+        device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
+        ending.end(device)
+
+        device.drain() shouldBe SyncOutcome.Unauthenticated
+        advanceUntilIdle()
+
+        assertTookTheForcedPath(device, shell)
+    } finally {
+        shell.close()
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -930,6 +1061,41 @@ class ForcedSignOutTest : FunSpec({
             signIn.state.value.phase shouldBe CallbackPhase.SIGNED
             device.server.mutationsOf(EMAIL_A) shouldBe listOf(held)
             device.dao.all().map { it.syncState to it.accountTag } shouldBe listOf(SyncState.SYNCED to TAG_A)
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // R526 - A FAILED REFRESH IS "TRY LATER" UNLESS THE SERVER SAID THE SESSION IS OVER. The server says it in ONE
+    // answer on the refresh route (refresh/route.ts: 401 invalid_refresh_token) and in two codes at every other door
+    // (bearer.ts: revoked_session, unknown_token). Anything else is the server unable to answer, not the server ending
+    // the session - and the fifteen-second database restart of 2026-10-24 would otherwise have sent every phone
+    // renewing its token in that window back to sign-in.
+    // ---------------------------------------------------------------------------------------------------------
+
+    test("R526 - TRY LATER: a refresh the server could not answer keeps the person signed in, and clears nothing") {
+        runTest {
+            TRY_LATER.mapNotNull { (what, fault) -> failureOf(what) { assertTriesLater(fault) } } shouldBe emptyList()
+        }
+    }
+
+    test("R526 - SESSION OVER: the server's explicit refusals, and only those, still end it - R520's path") {
+        runTest {
+            SESSION_OVER.mapNotNull { ending -> failureOf(ending.what) { assertSessionOver(ending) } } shouldBe
+                emptyList()
+        }
+    }
+
+    test("R526 - FITS NEITHER LIST, a QUESTION: the refresh route's 400 malformed_body is kept, conservatively") {
+        // PINNED AS DECIDED FOR NOW, NOT AS RULED. 400 malformed_body is the refresh route's only other refusal: the
+        // body it was sent is not JSON - a defect in this client (docs/api-v1.md 1.4), not a statement about the
+        // session, and not one of R526's try-later answers either. Ending the session on it would end it on a guess
+        // (R529), so it is kept like a try-later answer until the operator rules. REPORT-AN-FORCED-SIGNOUT.txt asks.
+        runTest {
+            assertTriesLater(
+                RefreshFault.Answer(
+                    HttpResponse(400, """{"status":"error","code":"malformed_body","message":"Requete illisible"}"""),
+                ),
+            )
         }
     }
 })

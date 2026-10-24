@@ -160,6 +160,8 @@ class SessionManager(
                 end()
                 RefreshOutcome.Expired
             }
+            // R526: the server could not answer (a 5xx, a 429, a body that does not parse, no network) - TRY LATER. The
+            // tokens stay, nobody is told, and the caller's own retry - the worker's backoff - asks again.
             is RefreshResult.Failed -> RefreshOutcome.NetworkError
         }
 

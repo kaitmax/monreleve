@@ -156,6 +156,30 @@ class SessionManagerTest : FunSpec({
         }
     }
 
+    test("R526 - FITS NEITHER LIST, a QUESTION: a bearer 401 with no session code still ends it, PINNED AS FOUND") {
+        // NOT DECIDED HERE. R526 rules the REFRESH answer; these are the bearer 401s that are neither the server ending
+        // the session (revoked_session, unknown_token) nor a refresh (expired_token, rotated_token): the two client
+        // defects docs/api-v1.md 1.4 names, a code this build does not know (contract 6.5: terminal, never guessed),
+        // and a body with no code at all. onUnauthorized ends the session on every one of them today, as it did before
+        // this branch; REPORT-AN-FORCED-SIGNOUT.txt asks whether it should. This pins what the code does, no more.
+        runTest {
+            val answers =
+                listOf(
+                    """{"code":"missing_token"}""",
+                    """{"code":"malformed_authorization"}""",
+                    """{"code":"a_code_this_build_does_not_know"}""",
+                    "<html>Unauthorized</html>",
+                )
+            for (body in answers) {
+                val transport = RoutingTransport(onGet = { HttpResponse(401, body) })
+                val store = MutableTokenStore(pair("v1"))
+                manager(transport, store).authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.SessionEnded
+                store.load() shouldBe null
+                transport.refreshCount.get() shouldBe 0
+            }
+        }
+    }
+
     test("sign-out revokes server-side, clears local, and the next call has no session") {
         runTest {
             val transport = RoutingTransport()

@@ -4,6 +4,7 @@ import ch.monreleve.app.data.remote.HttpMethod
 import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
+import ch.monreleve.app.data.remote.TransportException
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -42,6 +43,19 @@ private const val DEFAULT_LATENCY_MS = 50L
 private const val ACCESS_EXPIRES = "2026-10-22T10:15:00.000Z"
 private const val REFRESH_EXPIRES = "2027-01-20T10:00:00.000Z"
 private const val RECORDED_AT = "2026-10-22T10:00:00.000Z"
+
+/**
+ * AN-FORCED-SIGNOUT (R526). What answers POST /api/v1/auth/refresh while the server CANNOT apply its token rules -
+ * its database restarting (Prisma throws, Next answers 500), the edge limiting (429), a proxy's own page - or what the
+ * phone meets when nothing answers at all. None of them reaches tokens.ts, so none consumes or revokes anything.
+ */
+internal sealed interface RefreshFault {
+    /** The server, or something in front of it, answered this instead of the route's own answer. */
+    data class Answer(val response: HttpResponse) : RefreshFault
+
+    /** No answer: the transport's timeout or a network that is not there - what UrlConnectionTransport throws. */
+    data class Unreachable(val cause: Throwable) : RefreshFault
+}
 
 /** One pair, or none, exactly as TokenStore specifies - ONE store, because the Keystore prefs file is one file. */
 internal class OneTokenStore(
@@ -103,6 +117,13 @@ internal class TokenServer(
      * recover" is on the real server. Null: no such revoke.
      */
     var revokeAfterNextRotation: String? = null
+
+    /**
+     * AN-FORCED-SIGNOUT (R526): while set, EVERY refresh is answered by this fault instead of the token rules - the
+     * fifteen seconds a database restart lasts, or longer. An [RefreshFault.Unreachable] request never arrives, so it
+     * is not in [requests]; an [RefreshFault.Answer] arrived and is. Null: the rules answer.
+     */
+    var refreshFault: RefreshFault? = null
 
     /** Open a session for [account] and issue its first pair - issueTokenPair, and what the code exchange does. */
     fun openSession(account: String): TokenPair {
@@ -170,9 +191,12 @@ internal class TokenServer(
 
     override suspend fun execute(request: HttpRequest): HttpResponse {
         val path = request.url.removePrefix(TOKEN_SERVER_BASE)
+        // R526: a refresh while the server cannot answer it - nothing arrives, or something else answers.
+        val fault = refreshFault.takeIf { path == "/api/v1/auth/refresh" }
+        if (fault is RefreshFault.Unreachable) throw TransportException("unreachable (R526)", fault.cause)
         requests += "${request.method} ${path.substringBefore('?')}"
         // Decided NOW, answered after the latency (see the header).
-        val response = decide(request, path)
+        val response = (fault as? RefreshFault.Answer)?.response ?: decide(request, path)
         delay(latencyMs)
         return response
     }
