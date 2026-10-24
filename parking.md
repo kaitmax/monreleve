@@ -3966,4 +3966,35 @@ NOT TAKEN:  Ending on the refresh's 400; treating the bearer 401s as try later.
 COST OF REVERSING: one branch in AuthApi's refresh mapping or in
 SessionManager.onUnauthorized, and the pinning tests.
 
-STATE:      OPEN - a QUESTION in REPORT-AN-FORCED-SIGNOUT.txt.
+STATE:      CLOSED 25 OCTOBER 2026 BY RULING, on merging an-forced-signout - the
+operator agreed with the session on both parts, so the code as taken is the code as
+ruled and nothing changes: (i) the refresh route's 400 malformed_body and an
+unexplained 401 there stay "try later" - they cost a retry, never a day; (ii) a
+bearer 401 carrying missing_token, malformed_authorization, an unknown code or no
+code keeps ending the session - the client always sends "Bearer <token>", so these
+mean a real defect, and a loud one (sign-in, the notice, the days kept) is better
+than a silent one. The operator's one addition is PARK-E10.
+
+## PARK-E10 - a refresh that keeps failing "try later" is invisible, however long it lasts  [operator ruling on PARK-E9, 2026-10-25]
+
+RAISED BY:  The operator's ruling on REPORT-AN-FORCED-SIGNOUT.txt's Q4 (PARK-E9),
+recorded at the merge of an-forced-signout.
+
+WHAT IT IS: Since R526, every refresh answer that is not the server's explicit
+refusal - a 5xx, a 429, a timeout, no network, an unparseable answer, the refresh
+route's 400 malformed_body or an unexplained 401 there - keeps the person signed in
+and the worker retries on its backoff. That is right for a moment's outage. But a
+cause that is PERMANENT (a client defect producing malformed_body, a proxy that
+always answers wrongly) retries forever with nothing seen anywhere: the days wait
+unsent and the person is never told why.
+
+TAKEN:      Nothing yet - not needed for this merge (the operator's words).
+
+NOT TAKEN:  The follow-up as ruled: the worker counts CONSECUTIVE refresh failures
+(reset by any successful refresh), and past a threshold surfaces them - a log line
+first, later a notice to the person. The threshold, the log line's content (no token,
+no id - the shape of R549, FW-DOSSIER-EMPTY's replay-delta log) and the notice's copy are that task's to propose.
+
+COST OF REVERSING: not applicable.
+
+STATE:      OPEN - a follow-up by ruling, not yet scheduled.
