@@ -50,6 +50,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -619,10 +620,47 @@ class ForcedSignOutTest : FunSpec({
         }
     }
 
-    test("R520 / R225 - the sign-in screen it lands on names the days waiting, counted from the record") {
+    test("R528 / R225 - ONE day waiting: the sign-in screen it lands on names it in the singular") {
+        // R528 accepted SignInCopy.sessionClosed, the singular included. Asserted the way R520's N=2 test below is: a
+        // real forced sign-out, then the forced state and the count MainActivity's SIGN_IN route hands
+        // RequestLinkScreen, read from the stores it reads - and the sentence that count renders. ONE date carried by
+        // TWO rows (a half-day pair), so a count of rows instead of dates would say 2 here and fail.
+        runTest {
+            val device = Device(this)
+            val shell = Shell(this, device)
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME, portion = Portion.AM))
+            device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.CH, portion = Portion.PM))
+            device.accounts.setCurrent(TAG_B)
+            device.repository.record(RecordCommand(dayDate = OTHER_DAY, kind = EntryKind.CH))
+            device.accounts.setCurrent(TAG_A)
+
+            device.anotherHolderRotatesFirst()
+            device.drain()
+            advanceUntilIdle()
+
+            shell.destination shouldBe Destination.SIGN_IN
+            sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe true
+            val named = heldDays(device.repository.observePending().first())
+            named shouldBe 1
+            val sentence = SignInCopy.sessionClosed(named)
+            // THE SINGULAR, each word that agrees with the number: the day, the verb, the pronoun.
+            sentence shouldContain "1 journée enregistrée sur ce téléphone attend d’être envoyée"
+            sentence shouldContain "pour l’envoyer."
+            // ... and no plural anywhere: "envoyée" is a prefix of "envoyées", so the line above cannot see it alone.
+            sentence shouldNotContain "journées"
+            sentence shouldNotContain "enregistrées"
+            sentence shouldNotContain "attendent"
+            sentence shouldNotContain "envoyées"
+            sentence shouldNotContain "les envoyer"
+            shell.close()
+        }
+    }
+
+    test("R520 / R225 / R528 - TWO days waiting: the sign-in screen names them in the plural, from the record") {
         // R225: the question « where are my days? » is raised by landing on sign-in; the answer is asserted where
         // the screen gets it - the forced state and the count MainActivity's SIGN_IN route hands RequestLinkScreen,
-        // read from the same stores it reads, after a real forced sign-out - never as a constant.
+        // read from the same stores it reads, after a real forced sign-out - never as a constant. R528: the sentence
+        // that count renders, in the plural.
         runTest {
             val device = Device(this)
             val shell = Shell(this, device)
@@ -646,7 +684,11 @@ class ForcedSignOutTest : FunSpec({
             val named = heldDays(device.repository.observePending().first())
             // TWO DAYS: A's two dates, the half-day pair counted once, B's row never (R303).
             named shouldBe 2
-            SignInCopy.sessionClosed(named) shouldContain "2 journées"
+            val sentence = SignInCopy.sessionClosed(named)
+            // THE PLURAL, each word that agrees with the number.
+            sentence shouldContain "2 journées enregistrées sur ce téléphone attendent d’être envoyées"
+            sentence shouldContain "pour les envoyer."
+            sentence shouldNotContain "l’envoyer"
             shell.close()
         }
     }
@@ -974,11 +1016,12 @@ class ForcedSignOutTest : FunSpec({
     }
 
     test(
-        "R522 - ACCOUNT DELETED elsewhere: today it takes R520's path too, because the phone cannot tell (a QUESTION)",
+        "R522 / R529 - ACCOUNT DELETED elsewhere: it takes R520's path too - the phone cannot tell, so it never erases",
     ) {
-        // PINNED AS FOUND, NOT AS DECIDED. Deletion requires the account's local data to be erased; this phone keeps
-        // the deleted account's held day, because nothing it receives says "deleted" - and R210 forbids the server
-        // telling an unauthenticated caller which case fired. REPORT-AN-FORCED-SIGNOUT.txt carries the options.
+        // PINNED AS FOUND, THEN DECIDED (R529: NEVER ERASE ON A GUESS). Deletion requires the account's local data to
+        // be erased; this phone keeps the deleted account's held day, because nothing it receives says "deleted" - and
+        // R210 forbids the server telling an unauthenticated caller which case fired. Honouring a deletion made on
+        // another device needs a server signal designed with R210 in mind: its own task (PARK-E8). Body unchanged.
         runTest {
             val device = Device(this)
             val shell = Shell(this, device)

@@ -95,6 +95,10 @@ class SignInScreensScreenshotTest {
     @Test fun connexionSessionClosedTwoDays() =
         paparazzi.snapshot { frame { connexion(SignInState(), sessionClosedHeldDays = 2) } }
 
+    // R528: the singular the operator accepted, photographed - one day, and the sentence's own agreement.
+    @Test fun connexionSessionClosedOneDay() =
+        paparazzi.snapshot { frame { connexion(SignInState(), sessionClosedHeldDays = 1) } }
+
     @Test fun connexionSessionClosedNoDays() =
         paparazzi.snapshot { frame { connexion(SignInState(), sessionClosedHeldDays = 0) } }
 
