@@ -267,3 +267,31 @@ describe('R237: the filename is where the CSV names its titulaire', () => {
     })();
   });
 });
+
+// ============================================================================
+// FW-DOSSIER-EMPTY (R516): AN EMPTY YEAR EXPORTS, AND EVERY ROW SAYS "NO ENTRY"
+// ============================================================================
+//
+// The CSV cannot carry a sentence: SPEC 12 freezes its columns, and R237 has
+// already refused a comment row because it breaks RFC 4180 for every reader
+// that is not Excel. What it CAN do is what it already does - one row per
+// working day, each with no portion - and this pins that for a year with
+// nothing in it, so an empty year is a file rather than a failure.
+describe('FW-DOSSIER-EMPTY R516: a year with no day recorded', () => {
+  it('exports every working day of the year, none of them carrying an entry', async () => {
+    const response = await GET(get('?year=2025'));
+
+    expect(response.status).toBe(200);
+
+    const csv = await response.text();
+    const dossier = await buildDossierFor(userId, 2025);
+
+    // R171: the day count is READ from the annex the CSV serialises, never a
+    // typed 261 - a typed figure is correct for one calendar year only.
+    expect(dossier.recordedEntries).toBe(0);
+    expect(daysIn(csv)).toEqual(dossier.annex.map((row) => row.dayDate));
+    // PRESENCE FIRST: the rows exist, so "none is logged" is about real rows.
+    expect(daysIn(csv).length).toBeGreaterThan(0);
+    expect(loggedDaysIn(csv)).toEqual([]);
+  });
+});

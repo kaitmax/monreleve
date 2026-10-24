@@ -59,6 +59,23 @@ const TITLE = 'Relevé annuel de télétravail';
 export const DOSSIER_COPY = {
   title: TITLE,
 
+  /**
+   * FW-DOSSIER-EMPTY (R516): a year with no day recorded says so in words.
+   *
+   * docs/api-v1.md 8.2: `recordedEntries === 0` is not a compliant year - both
+   * declare 0 %, one because the person logged nothing. Without this sentence
+   * the document prints 0,00 % over a year of *Non renseigné* rows and leaves
+   * an administration to decide which of the two it is holding.
+   *
+   * WRITTEN FOR THE DOCUMENT, NOT LIFTED (R165). The Android Relevé's own note
+   * speaks of "cette année" in the present tense, which is true of a live year
+   * on a screen and wrong on a PDF of a closed one; this names the year,
+   * because a printed page outlives the context that would supply it.
+   */
+  emptyYear: (year: number): string =>
+    `Aucune journée n${APOS}est enregistrée pour l${APOS}année ${year}. ` +
+    `Les taux de ce relevé reflètent donc une absence de saisie, et non une situation.`,
+
   // --------------------------------------------------------------------
   // 1. Header — SPEC 12 item 1
   // --------------------------------------------------------------------
