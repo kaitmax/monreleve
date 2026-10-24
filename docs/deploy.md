@@ -22,6 +22,18 @@ port 3000 inside the container.
 | Timezone | `Europe/Paris`, with `tzdata` installed so `Intl` resolves it |
 | Entrypoint | `scripts/entrypoint.mjs` — refuses to start on a misconfiguration |
 
+### What triggers a deploy: the `production` branch, never `main`
+
+Since 2026-10-21 Coolify watches **`production`**, with auto-deploy on. A push
+to `main` deploys nothing, so development never waits on production. To deploy,
+apply any new migration first (section 4), then fast-forward `production` to a
+`main` commit that has passed `pnpm gate:clone`: **that push is the deploy.** A
+session follows a deploy by reading Coolify's deployment list and never triggers
+one through the API. On 2026-10-14 an API call made right after a push produced
+a second deploy of the same commit, three times. The Chromium pin lives only in
+`web/Dockerfile`: Coolify's `CHROMIUM_VERSION` override was deleted the same day,
+after it had kept every deploy failing for six days.
+
 ### The image is environment-specific, and that is not negotiable
 
 `NEXT_PUBLIC_SITE_URL` is a **build argument**, not only a runtime variable.
@@ -192,6 +204,48 @@ the migrations applied for it are one artefact.
 Run them as a **separate, deliberate step** before the new version serves. They
 are not run on boot, because a server that migrates on boot migrates once per
 replica, concurrently.
+
+### Migrations run FROM THE SERVER, never through a published database port
+
+Open a shell on the VPS - SSH, or Coolify's own **Servers → localhost →
+Terminal**, which needs nothing on your machine - and run the migration there,
+on the `coolify` network. **Never make the database public to reach it from
+outside**, not even for a few minutes.
+
+**Why this is a rule (2026-10-24).** To apply
+`20261015104441_code_attempt_budget`, the production Postgres was made public
+through Coolify's API on a published port, the migration ran through it, and the
+API was asked to make it private again. Coolify's record said `is_public: false`
+- and then **nobody could prove the port was closed**, for two hours. The
+workstation doing the checking sat behind something that completes EVERY
+outbound TCP handshake itself: a connection to that port "opened", but so did a
+connection to a port nothing had ever used, and to an unrelated host on the same
+port. Every "still open" reading that afternoon measured the interceptor, not
+the server. A database stop/start was even made on that evidence, costing the
+live site about fifteen seconds of `/api/ready` 503. What finally settled it was
+the server itself: `ss -ltnp` showed nothing on the port and the database's
+`-proxy` container was gone. Whether Coolify's API close would have removed that
+container on its own was never established.
+
+**Three lessons.**
+1. **The step that needed undoing should never have been taken.** The server
+   terminal was there all along; a migration needs no published port.
+2. **A flag is not evidence.** Neither Coolify's `is_public` nor an API's 200
+   says what is listening.
+3. **A TCP connection from the outside is not evidence either, until it is
+   controlled.** Check closure FROM THE SERVER (`ss -ltnp`, `docker ps`), or with
+   a probe only the real service can answer - a Postgres SSL request, an HTTP
+   request - beside a POSITIVE control (a port known to be served must answer)
+   and a NEGATIVE one (a port nothing ever used). A probe that cannot tell those
+   two apart measures nothing.
+
+**Where the migrations come from.** The command below copies them out of the
+RUNNING container, which is right only when the running image already ships
+them. When the migration arrives with the release being promoted - the usual
+case - the running image does not have it yet. Take the migration folder from
+the repository at the commit being promoted instead, and confirm that
+`migrate status` lists exactly the migrations that commit adds before running
+`migrate deploy`.
 
 ### The command, corrected after it was run for real (2026-10-14)
 
