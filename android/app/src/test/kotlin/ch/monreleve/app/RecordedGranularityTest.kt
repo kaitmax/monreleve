@@ -153,6 +153,46 @@ private fun slotsTheCardOffers(state: AujourdhuiState): List<Slot> =
         GranularityChoice.HALF_DAY -> listOf(Slot.MORNING, Slot.AFTERNOON)
     }
 
+/** The bulk selection's three days, a working Monday to Wednesday before [TODAY]. */
+private const val MONDAY = "2026-06-08"
+private const val TUESDAY = "2026-06-09"
+private const val WEDNESDAY = "2026-06-10"
+
+/**
+ * R493 / R496 step 3: a selection holding a day recorded WHOLE (Monday), a day recorded in HALVES (Tuesday) and an
+ * EMPTY day (Wednesday), confirmed as « Mission en France » through the real controller under [settings]. Returns
+ * what the repository WROTE, in order - and asserts every write landed, that nothing was refused, and that each day's
+ * stored rows are exactly the writes (so a day left as it was, or a refusal, could not pass as "its granularity").
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+private suspend fun TestScope.bulkOver(settings: SettingsStore): List<Triple<String, Portion, EntryKind>> {
+    val repo =
+        holding(
+            row(Portion.FULL, EntryKind.HOME, MONDAY),
+            row(Portion.AM, EntryKind.CH, TUESDAY),
+            row(Portion.PM, EntryKind.HOME, TUESDAY),
+        )
+    var syncs = 0
+    val controller = CalendarController(repo, settings, 2026, JUNE_15, this, requestSync = { syncs++ })
+    advanceUntilIdle()
+
+    controller.startSelection()
+    controller.tapDay(MONDAY)
+    controller.tapDay(WEDNESDAY)
+    controller.state.value.selection.days shouldBe setOf(MONDAY, TUESDAY, WEDNESDAY)
+    controller.chooseBulk(RecordedKind.MISSION_FRANCE, null)
+    controller.confirmBulk()
+    advanceUntilIdle()
+
+    repo.answered.filterNot { it is RecordResult.Recorded } shouldBe emptyList()
+    syncs shouldBe 1
+    val writes = repo.made.map { Triple(it.dayDate, it.portion, it.kind) }
+    for (day in listOf(MONDAY, TUESDAY, WEDNESDAY)) {
+        repo.day(day) shouldBe writes.filter { it.first == day }.map { it.second to it.third }
+    }
+    return writes
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordedGranularityTest : FunSpec({
     // -------------------------------------------------------------------------------------------------------------
@@ -326,6 +366,38 @@ class RecordedGranularityTest : FunSpec({
             val whole = todayOn(holding(), WHOLE_DAYS).state.value
             whole.granularity shouldBe GranularityChoice.DAY
             whole.recordedAs shouldBe null
+        }
+    }
+    // -------------------------------------------------------------------------------------------------------------
+    // Bulk confirmation over a selection (R493).
+    // -------------------------------------------------------------------------------------------------------------
+
+    test("R493 bulk, half-day mode: a whole day stays whole, a day in halves stays in halves, an empty day is halved") {
+        runTest {
+            val writes = bulkOver(HALF_DAYS)
+
+            writes shouldBe
+                listOf(
+                    Triple(MONDAY, Portion.FULL, EntryKind.MISSION_FR),
+                    Triple(TUESDAY, Portion.AM, EntryKind.MISSION_FR),
+                    Triple(TUESDAY, Portion.PM, EntryKind.MISSION_FR),
+                    Triple(WEDNESDAY, Portion.AM, EntryKind.MISSION_FR),
+                    Triple(WEDNESDAY, Portion.PM, EntryKind.MISSION_FR),
+                )
+        }
+    }
+
+    test("R493 bulk, whole-day mode: a day in halves keeps its halves; the whole day and the empty day are whole") {
+        runTest {
+            val writes = bulkOver(WHOLE_DAYS)
+
+            writes shouldBe
+                listOf(
+                    Triple(MONDAY, Portion.FULL, EntryKind.MISSION_FR),
+                    Triple(TUESDAY, Portion.AM, EntryKind.MISSION_FR),
+                    Triple(TUESDAY, Portion.PM, EntryKind.MISSION_FR),
+                    Triple(WEDNESDAY, Portion.FULL, EntryKind.MISSION_FR),
+                )
         }
     }
 })

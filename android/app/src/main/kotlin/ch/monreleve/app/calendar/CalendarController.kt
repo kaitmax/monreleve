@@ -309,22 +309,36 @@ class CalendarController(
      * single-day editing uses: each gets its own clientMutationId (born here), the account's tag (R303) and
      * clientClaimedAt = this confirmation tap (R275) - a bulk entry is exactly the same rows as entering the days
      * one by one, nothing says « bulk ». Then one requestSync; SyncEngine batches within MAX_BATCH_ITEMS and, as
-     * a day is a FULL portion recorded once, never carries a day twice (R296 isolation still applies per item).
+     * each (day, portion) is recorded once, never carries a key twice (R296 isolation still applies per item).
+     *
+     * AN-GRANULARITY (R493): EACH DAY IN ITS OWN GRANULARITY. This wrote every chosen day as one FULL row - so a day
+     * held in halves gained a whole-day row beside them, counted twice. Now each day gets the portions the record
+     * path's rule offers it (DayGranularity.portionsToOffer): a day held whole its FULL row, a day held in halves
+     * both halves, an EMPTY day the setting's granularity (a morning and an afternoon in half-day mode), a day already
+     * mixed exactly the rows it holds (R494) - each set to the chosen kind, the same rows entering it by hand makes.
      */
     fun confirmBulk() {
         val confirmation = mutableState.value.bulkConfirmation ?: return
+        // R475: the setting as it is NOW, read at the confirming tap; it decides only the days with no rows.
+        val setting = dayGranularityOf(settingsStore.load())
+        val held = entries.groupBy({ it.dayDate }, { it.portion })
         scope.launch {
+            var written = 0
             for (iso in confirmation.days) {
-                repository.record(
-                    RecordCommand(
-                        dayDate = iso,
-                        kind = confirmation.kind.toEntryKind(),
-                        portion = Portion.FULL,
-                        absenceReason = confirmation.absence?.toReason(),
-                    ),
-                )
+                for (portion in portionsToOffer(held[iso].orEmpty(), setting)) {
+                    val result =
+                        repository.record(
+                            RecordCommand(
+                                dayDate = iso,
+                                kind = confirmation.kind.toEntryKind(),
+                                portion = portion,
+                                absenceReason = confirmation.absence?.toReason(),
+                            ),
+                        )
+                    if (result is RecordResult.Recorded) written++
+                }
             }
-            requestSync()
+            if (written > 0) requestSync()
         }
         mutableState.update { it.copy(selection = SelectionState(), bulkConfirmation = null) }
     }
