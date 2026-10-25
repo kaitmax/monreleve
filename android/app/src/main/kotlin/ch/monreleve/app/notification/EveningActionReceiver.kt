@@ -10,9 +10,9 @@ import ch.monreleve.app.data.local.deviceClaimNow
 import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.LocalEntryRepository
-import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.detection.EveningNotifier
+import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,27 +56,36 @@ class EveningActionReceiver : BroadcastReceiver() {
         val clock = Clock.systemDefaultZone()
         val account = SharedPrefsAccountStore(context).current()
         val db = MonReleveDatabase.get(context)
-        val today = todayInParis(clock)
         // "Is the day already recorded?" the same way maybeNotifyEvening asks it: any recorded portion suppresses
         // (never nag/overwrite a recorded day), read via the DAO on this single-user device.
         val entries = db.entryDao().all()
-        val hasEntry = entries.any { it.dayDate == tap.shownForDay }
-        val decision = decideEveningTap(tap, account, today, hasEntry, deviceClaimNow(clock))
-        when (decision) {
-            is EveningTapResult.Record -> {
-                // THE ONE REPOSITORY PATH (R206): the same writer, same stamping, as an in-app tap.
-                val repository = LocalEntryRepository(db.entryDao(), clock, currentAccount = { account })
-                if (repository.record(decision.command) is RecordResult.Recorded) {
-                    SyncScheduler.requestSync(context)
-                    EveningNotifier.postConfirmation(context, decision.command.kind.name, decision.command.dayDate)
-                } else {
-                    // AN-GRANULARITY (R492): refused - a half was recorded for the day between the check above and
-                    // this write, and a whole day beside it would count the day twice. Nothing was written, so the
-                    // notification never says « Enregistré »; it shows the day as it now stands instead.
-                    onIgnored(context, EveningTapRefused.ALREADY_RECORDED, tap, db.entryDao().all())
-                }
+        // THE ONE REPOSITORY PATH (R206): the same writer, same stamping, as an in-app tap.
+        val repository = LocalEntryRepository(db.entryDao(), clock, currentAccount = { account })
+        // AN-GRANULARITY-DRIVE (R576): the write itself - the decision, the setting read at this tap, each row through
+        // the repository - is recordEveningTap, so the JVM tests drive what this receiver does.
+        val write =
+            recordEveningTap(
+                tap = tap,
+                at = TapMoment(currentAccount = account, today = todayInParis(clock), claimNow = deviceClaimNow(clock)),
+                deviceRows = entries,
+                settings = SharedPrefsSettingsStore(context),
+                repository = repository,
+            )
+        when (write) {
+            is EveningWrite.Recorded -> {
+                SyncScheduler.requestSync(context)
+                val shown = write.commands.first()
+                EveningNotifier.postConfirmation(context, shown.kind.name, shown.dayDate)
             }
-            is EveningTapResult.Ignore -> onIgnored(context, decision.reason, tap, entries)
+            is EveningWrite.Refused -> {
+                // AN-GRANULARITY (R492): refused - a row of the other granularity was recorded for the day between
+                // the check and this write, and a row beside it would count the day twice. The notification never
+                // says « Enregistré »; it shows the day as it now stands instead (and any row written before the
+                // refusal still goes up).
+                if (write.written > 0) SyncScheduler.requestSync(context)
+                onIgnored(context, EveningTapRefused.ALREADY_RECORDED, tap, db.entryDao().all())
+            }
+            is EveningWrite.Ignored -> onIgnored(context, write.reason, tap, entries)
         }
     }
 

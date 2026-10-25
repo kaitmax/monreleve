@@ -468,6 +468,7 @@ private suspend fun failureOf(
  * and the backoff's next run refreshes with the SAME token and sends the day - the positive control that the session
  * the phone kept is one that still works.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
     val device = Device(this)
     val shell = Shell(this, device)
@@ -507,6 +508,7 @@ private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
 }
 
 /** R526: one SESSION OVER row, on a fresh device - the server ends the session [ending]'s way; R520's path follows. */
+@OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun TestScope.assertSessionOver(ending: Ending) {
     val device = Device(this)
     val shell = Shell(this, device)

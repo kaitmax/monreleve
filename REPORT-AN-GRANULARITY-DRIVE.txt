@@ -1,0 +1,666 @@
+================================================================================
+REPORT-AN-GRANULARITY-DRIVE
+R496 DRIVEN ON THE S9, THE EVENING NOTIFICATION FOLLOWS THE SETTING, TWO
+WARNINGS GONE, AND THE PHONE LEFT AS IT WAS FOUND
+================================================================================
+
+TASK     relay/AN-GRANULARITY-DRIVE.txt (read in full from the main checkout,
+         untracked there, never committed here), rulings R576-R579 - none
+         renumbered: no REPORT-*.txt, parking.md, README.md or CLAUDE.md on main,
+         no unmerged origin branch (fw-canton-required, fw-dossier-empty, fw34)
+         and no relay/ file uses them except this task's own prompt and
+         relay/SERIES-TO-IOS-1a.txt, which names this task as running.
+BASE     a72ab31 (origin/main = the merge of an-granularity)
+BRANCH   an-granularity-drive, worktree C:/wt/an-granularity-drive (R349),
+         created from origin/main with its upstream unset; .session-lock.json
+         written there (gitignored, never committed, removed at the end).
+         PENDING MERGE - not merged; main and production never pushed.
+DEVICE   SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, USB,
+         Africa/Casablanca (+01), auto_time 1. Today is SUNDAY 25 October 2026,
+         the day Paris left summer time at 03:00: Paris and the phone were both
+         +01 for the whole drive, so every phone, Paris and UTC+1 time agree.
+
+NOTE ON ACCENTS. Pure ASCII by the transport constraint (R155/R168). French read
+off the screen is TRANSLITERATED here; the accented originals live in :shared's
+fr/ (AujourdhuiCopy, CalendarCopy, ParametresCopy, OnboardingCopy, SignInCopy)
+and nothing was copied from this file into source. No copy was added or changed.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+- R576: the evening notification follows the setting. Its buttons record an
+  EMPTY day (they never write a day holding a row - R339's stale tap), and an
+  empty day now takes the setting's granularity: one FULL row in whole-day mode,
+  AM and PM of the kind tapped in half-day mode, asked of the record path's own
+  rule (DayGranularity.portionsToOffer) and written row by row through
+  LocalEntryRepository (R492), so a racing row of the other granularity is
+  refused there and nothing lands beside it. RED on main's logic, then GREEN,
+  both directions. :app only. PARK-W2 closed.
+- R577: the two `advanceUntilIdle` opt-ins ForcedSignOutTest lacked are declared
+  at function level, as every other top-level helper on main does. Compiler
+  `w:` lines 8 -> 6, the six remaining KMP-UP2's six; ForcedSignOutTest 27 -> 27.
+- R578: R496's four steps driven on the S9 against the local stack, the audit
+  build of d1ef809, a NEW test account, the real clock - every step's trail rows
+  quoted with their positive controls. R576 itself could NOT be driven: the
+  codebase's only trigger needs a weekday evening, and the real clock said
+  Sunday. AN-GRANULARITY's test account was signed out through the product
+  first - which, because onboarding has no sign-out (PARK-J3), meant finishing
+  its onboarding (it wrote that account's name and canton to the server).
+- R579: the phone left as AN-GRANULARITY found it - stay_on 0, airplane 0,
+  auto_time 1, auto_time_zone 1, Africa/Casablanca, adb reverse empty, the app
+  signed out, and the as-found audit APK reinstalled: base.apk pulled and hashed
+  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034.
+- Found on the drive and parked: PARK-J2 (whole-day mode can be left on a half
+  count by an edit R490 allows, and Aujourd'hui then says no day is recorded),
+  PARK-J1, PARK-J3, PARK-J4.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+ALL FOUR RULINGS DONE (R576, R577, R578 with R576-on-device NO RESULT, R579).
+FULL :app:gate --rerun-tasks GREEN on d227be5 (every line of code, test and
+register this branch has, and this report as committed there); the reported
+tip is the commit after d227be5 and differs from it ONLY in this file - its
+STATUS and PUSH PROOF sections and one softened sentence in R578 (PUSH PROOF).
+FULL GATE NOT RUN on the reported tip itself when this was written. No iOS
+cloud run owed (R573): android/shared is unchanged.
+
+FULL :app:gate --rerun-tasks ON d227be5, run IN THIS SESSION after ./gradlew
+--stop, the worktree clean (15:05:55-15:22:57 UTC):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1348 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 16m 58s
+    236 actionable tasks: 236 executed
+    GATE_EXIT=0
+  JUnit XML: :app 1348 / 0, :shared 101 / 0; ForcedSignOutTest 27 / 0;
+  RegisterCoverageTest 1 / 0 (it read this report's PARK-J citations).
+  COMPILER WARNINGS: 6 `w:` lines - the same six as d1ef809's (R577).
+The three full gates of this session: a72ab31 (R1) 1340, d1ef809 (R577) 1348,
+d227be5 1348 - each GATE_EXIT=0, 236 of 236 tasks executed.
+
+--------------------------------------------------------------------------------
+R273
+--------------------------------------------------------------------------------
+Read before any change: relay/AN-GRANULARITY-DRIVE.txt in full and
+relay/AN-GRANULARITY.txt's R496 (the four steps) with its addendum, both from the
+main checkout; REPORT-AN-GRANULARITY.txt in full (R490-R497, R519, its R496
+section, PARK-W2, PARK-W7); REPORT-AN-FORCED-SIGNOUT.txt's R1 and R524 sections
+(the local stack, the account, the phone's as-found table, the debug-build read
+of the device data); REPORT-KMP-UP2.txt's warnings section (its six `w:`
+lines); and the evening notification's writer - notification/EveningTap.kt,
+EveningAction.kt, EveningActionReceiver.kt, detection/EveningNotifier.kt,
+EveningNotificationDecision.kt, dev/EveningNotifyActivity.kt - beside
+:shared's data/repo/DayGranularity.kt and EntryRepository.kt. CLAUDE.md at the
+repository root is in force; the parent directory's CLAUDE.md belongs to another
+project and was ignored, as this repository's says.
+
+Named AN-GRANULARITY-DRIVE.
+
+--------------------------------------------------------------------------------
+R1
+--------------------------------------------------------------------------------
+(a) origin/main = a72ab31 after `git fetch`, the merge of an-granularity (its
+    tree identical to 32cc787, as the orchestrator read it).
+
+(b) FULL :app:gate --rerun-tasks ON a72ab31, run IN THIS SESSION in this
+    worktree, after ./gradlew --stop ("No Gradle daemons are running."), before
+    any file was touched (13:43:00-13:54:00 UTC):
+        [clean-worktree] OK: no unstaged changes to tracked files (R393)
+        test floor OK: 1340 unit tests observed (>= 10)
+        BUILD SUCCESSFUL in 10m 57s
+        236 actionable tasks: 236 executed
+        GATE_EXIT=0
+    JUnit XML: :app 1340 / 0 failures (172 files), :shared 101 / 0 (15 files);
+    ForcedSignOutTest 27 / 0.
+    COMPILER WARNINGS: 8 `w:` lines, as expected -
+        MainActivity.kt:777:26  LocalLifecycleOwner deprecated           x2
+        LiveLocation.kt:134:30  overrides a deprecated member (KT-80399)  x2
+        MockProviderReplay.kt:4:8  Criteria deprecated                    x2
+        ForcedSignOutTest.kt:482:9 and :518:9  "This declaration needs opt-in"
+
+(c) THE S9, read before anything wrote to it (13:41:59 UTC, phone 14:42 +01):
+        adb devices -l   232bcd8c300c7ece device product:starltexx
+                         model:SM_G960F transport_id:12 (USB) - `device`, not
+                         unauthorized, not offline
+        stay_on_while_plugged_in 3 | airplane_mode_on 0 | auto_time 1 |
+        auto_time_zone 1 | Africa/Casablanca | mobile_data 0 | wifi_on 1 |
+        font_scale 1.0 | adb reverse: empty
+        installed: ch.monreleve.app 0.1.0 (1), flags [HAS_CODE
+                   ALLOW_CLEAR_USER_DATA ALLOW_BACKUP] - not debuggable;
+                   firstInstallTime = lastUpdateTime 2026-10-25 03:52:52
+                   (phone time)
+        base.apk (pulled) sha256 f2a6f5eaa388abd7f2bf050a44a15df661af8dd5b72e3158cbc22d9be9d06973
+                   = AN-GRANULARITY's audit build of 942581c, as its report says
+        certificate (apksigner): CN=Android Debug, SHA-256
+                   ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+        on screen: MainActivity resumed behind the keyguard (pid 20598 - the
+                   process AN-GRANULARITY left), onboarding "Etape 6 sur 8", the
+                   period question.
+    THE ORIGINAL APK: C:/wt/an-pull/android/app/build/outputs/apk/audit/
+    app-audit.apk COPIED OUT (read there, nothing written there; its worktree's
+    status was clean) to this worktree's gitignored evidence directory, sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 - equal, in
+    full, to the as-found hash REPORT-AN-GRANULARITY.txt recorded; its signer
+    ef336db5...e373d1, the installed build's.
+    THE DEVICE DATA, READ FIRST (R578): see R578 below - through a debug build of
+    this branch installed over (same signer), before anything else was done.
+
+--------------------------------------------------------------------------------
+R576 - THE EVENING NOTIFICATION FOLLOWS THE SETTING (b6e93d0)
+--------------------------------------------------------------------------------
+WHAT THE CODE DID (main): decideEveningTap returned ONE RecordCommand with
+`portion = Portion.FULL`, whatever the setting; the receiver wrote it through
+LocalEntryRepository. It wrote only a day with no row (any recorded portion ->
+ALREADY_RECORDED), so R492's refusal guarded only a race.
+
+WHAT IT DOES NOW (:app, notification/ only):
+  - decideEveningTap(tap, at: TapMoment, hasEntryForShownDay, setting) returns
+    Record(commands) - one command per portion `portionsToOffer(held =
+    emptyList(), setting)` gives the empty day: [FULL] in whole-day mode, [AM,
+    PM] in half-day mode, each carrying the whole tap (kind, provenance,
+    detected side, detectedAt). The day is empty whenever this branch is
+    reached, so "a day already held keeps its own" is the unchanged
+    ALREADY_RECORDED branch: such a day is never written.
+  - recordEveningTap(tap, at, deviceRows, settings, repository) is the
+    receiver's write without the Android glue: the stale-tap check over the rows
+    the receiver read, the setting read from the store AT THE TAP (R475), each
+    command through the repository (R206, R492). Typed outcome: Ignored(reason) /
+    Recorded(commands) / Refused(written).
+  - EveningActionReceiver calls it with SharedPrefsSettingsStore; Recorded ->
+    sync + "Enregistre" confirmation as before; Refused -> the day as it now
+    stands (as before), plus a sync if a row went in before the refusal (only
+    possible across two repository instances, PARK-W4).
+  - TapMoment (the account, the Paris day and the clock at the tap, one value)
+    exists because detekt's LongParameterList (threshold 6) failed the first
+    shape on fastCheck - restructured, not suppressed.
+
+TESTS FIRST. EveningGranularityTest (new, 7 tests): the real LocalEntryRepository
+over FakeEntryDao, driven through recordEveningTap, asserting the STORED rows:
+  1 half-day mode: an empty day is written [(AM, CH), (PM, CH)], each MANUAL,
+    the account's, PENDING
+  2 whole-day mode: an empty day is written [(FULL, HOME)] - THE OTHER DIRECTION
+    (R245): a writer that stopped writing cannot pass
+  3 half-day mode, detection's Confirmer: both halves DETECTED_CONFIRMED with
+    the proposed side and the tap's time
+  4 a day held WHOLE, tapped in half-day mode: Ignored(ALREADY_RECORDED), the
+    FULL row as it was (read back - the positive control)
+  5 a day held in HALVES, tapped in whole-day mode: Ignored, no FULL beside them
+  6 a FULL row recorded after the receiver's read, half-day mode: Refused(0),
+    the FULL row unchanged (R492's record path, not the check)
+  7 halves recorded after the receiver's read, whole-day mode: Refused(0)
+EveningTapTest: one decision test added (half-day mode -> AM then PM commands,
+each the whole tap); the eleven existing tests restated for the signature ONLY -
+each passes WHOLE_DAY (the only mode the decision knew) and reads its one FULL
+command as `commands.single()`, so a whole-day decision that grew a second row
+fails them. Their assertions are otherwise unchanged.
+
+RED ON MAIN'S LOGIC, twice. (1) Against a skeleton - the new signature with
+main's body (`listOf(Portion.FULL)` at the portions line); (2) after the
+TapMoment restructuring, against main's decision PLANTED at the same line in the
+final code (`listOf(ch.monreleve.app.data.local.Portion.FULL)`; the anchor
+asserted to occur exactly once before the edit, the diff read back at line 103,
+reverted byte-identical - cmp silent). Both runs: 19 tests, 4 failed, the same
+four, on their own assertions:
+    EveningGranularityTest 1:  Element differ at index: [0] / Missing elements
+      from index 1 / expected:<[(AM, CH), (PM, CH)]> but was:<[(FULL, CH)]>
+    EveningGranularityTest 3:  expected:<[[AM, HOME, DETECTED_CONFIRMED, HOME,
+      "2026-10-06T18:30:00+02:00"], [PM, HOME, DETECTED_CONFIRMED, HOME, ...]]>
+      but was:<[[FULL, HOME, DETECTED_CONFIRMED, HOME, "2026-10-06T18:30..."]]>
+    EveningGranularityTest 6:  expected:<Refused(written=0)> but was:
+      <Recorded(commands=[RecordCommand(dayDate=2026-10-06, kind=CH,
+      portion=FULL, ...)])>   (main's FULL tap EDITED the newer FULL row -
+      PARK-J4)
+    EveningTapTest (new):      expected:<[RecordCommand(... portion=AM ...),
+      RecordCommand(... portion=PM ...)]> but was one FULL command
+  The 15 that passed on main's logic are the controls: the whole-day direction,
+  both held-day mirrors, the halves race in whole-day mode (R492 already refused
+  it), and the eleven restated decision tests.
+GREEN: 19/19. Then fastCheck + :app:testDebugUnitTest: 1348 / 0 (1340 + 8).
+
+--------------------------------------------------------------------------------
+R577 - THE TWO OPT-IN WARNINGS (d1ef809)
+--------------------------------------------------------------------------------
+ForcedSignOutTest.kt's `advanceUntilIdle()` at :482 and :518 sit in the two
+TOP-LEVEL helpers `assertTriesLater` and `assertSessionOver`, outside the class
+whose @OptIn(ExperimentalCoroutinesApi::class) covers the test lambdas. Main's
+other top-level helpers declare it at FUNCTION level (RecordedGranularityTest's
+sheetOn :128, todayOn :139, bulkOver :174; ProvenanceWordsTest's sheetFor :90),
+so each of the two now carries `@OptIn(ExperimentalCoroutinesApi::class)` after
+its KDoc. The import was already on line 56. Test code only, its own commit,
+nothing suppressed. fastCheck + :app:testDebugUnitTest 1348 / 0.
+
+PROOF - FULL :app:gate --rerun-tasks ON d1ef809, run IN THIS SESSION after
+./gradlew --stop, the worktree clean (14:15:41-14:28:33 UTC):
+        [clean-worktree] OK: no unstaged changes to tracked files (R393)
+        test floor OK: 1348 unit tests observed (>= 10)
+        BUILD SUCCESSFUL in 12m 51s
+        236 actionable tasks: 236 executed
+        GATE_EXIT=0
+  JUnit XML: :app 1348 / 0, :shared 101 / 0; ForcedSignOutTest 27 / 0 - THE SAME
+  27 as R1.
+  COMPILER WARNINGS: 8 -> 6. The six remaining, line for line:
+        MainActivity.kt:777:26  'val LocalLifecycleOwner ...' is deprecated   x2
+        LiveLocation.kt:134:30  This declaration overrides a deprecated
+                                member but is not marked as deprecated     x2
+        MockProviderReplay.kt:4:8  'class Criteria ...' is deprecated        x2
+  These are KMP-UP2's six (2x LocalLifecycleOwner, 2x Criteria, 2x
+  OVERRIDE_DEPRECATION at LiveLocation.kt:134:30); KMP-UP2 recorded the first at
+  MainActivity.kt:761 - the same call, sixteen lines lower since. Both
+  ForcedSignOutTest lines are gone; nothing new appeared.
+
+--------------------------------------------------------------------------------
+R578 - R496, DRIVEN ON THE S9
+--------------------------------------------------------------------------------
+THE BUILDS (assembled after the R577 gate, daemons stopped after): the audit and
+debug builds of d1ef809 with -PfrontalierHost=127.0.0.1.
+    audit  sha256 bb75d0592e336be41001209661238e8dc5029362dc9ca35acdb7c2aca8c15583
+    debug  sha256 0698a064d93b0d29bd397f0853ae498bcfb1e71ad000d66272241d7a498f87e9
+  Both signed CN=Android Debug ef336db5...e373d1 - the installed build's and the
+  original's (apksigner, compared before every `install -r`). Their dex hold
+  "http://127.0.0.1:3000" (audit 1, debug 2) and no "10.0.2.2:3000". Each also
+  holds one "https://monreleve.ch" - not BuildConfig's API base (that is the
+  127.0.0.1 one), and every request of the drive landed in the local dev
+  server's log; what the string serves was not traced.
+
+THE STACK: port 3000 asserted free first (Get-NetTCPConnection: 0 listeners on
+3000, 44 in all, 2 on 5436 - the control). `PORT=3000 pnpm dev` in the MAIN
+checkout's web/ (at a72ab31; no git state written there). R169 before anything:
+/api/health -> {"service":"monreleve","instance":null,"status":"ok",
+"reasons":[],"origin":null,"runtime":false}; /api/ready 200. Its database is
+frontalier-postgres (5436; web/.env read for host:port/db only); every query
+below is read-only `docker exec frontalier-postgres psql`. No other project's
+container was touched. `adb reverse tcp:3000 tcp:3000` -> "UsbFfs tcp:3000
+tcp:3000". NEVER production.
+
+THE DEVICE DATA, READ FIRST (14:36 UTC). The installed build was not debuggable,
+so the debug build of d1ef809 was installed over it with `install -r` (same
+signer; flags then [DEBUGGABLE ...]) and read with `exec-out run-as` (prefs and
+monreleve.db + -wal; not -shm), the DB through node:sqlite:
+    shared_prefs  monreleve.account.xml  key `tag` = 3d2a2b177473b1b5... - equal
+                  to sha256("an-granularity@monreleve.test"), computed apart
+                  monreleve.auth.xml     keys token.blob, token.iv (values never
+                  printed; the pulled copy deleted)
+                  monreleve.pending.xml  empty
+                  (no settings, dossier or detection file - onboarding unfinished)
+    Room          entry 0, daily_tally 0, weekly_rhythm 0 (control:
+                  room_master_table 1 row, user_version 6)
+  Nothing unsent was on the phone; the server held Entry 0 / EntryEvent 0 for
+  that account. The reinstall ended the old process, so its in-memory onboarding
+  answers were gone; the activity came back at onboarding step 1.
+
+THE PREVIOUS ACCOUNT, SIGNED OUT THROUGH THE PRODUCT, AND WHAT THAT DID. The
+product's only voluntary sign-out is Parametres' "Se deconnecter", after
+onboarding; onboarding has none (PARK-J3). So onboarding was completed with test
+values - name "Test Granularite", Geneve, 100 %, simplified, whole days, whole
+year, manual, "Pas maintenant" - and then signed out:
+    14:39:16  the save failed on screen ("Enregistrement impossible. Verifiez
+              votre connexion, puis reessayez.") - the USB drop below had
+              cleared the tunnel; restored 14:39:36, tapped again:
+    server    PATCH /api/v1/me 401 -> POST /api/v1/auth/refresh 200 -> PATCH
+              /api/v1/me 200 -> GET /api/v1/dossier 2025, 2026 200
+    shell     "Bonjour Test", Sunday's question, and the year-download notice
+              ("Les journees de votre compte n'ont pas pu etre chargees ... Rien
+              n'a ete modifie ...") - the launch-time year fetch had met the
+              dropped tunnel; correct behaviour (AujourdhuiCopy says why).
+    14:40:58  Parametres -> "Se deconnecter" -> the plain confirmation (nothing
+              pending) -> "Se deconnecter": POST /api/v1/auth/sign-out 200;
+              Bienvenue.
+  WHAT IT DID, read on both sides:
+    server  the account's only DeviceSession (created 02:54:53) revokedAt
+            2026-10-25 14:41:02.105, revokedReason SIGNED_OUT. ITS USER ROW,
+            before -> after: name (null) -> "Test Granularite", canton (null) ->
+            GE; employmentRate 100, SIMPLIFIED240, exactTotalWorkDays null, DAY,
+            activityStartDate null - unchanged. NameChange 0 -> 0. Entry 0,
+            EntryEvent 0. One token rotation (the refresh above).
+    phone   all six monreleve.* prefs files empty maps; entry 0, daily_tally 0,
+            weekly_rhythm 0 (debug read, 14:41).
+  The sign-out itself only ended the session and wiped the phone; the settings
+  write is onboarding's, the price of the product's only path (DEVIATION 2).
+
+THE DRIVE BUILD: the audit build of d1ef809 installed with `install -r` (same
+signer) at 14:41:29; installed base.apk pulled: bb75d059...c15583; flags without
+DEBUGGABLE.
+
+THE ACCOUNT: an-granularity-drive@monreleve.test, created for this session -
+`SELECT count(*) FROM "User" WHERE email = ...` -> 0 at the start and again at
+14:41 just before the sign-in, beside 18 users in all and 8 at @monreleve.test
+(the controls). The operator's address was never used; no other account touched
+beyond the sign-out above.
+SIGNED IN THROUGH THE REAL SCREENS (14:41:46-14:42:47): launch -> Bienvenue with
+NO notice -> "Commencer" -> "Se connecter a Mon Releve" -> the address typed
+(35 characters, the field's own count) -> "Recevoir mon lien de connexion"
+(POST magic-link 202) -> "Verifiez votre messagerie", which read the address
+back exactly ("Nous avons envoye un lien et un code a an-granularity-drive@
+monreleve.test") -> the code, read from the dev server's own printed mail (one
+message to that address) into a scratch file, typed digit by digit, the file
+deleted after (R284; no code or token printed anywhere) -> POST /api/v1/auth/code
+200, GET /api/v1/me 200, GET entries ?year=2026 and ?year=2025 200.
+R574: every capture during the sign-in was a uiautomator dump whose helper
+REDACTS the text of every EditText node ("[EditText redacted, N chars]") from
+the first dump on; no PNG screenshot was taken from launch until the account was
+in the shell.
+ONBOARDING: "Camille Drive", Geneve, 100 %, simplified, WHOLE DAYS ("Journees
+entieres"), whole year, manual, "Pas maintenant" -> PATCH /api/v1/me 200; server
+User row: GE, 100, SIMPLIFIED240, granularity DAY. Then Aujourd'hui: "Bonjour
+Camille", "Dimanche 25 octobre 2026", "Ou travaillez-vous aujourd'hui ?" with En
+Suisse / Domicile / Mission / Declarer une absence - no Matin, no Apres-midi.
+Account trail before step 1: EntryEvent 0 (controls: 1440 events across all
+accounts; the same query read another test account's four events).
+
+STEP 1 - WHOLE-DAY MODE, A DAY HELD WHOLE, THEN HALF-DAYS WITHOUT RESTARTING.
+  14:44:09  Aujourd'hui -> "Domicile": the card "Domicile / Enregistre /
+            Modifier", year card "Sous les deux seuils", 0,41 %.
+  14:45:07  Parametres -> "Decompte des journees" -> "Demi-journees" (the radio
+            read off a screenshot) -> "Enregistrer": PATCH /api/v1/me 200,
+            server granularity HALF_DAY. No restart (same process throughout).
+  AUJOURD'HUI SHOWS IT ANSWERED: "Cette journee a ete enregistree en journee
+            entiere." above "Domicile / Enregistre / Modifier".
+  "MODIFIER": the notice, then ONE whole-day choice - En Suisse / Domicile
+            (selected) / Mission / Declarer une absence / Annuler - no Matin, no
+            Apres-midi (screenshot read).
+  THE CALENDAR SHEET (25 Oct, "Aujourd'hui, Jour 25, Domicile, enregistre a
+            temps, saisie manuelle."): "Ou avez-vous travaille ?", the same
+            notice, ONE choice (En Suisse / Domicile / Mission / Declarer une
+            absence), one note, "Origine de la saisie / Saisie manuelle /
+            Premiere saisie enregistree le 25.10.2026 a 15:44". Closed with
+            "Annuler" - nothing written.
+  POSITIVE CONTROL for "no half-day controls": in the same half-day mode, EMPTY
+            23 Oct's sheet showed "Matin" with its four choices and, below,
+            "Apres-midi" with its own (step 2).
+  14:46:38  "Modifier" -> "En Suisse". The trail:
+      2026-10-25 14:44:12.745 | 2026-10-25 | FULL | CREATED  | HOME | MANUAL   <- control
+      2026-10-25 14:46:41.732 | 2026-10-25 | FULL | MODIFIED | CH   | MANUAL   <- ONE
+    Entry rows for 25 Oct: FULL CH only - no AM, no PM row.
+
+STEP 2 - THE MIRROR: A DAY IN HALVES, THEN WHOLE-DAY MODE.
+  14:47:43  half-day mode, 23 Oct (empty) -> its sheet: "Matin" En Suisse,
+            "Apres-midi" En Suisse -> "Enregistrer". (Two Swiss halves keep the
+            telework count whole, which R290's guard requires before a switch
+            to whole days - PARK-C1.)
+  14:48:21  Parametres -> "Journees entieres" (radio read off a screenshot) ->
+            "Enregistrer": PATCH 200, server DAY. No restart.
+  THE SHEET OF 23 OCT in whole-day mode: "Cette journee a ete enregistree par
+            demi-journees.", then "Matin" and "Apres-midi", each with its four
+            choices - halves kept.
+  POSITIVE CONTROL: EMPTY 22 Oct's sheet in the same whole-day mode: no notice,
+            no "Matin" - one whole-day choice; closed, nothing written ("Jour 22,
+            Non renseigne, non enregistre." after).
+  14:49:22  editing ONE half: "Apres-midi" -> "Domicile" -> "Enregistrer". The
+            cell: "Jour 23, matin Suisse, apres-midi Domicile, enregistre a
+            temps, saisie manuelle." The trail:
+      2026-10-25 14:47:46.462 | 2026-10-23 | AM | CREATED  | CH   | MANUAL     <- control
+      2026-10-25 14:47:46.462 | 2026-10-23 | PM | CREATED  | CH   | MANUAL     <- control
+      2026-10-25 14:49:25.021 | 2026-10-23 | PM | MODIFIED | HOME | MANUAL     <- ONE
+    Entry rows for 23 Oct: AM CH, PM HOME - no FULL row.
+  FOUND HERE (PARK-J2): with 23 Oct on a half of telework in whole-day mode, the
+    engine refuses the year (GranularityMismatch) and Aujourd'hui's year card
+    read "Aucune journee enregistree cette annee pour le moment." while two days
+    were recorded. Step 3's next write made the count whole again. (The sheet
+    also printed "Premiere saisie enregistree le 25.10.2026 a 15:47" twice, once
+    per half - PARK-J1.)
+
+STEP 3 - BULK CONFIRMATION OVER A FULL DAY, A HALF-DAY DAY AND AN EMPTY DAY.
+  Driven TWICE, once in each mode, so the empty day shows both granularities and
+  each held day shows its own (R496 asks for one run; DEVIATION 6).
+  3a WHOLE-DAY MODE (server DAY, read just before the tap): "Selectionner
+    plusieurs jours" -> 22 (empty), 23 (AM CH + PM HOME), 25 (FULL CH) - "3
+    jours selectionnes", each cell "Selectionne. ..." -> "Mission" -> "En
+    France" -> "Confirmer l'enregistrement / 3 jours seront enregistres comme
+    << Mission (France) >>. / 22.10.2026 23.10.2026 25.10.2026 / 2 jours deja
+    renseignes seront modifies." -> "Enregistrer" (14:52:26):
+      2026-10-25 14:52:30.022 | 2026-10-22 | FULL | CREATED  | MISSION_FR   (empty -> the setting's)
+      2026-10-25 14:52:30.074 | 2026-10-23 | AM   | MODIFIED | MISSION_FR   (halves -> its own)
+      2026-10-25 14:52:30.095 | 2026-10-23 | PM   | MODIFIED | MISSION_FR
+      2026-10-25 14:52:30.105 | 2026-10-25 | FULL | MODIFIED | MISSION_FR   (whole -> its own)
+    No FULL row for 23 Oct; no half for 25 Oct.
+  3b HALF-DAY MODE (Parametres -> "Demi-journees" -> PATCH 200, server HALF_DAY
+    read just before the tap): select 21 (empty), 23 (AM/PM MISSION_FR), 25
+    (FULL MISSION_FR). The selection came up with 22 already selected (22 was
+    the last day whose sheet had been opened - the likely reason, not read in
+    the code); 22 was tapped OFF and the dump read "3 jours
+    selectionnes" with 21, 23 and 25 "Selectionne." before going on ->
+    "Domicile" -> "3 jours seront enregistres comme << Domicile >>. /
+    21.10.2026 23.10.2026 25.10.2026 / 2 jours deja renseignes seront
+    modifies." -> "Enregistrer" (14:54:01):
+      2026-10-25 14:54:04.679 | 2026-10-21 | AM   | CREATED  | HOME   (empty -> the setting's: two rows)
+      2026-10-25 14:54:04.679 | 2026-10-21 | PM   | CREATED  | HOME
+      2026-10-25 14:54:04.754 | 2026-10-23 | AM   | MODIFIED | HOME   (halves -> its own)
+      2026-10-25 14:54:04.769 | 2026-10-23 | PM   | MODIFIED | HOME
+      2026-10-25 14:54:04.782 | 2026-10-25 | FULL | MODIFIED | HOME   (whole -> its own)
+    22 Oct untouched (FULL MISSION_FR, 14:52:30). No AM/PM row for 25 Oct.
+  THE ACCOUNT'S ROWS AFTER: 21 AM HOME, 21 PM HOME, 22 FULL MISSION_FR, 23 AM
+    HOME, 23 PM HOME, 25 FULL HOME - every day in one granularity. Mixed days for
+    the account: 0 (control: the same query finds the 3 mixed days
+    AN-GRANULARITY counted in the local database). EntryEvent across all
+    accounts 1440 -> 1454 = this account's 14 events, all quoted above.
+
+STEP 4 - THE RATE ON AUJOURD'HUI AND IN THE RELEVE, SAME STRING.
+  The Releve loads its dossier when the shell is built (ReleveController init,
+  a year switch, a retry); opened after step 2 it still showed the dossier
+  generated at onboarding ("Aucune journee n'a encore ete enregistree ...").
+  So the app was force-stopped and started cold at 14:54:23 (GET dossier 2026
+  and 2025 200):
+    Aujourd'hui  "Sous les deux seuils", "1,66 %", "Taux a declarer a l'AFC",
+                 "1,7 %" "Part de jours hors de Suisse", spoken: "Taux de
+                 teletravail declarable 1,66 %, imposition en Suisse."
+    Releve       generated 25.10.2026 14:54 (after the last write, 14:54:04);
+                 Jours ouvres 240, Jours en Suisse 0, Teletravail 3, Missions 1
+                 - the server's rows exactly; "Sous les deux seuils", "1,66 %",
+                 "Taux a declarer a l'AFC", spoken: "Taux de teletravail
+                 declarable 1,66 %, imposition en Suisse.", "1,7 %" "Part de
+                 jours hors de Suisse".
+  THE SAME STRING: "1,66 %" on both, and the same spoken sentence; the
+  stale-then-fresh Releve is the control that the second reading is the
+  server's current count.
+
+R576 ON THE DEVICE: NO RESULT, and why. The codebase offers ONE trigger:
+dev/EveningNotifyActivity, declared in the debug manifest (so in the audit
+build), reached by `adb shell am start -n ch.monreleve.app/
+ch.monreleve.app.dev.EveningNotifyActivity`; it runs the real
+maybeNotifyEvening with Clock.systemUTC(). That path posts only when
+EveningConditions.permitsNotification() holds - optedIn, workingDay,
+!hasEntryToday, dayConcluded (after the last check window, 16:30 Paris),
+!alreadyNotified - and workingDay is Monday to Friday in Paris. Under the real
+clock it was SUNDAY all session, and this task keeps the clock real, so no
+notification could be posted and no button tapped. The receiver itself is not
+exported (only the app's own PendingIntents reach it). The JVM tests are the
+proof: EveningGranularityTest drives the receiver's write (recordEveningTap)
+over the real repository, both directions. (Not attempted, so no absence is
+claimed from the device.)
+
+R519 ON THE DEVICE (AN-GRANULARITY's owed note): every day here was recorded by
+hand, so every sheet and cell read "saisie manuelle"; detection was not used.
+
+THE PHONE LEFT USB ONCE, RECORDED RATHER THAN SMOOTHED. transport_id 12 at
+13:41:59 and when the tunnel was set (14:35:33); at 14:39:27 adb read `device`
+transport_id 17 with adb reverse EMPTY. The moment was not observed - it lies
+between those two readings; it never read `offline` or `unauthorized` when
+checked. Its effects: the old account's launch-time year fetch failed (the
+notice above) and its first onboarding save failed on screen. The tunnel was
+restored at 14:39:36, and from 14:39:46 a watch (adb state and tunnel every 2 s,
+logging changes) saw NO change until this session's own `reverse --remove-all`
+at 14:57:31.
+
+LOGCAT: the crash buffer held 0 lines; "account tag unresolved" (R425) 0 lines -
+with 1084 lines naming ch.monreleve.app in the main buffer as the control that
+the log saw the app.
+
+THE NEW ACCOUNT, SIGNED OUT (14:56:06): Parametres -> "Se deconnecter" -> the
+plain confirmation (nothing pending - every write had synced) -> "Se
+deconnecter": POST /api/v1/auth/sign-out 200; DeviceSession (14:42:38) revoked
+14:56:10.373 SIGNED_OUT; Bienvenue. EntryEvent unchanged (1454). The account
+and its 14 events remain in the LOCAL dev database only.
+
+--------------------------------------------------------------------------------
+R579 - THE PHONE LEFT AS AN-GRANULARITY FOUND IT
+--------------------------------------------------------------------------------
+Every value read before it was written, and read back at the end (14:57:41 UTC,
+phone "Sun Oct 25 15:57:41 +01 2026"):
+
+  setting                   AN-GRANULARITY      as this session     as LEFT
+                            found it            found it (13:42)
+  stay_on_while_plugged_in  0                   3                   0  (put 14:57:41)
+  airplane_mode_on          0                   0                   0  (never written)
+  auto_time                 1                   1                   1  (never written)
+  auto_time_zone            1                   1                   1  (never written)
+  persist.sys.timezone      Africa/Casablanca   Africa/Casablanca   Africa/Casablanca
+  adb reverse --list        EMPTY               EMPTY               EMPTY (--remove-all,
+                                                                      listed: nothing)
+  mobile_data / wifi_on /   0 / 1 / 1.0         0 / 1 / 1.0         0 / 1 / 1.0
+  font_scale                (AN-FORCED-SIGNOUT)                     (never written)
+  the app                   SIGNED OUT          SIGNED IN (an-      SIGNED OUT: six
+                                                granularity@,       prefs files empty
+                                                onboarding 6/8)     maps, Room 0 rows
+                                                                    (read 14:56 through
+                                                                    the debug build);
+                                                                    the original build
+                                                                    opens on Bienvenue
+  installed APK             d417d021...081034   f2a6f5ea...d06973   d417d021...081034
+  the clock                 real                real                real, never moved
+
+THE APK: the original was installed LAST (14:56:56), after both accounts were
+signed out through the product and the debug read, with `install -r` (signer
+compared: ef336db5...e373d1 on both). The installed base.apk, pulled and hashed:
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+- the as-found hash in full. 0.1.0 (1), flags [HAS_CODE ALLOW_CLEAR_USER_DATA
+ALLOW_BACKUP] (not debuggable: run-as "package not debuggable"). Opened once to
+read it (Bienvenue, no request reached the server), then `am force-stop` and
+HOME: the app not running, the launcher in front, as AN-GRANULARITY found it.
+NOT RESTORED, and why: firstInstallTime reads 2026-10-25 03:52:52 (the reinstall
+after AN-GRANULARITY's instrumented runs uninstalled the app), not the original
+2026-10-24 20:33:15 - only an uninstall could change it, and this task does not
+uninstall. The data directory holds six empty preference files where the
+original's set is unknown (unreadable then).
+NEVER RUN: connectedAndroidTest (it uninstalls the app).
+
+THE LOCAL STACK, LEFT: the dev server's whole tree, all started by this session
+at 14:34 - sh 4496 -> pnpm 21036 -> cmd 12748 -> next 7264 -> server 26600 -
+survived TaskStop (all five read alive) and was ended with `taskkill /PID 4496
+/T /F` (five "Operation reussie"; all five then read gone). Port 3000: 0
+listeners, 44 in all, 2 on 5436 (the control); /api/health no answer. adb
+reverse empty.
+
+--------------------------------------------------------------------------------
+PARKED (R456: series J, claimed by census - letters with headings on main A B C
+D E F G I K L M N P R S T U V W X Y, H on unmerged fw-dossier-empty; every
+unmerged origin branch's parking.md read; no heading or citation of PARK-J
+anywhere, relay/ included; the pattern PARK(?:AN)?-[A-Z]?\d+ sees PARK-J1)
+--------------------------------------------------------------------------------
+PARK-W2  CLOSED by R576 (option (a)).
+PARK-W7  CLOSED: R496 driven (this report).
+PARK-J1  the calendar sheet prints the first-recorded line once per half,
+         unlabelled.
+PARK-J2  halves kept in whole-day mode can make the year uncomputable, and
+         Aujourd'hui then says no day is recorded.
+PARK-J3  onboarding offers no way to sign out.
+PARK-J4  a whole-day button tap racing a whole-day write edits it.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R576 NOT DRIVEN ON THE DEVICE - NO RESULT: the only trigger needs a weekday
+   evening under the real clock, and it was Sunday. The JVM tests are the proof,
+   as the prompt allows.
+2. THE PREVIOUS ACCOUNT'S SIGN-OUT WROTE ITS SETTINGS. The orchestrator expected
+   the sign-out to touch none of its server data; the product has no sign-out
+   before onboarding ends (PARK-J3), so completing onboarding PATCHed that
+   account's name ("Test Granularite") and canton (GE) to the LOCAL dev database,
+   and refreshed its session once, before "Se deconnecter" revoked it. Nothing
+   else of it changed (no entry, no event, no NameChange).
+3. A DEBUG BUILD OF d1ef809 WAS INSTALLED TWICE (install -r, same signer) - only
+   to read the device data: as found (before anything else) and after the drive's
+   sign-out. The drive itself ran on the audit build.
+4. R576's RED IS MAIN'S LOGIC THROUGH THE NEW SIGNATURE (skeleton, then a
+   planted line, each verified and reverted), not main's file run unchanged: the
+   decision's shape had to change to take the setting.
+5. EveningTapTest RESTATED for the signature (setting, TapMoment, commands);
+   assertions otherwise unchanged; stated in b6e93d0's message.
+6. STEP 3 RAN TWICE (whole-day mode, then half-day mode) where R496 names one
+   run - to show the empty day in both granularities; every row quoted.
+7. STEP 2 EDITED ONE HALF, which left the year on a half of telework in
+   whole-day mode for three minutes (PARK-J2); step 3a made it whole again.
+8. THE USB DROP cleared the tunnel once; it was re-set by hand (14:39:36).
+9. `git fetch` ran from the main checkout's directory at the start (and once
+   more to list unmerged branches): it updates only the shared remote-tracking
+   refs - no branch, index or working-tree change there. `pnpm dev` in the main
+   checkout regenerated the Prisma client into web/node_modules and copied fonts
+   into web/public/fonts (both gitignored); its tracked tree stayed clean.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-J2. R490 keeps halves editable in whole-day mode, and one edit can put
+   the year on a half count the engine refuses under DAY - Aujourd'hui then says
+   no day is recorded. Refuse such an edit (with a notice), show a year that
+   cannot be computed in whole days as such, or extend R290's guard from the
+   switch to the edit?
+Q2 PARK-J3. Should onboarding offer a sign-out ("use another address")?
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- relay/FW-DOSSIER-EMPTY-COPY.txt (14:03) and relay/SERIES-TO-IOS-1a.txt (14:46,
+  naming this task as running) appeared in the main checkout during this session
+  - operator/orchestrator files, untouched. Untracked there: 58 entries at the
+  end (24 android/scripts, 34 relay), 0 tracked changes, HEAD a72ab31.
+- Stale session locks in C:/wt/an-account-tag and C:/wt/fw-gate-clean (finished
+  tasks'); untouched. No other lock.
+- The Releve prints "Date de generation" in UTC (25.10.2026 14:54 for 14:54 UTC)
+  while the calendar sheet prints Paris time ("15:44" for 14:44 UTC) - a stated
+  choice in ReleveHeader.kt ("read in UTC exactly as the annex stamps are"), not
+  ruled on here.
+- The Releve refreshes only when the shell is built, a year is switched or Retry
+  is tapped, so it lags the record within a session; relay/AN-RELEVE-FRESH.txt in
+  the main checkout appears to be that task.
+- The dev server's own scheduler deleted 4 CodeAttempt rows older than a day
+  ("considered 7, deleted 4") - its housekeeping in the local database.
+- The local dev database still holds the 3 mixed days AN-GRANULARITY counted.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED AND NOT MERGED: an-granularity-drive ->
+origin/an-granularity-drive, every push explicit (`git push origin
+an-granularity-drive`), each gated on its own verified exit code, the upstream
+unset at creation. PENDING MERGE - the merge is the operator's. main and
+production never pushed.
+
+THE COMMITS, each pushed when made:
+    b6e93d0  R576 - the evening notification follows the setting   * [new branch]
+    d1ef809  R577 - the two advanceUntilIdle opt-ins (the code tip; full gate)
+    d227be5  the report, PARK-W2/W7 closed, PARK-J1..J4 - THE GATED COMMIT
+             (GATE_EXIT=0)
+    <final>  "AN-GRANULARITY-DRIVE: STATUS and PUSH PROOF after the full gate" -
+             REPORT-AN-GRANULARITY-DRIVE.txt and nothing else. A report cannot
+             print its own SHA; the final tip and its push are in the handback.
+
+    git diff --stat d227be5..<final>  ->  REPORT-AN-GRANULARITY-DRIVE.txt only
+    register coverage on the final text (web/scripts/register-coverage.mjs, the
+    check RegisterCoverageTest runs inside the gate, run directly):
+        register coverage: OK - 156 cited id(s) across 129 report(s), all have headings in parking.md
+
+web/ IS UNCHANGED on this branch:
+    git diff --stat origin/main..an-granularity-drive -- web/            -> (nothing)
+so gate:clone is not owed (R199) and was not run.
+android/shared/ IS UNCHANGED:
+    git diff --stat origin/main..an-granularity-drive -- android/shared/ -> (nothing)
+so the iOS cloud run is not owed (R573) and none was dispatched (0 runs, 0
+macOS minutes). The branch's whole diff against origin/main:
+    android/app/src/main/.../notification/EveningActionReceiver.kt
+    android/app/src/main/.../notification/EveningTap.kt
+    android/app/src/test/.../auth/ForcedSignOutTest.kt
+    android/app/src/test/.../notification/EveningGranularityTest.kt  (new)
+    android/app/src/test/.../notification/EveningTapTest.kt
+    parking.md
+    REPORT-AN-GRANULARITY-DRIVE.txt  (new)
+
+ISOLATION (R334, R349, R392). All work in C:/wt/an-granularity-drive, staged by
+name, every new file checked with `git check-ignore` (none ignored). The
+original APK was copied OUT of C:/wt/an-pull; nothing written, committed,
+stashed, reset or removed in any other worktree or in the main checkout (its
+web/ only ran the dev server). Evidence (dumps, screenshots, logs, APK copies)
+is in this worktree's gitignored android/.an-granularity-drive-shots/.
+
+================================================================================
+END OF REPORT-AN-GRANULARITY-DRIVE
+================================================================================
