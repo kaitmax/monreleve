@@ -4059,7 +4059,15 @@ COST OF REVERSING: (a) decideEveningTap returns the setting's portions instead o
 RecordCommand, and the receiver writes each; its tests. (b) new notification copy and
 actions. (c) one branch in EveningNotifier.recordActions.
 
-STATE:      OPEN - a question for the operator (REPORT-AN-GRANULARITY.txt, QUESTIONS).
+STATE:      CLOSED 25 OCTOBER 2026 BY RULING (Q2 of REPORT-AN-GRANULARITY.txt, recorded as R576
+in relay/AN-GRANULARITY-DRIVE.txt): "the notification follows the setting" - option (a).
+Built by AN-GRANULARITY-DRIVE (b6e93d0): decideEveningTap takes the setting and returns one
+command per portion an empty day takes (DayGranularity.portionsToOffer: FULL in whole-day
+mode, AM then PM of the kind tapped in half-day mode); recordEveningTap writes each through
+LocalEntryRepository, so a racing row of the other granularity is refused (R492). A day
+already held is still never written (R339's stale tap). EveningGranularityTest, RED on main's
+logic then GREEN, both directions (REPORT-AN-GRANULARITY-DRIVE.txt, R576). Not driven on the
+S9: the only trigger needs a weekday evening under the real clock (R578).
 
 ## PARK-W3 - a mixed today is read-only on Aujourd'hui  [AN-GRANULARITY, 2026-10-25]
 
@@ -4159,4 +4167,96 @@ COST OF REVERSING: a follow-up drive: re-authorize USB debugging on the phone, r
 stay_on_while_plugged_in to 0, finish onboarding (or sign the test account out), run R496's
 four steps, then leave the phone as found (REPORT-AN-GRANULARITY.txt, R496).
 
-STATE:      OPEN - the operator decides whether R496 runs in a follow-up.
+STATE:      CLOSED 25 OCTOBER 2026 (operator's Q1 ruling: a follow-up drive). AN-GRANULARITY-
+DRIVE ran R496's four steps on the S9 against the local stack with a new test account, the
+audit build of d1ef809; signed an-granularity@monreleve.test out through the product first;
+left the phone with stay_on 0, adb reverse empty and the as-found APK (d417d021...081034)
+reinstalled, signed out (REPORT-AN-GRANULARITY-DRIVE.txt, R578, R579).
+
+## PARK-J1 - the calendar sheet prints the first-recorded line once per half, unlabelled  [AN-GRANULARITY-DRIVE, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY-DRIVE.txt (R578, step 2).
+
+WHAT IT IS: A day recorded as two halves in the same minute shows, under "Origine de la
+saisie" / "Saisie manuelle", the line "Premiere saisie enregistree le 25.10.2026 a 15:47"
+TWICE - one per half, identical, neither naming its half. Read on the S9 (23 Oct, AM and PM
+created together). R519 states the provenance word once when the halves agree and per half
+when they differ; the first-recorded line was not part of that ruling.
+
+TAKEN:      Not changed - no copy or layout change was in scope (relay/AN-GRANULARITY-DRIVE.txt).
+
+NOT TAKEN:  One line when the two stamps agree; "Matin : ..." / "Apres-midi : ..." when they
+differ (R519's shape for the word).
+
+COST OF REVERSING: provenanceLines (CalendarSheetProvenance.kt) folds equal stamps the way it
+folds equal words; its JVM test and the split-provenance Paparazzi baseline.
+
+STATE:      OPEN.
+
+## PARK-J2 - halves kept in whole-day mode can make the year uncomputable, and Aujourd'hui then says no day is recorded  [AN-GRANULARITY-DRIVE, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY-DRIVE.txt (R578, between steps 2 and 3).
+
+WHAT IT IS: R490 keeps a day held in halves editable in whole-day mode. Editing ONE half there
+can leave the year's telework (or mission) count on a half - here 23 Oct AM CH + PM HOME,
+telework 0.5 - and the engine refuses a half count under DAY granularity (GranularityMismatch,
+Validate.kt). Aujourd'hui's year card then read "Aucune journee enregistree cette annee pour
+le moment." while the account held two recorded days (three rows) - a sentence the record
+contradicts. Parametres' R290 guard refuses the SWITCH to whole days in that state; nothing
+guards the EDIT. The next write (bulk confirmation) made the count whole again.
+
+TAKEN:      Nothing - no engine, copy or screen change was in scope; observed, not repaired.
+
+NOT TAKEN:  (a) refuse, in whole-day mode, a half edit that leaves the year on a half; (b) a
+year card that says the year cannot be computed in this unit, and why; (c) R290's guard
+applied to edits too. Each is a product decision.
+
+COST OF REVERSING: (a) a check beside R492's in the record path or the sheet's save, with a
+notice; (b) a new state and copy for the year card (and the Releve, if the server agrees);
+(c) the guard moved from Parametres into the write path.
+
+STATE:      OPEN - a question for the operator (REPORT-AN-GRANULARITY-DRIVE.txt, QUESTIONS).
+
+## PARK-J3 - onboarding offers no way to sign out  [AN-GRANULARITY-DRIVE, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY-DRIVE.txt (R578's first act).
+
+WHAT IT IS: An account signed in and still onboarding cannot be signed out from the app:
+"Retour" on step 1 does nothing (OnboardingController.back() at the first step - read in the
+code, not tapped), no step offers a sign-out, and the voluntary sign-out lives only in
+Parametres, after onboarding. Signing an-granularity@monreleve.test out
+"through the product" therefore meant completing its onboarding, which PATCHed its
+settings to the server (name, canton) before Parametres' "Se deconnecter".
+
+TAKEN:      Completed onboarding with test values, then signed out (the product's only path).
+
+NOT TAKEN:  A sign-out (or "use another address") on the onboarding steps.
+
+COST OF REVERSING: an action on onboarding step 1 reaching ParametresController's sign-out
+path (R295's wipe, R440's send-first), with its copy and tests.
+
+STATE:      OPEN.
+
+## PARK-J4 - a whole-day button tap racing a whole-day write edits it  [AN-GRANULARITY-DRIVE, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY-DRIVE.txt (R576's RED).
+
+WHAT IT IS: The evening receiver reads the day, then writes. A FULL row recorded between the
+two (the app open on the same day) is invisible to its stale-tap check, and the button's own
+FULL row is then an EDIT of it - the record path allows an edit - so the tap overwrites the
+newer answer. R576's race test shows it on main's logic in half-day mode ("expected
+Refused(written=0) but was Recorded(... FULL ...)"); since R576, half-day mode is refused
+there, but whole-day mode over a racing FULL row still edits it - by the record path's own
+rule (an edit is always allowed), read in the code, not tested. The window is the time
+between one DAO read and one write.
+
+TAKEN:      Unchanged - R576 asked for the setting's granularity, not the race; the window is
+milliseconds and a person tapping both at once is unlikely.
+
+NOT TAKEN:  A record command that writes only if the portion is still empty (a create-only
+write in the repository).
+
+COST OF REVERSING: a create-only flag on RecordCommand honoured inside the repository's lock;
+the receiver sets it; a test for both outcomes.
+
+STATE:      OPEN.
