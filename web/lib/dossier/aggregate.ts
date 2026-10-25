@@ -45,6 +45,40 @@ import type {
 } from '@/lib/calc-engine';
 import { remainingYearFraction } from '@/lib/ui/core/period';
 
+/**
+ * The account has no canton, so no year of it can be computed.
+ *
+ * FW-DOSSIER-EMPTY (R583). Typed so a route can NAME it - `canton_missing` -
+ * instead of answering 500 read_failed, R198's misleading code, which sends a
+ * reader to the database for what is a settings gap. The message is the one
+ * this refusal always carried, so a log reader sees the same line as before.
+ */
+export class CantonMissingError extends Error {
+  constructor() {
+    super(
+      'the dossier needs a canton: SPEC 7 resolves the regime from it, and there ' +
+        'is no default that is right for everybody.',
+    );
+    this.name = 'CantonMissingError';
+  }
+}
+
+/**
+ * The tax year ends before the account's activity began, so its period is zero.
+ *
+ * FW-DOSSIER-EMPTY (R580). Neither engine defines a rate over zero working days
+ * - both refuse a zero period (PERIOD_OUT_OF_RANGE) - and a 0 % would be
+ * meaningless, the same reason `future_year` exists. So it is refused BEFORE
+ * the engine is asked, by name (`year_before_activity`), rather than reaching
+ * the engine, being refused there, and surfacing as a 500.
+ */
+export class YearBeforeActivityError extends Error {
+  constructor(taxYear: number) {
+    super(`the tax year ${taxYear} ends before the activity start, so its period is zero`);
+    this.name = 'YearBeforeActivityError';
+  }
+}
+
 /** Exactly the entry columns this module reads. */
 export interface AggregatableEntry {
   readonly dayDate: Date;
@@ -185,7 +219,20 @@ function denominatorOf(user: AggregatableUser): DenominatorMethod {
 function periodFractionOf(user: AggregatableUser, taxYear: number): number {
   if (user.activityStartDate === null) return 1;
 
-  return remainingYearFraction(user.activityStartDate.toISOString().slice(0, 10), taxYear);
+  const fraction = remainingYearFraction(
+    user.activityStartDate.toISOString().slice(0, 10),
+    taxYear,
+  );
+
+  // R580: THE ZERO IS OBSERVED HERE, where it is produced - not re-derived by a
+  // second `startYear > taxYear` comparison elsewhere (R206). remainingYearFraction
+  // returns 0 for exactly one case, a start in a LATER year, and calls that 0
+  // "nonsense ... the ENGINE rejects". It is named instead of handed over.
+  if (fraction === 0) {
+    throw new YearBeforeActivityError(taxYear);
+  }
+
+  return fraction;
 }
 
 /**
@@ -203,11 +250,11 @@ export function toTeleworkInput(
 ): TeleworkInput {
   const counts = countDays(entries);
 
+  // R583: CHECKED BEFORE THE PERIOD, so an account with no canton asking for a
+  // year before its activity start is told canton_missing - the account-level
+  // gap first. docs/api-v1.md 8.3 states this precedence.
   if (user.canton === null) {
-    throw new Error(
-      'the dossier needs a canton: SPEC 7 resolves the regime from it, and there ' +
-        'is no default that is right for everybody.',
-    );
+    throw new CantonMissingError();
   }
 
   return {

@@ -233,6 +233,17 @@ export default async function PrintPage({
       <img className={styles.logo} src="/logo-black.svg" alt="" />
       <h1 className={styles.title}>{COPY.title}</h1>
 
+      {/* FW-DOSSIER-EMPTY (R516): a year with no day recorded says so, FIRST.
+          docs/api-v1.md 8.2 - `recordedEntries === 0` is not a compliant
+          year, though both print 0,00 %. The sentence sits above the header
+          because every figure below it is read in its light; placed after
+          the rate, it would arrive once the wrong conclusion had been drawn.
+          Keyed on the payload's count, never on the annex looking empty - an
+          absence is a recorded day, and a year of absences is not "none". */}
+      {dossier.recordedEntries === 0 ? (
+        <p className={styles.emptyYear}>{COPY.emptyYear(dossier.taxYear)}</p>
+      ) : null}
+
       <section className={styles.identification}>
         <dl>
           {/* SPEC 12 item 1 puts the NAME first, and it is first for a reason:

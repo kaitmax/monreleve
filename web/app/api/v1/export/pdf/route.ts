@@ -52,6 +52,7 @@ import { parseReadQuery } from '@/lib/entries/read-query';
 import { prisma } from '@/lib/db/client';
 import { titulaireOf } from '@/lib/dossier/service';
 import { buildDossierFor } from '@/lib/dossier/load';
+import { YearBeforeActivityError } from '@/lib/dossier/aggregate';
 import { figuresFromDossier, newVerificationCode, recordIssuance, sha256Hex } from '@/lib/issuance/record';
 import { mintPrintToken } from '@/lib/export/print-token';
 import {
@@ -163,6 +164,16 @@ export async function GET(request: Request): Promise<NextResponse> {
       '[export] pdf refused: the dossier could not be built',
       cause instanceof Error ? cause.message : String(cause),
     );
+
+    // R580: a year before the activity start is named here as on /dossier and
+    // /export/csv. It answered 422 dossier_incomplete; moving it is ADDITIVE
+    // under docs/api-v1.md 6 - no code is removed or renamed (dossier_incomplete
+    // still answers every other failed build, the canton-less account among
+    // them, R583), and 422 -> 400 stays within the class. The argument is in
+    // docs/api-v1.md 11.3.
+    if (cause instanceof YearBeforeActivityError) {
+      return refuse('year_before_activity', AUTH_API_COPY.invalidYear);
+    }
 
     return refuse('dossier_incomplete', AUTH_API_COPY.readFailed, 422);
   }

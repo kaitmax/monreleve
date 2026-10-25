@@ -12,6 +12,7 @@ import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { GET } from '@/app/api/v1/export/csv/route';
 import { buildDossierFor } from '@/lib/dossier/load';
+import { CSV_COLUMNS } from '@/lib/export/csv';
 
 const ORIGIN = 'https://monreleve.ch';
 const BOM = '﻿';
@@ -265,5 +266,77 @@ describe('R237: the filename is where the CSV names its titulaire', () => {
       expect(body).not.toContain('Camille');
       expect(body).not.toContain('camille');
     })();
+  });
+});
+
+// ============================================================================
+// FW-DOSSIER-EMPTY (R516): AN EMPTY YEAR EXPORTS, AND EVERY ROW SAYS "NO ENTRY"
+// ============================================================================
+//
+// The CSV cannot carry a sentence: SPEC 12 freezes its columns, and R237 has
+// already refused a comment row because it breaks RFC 4180 for every reader
+// that is not Excel. What it CAN do is what it already does - one row per
+// working day, each with no portion - and this pins that for a year with
+// nothing in it, so an empty year is a file rather than a failure.
+describe('FW-DOSSIER-EMPTY R516: a year with no day recorded', () => {
+  it('exports every working day of the year, none of them carrying an entry', async () => {
+    const response = await GET(get('?year=2025'));
+
+    expect(response.status).toBe(200);
+
+    const csv = await response.text();
+    const dossier = await buildDossierFor(userId, 2025);
+
+    // R171: the day count is READ from the annex the CSV serialises, never a
+    // typed 261 - a typed figure is correct for one calendar year only.
+    expect(dossier.recordedEntries).toBe(0);
+    expect(daysIn(csv)).toEqual(dossier.annex.map((row) => row.dayDate));
+    // PRESENCE FIRST: the rows exist, so "none is logged" is about real rows.
+    expect(daysIn(csv).length).toBeGreaterThan(0);
+    expect(loggedDaysIn(csv)).toEqual([]);
+  });
+});
+
+// ============================================================================
+// FW-DOSSIER-EMPTY R581: THE COLUMNS ARE A FROZEN CONTRACT, EMPTY YEAR OR NOT
+// ============================================================================
+//
+// The operator accepted Q2: the CSV does not say "no day recorded" in words -
+// the PDF carries the explanation - and only has to stay well-formed. So an
+// empty year's file carries the header row, and its columns are EXACTLY those
+// of a year with days. Both are read from CSV_COLUMNS, the module the header is
+// written from (R181): typing the eleven names here would be a second copy of
+// SPEC 12's list that agrees until somebody changes one of them.
+describe('FW-DOSSIER-EMPTY R581: an empty year is a well-formed file with the frozen columns', () => {
+  /** The file's lines, BOM-tolerant (text() strips it; a raw body would not). */
+  function linesOf(csv: string): string[] {
+    return (csv.startsWith(BOM) ? csv.slice(BOM.length) : csv)
+      .split('\r\n')
+      .filter((line) => line !== '');
+  }
+
+  it('has the header row, and exactly the columns of a year with days', async () => {
+    await seed(userId, '2026-04-07');
+
+    const empty = linesOf(await (await GET(get('?year=2025'))).text());
+    const withDays = linesOf(await (await GET(get('?year=2026'))).text());
+
+    // PRESENCE FIRST: the year with days really has a logged day, and the
+    // empty year really has none - or the comparison below is about nothing.
+    expect(loggedDaysIn(`${BOM}${withDays.join('\r\n')}`)).toEqual(['2026-04-07']);
+    expect(loggedDaysIn(`${BOM}${empty.join('\r\n')}`)).toEqual([]);
+
+    expect(withDays[0]).toBe(CSV_COLUMNS.join(','));
+    expect(empty[0]).toBe(withDays[0]);
+
+    // AND EVERY RECORD HAS THAT MANY FIELDS. An empty year's rows carry no
+    // note, so no field is quoted and a plain split counts them exactly.
+    const records = empty.slice(1);
+
+    expect(records.length).toBeGreaterThan(0);
+
+    for (const record of records) {
+      expect(record.split(',')).toHaveLength(CSV_COLUMNS.length);
+    }
   });
 });

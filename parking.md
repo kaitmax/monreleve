@@ -4260,3 +4260,169 @@ COST OF REVERSING: a create-only flag on RecordCommand honoured inside the repos
 the receiver sets it; a test for both outcomes.
 
 STATE:      OPEN.
+
+## PARK-H1 - a year that ends before activityStartDate answers 500: no rate is defined over a zero basis  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R514, R515). First seen in REPORT-AN-PULL.txt
+(NOTICED 2): GET /api/v1/dossier?year=2025 answered 500 for the seeded Sam Bernard.
+
+WHAT IT IS: Not the empty year. A year with no entries answers 200 (dossier-route.test.ts,
+"is HONEST about an empty year"; Camille 2024 on the device). The 500 is a year that ends
+BEFORE the account's activityStartDate - Sam started 2026-03-02, so 2025 is such a year.
+remainingYearFraction (web/lib/ui/core/period.ts) returns 0 when the start year is later
+than the tax year; periodFractionOf hands that 0 to the engine; validateInput refuses it
+with PERIOD_OUT_OF_RANGE and TOTAL_WORK_DAYS_NOT_POSITIVE (240 x 0); `unwrap` in
+web/lib/dossier/monthly.ts throws "the engine refused this input: ..."; the route answers
+500 read_failed and logs
+  [dossier] 2025 failed: the engine refused this input: {"code":"PERIOD_OUT_OF_RANGE"};
+  {"code":"TOTAL_WORK_DAYS_NOT_POSITIVE"}
+The three surfaces disagree today: /dossier 500 read_failed, /export/csv 500 read_failed,
+/export/pdf 422 dossier_incomplete. Every account whose activity began THIS year gets the
+500 on the Android Releve's previous-year probe each time the Releve opens (harmless on
+screen: ReleveController treats any non-document answer as "no days" and does not offer
+the year). An activityStartDate in a LATER year than the current one would put the
+CURRENT year in the same state, and there the app shows its server-error state.
+
+TAKEN:      Nothing in code. R515 says a rate over a zero denominator is NOT invented as
+0 %, and that if the contract and the engines define nothing for "no denominator" the
+session STOPS and asks. They define nothing: both engines REFUSE a zero period (web
+validate.ts, :shared ValidationError.PeriodOutOfRange), and docs/api-v1.md 8.1 types every
+rate as a number. The question is in REPORT-FW-DOSSIER-EMPTY.txt. Two tests pin today's
+answers exactly, marked KNOWN (PARK-H1), so the ruling's session flips them.
+
+NOT TAKEN:  (A) 200 with null rates: not additive under /v1 (a number becomes
+number-or-null), and :shared's parseDossier reads every rate with json.double(), so the
+Android app would show "the server did not return a document" - an Android task.
+(B) a named 4xx refusal (the future_year precedent): contradicts R515's "200 with the same
+envelope"; Android already handles it as it handles the 500. (C) computing the year as if
+whole (fraction 1): the "meaningless" 0 % over a full basis that future_year exists to
+refuse.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY's second pass (R580, the
+operator's answer (B) to Q1). Such a year is the named refusal 400
+year_before_activity on /dossier, /export/csv and /export/pdf: typed
+YearBeforeActivityError thrown where remainingYearFraction's 0 is observed
+(periodFractionOf, web/lib/dossier/aggregate.ts), before the engine is asked. The
+PDF's move from 422 dossier_incomplete is additive under docs/api-v1.md 6 (11.3
+carries the argument). The KNOWN tests were flipped, RED on f21bac4 first; the
+plain empty year and the activity's first year still answer 200. Android needed no
+change. See REPORT-FW-DOSSIER-EMPTY.txt, R580.
+
+## PARK-H2 - a year with entries but no canton answers 500 read_failed, not a named refusal  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R514, the neighbour "entries but no employment
+settings").
+
+WHAT IT IS: canton is the one employment setting that is null until onboarding (the rate
+and the method have column defaults; the name has titulaire_missing). With canton null,
+toTeleworkInput (web/lib/dossier/aggregate.ts) throws "the dossier needs a canton ...",
+and /dossier and /export/csv answer 500 read_failed - R198's misleading code, sending a
+reader to the database for a settings gap. /export/pdf already answers 422
+dossier_incomplete for the same state.
+
+TAKEN:      Pinned by a KNOWN test in dossier-route.test.ts; no code change. A new refusal
+code is a contract decision (additive, but named by the operator), and it is not the
+task's empty year.
+
+NOT TAKEN:  Adding e.g. 422 canton_missing (or reusing dossier_incomplete) to /dossier and
+/export/csv.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY's second pass (R583). /dossier
+and /export/csv answer 422 canton_missing (typed CantonMissingError from
+toTeleworkInput, with the message the refusal always carried); /export/pdf keeps
+422 dossier_incomplete, not renamed, and docs/api-v1.md 11.3 says the two are one
+condition under two names. RED on f21bac4, then GREEN; an account with a canton
+still answers 200. See REPORT-FW-DOSSIER-EMPTY.txt, R583.
+
+## PARK-H3 - for the first hour of 1 January (Paris) GET /dossier refuses the current year as future_year  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R514, the neighbour "the current year on 1
+January").
+
+WHAT IT IS: The dossier route's guard is `query.year > new Date().getUTCFullYear()`. The
+Android client asks for Year.now(ZoneId.of("Europe/Paris")) (MainActivity). From 00:00 to
+01:00 Paris time on 1 January (CET, UTC+1) the UTC year is still the old one, so the
+current year is refused with 400 future_year and the Releve shows its server-error state
+for that hour. At noon on 1 January the same request answers 200 with an empty document
+(tested). Every calendar day elsewhere in the product is a Paris day (R28;
+lib/entries/day.ts has parisDayOf).
+
+TAKEN:      Pinned by a KNOWN test (a Date-only fake clock at 2026-12-31T23:30Z); no code
+change. The guard's clock is a contract behaviour, and changing it is the operator's.
+
+NOT TAKEN:  `Number(parisDayOf(new Date()).slice(0, 4))` in the guard - one line, and the
+KNOWN test flips to 200.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY's second pass (R582). The guard
+reads currentTaxYear() (web/lib/content/tax-year.ts, R55's Europe/Paris year - the
+one home, rather than the parisDayOf slice proposed above). Tested at 00:30 Paris
+on 1 January: the new year answers 200 and the year after it is still
+future_year; RED on f21bac4 first. R582's audit of every server-side year/day
+calculation also moved the name-change window and date onto the Paris clock
+(web/lib/dossier/load.ts, service.ts). See REPORT-FW-DOSSIER-EMPTY.txt, R582.
+
+## PARK-H4 - the verification page of an empty-year releve shows 0,00 % without saying no day was recorded  [FW-DOSSIER-EMPTY, 2026-10-24]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R516, the walkthrough).
+
+WHAT IT IS: R516 made the PDF of a year with no day recorded say so in its first line,
+and kept the issuance (a verification code) as for any year. The page that code leads to,
+/verifier/<code>, shows the figures stored on the IssuanceRecord - for Camille's empty
+2024 on the walkthrough: "Taux a declarer a l'AFC 0,00 %", "Teletravail 0", the period
+"Du 02.09.2024 au 31 decembre 2024" - and nothing that says the year had no recorded day.
+The page "n'affiche que ce qui figure sur le document", and the document now carries a
+sentence the record has no column for: IssuanceRecord stores the name, the declarable
+rate, the day counts and the period, not recordedEntries.
+
+TAKEN:      Nothing. Storing the fact needs a column (a schema change and a migration),
+which this task's boundary forbids.
+
+NOT TAKEN:  An IssuanceRecord.recordedEntries column (or a boolean), written by
+figuresFromDossier, and the verifier rendering DOSSIER_COPY.emptyYear when it is 0.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN - RULED, NOT YET TAKEN. The operator answered Q5 on 2026-10-25
+(R584): YES, the verification page should be able to say what the document says -
+but as ITS OWN SMALL TASK, later: not FW-DOSSIER-EMPTY, and not FW-GRANULARITY,
+whose migration stays about one thing. That task is not yet named; it owns the
+IssuanceRecord column, its migration, figuresFromDossier writing it, and the
+verifier rendering DOSSIER_COPY.emptyYear when it records zero days. No schema
+change was made here.
+
+## PARK-H5 - the releve prints its server timestamps in UTC without naming the zone  [FW-DOSSIER-EMPTY, 2026-10-25]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R582's audit of every server-side year and
+day calculation).
+
+WHAT IT IS: web/app/releve/print/page.tsx, stamp() (lines 101-111), formats every
+instant the PDF prints - "Date de generation" (generatedAt) and the annex's
+firstRecordedAt, lastModifiedAt and clientClaimedAt - with getUTCDate/getUTCMonth/
+getUTCFullYear/getUTCHours, as "DD.MM.YYYY HH:mm", and nothing on the page names the
+zone. The verification page does the same for the issue date: VerificationContent.tsx
+dateOf() is formatDate(generatedAt.slice(0, 10)), the UTC date. A document generated at
+00:30 on 1 January in Paris therefore says it was generated on 31 December at 23:30;
+an entry for a Paris day recorded at 00:30 that day shows a receipt stamp dated the
+day BEFORE the day it records. Every calendar day elsewhere in the product is a Paris
+day, and the formatter for a Paris instant exists (formatDateTime in
+web/lib/ui/core/format/date.ts, Europe/Paris by default).
+
+TAKEN:      Nothing. R582's fix criterion is a calculation that DECIDES which tax year
+or day a request or record belongs to; these print an instant whose day is already
+decided elsewhere (dayDate, a stored Paris day; the issuance's tax year). Changing
+them rewrites every timestamp on every releve and on the verifier, which is a
+decision about what a legal document states, so it is the operator's.
+
+NOT TAKEN:  stamp() and dateOf() through Europe/Paris (formatDateTime / parisDayOf),
+or a printed zone label beside the UTC stamps. Either is a test at 23:30 UTC on 31
+December, a baseline question for any photographed surface, and a copy decision.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN - the operator's: print the product's clock (Paris) or name UTC.

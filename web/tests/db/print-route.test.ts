@@ -297,3 +297,51 @@ describe('R239: the document states how far the reader is from each threshold', 
     expect(html).not.toContain(`-${magnitude}`);
   });
 });
+
+// ============================================================================
+// FW-DOSSIER-EMPTY (R516): A YEAR WITH NO DAY RECORDED SAYS SO IN WORDS
+// ============================================================================
+//
+// docs/api-v1.md 8.2: `recordedEntries === 0` is not a compliant year. Both
+// declare 0 %, and a document that prints 0,00 % over 261 "Non renseigné" rows
+// leaves the reader to work out which of the two it is. The Android Relevé has
+// said it since AN11; the PDF - the surface an administration reads - did not.
+//
+// R225's shape, conditional on the condition and asserted both ways: a page
+// that always printed the sentence would pass the first test on a year where
+// it is false.
+describe('FW-DOSSIER-EMPTY R516: an empty year says so in words', () => {
+  it('prints the sentence when no day is recorded for the year', async () => {
+    const dossier = await buildDossierFor(userId, 2025);
+
+    // THE CONDITION FIRST, so this cannot pass on a year that has days.
+    expect(dossier.recordedEntries).toBe(0);
+
+    const html = await render(2025, mintPrintToken(userId, 2025));
+
+    expect(html).toContain(COPY.emptyYear(2025));
+  });
+
+  it('does not print it when a day is recorded', async () => {
+    await seed('2025-03-03', { kind: 'CH' });
+
+    expect((await buildDossierFor(userId, 2025)).recordedEntries).toBe(1);
+
+    const html = await render(2025, mintPrintToken(userId, 2025));
+
+    // PRESENCE OF THE DOCUMENT FIRST (R169): an empty page also lacks it.
+    expect(html).toContain(COPY.title);
+    expect(html).not.toContain(COPY.emptyYear(2025));
+  });
+
+  it('counts an absence as a recorded day, so a year of absences does not say none', async () => {
+    // A year holding only absences IS a record - of absences. Saying "no day
+    // recorded" over a printed list of them would contradict the annex.
+    await seed('2025-08-04', { kind: 'ABSENT', absenceReason: 'CONGE' });
+
+    const html = await render(2025, mintPrintToken(userId, 2025));
+
+    expect(html).toContain(COPY.annex.absenceConge);
+    expect(html).not.toContain(COPY.emptyYear(2025));
+  });
+});

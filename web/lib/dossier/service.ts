@@ -35,9 +35,11 @@
 
 import type { TeleworkResult, Warning } from '@/lib/calc-engine';
 import { isLate } from '@/lib/entries/late';
+import { parisDayOf } from '@/lib/entries/day';
 import {
   type AggregatableEntry,
   type AggregatableUser,
+  CantonMissingError,
   countDays,
   toTeleworkInput,
 } from '@/lib/dossier/aggregate';
@@ -457,8 +459,10 @@ export function buildDossier(
   const result = annualResult(user, entries, taxYear);
   const counts = countDays(entries);
 
+  // Belt: toTeleworkInput (inside annualResult) refuses first. The same typed
+  // error, so a route names it either way (R583).
   if (user.canton === null) {
-    throw new Error('the dossier needs a canton; toTeleworkInput refuses first, this is belt');
+    throw new CantonMissingError();
   }
 
   // BEFORE ANYTHING IS COMPUTED. A document that cannot be attributed should
@@ -532,7 +536,9 @@ export function buildDossier(
     // PARKAN-49, both additive (R217) and both from the engine.
     creditedMissionDays: result.creditedMissionDays,
     rateWithoutMissions,
-    nameChangedAt: nameChangedAt === null ? null : nameChangedAt.toISOString().slice(0, 10),
+    // R582: the PARIS day of the change, the product's calendar. Its UTC date
+    // printed 31 December for a change at 00:30 on 1 January in Paris.
+    nameChangedAt: nameChangedAt === null ? null : parisDayOf(nameChangedAt),
     result,
   };
 }

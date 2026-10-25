@@ -34,6 +34,8 @@ import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { buildDossierFor } from '@/lib/dossier/load';
 import { DOSSIER_RESPONSE_FIELDS, MissingTitulaireError } from '@/lib/dossier/service';
+import { CantonMissingError, YearBeforeActivityError } from '@/lib/dossier/aggregate';
+import { currentTaxYear } from '@/lib/content/tax-year';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +87,13 @@ export async function GET(request: Request): Promise<NextResponse> {
   //
   // R171: the current year is READ. A constant here would be accidentally
   // correct until the clock passed it.
-  if (query.year > new Date().getUTCFullYear()) {
+  //
+  // R582: READ IN EUROPE/PARIS, the product's tax-year clock everywhere else
+  // (R55; the Android client asks for Year.now(Europe/Paris)). It read the UTC
+  // year, so for the first hour of 1 January in Paris the year the reader is in
+  // was refused as one that had not happened. `currentTaxYear` is the one home
+  // for the question (R206).
+  if (query.year > currentTaxYear()) {
     return refuse('future_year', AUTH_API_COPY.invalidYear);
   }
 
@@ -115,6 +123,25 @@ export async function GET(request: Request): Promise<NextResponse> {
       console.error(`[dossier] refused: ${cause.message}`);
 
       return refuse('titulaire_missing', AUTH_API_COPY.readFailed, 422);
+    }
+
+    // R583: A SETTINGS GAP, NAMED. It answered 500 read_failed, which sends a
+    // reader to the database for what the account's own settings can fix.
+    if (cause instanceof CantonMissingError) {
+      console.error(`[dossier] refused: ${cause.message}`);
+
+      return refuse('canton_missing', AUTH_API_COPY.readFailed, 422);
+    }
+
+    // R580: A YEAR BEFORE THE ACTIVITY START IS A REFUSAL, with future_year's
+    // status and its reason: there is no rate over zero working days, and a
+    // 0 % would be meaningless. It answered 500. Its French message is
+    // future_year's, as its status is (docs/api-v1.md: a client branches on
+    // the code, never on the French).
+    if (cause instanceof YearBeforeActivityError) {
+      console.error(`[dossier] refused: ${cause.message}`);
+
+      return refuse('year_before_activity', AUTH_API_COPY.invalidYear);
     }
 
     console.error(

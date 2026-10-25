@@ -491,3 +491,53 @@ describe.skipIf('skip' in LIVE)(`AC2 (on the produced file): ${LIVE_SUITE}`, () 
     expect(suspicious).toEqual([]);
   });
 });
+
+// ============================================================================
+// FW-DOSSIER-EMPTY (R516): AN EMPTY YEAR IS A DOCUMENT, ISSUED LIKE ANY OTHER
+// ============================================================================
+//
+// R516 kept the verification code for an empty year: the issuance is recorded
+// exactly as for a year with days, so a fiduciaire holding an empty relevé can
+// verify it the same way. Proven on the PRODUCED FILE, through the route
+// (R204), so it is live-gated like every other render above.
+describe.skipIf('skip' in LIVE)(`FW-DOSSIER-EMPTY R516 (through the route): ${LIVE_SUITE}`, () => {
+  const origin = 'origin' in LIVE ? LIVE.origin : '';
+
+  /**
+   * The form both sides are compared in.
+   *
+   * PDF text has no word boundaries to trust, so whitespace is dropped. And the
+   * file's ToUnicode map gives the typographic apostrophe (U+2019) back as
+   * U+02BC - Inter draws both with one glyph, and extraction can only return
+   * one of them - so both apostrophes are folded to one. Measured on the
+   * produced file, not assumed: every other character of the sentence came
+   * back verbatim.
+   */
+  const squash = (value: string): string =>
+    value.replace(/\s/gu, '').replace(/[’ʼ]/gu, '’');
+
+  it('renders a year with no day recorded, says so in the file, and records its issuance', async () => {
+    // THE CONDITION FIRST: nothing is recorded for 2025.
+    expect((await buildDossierFor(userId, 2025)).recordedEntries).toBe(0);
+
+    const response = await GET(get('?year=2025', origin));
+
+    expect(response.status).toBe(200);
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const text = extractPdfText(bytes);
+
+    // PRESENCE OF THE DOCUMENT before the sentence is looked for (R169).
+    expect(text).toContain(COPY.title);
+    expect(squash(text)).toContain(squash(COPY.emptyYear(2025)));
+
+    const record = await prisma.issuanceRecord.findFirst({
+      where: { userId, taxYear: 2025, supersededAt: null },
+    });
+
+    // RECORDED AS FOR ANY YEAR: a code, and the hash of the bytes returned.
+    expect(record?.code).toMatch(/^[0-9a-f]{32}$/u);
+    expect(record?.sha256).toBe(sha256Hex(bytes));
+    expect(record?.teleworkDays).toBe(0);
+  });
+});

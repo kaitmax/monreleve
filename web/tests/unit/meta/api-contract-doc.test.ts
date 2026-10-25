@@ -109,6 +109,13 @@ describe('docs/api-v1.md documents exactly what the code accepts', () => {
       'invalid_year',
       'unknown_parameter',
       'read_failed',
+      // FW-DOSSIER-EMPTY: the dossier's named refusals. R580 added
+      // year_before_activity and R583 canton_missing; the two codes they sit
+      // beside are listed with them, so the document cannot drop one quietly.
+      'future_year',
+      'year_before_activity',
+      'canton_missing',
+      'dossier_incomplete',
     ];
 
     for (const code of codes) {
