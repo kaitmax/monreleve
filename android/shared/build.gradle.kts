@@ -125,14 +125,15 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
-    // R369: the iOS targets are DECLARED here; their binaries, Room's iOS code generation and the simulator
-    // test run need a Mac (.github/workflows/ios-shared.yml). KMP-UP2: since Kotlin 2.2.20 a Windows host
-    // DOES compile the iOS klibs (cross-platform klib compilation, stable and on by default), and the gate
-    // runs compileKotlinIos* through ktlint -> KSP's test tasks - but kspKotlinIos* is skipped here, so those
-    // klibs lack Room's generated actual and are not iOS proof. The proof the moved code is platform-free is
-    // the COMMON METADATA compilation (compileCommonMainKotlinMetadata), which compiles commonMain against the
-    // common stdlib only and so rejects any java./android. reference; that task runs in :app:gate. What only a
-    // Mac can prove is printed in the gate's "skipped, with reason" list rather than silently omitted (R133).
+    // R369: the iOS targets are DECLARED here; their klibs, Room's iOS code generation and the simulator
+    // test run happen on a Mac (.github/workflows/ios-shared.yml). KMP-DT R575: a Windows host does NOT
+    // compile the iOS klibs - kotlin.native.enableKlibsCrossCompilation=false in android/gradle.properties
+    // turns off the cross-platform klib compilation Kotlin 2.2.20 made the default, so compileKotlinIos* is
+    // SKIPPED here (between KMP-UP2 and R575 it ran, without Room's generated actual, proving nothing). The
+    // proof the moved code is platform-free is the COMMON METADATA compilation
+    // (compileCommonMainKotlinMetadata), which compiles commonMain against the common stdlib only and so
+    // rejects any java./android. reference; that task runs in :app:gate. What only a Mac can prove is
+    // printed in the gate's "skipped, with reason" list rather than silently omitted (R133).
     iosArm64()
     iosSimulatorArm64()
 
@@ -183,9 +184,9 @@ kotlin {
 
 // KMP-2b increment 1 (R400). THE iOS TARGETS ARE DECLARED FOR ROOM, NOT BUILT. KSP runs per TARGET, not per
 // source set, so the Room compiler is added to each target's own configuration - the documented Room KMP
-// form. The two iOS entries do not run on this Windows host - KSP's iOS tasks are SKIPPED off a Mac, still
-// true on Kotlin 2.2.21 although the iOS klib compile itself now runs here (KMP-UP2) - which is the point of
-// declaring them NOW: the day a Mac builds this, no build file changes.
+// form. The two iOS entries do not run on this Windows host - KSP's iOS tasks are SKIPPED off a Mac, and since
+// KMP-DT R575 so is the iOS klib compile itself (kotlin.native.enableKlibsCrossCompilation=false) - which is
+// the point of declaring them NOW: the Mac in ios-shared.yml builds this with no build file changes.
 //
 // WHAT REMAINS UNPROVEN UNTIL A MAC RUNS IT, stated plainly rather than implied by silence (R133):
 // that Room's compiler actually GENERATES a working implementation for iosArm64 and iosSimulatorArm64.
