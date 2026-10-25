@@ -3851,7 +3851,13 @@ figuresFromDossier, and the verifier rendering DOSSIER_COPY.emptyYear when it is
 
 COST OF REVERSING: none - nothing changed.
 
-STATE:      OPEN.
+STATE:      OPEN - RULED, NOT YET TAKEN. The operator answered Q5 on 2026-10-25
+(R584): YES, the verification page should be able to say what the document says -
+but as ITS OWN SMALL TASK, later: not FW-DOSSIER-EMPTY, and not FW-GRANULARITY,
+whose migration stays about one thing. That task is not yet named; it owns the
+IssuanceRecord column, its migration, figuresFromDossier writing it, and the
+verifier rendering DOSSIER_COPY.emptyYear when it records zero days. No schema
+change was made here.
 
 ## PARK-H5 - the releve prints its server timestamps in UTC without naming the zone  [FW-DOSSIER-EMPTY, 2026-10-25]
 

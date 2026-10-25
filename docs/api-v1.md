@@ -1303,11 +1303,11 @@ never on the French.
   somebody the file.
 - **A year with no day recorded is a document, issued like any other.** The
   file is produced (`200`) and opens with one sentence saying no day is
-  recorded for that year and that its rates reflect an absence of recording, not
-  a situation (`DOSSIER_COPY.emptyYear`, keyed on `recordedEntries === 0` — so a
-  year holding only absences does not say it). Its issuance is recorded exactly
-  as for any year: a verification code, and the hash of the bytes returned.
-  FW-DOSSIER-EMPTY (R516).
+  recorded for that year, and that its rates are computed over zero days and
+  do not describe the person's situation (`DOSSIER_COPY.emptyYear`, keyed on
+  `recordedEntries === 0` — so a year holding only absences does not say it).
+  Its issuance is recorded exactly as for any year: a verification code, and the
+  hash of the bytes returned. FW-DOSSIER-EMPTY (R516; the wording is R585's).
 
 ## 12. `GET /api/v1/export/csv?year=YYYY` — the annex as a spreadsheet
 
