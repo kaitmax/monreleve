@@ -1,0 +1,109 @@
+REPORT-FW-GRANULARITY
+THE DATABASE REFUSES A DAY WITH TWO GRANULARITIES - STOPPED AT THE R498 CENSUS
+================================================================================
+
+TASK    FW-GRANULARITY (relay/FW-GRANULARITY.txt, incl. ADDENDUM)
+BASE    a05fe3d (origin/main, verified by fetch at session start; contains
+        an-granularity, an-granularity-drive, fw-dossier-empty)
+BRANCH  fw-granularity, worktree C:/wt/fw-granularity (R349), upstream unset,
+        lock .session-lock.json held, removed at the end, never staged.
+RULINGS R498-R505 - checked free in main's reports and on every remote branch
+        (R162); no renumbering. PARK letter claimed: Q (O and Z are also free;
+        register-coverage.mjs reports OK on main, letters A-Y minus O/Q/Z used).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Only R498 has been done. The census on the DEV database found mixed days, which
+proves the query can fire; the PRODUCTION query is written below, exactly as it
+must be run. The session STOPS here, as R498 and the addendum require. Nothing
+past R498 was started: no migration, no test, no code, no contract edit.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+STOPPED FOR THE R498 PRODUCTION CENSUS. No increment beyond R498 exists; no
+gate (pnpm gate, gate:changed, gate:clone) was run because no code changed -
+FULL GATE NOT RUN on this tip, and that is a statement of fact, not a pass.
+The only file added by this branch is this report.
+
+--------------------------------------------------------------------------------
+R273 / R1
+--------------------------------------------------------------------------------
+Not performed this pass (stopping at R498 per the orchestrator's instruction).
+R1 (FULL gate + gate:clone green on origin/main a05fe3d) is NOT asserted here;
+it is to be done on resume, before R499.
+
+--------------------------------------------------------------------------------
+R498 - THE CENSUS
+--------------------------------------------------------------------------------
+Schema facts read from web/prisma/schema.prisma: table "Entry", columns
+"userId", "dayDate" (@db.Date), "portion" (enum EntryPortion: FULL | AM | PM);
+unique key (userId, dayDate, portion), so a day can hold FULL alone, or AM
+and/or PM, and only a mix is the defect.
+
+DEV database (container frontalier-postgres, :5436, PostgreSQL 16.14),
+read-only (BEGIN READ ONLY ... COMMIT), output exactly two numbers:
+
+    days | accounts
+    3    | 3
+
+Dev holds 1418 Entry rows; 3 mixed days across 3 accounts. This is the
+positive control: the same text that returns 0/0 on a clean database returns a
+non-zero answer here, so a 0/0 from production is a measurement, not a query
+that cannot fire. (A planted-row control on a temp table was attempted and
+abandoned because "clientMutationId" is NOT NULL; the live dev result serves
+instead.) No ids, emails or dates were printed.
+
+PRODUCTION QUERY - run exactly as given; it returns one row, two numbers:
+
+    BEGIN READ ONLY;
+    SELECT count(*) AS days, count(DISTINCT "userId") AS accounts
+    FROM (
+      SELECT "userId", "dayDate"
+      FROM "Entry"
+      GROUP BY "userId", "dayDate"
+      HAVING bool_or("portion" = 'FULL') AND bool_or("portion" IN ('AM', 'PM'))
+    ) AS mixed;
+    COMMIT;
+
+Route (ADDENDUM, operator-approved 2026-10-25): the orchestrating session runs
+it as a one-off Coolify scheduled task through the app's own database driver
+inside BEGIN READ ONLY, deletes the task, shows it deleted via the API, and
+quotes the two counts from the execution log. THIS SESSION DID NOT CONNECT TO
+PRODUCTION.
+
+THE OPERATOR'S NUMBERS: PENDING.
+    Continue ONLY on days = 0 and accounts = 0, quoted here from the
+    orchestrator's message. If either is not 0: STOP stays STOP; those
+    people's Releves are double-counted today and what to do is the
+    operator's decision, not a migration's.
+
+--------------------------------------------------------------------------------
+R499 - R505
+--------------------------------------------------------------------------------
+NOT STARTED (stopped for the census). Groundwork noted for resume only:
+production Postgres is postgres:16-alpine per docker-compose.yml (dev is 16.14),
+so btree_gist (a contrib extension shipped with the image) is expected to be
+available; to be CONFIRMED on a scratch database, and the Prisma drift proof
+(R499) must be run before choosing exclusion constraint over trigger.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+None.
+
+DEVIATIONS
+--------------------------------------------------------------------------------
+None. The relay's note that main is a72ab31 differs from the live origin/main
+a05fe3d; a05fe3d (a descendant carrying the same merges) was used.
+
+QUESTIONS
+--------------------------------------------------------------------------------
+None blocking. Awaiting the two production numbers.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Report-only commit; pushed with `git push origin fw-granularity`. gate:clone
+not run (no code in the push; HEAD differs from origin/main by this file only).
