@@ -21,6 +21,7 @@
 // NO CLIENT JS. It is a server component; nothing here is interactive, and the
 // page deliberately ships none.
 
+import { parisDayOf } from '@/lib/entries/day';
 import { DOSSIER_COPY } from '@/lib/fr/dossier';
 import { VERIFICATION_COPY } from '@/lib/fr/verification';
 import { formatDate, formatDays, formatPercent } from '@/lib/ui/core';
@@ -33,9 +34,19 @@ export type VerificationState =
   | { readonly kind: 'unknown' }
   | { readonly kind: 'rate-limited' };
 
-/** The date part of an ISO instant, Swiss dots - never the time (R330 subset). */
+/**
+ * The PARIS DAY of an ISO instant, Swiss dots - never the time (R330 subset).
+ *
+ * FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5): this took the instant's UTC date
+ * (`iso.slice(0, 10)`), so a relevé issued at 00:30 on 1 January in Paris was
+ * vouched for as "émis le 31.12" while the document itself is dated the 1st.
+ * parisDayOf is the one home of "the Paris day of an instant" (R582), and it
+ * asks the platform for Europe/Paris rather than applying an offset, so it is
+ * right on either side of a DST change. A date carries no hour, so there is no
+ * time here to label; the date is the one the document prints.
+ */
 function dateOf(iso: string): string {
-  return formatDate(iso.slice(0, 10));
+  return formatDate(parisDayOf(new Date(iso)));
 }
 
 /**

@@ -4425,7 +4425,14 @@ December, a baseline question for any photographed surface, and a copy decision.
 
 COST OF REVERSING: none - nothing changed.
 
-STATE:      OPEN - the operator's: print the product's clock (Paris) or name UTC.
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY-3 (R586, the operator's answer to
+Q7: Paris time, labelled). stamp() is formatDateTime (Europe/Paris), and the zone is
+named in the operator's form: the generation stamp reads "24.10.2026 a 14:32 (heure
+de Paris)" (DOSSIER_COPY.parisTime), and the annex's three stamp columns carry the
+label once, in their headings. The verifier's dateOf() is formatDate(parisDayOf(...)):
+the Paris DAY, the date the document carries (it shows no time, R330). Stored instants
+stay UTC. Tested either side of the 25 October 2026 DST change, RED first, on the
+rendered output. See REPORT-FW-DOSSIER-EMPTY-3.txt, R586.
 
 ## PARK-Q1 - no Android test pins the granularity_conflict refusal  [FW-GRANULARITY, 2026-10-25]
 

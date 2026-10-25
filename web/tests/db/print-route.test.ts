@@ -35,11 +35,13 @@ function mutation(): string {
 }
 
 /** Render the page as the server would, and return its HTML. */
-async function render(year: number, token: string | null): Promise<string> {
+async function render(year: number, token: string | null, generatedAt?: string): Promise<string> {
   const element = await PrintPage({
     searchParams: Promise.resolve({
       year: String(year),
       ...(token === null ? {} : { token }),
+      // The instant the PDF route assigns and passes (FW-VERIFY); R586 sets it.
+      ...(generatedAt === undefined ? {} : { generatedAt }),
     }),
   });
 
@@ -343,5 +345,61 @@ describe('FW-DOSSIER-EMPTY R516: an empty year says so in words', () => {
 
     expect(html).toContain(COPY.annex.absenceConge);
     expect(html).not.toContain(COPY.emptyYear(2025));
+  });
+});
+
+// ============================================================================
+// FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5): PARIS TIME, NAMED, ACROSS DST
+// ============================================================================
+//
+// The document printed every server instant as a UTC wall clock with no zone
+// named, so a relevé generated at 00:30 on 1 January in Paris said 31 December
+// 23:30. R586: Europe/Paris, with the zone named in the operator's form.
+//
+// Paris left summer time at 03:00 on 25 October 2026, so the two instants sit
+// on either side of the change, and both read the SAME wall time - 14:32 - so
+// the offset is the only variable: 12:32Z is 14:32 at UTC+2 on the 24th, and
+// 13:32Z is 14:32 at UTC+1 on the 26th. A fixed offset of either size fails one
+// of the two; UTC fails both.
+//
+// Asserted on the rendered page (R225). The wall times are the assertion
+// (R171); the label is read from its lib/fr constant (R181), never typed.
+
+/** U+00A0, which formatDateTime binds to both sides of its « à » (R29). */
+const NB = String.fromCharCode(0x00a0);
+
+describe('FW-DOSSIER-EMPTY-3 R586: every time the document shows is Paris time, named', () => {
+  /** One day recorded at `instant`, and the document generated at the same instant. */
+  async function documentAt(instant: string, dayDate: string): Promise<string> {
+    await seed(dayDate, { firstRecordedAt: new Date(instant) });
+
+    return render(2026, mintPrintToken(userId, 2026), instant);
+  }
+
+  it('on 24 October (UTC+2), 12:32Z prints as 14:32, the zone named', async () => {
+    const html = await documentAt('2026-10-24T12:32:00.000Z', '2026-10-23');
+    const wall = `24.10.2026${NB}à${NB}14:32`;
+
+    // The generation stamp, in its row, the zone named after it.
+    expect(html).toContain(`<dt>${COPY.header.generatedAt}</dt><dd>${COPY.parisTime(wall)}</dd>`);
+    // The annex's receipt stamp, in the cell...
+    expect(html).toContain(`<td>${wall}</td>`);
+    // ...under headings that name the zone, all three stamp columns.
+    const label = COPY.parisTime('').trim();
+    for (const heading of [COPY.annex.firstRecordedAt, COPY.annex.lastModifiedAt, COPY.annex.clientClaimedAt]) {
+      expect(heading.endsWith(label), heading).toBe(true);
+      expect(html).toContain(`<th>${heading}</th>`);
+    }
+    // And the UTC wall clock is gone - asserted after the presence above.
+    expect(html).not.toContain('12:32');
+  });
+
+  it('on 26 October (UTC+1), 13:32Z prints as 14:32, the zone named', async () => {
+    const html = await documentAt('2026-10-26T13:32:00.000Z', '2026-10-23');
+    const wall = `26.10.2026${NB}à${NB}14:32`;
+
+    expect(html).toContain(`<dt>${COPY.header.generatedAt}</dt><dd>${COPY.parisTime(wall)}</dd>`);
+    expect(html).toContain(`<td>${wall}</td>`);
+    expect(html).not.toContain('13:32');
   });
 });

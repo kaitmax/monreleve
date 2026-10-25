@@ -42,7 +42,7 @@ import { readPrintToken } from '@/lib/export/print-token';
 import { verificationOrigin, verificationUrlFor } from '@/lib/verification/origin';
 import QRCode from 'qrcode';
 import { ruleSetFor } from '@/lib/calc-engine';
-import { formatDays, formatPercent, formatSignedDays, zoneFor } from '@/lib/ui/core';
+import { formatDateTime, formatDays, formatPercent, formatSignedDays, zoneFor } from '@/lib/ui/core';
 import { ThresholdRail } from '@/lib/ui/react';
 import styles from './print.module.scss';
 
@@ -97,17 +97,21 @@ function day(iso: string): string {
   return `${d}.${m}.${y}`;
 }
 
-/** An instant, as the annex prints it - date and minute, never seconds. */
+/**
+ * An instant, as the document prints it - date and minute, never seconds, on
+ * the Paris wall clock.
+ *
+ * FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5). This was a second implementation
+ * of formatDateTime that read the UTC fields, so a relevé generated at 00:30 on
+ * 1 January in Paris said 31 December 23:30. formatDateTime is the one home of
+ * "an instant as a Paris wall clock" (SPEC 6.4, R206), pinned to Europe/Paris
+ * and so right on either side of a DST change. The stored instants are
+ * untouched - only what is shown changed - and the zone is NAMED where a time
+ * is shown: COPY.parisTime on the generation stamp, and the annex's column
+ * headings for the annex's cells.
+ */
 function stamp(iso: string | null): string {
-  if (iso === null) return '';
-
-  const date = new Date(iso);
-  const pad = (n: number): string => String(n).padStart(2, '0');
-
-  return (
-    `${pad(date.getUTCDate())}.${pad(date.getUTCMonth() + 1)}.${date.getUTCFullYear()} ` +
-    `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`
-  );
+  return iso === null ? '' : formatDateTime(iso);
 }
 
 const KIND_LABEL: Readonly<Record<string, string>> = {
@@ -295,7 +299,7 @@ export default async function PrintPage({
               placed against the year it describes - two exports of 2026 made
               six months apart are different documents and must say so. */}
           <dt>{COPY.header.generatedAt}</dt>
-          <dd>{stamp(dossier.generatedAt)}</dd>
+          <dd>{COPY.parisTime(stamp(dossier.generatedAt))}</dd>
           {/* D28: absences are counted ONCE, here, and appear in no other
               figure. SPEC 12 item 5 puts the count in this block. */}
           <dt>{COPY.header.absencesDeclared}</dt>
