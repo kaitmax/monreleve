@@ -37,7 +37,6 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.format.formatDateTime
 import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.onboarding.GranularityChoice
 
@@ -132,15 +131,7 @@ private fun SlotEditor(
     var missionOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(missionInitiallyOpen) }
     var absenceOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(draft.kind == RecordedKind.ABSENCE) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
-        if (named) {
-            val label =
-                when (draft.slot) {
-                    Slot.FULL -> AujourdhuiCopy.WHOLE_DAY
-                    Slot.MORNING -> AujourdhuiCopy.MORNING
-                    Slot.AFTERNOON -> AujourdhuiCopy.AFTERNOON
-                }
-            Text(text = label, style = FrontierType.bodyM)
-        }
+        if (named) Text(text = slotName(draft.slot), style = FrontierType.bodyM)
         Option(AujourdhuiCopy.SUISSE, draft.kind == RecordedKind.SUISSE) {
             draft.kind = RecordedKind.SUISSE
             draft.absence = null
@@ -238,43 +229,13 @@ internal fun RecordedGranularityNotice(recordedAs: GranularityChoice?) {
     )
 }
 
-/**
- * The slots whose provenance the sheet states: those the server has recorded (a firstRecordedAt exists). Since R490
- * every slot is its own portion's row (a day held whole is one FULL slot), so no row is ever stated twice.
- */
-internal fun provenanceSlots(day: EditableDay): List<EditableSlot> = day.slots.filter { it.firstRecordedAt != null }
-
-// The provenance block (SPEC 11.3, FD6 A2): who recorded the day, when it was first recorded, and - if
-// it was changed after that - when. Only for a day the server has recorded (a firstRecordedAt exists);
-// a not-yet-synced day has no server timestamp to show. Every entry is « Saisie manuelle » (manual
-// product); the timestamps are the SERVER'S own (R216), read Paris-side by formatDateTime.
-@Composable
-private fun ProvenanceBlock(day: EditableDay) {
-    val recorded = provenanceSlots(day)
-    if (recorded.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
-        Text(text = CalendarCopy.PROVENANCE_HEADING, style = FrontierType.caption, color = LightColors.textSecondary)
-        // « Saisie manuelle » has one home (R206): AujourdhuiCopy.MODE_MANUAL, the same phrase the
-        // Aujourd'hui mode strip shows - the manual product's provenance and its mode are one word.
-        Text(text = AujourdhuiCopy.MODE_MANUAL, style = FrontierType.caption, color = LightColors.textSecondary)
-        recorded.forEach { slot ->
-            slot.firstRecordedAt?.let {
-                Text(
-                    text = CalendarCopy.firstRecordedLine(formatDateTime(it)),
-                    style = FrontierType.caption,
-                    color = LightColors.textSecondary,
-                )
-            }
-            slot.modifiedAt?.let {
-                Text(
-                    text = CalendarCopy.modifiedLine(formatDateTime(it)),
-                    style = FrontierType.caption,
-                    color = LightColors.textSecondary,
-                )
-            }
-        }
+/** A slot's name as the sheet heads it - the whole day's beside its halves' (R494), and each half's. */
+internal fun slotName(slot: Slot): String =
+    when (slot) {
+        Slot.FULL -> AujourdhuiCopy.WHOLE_DAY
+        Slot.MORNING -> AujourdhuiCopy.MORNING
+        Slot.AFTERNOON -> AujourdhuiCopy.AFTERNOON
     }
-}
 
 // AN-CALENDAR (R474). THE CHOICE IS IN THE SEMANTICS TREE, not only in the paint. A chosen option was a filled
 // Button and an unchosen one an OutlinedButton - a difference no accessibility service can see. So a tap on

@@ -25,6 +25,7 @@ import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
+import ch.monreleve.app.fr.DayCellCopy
 import ch.monreleve.app.fr.LegendCopy
 import ch.monreleve.app.fr.format.formatDayLong
 
@@ -38,7 +39,7 @@ import ch.monreleve.app.fr.format.formatDayLong
 //
 // Not a DayCell grid, so no legend is needed here (each row states its own words); the grid file keeps
 // the legend the fence pairs with it. The words come from the one homes: the kind from LegendCopy, the
-// quality from CalendarCopy.qualityWord, the provenance from AujourdhuiCopy (manual product).
+// quality from CalendarCopy.qualityWord, who recorded the day from DayCellCopy.provenanceLabel (R519).
 
 @Composable
 fun CalendarList(
@@ -93,6 +94,40 @@ private fun CalendarListRow(
     }
 }
 
+/**
+ * One day in words, as a list row prints them after its date: the kind (BOTH kinds of a split half-day, R292), the
+ * quality, and who recorded it. ONE HOME (R206) for the calendar's large-text list and Aujourd'hui's week list, which
+ * each render these words one Text apiece - so the words are asserted where both rows take them from (R225).
+ */
+internal fun dayWords(day: CalendarDayUi): List<String> {
+    val kindWord = day.kind?.let { LegendCopy.forKind(it.letter) }
+    val secondKindWord = day.secondKind?.let { LegendCopy.forKind(it.letter) }
+    val qualityWord = CalendarCopy.qualityWord(day.quality.name)
+    return listOfNotNull(kindWord, secondKindWord, qualityWord) + provenanceWords(day.provenance, day.secondProvenance)
+}
+
+/**
+ * AN-GRANULARITY (R519): who recorded the day, as its rows say - from the one home (DayCellCopy.provenanceLabel),
+ * never a constant. The manual product named only « Saisie manuelle » and said NOTHING of a detected day; since
+ * AN-PULL brings detected days down, that silence misstated them. Halves recorded differently each state their own.
+ */
+private fun provenanceWords(
+    morning: DayProvenance?,
+    afternoon: DayProvenance?,
+): List<String> {
+    val first = morning?.let { DayCellCopy.provenanceLabel(it.name) }
+    val second = afternoon?.let { DayCellCopy.provenanceLabel(it.name) }
+    return when {
+        first == null -> emptyList()
+        second == null -> listOf(first)
+        else ->
+            listOf(
+                AujourdhuiCopy.halfLabel(AujourdhuiCopy.MORNING, first),
+                AujourdhuiCopy.halfLabel(AujourdhuiCopy.AFTERNOON, second),
+            )
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DayWords(
@@ -105,15 +140,7 @@ private fun DayWords(
             style = FrontierType.bodyM,
             color = if (day.isToday) LightColors.brand else LightColors.textPrimary,
         )
-        // R292: a split half-day names BOTH kinds here too, so the 200 % list reader gets the whole
-        // record the grid reader gets - not just the morning kind.
-        val kindWord = day.kind?.let { LegendCopy.forKind(it.letter) }
-        val secondKindWord = day.secondKind?.let { LegendCopy.forKind(it.letter) }
-        val qualityWord = CalendarCopy.qualityWord(day.quality.name)
-        // Manual product: the only provenance is « Saisie manuelle » (one home, R206); the detected forms
-        // are AN9+, so they show no word here rather than a hint at anything absent (R282).
-        val provenanceWord = if (day.provenance == DayProvenance.MANUAL) AujourdhuiCopy.MODE_MANUAL else null
-        val words = listOfNotNull(kindWord, secondKindWord, qualityWord, provenanceWord)
+        val words = dayWords(day)
         if (words.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.space8)) {
                 words.forEach { word ->

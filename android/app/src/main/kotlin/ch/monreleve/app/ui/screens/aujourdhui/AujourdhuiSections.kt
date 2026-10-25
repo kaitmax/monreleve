@@ -30,7 +30,6 @@ import ch.monreleve.app.calendar.MonthSummary
 import ch.monreleve.app.design.DayCell
 import ch.monreleve.app.design.DayKind
 import ch.monreleve.app.design.DayKindLegend
-import ch.monreleve.app.design.DayProvenance
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
@@ -43,6 +42,7 @@ import ch.monreleve.app.fr.LegendCopy
 import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.fr.format.formatDays
 import ch.monreleve.app.ui.screens.calendrier.LIST_FONT_SCALE_THRESHOLD
+import ch.monreleve.app.ui.screens.calendrier.dayWords
 
 // AN-HOME sections C/E/F (R328). The stateless section composables Aujourd'hui renders below the choice card
 // and the year hero, kept in their own file so neither this nor AujourdhuiScreen.kt passes the file's function
@@ -162,14 +162,16 @@ private fun RowScope.WeekCell(
             corrected = day.corrected,
             isToday = day.isToday,
             provenance = day.provenance,
+            secondProvenance = day.secondProvenance,
             secondKind = day.secondKind,
         )
     }
 }
 
-// The high-scale list row (R271): the day in words, the kind and the quality from their one homes (R206:
-// LegendCopy, CalendarCopy.qualityWord). A split half-day names BOTH kinds (R292). Tapping opens the calendar.
-// Each word is its own Text in a FlowRow (the calendar list's shape), so there is no separator literal in ui/.
+// The high-scale list row (R271): the day in words - the kind, the quality and who recorded it - from the ONE
+// home the calendar's list reads too (dayWords, R206), so the two lists cannot name a day differently (R519). A
+// split half-day names BOTH kinds (R292). Tapping opens the calendar. Each word is its own Text in a FlowRow (the
+// calendar list's shape), so there is no separator literal in ui/.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WeekListRow(
@@ -190,11 +192,7 @@ private fun WeekListRow(
             style = FrontierType.bodyM,
             color = if (day.isToday) LightColors.brand else LightColors.textPrimary,
         )
-        val kindWord = day.kind?.let { LegendCopy.forKind(it.letter) }
-        val secondKindWord = day.secondKind?.let { LegendCopy.forKind(it.letter) }
-        val qualityWord = CalendarCopy.qualityWord(day.quality.name)
-        val provenanceWord = if (day.provenance == DayProvenance.MANUAL) AujourdhuiCopy.MODE_MANUAL else null
-        val words = listOfNotNull(kindWord, secondKindWord, qualityWord, provenanceWord)
+        val words = dayWords(day)
         if (words.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.space8)) {
                 words.forEach { word ->

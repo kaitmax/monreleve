@@ -3,13 +3,14 @@ package ch.monreleve.app.calendar
 import ch.monreleve.app.DayWriter
 import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
+import ch.monreleve.app.aujourdhui.RecordedProvenance
 import ch.monreleve.app.aujourdhui.Slot
+import ch.monreleve.app.aujourdhui.toRecordedProvenance
 import ch.monreleve.app.data.local.AbsenceReason
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.todayInParis
-import ch.monreleve.app.data.repo.DayGranularity
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.data.repo.RecordResult
@@ -18,6 +19,7 @@ import ch.monreleve.app.data.repo.portionsToOffer
 import ch.monreleve.app.data.repo.recordedInOtherGranularity
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.onboarding.toChoice
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +62,11 @@ data class EditableSlot(
     val modifiedAt: String?,
     /** The server's immutable first-recording timestamp, once synced (SPEC 8); null while pending. */
     val firstRecordedAt: String?,
+    /**
+     * AN-GRANULARITY (R519): WHO recorded this portion, as its row says - a manual entry, or a detection the person
+     * confirmed or corrected. The sheet states it from here, never from a constant. Null for a portion with no row.
+     */
+    val provenance: RecordedProvenance? = null,
 )
 
 /**
@@ -434,6 +441,7 @@ class CalendarController(
             late = row?.let { serverLate(it) } ?: false,
             modifiedAt = row?.lastModifiedAt?.takeIf { it != row.firstRecordedAt },
             firstRecordedAt = row?.firstRecordedAt,
+            provenance = row?.provenance?.toRecordedProvenance(),
         )
     }
 
@@ -463,13 +471,6 @@ class CalendarController(
 // as two halves answered with the FULL row's kind (`shownFor`), and changing one of them wrote a half beside the FULL
 // row. The operator ruled instead that a day keeps the granularity it was recorded in: such a day is offered as ONE
 // whole-day slot (portionsToOffer), so every slot the sheet shows is its own portion's row, or nothing yet.
-
-/** The setting's granularity in the screen's vocabulary - an enum mapping the compiler checks, not copy. */
-private fun DayGranularity.toChoice(): GranularityChoice =
-    when (this) {
-        DayGranularity.WHOLE_DAY -> GranularityChoice.DAY
-        DayGranularity.HALF_DAYS -> GranularityChoice.HALF_DAY
-    }
 
 private fun Portion.toSlot(): Slot =
     when (this) {

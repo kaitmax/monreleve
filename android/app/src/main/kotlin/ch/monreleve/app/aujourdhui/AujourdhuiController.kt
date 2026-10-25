@@ -20,7 +20,6 @@ import ch.monreleve.app.data.local.TallyEntity
 import ch.monreleve.app.data.local.deviceClaimNow
 import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
-import ch.monreleve.app.data.repo.DayGranularity
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.HeldGranularity
 import ch.monreleve.app.data.repo.RecordCommand
@@ -45,6 +44,7 @@ import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.dossier.pendingEntriesForYear
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.onboarding.toChoice
 import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.LoggingMode
@@ -260,13 +260,6 @@ private fun AbsenceChoice.toReason(): AbsenceReason =
         AbsenceChoice.AUTRE -> AbsenceReason.AUTRE
     }
 
-/** A granularity in the screen's vocabulary - an enum mapping the compiler checks, not copy. */
-private fun DayGranularity.toChoice(): GranularityChoice =
-    when (this) {
-        DayGranularity.WHOLE_DAY -> GranularityChoice.DAY
-        DayGranularity.HALF_DAYS -> GranularityChoice.HALF_DAY
-    }
-
 private fun Slot.toPortion(): Portion =
     when (this) {
         Slot.FULL -> Portion.FULL
@@ -274,7 +267,8 @@ private fun Slot.toPortion(): Portion =
         Slot.AFTERNOON -> Portion.PM
     }
 
-private fun Provenance.toRecordedProvenance(): RecordedProvenance =
+// AN-GRANULARITY (R519): internal, so the calendar sheet names a day's provenance through this same mapping.
+internal fun Provenance.toRecordedProvenance(): RecordedProvenance =
     when (this) {
         Provenance.MANUAL -> RecordedProvenance.MANUAL
         Provenance.DETECTED_CONFIRMED -> RecordedProvenance.DETECTED_CONFIRMED

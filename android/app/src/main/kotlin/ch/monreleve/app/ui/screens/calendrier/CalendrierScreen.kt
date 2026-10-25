@@ -257,6 +257,7 @@ private fun RowScope.GridCell(
                 corrected = day.corrected,
                 isToday = day.isToday,
                 provenance = day.provenance,
+                secondProvenance = day.secondProvenance,
                 secondKind = day.secondKind,
                 selected = isSelected,
             )
