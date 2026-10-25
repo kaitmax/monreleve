@@ -141,8 +141,10 @@ jobs:
       # `simctl list devices available` and keeps, for iOS, the first device
       # under EACH "-- iOS x --" heading, each overwriting the last - so the
       # device is the first one listed under the LAST iOS runtime.
-      # kotlinx-datetime 0.6.1 on the simulator reads its zone rules from
-      # /usr/share/zoneinfo.default (its darwinSimulator defaultTzdbPath).
+      # kotlinx-datetime 0.7.1 on the simulator reads its zone rules from
+      # /usr/share/zoneinfo.default (its darwinSimulator defaultTzdbPath), as
+      # 0.6.1 did; 0.7.1 falls back to Foundation's NSTimeZone only when that
+      # database cannot be read (darwin TimeZoneNative.kt at v0.7.1; KMP-DT).
       - name: Environment (diagnostic)
         run: |
           set +e
