@@ -153,6 +153,13 @@ private fun slotsTheCardOffers(state: AujourdhuiState): List<Slot> =
         GranularityChoice.HALF_DAY -> listOf(Slot.MORNING, Slot.AFTERNOON)
     }
 
+/** A repository whose store holds [rows] exactly as stored - how a day already mixed reaches the phone (R494). */
+private suspend fun stored(vararg rows: EntryEntity): RecordedWrites {
+    val dao = FakeEntryDao()
+    rows.forEach { dao.upsert(it) }
+    return RecordedWrites(LocalEntryRepository(dao, JUNE_15), dao)
+}
+
 /** The bulk selection's three days, a working Monday to Wednesday before [TODAY]. */
 private const val MONDAY = "2026-06-08"
 private const val TUESDAY = "2026-06-09"
@@ -398,6 +405,83 @@ class RecordedGranularityTest : FunSpec({
                     Triple(TUESDAY, Portion.PM, EntryKind.MISSION_FR),
                     Triple(WEDNESDAY, Portion.FULL, EntryKind.MISSION_FR),
                 )
+        }
+    }
+    // -------------------------------------------------------------------------------------------------------------
+    // Days ALREADY mixed (R494): shown as their rows say, never repaired, never grown.
+    // -------------------------------------------------------------------------------------------------------------
+
+    test("R494 the sheet shows a day already mixed as its rows say - each row editable, none added") {
+        runTest {
+            val repo = stored(synced(Portion.FULL, EntryKind.HOME), synced(Portion.AM, EntryKind.CH))
+            val controller = sheetOn(repo, HALF_DAYS)
+            val sheet = controller.state.value.editing.shouldNotBeNull()
+
+            sheet.slots.map { it.slot to it.kind } shouldBe
+                listOf(Slot.FULL to RecordedKind.DOMICILE, Slot.MORNING to RecordedKind.SUISSE)
+            sheet.recordedAs shouldBe null
+
+            // Editing an existing row's kind is allowed (the whole-day row becomes Suisse); the morning is untouched.
+            controller.save(
+                PAST,
+                sheet.slots.map { s ->
+                    val kind = if (s.slot == Slot.FULL) RecordedKind.SUISSE else s.kind.shouldNotBeNull()
+                    SlotEdit(s.slot, kind, s.absence, s.note.orEmpty())
+                },
+            )
+            advanceUntilIdle()
+
+            repo.made.map { it.portion to it.kind } shouldBe listOf(Portion.FULL to EntryKind.CH)
+            repo.day() shouldBe listOf(Portion.FULL to EntryKind.CH, Portion.AM to EntryKind.CH)
+        }
+    }
+
+    test("R494 Aujourd'hui shows a mixed today as its rows say, and offers nothing that would add a row") {
+        runTest {
+            val repo = stored(synced(Portion.FULL, EntryKind.HOME, TODAY), synced(Portion.PM, EntryKind.CH, TODAY))
+            val state = todayOn(repo, WHOLE_DAYS).state.value
+
+            state.mixedToday shouldBe true
+            state.fullDay.shouldNotBeNull().kind shouldBe RecordedKind.DOMICILE
+            state.afternoon.shouldNotBeNull().kind shouldBe RecordedKind.SUISSE
+            // The morning has no row, and none is asked for: answering it would add AM beside FULL.
+            state.morning shouldBe null
+            state.recordedAs shouldBe null
+            repo.made shouldBe emptyList()
+        }
+    }
+
+    test("R494 bulk over a day already mixed rewrites the rows it holds and adds none") {
+        runTest {
+            val repo = stored(synced(Portion.FULL, EntryKind.HOME, MONDAY), synced(Portion.AM, EntryKind.CH, MONDAY))
+            var syncs = 0
+            val controller = CalendarController(repo, WHOLE_DAYS, 2026, JUNE_15, this, requestSync = { syncs++ })
+            advanceUntilIdle()
+
+            controller.startSelection(MONDAY)
+            controller.chooseBulk(RecordedKind.DOMICILE, null)
+            controller.confirmBulk()
+            advanceUntilIdle()
+
+            repo.made.map { it.portion to it.kind } shouldBe
+                listOf(Portion.FULL to EntryKind.HOME, Portion.AM to EntryKind.HOME)
+            repo.answered.filterNot { it is RecordResult.Recorded } shouldBe emptyList()
+            repo.day(MONDAY) shouldBe listOf(Portion.FULL to EntryKind.HOME, Portion.AM to EntryKind.HOME)
+            syncs shouldBe 1
+        }
+    }
+
+    test("R494 showing a mixed day writes nothing and deletes nothing - an untouched save is no change") {
+        runTest {
+            val repo = stored(synced(Portion.FULL, EntryKind.HOME), synced(Portion.AM, EntryKind.CH))
+            val controller = sheetOn(repo, WHOLE_DAYS)
+            val sheet = controller.state.value.editing.shouldNotBeNull()
+
+            controller.save(PAST, sheet.slots.map { s -> SlotEdit(s.slot, s.kind.shouldNotBeNull(), s.absence, "") })
+            advanceUntilIdle()
+
+            repo.made shouldBe emptyList()
+            repo.day() shouldBe listOf(Portion.FULL to EntryKind.HOME, Portion.AM to EntryKind.CH)
         }
     }
 })

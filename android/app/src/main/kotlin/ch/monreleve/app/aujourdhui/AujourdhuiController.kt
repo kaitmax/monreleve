@@ -22,9 +22,11 @@ import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.DayGranularity
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.data.repo.HeldGranularity
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.data.repo.dayGranularityOf
+import ch.monreleve.app.data.repo.heldGranularity
 import ch.monreleve.app.data.repo.portionsToOffer
 import ch.monreleve.app.data.repo.recordedInOtherGranularity
 import ch.monreleve.app.detection.DayChecks
@@ -191,6 +193,12 @@ data class AujourdhuiState(
      * for the one-sentence notice. Null when they agree, when today is empty, and when it is already mixed (R494).
      */
     val recordedAs: GranularityChoice? = null,
+    /**
+     * AN-GRANULARITY (R494): today ALREADY holds a whole-day row beside a half (test data, or a day a download brought
+     * down). It is shown as its rows say - fullDay, morning and afternoon as they stand - and offers no edit that would
+     * add a row; nothing on the phone repairs it (FW-GRANULARITY's census decides what happens to such days).
+     */
+    val mixedToday: Boolean = false,
     /** AN-HOME section A (PARKAN-50): the holder's name (Settings.name); its first name drives the greeting.
      *  Null when the account has no name yet (AN-ONBOARD-2), greeted « Bonjour » alone. */
     val holderName: String? = null,
@@ -388,7 +396,10 @@ class AujourdhuiController(
         val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
         val morning = todays.firstOrNull { e -> e.portion == Portion.AM }
         val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }
-        val autoMode = mode == LoggingMode.AUTO_DETECT
+        // R494: a day ALREADY holding a whole-day row beside a half is shown as its rows say and asks for nothing -
+        // neither a proposal nor a manual choice for its empty half, either of which would add a row beside FULL.
+        val mixed = heldGranularity(held) == HeldGranularity.MIXED
+        val autoMode = mode == LoggingMode.AUTO_DETECT && !mixed
         val checks = (lastTallies.firstOrNull { it.dayDate == today }?.toDayChecks()).orEmpty()
         // R320: nothing is proposed until the day is concluded (after the last window, the evening) - "Votre
         // journée vous sera proposée ce soir." ETAT C (a recorded slot) shows the recorded row, not a re-proposal.
@@ -411,6 +422,7 @@ class AujourdhuiController(
                 today = today,
                 granularity = granularity,
                 recordedAs = recordedInOtherGranularity(held, setting)?.toChoice(),
+                mixedToday = mixed,
                 holderName = settings?.name,
                 loggingMode = mode,
                 fullDay = fullDay?.toDayEntry(),

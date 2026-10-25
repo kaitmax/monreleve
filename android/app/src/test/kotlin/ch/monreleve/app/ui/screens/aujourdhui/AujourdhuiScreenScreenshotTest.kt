@@ -448,6 +448,21 @@ class AujourdhuiScreenScreenshotTest {
         paparazzi.snapshot { host(halfDayComplete.copy(recordedAs = GranularityChoice.HALF_DAY)) }
     }
 
+    // AN-GRANULARITY (R494): today ALREADY holds a whole-day row beside an afternoon - shown as its rows say, each
+    // under its name, with nothing to tap that could add a row. NEW baseline.
+    @Test
+    fun aujourdhuiMixedToday() {
+        paparazzi.snapshot {
+            host(
+                daySynced.copy(
+                    fullDay = DayEntry(kind = RecordedKind.DOMICILE, absence = null, pending = false, failed = false),
+                    afternoon = DayEntry(kind = RecordedKind.SUISSE, absence = null, pending = false, failed = false),
+                    mixedToday = true,
+                ),
+            )
+        }
+    }
+
     // AN-ANSWER-ICON (R433): the ANSWERED card at the largest font size, in the shape that carries TWO glyphs
     // - one beside « Matin : … », one beside « Après-midi : … ». The DAY answered card is already captured at
     // 200 % by aujourdhuiWithYearLarge and aujourdhuiPendingOverdueLarge; the split day was the gap, and it is

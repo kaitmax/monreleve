@@ -196,6 +196,35 @@ internal fun RecordedAnswer(
 }
 
 /**
+ * AN-GRANULARITY (R494). TODAY ALREADY HOLDS A WHOLE-DAY ROW BESIDE A HALF - test data, or a day a download brought
+ * down. It is SHOWN AS ITS ROWS SAY, each row on its own line under its name (« Journée entière : Domicile »,
+ * « Après-midi : En Suisse »), with the sync truth - and it offers NOTHING to tap: no option for the empty half and no
+ * « Modifier », because either path could add a row beside the whole day. Editing an existing row's kind is the
+ * calendar sheet's (it offers exactly this day's rows). Nothing here repairs the day; FW-GRANULARITY's census decides.
+ */
+@Composable
+internal fun MixedDayAnswer(
+    state: AujourdhuiState,
+    modifier: Modifier = Modifier,
+) {
+    val rows =
+        listOfNotNull(
+            state.fullDay?.let { AujourdhuiCopy.WHOLE_DAY to it },
+            state.morning?.let { AujourdhuiCopy.MORNING to it },
+            state.afternoon?.let { AujourdhuiCopy.AFTERNOON to it },
+        )
+    ChoiceSurface(modifier) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
+            rows.forEach { (name, entry) ->
+                val kind = AujourdhuiCopy.kindLabel(entry.kind.name, entry.absence?.name)
+                AnswerKindLine(AnswerLine(label = AujourdhuiCopy.halfLabel(name, kind), icon = kindIcon(entry.kind)))
+            }
+            AnswerStatusLine(answerStatus(rows.any { it.second.pending }, rows.any { it.second.failed }))
+        }
+    }
+}
+
+/**
  * What the answer shows: one AnswerLine per answered kind (AN-ANSWER-ICON, R430 - a half-day has two, so each
  * glyph belongs to its own half), the sync truth (AN-POLISH R435: words, glyph and the refused flag as ONE
  * value, so they cannot be set to disagree), and the provenance.

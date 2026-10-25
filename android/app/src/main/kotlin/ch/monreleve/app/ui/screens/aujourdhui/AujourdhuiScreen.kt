@@ -113,8 +113,11 @@ fun AujourdhuiScreen(
             style = FrontierType.caption,
         )
 
-        // Section B - today's choice (manual) or the detection surface (auto).
-        if (autoMode) {
+        // Section B - today's choice (manual) or the detection surface (auto). AN-GRANULARITY (R494): a today already
+        // holding a whole-day row beside a half is shown as its rows say and asks for nothing, in either mode.
+        if (state.mixedToday) {
+            MixedDayAnswer(state)
+        } else if (autoMode) {
             if (state.nearBorderNotice) NearBorderNotice()
             // AN-GRANULARITY (R490, R493): today recorded in the other granularity than the setting's says so, once.
             RecordedGranularityNotice(state.recordedAs)

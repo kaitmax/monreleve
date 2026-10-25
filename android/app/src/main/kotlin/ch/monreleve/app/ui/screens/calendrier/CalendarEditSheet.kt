@@ -99,8 +99,10 @@ fun CalendarEditSheetContent(
         Text(text = formatDayLong(day.isoDate), style = FrontierType.h3)
         Text(text = CalendarCopy.SHEET_QUESTION, style = FrontierType.bodyM)
         RecordedGranularityNotice(day.recordedAs)
+        // R494: a day already mixed shows its whole-day row beside a half, so every slot is named - the whole-day one
+        // as well, which a day held in one granularity never needs.
         drafts.forEach { draft ->
-            SlotEditor(day.isoDate, draft)
+            SlotEditor(day.isoDate, draft, named = draft.slot != Slot.FULL || drafts.size > 1)
         }
         LateNotice(day)
         ProvenanceBlock(day)
@@ -123,14 +125,20 @@ fun CalendarEditSheetContent(
 private fun SlotEditor(
     isoDate: String,
     draft: SlotDraft,
+    named: Boolean,
 ) {
     val missionInitiallyOpen = draft.kind == RecordedKind.MISSION_FRANCE || draft.kind == RecordedKind.MISSION_THIRD
     // AN-STATE (R310): the mission/absence chooser's expanded state survives a rebuild too, keyed by day+slot.
     var missionOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(missionInitiallyOpen) }
     var absenceOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(draft.kind == RecordedKind.ABSENCE) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
-        if (draft.slot != Slot.FULL) {
-            val label = if (draft.slot == Slot.MORNING) AujourdhuiCopy.MORNING else AujourdhuiCopy.AFTERNOON
+        if (named) {
+            val label =
+                when (draft.slot) {
+                    Slot.FULL -> AujourdhuiCopy.WHOLE_DAY
+                    Slot.MORNING -> AujourdhuiCopy.MORNING
+                    Slot.AFTERNOON -> AujourdhuiCopy.AFTERNOON
+                }
             Text(text = label, style = FrontierType.bodyM)
         }
         Option(AujourdhuiCopy.SUISSE, draft.kind == RecordedKind.SUISSE) {

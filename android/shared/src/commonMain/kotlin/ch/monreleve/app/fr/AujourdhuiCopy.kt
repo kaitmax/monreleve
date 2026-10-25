@@ -31,6 +31,12 @@ object AujourdhuiCopy {
     const val MORNING = "Matin"
     const val AFTERNOON = "Après-midi"
 
+    // AN-GRANULARITY (R494): the whole-day portion's name, beside the two halves' - for a day ALREADY holding a
+    // whole-day row next to a half, which the sheet and Aujourd'hui show as its rows say, each row under its name.
+    // MOVED, not added: it was ReleveCopy's private PORTION_FULL (the annex names a FULL row with it), which now
+    // reads it here, so the phrase still has one home (R206).
+    const val WHOLE_DAY = "Journée entière"
+
     // AN-GRANULARITY (R490, R493) - A DAY KEEPS THE GRANULARITY IT WAS RECORDED IN. The day/half-day setting decides
     // how NEW days are asked for; a day that already has rows is shown and edited in the granularity those rows
     // have. When that is not the setting's, the calendar sheet and Aujourd'hui say why in ONE sentence - so a

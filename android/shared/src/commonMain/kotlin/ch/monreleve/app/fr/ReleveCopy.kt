@@ -281,15 +281,16 @@ object ReleveCopy {
     private const val PROVENANCE_CONFIRMED = "Détection confirmée"
     private const val PROVENANCE_CORRECTED = "Détection corrigée"
 
-    /** Portions in words. AM/PM read AujourdhuiCopy.MORNING/AFTERNOON (one home). Internal to the meta line. */
+    /**
+     * Portions in words. AM/PM read AujourdhuiCopy.MORNING/AFTERNOON and FULL reads AujourdhuiCopy.WHOLE_DAY (one
+     * home each). Internal to the meta line.
+     */
     private fun annexPortion(code: String?): String =
         when (code) {
             "AM" -> AujourdhuiCopy.MORNING
             "PM" -> AujourdhuiCopy.AFTERNOON
-            else -> PORTION_FULL
+            else -> AujourdhuiCopy.WHOLE_DAY
         }
-
-    private const val PORTION_FULL = "Journée entière"
 
     /** A day with no entry (SPEC 12 item 5) reads CalendarCopy's one home for "Non renseigné". */
     val NON_RECORDED = CalendarCopy.NON_RENSEIGNE

@@ -199,6 +199,10 @@ class CalendrierScreenScreenshotTest {
         kind: RecordedKind,
     ) = EditableSlot(slot, kind, null, null, late = false, modifiedAt = null, firstRecordedAt = "2026-06-05T18:00:00Z")
 
+    // The morning of the mixed day, first recorded the same evening as its whole-day row.
+    private val sameDayMorning =
+        recordedHalf(Slot.MORNING, RecordedKind.SUISSE).copy(firstRecordedAt = "2026-06-10T18:00:00Z")
+
     @Composable
     private fun sheet(day: EditableDay) {
         FrontierTheme {
@@ -216,6 +220,20 @@ class CalendrierScreenScreenshotTest {
     @Test
     fun calendrierEditSheetRecordedHalves() {
         paparazzi.snapshot { sheet(recordedHalvesInWholeDayMode) }
+    }
+
+    // AN-GRANULARITY (R494): a day ALREADY holding a whole-day row beside its morning - each row offered under its
+    // name (the whole-day one too), no slot for the afternoon it does not hold. NEW baseline.
+    @Test
+    fun calendrierEditSheetMixed() {
+        paparazzi.snapshot {
+            sheet(
+                recordedWholeInHalfDayMode.copy(
+                    recordedAs = null,
+                    slots = recordedWholeInHalfDayMode.slots + sameDayMorning,
+                ),
+            )
+        }
     }
 
     @Composable
