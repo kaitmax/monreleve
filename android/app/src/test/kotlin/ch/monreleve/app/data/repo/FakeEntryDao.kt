@@ -55,3 +55,10 @@ class FakeEntryDao : EntryDao {
     override fun observeAllForAccount(accountTag: String): Flow<List<EntryEntity>> =
         flowOf(rows.values.filter { it.accountTag == accountTag })
 }
+
+/**
+ * AN-GRANULARITY (R492): the row a record() wrote, for a test that expects a WRITE. record() now returns a typed
+ * RecordResult, so a refusal can never be read as a write; this fails loudly, naming the refusal, if one comes back.
+ */
+fun RecordResult.written(): EntryEntity =
+    (this as? RecordResult.Recorded)?.entry ?: error("expected record() to write, but it was refused: $this")

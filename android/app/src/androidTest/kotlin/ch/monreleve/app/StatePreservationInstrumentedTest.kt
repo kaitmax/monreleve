@@ -16,6 +16,7 @@ import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.data.sync.ShellYearDownload
@@ -63,7 +64,7 @@ class StatePreservationInstrumentedTest {
     private class FakeRepo : EntryRepository {
         private val all = MutableStateFlow<List<EntryEntity>>(emptyList())
 
-        override suspend fun record(command: RecordCommand): EntryEntity =
+        override suspend fun record(command: RecordCommand): RecordResult =
             throw UnsupportedOperationException("not used by the state-preservation tests")
 
         override fun observePending(): Flow<List<EntryEntity>> = all

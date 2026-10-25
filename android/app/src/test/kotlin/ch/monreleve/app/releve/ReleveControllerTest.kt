@@ -9,6 +9,7 @@ import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.remote.ExportBytes
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.dossier.DossierPeriod
 import ch.monreleve.app.dossier.DossierTiles
@@ -83,7 +84,7 @@ private fun entry(
 /** A repository that emits a fixed set of rows. The controller reads observeAll() for the pending count. */
 private fun repoOf(vararg entries: EntryEntity): EntryRepository =
     object : EntryRepository {
-        override suspend fun record(command: RecordCommand): EntryEntity = error("unused in this test")
+        override suspend fun record(command: RecordCommand): RecordResult = error("unused in this test")
 
         // The controller reads the pending count from observeAll(); observePending() is unused here.
         override fun observePending(): Flow<List<EntryEntity>> = flowOf(emptyList())

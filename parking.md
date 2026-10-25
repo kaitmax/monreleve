@@ -3998,3 +3998,34 @@ no id - the shape of R549, FW-DOSSIER-EMPTY's replay-delta log) and the notice's
 COST OF REVERSING: not applicable.
 
 STATE:      OPEN - a follow-up by ruling, not yet scheduled.
+
+## PARK-W1 - replacing a day held whole by two halves (option B) is deferred, by ruling  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  relay/AN-GRANULARITY.txt, R490 - the operator's ruling on AN-CALENDAR's
+R478 (REPORT-AN-CALENDAR.txt, Q1).
+
+WHAT IT IS: A day recorded as one whole day (a FULL row) cannot become a morning and
+an afternoon on the phone. R490 keeps such a day in the granularity it was recorded
+in: in half-day mode it is offered as ONE whole-day choice with a sentence saying it
+was recorded as a whole day, and the repository refuses a half written beside it
+(R492, RecordResult.MixedGranularityRefused). Splitting it would mean writing AM and
+PM AND retiring the FULL row - and nothing can retire a row: the server's EntryAction
+is CREATED | MODIFIED only, and there is no entry delete path, on the wire or in the
+schema. Without the retirement the split is the R476 double count (FULL 1 + AM 0.5 +
+PM 0.5), which both engines and the printed Releve would carry.
+
+TAKEN:      Nothing built. A day keeps the granularity it was recorded in (R490).
+Option C (halves outrank FULL in the count) was REJECTED by the same ruling - it
+changes the Geneva-gated engines and prints contradictory rows in the Releve.
+
+NOT TAKEN:  Option B - write AM and PM and retire the FULL row. It needs an event
+that retires a row (a third EntryAction, or a delete path), a deliberate schema and
+wire decision on the server, the client's handling of it, and its place in the
+Releve's annex. Not to be improvised by a screen or a writer (the operator's words:
+"PARK it with this reasoning so nobody improvises it").
+
+COST OF REVERSING: a schema change (EntryAction), a wire change (the POST and the GET),
+the server's write path and annex, the client's record path and sync reconcile, and
+the repository's refusal (DayGranularity.wouldMixGranularity) taught the new event.
+
+STATE:      OPEN - deferred by ruling (R490).

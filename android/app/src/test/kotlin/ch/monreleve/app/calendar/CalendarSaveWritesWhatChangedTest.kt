@@ -11,6 +11,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import io.kotest.core.spec.style.FunSpec
@@ -65,7 +66,7 @@ private fun storeFor(granularity: String): SettingsStore =
 private class CountingRepository(private val inner: EntryRepository) : EntryRepository {
     val written = mutableListOf<RecordCommand>()
 
-    override suspend fun record(command: RecordCommand): EntryEntity {
+    override suspend fun record(command: RecordCommand): RecordResult {
         written += command
         return inner.record(command)
     }

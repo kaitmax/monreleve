@@ -11,6 +11,8 @@ import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.local.deviceClaimNow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 
@@ -41,9 +43,35 @@ data class RecordCommand(
     val detectedAt: String? = null,
 )
 
+/**
+ * AN-GRANULARITY (R492). What one record() did - typed, so a refusal can never be mistaken for a write.
+ *
+ * A write that would put a whole-day row beside a half (or a half beside a whole-day row) for the same account and day
+ * is REFUSED and writes nothing: the day keeps the granularity it was recorded in (R490). The screens are built so the
+ * person never reaches the refusal (they offer what DayGranularity.kt says); it is the guard for any writer that does
+ * not know the rule.
+ */
+sealed interface RecordResult {
+    /** The row was written - persisted PENDING, before any network. */
+    data class Recorded(val entry: EntryEntity) : RecordResult
+
+    /**
+     * R492: refused, nothing written. [requested] has no row of its own for [dayDate], and the day holds [held] - rows
+     * of the other granularity - so writing it would put FULL beside AM/PM, or the reverse.
+     */
+    data class MixedGranularityRefused(
+        val dayDate: String,
+        val requested: Portion,
+        val held: List<Portion>,
+    ) : RecordResult
+}
+
 interface EntryRepository {
-    /** Record (or edit) a day. Returns the persisted pending row. Performs no network. */
-    suspend fun record(command: RecordCommand): EntryEntity
+    /**
+     * Record (or edit) a day. Returns the persisted pending row, or - for a write that would mix a whole day with its
+     * halves - a refusal that wrote nothing (R492). Performs no network.
+     */
+    suspend fun record(command: RecordCommand): RecordResult
 
     /** The durable pending state the UI renders (DESIGN-SYSTEM section 2). */
     fun observePending(): Flow<List<EntryEntity>>
@@ -99,7 +127,7 @@ class LocalEntryRepository(
     // forbidden here. :app passes java.util.UUID; the id is still born at the tap, before any network.
     private val newMutationId: () -> String,
 ) : EntryRepository {
-    override suspend fun record(command: RecordCommand): EntryEntity {
+    override suspend fun record(command: RecordCommand): RecordResult {
         // The tap's account, stamped at the tap the way the mutation id is (R303). Fail closed to
         // UNOWNED when there is no active account rather than leaving the row untagged.
         val resolved = currentAccount()
@@ -122,7 +150,41 @@ class LocalEntryRepository(
             // KMP-4 (R463): how to be loud is now the injected reporter's - see the constructor.
             reportUnownedWhileSignedIn(complaint)
         }
-        val existing = dao.byAccountDayPortion(account, command.dayDate, command.portion)
+        // AN-GRANULARITY (R492): ONE WRITE AT A TIME THROUGH THIS REPOSITORY, so the day read for the check below is
+        // still the day when the row lands - two taps racing (a bulk confirmation and a sheet's save) cannot both pass
+        // the check and leave FULL beside a half. Its reach is stated, not implied: it serialises the writers that
+        // share this instance (the whole shell does); a writer that builds its own repository (the evening
+        // notification's receiver) is guarded by the same check, without the lock.
+        return writes.withLock { writeChecked(command, account) }
+    }
+
+    private val writes = Mutex()
+
+    /**
+     * R492: A DAY KEEPS THE GRANULARITY IT WAS RECORDED IN. The day's rows for THIS account - every portion, read
+     * through the full primary key - decide: a portion with a row of its own is an EDIT and is written; a portion
+     * without one, on a day that holds rows of the other granularity, would put FULL beside AM/PM (or the reverse) and
+     * is REFUSED, typed, before anything is written. The screens never reach this (they offer DayGranularity.kt's
+     * portions); it is the guard for a writer that does not know the rule.
+     */
+    private suspend fun writeChecked(
+        command: RecordCommand,
+        account: String,
+    ): RecordResult {
+        val day = Portion.entries.mapNotNull { portion -> dao.byAccountDayPortion(account, command.dayDate, portion) }
+        val held = day.map { it.portion }
+        return if (wouldMixGranularity(command.portion, held)) {
+            RecordResult.MixedGranularityRefused(command.dayDate, command.portion, held)
+        } else {
+            RecordResult.Recorded(write(command, account, existing = day.firstOrNull { it.portion == command.portion }))
+        }
+    }
+
+    private suspend fun write(
+        command: RecordCommand,
+        account: String,
+        existing: EntryEntity?,
+    ): EntryEntity {
         val entity =
             EntryEntity(
                 // Born at the tap, before any network call (D30/R219).

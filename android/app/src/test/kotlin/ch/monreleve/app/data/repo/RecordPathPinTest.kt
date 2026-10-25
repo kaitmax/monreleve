@@ -83,7 +83,7 @@ class RecordPathPinTest {
                     accountTag = account,
                 )
             assertEquals(expected, stored(dao, "2026-06-15", Portion.FULL), "the row that reached the dao")
-            assertEquals(expected, returned, "and the row record() returned")
+            assertEquals(RecordResult.Recorded(expected), returned, "and the row record() returned, typed (R492)")
             assertEquals(1, dao.rows.size, "one tap, one row")
         }
 

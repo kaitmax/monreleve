@@ -14,6 +14,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -61,7 +62,7 @@ private object HalfDays : SettingsStore {
 private class Writes(private val inner: EntryRepository) : EntryRepository {
     val made = mutableListOf<RecordCommand>()
 
-    override suspend fun record(command: RecordCommand): EntryEntity = inner.record(command).also { made += command }
+    override suspend fun record(command: RecordCommand): RecordResult = inner.record(command).also { made += command }
 
     override fun observePending(): Flow<List<EntryEntity>> = inner.observePending()
 
@@ -105,7 +106,14 @@ class WholeDayInHalfDayModeTest : FunSpec({
 
     test("R477 a half with a row of its own shows that row; only the half without one shows the whole day") {
         runTest {
-            val repo = holding(whole(TODAY, EntryKind.HOME), RecordCommand(TODAY, EntryKind.CH, Portion.AM))
+            // AN-GRANULARITY (R492): the repository no longer MAKES this day (AM beside FULL is refused), so it is
+            // stored the way such a day reaches the phone - a row written straight to the store.
+            val dao = FakeEntryDao()
+            val inner = LocalEntryRepository(dao, JUNE_15)
+            inner.record(RecordCommand(TODAY, EntryKind.CH, Portion.AM))
+            val morning = dao.all().single()
+            dao.upsert(morning.copy(clientMutationId = "stored", portion = Portion.FULL, kind = EntryKind.HOME))
+            val repo = Writes(inner)
             val controller = AujourdhuiController(repo, HalfDays, 2026, JUNE_15, this)
             advanceUntilIdle()
 

@@ -19,6 +19,7 @@ import ch.monreleve.app.data.local.RhythmKind
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.design.FrontierTheme
@@ -175,7 +176,7 @@ private class Record(days: Int) : EntryRepository {
             )
         }
 
-    override suspend fun record(command: RecordCommand): EntryEntity = error("this test records nothing")
+    override suspend fun record(command: RecordCommand): RecordResult = error("this test records nothing")
 
     override fun observePending(): Flow<List<EntryEntity>> = flowOf(emptyList())
 
