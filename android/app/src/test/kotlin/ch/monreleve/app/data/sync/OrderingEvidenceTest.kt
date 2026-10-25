@@ -63,9 +63,12 @@ class OrderingEvidenceTest {
             val repo = repo(dao)
 
             // Re-records of the same key, plus a distinct portion and a distinct day.
-            repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.CH))
-            repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME))
+            // AN-GRANULARITY (R492): the distinct portion of a day is its OTHER HALF. This used to record the day
+            // FULL and then its morning - FULL beside AM, which the repository now refuses (a day keeps the
+            // granularity it was recorded in), so the same three keys are made from a day held in halves.
             repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.CH, portion = Portion.AM))
+            repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME, portion = Portion.AM))
+            repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.CH, portion = Portion.PM))
             repo.record(RecordCommand(dayDate = "2027-06-19", kind = EntryKind.HOME))
 
             val entries = JSONObject(entriesRequestBody(dao.pending())).getJSONArray("entries")

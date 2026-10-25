@@ -208,7 +208,7 @@ class AccountScopeTest {
             // The user signs in BY CODE. CodeController sets the account; no activity restart.
             signedInAs = accountA
 
-            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME)).written()
 
             assertEquals(
                 "a day recorded after a code sign-in must carry that account, not UNOWNED - an " +
@@ -249,7 +249,7 @@ class AccountScopeTest {
 
             signedInAs = null
 
-            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME)).written()
 
             assertEquals(
                 "after a sign-out the fail-closed tag is correct - R303 is untouched by this fix",
@@ -291,7 +291,7 @@ class AccountScopeTest {
             val dao = FakeEntryDao()
             val repository = LocalEntryRepository(dao, clock, currentAccount = { null }, isSignedIn = { false })
 
-            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME))
+            val row = repository.record(RecordCommand(dayDate = "2027-06-20", kind = EntryKind.HOME)).written()
 
             assertEquals(UNOWNED_ACCOUNT, row.accountTag)
         }

@@ -31,8 +31,8 @@ class EntryRepositoryTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, parisNoon)
 
-            val first = repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME))
-            val second = repo.record(RecordCommand(dayDate = "2027-06-19", kind = EntryKind.CH))
+            val first = repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME)).written()
+            val second = repo.record(RecordCommand(dayDate = "2027-06-19", kind = EntryKind.CH)).written()
 
             // Each parses as a UUID, and the two differ - an id reused across taps would
             // let the server dedup a genuine second day away (D30).
@@ -47,7 +47,7 @@ class EntryRepositoryTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, parisNoon)
 
-            val entry = repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME))
+            val entry = repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME)).written()
 
             // 10:00 UTC is 12:00 in Paris in June (+02:00), stamped verbatim with an offset.
             assertEquals("2027-06-18T12:00:00.000+02:00", entry.clientClaimedAt)
@@ -59,7 +59,7 @@ class EntryRepositoryTest {
             val dao = FakeEntryDao()
             val repo = LocalEntryRepository(dao, parisNoon)
 
-            val entry = repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME))
+            val entry = repo.record(RecordCommand(dayDate = "2027-06-18", kind = EntryKind.HOME)).written()
 
             // zod .datetime({ offset: true }): seconds are required and an offset (Z or
             // +-HH:MM) must be present. The claim carries both, always.

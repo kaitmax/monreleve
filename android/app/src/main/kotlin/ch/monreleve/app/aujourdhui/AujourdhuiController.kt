@@ -21,7 +21,13 @@ import ch.monreleve.app.data.local.deviceClaimNow
 import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
+import ch.monreleve.app.data.repo.HeldGranularity
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
+import ch.monreleve.app.data.repo.dayGranularityOf
+import ch.monreleve.app.data.repo.heldGranularity
+import ch.monreleve.app.data.repo.portionsToOffer
+import ch.monreleve.app.data.repo.recordedInOtherGranularity
 import ch.monreleve.app.detection.DayChecks
 import ch.monreleve.app.detection.DetectionOutcome
 import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
@@ -38,6 +44,7 @@ import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.dossier.pendingEntriesForYear
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.GranularityChoice
+import ch.monreleve.app.onboarding.toChoice
 import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
 import ch.monreleve.app.settings.LoggingMode
@@ -175,7 +182,23 @@ data class ToAttendTo(
 
 data class AujourdhuiState(
     val today: String,
+    /**
+     * The granularity TODAY is asked for and edited in. AN-GRANULARITY (R490): the setting's for a day with no rows;
+     * for a day that has rows, THEIRS - so a day recorded whole stays one whole-day answer in half-day mode, and a day
+     * recorded in halves keeps its halves in whole-day mode.
+     */
     val granularity: GranularityChoice,
+    /**
+     * AN-GRANULARITY (R490, R493): the granularity today was RECORDED in, when it is not the setting's - the condition
+     * for the one-sentence notice. Null when they agree, when today is empty, and when it is already mixed (R494).
+     */
+    val recordedAs: GranularityChoice? = null,
+    /**
+     * AN-GRANULARITY (R494): today ALREADY holds a whole-day row beside a half (test data, or a day a download brought
+     * down). It is shown as its rows say - fullDay, morning and afternoon as they stand - and offers no edit that would
+     * add a row; nothing on the phone repairs it (FW-GRANULARITY's census decides what happens to such days).
+     */
+    val mixedToday: Boolean = false,
     /** AN-HOME section A (PARKAN-50): the holder's name (Settings.name); its first name drives the greeting.
      *  Null when the account has no name yet (AN-ONBOARD-2), greeted « Bonjour » alone. */
     val holderName: String? = null,
@@ -237,10 +260,6 @@ private fun AbsenceChoice.toReason(): AbsenceReason =
         AbsenceChoice.AUTRE -> AbsenceReason.AUTRE
     }
 
-/** AN-CALENDAR (R475): the person's granularity in the screen's vocabulary, from the settings as read NOW. */
-private fun granularityOf(settings: Settings?): GranularityChoice =
-    if (settings?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
-
 private fun Slot.toPortion(): Portion =
     when (this) {
         Slot.FULL -> Portion.FULL
@@ -248,7 +267,8 @@ private fun Slot.toPortion(): Portion =
         Slot.AFTERNOON -> Portion.PM
     }
 
-private fun Provenance.toRecordedProvenance(): RecordedProvenance =
+// AN-GRANULARITY (R519): internal, so the calendar sheet names a day's provenance through this same mapping.
+internal fun Provenance.toRecordedProvenance(): RecordedProvenance =
     when (this) {
         Provenance.MANUAL -> RecordedProvenance.MANUAL
         Provenance.DETECTED_CONFIRMED -> RecordedProvenance.DETECTED_CONFIRMED
@@ -345,24 +365,35 @@ class AujourdhuiController(
     /** The first frame, before the repository's first emission: today, the mode and the greeting's name, read now. */
     private fun firstFrame(): AujourdhuiState {
         val settings = settingsStore.load()
-        return AujourdhuiState(today = today, granularity = granularityOf(settings), holderName = settings?.name)
+        return AujourdhuiState(
+            today = today,
+            granularity = dayGranularityOf(settings).toChoice(),
+            holderName = settings?.name,
+        )
     }
 
     private fun emitState() {
         // R475: read ONCE per emission and passed down, so every figure in one frame comes from one snapshot.
         val settings = settingsStore.load()
-        val granularity = granularityOf(settings)
         val todays = lastEntries.filter { it.dayDate == today }
+        // AN-GRANULARITY (R490): today is asked for in the setting's granularity only while it has no rows; once it
+        // has rows it is shown and edited in THEIRS (DayGranularity.kt, the record path's one rule). This replaces
+        // AN-CALENDAR's R477 display, where a day held WHOLE showed in half-day mode as two halves answered with the
+        // FULL row's kind - whose « Modifier » then wrote a half beside FULL. Now it is ONE whole-day answer, the card
+        // a whole day has, with the sentence saying why; and a day held in halves keeps them in whole-day mode.
+        val setting = dayGranularityOf(settings)
+        val held = todays.map { it.portion }
+        val granularity =
+            if (Portion.FULL in portionsToOffer(held, setting)) GranularityChoice.DAY else GranularityChoice.HALF_DAY
         val mode = detectionModeStore.load()
         val halfDay = granularity == GranularityChoice.HALF_DAY
         val fullDay = todays.firstOrNull { e -> e.portion == Portion.FULL }
-        // AN-CALENDAR (R477): in half-day mode a day held WHOLE is ANSWERED - a half with no row of its own shows the
-        // FULL day's kind, so the day is not asked for again (REPORT-KMP-4 NOTICED 3) and no auto proposal is made
-        // for it. Nothing is written to show it. Changing such a half is R478's question, put to the operator.
-        val wholeDayHalf = fullDay.takeIf { halfDay }
-        val morning = todays.firstOrNull { e -> e.portion == Portion.AM } ?: wholeDayHalf
-        val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM } ?: wholeDayHalf
-        val autoMode = mode == LoggingMode.AUTO_DETECT
+        val morning = todays.firstOrNull { e -> e.portion == Portion.AM }
+        val afternoon = todays.firstOrNull { e -> e.portion == Portion.PM }
+        // R494: a day ALREADY holding a whole-day row beside a half is shown as its rows say and asks for nothing -
+        // neither a proposal nor a manual choice for its empty half, either of which would add a row beside FULL.
+        val mixed = heldGranularity(held) == HeldGranularity.MIXED
+        val autoMode = mode == LoggingMode.AUTO_DETECT && !mixed
         val checks = (lastTallies.firstOrNull { it.dayDate == today }?.toDayChecks()).orEmpty()
         // R320: nothing is proposed until the day is concluded (after the last window, the evening) - "Votre
         // journée vous sera proposée ce soir." ETAT C (a recorded slot) shows the recorded row, not a re-proposal.
@@ -384,6 +415,8 @@ class AujourdhuiController(
             it.copy(
                 today = today,
                 granularity = granularity,
+                recordedAs = recordedInOtherGranularity(held, setting)?.toChoice(),
+                mixedToday = mixed,
                 holderName = settings?.name,
                 loggingMode = mode,
                 fullDay = fullDay?.toDayEntry(),
@@ -542,19 +575,21 @@ class AujourdhuiController(
         absence: AbsenceChoice? = null,
     ) {
         scope.launch {
-            repository.record(
-                RecordCommand(
-                    // F8 (AN-FIX): today is read FROM THE CLOCK at the tap, so a day tapped after midnight is
-                    // filed under the new date even if the Activity was created the previous day.
-                    dayDate = todayInParis(clock),
-                    kind = kind.toEntryKind(),
-                    portion = slot.toPortion(),
-                    absenceReason = absence?.toReason(),
-                ),
-            )
+            val written =
+                repository.record(
+                    RecordCommand(
+                        // F8 (AN-FIX): today is read FROM THE CLOCK at the tap, so a day tapped after midnight is
+                        // filed under the new date even if the Activity was created the previous day.
+                        dayDate = todayInParis(clock),
+                        kind = kind.toEntryKind(),
+                        portion = slot.toPortion(),
+                        absenceReason = absence?.toReason(),
+                    ),
+                )
             // SPEC 13.2: written to Room, then enqueued for replay on connectivity. The drain is
             // network-constrained (SyncScheduler), so this is a no-op cost offline and drains when online.
-            requestSync()
+            // R492: a write the repository refused (a half beside a whole day, or the reverse) wrote nothing.
+            if (written is RecordResult.Recorded) requestSync()
         }
     }
 
@@ -588,22 +623,23 @@ class AujourdhuiController(
         detectedKind: RecordedKind,
     ) {
         scope.launch {
-            repository.record(
-                RecordCommand(
-                    dayDate = todayInParis(clock),
-                    kind = kind.toEntryKind(),
-                    portion = slot.toPortion(),
-                    absenceReason = absence?.toReason(),
-                    provenance = provenance,
-                    // R202: what detection proposed, kept alongside a correction. A proposal is only ever a
-                    // geographic side (CH/HOME); detectedKind is that side, never a mission or an absence.
-                    detectedKind = detectedKind.toEntryKind(),
-                    // The device's clock at the confirming/correcting tap, sent verbatim (never trusted as
-                    // evidence - the server assigns the recording timestamp).
-                    detectedAt = deviceClaimNow(clock),
-                ),
-            )
-            requestSync()
+            val written =
+                repository.record(
+                    RecordCommand(
+                        dayDate = todayInParis(clock),
+                        kind = kind.toEntryKind(),
+                        portion = slot.toPortion(),
+                        absenceReason = absence?.toReason(),
+                        provenance = provenance,
+                        // R202: what detection proposed, kept alongside a correction. A proposal is only ever a
+                        // geographic side (CH/HOME); detectedKind is that side, never a mission or an absence.
+                        detectedKind = detectedKind.toEntryKind(),
+                        // The device's clock at the confirming/correcting tap, sent verbatim (never trusted as
+                        // evidence - the server assigns the recording timestamp).
+                        detectedAt = deviceClaimNow(clock),
+                    ),
+                )
+            if (written is RecordResult.Recorded) requestSync()
         }
     }
 }

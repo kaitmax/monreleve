@@ -91,8 +91,8 @@ private fun qualityColour(quality: RecordQuality): Color? =
 
 /**
  * WHO produced the record, in the UI's own vocabulary (R202) - the wire's Provenance enum
- * (data/local) never enters design/ or ui/. In the manual product every entry is MANUAL; the
- * detection cases exist for AN9+ and are carried so the cell renders them without a later change.
+ * (data/local) never enters design/ or ui/. Detected days exist on the phone (AN-AUTO records them; AN-PULL
+ * brings them down), so every surface names the day's own provenance (AN-GRANULARITY R519).
  * Rendered in the cell's a11y announcement (SPEC 8: provenance is shown wherever an entry is,
  * "never as an icon alone"); DETECTED_CORRECTED also draws the corner mark.
  */
@@ -128,6 +128,9 @@ fun DayCell(
     // DayCellCopy). The check sits where the country dot would; the dot is suppressed while selecting, and the
     // kind LETTER stays at the bottom-left, so the kind is never lost.
     selected: Boolean = false,
+    // AN-GRANULARITY (R519): the afternoon's provenance when the halves were recorded differently, so the
+    // announcement states each half's rather than the morning's for both. Null otherwise.
+    secondProvenance: DayProvenance? = null,
 ) {
     val description =
         DayCellCopy.contentDescription(
@@ -139,6 +142,7 @@ fun DayCell(
             provenance?.name,
             secondKind?.letter,
             selected,
+            secondProvenance?.name,
         )
 
     BoxWithConstraints(

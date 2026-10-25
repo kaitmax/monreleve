@@ -1,0 +1,765 @@
+================================================================================
+REPORT-AN-GRANULARITY
+A DAY KEEPS THE GRANULARITY IT WAS RECORDED IN
+================================================================================
+
+TASK     relay/AN-GRANULARITY.txt with its ADDENDUM (R519), rulings R490-R497 and
+         R519 - none renumbered: a scan of every REPORT-*.txt, README.md, CLAUDE.md,
+         parking.md, tasks/ and docs/ on main found none of them taken.
+BASE     28fcea7 (origin/main; contains an-calendar and an-pull)
+BRANCH   an-granularity, worktree C:/wt/an-granularity (R349), created from
+         origin/main with its upstream unset; .session-lock.json written there
+         (gitignored, never committed, removed at the end). PENDING MERGE - not
+         merged; production never pushed.
+DEVICE   SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, USB, Africa/Casablanca,
+         auto_time 1. THE PHONE DROPPED OFF USB DURING R496 (see R496, STATUS).
+
+NOTE ON ACCENTS. Pure ASCII by the transport constraint (R155/R168). French copy
+quoted here is TRANSLITERATED; the accented originals live in :shared's fr/ and are
+named at each quotation (NEW COPY). Nothing was copied FROM this file into source.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+The operator's ruling on R478 (R490) is built, in the record path and on every
+screen that writes a day:
+
+- :shared's record path decides a day's granularity (DayGranularity.kt beside
+  EntryRepository.kt): rows present -> theirs, none -> the setting's, a day already
+  mixed -> exactly its rows. LocalEntryRepository.record() now returns a typed
+  RecordResult and REFUSES (RecordResult.MixedGranularityRefused, nothing written)
+  a portion with no row of its own on a day holding rows of the other granularity.
+  Tests in commonTest (R492).
+- The calendar sheet, Aujourd'hui (its choice, its "Modifier", its detection
+  confirm) and bulk confirmation all offer/write a recorded day in ITS granularity
+  and an empty day in the setting's, with one new sentence where the two differ
+  (R493). The rhythm writes no entry at all - there was nothing to change (R491).
+- A day already mixed is shown as its rows say and never grown or repaired (R494).
+- No Float carries the declarable rate to a screen: Aujourd'hui animates a
+  progress, not the rate; a fence on FenceRoot refuses the Float shapes; the Geneva
+  strings 39,16 % and 4,16 % are asserted from the shared fixtures (R495).
+- Every surface that names who recorded a day reads the day's own provenance from
+  one home (R519).
+
+Every behaviour went RED on main's logic first (pasted below) and then GREEN.
+
+R496 - THE DRIVE ON THE S9 - IS NO RESULT. The phone was read as found, the audit
+build installed, a NEW test account signed in by code against the local stack, and
+onboarding reached step 6 of 8; then the session was interrupted (a transient
+network error on the session's side) and the phone dropped off USB. On resuming
+it read "offline", and after one `adb reconnect offline`, "unauthorized" - the
+phone asks on its own screen to authorize USB debugging, which nothing here can
+answer. None of R496's four steps ran. The phone is NOT left as found (R496).
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+INCOMPLETE - R496 NOT RUN (the S9 "unauthorized" after a USB drop; PARK-W7).
+FULL :app:gate GREEN on 5ed8b06; iOS cloud run 40194045565 GREEN on 5ed8b06;
+the reported tip is the commit after 5ed8b06 and differs from it ONLY in this
+file (PUSH PROOF).
+
+FULL :app:gate --rerun-tasks, run IN THIS SESSION on 5ed8b06 (the report and
+PARK-W2..W7 committed - every line of code, test, baseline and register entry
+this branch has), after ./gradlew --stop, the tree clean (12:39:42-12:51:35 UTC,
+about 1.1 GB free at its start):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1340 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 50s
+    236 actionable tasks: 236 executed
+    GATE_EXIT=0
+  1340 = R1's 1299 + this branch's 41 (JUnit XML: :app 1340/0); :shared 101/0
+  (86 + GranularityRuleTest's 15) - the whole suites ran, not a subset left by
+  dead workers.
+  COMPILER WARNINGS AFTER: 8 `w:` lines, the SAME 8 as BEFORE (R1) line for line
+  - none added. (KSP1's "Language version 1.9 is deprecated" printed in some of
+  this session's INCREMENTAL builds when :shared changed; the --rerun-tasks gate
+  printed it neither in R1 nor here - NOTICED.)
+
+iOS CLOUD RUN (R573) 40194045565, dispatched ONCE on an-granularity at 5ed8b06
+(`gh workflow run ios-shared.yml --ref an-granularity`): conclusion success;
+"iOS SIMULATOR TESTS EXECUTED: 98" in 14 classes, 0 failures - BEFORE's 83 in 13
+classes (R1(c)) plus GranularityRuleTest tests=15 failures=0; the six GENEVA lines
+at 39.16 (c) and 4.16 (special), "all assertions held"; iPhone 17 Pro simulator,
+Xcode 26.0.1. Job time 3m 49s (12:39:07-12:42:56 UTC), run duration 233 s.
+BILLING: GitHub's timing endpoint read `"billable":{"MACOS":{"jobs":1,
+"total_ms":0}}` - recorded as read, not interpreted; at whole-minute rounding
+the job is 4 macOS minutes, which the private repository's 10x macOS multiplier
+counts as 40 included minutes. Runs this session: 1 (BEFORE was read from an
+existing run on main's tree, not dispatched).
+
+Every increment was checked before it was committed: `./gradlew fastCheck`
+(R390) + :app:testDebugUnitTest (counts read from the JUnit XML, each task
+executed) + :app:verifyPaparazziDebug + :app:compileDebugAndroidTestKotlin:
+
+    aa12fe6  R492                       :app 1300/0  :shared 101/0
+    7b259a6  R493 calendar sheet        :app 1306/0  :shared 101/0
+    f4fbd08  R493 Aujourd'hui           :app 1311/0  :shared 101/0
+    9e7bf64  R493 bulk confirmation     :app 1313/0  :shared 101/0
+    144aae4  R493 detection's confirm   :app 1314/0  (fastCheck + :app tests)
+    061b58b  R494                       :app 1320/0  :shared 101/0
+    0538fe3  R495                       :app 1326/0  :shared 101/0
+    942581c  R519                       :app 1340/0  :shared 101/0
+
+ON THE S9, connectedDebugAndroidTest filtered to ProvenanceShownInstrumentedTest
+(R519): RED 4 of 6 on main's surfaces, then GREEN 6 of 6 on the R519 code before
+its final file split (CalendarSheetProvenance.kt: code motion, no behaviour; the
+JVM suite re-ran green after it). The full instrumented suite was NOT run in this
+session (the gate compiles it; RateOneStringInstrumentedTest and the others were
+not executed) - and cannot be until the phone is re-authorized.
+
+--------------------------------------------------------------------------------
+R273
+--------------------------------------------------------------------------------
+Read before any change: relay/AN-GRANULARITY.txt in full with its addendum, from
+the MAIN checkout (untracked there, never committed here); CLAUDE.md at the repo
+root (the parent Downloads/ CLAUDE.md belongs to another project and was ignored,
+as this repository's says). REPORT-AN-CALENDAR.txt in full - R476's findings (a
+FULL row and AM/PM rows both stand and are counted twice by the server, both
+engines and the printed Releve), R478's question (Q1 A-D and the mirror,
+PARK-C1), Q4 (R473's rule on Aujourd'hui) and ITEM 4's Float defect (0.83 as a
+Float truncating to 0,82; Geneva's 39,16 % to 39,15 %). REPORT-AN-PULL.txt in full
+- the download, R483 (FULL beside AM/PM stored as served) and NOTICED 1 (the sheet
+says "Saisie manuelle" of a detected day; R519's origin). The record path in
+:shared (EntryRepository.kt, EntryDao.kt, EntryEntity.kt, WireEnums.kt,
+AndroidRecordSeams.kt) and every UI and receiver that writes an entry (R491).
+REPORT-KMP-UP2.txt's warnings section, for the BEFORE count.
+
+Named AN-GRANULARITY.
+
+--------------------------------------------------------------------------------
+R1
+--------------------------------------------------------------------------------
+(a) origin/main = 28fcea7 after `git fetch`. origin/an-calendar (021e225) and
+    origin/an-pull (f18fc67) are both ANCESTORS of it; control: origin/main is not
+    an ancestor of an-pull.
+
+(b) FULL :app:gate --rerun-tasks ON 28fcea7, run IN THIS SESSION in this worktree,
+    after ./gradlew --stop, before any file was touched (00:59:26-01:10:05 UTC):
+      [clean-worktree] OK: no unstaged changes to tracked files (R393)
+      test floor OK: 1299 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 10m 37s
+      236 actionable tasks: 236 executed
+      GATE_EXIT=0
+    :shared's suite inside it: 86 tests, 0 failures (JUnit XML).
+
+    COMPILER WARNINGS BEFORE: 8 `w:` lines - LocalLifecycleOwner deprecated
+    (MainActivity.kt:777, x2), OVERRIDE_DEPRECATION (LiveLocation.kt:134, x2),
+    Criteria deprecated (MockProviderReplay.kt:4, x2), and ForcedSignOutTest.kt:482
+    and :518 (advanceUntilIdle without the opt-in; out of scope, not touched).
+
+(c) iOS BEFORE: 83 tests in 13 classes, taken from the orchestrator's run
+    40143603745 on 0a32a10 - whose tree is 28fcea7's: `git diff --stat 0a32a10
+    28fcea7` prints nothing - read from its log, not dispatched again: GenevaConformanceTest 2,
+    CalendarDayGoldenTest 9, StoredEnumNamesTest 6, AuthWireGoldenTest 19,
+    CancellationTest 5, RhythmRepositoryPinTest 6, DownloadRateParityTest 1,
+    EntriesDownloadTest 19, EntriesWireGoldenTest 6, DossierWireGoldenTest 5,
+    ParisDayDstTest 2, FixtureGeneratorTest 2, SharedModuleTest 1; the Geneva cases
+    at 39.16 (c) and 4.16 (special).
+
+(d) THE S9, read before anything wrote to it (00:59:31 UTC, phone 01:59 +01):
+      adb devices -l   232bcd8c300c7ece device product:starltexx model:SM_G960F
+                       transport_id:7 (USB)
+      stay_on_while_plugged_in 0 | airplane_mode_on 0 | auto_time 1 |
+      auto_time_zone 1 | Africa/Casablanca | adb reverse: empty
+      installed: ch.monreleve.app only, 0.1.0 (1), flags [ HAS_CODE
+                 ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ] - not debuggable;
+                 firstInstallTime 2026-10-24 20:33:15, lastUpdateTime 20:42:13
+      base.apk (pulled) sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+                 = AN-PULL's audit build of d970907, as KMP-UP2 left it
+      certificate (apksigner): CN=Android Debug, SHA-256
+                 ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+      on screen: the launcher resumed, the app not running, the display off
+                 (dozing).
+    THE DEVICE DATA: NOT READABLE - `run-as: package not debuggable:
+    ch.monreleve.app`, and /data/data/ch.monreleve.app/shared_prefs "Permission
+    denied". The six monreleve.* preferences files and the Room row counts are
+    therefore NO RESULT, not "empty". (KMP-UP2 left the phone signed out on this
+    build; that was not re-verified on screen before the first instrumented run.)
+
+--------------------------------------------------------------------------------
+R490 (recorded)
+--------------------------------------------------------------------------------
+The operator's ruling on R478, verbatim from the prompt: "A DAY KEEPS THE
+GRANULARITY IT WAS RECORDED IN. The day/half-day setting decides how NEW days are
+asked for. A day that already has rows is shown and edited in the granularity those
+rows have: a day held FULL, seen in half-day mode, offers ONE whole-day choice and
+one sentence saying it was recorded as a whole day - never half-day controls that
+quietly write FULL; a day held in halves, seen in whole-day mode, keeps half-day
+editing (PARK-C1, closed by this ruling) - never a FULL row added beside them;
+Aujourd'hui's << Modifier >> (AN-CALENDAR Q4) and every other place that writes a
+day follow the same rule. Option C (halves outrank FULL in the count) is REJECTED:
+it changes the Geneva-gated engines and prints contradictory rows in the Releve.
+Option B (replace FULL by two halves) is DEFERRED: it needs an event that retires a
+row, a deliberate schema and wire decision. PARK it with this reasoning so nobody
+improvises it." -> PARK-W1 (option B, with that reasoning). PARK-C1 CLOSED by
+ruling in the register.
+
+R490 SUPERSEDES AN-CALENDAR's R477 DISPLAY (a day held whole shown as two halves
+answered with the FULL row's kind). Its code (`shownFor`'s FULL fallback,
+EditableSlot.wholeDay, AujourdhuiController's wholeDayHalf) went with it, and its
+tests were restated, not deleted silently (R493 below).
+
+--------------------------------------------------------------------------------
+R491 - EVERY WRITE PATH, LISTED FIRST
+--------------------------------------------------------------------------------
+Searched before any change: every `.record(` / `RecordCommand(` / `.upsert(` in
+:app main, debug and release and :shared commonMain. POSITIVE CONTROL: the search
+found the calendar sheet's writer (CalendarController.kt:369, `for (command in
+changed) repository.record(command)`) and the bulk writer (:311).
+
+  path                          how it decided FULL vs AM/PM ON MAIN
+  1 calendar sheet (save)       slots from the SETTING (FULL in whole-day mode,
+    CalendarController            AM+PM in half-day mode); R477 showed a FULL row in
+                                  both halves; writes the portions that changed
+                                  (R473) - so a half of a whole day was written
+                                  beside FULL
+  2 Aujourd'hui choice and      ChoiceCard dispatched on state.granularity = the
+    "Modifier"                    SETTING: Slot.FULL in whole-day mode, MORNING/
+    AujourdhuiController.record   AFTERNOON in half-day mode, whatever today held
+  3 Aujourd'hui detection       the auto surfaces on the SETTING's granularity
+    confirm / correct             (dayProposal for FULL, morning/afternoonProposal
+    AujourdhuiController.         for halves) - a day held in halves in whole-day
+    recordDetected                mode was proposed a WHOLE day
+  4 bulk confirmation           ALWAYS Portion.FULL, whatever the day held or the
+    CalendarController.           setting said
+    confirmBulk
+  5 evening notification        ALWAYS Portion.FULL, and only for a day with no row
+    EveningActionReceiver via     at all (decideEveningTap refuses any recorded day)
+    decideEveningTap
+  6 the rhythm                  WRITES NO ENTRY. R340: a projection is never a
+                                  record - Forecast.imaginedEntriesToYearEnd builds
+                                  in-memory FULL rows for the days AFTER today and
+                                  never touches the store (pinned by SimulationCon-
+                                  trollerTest's ThrowingEntryRepository, "the
+                                  simulator must not record a day (R340)")
+  7 DevRecorderActivity         FULL through the repository; the class is in main
+                                  but declared only in the debug manifest (the
+                                  debug/audit variants; checkReleaseNoDevComponent
+                                  proves no release APK declares it)
+  8 DebugSeeder(Activity)       dao.upsert directly, FULL and AM/PM fixtures;
+                                  src/debug only (debug/audit), never release
+  9 SyncEngine reconcile and    dao.upsert of the SERVER's rows - not a person's
+    EntriesDownload               write; stores what the server holds, so it CAN
+                                  store a day already mixed (R494)
+  DetectionSampler writes tallies (TallyDao), not entries; WireDumpActivity writes
+  nothing.
+
+--------------------------------------------------------------------------------
+R492 - THE RULE LIVES IN THE RECORD PATH
+--------------------------------------------------------------------------------
+:shared commonMain, data/repo/DayGranularity.kt (beside EntryRepository.kt):
+  dayGranularityOf(settings)        the ONE reading of the setting's string
+  heldGranularity(portions)         NONE / WHOLE_DAY / HALF_DAYS / MIXED
+  portionsToOffer(held, setting)    rows -> theirs; none -> the setting's; MIXED ->
+                                    exactly the rows held
+  recordedInOtherGranularity(...)   the notice's condition
+  wouldMixGranularity(portion, held)  portion has no row of its own AND the day
+                                    holds the other granularity
+LocalEntryRepository.record() reads the account's day (all three portions, full
+primary key), and REFUSES with RecordResult.MixedGranularityRefused(dayDate,
+requested, held) - nothing written - or writes and returns RecordResult.Recorded
+(entry). Writes through one repository are serialised by a Mutex (its reach is
+per instance: PARK-W4). R425's canary still runs before any DAO call.
+
+THE REPOSITORY DECIDES RECORDED GRANULARITY FROM ROWS; THE SETTING STAYS THE
+SCREENS' INPUT. No settings seam was added to the 7-parameter constructor: the
+refusal needs rows only, and an empty day accepts either granularity for its first
+write. The screens pass the setting (read at use, R475) to the same functions.
+
+TESTS (GranularityRuleTest, commonTest, the real LocalEntryRepository over
+DownloadRig's in-memory DAO - PARK-Y1's second fake, reused, not a third). RED
+against an inert skeleton (the types present, the functions answering nothing, no
+guard): 15 tests, 11 failed on their own assertions, e.g.
+    expected:<MixedGranularityRefused(dayDate=2026-06-10, requested=AM,
+      held=[FULL])> but was:<Recorded(entry=EntryEntity(clientMutationId=
+      granularity-1, dayDate=2026-06-10, portion=AM, kind=CH, ...
+    expected:<MixedGranularityRefused(dayDate=2026-06-10, requested=FULL,
+      held=[AM, PM])> but was:<Recorded(...
+    expected:<MixedGranularityRefused(dayDate=2026-06-10, requested=PM,
+      held=[FULL, AM])> but was:<Recorded(...    (a row added to a mixed day)
+    expected:<[AM, PM]> but was:<[FULL]>          (an empty day, half-day mode)
+    expected:<31> but was:<16>                    (every shape x both settings)
+  the four that passed: the setting mapping and three controls the refusal must
+  not overreach (the other half of a day in halves is written; an empty day takes
+  either granularity; another account's whole day does not refuse mine, every
+  read naming the signed-in account). GREEN 15/15.
+  Every refusal asserts nothing was written (the DAO's write counter, the rows
+  byte-equal) AND that the same repository still writes the legitimate edit.
+
+MAIN'S TRIPWIRE FIRED AS IT PROMISED. MixedPortionsTodayTest's header said the
+answer to R478 would turn it red. Main's file, run against this repository: RED
+3/3 - "Missing elements from index 1 expected:<[FULL, AM, PM]> but was:<[FULL]>"
+and "expected:<2.0> but was:<1.0>" twice. Rewritten: the phone can no longer MAKE
+the day (refusals asserted); a day ALREADY mixed, seeded as stored data, still
+counts twice in both engines and the month tiles (option C rejected).
+
+FORCED BY THE TYPED RESULT, no behaviour change (one scripted edit, count-asserted,
+R211): six EntryRepository fakes' return types; eight reads of record()'s row
+(`.written()`, a test helper beside FakeEntryDao, or `Recorded(expected)` in
+RecordPathPinTest - which said "these run UNEDITED"; one line changed, stated);
+OrderingEvidenceTest's "distinct portion" is now a day's other half (FULL then AM
+is refused); EveningActionReceiver no longer posts "Enregistre" for a refused tap.
+
+--------------------------------------------------------------------------------
+R493 - EACH SCREEN FOLLOWS IT (tests first, RED on main, per path)
+--------------------------------------------------------------------------------
+All in RecordedGranularityTest (real controllers over the real repository) unless
+named. Each "nothing written" assertion is paired with what WAS written and the
+day's stored rows.
+
+THE CALENDAR SHEET (7b259a6). editableDay builds its slots from portionsToOffer;
+EditableDay.recordedAs carries the notice's condition; the sheet shows
+RecordedGranularityNotice. RED against main's logic, 4 of 5:
+    expected:<[(FULL, MISSION_FRANCE)]> but was:<[(MORNING, MISSION_FRANCE),
+      (AFTERNOON, MISSION_FRANCE)]>
+    expected:<[(FULL, CH)]> but was:<[(AM, CH), (PM, CH)]>
+    expected:<[(MORNING, SUISSE), (AFTERNOON, DOMICILE)]> but was:<[(FULL, null)]>
+    "Expected value to not be null, but was null."  (the mirror had no halves)
+  the fifth, the control (empty days follow the setting), passed on main. GREEN.
+  WholeDayInHalfDayModeTest's three sheet tests moved here: "opens a day held
+  whole with both halves answered" is R490's opposite, restated as one whole-day
+  slot; "saving untouched writes nothing" and "provenance stated once" kept as they
+  were. R475's sheet test opened a RECORDED day to show the sheet follows the
+  setting; under R490 only an empty day does, so it opens one.
+
+AUJOURD'HUI, ITS CHOICE AND ITS "MODIFIER" (f4fbd08). state.granularity is now the
+granularity TODAY is asked for in; ChoiceCard and the auto surfaces dispatch on it;
+recordedAs drives the same notice; R477's wholeDayHalf removed. The tap goes to the
+slot ChoiceCard's own dispatch offers for the emitted state. RED, 4 of 5:
+    expected:<DAY> but was:<HALF_DAY>
+    expected:<[(FULL, CH)]> but was:<[(AM, CH)]>      ("Modifier" on a whole day)
+    expected:<HALF_DAY> but was:<DAY>
+    expected:<[(PM, CH)]> but was:<[(FULL, CH)]>      (the mirror)
+  the control (an empty today follows the setting) passed. GREEN.
+  WholeDayInHalfDayModeTest REMOVED: its last two tests are superseded (one is
+  R490's opposite, restated; the other displays an already-mixed day, restated
+  under R494).
+
+BULK CONFIRMATION (9e7bf64). Each chosen day gets portionsToOffer(its rows, the
+setting read at the confirming tap); one sync, only if something was written. The
+selection: a day held whole, a day in halves, an empty day, as "Mission en
+France". RED against main's confirmBulk, 2 of 2 (half-day and whole-day modes):
+    expected:<[]> but was:<[MixedGranularityRefused(dayDate=2026-06-09,
+      requested=FULL, held=[AM, PM])]>
+  (main asks for FULL on the day in halves; before R492 it would have been written
+  beside them.) GREEN: half-day mode writes FULL / AM+PM / AM+PM, whole-day mode
+  FULL / AM+PM / FULL; each day's stored rows exactly its writes.
+  CalendarBulkWriteTest (whole-day mode, empty days FULL) unchanged and green.
+
+DETECTION'S CONFIRM (144aae4, AujourdhuiAutoControllerTest). Whole-day mode, the
+morning recorded by hand, the afternoon's two checks in France: no whole-day
+proposal, the afternoon proposed, confirming writes PM DETECTED_CONFIRMED beside
+the manual AM. The controller change was already in, so the RED was shown by
+PLANTING MAIN'S DECISION (the granularity line replaced by `setting.toChoice()`,
+verified at AujourdhuiController.kt:384): "Expected null but actual was NotSure";
+reverted byte-identical (cmp). GREEN.
+
+THE RHYTHM: nothing to build - it writes no entry (R491 row 6). R493's sentence
+"the rhythm writes only empty days' granularity from the setting, and existing
+days in theirs" has no subject in this codebase. Not built (QUESTIONS).
+
+THE EVENING NOTIFICATION: not named by R493 and unchanged in what it writes - a
+whole day, only for a day with no row. R492 makes a racing refusal show the day
+as it stands instead of "Enregistre". Whether it should write the setting's
+granularity for an empty day in half-day mode is PARK-W2 (QUESTIONS).
+
+--------------------------------------------------------------------------------
+R494 - DAYS ALREADY MIXED ARE SHOWN, NOT REPAIRED
+--------------------------------------------------------------------------------
+(061b58b) The sheet offers a mixed day exactly its rows, each named (the whole-day
+slot too: AujourdhuiCopy.WHOLE_DAY, moved from ReleveCopy's private PORTION_FULL);
+Aujourd'hui shows a mixed today read-only (MixedDayAnswer, PARK-W3) with no
+detection proposal; bulk rewrites a mixed day's rows and adds none; the repository
+refuses any add; nothing on the phone deletes or rewrites such a day.
+  RED: Aujourd'hui's test against the skeleton - "expected:<true> but was:<false>"
+  (mixedToday). The sheet and bulk tests were already green (the rule landed in
+  R492/R493), so they were PROVEN TO BITE by a plant: portionsToOffer's MIXED
+  branch replaced by the setting's portions (verified at DayGranularity.kt:68):
+    expected:<[(FULL, DOMICILE), (MORNING, SUISSE)]> but was:<[(MORNING, SUISSE),
+      (AFTERNOON, null)]>
+    expected:<[(FULL, HOME), (AM, HOME)]> but was:<[(FULL, HOME)]>
+  reverted byte-identical. The fourth ("an untouched save writes and deletes
+  nothing") is an absence with its positive control (the day's rows read back).
+
+MIXED DAYS SEEN ON THE S9: NO RESULT. The phone's database is not readable (the
+audit build is not debuggable) and R496 never reached a screen with recorded days.
+The new test account holds no day at all on the server (Entry 0, EntryEvent 0),
+so nothing it could bring down is mixed.
+FOR FW-GRANULARITY'S CENSUS, read-only on the LOCAL dev database (never
+production): 3 mixed days out of 1391 account-days, all from earlier sessions'
+tests - an-icon@example.ch 2026-10-20 (FULL,AM,PM), an-polish@example.ch
+2026-10-20 (FULL,AM,PM), an-calendar.r476@monreleve.test 2026-10-19 (FULL,AM,PM).
+
+--------------------------------------------------------------------------------
+R495 - NO Float CARRIES A DECLARABLE RATE TO THE SCREEN
+--------------------------------------------------------------------------------
+(0538fe3) THE CHANGE: Aujourd'hui no longer animates the rate. MovingRate.kt
+animates a PROGRESS 0..1 and computes the figure from the two Doubles either side
+(rateBetween; rememberMovingRate) - the engine's own Double at rest, a Double in
+between. AN-CALENDAR's shownRate went with the Float it served. The day-count tiles
+keep their Float animation (they are not rates).
+
+THE FENCE: RateFloatFenceTest. Roots (FenceRoot, each pinned): :app
+src/main/kotlin pinned by RateDisplay.kt; :shared commonMain pinned by
+DeclarableRate.kt. It refuses, comments and strings blanked first: a rate
+converted to Float; an expression holding a rate converted; a rate handed to
+animateFloatAsState/animateValueAsState; a rate held as a Float; a function named
+for a rate returning Float. A rate is recognised BY NAME (rate, percentage,
+*declarableRate*, camelCase *Rate / *Percentage, rate+Capital); NOT_THE_RATE names
+the three that only look like one (employmentRate, employerRate, customRate),
+asserted exactly three. DRAWING_BOUNDARIES exempts exactly one drawing coordinate,
+PrevisionRail.frac (the forecast rail's fill fraction for fillMaxWidth(Float)),
+asserted to still match. Its limit, stated in the file: names, not data flow.
+THE FILES IT READS BY NAME (subjectFile; each must exist and name the rate in its
+code) - 23: calc/DeclarableRate.kt, calc/Calculate.kt, calc/Types.kt,
+dossier/DossierPayload.kt (:shared); fr/format/Numbers.kt, design/RateDisplay.kt,
+design/Zones.kt, design/rail/RailGeometry.kt, design/rail/ThresholdRail.kt,
+ui/screens/aujourdhui/AujourdhuiScreen.kt, ui/screens/aujourdhui/MovingRate.kt,
+forecast/ForecastController.kt, forecast/ForecastState.kt,
+ui/screens/prevision/PrevisionScreen.kt, ui/screens/prevision/PrevisionRail.kt,
+forecast/SimulationController.kt, forecast/SimulationState.kt,
+ui/screens/simulation/SimulationCard.kt, ui/screens/releve/ReleveSections.kt,
+parametres/DeviceRate.kt, parametres/ParametresController.kt,
+ui/screens/parametres/ParametresRateChange.kt, ui/screens/comparison/
+ComparisonScreen.kt (:app). AujourdhuiController and :shared's Forecast.kt and
+Simulation.kt carry the TeleworkResult whole and never name the field.
+POSITIVE CONTROLS: the vocabulary must find the real `name: Double` declarations
+(Numbers.kt rate, RateDisplay.kt declarableRate, ThresholdRail.kt percentage,
+Types.kt declarableRate, ForecastState.kt currentRate); snippets both ways (6
+caught, 7 let through).
+
+RED ON MAIN - THE LIVE INSTANCE (R178), not a plant:
+    AujourdhuiScreen.kt:224  a rate converted to Float
+    AujourdhuiScreen.kt:224  a rate handed to a Float animation
+        val animRate by animateFloatAsState(result.declarableRate.toFloat(), numberSpec)
+  GREEN after the change. PLANTED (R180), verified at the line, reverted
+  byte-identical: PrevisionScreen.kt:216 `formatDeclarableRate(projection.
+  currentRate.toFloat().toDouble())` -> RED "PrevisionScreen.kt:216  a rate
+  converted to Float".
+
+THE GENEVA STRINGS (DeclarableRateDisplayTest), from fixtures/geneva-cases.json -
+the file both engines are gated on - read as text: each of the six cases through
+the engine, then Aujourd'hui's figure at rest, the rail's drawn label and spoken
+name, and the Releve's rate through parseDossier, each equal to the published
+figure written independently (BigDecimal, two decimals cut, comma, U+00A0, %);
+case c "39,16 %" and case special "4,16 %" asserted literally; case c through a
+Float pinned as the hazard ("39,15 %"). These are pins (main's at-rest hand-over
+already produced them); the RED of R495 is the fence's.
+No baseline moved: verifyPaparazziDebug green (at rest the figure is the engine's
+Double, as before).
+
+--------------------------------------------------------------------------------
+R519 - THE PROVENANCE THE CALENDAR STATES
+--------------------------------------------------------------------------------
+(942581c) ONE HOME (R206): DayCellCopy.provenanceLabel(name) - MANUAL is
+AujourdhuiCopy.MODE_MANUAL; the two detected labels held there once
+("Detection confirmee", "Detection corrigee" - MOVED from ReleveCopy's private
+copies, not new). The announcement's word is the label with its first letter
+lower-cased - the one stated difference (provenanceInSentence) - and ReleveCopy's
+annex reads the same labels. Three copies of each phrase became one.
+SURFACES (the addendum named two; R267 found the rest):
+  - calendar sheet: EditableSlot.provenance from its row; provenanceLines (what
+    ProvenanceBlock prints, now CalendarSheetProvenance.kt) - one word when the
+    portions agree, "Matin : ..." / "Apres-midi : ..." per half when they differ;
+  - calendar list AND Aujourd'hui's week list: dayWords, one home (they held two
+    copies of the manual-only rule);
+  - the cell's announcement: CalendarDayUi.secondProvenance (the afternoon's when
+    the halves differ) - each half stated, never the morning's for both.
+  Stale manual-only comments corrected in the same commit: CalendarEditSheet,
+  CalendarList, CalendarCopy, DayCellCopy, DayCell, CalendarModel.
+
+TESTS FIRST, at the surface that shows the word (R225). The extraction into
+provenanceLines/dayWords kept main's behaviour exactly, so the RED is main's:
+  JVM (ProvenanceWordsTest; the real controller, the real month model): 10 tests,
+  7 RED, e.g.
+    sheet, DETECTED_CONFIRMED: Collection should contain element "Detection
+      confirmee" ... but the collection is ["Origine de la saisie", "Saisie
+      manuelle", "Premiere saisie enregistree le 10.06.2026 a 20:00"]
+      (THE MANUAL LABEL on a detected day - the addendum's defect, pasted)
+    list, DETECTED_CONFIRMED: ... but the collection is ["Suisse", "A temps"]
+      (no word at all for a detected day)
+    DETECTED_CORRECTED likewise on both; each half's on sheet, list and cell:
+      "... should include substring "saisie manuelle"" (the cell said the
+      morning's for both)
+  the MANUAL directions (both surfaces) and the one-home pin passed on main, as
+  they must. GREEN 10/10.
+  ON THE S9 (ProvenanceShownInstrumentedTest: the sheet and the list composed on
+  the device, the words read off the tree): 6 tests, 4 RED - "Expected exactly '1'
+  node but could not find any node that satisfies: (Text + EditableText contains
+  'Detection confirmee')" (and 'Detection corrigee'), sheet and list; the two
+  MANUAL cases passed. GREEN 6/6.
+PAPARAZZI: four NEW baselines, named before recording - calendrierListLargeDetected,
+calendrierEditSheetDetectedConfirmed, calendrierEditSheetDetectedCorrected,
+calendrierEditSheetSplitProvenance. NO EXISTING BASELINE REGENERATED: five sheet
+baselines first failed because their fixtures had no provenance (a field the
+controller always fills from the row); the fixtures gained provenance = MANUAL and
+the five passed unchanged.
+ON THE S9 (R496): the product cannot produce a detection-confirmed day through its
+own screens on this drive - the new account is in manual mode, detection needs the
+location permission and a day's four check windows (09:30-16:30 Paris) before it
+proposes, and the seeded account that holds detected days is not this session's to
+use (a new .test account only). And R496 did not run at all (below). The screen
+tests are the proof.
+
+--------------------------------------------------------------------------------
+R496 - ON THE S9, AGAINST THE LOCAL STACK: NO RESULT
+--------------------------------------------------------------------------------
+WHAT RAN, in order (UTC):
+  02:24:42  stay_on_while_plugged_in READ 0, WRITTEN 3 (device phase); the display
+            woken; the swipe keyguard dismissed (no secure lock).
+  02:25:09  connectedDebugAndroidTest (ProvenanceShownInstrumentedTest) - RED 4/6;
+            a second run (~02:44) GREEN 6/6. Each run installs the debug build and
+            UNINSTALLS the package when it finishes. THE READINGS: installed (the
+            as-found APK, d417d021...081034) at 00:59:31; absent at 02:52:43. The
+            two runs are the only things that ran between them; which one removed
+            it was not read.
+  02:47-49  the local stack: port 3000 asserted free (0 listeners; 52 other
+            listeners as control); `PORT=3000 pnpm dev` in the MAIN checkout's
+            web/ (at 28fcea7; no git state written there); R169:
+            /api/health -> {"service":"monreleve","instance":null,"status":"ok",
+            ...}; /api/ready 200. Its database: frontalier-postgres (5436), read
+            from web/.env as host:port only. No other project's container touched.
+  02:51     audit build of 942581c: `assembleAudit -PfrontalierHost=127.0.0.1`,
+            sha256 f2a6f5eaa388abd7f2bf050a44a15df661af8dd5b72e3158cbc22d9be9d06973;
+            its dex holds http://127.0.0.1:3000 (6) and no http://10.0.2.2:3000;
+            the new sentence is in it. Certificate CN=Android Debug, SHA-256
+            ef336db5...e373d1 = the as-found APK's (signers compared).
+  02:52:43  installed (the package was absent - uninstalled by the instrumented
+            runs; nothing to install -r over). `adb reverse tcp:3000 tcp:3000`
+            listed.
+  then      (between 02:52:43 and the interruption; no finer timestamp read)
+            the account: an-granularity@monreleve.test confirmed ABSENT first
+            (0; controls: 17 users, 7 at @monreleve.test). Commencer -> the
+            address -> "Recevoir mon lien de connexion" (POST magic-link 202) ->
+            the code read from the dev server's printed mail into a shell variable
+            (never printed, R284) and typed digit by digit -> POST /api/v1/auth/
+            code 200, GET entries 2026 and 2025 200 (empty), GET /me 200.
+            R574: every capture (uiautomator dump) redacted the text of EVERY
+            EditText, from the first capture on, and none was taken while the
+            code was in the boxes.
+            Onboarding: name, Geneve, 100 %, the simplified method, WHOLE DAYS,
+            then step 6 of 8 (the period) on screen - the last thing read.
+  then      the session was interrupted (a transient network error on the
+            session's side) and resumed at 12:32 UTC.
+  12:32:23  `adb devices`: "232bcd8c300c7ece offline transport_id:9"
+  12:32:31  `adb reconnect offline` (once): "reconnecting 232bcd8c300c7ece"
+  12:32:39  "232bcd8c300c7ece unauthorized transport_id:11"
+  12:33:05  "232bcd8c300c7ece unauthorized transport_id:11" - the phone is asking
+            on its own screen to authorize this computer for USB debugging.
+            Not waited on in a loop.
+  12:34     the dev server stopped (below).
+
+STEPS 1-4 (whole day then half-days; the mirror; the bulk selection; the rate on
+Aujourd'hui and the Releve): NOT RUN. No trail rows exist to quote: the account's
+EntryEvent count on the server is 0 (positive control: the same join reads other
+accounts' rows - 1391 account-days in Entry), Entry 0; the account row exists
+(created by the sign-in), with no canton, no name and the server's default DAY -
+onboarding never PATCHed /me.
+
+THE PHONE IS NOT LEFT AS FOUND, and cannot be until it is re-authorized:
+  as found                          now (last known)
+  stay_on_while_plugged_in 0        3 (written 02:24:42; NOT restored - no adb)
+  adb reverse: empty                tcp:3000 was set; a USB drop clears it, but
+                                    "unauthorized" cannot be listed: UNVERIFIED
+  APK d417d021...081034 (AN-PULL's  f2a6f5ea...d06973 (this branch's audit build
+  audit build of d970907),          of 942581c), same debug certificate; the
+  signed out                        app SIGNED IN as the test account, mid-
+                                    onboarding (step 6 of 8)
+  airplane 0, auto_time 1,          never touched; the clock never moved
+  auto_time_zone 1, Casablanca
+WHAT RESTORING NEEDS (the operator's, or a follow-up's - PARK-W7): accept the USB
+debugging prompt on the phone; `settings put global stay_on_while_plugged_in 0`;
+`adb reverse --remove-all`; with the local stack up and the tunnel restored, sign
+the test account out through the app (POST /api/v1/auth/sign-out) - or finish its
+onboarding and run R496; then reinstall the as-found build if wanted (same
+certificate, so `install -r` over this one; a pulled copy of d417d021 was kept in
+this session's scratchpad only and may not survive it - AN-PULL's audit build of
+d970907 is its origin).
+
+THE LOCAL STACK, LEFT: the dev server's tree (cmd 11664 -> next dev 11860 ->
+start-server 2644, all started by this session at 02:47-02:49) stopped at 12:34;
+port 3000: 0 listeners (51 other listeners visible), curl exit 7. The test account
+remains in the LOCAL dev database (no entries, one refresh session held by the
+phone).
+
+--------------------------------------------------------------------------------
+R497 - WHAT THE SERVER TASK (FW-GRANULARITY) INHERITS
+--------------------------------------------------------------------------------
+THE RULE AS IMPLEMENTED (:shared, data/repo/DayGranularity.kt):
+  - a day's granularity: the rows' own when it has any - FULL alone = whole day;
+    AM and/or PM, no FULL = halves; FULL AND a half = MIXED - and the setting's
+    (Settings.granularity == "HALF_DAY" -> halves, anything else -> whole) only
+    when it has none;
+  - a write is REFUSED when its portion has NO row of its own for (account, day)
+    and the day holds a row of the other granularity: FULL when AM or PM exists,
+    AM/PM when FULL exists. Writing a portion that already has a row is an edit and
+    is always allowed - so a day already mixed can have its rows' kinds edited and
+    can never gain a row. An empty day accepts either for its first write;
+  - nothing ever retires a row (option B parked, PARK-W1); counting is unchanged
+    (option C rejected): an already-mixed day still counts FULL 1 + AM 0.5 +
+    PM 0.5 in both engines.
+THE REFUSAL RESULT: RecordResult.MixedGranularityRefused(dayDate: String,
+  requested: Portion, held: List<Portion>) - from LocalEntryRepository.record(),
+  which otherwise returns RecordResult.Recorded(entry). Nothing is written and no
+  sync is requested on a refusal.
+MIXED DAYS SEEN ON THE S9: NO RESULT (the device database is unreadable and R496
+  never ran); the test account holds none on the server. On the LOCAL dev database
+  3 of 1391 account-days are mixed, all test accounts (listed under R494).
+WHAT FW-GRANULARITY MUST KNOW:
+  - The phone now never SENDS a write that mixes a day - but an OLD client, the web,
+    or a replayed queue still can, and the server's write.ts upserts per (userId,
+    dayDate, portion) with no such check. The same predicate belongs on the server
+    for the record to hold the rule; the phone's typed refusal has no wire shape
+    yet - a server refusal would need one (a 409 code, say) and the phone's
+    SyncEngine would treat it as it treats any 4xx today (FAILED, held, said).
+  - A day already mixed downloads and displays as its rows (AN-PULL stores it as
+    served; R494 shows it); the phone will edit its existing rows' kinds (MODIFIED
+    events for those rows) and will never add or remove one. Whatever the census
+    decides (repair, retire, leave), a phone that holds such a day keeps it until
+    the server's rows change and a download replaces them.
+  - Bulk confirmation and Aujourd'hui in half-day mode now write an EMPTY day as two
+    rows (AM + PM, two CREATED events) where they used to write one FULL row (bulk)
+    - same count, different trail.
+  - The evening notification still writes an empty day whole in half-day mode
+    (PARK-W2, a question).
+
+--------------------------------------------------------------------------------
+NEW COPY
+--------------------------------------------------------------------------------
+TWO sentences, proposed under R493 (fr/AujourdhuiCopy.kt; fully accented there,
+transliterated here):
+  RECORDED_WHOLE_DAY  "Cette journee a ete enregistree en journee entiere."
+  RECORDED_HALF_DAYS  "Cette journee a ete enregistree par demi-journees."
+Shown by the calendar sheet and Aujourd'hui (RecordedGranularityNotice) when a day
+was recorded in the other granularity than the setting's.
+MOVED, NOT NEW (one home, R206): AujourdhuiCopy.WHOLE_DAY "Journee entiere" (was
+ReleveCopy's private PORTION_FULL); DayCellCopy's private DETECTED_CONFIRMED_LABEL
+"Detection confirmee" and DETECTED_CORRECTED_LABEL "Detection corrigee" (were
+ReleveCopy's private PROVENANCE_CONFIRMED / _CORRECTED and DayCellCopy's lowercase
+map, now one each). No other string added or changed.
+
+--------------------------------------------------------------------------------
+PARKED (R456: series W, claimed by census - letters in use on main A B C D E F G I
+K L M N P R S T U V X Y, H on unmerged fw-dossier-empty; every unmerged origin
+branch's parking.md read; no heading or citation of PARK-J/O/Q/W/Z anywhere,
+relay/ included; the pattern PARK(?:AN)?-[A-Z]?\d+ sees PARK-W1; register-coverage
+OK)
+--------------------------------------------------------------------------------
+PARK-W1  option B (replace a whole day by two halves) DEFERRED by ruling, with
+         R490's reasoning - it needs an event that retires a row.
+PARK-W2  the evening notification records an empty day whole, even in half-day
+         mode.
+PARK-W3  a mixed today is read-only on Aujourd'hui.
+PARK-W4  the refusal's write lock is per repository instance.
+PARK-W5  the calendar legend has no entry for the corrected mark.
+PARK-W6  Aujourd'hui's half-day answer states no provenance when its halves differ.
+PARK-W7  R496's drive on the S9 is owed: the phone dropped off USB.
+PARK-C1  CLOSED by ruling (R490).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R496 NOT DRIVEN - NO RESULT (the phone "offline", then "unauthorized"); the
+   phone NOT left as found (stay_on 3, this branch's APK, the test account signed
+   in mid-onboarding). Said under R496 and STATUS.
+2. THE DEVICE DATA (prefs files, Room counts) WAS NOT READABLE - not debuggable.
+3. THE AS-FOUND APK WAS UNINSTALLED by the instrumented R519 runs (AGP uninstalls
+   after connectedAndroidTest), after it had been read and pulled.
+4. "COMMIT PER STEP" WITHOUT RED COMMITS: each increment's RED was run and pasted,
+   then the code and tests were committed green together (CLAUDE.md commits only
+   on green).
+5. TWO REDs WERE SHOWN BY PLANTS because the behaviour had landed in an earlier
+   increment of this branch: detection's confirm (main's granularity line planted
+   in AujourdhuiController) and R494's sheet/bulk (main-like MIXED branch planted
+   in DayGranularity). Each plant verified at its line and reverted byte-identical.
+6. R519's instrumented GREEN ran before CalendarSheetProvenance.kt was split out
+   (code motion); the JVM suite re-ran green after; the device test could not.
+7. TESTS EDITED BY RULING, each stated in its commit: WholeDayInHalfDayModeTest
+   (R477) restated under R490 and removed; MixedPortionsTodayTest rewritten (its
+   own header promised it); R475's sheet test opens an empty day;
+   OrderingEvidenceTest's distinct portion; RecordPathPinTest one line (typed
+   result).
+8. SMALL ONE-HOME FOLDS made while touching the files: the two controllers' copies
+   of the setting-to-granularity mapping now call dayGranularityOf (PARK-C4: two of
+   its four copies gone; Parametres' and onboarding's remain); one home each for
+   DayGranularity -> GranularityChoice (onboarding/Choices.kt) and Provenance ->
+   RecordedProvenance (AujourdhuiController.kt, now internal); dayWords for the two
+   list rows.
+9. RateFloatFenceTest's file list dropped :shared's Simulation.kt on its first run
+   (it names no rate in code - the fence's own positive control said so).
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 R496: the phone needs re-authorizing (USB debugging prompt) and restoring
+   (PARK-W7). Run R496 in a follow-up on this branch, or after the merge?
+Q2 PARK-W2 - A CONSISTENCY QUESTION. In half-day mode an EMPTY day is now written
+   as two halves by the calendar sheet, Aujourd'hui and bulk confirmation (R493
+   says so for bulk), but as ONE whole day by the evening notification's buttons -
+   which then makes a day R490 will never let be split. Should the notification
+   write the setting's granularity (AM+PM of the kind tapped), keep writing a whole
+   day, or offer no recording button in half-day mode?
+Q3 R493's rhythm clause: the rhythm writes no entry (R340). Was a rhythm that
+   APPLIES itself to days intended (a new writer), or is the clause satisfied by
+   there being none?
+Q4 The NEW COPY (two sentences) is a proposal, as R493 asks. Accept it?
+Q5 PARK-W3: should Aujourd'hui let a mixed today's rows be edited (R494 allows it),
+   or stay read-only with the calendar sheet as the editor?
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- The `w: Language version 1.9 is deprecated` line from :shared:kspDebugKotlin-
+  Android / kspReleaseKotlinAndroid appeared (1-2x) in INCREMENTAL builds whenever
+  :shared's commonMain changed (KSP1, ksp.useKSP2=false - KMP-UP2's PARK-X2
+  family); neither --rerun-tasks gate printed it (R1: 0, final: 0 - the final gate's
+  8 `w:` lines are exactly R1's). Not this branch's code; not touched.
+- The local dev database holds 3 mixed days from earlier sessions' test accounts
+  (R494).
+- Stale session locks in C:/wt/an-account-tag and C:/wt/fw-gate-clean (not mine),
+  as the orchestrator said; untouched. The main checkout: at 28fcea7, clean but for
+  its 55 untracked relay/android-scripts files - the same at the end; only its web/
+  ran the dev server.
+- design/Legend.kt's comment still says the manual product has no detection
+  (PARK-W5).
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED AND NOT MERGED: an-granularity -> origin/an-granularity, every
+push explicit (`git push origin an-granularity`), the upstream unset at creation.
+PENDING MERGE - the merge is the operator's. main and production never pushed.
+
+THE COMMITS, each pushed when made:
+    aa12fe6  R492 - the record path keeps a day's granularity     * [new branch]
+    7b259a6  R493 - calendar sheet
+    f4fbd08  R493 - Aujourd'hui and its "Modifier"
+    9e7bf64  R493 - bulk confirmation
+    144aae4  R493 - detection's confirm
+    061b58b  R494 - days already mixed
+    0538fe3  R495 - no Float carries the rate
+    942581c  R519 - the provenance every surface states (the last code commit)
+    5ed8b06  the report and PARK-W2..W7 - THE GATED COMMIT (GATE_EXIT=0) and the
+             iOS run's (40194045565, success)
+    <final>  "AN-GRANULARITY: STATUS and PUSH PROOF after the full gate and the
+             iOS run" - REPORT-AN-GRANULARITY.txt and nothing else. A report
+             cannot print its own SHA; the final tip and its push are in the
+             handback.
+
+    git diff --stat 5ed8b06..<final>  ->  REPORT-AN-GRANULARITY.txt only
+    register coverage on the final text (web/scripts/register-coverage.mjs, the
+    check RegisterCoverageTest runs inside the gate, run directly on this text):
+        register coverage: OK - 152 cited id(s) across 128 report(s), all have headings in parking.md
+
+web/ IS UNCHANGED on this branch: `git diff --stat origin/main..an-granularity --
+web/` prints nothing (0 lines), so gate:clone is not owed (R199) and was not run.
+:shared IS changed (data/repo, fr/), so the iOS cloud run is owed (R573).
+
+ISOLATION (R334, R349, R392). All work in C:/wt/an-granularity, staged by name,
+every new file checked with git check-ignore. Nothing committed, stashed, reset or
+removed in any other worktree or in the main checkout.
+
+================================================================================
+END OF REPORT-AN-GRANULARITY
+================================================================================

@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.aujourdhui.RecordedKind
+import ch.monreleve.app.aujourdhui.RecordedProvenance
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.calendar.CalendarState
 import ch.monreleve.app.calendar.EditableDay
@@ -38,12 +39,15 @@ private fun settings(activityStartDate: String? = null): Settings {
     return Settings("GE", 100, "SIMPLIFIED240", null, "DAY", activityStartDate)
 }
 
+// A fixture builder: each parameter is one column a baseline varies; R519 added who recorded the day.
+@Suppress("LongParameterList")
 private fun entry(
     dayDate: String,
     kind: EntryKind,
     syncState: SyncState = SyncState.SYNCED,
     firstRecordedAt: String = "${dayDate}T09:00:00Z",
     portion: Portion = Portion.FULL,
+    provenance: Provenance = Provenance.MANUAL,
 ): EntryEntity =
     EntryEntity(
         clientMutationId = "$dayDate-${portion.name}",
@@ -52,8 +56,8 @@ private fun entry(
         kind = kind,
         absenceReason = if (kind == EntryKind.ABSENT) AbsenceReason.FERIE else null,
         note = null,
-        provenance = Provenance.MANUAL,
-        detectedKind = null,
+        provenance = provenance,
+        detectedKind = if (provenance == Provenance.MANUAL) null else kind,
         detectedAt = null,
         clientClaimedAt = null,
         serverId = if (syncState == SyncState.SYNCED) "srv-$dayDate" else null,
@@ -124,6 +128,7 @@ class CalendrierScreenScreenshotTest {
                         late = false,
                         modifiedAt = null,
                         firstRecordedAt = "2026-06-03T09:00:00Z",
+                        provenance = RecordedProvenance.MANUAL,
                     ),
                 ),
             alreadyLate = false,
@@ -147,12 +152,108 @@ class CalendrierScreenScreenshotTest {
                         late = true,
                         modifiedAt = "2026-06-20T14:30:00Z",
                         firstRecordedAt = "2026-06-15T21:08:00Z",
+                        provenance = RecordedProvenance.MANUAL,
                     ),
                 ),
             alreadyLate = true,
             wouldBeLate = true,
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
+
+    // AN-GRANULARITY (R490, R493): a day RECORDED WHOLE, opened while the setting is half-days - ONE whole-day choice
+    // and the sentence saying why, never two half-day controls that would quietly write FULL.
+    private val recordedWholeInHalfDayMode =
+        EditableDay(
+            isoDate = "2026-06-10",
+            granularity = GranularityChoice.DAY,
+            recordedAs = GranularityChoice.DAY,
+            slots =
+                listOf(
+                    EditableSlot(
+                        slot = Slot.FULL,
+                        kind = RecordedKind.DOMICILE,
+                        absence = null,
+                        note = null,
+                        late = false,
+                        modifiedAt = null,
+                        firstRecordedAt = "2026-06-10T18:00:00Z",
+                        provenance = RecordedProvenance.MANUAL,
+                    ),
+                ),
+            alreadyLate = false,
+            wouldBeLate = false,
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
+        )
+
+    // AN-GRANULARITY (R490, R493): the mirror - a day RECORDED IN HALVES, opened in whole-day mode, keeps its halves.
+    private val recordedHalvesInWholeDayMode =
+        EditableDay(
+            isoDate = "2026-06-05",
+            granularity = GranularityChoice.HALF_DAY,
+            recordedAs = GranularityChoice.HALF_DAY,
+            slots =
+                listOf(
+                    recordedHalf(Slot.MORNING, RecordedKind.SUISSE),
+                    recordedHalf(Slot.AFTERNOON, RecordedKind.DOMICILE),
+                ),
+            alreadyLate = false,
+            wouldBeLate = false,
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
+        )
+
+    private fun recordedHalf(
+        slot: Slot,
+        kind: RecordedKind,
+    ) = EditableSlot(
+        slot = slot,
+        kind = kind,
+        absence = null,
+        note = null,
+        late = false,
+        modifiedAt = null,
+        firstRecordedAt = "2026-06-05T18:00:00Z",
+        provenance = RecordedProvenance.MANUAL,
+    )
+
+    // The morning of the mixed day, first recorded the same evening as its whole-day row.
+    private val sameDayMorning =
+        recordedHalf(Slot.MORNING, RecordedKind.SUISSE).copy(firstRecordedAt = "2026-06-10T18:00:00Z")
+
+    private fun EditableDay.withProvenance(provenance: RecordedProvenance): EditableDay =
+        copy(slots = slots.map { it.copy(provenance = provenance) })
+
+    @Composable
+    private fun sheet(day: EditableDay) {
+        FrontierTheme {
+            Surface(color = MaterialTheme.colorScheme.background) {
+                CalendarEditSheetContent(day = day, onSave = {}, onCancel = {})
+            }
+        }
+    }
+
+    @Test
+    fun calendrierEditSheetRecordedWhole() {
+        paparazzi.snapshot { sheet(recordedWholeInHalfDayMode) }
+    }
+
+    @Test
+    fun calendrierEditSheetRecordedHalves() {
+        paparazzi.snapshot { sheet(recordedHalvesInWholeDayMode) }
+    }
+
+    // AN-GRANULARITY (R494): a day ALREADY holding a whole-day row beside its morning - each row offered under its
+    // name (the whole-day one too), no slot for the afternoon it does not hold. NEW baseline.
+    @Test
+    fun calendrierEditSheetMixed() {
+        paparazzi.snapshot {
+            sheet(
+                recordedWholeInHalfDayMode.copy(
+                    recordedAs = null,
+                    slots = recordedWholeInHalfDayMode.slots + sameDayMorning,
+                ),
+            )
+        }
+    }
 
     @Composable
     private fun host(state: CalendarState) {
@@ -207,6 +308,65 @@ class CalendrierScreenScreenshotTest {
     fun calendrierListLarge() {
         paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
         paparazzi.snapshot { host(CalendarState(monthView = month)) }
+    }
+
+    // AN-GRANULARITY (R519): the large-text list naming WHO recorded each day as its rows say - a detection confirmed,
+    // a detection corrected, a day whose halves were recorded differently (each half's), and a manual day. NEW
+    // baseline; calendrierListLarge (manual days only) is unchanged.
+    @Test
+    fun calendrierListLargeDetected() {
+        val detected =
+            buildMonthView(
+                entries =
+                    listOf(
+                        entry("2026-06-01", EntryKind.CH, provenance = Provenance.DETECTED_CONFIRMED),
+                        entry("2026-06-02", EntryKind.HOME, provenance = Provenance.DETECTED_CORRECTED),
+                        entry(
+                            "2026-06-03",
+                            EntryKind.CH,
+                            portion = Portion.AM,
+                            provenance = Provenance.DETECTED_CONFIRMED,
+                        ),
+                        entry("2026-06-03", EntryKind.HOME, portion = Portion.PM),
+                        entry("2026-06-04", EntryKind.HOME),
+                    ),
+                settings = settings(),
+                taxYear = 2026,
+                today = "2026-06-15",
+                month = 6,
+            )
+        paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(fontScale = 2f))
+        paparazzi.snapshot { host(CalendarState(monthView = detected)) }
+    }
+
+    // AN-GRANULARITY (R519): the sheet of a day detection recorded and the person confirmed - « Détection
+    // confirmée », never « Saisie manuelle ». NEW baseline.
+    @Test
+    fun calendrierEditSheetDetectedConfirmed() {
+        paparazzi.snapshot { sheet(editingDay.withProvenance(RecordedProvenance.DETECTED_CONFIRMED)) }
+    }
+
+    // AN-GRANULARITY (R519): the same for a detection the person corrected. NEW baseline.
+    @Test
+    fun calendrierEditSheetDetectedCorrected() {
+        paparazzi.snapshot { sheet(editingDay.withProvenance(RecordedProvenance.DETECTED_CORRECTED)) }
+    }
+
+    // AN-GRANULARITY (R519): a day whose morning was detected and confirmed and whose afternoon was entered by hand -
+    // each half states its own, under its name, never the morning's for both. NEW baseline.
+    @Test
+    fun calendrierEditSheetSplitProvenance() {
+        val split =
+            recordedHalvesInWholeDayMode.copy(
+                recordedAs = null,
+                slots =
+                    listOf(
+                        recordedHalf(Slot.MORNING, RecordedKind.SUISSE)
+                            .copy(provenance = RecordedProvenance.DETECTED_CONFIRMED),
+                        recordedHalf(Slot.AFTERNOON, RecordedKind.DOMICILE),
+                    ),
+            )
+        paparazzi.snapshot { sheet(split) }
     }
 
     // The edit sheet's content directly (a ModalBottomSheet's own scaffolding does not render reliably

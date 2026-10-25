@@ -57,6 +57,7 @@ import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.format.formatSignedDays
 import ch.monreleve.app.settings.LoggingMode
+import ch.monreleve.app.ui.screens.calendrier.RecordedGranularityNotice
 
 // The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
 // 0.40 becomes "40,0 %". PERCENT scales the fraction; THRESHOLD_DECIMALS matches SPEC 9.3's "40,0 %".
@@ -112,12 +113,18 @@ fun AujourdhuiScreen(
             style = FrontierType.caption,
         )
 
-        // Section B - today's choice (manual) or the detection surface (auto).
-        if (autoMode) {
+        // Section B - today's choice (manual) or the detection surface (auto). AN-GRANULARITY (R494): a today already
+        // holding a whole-day row beside a half is shown as its rows say and asks for nothing, in either mode.
+        if (state.mixedToday) {
+            MixedDayAnswer(state)
+        } else if (autoMode) {
             if (state.nearBorderNotice) NearBorderNotice()
+            // AN-GRANULARITY (R490, R493): today recorded in the other granularity than the setting's says so, once.
+            RecordedGranularityNotice(state.recordedAs)
             AutoSection(state, AutoActions(actions.onRecord, actions.onConfirmDetected, actions.onCorrectDetected))
         } else {
             Text(text = AujourdhuiCopy.QUESTION, style = FrontierType.h3)
+            RecordedGranularityNotice(state.recordedAs)
             ManualSection(state, actions.onRecord)
         }
 
@@ -180,20 +187,6 @@ private fun YearSection(
     YearHeroCard(year, onNavigateToForecast)
 }
 
-/**
- * AN-CALENDAR (R479). THE RATE THIS SCREEN STATES IS THE ENGINE'S, not a Float copy of it.
- *
- * The figure animates through animateFloatAsState, and a Float cannot hold most hundredths: 0.83 becomes
- * 0.829999983..., which the declarable rate's truncation (SPEC 7.3) turns into 0,82 - so Aujourd'hui read 0,82 % where
- * the forecast read 0,83 % for the same record (REPORT-KMP-4 NOTICED 2), and Geneva's 39,16 % would read 39,15 %.
- * At rest the animation stands exactly on the engine's value converted to a Float, so that is when the engine's
- * Double is handed over, untouched; only the frames in between show the Float, and they are on screen for a moment.
- */
-internal fun shownRate(
-    animated: Float,
-    engine: Double,
-): Double = if (animated == engine.toFloat()) engine else animated.toDouble()
-
 // The displayed day count animates, but its negative flag (which picks the « restants »/« au-dessus » label)
 // stays the TARGET's, so the label never flips mid-count. Block body so the formatter keeps the line short.
 private fun animatedDays(
@@ -214,11 +207,10 @@ private fun YearHeroCard(
     val fiscalPct = formatPercent(year.fiscalCeiling * PERCENT, THRESHOLD_DECIMALS)
     val socialPct = formatPercent(year.socialCeiling * PERCENT, THRESHOLD_DECIMALS)
     val numberSpec: AnimationSpec<Float> = if (rememberReduceMotion()) snap() else tween(Motion.numbersMillis)
-    val animRate by animateFloatAsState(result.declarableRate.toFloat(), numberSpec)
     val animFiscal by animateFloatAsState(result.remainingToFiscal.toFloat(), numberSpec)
     val animSocial by animateFloatAsState(result.remainingToSocial.toFloat(), numberSpec)
-    // R479: what the figure and the rail SAY is the engine's own Double whenever the count is at rest.
-    val rate = shownRate(animRate, result.declarableRate)
+    // R495: what the figure and the rail SAY is a Double throughout - the engine's own at rest.
+    val rate = rememberMovingRate(result.declarableRate, numberSpec)
 
     Column(
         modifier =

@@ -49,9 +49,9 @@ object CalendarCopy {
         }
 
     // The sheet's provenance block (SPEC 11.3, FD6 A2): who recorded it, when it was first recorded, and
-    // when it was changed. « Saisie manuelle » is not held here - it has one home already, AujourdhuiCopy
-    // .MODE_MANUAL (R206), and the sheet references it. The timestamps are interpolated from the SERVER's
-    // own values (R216/R181).
+    // when it was changed. WHO recorded it is not held here: the sheet names each day's own provenance through
+    // DayCellCopy.provenanceLabel (AN-GRANULARITY R519), whose manual name is AujourdhuiCopy.MODE_MANUAL (R206).
+    // The timestamps are interpolated from the SERVER's own values (R216/R181).
     const val PROVENANCE_HEADING = "Origine de la saisie"
 
     fun firstRecordedLine(timestamp: String): String = "Première saisie enregistrée le $timestamp"

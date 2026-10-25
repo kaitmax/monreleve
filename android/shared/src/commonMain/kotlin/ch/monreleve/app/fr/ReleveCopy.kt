@@ -270,26 +270,24 @@ object ReleveCopy {
     private const val ABSENCE_FERIE = "Absence — jour férié"
     private const val ABSENCE_AUTRE = "Absence — autre"
 
-    /** Provenance in words (D17). MANUAL reads AujourdhuiCopy.MODE_MANUAL (one home). Internal to the meta line. */
+    /**
+     * Provenance in words (D17), from the ONE home every surface that names who recorded a day reads (R519, R206):
+     * DayCellCopy.provenanceLabel. A missing or unknown code reads as manual, as the annex always has. Internal to the
+     * meta line.
+     */
     private fun annexProvenance(code: String?): String =
-        when (code) {
-            "DETECTED_CONFIRMED" -> PROVENANCE_CONFIRMED
-            "DETECTED_CORRECTED" -> PROVENANCE_CORRECTED
-            else -> AujourdhuiCopy.MODE_MANUAL
-        }
+        code?.let { DayCellCopy.provenanceLabel(it) } ?: AujourdhuiCopy.MODE_MANUAL
 
-    private const val PROVENANCE_CONFIRMED = "Détection confirmée"
-    private const val PROVENANCE_CORRECTED = "Détection corrigée"
-
-    /** Portions in words. AM/PM read AujourdhuiCopy.MORNING/AFTERNOON (one home). Internal to the meta line. */
+    /**
+     * Portions in words. AM/PM read AujourdhuiCopy.MORNING/AFTERNOON and FULL reads AujourdhuiCopy.WHOLE_DAY (one
+     * home each). Internal to the meta line.
+     */
     private fun annexPortion(code: String?): String =
         when (code) {
             "AM" -> AujourdhuiCopy.MORNING
             "PM" -> AujourdhuiCopy.AFTERNOON
-            else -> PORTION_FULL
+            else -> AujourdhuiCopy.WHOLE_DAY
         }
-
-    private const val PORTION_FULL = "Journée entière"
 
     /** A day with no entry (SPEC 12 item 5) reads CalendarCopy's one home for "Non renseigné". */
     val NON_RECORDED = CalendarCopy.NON_RENSEIGNE

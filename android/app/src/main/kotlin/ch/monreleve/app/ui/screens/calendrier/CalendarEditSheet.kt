@@ -37,8 +37,8 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.format.formatDateTime
 import ch.monreleve.app.fr.format.formatDayLong
+import ch.monreleve.app.onboarding.GranularityChoice
 
 // AN10 increment 2. The day edit sheet's CONTENT (SPEC 11.3, FD6 A2), a standalone composable so a
 // Paparazzi baseline photographs it directly (a ModalBottomSheet's own scaffolding does not render
@@ -97,8 +97,11 @@ fun CalendarEditSheetContent(
     ) {
         Text(text = formatDayLong(day.isoDate), style = FrontierType.h3)
         Text(text = CalendarCopy.SHEET_QUESTION, style = FrontierType.bodyM)
+        RecordedGranularityNotice(day.recordedAs)
+        // R494: a day already mixed shows its whole-day row beside a half, so every slot is named - the whole-day one
+        // as well, which a day held in one granularity never needs.
         drafts.forEach { draft ->
-            SlotEditor(day.isoDate, draft)
+            SlotEditor(day.isoDate, draft, named = draft.slot != Slot.FULL || drafts.size > 1)
         }
         LateNotice(day)
         ProvenanceBlock(day)
@@ -121,16 +124,14 @@ fun CalendarEditSheetContent(
 private fun SlotEditor(
     isoDate: String,
     draft: SlotDraft,
+    named: Boolean,
 ) {
     val missionInitiallyOpen = draft.kind == RecordedKind.MISSION_FRANCE || draft.kind == RecordedKind.MISSION_THIRD
     // AN-STATE (R310): the mission/absence chooser's expanded state survives a rebuild too, keyed by day+slot.
     var missionOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(missionInitiallyOpen) }
     var absenceOpen by rememberSaveable(isoDate, draft.slot) { mutableStateOf(draft.kind == RecordedKind.ABSENCE) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.space8)) {
-        if (draft.slot != Slot.FULL) {
-            val label = if (draft.slot == Slot.MORNING) AujourdhuiCopy.MORNING else AujourdhuiCopy.AFTERNOON
-            Text(text = label, style = FrontierType.bodyM)
-        }
+        if (named) Text(text = slotName(draft.slot), style = FrontierType.bodyM)
         Option(AujourdhuiCopy.SUISSE, draft.kind == RecordedKind.SUISSE) {
             draft.kind = RecordedKind.SUISSE
             draft.absence = null
@@ -204,43 +205,37 @@ private fun LateNotice(day: EditableDay) {
 }
 
 /**
- * The slots whose provenance the sheet states: those the server has recorded (a firstRecordedAt exists). AN-CALENDAR
- * (R477): the two halves of a day held whole show ONE row, so its provenance is stated once, not once per half.
+ * AN-GRANULARITY (R490, R493): why this day is offered in another granularity than the setting's - one sentence, only
+ * when the day was recorded otherwise (a day held whole in half-day mode, or held in halves in whole-day mode). The
+ * setting decides how new days are asked for; it never re-cuts a recorded one. Aujourd'hui shows the same sentence.
  */
-internal fun provenanceSlots(day: EditableDay): List<EditableSlot> =
-    day.slots.filter { it.firstRecordedAt != null }.distinctBy { if (it.wholeDay) Slot.FULL else it.slot }
-
-// The provenance block (SPEC 11.3, FD6 A2): who recorded the day, when it was first recorded, and - if
-// it was changed after that - when. Only for a day the server has recorded (a firstRecordedAt exists);
-// a not-yet-synced day has no server timestamp to show. Every entry is « Saisie manuelle » (manual
-// product); the timestamps are the SERVER'S own (R216), read Paris-side by formatDateTime.
 @Composable
-private fun ProvenanceBlock(day: EditableDay) {
-    val recorded = provenanceSlots(day)
-    if (recorded.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.space4)) {
-        Text(text = CalendarCopy.PROVENANCE_HEADING, style = FrontierType.caption, color = LightColors.textSecondary)
-        // « Saisie manuelle » has one home (R206): AujourdhuiCopy.MODE_MANUAL, the same phrase the
-        // Aujourd'hui mode strip shows - the manual product's provenance and its mode are one word.
-        Text(text = AujourdhuiCopy.MODE_MANUAL, style = FrontierType.caption, color = LightColors.textSecondary)
-        recorded.forEach { slot ->
-            slot.firstRecordedAt?.let {
-                Text(
-                    text = CalendarCopy.firstRecordedLine(formatDateTime(it)),
-                    style = FrontierType.caption,
-                    color = LightColors.textSecondary,
-                )
-            }
-            slot.modifiedAt?.let {
-                Text(
-                    text = CalendarCopy.modifiedLine(formatDateTime(it)),
-                    style = FrontierType.caption,
-                    color = LightColors.textSecondary,
-                )
-            }
+internal fun RecordedGranularityNotice(recordedAs: GranularityChoice?) {
+    val text =
+        when (recordedAs) {
+            GranularityChoice.DAY -> AujourdhuiCopy.RECORDED_WHOLE_DAY
+            GranularityChoice.HALF_DAY -> AujourdhuiCopy.RECORDED_HALF_DAYS
+            null -> return
         }
-    }
+    Text(
+        text = text,
+        style = FrontierType.body,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.md))
+                .background(LightColors.infoBg)
+                .padding(Spacing.space12),
+    )
 }
+
+/** A slot's name as the sheet heads it - the whole day's beside its halves' (R494), and each half's. */
+internal fun slotName(slot: Slot): String =
+    when (slot) {
+        Slot.FULL -> AujourdhuiCopy.WHOLE_DAY
+        Slot.MORNING -> AujourdhuiCopy.MORNING
+        Slot.AFTERNOON -> AujourdhuiCopy.AFTERNOON
+    }
 
 // AN-CALENDAR (R474). THE CHOICE IS IN THE SEMANTICS TREE, not only in the paint. A chosen option was a filled
 // Button and an unchosen one an OutlinedButton - a difference no accessibility service can see. So a tap on

@@ -4,6 +4,7 @@ import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.RhythmKind
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.settings.Settings
@@ -48,7 +49,7 @@ private class CountingRhythmRepository(private val initial: WeeklyRhythm) : Rhyt
 // record() throws: the simulator must never reach the entry-write path. observeAll returns a fixed year so the
 // view computes; observePending is unused by the simulator.
 private class ThrowingEntryRepository : EntryRepository {
-    override suspend fun record(command: RecordCommand): EntryEntity =
+    override suspend fun record(command: RecordCommand): RecordResult =
         throw UnsupportedOperationException("the simulator must not record a day (R340)")
 
     override fun observePending(): Flow<List<EntryEntity>> = flowOf(emptyList())

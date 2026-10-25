@@ -60,6 +60,12 @@ data class CalendarDayUi(
     val quality: RecordQuality,
     val corrected: Boolean,
     val provenance: DayProvenance?,
+    /**
+     * AN-GRANULARITY (R519): the AFTERNOON's provenance when a day's two halves were recorded differently (a detected
+     * morning, a manual afternoon) - `provenance` is then the morning's, and every surface states each half's rather
+     * than the morning's for both. Null when the halves agree, for a whole day and for a lone half.
+     */
+    val secondProvenance: DayProvenance? = null,
     val isToday: Boolean,
     /** In the engine's period and not in the future: the only days a tap may record (AC1). */
     val recordable: Boolean,
@@ -169,6 +175,7 @@ private data class CellContent(
     val quality: RecordQuality,
     val corrected: Boolean,
     val provenance: DayProvenance?,
+    val secondProvenance: DayProvenance?,
 )
 
 /**
@@ -182,10 +189,12 @@ private data class CellContent(
  *
  * The QUALITY collapse is NOT reversed: one bar, the least-settled portion (PENDING over LATE over
  * ON_TIME), because a day that is part late and part still pending is not yet a settled "late" for the
- * whole day. Corrected if any portion is; provenance is the morning's.
+ * whole day. Corrected if any portion is. Provenance is the morning's, and - AN-GRANULARITY (R519) - when the two
+ * halves were recorded differently the afternoon's rides beside it (secondProvenance), so no surface states the
+ * morning's for both.
  */
 private fun cellOf(rows: List<EntryEntity>): CellContent {
-    if (rows.isEmpty()) return CellContent(null, null, RecordQuality.NONE, false, null)
+    if (rows.isEmpty()) return CellContent(null, null, RecordQuality.NONE, false, null, null)
     val morningFirst = rows.sortedBy { it.portion }
     val kind = morningFirst.first().kind.toDayKind()
     val am = rows.firstOrNull { it.portion == Portion.AM }
@@ -200,7 +209,10 @@ private fun cellOf(rows: List<EntryEntity>): CellContent {
         }
     val corrected = rows.any { it.provenance == Provenance.DETECTED_CORRECTED }
     val provenance = morningFirst.first().provenance.toDayProvenance()
-    return CellContent(kind, secondKind, quality, corrected, provenance)
+    // R519: a pair whose halves were recorded differently carries the afternoon's too - the R292 shape, for provenance.
+    val secondProvenance =
+        if (am != null && pm != null && am.provenance != pm.provenance) pm.provenance.toDayProvenance() else null
+    return CellContent(kind, secondKind, quality, corrected, provenance, secondProvenance)
 }
 
 /**
@@ -295,6 +307,7 @@ private fun dayCellUi(
         quality = quality,
         corrected = cell.corrected,
         provenance = cell.provenance,
+        secondProvenance = cell.secondProvenance,
         isToday = iso == today,
         recordable = inPeriod && iso <= today,
     )

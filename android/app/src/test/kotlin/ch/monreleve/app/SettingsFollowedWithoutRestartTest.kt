@@ -46,6 +46,9 @@ private val JUNE_15: Clock = Clock.fixed(Instant.parse("2026-06-15T10:00:00Z"), 
 /** A recordable past working day (a Wednesday) relative to [JUNE_15]. */
 private const val DAY = "2026-06-10"
 
+/** A recordable past working day with no rows - asked for in whatever the setting says (R490). */
+private const val EMPTY_DAY = "2026-06-11"
+
 /** The device's settings, switchable underneath a controller that already exists - what Parametres does. */
 private class SwitchableSettings(var current: Settings) : SettingsStore {
     override fun load(): Settings = current
@@ -83,23 +86,25 @@ private suspend fun recordedYear(): LocalEntryRepository {
 class SettingsFollowedWithoutRestartTest : FunSpec({
     test("R475 the calendar's sheet offers the new granularity at once, each way, without a rebuild") {
         runTest {
+            // AN-GRANULARITY (R490): the setting decides how NEW days are asked for, so the day opened here is one with
+            // no rows. A day already recorded keeps its own granularity whatever the setting (RecordedGranularityTest).
             val store = SwitchableSettings(settings(granularity = "DAY"))
             val controller = CalendarController(recordedYear(), store, 2026, JUNE_15, this)
             advanceUntilIdle()
 
-            controller.openDay(DAY)
+            controller.openDay(EMPTY_DAY)
             controller.state.value.editing.shouldNotBeNull().slots.map { it.slot } shouldBe listOf(Slot.FULL)
             controller.closeSheet()
 
             store.current = store.current.copy(granularity = "HALF_DAY")
-            controller.openDay(DAY)
+            controller.openDay(EMPTY_DAY)
             val halves = controller.state.value.editing.shouldNotBeNull()
             halves.granularity shouldBe GranularityChoice.HALF_DAY
             halves.slots.map { it.slot } shouldBe listOf(Slot.MORNING, Slot.AFTERNOON)
             controller.closeSheet()
 
             store.current = store.current.copy(granularity = "DAY")
-            controller.openDay(DAY)
+            controller.openDay(EMPTY_DAY)
             controller.state.value.editing.shouldNotBeNull().slots.map { it.slot } shouldBe listOf(Slot.FULL)
         }
     }

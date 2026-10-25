@@ -10,6 +10,7 @@ import ch.monreleve.app.data.local.deviceClaimNow
 import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.LocalEntryRepository
+import ch.monreleve.app.data.repo.RecordResult
 import ch.monreleve.app.data.sync.SyncScheduler
 import ch.monreleve.app.detection.EveningNotifier
 import kotlinx.coroutines.CoroutineScope
@@ -64,9 +65,16 @@ class EveningActionReceiver : BroadcastReceiver() {
         when (decision) {
             is EveningTapResult.Record -> {
                 // THE ONE REPOSITORY PATH (R206): the same writer, same stamping, as an in-app tap.
-                LocalEntryRepository(db.entryDao(), clock, currentAccount = { account }).record(decision.command)
-                SyncScheduler.requestSync(context)
-                EveningNotifier.postConfirmation(context, decision.command.kind.name, decision.command.dayDate)
+                val repository = LocalEntryRepository(db.entryDao(), clock, currentAccount = { account })
+                if (repository.record(decision.command) is RecordResult.Recorded) {
+                    SyncScheduler.requestSync(context)
+                    EveningNotifier.postConfirmation(context, decision.command.kind.name, decision.command.dayDate)
+                } else {
+                    // AN-GRANULARITY (R492): refused - a half was recorded for the day between the check above and
+                    // this write, and a whole day beside it would count the day twice. Nothing was written, so the
+                    // notification never says « Enregistré »; it shows the day as it now stands instead.
+                    onIgnored(context, EveningTapRefused.ALREADY_RECORDED, tap, db.entryDao().all())
+                }
             }
             is EveningTapResult.Ignore -> onIgnored(context, decision.reason, tap, entries)
         }
