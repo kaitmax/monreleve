@@ -1,61 +1,67 @@
 REPORT-FW-GRANULARITY
-THE DATABASE REFUSES A DAY WITH TWO GRANULARITIES - STOPPED AT THE R498 CENSUS
+THE DATABASE REFUSES A DAY WITH TWO GRANULARITIES
 ================================================================================
 
 TASK    FW-GRANULARITY (relay/FW-GRANULARITY.txt, incl. ADDENDUM)
-BASE    a05fe3d (origin/main, verified by fetch at session start; contains
-        an-granularity, an-granularity-drive, fw-dossier-empty)
+BASE    a05fe3d (origin/main, verified by fetch in both passes)
 BRANCH  fw-granularity, worktree C:/wt/fw-granularity (R349), upstream unset,
-        lock .session-lock.json held, removed at the end, never staged.
+        .session-lock.json held and removed at the end, never staged. PENDING
+        MERGE - not merged; main and production untouched.
 RULINGS R498-R505 - checked free in main's reports and on every remote branch
-        (R162); no renumbering. PARK letter claimed: Q (O and Z are also free;
-        register-coverage.mjs reports OK on main, letters A-Y minus O/Q/Z used).
+        (R162); no renumbering. PARK letter Q (claimed via register-coverage.mjs).
+PASSES  1: R498 census, stopped. 2: the operator's 0 / 0 arrived; R273 onward.
 
 --------------------------------------------------------------------------------
 SUMMARY
 --------------------------------------------------------------------------------
-Only R498 has been done. The census on the DEV database found mixed days, which
-proves the query can fire; the PRODUCTION query is written below, exactly as it
-must be run. The session STOPS here, as R498 and the addendum require. Nothing
-past R498 was started: no migration, no test, no code, no contract edit.
+The database now refuses a day holding FULL beside AM or PM for one account: an
+exclusion constraint, entry_one_granularity_per_day, in a real migration
+(20261025200000_entry_granularity_exclusion, raw SQL, commented R490). The write
+path maps its violation to a 400 granularity_conflict, never a 500; the whole
+batch rolls back and no EntryEvent is written. docs/api-v1.md says so (6.1, 7).
+Android needs no change (R502, proven from SyncEngine). Prisma reports no drift
+and does not drop the constraint (R499). Readiness reads "unmigrated" without the
+migration and ready with it (R503). Driven over HTTP on a dev server against a
+scratch-migrated database (R504).
+
+ONE DEVIATION TO READ FIRST (DEVIATIONS 1): R500 speaks of a "per-entry refusal
+... through the same refused path the existing per-entry refusals use". The
+server has NO per-entry refusal: a batch is all-or-nothing and every refusal
+(conflict, future_day, write_failed) rejects the whole POST. The per-item
+behaviour lives in the CLIENT, which isolates a refused multi-item 400 item by
+item (R296). So the refusal is a whole-batch 400, the closest existing shape,
+and that is what makes Android behave as R500 wants.
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-STOPPED FOR THE R498 PRODUCTION CENSUS. No increment beyond R498 exists; no
-gate (pnpm gate, gate:changed, gate:clone) was run because no code changed -
-FULL GATE NOT RUN on this tip, and that is a statement of fact, not a pass.
-The only file added by this branch is this report.
+See the last line of PUSH PROOF: STATUS is written there once gate:clone has
+printed its exit line. Gates already run on code tip 2f83501 (the pushed tip
+adds only this report):
+  - pnpm gate: GATE_EXIT=0 (191 files, 3290 tests, GATE A/B within budget,
+    format parity identical).
+  - gate:changed (typecheck, lint, test, build, test:e2e, test:visual, test:db,
+    test:late): exit 0 - test 3290, e2e 338, visual 111, db 703, late 10.
+No Android file changed, so :app:gate does not apply. Production not touched.
 
 --------------------------------------------------------------------------------
 R273 / R1
 --------------------------------------------------------------------------------
-Not performed this pass (stopping at R498 per the orchestrator's instruction).
-R1 (FULL gate + gate:clone green on origin/main a05fe3d) is NOT asserted here;
-it is to be done on resume, before R499.
+R273: read REPORT-AN-CALENDAR (R476 countDays adds every row's weight; unique key
+(userId, dayDate, portion); EntryAction CREATED | MODIFIED), REPORT-AN-GRANULARITY
+(R490, R497), docs/api-v1.md 6.1-6.4, web/lib/entries/write.ts and route.ts, and
+the readiness probe (lib/content/readiness.ts). The finding that mattered: write.ts
+is all-or-nothing (DEVIATIONS 1).
+R1: pnpm gate ran green on this branch (origin/main a05fe3d plus this task); a
+separate gate on a bare a05fe3d was not run - the branch tip contains it.
 
 --------------------------------------------------------------------------------
 R498 - THE CENSUS
 --------------------------------------------------------------------------------
-Schema facts read from web/prisma/schema.prisma: table "Entry", columns
-"userId", "dayDate" (@db.Date), "portion" (enum EntryPortion: FULL | AM | PM);
-unique key (userId, dayDate, portion), so a day can hold FULL alone, or AM
-and/or PM, and only a mix is the defect.
+DEV (frontalier-postgres :5436, PostgreSQL 16.14, read-only): days = 3,
+accounts = 3 (1418 Entry rows). Dev holds mixed days, so the query can fire.
 
-DEV database (container frontalier-postgres, :5436, PostgreSQL 16.14),
-read-only (BEGIN READ ONLY ... COMMIT), output exactly two numbers:
-
-    days | accounts
-    3    | 3
-
-Dev holds 1418 Entry rows; 3 mixed days across 3 accounts. This is the
-positive control: the same text that returns 0/0 on a clean database returns a
-non-zero answer here, so a 0/0 from production is a measurement, not a query
-that cannot fire. (A planted-row control on a temp table was attempted and
-abandoned because "clientMutationId" is NOT NULL; the live dev result serves
-instead.) No ids, emails or dates were printed.
-
-PRODUCTION QUERY - run exactly as given; it returns one row, two numbers:
+PRODUCTION - the query, exactly as run:
 
     BEGIN READ ONLY;
     SELECT count(*) AS days, count(DISTINCT "userId") AS accounts
@@ -67,43 +73,227 @@ PRODUCTION QUERY - run exactly as given; it returns one row, two numbers:
     ) AS mixed;
     COMMIT;
 
-Route (ADDENDUM, operator-approved 2026-10-25): the orchestrating session runs
-it as a one-off Coolify scheduled task through the app's own database driver
-inside BEGIN READ ONLY, deletes the task, shows it deleted via the API, and
-quotes the two counts from the execution log. THIS SESSION DID NOT CONNECT TO
-PRODUCTION.
-
-THE OPERATOR'S NUMBERS: PENDING.
-    Continue ONLY on days = 0 and accounts = 0, quoted here from the
-    orchestrator's message. If either is not 0: STOP stays STOP; those
-    people's Releves are double-counted today and what to do is the
-    operator's decision, not a migration's.
+THE OPERATOR'S NUMBERS, as recorded by the orchestrating session: the Coolify
+execution log of the census task reads `days=0 accounts=0` (2026-10-25
+19:15:26Z). How it ran (the orchestrator's account): the query verbatim, run
+once through a one-off DISABLED Coolify scheduled task on the app, executed
+inside BEGIN READ ONLY through the app container's own pg driver; the program
+reached the container as base64 slices in /tmp because Coolify 4.5.0 stores a
+task command in varchar(255); the task was deleted and the API then answered 404
+for its executions and [] for the task list; a probe at 19:15:47Z showed both
+temp files absent. THIS SESSION NEVER CONNECTED TO PRODUCTION. Continued on 0 / 0.
 
 --------------------------------------------------------------------------------
-R499 - R505
+R499 - THE CONSTRAINT
 --------------------------------------------------------------------------------
-NOT STARTED (stopped for the census). Groundwork noted for resume only:
-production Postgres is postgres:16-alpine per docker-compose.yml (dev is 16.14),
-so btree_gist (a contrib extension shipped with the image) is expected to be
-available; to be CONFIRMED on a scratch database, and the Prisma drift proof
-(R499) must be run before choosing exclusion constraint over trigger.
+CHOICE: EXCLUSION CONSTRAINT, not a trigger.
+    CREATE EXTENSION IF NOT EXISTS btree_gist;
+    ALTER TABLE "Entry" ADD CONSTRAINT "entry_one_granularity_per_day"
+      EXCLUDE USING gist ("userId" WITH =, "dayDate" WITH =,
+                          ((("portion" = 'FULL'))::int) WITH <>);
+Two rows for one user and day may not DISAGREE on "is FULL". AM beside PM agree
+(both 0) and stay legal; a row never conflicts with itself, so edits and kind
+changes are untouched.
+WHY: it is atomic under concurrency by construction (a trigger needs an advisory
+lock to be, and is one more thing to get wrong); 100 concurrent FULL-vs-AM races
+below all resolve to exactly one winner.
+AVAILABILITY on production (from the repo, not by connecting): docker-compose.yml
+pins postgres:16-alpine; docs/deploy.md does not name production's image. Dev is
+16.14 and ships btree_gist 1.7, TRUSTED (PostgreSQL 13+ lets a role with CREATE on
+the database install it; no superuser needed). Official images, alpine included,
+ship contrib. NOT PROVEN for production itself - the pre-deploy check is a
+read-only query in R505 step 1.
+THE DRIFT PROOF (Prisma 7.10, fresh scratch database, all migrations):
+  - `prisma migrate dev` on a fresh database applied all four migrations (it
+    replays them in a shadow database to detect drift) and ended "Your database
+    is now in sync with your schema." exit 0; it created no new migration and did
+    not drop the constraint (pg_constraint still lists it afterwards).
+  - `prisma migrate diff --from-config-datasource --to-schema schema.prisma
+    --exit-code --script` against the migrated database: "-- This is an empty
+    migration.", exit 0 (0 = empty diff).
+  - Not run: `migrate diff --from-migrations`, which needs a shadow URL in
+    prisma.config.ts; migrate dev's own shadow replay covers it.
+  - tests/db/schema-shape lists the constraint's gist index in Entry's exact
+    index set, so a later removal is seen.
+TWO CONSEQUENCES:
+  - The migration FAILS on a database that already holds a mixed day, by design
+    (ADD CONSTRAINT checks every row; it never rewrites one). Production: 0 / 0.
+    THE DEV DATABASE HOLDS 3 MIXED DAYS, so `migrate deploy` on it will fail
+    until they are dealt with - QUESTIONS 1. Scratch databases are clean.
+  - Three existing test:db fixtures built a mixed day and were adjusted, reasons
+    in the files: entries-read "orders one day FULL, AM, PM" (now AM, PM; the FULL
+    position is still covered by the adverse-input comparator test), entries-read
+    "saturated leap year" (ceiling is now the HALF portions, still computed from
+    the enum), schema-shape (the new index name in Entry's exact index list).
+
+--------------------------------------------------------------------------------
+R500 - THE REFUSAL (web/tests/db/entries-granularity.test.ts, 12 tests)
+--------------------------------------------------------------------------------
+RED FIRST (migration present, mapping absent): 7 failed, 5 passed - the refusals
+came out as code write_failed / HTTP 500, which is the defect. GREEN after the
+mapping: 12 of 12, and 12 of 12 on three further runs.
+  - the constraint exists and is contype x                       pass
+  - a raw insert of AM beside FULL is refused (23P01 / name)     pass
+  - FULL then AM refused (granularity_conflict, nothing written) pass
+  - AM then FULL refused; PM then FULL refused                   pass
+  - AM then PM accepted                                          pass
+  - FULL modified to another kind accepted                       pass
+  - another day / another person unaffected                      pass
+  - FULL and AM in ONE batch: refused; nothing of the batch (an
+    unrelated good day in it included) and no event survives     pass
+  - a refusal appends no event                                   pass
+  - CONCURRENCY: FULL and AM for the same day via Promise.all, 100 runs on 100
+    distinct days: every run exactly one winner, one granularity_conflict, one
+    stored row, never write_failed.                              pass (100/100)
+  - through the route handler: batch [FULL, AM] 400, then the isolation sequence;
+    exactly one event, CREATED FULL.                             pass
+Mapping: write.ts recognises the violation by the constraint's NAME in the Prisma
+error (never SQLSTATE alone, so a later exclusion constraint is not misreported)
+and returns granularity_conflict; the route answers 400. 400 and not 409 because
+SyncEngine isolates a multi-item 400 and holds a 409 WHOLE. French copy:
+lib/fr/auth-api.ts granularityConflict (accented, no figure).
+
+--------------------------------------------------------------------------------
+R501 - THE CONTRACT
+--------------------------------------------------------------------------------
+docs/api-v1.md: the portion row of 6.1 states the rule (R490); a new "One
+granularity per day" paragraph in 6.1 states what is refused, that the batch
+writes nothing and appends no event, why 400 not 409, that editing and AM+PM stay
+legal, that existing mixed days are not repaired, and that it is ADDITIVE;
+section 7 lists `granularity_conflict` | POST | 400. tests/unit/meta
+(api-contract, api-contract-doc): 423 passed; pnpm gate green. WireContractParityTest
+was not run (no Android change; no field table changed).
+
+--------------------------------------------------------------------------------
+R502 - THE ANDROID APP NEEDS NO CHANGE
+--------------------------------------------------------------------------------
+android/shared/src/commonMain/.../data/sync/SyncEngine.kt, handleOk(): it
+branches on the HTTP STATUS ONLY and never reads a 400's body.
+  400 on a multi-item batch -> isolate(batch): each item re-sent once; the good
+    ones sync, the refused one stays FAILED and named. 400 on a single item ->
+    FAILED. Never retried (R198, R296). 409 / 413 -> the whole batch FAILED.
+So the new 400 granularity_conflict is marked refused (FAILED), not retried
+forever, and cannot crash (no body parse on this path). A 409 would have held
+every good item beside the bad one, which is why 400.
+SyncEngineTest (:app) pins this with {"code":"invalid_payload"}
+(aRejectedBatchIsIsolatedSoTheGoodItemsStillSync). No golden/test was added:
+SyncEngineTest is :app, so a test there runs :app's gate for a case the
+status-only branch already covers. PARKED as PARK-Q1 (an Android task). The phone
+itself no longer sends a mixed day (an-granularity); this guards old clients,
+the web, a replayed queue, iOS next.
+
+--------------------------------------------------------------------------------
+R503 - READINESS
+--------------------------------------------------------------------------------
+Scratch database, databaseProbe() (the /api/ready probe, lib/content/readiness.ts):
+  migration row removed and constraint dropped (a database without it):
+      {"ok":false,"reason":"unmigrated"}
+  after `prisma migrate deploy` (applied 20261025200000_entry_granularity_exclusion):
+      {"ok":true}
+and pg_constraint lists entry_one_granularity_per_day afterwards.
+
+--------------------------------------------------------------------------------
+R504 - END TO END, LOCAL STACK
+--------------------------------------------------------------------------------
+`next dev -p 3200` against a fresh, migrate-deployed scratch database, real HTTP
+with a bearer token, Android-shaped bodies, same day 2026-04-07:
+  events before                                                    0
+  1. POST [FULL, AM]  -> 400 {"code":"granularity_conflict", ...}  events 0
+       (all-or-nothing: the FULL in the same batch is rolled back too)
+  2. POST [FULL]      -> 200 ok, written 1                         events 1
+       (positive control: the CREATED for the FULL)
+  3. POST [AM]        -> 400 granularity_conflict                  events 1
+  rows: Entry holds FULL only; EntryEvent one row, CREATED FULL.
+Steps 2-3 are SyncEngine's isolation exactly; the count rises by exactly one,
+only for the FULL. Dev server tree killed; ports 3100/3200 asserted free.
+THE S9: not captured - adb is not available on this machine, so the audit
+build's refused-day display for this code was not driven.
+
+--------------------------------------------------------------------------------
+R505 - OPERATOR STEPS
+--------------------------------------------------------------------------------
+Census (R498): done by the orchestrator, `days=0 accounts=0` at 2026-10-25
+19:15:26Z. A mixed day can be written between that read and the deploy (old
+client, web), so re-run the same query immediately before deploying.
+
+1. BEFORE deploy, read-only, on production:
+       SELECT name, default_version FROM pg_available_extensions
+       WHERE name = 'btree_gist';                       -- must return one row
+   then the census again (above); both numbers must be 0.
+2. DEPLOY ORDER: backup first (docs/deploy.md pg_dump recipe); run the migration
+   as docs/deploy.md's separate deliberate step (`prisma migrate deploy` from the
+   image's migration folder); then promote the image from `production` (never
+   main). The migration is CREATE EXTENSION IF NOT EXISTS plus one ALTER; on a
+   table this size it takes milliseconds. Afterwards GET /api/ready must read
+   ready (200); until the migration is applied it reads 503 unmigrated.
+3. IF THE MIGRATION FAILS: Prisma records it failed (migration_failed), /api/ready
+   stays 503 and the RUNNING version keeps serving (docs/deploy.md). Nothing was
+   rewritten: ADD CONSTRAINT lands whole or not at all. Roll back by keeping or
+   redeploying the previous image. Likely causes: a mixed day written since the
+   census (re-run it; what to do about those Releves is the OPERATOR's decision,
+   not a migration's); btree_gist not installable (role lacks CREATE on the
+   database, or the image lacks contrib). To clear the failed record before a
+   retry: `prisma migrate resolve --rolled-back
+   20261025200000_entry_granularity_exclusion`.
+4. VERIFY afterwards, read-only, on production:
+       SELECT conname, contype FROM pg_constraint
+       WHERE conname = 'entry_one_granularity_per_day';       -- one row, 'x'
+       SELECT count(*) AS days, count(DISTINCT "userId") AS accounts FROM (
+         SELECT "userId", "dayDate" FROM "Entry" GROUP BY 1, 2
+         HAVING bool_or("portion"='FULL') AND bool_or("portion" IN ('AM','PM'))
+       ) m;                                                   -- 0 | 0
+   and GET /api/ready reads ready.
 
 --------------------------------------------------------------------------------
 PARKED
 --------------------------------------------------------------------------------
-None.
+PARK-Q1 - no Android test pins the granularity_conflict refusal (parking.md).
+Out of scope, not touched: repairing existing mixed days anywhere (dev holds 3),
+splitting a FULL day (PARK-W1), engine counting, any Android change.
 
 DEVIATIONS
 --------------------------------------------------------------------------------
-None. The relay's note that main is a72ab31 differs from the live origin/main
-a05fe3d; a05fe3d (a descendant carrying the same merges) was used.
+1. R500 "per-entry refusal ... the same refused path as the existing per-entry
+   refusals": no such path exists on the server (a batch is all-or-nothing, 6.1).
+   Took the conservative, reversible reading (R156): a whole-batch 400, the shape
+   future_day already uses, which the client isolates per item. Server-side
+   partial success would change the /v1 response contract and is NOT done.
+2. Hence "the other entries behave as for any per-entry refusal" is proven at
+   HTTP level by R504's three-step isolation sequence, not by one mixed batch
+   landing partially.
+3. R1: pnpm gate ran on the branch, not separately on a bare a05fe3d.
+4. WireContractParityTest not run (no Android change).
+5. FROM THE ORCHESTRATOR, not this session: an earlier census attempt at 19:12Z
+   ran but its output was misread by the orchestrator's script (it read the wrong
+   execution record) and was discarded, not counted. The 19:15:26Z result above
+   is the one used.
+6. Prisma 7's `migrate diff` has no --from-url / --shadow-database-url; the drift
+   proof uses migrate dev's shadow replay and --from-config-datasource.
 
 QUESTIONS
 --------------------------------------------------------------------------------
-None blocking. Awaiting the two production numbers.
+1. The DEV database (frontalier-postgres) holds 3 mixed days on test accounts, so
+   `pnpm db:deploy` / `migrate dev` on it will fail on this migration. Repair or
+   delete them on dev (operator's call; this session touched no existing row).
+   test:db and the gates run on scratch databases and are unaffected.
+2. Is a whole-batch 400 acceptable, or does the operator want true per-entry
+   partial success from the server? (Recommendation: keep 400; the client's
+   isolation already yields per-item outcomes without changing the contract.)
 
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-Report-only commit; pushed with `git push origin fw-granularity`. gate:clone
-not run (no code in the push; HEAD differs from origin/main by this file only).
+gate:clone on commit 2f83501ae5df725524002222592869bc529c6442: "GATE:CLONE PASSED",
+CLONE_EXIT=0. Ran: register-coverage, fixture-coverage, install, typecheck, lint,
+test, build, size, db:deploy, test:db, test:container:write. Claim: this commit
+builds and passes those from a clean checkout. Not run there (named by the
+harness): test:e2e, test:visual, test:runtime - the first two ran in gate:changed
+(exit 0) above. pnpm gate on the same commit: GATE_EXIT=0.
+The pushed tip = 2f83501 + this report file only (no code differs).
+Pushed with: git push origin fw-granularity (never main, never production).
+
+STATUS (R391, final): GREEN on 2f83501 - FULL pnpm gate (exit 0), gate:changed
+(exit 0) and gate:clone (exit 0) all ran in this session on that commit; the
+pushed tip differs only by this report. Not run: :app:gate (no Android change),
+WireContractParityTest, the S9 capture, production verification (operator steps,
+R505).
