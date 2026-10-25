@@ -1,8 +1,9 @@
 package ch.monreleve.app.data.sync
 
-import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // KMP-DT R552, WRITTEN ON kotlinx-datetime 0.6.1, BEFORE ANY VERSION MOVES. kotlinx-datetime's Instant.parse of
 // every timestamp SHAPE this product exchanges - the contract a 0.7 bump (where Instant moves towards
@@ -24,6 +25,7 @@ import kotlin.test.assertEquals
 // :shared only as instants; this file is where the multiplatform parse - the one iOS will use - is held to the
 // server's meaning.
 class ServerInstantParseGoldenTest {
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
     private fun assertEpochMillis(
         expected: Long,
         shape: String,
@@ -49,6 +51,7 @@ class ServerInstantParseGoldenTest {
     }
 
     @Test
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
     fun theOctoberRepeatedHourIsTwoInstantsAnHourApart() {
         val first = Instant.parse("2026-10-25T02:30:00.000+02:00").toEpochMilliseconds()
         val second = Instant.parse("2026-10-25T02:30:00.000+01:00").toEpochMilliseconds()

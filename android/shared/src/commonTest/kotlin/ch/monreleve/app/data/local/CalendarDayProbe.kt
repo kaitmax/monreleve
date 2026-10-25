@@ -1,8 +1,9 @@
 package ch.monreleve.app.data.local
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // KMP-4 (R464). THE GOLDEN TEST'S CONSTRUCTION, and the only lines that know which types the subject takes.
 //
@@ -18,16 +19,19 @@ import kotlinx.datetime.TimeZone
 // The device's zone is deliberately NOT handed to todayInParis: the moved function takes no zone at all, so
 // the Paris day cannot depend on the device's - which is what the cases assert.
 @Suppress("UnusedParameter")
+@OptIn(ExperimentalTime::class) // KMP-DT R590: calls through the kotlin.time.Clock seam - on the allowlist.
 internal fun parisDayAt(
     instant: String,
     deviceZone: String,
 ): String = todayInParis(fixedAt(instant))
 
+@OptIn(ExperimentalTime::class) // KMP-DT R590: calls through the kotlin.time.Clock seam - on the allowlist.
 internal fun claimAt(
     instant: String,
     deviceZone: String,
 ): String = deviceClaimNow(fixedAt(instant), TimeZone.of(deviceZone))
 
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock and Instant - on the allowlist.
 private fun fixedAt(instant: String): Clock =
     object : Clock {
         override fun now(): Instant = Instant.parse(instant)

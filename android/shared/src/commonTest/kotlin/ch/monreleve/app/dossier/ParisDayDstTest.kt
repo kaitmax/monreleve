@@ -1,13 +1,14 @@
 package ch.monreleve.app.dossier
 
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // KMP-0 increment 6 (R371), WRITTEN BEFORE any dated file moved. Two jobs, kept apart on purpose:
 //
@@ -26,6 +27,7 @@ class ParisDayDstTest {
     // CET = UTC+01:00 (winter), CEST = UTC+02:00 (summer). A case where the Paris day differs from the UTC
     // day (marked) is what the UTC plant falsifies; the others are controls where the two days agree.
     @Test
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
     fun parisDayOf_resolvesTheParisDayAcrossBothDstChangesAndNearMidnight() {
         // Winter, CET (+1).
         assertEquals(LocalDate(2026, 1, 16), parisDayOf(Instant.parse("2026-01-15T23:30:00Z"))) // differs from UTC day
