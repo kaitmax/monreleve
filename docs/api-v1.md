@@ -828,15 +828,17 @@ the one an auditor reads.
   every row (§12.2). This holds for the current year on 1 January too, and for
   the first year of an activity that began partway through it (`period.fraction`
   below 1). FW-DOSSIER-EMPTY.
-- **A year that ends before the account's `activityStartDate` is NOT yet a
-  contract — it is an open question.** Its period is zero; both engines refuse a
-  zero period (`PERIOD_OUT_OF_RANGE`), so no rate is defined over it, and a rate
-  over a zero basis is not invented as 0 %. Today this route answers `500
-  read_failed`, the CSV `500 read_failed` and the PDF `422 dossier_incomplete`.
-  How such a year is answered awaits the operator (FW-DOSSIER-EMPTY, PARK-H1); a
-  client must not build on any of the three. The Android client's previous-year
-  probe treats any answer that is not a document as "no days", so nothing on its
-  screen depends on them.
+- **A year that ends before the account's `activityStartDate` is refused, by
+  name: `400 year_before_activity`** — on this route, the CSV (§12.3) and the
+  PDF (§11.3) alike. It is not an empty year: an empty year has a positive basis
+  and is answered above; this one has **none**. Its period is zero, both engines
+  refuse a zero period (`PERIOD_OUT_OF_RANGE`), so no rate is defined over it,
+  and a 0 % over nothing would be meaningless (§8.3). The activity's *first*
+  year is not this year: it is prorated (`period.fraction` below 1) and answered
+  `200`. FW-DOSSIER-EMPTY (R580) — it replaced the three different answers the
+  first pass measured (`500`, `500`, `422`). The Android client's previous-year
+  probe treats any answer that is not a document as "no days", so it needed no
+  change.
 - **`annex` contains unlogged days.** A row with `recorded: false` carries a
   `dayDate` and nothing else — no portion, no kind, no timestamp. SPEC §12
   item 5 requires them printed rather than skipped.
@@ -869,9 +871,11 @@ the one an auditor reads.
 | `coordinates_refused` | 400 | a location key in the query — checked **first** |
 | `unknown_parameter` | 400 | any parameter other than `year`, including a planted `userId` |
 | `invalid_year` | 400 | not four digits |
-| `future_year` | 400 | a year that has not happened |
+| `future_year` | 400 | a year that has not happened, in Europe/Paris |
+| `year_before_activity` | 400 | a year that ends before the account's `activityStartDate`, so its period is zero (§8.2) |
 | `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
-| `read_failed` | 500 | ours: the year could not be built. Today that includes two account states with no code of their own — a year before the activity start (§8.2, PARK-H1) and an account with no canton (PARK-H2) |
+| `canton_missing` | 422 | the account has no canton, so no year of it can be computed — SPEC §7 resolves the regime from the canton, and no default is right for everybody |
+| `read_failed` | 500 | ours: the year could not be built |
 
 **`future_year` is its own code and not `invalid_year`.** The engine would
 answer for 2031 — a full basis, nothing logged, 0 % declared — and that answer
@@ -879,11 +883,31 @@ is not so much wrong as *meaningless*, which is worse, because it looks like a
 compliant year. `invalid_year` would send a client author to check their
 parser.
 
-**"Has not happened" is read from the server's UTC clock**, while every
-calendar day elsewhere in this contract is a Paris day. So for the first hour
-of 1 January, Paris time, the year a Paris-dated client asks for is refused as
-`future_year`; from 01:00 it is the empty year §8.2 describes. Recorded as
-PARK-H3, not changed.
+**`year_before_activity` is a refusal for the same reason, from the other
+end.** A year that has not happened and a year before the work began are both
+years with no meaningful figure. Over the second there is not even a basis:
+neither engine defines a rate over zero working days — both refuse the period —
+and a 0 % would be meaningless, so none is invented and no `200` is served.
+FW-DOSSIER-EMPTY (R580). It answered `500 read_failed` before.
+
+**`canton_missing` names a settings gap that used to answer `500
+read_failed`**, the code that sends a reader to the database for something the
+account's own settings fix (R198). FW-DOSSIER-EMPTY (R583). The PDF route names
+the same state `dossier_incomplete` (§11.3).
+
+**When an account has more than one gap, the canton is named first**: the
+dossier checks the canton, then the period, then the name, so an account with
+no canton asking for a year before its activity start is told
+`canton_missing`, here and on the CSV. The PDF route checks the name before it
+builds anything (§11.2), so there a nameless account is told
+`titulaire_missing` first.
+
+**"Has not happened" is read in Europe/Paris**, the clock of every calendar day
+elsewhere in this contract and the one a Paris-dated client asks by. At 00:30 on
+1 January in Paris — 23:30 UTC on 31 December — the new year is the current
+year and answered (§8.2's empty year), and the year after it is still
+`future_year`. It read the server's UTC clock until FW-DOSSIER-EMPTY (R582), and
+for that first hour refused the year the reader was in.
 
 ---
 
@@ -1171,7 +1195,8 @@ the values.
 | `invalid_year` | 400 | `year` absent, repeated, or not exactly four digits |
 | `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
 | `not_configured` | 503 | `AUTH_SECRET` is unset or is the placeholder `.env.example` ships |
-| `dossier_incomplete` | 422 | the dossier for that year could not be built, checked **before** a browser is launched — an account with no canton, or a year before the activity start (§8.2, open) |
+| `year_before_activity` | 400 | a year that ends before the account's `activityStartDate` — §8.3's code, checked **before** a browser is launched |
+| `dossier_incomplete` | 422 | the dossier for that year could not be built, checked **before** a browser is launched — an account with no canton (the state §8.3 and §12.3 name `canton_missing`) |
 | `renderer_busy` | 503 | one render is running and both waiting places are taken; `Retry-After: 30` |
 | `renderer_timeout` | 503 | waited 30 s for a slot without reaching the front; `Retry-After: 60` |
 | `renderer_unavailable` | 503 | Chromium would not start, or the print route did not answer 200 |
@@ -1207,10 +1232,32 @@ can be believed, not when it can be parsed.
 200.** That is no longer how an *account* state reaches it: since FW-VERIFY the
 route builds the dossier itself before it launches a browser (the issuance
 record's figures are read from it), so a named account that has never set a
-canton — and a year before the activity start — is refused `422
-dossier_incomplete` without a render. This paragraph used to say such an
+canton is refused `422 dossier_incomplete` without a render, and a year before
+the activity start `400 year_before_activity`. This paragraph used to say such an
 account was told `renderer_unavailable`; FW-DOSSIER-EMPTY measured the route
 and corrected it.
+
+**`dossier_incomplete` and `canton_missing` are one condition under two
+names.** An account with no canton cannot have any year computed; the dossier
+and the CSV name that `canton_missing` (§8.3, §12.3), and this route keeps the
+code it already answered for it, `dossier_incomplete`, which it also answers for
+any other failure to build the dossier. The code is not renamed, because
+renaming a code is one of the three things §6 forbids (FW-DOSSIER-EMPTY, R583).
+A client that wants to say *"set your canton"* reads it from the dossier
+route, where the condition has its own name.
+
+**A year before the activity start moved from `422 dossier_incomplete` to `400
+year_before_activity`, and that move is additive under §6's own terms.** §6
+forbids exactly three things — renaming a field or code, removing one, and
+changing what an existing one means. None happened: `dossier_incomplete` is
+neither renamed nor removed and still answers the account with no canton; a new
+code was added beside it; and 422 → 400 stays *within* the 4xx class, which §6
+lists as free. The one meaning that narrowed was never published: until
+FW-DOSSIER-EMPTY this document did not list `dossier_incomplete` at all, and
+the first pass recorded this year's answers as an open question no client was
+to build on. A client written to §6.5 treats an unrecognised code as terminal
+and never retries a 4xx, so it treats the new answer exactly as it treated the
+old one. FW-DOSSIER-EMPTY (R580).
 
 **From the titulaire check onward the French message is the same one**
 (`AUTH_API_COPY.readFailed`, also §8.3's), while the three earlier refusals each
@@ -1246,7 +1293,9 @@ never on the French.
 - **§8.3's `future_year` has no counterpart here.** `GET /api/v1/dossier?year=2031`
   is refused 400; the same year on this route is not refused on that ground — it
   authenticates, validates, mints a token and is handed to the renderer. A client
-  must not infer one route's refusals from the other's.
+  must not infer one route's refusals from the other's. (Its sibling
+  `year_before_activity` *does* have a counterpart here, and on the CSV: all
+  three routes build the same dossier, and it is the dossier that refuses.)
 - **The PDF does not carry the engine's warnings.** `zone.warnings` is on the
   dossier payload (§8.1) and nothing on the printed document renders it, so the
   obligation §6.5 and §8.2 both state — surface every warning, never only the
@@ -1379,7 +1428,9 @@ the failure mode is one person's year served to another.
 | `coordinates_refused` | 400 | a location key in the query string — checked **first**, before the year is even looked at |
 | `unknown_parameter` | 400 | any parameter other than `year`; `parameters[]` names them |
 | `invalid_year` | 400 | `year` is absent, repeated, or not exactly four digits |
+| `year_before_activity` | 400 | a year that ends before the account's `activityStartDate` — §8.3's code and reason |
 | `titulaire_missing` | 422 | the account has no name, so no document can be attributed |
+| `canton_missing` | 422 | the account has no canton — §8.3's code and reason |
 | `read_failed` | 500 | ours. The year could not be built, so nothing is served |
 
 **The check order is §6.6's `GET` column, unchanged**: authenticate, scan for
@@ -1404,12 +1455,11 @@ for every weekday of 2031, every `late` false. Written down because a client
 author reading §8.3 would reasonably expect the pair to agree.
 
 **`read_failed` covers more than a database being down.** The account row
-vanishing mid-request lands here, and so does an account with **no canton** —
-the column is nullable and the dossier refuses to build without one, through a
-path that has no code of its own. So, today, does a year that ends before the
-account's activity start (§8.2, open). A client meeting a 500 on an export
-should not assume the server is unwell before checking that the account is set
-up.
+vanishing mid-request lands here. An account with **no canton** and a year that
+ends before the account's activity start used to land here too, through paths
+with no code of their own; since FW-DOSSIER-EMPTY (R580, R583) they are
+`canton_missing` and `year_before_activity`, the same codes §8.3 answers,
+because this file is that dossier's annex.
 
 ### 12.4 What §6.7 already settles, and is not repeated here
 

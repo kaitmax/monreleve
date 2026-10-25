@@ -22,7 +22,7 @@
 // /api/v1/entries uses. One home (R206).
 
 import { prisma } from '@/lib/db/client';
-import { toStoredDay } from '@/lib/entries/day';
+import { startOfParisDay, toStoredDay } from '@/lib/entries/day';
 import { type Dossier, type AnnexEntry, buildDossier } from '@/lib/dossier/service';
 
 /**
@@ -126,13 +126,22 @@ export async function buildDossierFor(
   }));
 
   // R331: the latest name change WITHIN this tax year, so the document can show
-  // "Nom modifie le <date>". A COARSE UTC calendar-year window is deliberate -
-  // the line states the year in which the name changed, not a day boundary, and
-  // only the DATE is read, never the former name (there is no column for it).
+  // "Nom modifie le <date>". Only the DATE is read, never the former name (there
+  // is no column for it).
+  //
+  // THE WINDOW IS THE PARIS YEAR (R582). It was a coarse UTC calendar year,
+  // called deliberate because the line states a year rather than a day - but
+  // the window DECIDES which tax year's releve carries the line, and for the
+  // hour the clocks disagree it put a change made at 00:30 on 1 January in
+  // Paris on the previous year's document. `startOfParisDay` is the one home
+  // for that boundary (R206); the next year's start is this year's end.
   const [latestChange] = await prisma.nameChange.findMany({
     where: {
       userId,
-      changedAt: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+      changedAt: {
+        gte: startOfParisDay(`${padded}-01-01`),
+        lt: startOfParisDay(`${String(year + 1).padStart(4, '0')}-01-01`),
+      },
     },
     orderBy: { changedAt: 'desc' },
     take: 1,

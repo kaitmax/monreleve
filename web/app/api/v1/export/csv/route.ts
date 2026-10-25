@@ -34,6 +34,7 @@ import { findLocationKeys } from '@/lib/entries/no-coordinates';
 import { parseReadQuery } from '@/lib/entries/read-query';
 import { buildDossierFor } from '@/lib/dossier/load';
 import { MissingTitulaireError } from '@/lib/dossier/service';
+import { CantonMissingError, YearBeforeActivityError } from '@/lib/dossier/aggregate';
 import { csvFilename, toCsv } from '@/lib/export/csv';
 
 export const dynamic = 'force-dynamic';
@@ -107,6 +108,22 @@ export async function GET(request: Request): Promise<NextResponse> {
       console.error(`[export] csv refused: ${cause.message}`);
 
       return refuse('titulaire_missing', AUTH_API_COPY.readFailed, 422);
+    }
+
+    // FW-DOSSIER-EMPTY: the dossier's two named refusals, answered here by the
+    // same names because the CSV IS the dossier's annex (R175). R583: no canton
+    // (it answered 500). R580: a year before the activity start (it answered
+    // 500), with future_year's status and message.
+    if (cause instanceof CantonMissingError) {
+      console.error(`[export] csv refused: ${cause.message}`);
+
+      return refuse('canton_missing', AUTH_API_COPY.readFailed, 422);
+    }
+
+    if (cause instanceof YearBeforeActivityError) {
+      console.error(`[export] csv refused: ${cause.message}`);
+
+      return refuse('year_before_activity', AUTH_API_COPY.invalidYear);
     }
 
     console.error(

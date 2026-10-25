@@ -3763,7 +3763,15 @@ refuse.
 
 COST OF REVERSING: none - nothing changed.
 
-STATE:      OPEN - awaiting the operator's ruling on R515's question.
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY's second pass (R580, the
+operator's answer (B) to Q1). Such a year is the named refusal 400
+year_before_activity on /dossier, /export/csv and /export/pdf: typed
+YearBeforeActivityError thrown where remainingYearFraction's 0 is observed
+(periodFractionOf, web/lib/dossier/aggregate.ts), before the engine is asked. The
+PDF's move from 422 dossier_incomplete is additive under docs/api-v1.md 6 (11.3
+carries the argument). The KNOWN tests were flipped, RED on f21bac4 first; the
+plain empty year and the activity's first year still answer 200. Android needed no
+change. See REPORT-FW-DOSSIER-EMPTY.txt, R580.
 
 ## PARK-H2 - a year with entries but no canton answers 500 read_failed, not a named refusal  [FW-DOSSIER-EMPTY, 2026-10-24]
 
@@ -3786,7 +3794,12 @@ NOT TAKEN:  Adding e.g. 422 canton_missing (or reusing dossier_incomplete) to /d
 
 COST OF REVERSING: none - nothing changed.
 
-STATE:      OPEN.
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY's second pass (R583). /dossier
+and /export/csv answer 422 canton_missing (typed CantonMissingError from
+toTeleworkInput, with the message the refusal always carried); /export/pdf keeps
+422 dossier_incomplete, not renamed, and docs/api-v1.md 11.3 says the two are one
+condition under two names. RED on f21bac4, then GREEN; an account with a canton
+still answers 200. See REPORT-FW-DOSSIER-EMPTY.txt, R583.
 
 ## PARK-H3 - for the first hour of 1 January (Paris) GET /dossier refuses the current year as future_year  [FW-DOSSIER-EMPTY, 2026-10-24]
 
@@ -3809,7 +3822,13 @@ KNOWN test flips to 200.
 
 COST OF REVERSING: none - nothing changed.
 
-STATE:      OPEN.
+STATE:      CLOSED 2026-10-25 by FW-DOSSIER-EMPTY's second pass (R582). The guard
+reads currentTaxYear() (web/lib/content/tax-year.ts, R55's Europe/Paris year - the
+one home, rather than the parisDayOf slice proposed above). Tested at 00:30 Paris
+on 1 January: the new year answers 200 and the year after it is still
+future_year; RED on f21bac4 first. R582's audit of every server-side year/day
+calculation also moved the name-change window and date onto the Paris clock
+(web/lib/dossier/load.ts, service.ts). See REPORT-FW-DOSSIER-EMPTY.txt, R582.
 
 ## PARK-H4 - the verification page of an empty-year releve shows 0,00 % without saying no day was recorded  [FW-DOSSIER-EMPTY, 2026-10-24]
 
@@ -3833,3 +3852,34 @@ figuresFromDossier, and the verifier rendering DOSSIER_COPY.emptyYear when it is
 COST OF REVERSING: none - nothing changed.
 
 STATE:      OPEN.
+
+## PARK-H5 - the releve prints its server timestamps in UTC without naming the zone  [FW-DOSSIER-EMPTY, 2026-10-25]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY.txt (R582's audit of every server-side year and
+day calculation).
+
+WHAT IT IS: web/app/releve/print/page.tsx, stamp() (lines 101-111), formats every
+instant the PDF prints - "Date de generation" (generatedAt) and the annex's
+firstRecordedAt, lastModifiedAt and clientClaimedAt - with getUTCDate/getUTCMonth/
+getUTCFullYear/getUTCHours, as "DD.MM.YYYY HH:mm", and nothing on the page names the
+zone. The verification page does the same for the issue date: VerificationContent.tsx
+dateOf() is formatDate(generatedAt.slice(0, 10)), the UTC date. A document generated at
+00:30 on 1 January in Paris therefore says it was generated on 31 December at 23:30;
+an entry for a Paris day recorded at 00:30 that day shows a receipt stamp dated the
+day BEFORE the day it records. Every calendar day elsewhere in the product is a Paris
+day, and the formatter for a Paris instant exists (formatDateTime in
+web/lib/ui/core/format/date.ts, Europe/Paris by default).
+
+TAKEN:      Nothing. R582's fix criterion is a calculation that DECIDES which tax year
+or day a request or record belongs to; these print an instant whose day is already
+decided elsewhere (dayDate, a stored Paris day; the issuance's tax year). Changing
+them rewrites every timestamp on every releve and on the verifier, which is a
+decision about what a legal document states, so it is the operator's.
+
+NOT TAKEN:  stamp() and dateOf() through Europe/Paris (formatDateTime / parisDayOf),
+or a printed zone label beside the UTC stamps. Either is a test at 23:30 UTC on 31
+December, a baseline question for any photographed surface, and a copy decision.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN - the operator's: print the product's clock (Paris) or name UTC.

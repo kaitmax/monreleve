@@ -22,6 +22,8 @@ import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { PATCH } from '@/app/api/v1/me/route';
 import { buildDossierFor } from '@/lib/dossier/load';
+import { currentTaxYear } from '@/lib/content/tax-year';
+import { parisDayOf } from '@/lib/entries/day';
 
 const ORIGIN = 'https://monreleve.ch';
 
@@ -99,7 +101,10 @@ describe('recording the change (R331): the date, never the former value', () => 
 });
 
 describe('the document line (R331): shown by date, and a former name appears nowhere', () => {
-  const YEAR = new Date().getUTCFullYear();
+  // R171 and R582: "the year of the change" is the Paris year - the window
+  // buildDossierFor applies. A UTC year here would be the wrong one for the
+  // hour a year the two clocks disagree.
+  const YEAR = currentTaxYear();
 
   it('a dossier for the year of the change carries the date and the current name only', async () => {
     const { id, token } = await user('Camille Rey');
@@ -126,5 +131,54 @@ describe('the document line (R331): shown by date, and a former name appears now
     const dossier = await buildDossierFor(id, YEAR - 1);
 
     expect(dossier.nameChangedAt).toBeNull();
+  });
+});
+
+// ============================================================================
+// FW-DOSSIER-EMPTY R582: THE CHANGE BELONGS TO ITS PARIS YEAR, AND ITS PARIS DAY
+// ============================================================================
+//
+// R582's audit: buildDossierFor decides which tax year's document carries the
+// "Nom modifie le <date>" line, and prints its date. Both were read in UTC, so
+// a change at 00:30 on 1 January in Paris (23:30 UTC on 31 December) was put on
+// the PREVIOUS year's releve, dated the 31st. Tested at that same hour, in both
+// directions: the instant an hour later in UTC terms stays where it was.
+describe('R582: a name change is placed by the Paris clock', () => {
+  async function changedAt(instant: string): Promise<string> {
+    const { id } = await user('Camille Martin');
+
+    await prisma.nameChange.create({ data: { userId: id, changedAt: new Date(instant) } });
+
+    return id;
+  }
+
+  it('a change at 00:30 on 1 January in Paris is on the NEW year, dated 1 January', async () => {
+    const instant = '2026-12-31T23:30:00.000Z';
+    // R171: the Paris day is derived, never typed - and it IS the disagreeing
+    // hour, or this test proves nothing.
+    const parisDay = parisDayOf(new Date(instant));
+    const parisYear = Number(parisDay.slice(0, 4));
+
+    expect(parisYear).toBe(new Date(instant).getUTCFullYear() + 1);
+
+    const id = await changedAt(instant);
+
+    expect((await buildDossierFor(id, parisYear)).nameChangedAt).toBe(parisDay);
+    expect((await buildDossierFor(id, parisYear - 1)).nameChangedAt).toBeNull();
+  });
+
+  it('a change at 23:30 on 31 December in Paris stays on the OLD year, dated the 31st', async () => {
+    // The other direction (R196): a window that moved every change forward a
+    // year would pass the test above.
+    const instant = '2026-12-31T22:30:00.000Z';
+    const parisDay = parisDayOf(new Date(instant));
+    const parisYear = Number(parisDay.slice(0, 4));
+
+    expect(parisYear).toBe(new Date(instant).getUTCFullYear());
+
+    const id = await changedAt(instant);
+
+    expect((await buildDossierFor(id, parisYear)).nameChangedAt).toBe(parisDay);
+    expect((await buildDossierFor(id, parisYear + 1)).nameChangedAt).toBeNull();
   });
 });
