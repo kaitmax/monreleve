@@ -39,6 +39,7 @@ import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.format.formatDateTime
 import ch.monreleve.app.fr.format.formatDayLong
+import ch.monreleve.app.onboarding.GranularityChoice
 
 // AN10 increment 2. The day edit sheet's CONTENT (SPEC 11.3, FD6 A2), a standalone composable so a
 // Paparazzi baseline photographs it directly (a ModalBottomSheet's own scaffolding does not render
@@ -97,6 +98,7 @@ fun CalendarEditSheetContent(
     ) {
         Text(text = formatDayLong(day.isoDate), style = FrontierType.h3)
         Text(text = CalendarCopy.SHEET_QUESTION, style = FrontierType.bodyM)
+        RecordedGranularityNotice(day.recordedAs)
         drafts.forEach { draft ->
             SlotEditor(day.isoDate, draft)
         }
@@ -204,11 +206,35 @@ private fun LateNotice(day: EditableDay) {
 }
 
 /**
- * The slots whose provenance the sheet states: those the server has recorded (a firstRecordedAt exists). AN-CALENDAR
- * (R477): the two halves of a day held whole show ONE row, so its provenance is stated once, not once per half.
+ * AN-GRANULARITY (R490, R493): why this day is offered in another granularity than the setting's - one sentence, only
+ * when the day was recorded otherwise (a day held whole in half-day mode, or held in halves in whole-day mode). The
+ * setting decides how new days are asked for; it never re-cuts a recorded one. Aujourd'hui shows the same sentence.
  */
-internal fun provenanceSlots(day: EditableDay): List<EditableSlot> =
-    day.slots.filter { it.firstRecordedAt != null }.distinctBy { if (it.wholeDay) Slot.FULL else it.slot }
+@Composable
+internal fun RecordedGranularityNotice(recordedAs: GranularityChoice?) {
+    val text =
+        when (recordedAs) {
+            GranularityChoice.DAY -> AujourdhuiCopy.RECORDED_WHOLE_DAY
+            GranularityChoice.HALF_DAY -> AujourdhuiCopy.RECORDED_HALF_DAYS
+            null -> return
+        }
+    Text(
+        text = text,
+        style = FrontierType.body,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Radius.md))
+                .background(LightColors.infoBg)
+                .padding(Spacing.space12),
+    )
+}
+
+/**
+ * The slots whose provenance the sheet states: those the server has recorded (a firstRecordedAt exists). Since R490
+ * every slot is its own portion's row (a day held whole is one FULL slot), so no row is ever stated twice.
+ */
+internal fun provenanceSlots(day: EditableDay): List<EditableSlot> = day.slots.filter { it.firstRecordedAt != null }
 
 // The provenance block (SPEC 11.3, FD6 A2): who recorded the day, when it was first recorded, and - if
 // it was changed after that - when. Only for a day the server has recorded (a firstRecordedAt exists);

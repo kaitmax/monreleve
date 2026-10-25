@@ -9,8 +9,13 @@ import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.todayInParis
+import ch.monreleve.app.data.repo.DayGranularity
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RecordCommand
+import ch.monreleve.app.data.repo.RecordResult
+import ch.monreleve.app.data.repo.dayGranularityOf
+import ch.monreleve.app.data.repo.portionsToOffer
+import ch.monreleve.app.data.repo.recordedInOtherGranularity
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.settings.SettingsStore
@@ -55,11 +60,6 @@ data class EditableSlot(
     val modifiedAt: String?,
     /** The server's immutable first-recording timestamp, once synced (SPEC 8); null while pending. */
     val firstRecordedAt: String?,
-    /**
-     * AN-CALENDAR (R477): this half shows a day held WHOLE (a FULL row, no row of its own), in half-day mode. Both
-     * halves of such a day carry the same row, so the sheet states its provenance once rather than once per half.
-     */
-    val wholeDay: Boolean = false,
 )
 
 /**
@@ -78,6 +78,13 @@ data class EditableDay(
     val alreadyLate: Boolean,
     val wouldBeLate: Boolean,
     val lateThresholdDays: Int,
+    /**
+     * AN-GRANULARITY (R490, R493): the granularity this day was RECORDED in, when it is not the setting's - a day held
+     * whole seen in half-day mode, or a day held in halves seen in whole-day mode. The sheet then offers the day in
+     * its own granularity and says so in one sentence. Null when the two agree, for an empty day (asked for in the
+     * setting's) and for a day already mixed (R494: shown as its rows say).
+     */
+    val recordedAs: GranularityChoice? = null,
 )
 
 /** One Save-tap edit: a slot and what to record there (screen vocabulary; the controller maps to wire). */
@@ -358,41 +365,35 @@ class CalendarController(
         edits: List<SlotEdit>,
     ) {
         val stored = entries.filter { it.dayDate == isoDate }
-        // R477: compared with what the sheet SHOWED for each portion - a half of a day held whole showed the FULL
-        // row, so leaving it as it was is no change, and showing the day never becomes a write.
+        // Each edit is compared with its OWN portion's row - since R490 the sheet offers exactly the portions the day
+        // is held in (or, empty, the setting's), so every slot it shows is a row or nothing.
         val changed =
             edits
                 .map { it.toCommand(isoDate) }
-                .filter { command -> command.changes(shownFor(command.portion, stored)) }
+                .filter { command -> command.changes(stored.firstOrNull { it.portion == command.portion }) }
         if (changed.isNotEmpty()) {
             scope.launch {
-                for (command in changed) repository.record(command)
+                // R492: a write the repository refused wrote nothing, so it asks for no sync either.
+                val written = changed.count { command -> repository.record(command) is RecordResult.Recorded }
                 // SPEC 13.2: written to Room, then enqueued; WorkManager replays on connectivity.
-                requestSync()
+                if (written > 0) requestSync()
             }
         }
         closeSheet()
     }
 
-    /**
-     * AN-CALENDAR (R475): the granularity AS IT IS NOW, read when a sheet is opened - so a switch made in Parametres
-     * is offered by the next sheet without a restart.
-     */
-    private fun granularityNow(): GranularityChoice =
-        if (settingsStore.load()?.granularity == "HALF_DAY") GranularityChoice.HALF_DAY else GranularityChoice.DAY
-
     private fun editableDay(isoDate: String): EditableDay {
         val rows = entries.filter { it.dayDate == isoDate }
-        val granularity = granularityNow()
-        val slots =
-            if (granularity == GranularityChoice.HALF_DAY) {
-                listOf(editableSlot(Slot.MORNING, rows), editableSlot(Slot.AFTERNOON, rows))
-            } else {
-                listOf(editableSlot(Slot.FULL, rows))
-            }
+        val held = rows.map { it.portion }
+        // AN-CALENDAR (R475): the setting AS IT IS NOW, read when a sheet is opened - so a switch made in Parametres is
+        // offered by the next sheet without a restart. AN-GRANULARITY (R490): it decides only a day with no rows; a
+        // recorded day is offered in the granularity its rows have (DayGranularity.kt, the record path's one rule).
+        val setting = dayGranularityOf(settingsStore.load())
+        val slots = portionsToOffer(held, setting).map { portion -> editableSlot(portion.toSlot(), rows) }
         return EditableDay(
             isoDate = isoDate,
-            granularity = granularity,
+            granularity = if (slots.any { it.slot == Slot.FULL }) GranularityChoice.DAY else GranularityChoice.HALF_DAY,
+            recordedAs = recordedInOtherGranularity(held, setting)?.toChoice(),
             slots = slots,
             alreadyLate = slots.any { it.late },
             // The prediction (R216): would recording this backdated day now cross the threshold? True of
@@ -410,7 +411,7 @@ class CalendarController(
         slot: Slot,
         rows: List<EntryEntity>,
     ): EditableSlot {
-        val row = shownFor(slot.toPortion(), rows)
+        val row = rows.firstOrNull { it.portion == slot.toPortion() }
         return EditableSlot(
             slot = slot,
             kind = row?.kind?.toRecordedKind(),
@@ -419,7 +420,6 @@ class CalendarController(
             late = row?.let { serverLate(it) } ?: false,
             modifiedAt = row?.lastModifiedAt?.takeIf { it != row.firstRecordedAt },
             firstRecordedAt = row?.firstRecordedAt,
-            wholeDay = slot != Slot.FULL && row?.portion == Portion.FULL,
         )
     }
 
@@ -445,21 +445,24 @@ class CalendarController(
     }
 }
 
-/**
- * AN-CALENDAR (R477): the row the sheet SHOWS for a portion - its own row, or, for a half with none on a day held
- * WHOLE, the FULL row. A day recorded whole before the switch to half-days is then shown answered (both halves its
- * kind) instead of empty, and nothing is written to show it. ONE HOME for the prefill and for R473's comparison, so
- * an untouched half can never differ from what it displayed.
- *
- * Changing such a half is R478's question, put to the operator: until it is answered the sheet writes the changed
- * half beside the FULL row (R473 writes what changed) - the shape main produced already.
- */
-private fun shownFor(
-    portion: Portion,
-    rows: List<EntryEntity>,
-): EntryEntity? =
-    rows.firstOrNull { it.portion == portion }
-        ?: rows.firstOrNull { it.portion == Portion.FULL }.takeIf { portion != Portion.FULL }
+// AN-GRANULARITY (R490) REPLACED AN-CALENDAR's R477 DISPLAY. A day held WHOLE, seen in half-day mode, used to be shown
+// as two halves answered with the FULL row's kind (`shownFor`), and changing one of them wrote a half beside the FULL
+// row. The operator ruled instead that a day keeps the granularity it was recorded in: such a day is offered as ONE
+// whole-day slot (portionsToOffer), so every slot the sheet shows is its own portion's row, or nothing yet.
+
+/** The setting's granularity in the screen's vocabulary - an enum mapping the compiler checks, not copy. */
+private fun DayGranularity.toChoice(): GranularityChoice =
+    when (this) {
+        DayGranularity.WHOLE_DAY -> GranularityChoice.DAY
+        DayGranularity.HALF_DAYS -> GranularityChoice.HALF_DAY
+    }
+
+private fun Portion.toSlot(): Slot =
+    when (this) {
+        Portion.FULL -> Slot.FULL
+        Portion.AM -> Slot.MORNING
+        Portion.PM -> Slot.AFTERNOON
+    }
 
 // AN-CALENDAR (R473): the note as the write stores it - a blank note is no note. One home, used on BOTH sides of
 // the comparison and by the write itself, so the three cannot disagree about what "the same note" means.

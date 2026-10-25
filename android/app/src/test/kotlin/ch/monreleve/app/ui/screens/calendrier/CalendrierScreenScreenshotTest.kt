@@ -154,6 +154,70 @@ class CalendrierScreenScreenshotTest {
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
 
+    // AN-GRANULARITY (R490, R493): a day RECORDED WHOLE, opened while the setting is half-days - ONE whole-day choice
+    // and the sentence saying why, never two half-day controls that would quietly write FULL.
+    private val recordedWholeInHalfDayMode =
+        EditableDay(
+            isoDate = "2026-06-10",
+            granularity = GranularityChoice.DAY,
+            recordedAs = GranularityChoice.DAY,
+            slots =
+                listOf(
+                    EditableSlot(
+                        slot = Slot.FULL,
+                        kind = RecordedKind.DOMICILE,
+                        absence = null,
+                        note = null,
+                        late = false,
+                        modifiedAt = null,
+                        firstRecordedAt = "2026-06-10T18:00:00Z",
+                    ),
+                ),
+            alreadyLate = false,
+            wouldBeLate = false,
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
+        )
+
+    // AN-GRANULARITY (R490, R493): the mirror - a day RECORDED IN HALVES, opened in whole-day mode, keeps its halves.
+    private val recordedHalvesInWholeDayMode =
+        EditableDay(
+            isoDate = "2026-06-05",
+            granularity = GranularityChoice.HALF_DAY,
+            recordedAs = GranularityChoice.HALF_DAY,
+            slots =
+                listOf(
+                    recordedHalf(Slot.MORNING, RecordedKind.SUISSE),
+                    recordedHalf(Slot.AFTERNOON, RecordedKind.DOMICILE),
+                ),
+            alreadyLate = false,
+            wouldBeLate = false,
+            lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
+        )
+
+    private fun recordedHalf(
+        slot: Slot,
+        kind: RecordedKind,
+    ) = EditableSlot(slot, kind, null, null, late = false, modifiedAt = null, firstRecordedAt = "2026-06-05T18:00:00Z")
+
+    @Composable
+    private fun sheet(day: EditableDay) {
+        FrontierTheme {
+            Surface(color = MaterialTheme.colorScheme.background) {
+                CalendarEditSheetContent(day = day, onSave = {}, onCancel = {})
+            }
+        }
+    }
+
+    @Test
+    fun calendrierEditSheetRecordedWhole() {
+        paparazzi.snapshot { sheet(recordedWholeInHalfDayMode) }
+    }
+
+    @Test
+    fun calendrierEditSheetRecordedHalves() {
+        paparazzi.snapshot { sheet(recordedHalvesInWholeDayMode) }
+    }
+
     @Composable
     private fun host(state: CalendarState) {
         FrontierTheme {
