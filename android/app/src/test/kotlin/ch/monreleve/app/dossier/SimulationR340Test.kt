@@ -5,8 +5,8 @@ import ch.monreleve.app.data.local.Portion
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import java.time.DayOfWeek
 
 // AN-SIM (R340). A PROJECTION IS NEVER A RECORD - the unit witness for the simulator.
 //

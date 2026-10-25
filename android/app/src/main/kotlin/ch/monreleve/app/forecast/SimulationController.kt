@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toKotlinDayOfWeek
 import java.time.Clock
 import java.time.DayOfWeek
 
@@ -157,7 +158,7 @@ class SimulationController(
         when (scenario) {
             SimScenario.EXTRA_WEEKDAY -> {
                 val day = inputs.extraWeekday ?: available.firstOrNull()
-                if (day != null) SimChange.ExtraWeekday(day) else SimChange.ExtraMonthDays(0)
+                if (day != null) SimChange.ExtraWeekday(day.toKotlinDayOfWeek()) else SimChange.ExtraMonthDays(0)
             }
             SimScenario.EXTRA_MONTH_DAYS ->
                 SimChange.ExtraMonthDays(inputs.extraMonthDays.toIntOrNull()?.coerceAtLeast(0) ?: 0)
@@ -176,7 +177,7 @@ class SimulationController(
 /** The weekdays that are not already a home day - the only ones "one more day at home" can add. */
 private fun availableWeekdays(rhythm: WeeklyRhythm): List<DayOfWeek> {
     val kinds = rhythm.toEntryKindMap()
-    return WEEKDAYS.filter { kinds[it] != EntryKind.HOME }
+    return WEEKDAYS.filter { kinds[it.toKotlinDayOfWeek()] != EntryKind.HOME }
 }
 
 /** Seed the effective weekday (first available) and the rate (the current one) so no field starts empty. */
