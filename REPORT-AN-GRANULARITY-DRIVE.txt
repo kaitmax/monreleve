@@ -57,15 +57,26 @@ SUMMARY
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-STATUS written into the gated commit before its gate ran: FULL :app:gate NOT
-YET RUN on this commit. This section is completed by the next commit, which
-changes only this file (PUSH PROOF).
+ALL FOUR RULINGS DONE (R576, R577, R578 with R576-on-device NO RESULT, R579).
+FULL :app:gate --rerun-tasks GREEN on d227be5 (every line of code, test and
+register this branch has, and this report as committed there); the reported
+tip is the commit after d227be5 and differs from it ONLY in this file - its
+STATUS and PUSH PROOF sections and one softened sentence in R578 (PUSH PROOF).
+FULL GATE NOT RUN on the reported tip itself when this was written. No iOS
+cloud run owed (R573): android/shared is unchanged.
 
-Code tip d1ef809 (every line of code and test this branch has):
-    FULL :app:gate --rerun-tasks GREEN in this session, below (R577).
-No iOS cloud run is owed (R573): android/shared is unchanged -
-    git diff --stat origin/main..an-granularity-drive -- android/shared/
-prints nothing (PUSH PROOF).
+FULL :app:gate --rerun-tasks ON d227be5, run IN THIS SESSION after ./gradlew
+--stop, the worktree clean (15:05:55-15:22:57 UTC):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1348 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 16m 58s
+    236 actionable tasks: 236 executed
+    GATE_EXIT=0
+  JUnit XML: :app 1348 / 0, :shared 101 / 0; ForcedSignOutTest 27 / 0;
+  RegisterCoverageTest 1 / 0 (it read this report's PARK-J citations).
+  COMPILER WARNINGS: 6 `w:` lines - the same six as d1ef809's (R577).
+The three full gates of this session: a72ab31 (R1) 1340, d1ef809 (R577) 1348,
+d227be5 1348 - each GATE_EXIT=0, 236 of 236 tasks executed.
 
 --------------------------------------------------------------------------------
 R273
@@ -246,8 +257,10 @@ debug builds of d1ef809 with -PfrontalierHost=127.0.0.1.
     debug  sha256 0698a064d93b0d29bd397f0853ae498bcfb1e71ad000d66272241d7a498f87e9
   Both signed CN=Android Debug ef336db5...e373d1 - the installed build's and the
   original's (apksigner, compared before every `install -r`). Their dex hold
-  "http://127.0.0.1:3000" (audit 1, debug 2) and no "10.0.2.2:3000"; the one
-  "https://monreleve.ch" is a licences-screen string, not the API base.
+  "http://127.0.0.1:3000" (audit 1, debug 2) and no "10.0.2.2:3000". Each also
+  holds one "https://monreleve.ch" - not BuildConfig's API base (that is the
+  127.0.0.1 one), and every request of the drive landed in the local dev
+  server's log; what the string serves was not traced.
 
 THE STACK: port 3000 asserted free first (Get-NetTCPConnection: 0 listeners on
 3000, 44 in all, 2 on 5436 - the control). `PORT=3000 pnpm dev` in the MAIN
@@ -606,7 +619,47 @@ NOTICED BUT NOT TOUCHING
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-Completed by the next commit, which changes only this file.
+THE BRANCH IS PUSHED AND NOT MERGED: an-granularity-drive ->
+origin/an-granularity-drive, every push explicit (`git push origin
+an-granularity-drive`), each gated on its own verified exit code, the upstream
+unset at creation. PENDING MERGE - the merge is the operator's. main and
+production never pushed.
+
+THE COMMITS, each pushed when made:
+    b6e93d0  R576 - the evening notification follows the setting   * [new branch]
+    d1ef809  R577 - the two advanceUntilIdle opt-ins (the code tip; full gate)
+    d227be5  the report, PARK-W2/W7 closed, PARK-J1..J4 - THE GATED COMMIT
+             (GATE_EXIT=0)
+    <final>  "AN-GRANULARITY-DRIVE: STATUS and PUSH PROOF after the full gate" -
+             REPORT-AN-GRANULARITY-DRIVE.txt and nothing else. A report cannot
+             print its own SHA; the final tip and its push are in the handback.
+
+    git diff --stat d227be5..<final>  ->  REPORT-AN-GRANULARITY-DRIVE.txt only
+    register coverage on the final text (web/scripts/register-coverage.mjs, the
+    check RegisterCoverageTest runs inside the gate, run directly):
+        register coverage: OK - 156 cited id(s) across 129 report(s), all have headings in parking.md
+
+web/ IS UNCHANGED on this branch:
+    git diff --stat origin/main..an-granularity-drive -- web/            -> (nothing)
+so gate:clone is not owed (R199) and was not run.
+android/shared/ IS UNCHANGED:
+    git diff --stat origin/main..an-granularity-drive -- android/shared/ -> (nothing)
+so the iOS cloud run is not owed (R573) and none was dispatched (0 runs, 0
+macOS minutes). The branch's whole diff against origin/main:
+    android/app/src/main/.../notification/EveningActionReceiver.kt
+    android/app/src/main/.../notification/EveningTap.kt
+    android/app/src/test/.../auth/ForcedSignOutTest.kt
+    android/app/src/test/.../notification/EveningGranularityTest.kt  (new)
+    android/app/src/test/.../notification/EveningTapTest.kt
+    parking.md
+    REPORT-AN-GRANULARITY-DRIVE.txt  (new)
+
+ISOLATION (R334, R349, R392). All work in C:/wt/an-granularity-drive, staged by
+name, every new file checked with `git check-ignore` (none ignored). The
+original APK was copied OUT of C:/wt/an-pull; nothing written, committed,
+stashed, reset or removed in any other worktree or in the main checkout (its
+web/ only ran the dev server). Evidence (dumps, screenshots, logs, APK copies)
+is in this worktree's gitignored android/.an-granularity-drive-shots/.
 
 ================================================================================
 END OF REPORT-AN-GRANULARITY-DRIVE
