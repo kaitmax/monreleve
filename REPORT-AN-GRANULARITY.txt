@@ -54,9 +54,39 @@ answer. None of R496's four steps ran. The phone is NOT left as found (R496).
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-Increments green under fast check. FULL GATE NOT RUN on this commit yet - its
-result, and the iOS cloud run's (R573), are recorded by the commit that follows
-this one. R496 NO RESULT (the phone unauthorized after a USB drop).
+INCOMPLETE - R496 NOT RUN (the S9 "unauthorized" after a USB drop; PARK-W7).
+FULL :app:gate GREEN on 5ed8b06; iOS cloud run 40194045565 GREEN on 5ed8b06;
+the reported tip is the commit after 5ed8b06 and differs from it ONLY in this
+file (PUSH PROOF).
+
+FULL :app:gate --rerun-tasks, run IN THIS SESSION on 5ed8b06 (the report and
+PARK-W2..W7 committed - every line of code, test, baseline and register entry
+this branch has), after ./gradlew --stop, the tree clean (12:39:42-12:51:35 UTC,
+about 1.1 GB free at its start):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1340 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 50s
+    236 actionable tasks: 236 executed
+    GATE_EXIT=0
+  1340 = R1's 1299 + this branch's 41 (JUnit XML: :app 1340/0); :shared 101/0
+  (86 + GranularityRuleTest's 15) - the whole suites ran, not a subset left by
+  dead workers.
+  COMPILER WARNINGS AFTER: 8 `w:` lines, the SAME 8 as BEFORE (R1) line for line
+  - none added. (KSP1's "Language version 1.9 is deprecated" printed in some of
+  this session's INCREMENTAL builds when :shared changed; the --rerun-tasks gate
+  printed it neither in R1 nor here - NOTICED.)
+
+iOS CLOUD RUN (R573) 40194045565, dispatched ONCE on an-granularity at 5ed8b06
+(`gh workflow run ios-shared.yml --ref an-granularity`): conclusion success;
+"iOS SIMULATOR TESTS EXECUTED: 98" in 14 classes, 0 failures - BEFORE's 83 in 13
+classes (R1(c)) plus GranularityRuleTest tests=15 failures=0; the six GENEVA lines
+at 39.16 (c) and 4.16 (special), "all assertions held"; iPhone 17 Pro simulator,
+Xcode 26.0.1. Job time 3m 49s (12:39:07-12:42:56 UTC), run duration 233 s.
+BILLING: GitHub's timing endpoint read `"billable":{"MACOS":{"jobs":1,
+"total_ms":0}}` - recorded as read, not interpreted; at whole-minute rounding
+the job is 4 macOS minutes, which the private repository's 10x macOS multiplier
+counts as 40 included minutes. Runs this session: 1 (BEFORE was read from an
+existing run on main's tree, not dispatched).
 
 Every increment was checked before it was committed: `./gradlew fastCheck`
 (R390) + :app:testDebugUnitTest (counts read from the JUnit XML, each task
@@ -119,8 +149,8 @@ R1
     and :518 (advanceUntilIdle without the opt-in; out of scope, not touched).
 
 (c) iOS BEFORE: 83 tests in 13 classes, taken from the orchestrator's run
-    40143603745 on 0a32a10 - whose tree IS 28fcea7's (28fcea7 changes no file) -
-    read from its log, not dispatched again: GenevaConformanceTest 2,
+    40143603745 on 0a32a10 - whose tree is 28fcea7's: `git diff --stat 0a32a10
+    28fcea7` prints nothing - read from its log, not dispatched again: GenevaConformanceTest 2,
     CalendarDayGoldenTest 9, StoredEnumNamesTest 6, AuthWireGoldenTest 19,
     CancellationTest 5, RhythmRepositoryPinTest 6, DownloadRateParityTest 1,
     EntriesDownloadTest 19, EntriesWireGoldenTest 6, DossierWireGoldenTest 5,
@@ -478,10 +508,12 @@ R496 - ON THE S9, AGAINST THE LOCAL STACK: NO RESULT
 WHAT RAN, in order (UTC):
   02:24:42  stay_on_while_plugged_in READ 0, WRITTEN 3 (device phase); the display
             woken; the swipe keyguard dismissed (no secure lock).
-  02:25     connectedDebugAndroidTest (ProvenanceShownInstrumentedTest) - RED 4/6;
-            later GREEN 6/6. Each run installs and then UNINSTALLS the app: the
-            as-found APK (d417d021...081034) left the phone here, as AGP always
-            does.
+  02:25:09  connectedDebugAndroidTest (ProvenanceShownInstrumentedTest) - RED 4/6;
+            a second run (~02:44) GREEN 6/6. Each run installs the debug build and
+            UNINSTALLS the package when it finishes. THE READINGS: installed (the
+            as-found APK, d417d021...081034) at 00:59:31; absent at 02:52:43. The
+            two runs are the only things that ran between them; which one removed
+            it was not read.
   02:47-49  the local stack: port 3000 asserted free (0 listeners; 52 other
             listeners as control); `PORT=3000 pnpm dev` in the MAIN checkout's
             web/ (at 28fcea7; no git state written there); R169:
@@ -496,7 +528,8 @@ WHAT RAN, in order (UTC):
   02:52:43  installed (the package was absent - uninstalled by the instrumented
             runs; nothing to install -r over). `adb reverse tcp:3000 tcp:3000`
             listed.
-  02:5x     the account: an-granularity@monreleve.test confirmed ABSENT first
+  then      (between 02:52:43 and the interruption; no finer timestamp read)
+            the account: an-granularity@monreleve.test confirmed ABSENT first
             (0; controls: 17 users, 7 at @monreleve.test). Commencer -> the
             address -> "Recevoir mon lien de connexion" (POST magic-link 202) ->
             the code read from the dev server's printed mail into a shell variable
@@ -661,9 +694,12 @@ QUESTIONS
 --------------------------------------------------------------------------------
 Q1 R496: the phone needs re-authorizing (USB debugging prompt) and restoring
    (PARK-W7). Run R496 in a follow-up on this branch, or after the merge?
-Q2 PARK-W2: in half-day mode, should the evening notification's buttons write the
-   day as two halves (the setting's granularity for a new day, R490), keep writing
-   a whole day, or offer no recording button?
+Q2 PARK-W2 - A CONSISTENCY QUESTION. In half-day mode an EMPTY day is now written
+   as two halves by the calendar sheet, Aujourd'hui and bulk confirmation (R493
+   says so for bulk), but as ONE whole day by the evening notification's buttons -
+   which then makes a day R490 will never let be split. Should the notification
+   write the setting's granularity (AM+PM of the kind tapped), keep writing a whole
+   day, or offer no recording button in half-day mode?
 Q3 R493's rhythm clause: the rhythm writes no entry (R340). Was a rhythm that
    APPLIES itself to days intended (a new writer), or is the clause satisfied by
    there being none?
@@ -674,11 +710,11 @@ Q5 PARK-W3: should Aujourd'hui let a mixed today's rows be edited (R494 allows i
 --------------------------------------------------------------------------------
 NOTICED BUT NOT TOUCHING
 --------------------------------------------------------------------------------
-- The 2 `w: Language version 1.9 is deprecated` lines from :shared:kspDebugKotlin-
-  Android / kspReleaseKotlinAndroid appeared in INCREMENTAL builds whenever
+- The `w: Language version 1.9 is deprecated` line from :shared:kspDebugKotlin-
+  Android / kspReleaseKotlinAndroid appeared (1-2x) in INCREMENTAL builds whenever
   :shared's commonMain changed (KSP1, ksp.useKSP2=false - KMP-UP2's PARK-X2
-  family); R1's --rerun-tasks gate printed none. Whether the final gate prints them
-  is recorded with its result.
+  family); neither --rerun-tasks gate printed it (R1: 0, final: 0 - the final gate's
+  8 `w:` lines are exactly R1's). Not this branch's code; not touched.
 - The local dev database holds 3 mixed days from earlier sessions' test accounts
   (R494).
 - Stale session locks in C:/wt/an-account-tag and C:/wt/fw-gate-clean (not mine),
@@ -704,8 +740,17 @@ THE COMMITS, each pushed when made:
     061b58b  R494 - days already mixed
     0538fe3  R495 - no Float carries the rate
     942581c  R519 - the provenance every surface states (the last code commit)
-    <this>   the report and PARK-W2..W7 - REPORT-AN-GRANULARITY.txt, parking.md
-    <next>   STATUS and PUSH PROOF after the full gate and the iOS run
+    5ed8b06  the report and PARK-W2..W7 - THE GATED COMMIT (GATE_EXIT=0) and the
+             iOS run's (40194045565, success)
+    <final>  "AN-GRANULARITY: STATUS and PUSH PROOF after the full gate and the
+             iOS run" - REPORT-AN-GRANULARITY.txt and nothing else. A report
+             cannot print its own SHA; the final tip and its push are in the
+             handback.
+
+    git diff --stat 5ed8b06..<final>  ->  REPORT-AN-GRANULARITY.txt only
+    register coverage on the final text (web/scripts/register-coverage.mjs, the
+    check RegisterCoverageTest runs inside the gate, run directly on this text):
+        register coverage: OK - 152 cited id(s) across 128 report(s), all have headings in parking.md
 
 web/ IS UNCHANGED on this branch: `git diff --stat origin/main..an-granularity --
 web/` prints nothing (0 lines), so gate:clone is not owed (R199) and was not run.
