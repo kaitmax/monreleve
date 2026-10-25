@@ -86,8 +86,29 @@ they ran (a report cannot contain the result of a gate run on itself).
       testDebugUnitTest filtered to the four classes, plus :app/:shared ktlintCheck
       and detekt): BUILD SUCCESSFUL in 43s.
 
-COMPLETION BLOCK: PENDING - filled in by the next commit, which changes only this
-file.
+COMPLETION BLOCK - GREEN ON 6c31beb, THE COMMIT CARRYING THIS REPORT AND THE
+REGISTER. The final tip differs from 6c31beb ONLY in REPORT-KMP-DT.txt (this block,
+Q1's wording and the sections that point here).
+  FULL GATE, after ./gradlew --stop, tree clean at start:
+      ./gradlew :app:gate --rerun-tasks
+      [clean-worktree] OK: no unstaged changes to tracked files (R393)
+      test floor OK: 1357 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 11m 51s
+      233 actionable tasks: 233 executed
+      GATE_EXIT=0
+      HEAD 6c31bebf17359a7a1fedf6497d7a7c4f77544449 before and after.
+    Said plainly: Q1's (B) wording in this file was edited in the working tree
+    while that gate ran (R393 checks at the start). The one gated reader of report
+    text is RegisterCoverageTest; the edit cites no new id, and
+    web/scripts/register-coverage.mjs was re-run on the final text (PUSH PROOF).
+  iOS run 40234205023  https://github.com/kaitmax/monreleve/actions/runs/40234205023
+      head_sha 6c31bebf17359a7a1fedf6497d7a7c4f77544449, conclusion: success;
+      macos-15-arm64; Xcode 26.0.1 / 17A400; konan cache restored
+      BUILD SUCCESSFUL in 26s, 10 actionable tasks: 10 executed
+      iOS SIMULATOR TESTS EXECUTED: 104 - 16 classes, failures 0 in every class;
+      the six GENEVA lines, 39.16 and 4.16 included; iPhone 17 Pro, iOS 26.2.
+  Not a STATUS of COMPLETE: the task STOPPED at R550; this is the gate on what
+  landed.
 
 --------------------------------------------------------------------------------
 R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
@@ -530,7 +551,18 @@ THE PROOF:
          are disabled: iosArm64, iosSimulatorArm64
          Solution: To hide this message, add 'kotlin.native.ignoreDisabledTargets
          =true' to the Gradle properties.
-  AFTER, the full gate on the commit carrying this report: COMPLETION BLOCK.
+  AFTER, the full gate on 6c31beb (COMPLETION BLOCK), as its log prints them:
+      > Task :shared:compileCommonMainKotlinMetadata          <- still EXECUTED
+      > Task :shared:kspKotlinIosArm64 SKIPPED
+      > Task :shared:compileKotlinIosArm64 SKIPPED
+      > Task :shared:kspKotlinIosSimulatorArm64 SKIPPED
+      > Task :shared:compileKotlinIosSimulatorArm64 SKIPPED
+      downloadKotlinNativeDistribution: 0 occurrences in the whole log (ABSENT,
+      not skipped; R1's log had it executed).
+      The two compile tasks are SKIPPED, not absent: they stay in the task graph
+      with no action. 236 -> 233 actionable tasks.
+    Per-module test counts: unchanged by R575 - the AFTER's names are R1's plus
+    exactly R552's 15, nothing removed (R554).
   ON THE MAC, ON b43c6e2 ITSELF: run 40232989897
     https://github.com/kaitmax/monreleve/actions/runs/40232989897
     head_sha b43c6e2cf5ec11ad6762b50b95ce04340d7a0d92, conclusion: success;
@@ -561,16 +593,55 @@ R554 - NOTHING VISIBLE CHANGED
 No datetime version moved, so nothing a bump could change has changed: no
 production source file differs from 1c1eb82 (`git diff --stat 1c1eb82..d9a3dae --
 android/*/src/main` is empty); the only non-test changes are R575's three build
-files. Test counts by name, Room schemas, checkMinifiedWireContract, Paparazzi and
-the w: count on the final tip: COMPLETION BLOCK.
+files. Measured on the final gate (6c31beb) against R1 (1c1eb82):
+  TEST COUNTS BY NAME   :app    1348 -> 1357 (173 -> 175 files), failures 0
+                        :shared  101 ->  107 ( 15 ->  17 files), failures 0
+                        iOS       98 ->  104 ( 14 ->  16 classes), failures 0
+    `diff` of the sorted class#test lists: the ONLY lines are additions, and they
+    are exactly R552's 15 (JavaTimeCalendarDayGoldenTest 7, ReleveDateTextGoldenTest
+    2, StoredDayStringGoldenTest 3, ServerInstantParseGoldenTest 3; the last two
+    also in the iOS diff). Nothing removed, nothing renamed.
+  GOLDENS               every pre-existing golden green and unedited: `git diff
+                        --stat 1c1eb82..HEAD -- android/shared/src/commonTest
+                        android/app/src/test` lists only the four new files.
+  PARIS-DAY TESTS       ParisDayDstTest 2/2 and CalendarDayGoldenTest 9/9 (Casablanca
+                        at 23:30, both 2026 changes, New Year's Eve) green on the JVM
+                        and on iOS.
+  ROOM                  schemas 1-6 untouched by the gate's full KSP re-run: sha256
+                        prefixes 8d975205 318a71a1 62742436 b4157f5b 9225f552
+                        f2e5b3f6 (KMP-UP2's same six) and `git status` after the gate
+                        showed no schema file. R1's run was not hashed separately; the
+                        before-and-after is git's (`git diff --stat 1c1eb82..HEAD`
+                        over the six: empty).
+  WIRE                  > Task :app:checkMinifiedWireContract executed, green.
+  PAPARAZZI             > Task :app:verifyPaparazziDebug executed, green; zero
+                        baselines touched (`git diff --stat 1c1eb82..HEAD -- '*.png'`
+                        empty; 140 tracked PNGs under app/src/test).
+  RELEASE APK           app-release-unsigned.apk 1,989,376 bytes, R1's size exactly.
+  COMPILER WARNINGS     w: lines 6 -> 7. The six are R1's, same text, same sites
+                        (MainActivity.kt:777 x2, LiveLocation.kt:134 x2 - PARK-X1,
+                        MockProviderReplay.kt:4 x2). The seventh is R575's,
+                        "w: Disabled Kotlin/Native Targets ... iosArm64,
+                        iosSimulatorArm64" - not a datetime effect (none happened).
+                        The KSP1 notice once, as before (PARK-X2).
 
 --------------------------------------------------------------------------------
 R555 - iOS
 --------------------------------------------------------------------------------
 R1's BEFORE is 98 (R1(c)). R552 added 6 common tests that run on iOS -
-StoredDayStringGoldenTest 3 and ServerInstantParseGoldenTest 3 - so the final
-tip's iOS run should count 104: the run is in the COMPLETION BLOCK. No datetime
-change ran on iOS because none was made.
+StoredDayStringGoldenTest 3 and ServerInstantParseGoldenTest 3. Run 40234205023 on
+6c31beb counted 104, and the diff of its names against R1's 98 is exactly those
+six additions; every Geneva case (a, b, c 39.16, d, e, special 4.16) and both
+Paris-day classes green. No datetime change ran on iOS because none was made.
+
+THE CLOUD'S COST (R538's method: job startedAt -> completedAt, whole minutes up):
+    run id       ref     SHA      conclusion  job time  billed
+    40230906743  main    1c1eb82  success     4m22s     5   R1(c), konan cache cold
+    40232989897  kmp-dt  b43c6e2  success     3m13s     4   R575, on its own commit
+    40234205023  kmp-dt  6c31beb  success     1m34s     2   the report commit, 104
+    TOTAL                                     9m09s     11 macOS minutes
+  Three runs, no probe in the cloud. At the 10x rate the ADDENDUM names, 110
+  Linux-minute equivalents.
 
 --------------------------------------------------------------------------------
 R556 - THE UPGRADE IN PLACE ON THE S9: NOT RUN
@@ -590,8 +661,22 @@ copied out of the repository:
     C:/Users/KAMXKAM/Downloads/kmpdt-apks/kmpdt-BEFORE-1c1eb82-debug-reader.apk
       (the gate's app-debug.apk), 11,952,662 bytes, sha256 4f1f7187a5af...
   Never installed. Stale the day main moves; left for the operator to delete.
-THE PHONE AS LEFT: see the COMPLETION BLOCK (read again at the end, compared with
-R1(d) and with the installed audit APK's hash).
+THE PHONE AS LEFT - read again at 21:12 UTC, after every other step, nothing
+written at any time:
+    adb devices -l            232bcd8c300c7ece device ... model:SM_G960F
+    stay_on_while_plugged_in  0 (as R1(d))
+    adb reverse --list        empty (as R1(d))
+    the installed APK         same path as at R1(d)
+                              (/data/app/ch.monreleve.app-RN4X2APK7n3vMywsPaofMw==/),
+                              pulled (a read) and hashed: 2,012,241 bytes, sha256
+                              d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+                              - the audit APK the orchestrator named; versionName
+                              0.1.0, flags without DEBUGGABLE, firstInstallTime
+                              2026-10-25 03:52:52 and lastUpdateTime 15:57:04 (phone
+                              time) - both before this session began
+    the app's data            NOT READ: reading it needs a debuggable reader build
+                              installed over the app, which is a write. Nothing was
+                              installed, so nothing could have changed it.
 
 --------------------------------------------------------------------------------
 R557 - WHAT THIS UNBLOCKS, AND THE RESUME NOTE FOR iOS-1a
@@ -708,7 +793,10 @@ Q1 PARK-Z1 / R550. kotlinx-datetime 0.7 on Kotlin 2.2.21: which route?
        RECOMMENDED;
    (B) 0.7.1-0.6.x-compat, no opt-in, a hand-written
        Instant.fromEpochSeconds(epochSecond, nano) at 5 :app sites (an R553
-       exception), 63+ new deprecation warnings, everything still on the
+       exception - though it is, line for line, what the standard library's own
+       java.time.Instant.toKotlinInstant() does at v2.2.21, so the conversion
+       itself loses nothing; JavaTimeCalendarDayGoldenTest would hold it to the
+       same strings), 63+ new deprecation warnings, everything still on the
        deprecated kotlinx.datetime.Instant;
    (C) wait for the Kotlin 2.3 move, which is also the KSP2 decision (PARK-X2).
 Q2 PARK-Z2. Edit CLAUDE.md R573's "which is to be dropped" when kmp-dt merges?
@@ -722,8 +810,14 @@ THE BRANCH IS PUSHED AND NOT MERGED. kmp-dt -> origin/kmp-dt, every push
     b43c6e2  R575 - enableKlibsCrossCompilation=false  * [new branch] kmp-dt -> kmp-dt
              - iOS run 40232989897 on it
     d9a3dae  R552 - the 15 goldens                     b43c6e2..d9a3dae
-    <this>   the report and parking.md (X3 closed, Z1, Z2) - its SHA, its gate and
-             its iOS run are in the COMPLETION BLOCK of the next commit.
+    6c31beb  the report and parking.md (X3 closed, Z1, Z2)  d9a3dae..6c31beb
+             - FULL :app:gate --rerun-tasks GREEN on it; iOS run 40234205023 on it
+    <this>   the COMPLETION BLOCK - REPORT-KMP-DT.txt only. A report cannot print
+             its own SHA; its push is in the handback.
+REGISTER, against this final text:
+    $ node web/scripts/register-coverage.mjs
+    register coverage: OK - 164 cited id(s) across 132 report(s), all have
+    headings in parking.md
 WHAT THE BRANCH CHANGES against 1c1eb82: android/gradle.properties,
 android/app/build.gradle.kts, android/shared/build.gradle.kts (R575); four new
 test files (R552); parking.md; this report. Nothing under web/: gate:clone is not
