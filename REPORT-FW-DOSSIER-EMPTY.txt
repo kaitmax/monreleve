@@ -1,0 +1,628 @@
+REPORT-FW-DOSSIER-EMPTY
+A YEAR WITH NO DAYS IS AN ANSWER, NOT A 500
+================================================================================
+
+TASK    FW-DOSSIER-EMPTY - GET /dossier answered 500 for a year with no data
+        (REPORT-AN-PULL, NOTICED 2); plus the operator's addendum R549, the
+        replay-delta log.
+BASE    ec58add (origin/main: "Operator rulings on KMP-UP2's questions; R573
+        and R574")
+BRANCH  fw-dossier-empty, worktree C:/wt/fw-dossier-empty (R349), upstream
+        unset at creation, every push explicit (`git push origin
+        fw-dossier-empty`). Lock C:/wt/fw-dossier-empty/.session-lock.json held
+        for the whole session (ignored by .gitignore; never staged).
+RULINGS R514-R518 and R549 - checked free on origin/main and on every origin
+        branch before use (R162); no renumbering.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+THE PROMPT'S PREMISE IS HALF RIGHT, AND THE HALF THAT IS WRONG DECIDES THE TASK.
+
+A year with NO ENTRIES does not 500. It never did: dossier-route.test.ts has
+asserted "is HONEST about an empty year" (200, recordedEntries 0) since FW26,
+and the Android code already names the seeded case - "Camille 2024 returns a
+valid all-zero document, Sam 2025 a read error". What 500s is a year that ends
+BEFORE the account's activityStartDate. Sam Bernard started 2026-03-02, so his
+2025 has a period of ZERO: remainingYearFraction returns 0, the engine refuses a
+zero period (PERIOD_OUT_OF_RANGE, TOTAL_WORK_DAYS_NOT_POSITIVE), `unwrap` throws,
+the route answers 500 read_failed.
+
+So R515 - "if a rate's denominator is zero ... if [the contract and the engines]
+define nothing, STOP and ask" - is exactly the branch this task is in. Neither
+engine defines a rate over a zero basis; both REFUSE it. R515 is STOPPED with a
+concrete question (QUESTIONS Q1), nothing is invented, and the 500 for a
+pre-activity year is pinned by tests marked KNOWN (PARK-H1) so the ruling's
+session flips them.
+
+Everything that does not depend on that answer shipped:
+  - R514: the reproduction (RED pasted), the cause from the source AND the
+    server's own log line, and all three neighbours tested - two of them found
+    defects (PARK-H2 no canton -> 500; PARK-H3 the first hour of 1 January in
+    Paris -> 400 future_year).
+  - R516: the PDF of a year with no day recorded now says so in its first line
+    (new lib/fr sentence), and is issued and recorded like any year; the CSV
+    exports such a year without error (every row with an empty portion) - it
+    cannot carry a sentence (SPEC 12 frozen columns, R237; Q2).
+  - R517: Android needs no change - proven from source and existing tests; no
+    file under android/ changed.
+  - R518: docs/api-v1.md states what an empty year returns, and states the
+    pre-activity year as OPEN with today's three answers.
+  - R549: a replayed refresh token now writes ONE line,
+    `[auth] refresh replay delta_seconds=<N>`, and nothing else changes.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+GREEN ON a63e0c4, THE CODE TIP - with R515 STOPPED (Q1), so the task's central
+500 (a pre-activity year) is still in the product, pinned as KNOWN.
+
+Every gate below ran IN THIS SESSION on a63e0c4, the last commit before this
+report, carrying every line of code, test, doc and register entry (PARK-H1..H4)
+on this branch, the tree clean:
+  pnpm gate                                   EXIT=0
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    suite floor OK - 191 files collected, 4 canaries present, 3290 tests ran
+     Test Files  191 passed (191)
+          Tests  3290 passed (3290)
+    lint 0 errors (the 2 pre-existing warnings); build exit 0
+    All gated routes pass both gates.
+    11 codepoint cases and 10001 exhaustive values: all identical
+  pnpm test:db (scratch database fw_dossier_empty_scratch)   EXIT=0
+     Test Files  45 passed | 3 skipped (48)
+          Tests  687 passed | 26 skipped (713)
+    The skips are the live-render suites (R133, named: "no server answered
+    http://localhost:3000/api/health"). export-pdf's live suite - the new R516
+    render included - ran during increment 2 against pnpm dev on that tree: 22
+    passed. Nothing it renders changed after 899570e. verification-qr's live
+    suite did not run in this session.
+  pnpm test:visual                            EXIT=0
+    photographed: a63e0c4, clean tree
+    visual suite: 111 passed - no baseline regenerated (R135/R207: none needed;
+    no baseline photographs /releve/print).
+  pnpm gate:clone                             EXIT=0
+    commit a63e0c4160509835d5d1758a10a61576f7866d76, tree clean
+    GATE:CLONE PASSED
+    claim   this commit builds and passes register-coverage, fixture-coverage,
+            install, typecheck, lint, test, build, size, db:deploy, test:db,
+            test:container:write from a clean checkout
+  test:e2e ran in increment 2's gate:changed (338 passed), on the tree that
+    became 899570e; increments 3 and 4 changed no path that selects it
+    (lib/auth, docs, tests/db, parking.md).
+  :app:gate and the iOS cloud run (R573): NOT OWED - android/ is unchanged on
+    this branch (`git diff origin/main...HEAD -- android/` is empty).
+
+THE FINAL TIP IS NOT a63e0c4. It is the commit "FW-DOSSIER-EMPTY: the report",
+which adds ONLY this file. register-coverage.mjs was run on its final text; its
+gate:changed and its gate:clone run before its push (R199). A report cannot
+carry a gate run on the commit that carries it, so that result is in the
+handback, not here.
+
+Per increment (gate:changed before each commit, R132; selections in the commit
+bodies):
+  8ff304e R514  typecheck, lint, test 3290, build, test:db 675     -> pushed
+  899570e R516  + test:e2e 338, test:visual 111, test:db 679, test:late 10
+                                                                   -> pushed
+  b757d2e R549  typecheck, lint, test 3290, build, test:db 687     -> pushed
+                                                                      with a63e0c4
+  a63e0c4 R518  typecheck, lint, test 3290, build, test:db 687     -> pushed
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ BEFORE ANYTHING WAS WRITTEN
+--------------------------------------------------------------------------------
+CLAUDE.md (this repository's; the parent directory's belongs to another
+project), relay/FW-DOSSIER-EMPTY.txt in full with its R549 addendum (read from
+the main checkout; never copied into the worktree, never committed),
+REPORT-AN-PULL.txt (NOTICED 2: sam.bernard, 2025, 500), the dossier route
+(web/app/api/v1/dossier/route.ts), its loader and service (web/lib/dossier/
+load.ts, service.ts, aggregate.ts, monthly.ts), the PDF and CSV exports
+(web/app/api/v1/export/pdf/route.ts, csv/route.ts, web/lib/export/csv.ts, the
+print page web/app/releve/print/page.tsx), the issuance writer
+(web/lib/issuance/record.ts), docs/api-v1.md sections 8, 11 and 12, the engine's
+validation (web/lib/calc-engine/validate.ts) and period helper
+(web/lib/ui/core/period.ts), the seed's three scenario accounts
+(web/prisma/seed.ts), and on Android: :shared's DossierApi.kt and
+DossierPayload.kt (KMP-3), :app's ReleveController.kt and ReleveScreen.kt, their
+tests and the commonTest DossierWireGoldenTest.kt. For R549:
+web/lib/auth/tokens.ts, web/app/api/v1/auth/refresh/route.ts,
+web/app/api/v1/auth/magic-link/route.ts (the '[auth] ...' shape), and the
+existing replay tests (tests/db/tokens.test.ts, auth-round-trip.test.ts).
+
+--------------------------------------------------------------------------------
+R1 - THE GREEN BASE, ON origin/main's HEAD ec58add
+--------------------------------------------------------------------------------
+pnpm gate (the full chain, tree clean):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    suite floor OK - 191 files collected, 4 canaries present
+    typecheck exit 0; lint 0 errors, 2 warnings (pre-existing: unused
+    eslint-disable in tests/unit/calc-engine/benchmark.test.ts and
+    verification-trace.test.ts)
+    Test Files  191 passed (191)
+          Tests  3290 passed (3290)
+    build exit 0; size: "All gated routes pass both gates."; format parity
+    "11 codepoint cases and 10001 exhaustive values: all identical"
+    EXIT=0
+pnpm gate:clone:
+    commit ec58addc70f17d3b24563b1e66d9deeca493ebf6, tree clean
+    GATE:CLONE PASSED
+    claim   this commit builds and passes register-coverage, fixture-coverage,
+            install, typecheck, lint, test, build, size, db:deploy, test:db,
+            test:container:write from a clean checkout
+    EXIT=0
+
+--------------------------------------------------------------------------------
+R514 - REPRODUCE, THEN FIND THE CAUSE
+--------------------------------------------------------------------------------
+THE RED. A route test in test:db (tests/db/dossier-route.test.ts, through the
+handler), Sam's shape - activityStartDate 2026-03-02, nothing in 2025 - asserting
+the 200 the prompt asks for:
+
+    stderr | ... > answers 200 for a year that ends before the activity start (R515)
+    [dossier] 2025 failed: the engine refused this input: {"code":"PERIOD_OUT_OF_RANGE"}; {"code":"TOTAL_WORK_DAYS_NOT_POSITIVE"}
+     FAIL  tests/db/dossier-route.test.ts > FW-DOSSIER-EMPTY R514: a year with no
+           days > answers 200 for a year that ends before the activity start (R515)
+    AssertionError: expected 500 to be 200 // Object.is equality
+     Test Files  1 failed (1)
+          Tests  1 failed | 16 passed (17)
+
+  The 16 that passed include FW26's "is HONEST about an empty year" - a year
+  with no entries and no activityStartDate, answering 200. That is the evidence
+  the empty year itself is not the cause.
+
+THE CAUSE - the exact expressions, in the order they run:
+  1. web/lib/ui/core/period.ts, remainingYearFraction:
+         if (startYear > taxYear) return 0;
+     (its own comment: "Nonsense, and returned as a number the ENGINE rejects
+     with PERIOD_OUT_OF_RANGE")
+  2. web/lib/dossier/aggregate.ts, periodFractionOf hands that 0 to the engine
+     as TeleworkInput.periodFraction.
+  3. web/lib/calc-engine/validate.ts:
+         if (!Number.isFinite(periodFraction) || periodFraction <= 0 || ...)
+           errors.push({ code: 'PERIOD_OUT_OF_RANGE' });
+     and, the basis being 240 x 1 x 0 = 0,
+         if (!Number.isFinite(totalWorkDays) || totalWorkDays <= 0)
+           errors.push({ code: 'TOTAL_WORK_DAYS_NOT_POSITIVE' });
+  4. web/lib/dossier/monthly.ts, unwrap - THE THROW:
+         throw new Error(`the engine refused this input: ${reasons}`);
+     first reached from annualResult in buildDossier (service.ts).
+  5. web/app/api/v1/dossier/route.ts's catch logs
+         [dossier] 2025 failed: the engine refused this input: {"code":"PERIOD_OUT_OF_RANGE"}; {"code":"TOTAL_WORK_DAYS_NOT_POSITIVE"}
+     and answers 500 read_failed.
+  NOT IN THE ENGINE (the hard boundary): the engine is right to refuse - SPEC
+  7.4 forbids a zero period. The defect is that the dossier asks it about a year
+  with no activity period at all.
+
+  WHO HITS IT IN PRODUCTION: every account whose activity began THIS year
+  (onboarding's "not the whole year" start date), each time the Android Releve
+  opens - ReleveController probes {current, current-1}. Invisible on screen (the
+  probe treats any non-document answer as "no days"), one 500 in the log per
+  Releve open. And an activityStartDate in a LATER year than the current one
+  would put the CURRENT year in the same state, where the app shows its error.
+
+THE NEIGHBOURS, each a test in the same describe block (all green, all asserting
+an exact value; KNOWN marks an answer pinned pending a ruling):
+  - KNOWN (PARK-H1): the pre-activity year -> 500 read_failed, and the captured
+    console.error equals the line above exactly.
+  - KNOWN (PARK-H1): the same year on the other surfaces: /export/csv 500
+    read_failed, /export/pdf 422 dossier_incomplete. Three answers today.
+  - The activity's FIRST year (2026 for the same account) -> 200, fraction > 0,
+    recordedEntries 0: the boundary of the cause from the other side.
+  - A YEAR WITH ONLY ABSENCES (two CONGE days in 2025) -> 200, recordedEntries
+    2, absenceDays 2, teleworkDays 0, declarableRate 0 over tiles.workedDays > 0
+    - a real 0 over a positive basis, not an invented one.
+  - A YEAR WITH ENTRIES BUT NO EMPLOYMENT SETTINGS. Read as canton null - the one
+    setting null until onboarding (rate and method have column defaults; a
+    missing name is titulaire_missing). -> KNOWN (PARK-H2): /dossier 500
+    read_failed (log: "the dossier needs a canton ..."), /export/csv 500
+    read_failed, /export/pdf 422 dossier_incomplete.
+  - THE CURRENT YEAR ON 1 JANUARY, Date-only fake clock at 2027-01-01T11:00Z,
+    token issued under that clock -> 200, taxYear 2027, recordedEntries 0. The
+    test controls itself: under the real clock (2026) 2027 is future_year, so a
+    200 proves the fake clock reached the route.
+  - KNOWN (PARK-H3): 2026-12-31T23:30Z, which is 00:30 on 1 January in Paris
+    (the Paris year derived with parisDayOf, not typed) -> 400 future_year. The
+    route's guard reads getUTCFullYear(); the Android client asks for
+    Year.now(Europe/Paris). One hour a year the app shows its server-error
+    state for the current year.
+These characterisations passed on their first run, as characterisations of
+existing behaviour do; the RED above is the task's failing test.
+
+--------------------------------------------------------------------------------
+R515 - AN EMPTY YEAR IS A VALID DOSSIER: STOPPED, AND WHY
+--------------------------------------------------------------------------------
+FOR A YEAR WITH NO ENTRIES AND A POSITIVE BASIS - the empty year proper - the
+route ALREADY answers 200 with the same envelope: zero days counted,
+recordedEntries 0, every annex row recorded:false, declarableRate 0. That 0 is
+not invented: it is the engine's answer over the year's own basis, which the
+payload states (tiles.workedDays: 240 for a whole year, 80 for Camille's 2024
+from 2 September). Nothing to change; tested (FW26's test, and the neighbours).
+
+FOR A YEAR THAT ENDS BEFORE THE ACTIVITY START the denominator is ZERO, and R515
+says: say what the existing contract and the engines return for "no
+denominator"; if they define nothing, STOP and ask. They define nothing:
+  - the web engine REFUSES (validate.ts: PERIOD_OUT_OF_RANGE,
+    TOTAL_WORK_DAYS_NOT_POSITIVE) and returns no TeleworkResult;
+  - the Kotlin engine REFUSES the same way (:shared calc/Types.kt
+    ValidationError.PeriodOutOfRange; Validate.kt);
+  - docs/api-v1.md 8.1 types every rate as a number; there is no null, no flag,
+    no "undefined" form anywhere in the contract.
+STOPPED. No code was written for it. The question, with what each answer costs,
+is QUESTIONS Q1; the register entry is PARK-H1.
+
+--------------------------------------------------------------------------------
+R516 - THE DOCUMENTS SAY IT IN WORDS
+--------------------------------------------------------------------------------
+THE PDF. web/app/releve/print/page.tsx (the page the PDF route prints) now opens,
+directly under the title, with one sentence when dossier.recordedEntries === 0:
+DOSSIER_COPY.emptyYear(dossier.taxYear) - NEW COPY below. Keyed on the payload's
+count, never on the annex looking empty: an absence is a recorded day, and a
+year of absences only does not say "none". Style: a new .emptyYear class in
+print.module.scss using existing tokens only (body size, --type-body-m-weight,
+primary text colour) - a statement that survives a monochrome photocopy.
+  Tests (R225's shape - present iff the condition, both ways):
+    print-route.test.ts: prints it for an empty 2025 (condition asserted first);
+    not for a year with one CH day; not for a year of absences only.
+    RED: AssertionError: expected '<link rel="preload" as="image" href="...' to
+         contain 'Aucune journee n'est enregistree pour...'  (1 failed | 31 passed)
+    export-pdf.test.ts (LIVE, through the route, on the PRODUCED FILE): an empty
+    2025 renders 200, the extracted PDF text contains the sentence, and the
+    IssuanceRecord exists with a 32-hex code and the SHA-256 of the returned
+    bytes (teleworkDays 0). This test could not run RED (no server existed
+    before the change), so it was PROVEN ABLE TO FAIL: only the page edit
+    reverted (verified: 0 references), the test failed with the file's text
+    going straight from the title to "Nom ..."; restored (1 reference), green.
+    One measured detail: the PDF's ToUnicode map returns the apostrophe glyph
+    as U+02BC, not U+2019 (Inter draws both with one glyph), so the search folds
+    the two; every other character came back verbatim.
+THE VERIFICATION CODE IS KEPT, and the issuance is recorded exactly as for any
+year - the route was not changed, so the R516 STOP-and-ask branch did not
+arise. Walkthrough: Camille's empty 2024 got IssuanceRecord version 1 with a
+code.
+THE CSV renders an empty year without error: 200, the header, then one row per
+working day (262 for 2024), every one with an empty portion - pinned by a test
+in export-csv.test.ts (rows equal the dossier annex's days; none logged). IT
+DOES NOT SAY IT IN WORDS, and cannot without breaking something already ruled:
+SPEC 12 freezes the columns ("exact and stable"), and R237 refused a leading
+comment row because it breaks RFC 4180 for every reader that is not Excel. The
+CSV says it the only way its format allows - on every row. DEVIATION 3, Q2.
+
+--------------------------------------------------------------------------------
+R517 - ANDROID ALREADY HANDLES IT, PROVEN; android/ UNCHANGED
+--------------------------------------------------------------------------------
+`git diff origin/main...HEAD -- android/` is empty. No commonTest golden was
+added (it would prove nothing the existing goldens do not, and would owe the
+full :app:gate and the iOS cloud run, R573), so neither of those is owed.
+
+What the app receives for an empty year with a positive basis (a 200 it already
+receives today for Camille's 2024), and what it does, from source:
+  1. PARSE. :shared DossierApi.fetch (data/remote/DossierApi.kt:68) parses any
+     body through parseDossier (dossier/DossierPayload.kt:131); a parse failure
+     is DossierResult.Unreadable (:85). The empty-year body parses: the
+     walkthrough's real body has exactly the frozen field set with JSON types
+     taxYear number, period object (startDate a string or null), titulaire,
+     generatedAt, canton, denominatorKind strings, employmentRate number,
+     tiles/zone objects of numbers, months array (12), annex array (262 rows,
+     all recorded:false with null portion/kind/stamps), absenceDays,
+     recordedEntries, creditedMissionDays, rateWithoutMissions numbers;
+     zone.warnings [RULE_SET_FALLBACK with appliedYear]. Each of those shapes is
+     already parsed in commonTest DossierWireGoldenTest: VALID_BODY (integer
+     JSON numbers read by json.double, e.g. "workedDays": 240) and RICH_BODY (an
+     unlogged row - "recorded": false with every nullable field null - and a
+     RULE_SET_FALLBACK warning with appliedYear).
+  2. CONTROLLER. A previous year: ReleveController.probeAvailableYears
+     (ReleveController.kt:188-194) offers it only when recordedEntries > 0;
+     `else -> false` covers every non-document answer. So TODAY's 500 for Sam's
+     2025 (Unreadable) and a 200 with recordedEntries 0 produce the SAME screen:
+     the year is not offered. Both are tested in ReleveControllerTest:
+     "PARKAN-26: a past year is offered only when it has days
+     (recordedEntries > 0)" (its emptyPrev case: 2025 with recordedEntries 0 ->
+     availableYears [2026]) and "PARKAN-26: a past year that read-fails is not
+     offered (SEED-RELEVE Sam-2025 shape)".
+  3. SCREEN. The current year with nothing recorded is a Loaded state, and
+     ReleveScreen.kt:142 renders ReleveCopy.EMPTY_RECORD_NOTE above the
+     document when recordedEntries == 0 - an empty Releve, not an error.
+     Baseline: ReleveScreenScreenshotTest.releveEmptyRecord
+     (app/src/test/snapshots/images/..._releveEmptyRecord.png).
+THE DEPENDENCY, stated so the ruling on Q1 can use it: the app handles a NUMERIC
+200. A null rate is a parse failure by design (json.double on JSON null throws
+-> Unreadable), so answer (A) in Q1 would need an Android task; answers (B) and
+(C) would not.
+
+--------------------------------------------------------------------------------
+R518 - THE CONTRACT
+--------------------------------------------------------------------------------
+docs/api-v1.md (commit a63e0c4):
+  8.2  "A year with no day recorded is answered like any other year: 200, the
+       same envelope" - recordedEntries 0, every annex row recorded:false,
+       declarableRate 0 over a positive tiles.workedDays; the current year on 1
+       January and the activity's first year included. And "A year that ends
+       before the account's activityStartDate is NOT yet a contract - it is an
+       open question", with today's three answers and PARK-H1; a client must not
+       build on any of them.
+  8.3  read_failed added to the table (it was missing), naming the two account
+       states with no code of their own; a paragraph on future_year's UTC clock
+       (PARK-H3).
+  11.3 dossier_incomplete (422) added - in the code since FW-VERIFY, absent from
+       the table; the paragraph that said a canton-less account is told
+       renderer_unavailable corrected to the measured 422 dossier_incomplete
+       (DEVIATION 5).
+  11.4 an empty year is a document, with its sentence and its issuance.
+  12.2 an empty year is a file; the empty portion on every row is how it says it.
+  12.3 read_failed's paragraph names the pre-activity year too.
+THE WIRE CONTRACT CHECKS STAY GREEN: api-contract-doc.test.ts and
+api-contract.test.ts are in `pnpm test` (3290 passed on the tip); no field was
+added, removed or renamed; DOSSIER_RESPONSE_FIELDS is untouched.
+
+WHAT THE OPERATOR SHOULD CHECK AFTER PROMOTION
+  1. GET /api/v1/dossier?year=<previous year> as a test account (a reserved
+     .test address) whose activity began BEFORE that year - activityStartDate
+     null or earlier - with no day in it -> 200, recordedEntries 0.
+     CAUTION: a test account whose activity began THIS year still gets 500
+     read_failed for the previous year - that is PARK-H1, unchanged until Q1 is
+     ruled. Choose the account accordingly, or the check reads as a regression.
+  2. GET /api/v1/export/pdf?year=<that year> -> 200 application/pdf; the file
+     opens; its first line under the title is the empty-year sentence; an
+     IssuanceRecord (version 1, a code) exists for that account and year.
+  3. R549, below: after a refresh-token replay, the app container's log carries
+     `[auth] refresh replay delta_seconds=<N>` and nothing else on that line.
+
+--------------------------------------------------------------------------------
+R549 - A REPLAY IS MEASURED, AND NOTHING ELSE CHANGES
+--------------------------------------------------------------------------------
+THE CHANGE (web/lib/auth/tokens.ts, commit b757d2e). In rotateRefreshToken's
+replay branch - `if (row.consumedAt !== null)` - AFTER
+revokeSession(row.sessionId, 'TOKEN_REPLAYED'), logReplayDelta(row.consumedAt)
+writes exactly:
+
+    [auth] refresh replay delta_seconds=<N>
+
+  N = Math.floor((Date.now() - consumedAt) / 1000): whole seconds ELAPSED, raw
+  (a clock that moved backwards shows as negative rather than being tidied).
+  The prefix is the exported constant REPLAY_DELTA_LOG_PREFIX, which the test
+  reads (R181). console.warn - the '[auth] ...' shape the server uses, at the
+  level the server uses for operational facts that are not errors ('[export]
+  pdf busy'); in Node both warn and error go to stderr (DEVIATION 4). Wrapped in
+  try/catch and run after the refusal, so a failing sink cannot turn a refusal
+  into a 500. NO identifier of any kind; no schema change - consumedAt already
+  holds the rotation instant. The concurrent-rotation race (count === 0) and an
+  already-revoked session are NOT the replay branch and log nothing.
+
+THE TESTS (tests/db/replay-delta-log.test.ts, through POST
+/api/v1/auth/refresh - R204; a Date-only fake clock, so Prisma keeps real
+timers):
+  (a) rotate at T0, replay at T0 + 37 s + 750 ms -> the replay writes exactly
+      ONE console line in total, equal to `[auth] refresh replay
+      delta_seconds=37`. 750 ms on purpose: more than half a second, so a
+      rounding implementation (38) fails; the first draft used 250 ms and could
+      not tell floor from round - found and fixed before commit.
+      Same test file: the replay's status, body and headers are byte-identical
+      to an unknown token's, and the session's revokedReason is TOKEN_REPLAYED.
+  (b) BOTH DIRECTIONS: a normal rotation, an expired refresh token, an unknown
+      token, and a second replay on the session the first one ended -> no such
+      line.
+  (c) NOTHING IDENTIFYING, WITH A POSITIVE CONTROL: the replayed token, its
+      stored hash (read from the row, not recomputed), the session id, the user
+      id, the email, a client IP (x-forwarded-for 203.0.113.77) and a user agent
+      sent with the request are each absent from the captured output - and each
+      is FOUND by the same search when planted into a copy of the line, the
+      plant verified first (the copy differs from the line and ends with the
+      value) - R180.
+  (d) beyond the prompt's three: every console method throwing -> still 401
+      invalid_refresh_token and the session revoked.
+  RED (the prefix constant added alone, so the run is main's behaviour):
+      (a) AssertionError: expected [] to have a length of 1 but got +0
+      (c) AssertionError: expected undefined to be defined
+      Tests  2 failed | 6 passed (8)
+  PLANTS, each verified landed (grep) before its result was read, then
+  reverted (cmp identical to the saved file):
+      Math.round  -> (a) fails: '[auth] refresh replay delta_seconds=38' to be
+                     '[auth] refresh replay delta_seconds=37'
+      no try/catch -> (d) fails
+  GREEN: 8 passed; with tokens.test.ts, auth-round-trip.test.ts and
+  dossier-route.test.ts, 56 passed.
+  ON THE LOCAL STACK (walkthrough): Alex rotated (200), the old refresh token
+  replayed about 3 s later (401 invalid_refresh_token), and pnpm dev's log
+  carried, alone on its line:
+      [auth] refresh replay delta_seconds=3
+
+WHERE THE OPERATOR READS IT IN PRODUCTION: the application's container log - in
+Coolify, the app's Logs view; on the host, the container's docker logs (the
+line is on STDERR, so merge it):
+      docker logs <app container> 2>&1 | grep -F '[auth] refresh replay delta_seconds='
+  The exact string to grep:  [auth] refresh replay delta_seconds=
+  The numbers alone:  ... | sed 's/.*delta_seconds=//'
+  One line per session ended by a replay; nothing is written until this branch
+  is promoted. This session did not touch Coolify or production (boundary).
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (R176, R177) - pnpm dev on the scratch database, seeded
+--------------------------------------------------------------------------------
+pnpm dev (port 3000, free beforehand; /api/health answered
+{"service":"monreleve",...}) against fw_dossier_empty_scratch after `prisma db
+seed` (Camille from 2024-09-02, Alex, Sam from 2026-03-02). Tokens minted with
+scripts/_mint-readback.mjs into a scratchpad file, never printed.
+  Sam 2025 (pre-activity):  /dossier 500 read_failed; /export/pdf 422
+    dossier_incomplete; /export/csv 500 read_failed. The server log:
+    [dossier] 2025 failed: the engine refused this input: {"code":"PERIOD_OUT_OF_RANGE"}; {"code":"TOTAL_WORK_DAYS_NOT_POSITIVE"}
+    (PARK-H1 - the production observation of REPORT-AN-PULL, reproduced.)
+  Sam 2026: 200, recordedEntries 175, period.fraction 0.8356, workedDays 201,
+    declarableRate 17.91.
+  Camille 2024 (empty, partial): /dossier 200, recordedEntries 0, period
+    {fraction 0.3306, startDate 2024-09-02}, tiles {workedDays 80, swiss 0,
+    telework 0, missions 0}, declarableRate 0, rawRate 0, warnings
+    [RULE_SET_FALLBACK requestedYear 2024 appliedYear 2026], annex 262 rows all
+    unrecorded, months 12. /export/pdf 200 application/pdf, 189 437 bytes,
+    starts "%PDF-", filename releve-2024.pdf, and the extracted text carries
+    "Aucune journee n'est enregistree pour l'annee 2024. Les taux de ce releve
+    refletent donc une absence de saisie, et non une situation." followed
+    directly by "Nom Camille Martin ..." (the header). IssuanceRecord 2024:
+    version 1, a 32-char code, teleworkDays 0, declarableRate 0, current.
+    /export/csv 200, 262 rows, 0 with a portion; first row
+    "2024-01-01,,,,,,,,,,false".
+  Camille 2025 (has days - the other direction): PDF 200, sentence ABSENT, the
+    text going from the title straight to "Nom Camille Martin".
+  Following the link out: /verifier/<the 2024 code> 200 - "Ce releve correspond
+    a celui emis par Mon Releve le 24.10.2026", "Taux a declarer a l'AFC 0,00 %",
+    "Teletravail 0", "Periode couverte Du 02.09.2024 au 31 decembre 2024" -
+    and nothing saying no day was recorded. PARK-H4.
+  R549: see above (delta_seconds=3).
+  Stopped: the process tree on port 3000 killed (taskkill /T); afterwards no
+  LISTENING socket on :3000 (control: :5436 listed) and curl to
+  /api/health refused (exit 7).
+
+--------------------------------------------------------------------------------
+NEW COPY
+--------------------------------------------------------------------------------
+ONE sentence pair, web/lib/fr/dossier.ts, DOSSIER_COPY.emptyYear(year) -
+accented, U+2019 apostrophes (the module's APOS); transliterated here because
+this report is ASCII (R155: the accented original is the source):
+  "Aucune journee n'est enregistree pour l'annee <year>. Les taux de ce releve
+  refletent donc une absence de saisie, et non une situation."
+  Accents in the original: journ(e-acute)e, enregistr(e-acute)e,
+  ann(e-acute)e, relev(e-acute), refl(e-grave)tent.
+Written for the document, not lifted from Android's EMPTY_RECORD_NOTE (R165):
+that one speaks of "cette annee" in the present tense, true of a live year on a
+screen and wrong on a PDF of a closed one; this names the year. Vocabulary
+within SPEC 12's: "enregistree", never certifie/atteste/conforme.
+
+--------------------------------------------------------------------------------
+PARKED (R456: series H, claimed from the register - letters on main A B C D F G
+I K L M N P R S T U V X Y, E on the unmerged an-forced-signout; no heading and
+no citation of PARK-H/J/O/Q/W/Z on main, any origin branch, or in relay/; the
+pattern PARK(?:AN)?-[A-Z]?\d+ sees PARK-H1. register-coverage.mjs: OK)
+--------------------------------------------------------------------------------
+PARK-H1  a year that ends before activityStartDate answers 500: no rate is
+         defined over a zero basis - R515's question (Q1).
+PARK-H2  a year with entries but no canton answers 500 read_failed on /dossier
+         and /export/csv (422 dossier_incomplete on /export/pdf) - not a named
+         refusal (Q4).
+PARK-H3  for the first hour of 1 January (Paris) GET /dossier refuses the
+         current year as future_year - the guard reads the UTC year (Q3).
+PARK-H4  the verification page of an empty-year releve shows 0,00 % without
+         saying no day was recorded - IssuanceRecord has no column for it; a
+         schema change, not taken (Q5).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R514's PREMISE. The prompt reproduces "an account with no entries in the
+   requested year -> today's 500". That 500 does not exist for an empty year
+   with a positive basis (FW26's test; the walkthrough's Camille 2024). The
+   reproduction is of the case that does 500 - a year before the activity
+   start - and the report says so rather than manufacturing a RED.
+2. R515 STOPPED, so "2. R515 GREEN" did not happen: the pre-activity 500 is
+   still in the product. Its tests are committed as KNOWN characterisations of
+   today's exact answers (status, code, the log line), not as a failing test -
+   commit-only-on-green (R132) - and flip when Q1 is ruled.
+3. R516's CSV says "no day recorded" on every row (empty portion), not in words:
+   SPEC 12's frozen columns and R237's RFC 4180 refusal leave no place for a
+   sentence. Q2.
+4. R549's line is console.warn, not console.error. The prefix and shape are
+   the server's '[auth] ...'; warn is the level the server uses for operational
+   facts that are not errors, and both reach the container log on stderr.
+5. docs/api-v1.md 11.3: beyond the empty-year text, the paragraph claiming a
+   canton-less account is told `renderer_unavailable` was corrected - it has
+   been false since FW-VERIFY made the PDF route build the dossier before any
+   browser, and this task's PARK-H2 test measures the true answer (422
+   dossier_incomplete). dossier_incomplete was also missing from the table.
+6. "Push main" in the prompt: per the addendum and the operator's ruling, the
+   BRANCH was pushed (`git push origin fw-dossier-empty`); main and production
+   were never pushed. PENDING MERGE.
+7. R549 gained test (d) - a throwing logger - for the prompt's "a failure to
+   log is not a failure to refuse", which (a)-(c) do not exercise.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. A PARTIAL year's annex prints every weekday of the YEAR, including those
+   before activityStartDate, as "Non renseigne": Camille's 2024 (from 2
+   September) has 262 unrecorded rows against an 80-day basis; Sam's 2026 has 92
+   unrecorded rows including January and February, before he started.
+   service.ts weekdaysOf takes the whole year. The workedDaysNote (R225)
+   explains the count difference; whether pre-activity days belong in the annex
+   at all is a document decision. Pre-existing.
+2. Under pnpm dev, Next's request log prints the print-route URL the PDF route
+   builds - with its short-lived signed print token and the verification code.
+   Seen in the walkthrough's dev log; development server only. Pre-existing.
+3. Two pre-existing lint warnings (unused eslint-disable directives in
+   tests/unit/calc-engine/benchmark.test.ts:81 and
+   verification-trace.test.ts:83).
+4. The RULE_SET_FALLBACK warning carries requestedYear on the wire, which
+   :shared's parseWarning does not read (it reads appliedYear). Harmless;
+   noted for the contract's completeness.
+
+UNTRACKED FILES AND OTHER WORKTREES LEFT ALONE. The main checkout was only read
+(the prompt, .env copied into this worktree's web/.env, gitignored, never
+printed or committed): at the start and at the end HEAD ec58add, 55 untracked
+paths, no tracked change. The stale locks in C:/wt/an-account-tag and
+C:/wt/fw-gate-clean, and every other C:/wt/* worktree, untouched. Databases:
+only frontalier-postgres was used, and in it only the scratch database
+fw_dossier_empty_scratch (created, migrated, seeded for the walkthrough,
+and dropped with DROP DATABASE ... WITH (FORCE) once the last suite needing
+it had run - afterwards the container lists only frontalier, postgres,
+template0, template1). No test ran against the dev database `frontalier`.
+The four other projects' Postgres containers were never connected to.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 (R515, PARK-H1) HOW IS A YEAR THAT ENDS BEFORE THE ACTIVITY START ANSWERED?
+   Its period is zero, no rate is defined, and today three surfaces give three
+   answers (dossier 500, CSV 500, PDF 422). Options, with what each costs:
+   (A) 200, the same envelope, with the rates and headrooms null and an
+       additive flag (e.g. a period.fraction of 0 as the signal). NOT additive
+       under /v1 - a number becomes number-or-null - and :shared's parseDossier
+       reads every rate with json.double, so the app would show "the server did
+       not return a document": an Android task. The PDF's rail, formatPercent
+       calls and IssuanceRecord.declarableRate (Float, not null) all need a
+       branch or a migration.
+   (B) A NAMED 4xx refusal on all three surfaces (e.g. 422 before_activity, or
+       the PDF's existing dossier_incomplete), on future_year's precedent: a
+       year that has not happened, and a year before the work began, are both
+       years with no meaningful figure. Additive (a new code); Android needs no
+       change (any non-document answer is "no days" for the previous year).
+       Contradicts R515's "200 with the same envelope".
+   (C) Compute it as a whole year (fraction 1): a 200 with 0 % over a full
+       240-day basis for a year the person did not work - the "meaningless"
+       answer future_year exists to refuse. Not recommended.
+   Recommendation, if one is wanted: (B) - it is the only one that is both
+   honest and needs no client change; the Releve's previous-year probe already
+   treats it correctly.
+Q2 (R516) Is the CSV's per-row empty portion an acceptable way for it to "say"
+   a year has no recorded day, given SPEC 12 and R237 forbid a sentence? If not,
+   what may carry it (the filename? a 204? nothing)?
+Q3 (PARK-H3) Should the future_year guard read the Paris year
+   (`Number(parisDayOf(new Date()).slice(0, 4))`)? One line; the KNOWN test
+   flips to 200.
+Q4 (PARK-H2) Should /dossier and /export/csv name a canton-less account (e.g.
+   422 dossier_incomplete, as the PDF route already does) instead of 500
+   read_failed?
+Q5 (PARK-H4) Should IssuanceRecord store recordedEntries (a migration) so the
+   verification page can say what the document says?
+Q6 (R516) Is the proposed sentence accepted (NEW COPY)?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED AND NOT MERGED - PENDING MERGE (the operator's, after
+reading this report). Every push explicit (`git push origin fw-dossier-empty`),
+the upstream unset at creation so a bare push could never aim at main; each
+push in its own step, AFTER gate:clone's EXIT=0 and "GATE:CLONE PASSED" were
+read from its log, never from a notification:
+  8ff304e  gate:clone PASSED on 8ff304e225964a7a8cbfc3ebcfad517795954c5c
+           -> " * [new branch]      fw-dossier-empty -> fw-dossier-empty"
+  899570e  gate:clone PASSED on 899570e6ad57e0c0bd2acee63f9c7144900715f1
+           -> "   8ff304e..899570e  fw-dossier-empty -> fw-dossier-empty"
+  a63e0c4  gate:clone PASSED on a63e0c4160509835d5d1758a10a61576f7866d76
+           (b757d2e rides as its parent)
+           -> "   899570e..a63e0c4  fw-dossier-empty -> fw-dossier-empty"
+           git ls-remote origin refs/heads/fw-dossier-empty
+           -> a63e0c4160509835d5d1758a10a61576f7866d76
+  the report commit: gate:clone on it before its push - in the handback.
+main was never pushed, production was never pushed, Coolify's API was never
+called, C:/Users/KAMXKAM/AppData/Local/Temp/cf/ was never read, the production
+host and database were never contacted. Test accounts: the seeded
+@example.invalid scenario accounts and rejeu@monreleve.test, all on the scratch
+database; never a real address.
+
+END OF REPORT-FW-DOSSIER-EMPTY
