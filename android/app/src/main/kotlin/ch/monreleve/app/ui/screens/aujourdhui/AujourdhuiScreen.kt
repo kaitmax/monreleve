@@ -187,20 +187,6 @@ private fun YearSection(
     YearHeroCard(year, onNavigateToForecast)
 }
 
-/**
- * AN-CALENDAR (R479). THE RATE THIS SCREEN STATES IS THE ENGINE'S, not a Float copy of it.
- *
- * The figure animates through animateFloatAsState, and a Float cannot hold most hundredths: 0.83 becomes
- * 0.829999983..., which the declarable rate's truncation (SPEC 7.3) turns into 0,82 - so Aujourd'hui read 0,82 % where
- * the forecast read 0,83 % for the same record (REPORT-KMP-4 NOTICED 2), and Geneva's 39,16 % would read 39,15 %.
- * At rest the animation stands exactly on the engine's value converted to a Float, so that is when the engine's
- * Double is handed over, untouched; only the frames in between show the Float, and they are on screen for a moment.
- */
-internal fun shownRate(
-    animated: Float,
-    engine: Double,
-): Double = if (animated == engine.toFloat()) engine else animated.toDouble()
-
 // The displayed day count animates, but its negative flag (which picks the « restants »/« au-dessus » label)
 // stays the TARGET's, so the label never flips mid-count. Block body so the formatter keeps the line short.
 private fun animatedDays(
@@ -221,11 +207,10 @@ private fun YearHeroCard(
     val fiscalPct = formatPercent(year.fiscalCeiling * PERCENT, THRESHOLD_DECIMALS)
     val socialPct = formatPercent(year.socialCeiling * PERCENT, THRESHOLD_DECIMALS)
     val numberSpec: AnimationSpec<Float> = if (rememberReduceMotion()) snap() else tween(Motion.numbersMillis)
-    val animRate by animateFloatAsState(result.declarableRate.toFloat(), numberSpec)
     val animFiscal by animateFloatAsState(result.remainingToFiscal.toFloat(), numberSpec)
     val animSocial by animateFloatAsState(result.remainingToSocial.toFloat(), numberSpec)
-    // R479: what the figure and the rail SAY is the engine's own Double whenever the count is at rest.
-    val rate = shownRate(animRate, result.declarableRate)
+    // R495: what the figure and the rail SAY is a Double throughout - the engine's own at rest.
+    val rate = rememberMovingRate(result.declarableRate, numberSpec)
 
     Column(
         modifier =
