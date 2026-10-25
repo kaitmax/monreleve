@@ -59,10 +59,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
 import java.time.LocalDate
+import kotlin.time.ExperimentalTime
+import kotlin.time.toKotlinInstant
 
 // AN5b increment 3. Recording a day (SPEC 11.2). The one question - where are you working today? -
 // answered in one tap, which records through AN5's EntryRepository (D16: the tap is the only writer,
@@ -560,6 +561,7 @@ class AujourdhuiController(
      * conservative choice (PARKAN-18): a small look-ahead claims less.
      */
     @Suppress("ReturnCount")
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
     private fun latenessOf(oldestPendingDay: String?): PendingLateness {
         if (oldestPendingDay == null) return PendingLateness.NONE
         val day = LocalDate.parse(oldestPendingDay).toKotlinLocalDate()

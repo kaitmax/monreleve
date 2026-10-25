@@ -7,6 +7,7 @@ import ch.monreleve.app.data.local.toKotlinClock
 import kotlinx.datetime.toKotlinTimeZone
 import java.time.Clock
 import java.util.UUID
+import kotlin.time.ExperimentalTime
 
 // KMP-4 (R463). :app'S HALF OF THE RECORD PATH'S SEAMS - the one place a reader sees what Android passes.
 //
@@ -29,6 +30,7 @@ import java.util.UUID
  * The record repository, built the way :app always built it: [clock] supplies both the instant and the
  * device's zone, R425's canary crashes a debug build and logs in release, and each tap mints a UUID.
  */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: hands the kotlin.time.Clock seam over - on the allowlist.
 fun LocalEntryRepository(
     dao: EntryDao,
     clock: Clock,

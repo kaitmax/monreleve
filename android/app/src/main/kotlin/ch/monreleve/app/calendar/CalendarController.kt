@@ -27,10 +27,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
 import java.time.LocalDate
+import kotlin.time.ExperimentalTime
+import kotlin.time.toKotlinInstant
 
 // AN10. The calendar screen's controller (SPEC 11.3). It lives OUTSIDE ui/ (fence 5): it holds the
 // repository, the settings and the clock, and it OWNS the translation between the stored rows and the
@@ -403,6 +404,7 @@ class CalendarController(
         closeSheet()
     }
 
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
     private fun editableDay(isoDate: String): EditableDay {
         val rows = entries.filter { it.dayDate == isoDate }
         val held = rows.map { it.portion }

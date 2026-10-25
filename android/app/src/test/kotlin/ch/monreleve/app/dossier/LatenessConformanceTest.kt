@@ -3,9 +3,10 @@ package ch.monreleve.app.dossier
 import ch.monreleve.app.calc.fixtureFile
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import org.json.JSONObject
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // AN5c increment 2 (R286/R206). The Kotlin side of the ONE late threshold, bound to the server side by
 // fixtures/late-threshold-cases.json - the SAME file web/tests/unit/entries/late-fixture.test.ts reads.
@@ -35,6 +36,11 @@ private fun readFixture(): Pair<Int, List<LateCase>> {
     return json.getInt("thresholdDays") to cases
 }
 
+/** The forecast for one case, parsing the fixture's instant with kotlin.time.Instant (kotlinx-datetime 0.7). */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
+private fun forecastFor(case: LateCase): Boolean =
+    LatenessForecast.wouldBeLate(LocalDate.parse(case.dayDate), Instant.parse(case.observedAt))
+
 class LatenessConformanceTest : FunSpec({
     val (thresholdDays, cases) = readFixture()
 
@@ -49,8 +55,7 @@ class LatenessConformanceTest : FunSpec({
 
     cases.forEach { case ->
         test("case ${case.id}: observed ${case.observedAt} -> late=${case.late}") {
-            LatenessForecast.wouldBeLate(LocalDate.parse(case.dayDate), Instant.parse(case.observedAt)) shouldBe
-                case.late
+            forecastFor(case) shouldBe case.late
         }
     }
 })
