@@ -141,6 +141,14 @@ export const AUTH_API_COPY = {
     `Cet envoi contient deux versions d${APOS}une même journée. L${APOS}application ` +
     `doit n${APOS}en envoyer qu${APOS}une${n(';')} réessayez depuis l${APOS}application.`,
 
+  /**
+   * R490/R500: a day keeps the granularity it was recorded in. A batch asking
+   * for a whole day beside a half, or a half beside a whole day, is refused.
+   */
+  granularityConflict:
+    `Cet envoi mélange une journée entière et une demi-journée pour un même jour. ` +
+    `Une journée garde le découpage dans lequel elle a été enregistrée.`,
+
   writeFailed:
     `Le service n${APOS}a pas pu enregistrer cet envoi. Rien n${APOS}a été modifié${n(';')} ` +
     `l${APOS}application réessaiera.`,

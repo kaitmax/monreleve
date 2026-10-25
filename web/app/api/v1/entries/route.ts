@@ -157,6 +157,15 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const result = await writeEntries(auth.userId, parsed.data.entries);
 
+  if (!result.ok && result.code === 'granularity_conflict') {
+    // R490/R500: 400, NOT 409, and the choice is the client's. SyncEngine
+    // isolates a multi-item 400 item by item (R296) so the good days still sync
+    // and only the refused one is held; it holds a 409 WHOLE, which would strand
+    // every good item beside one bad one. future_day above is refused whole the
+    // same way: this server never half-applies a batch.
+    return refuse('granularity_conflict', AUTH_API_COPY.granularityConflict);
+  }
+
   if (!result.ok) {
     return refuse(
       result.code ?? 'write_failed',

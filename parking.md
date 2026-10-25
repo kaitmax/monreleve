@@ -4426,3 +4426,25 @@ December, a baseline question for any photographed surface, and a copy decision.
 COST OF REVERSING: none - nothing changed.
 
 STATE:      OPEN - the operator's: print the product's clock (Paris) or name UTC.
+
+## PARK-Q1 - no Android test pins the granularity_conflict refusal  [FW-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-FW-GRANULARITY.txt (R502).
+
+WHAT IT IS: SyncEngine (android/shared/.../data/sync/SyncEngine.kt, handleOk) branches
+on the HTTP STATUS alone and never reads a 400's body, so the server's new 400
+granularity_conflict is handled exactly like invalid_payload: a multi-item batch is
+isolated item by item once, a refused single item is held FAILED. SyncEngineTest
+(:app) pins that with {"code":"invalid_payload"}; nothing pins it with the new code.
+
+TAKEN:      Nothing in Android - "the Android app needs NO change" is the hard boundary,
+and a test beside SyncEngineTest runs :app's gate for a case its status-only branch
+already covers.
+
+NOT TAKEN:  a SyncEngineTest case posting {"code":"granularity_conflict"} (a copy of
+aRejectedBatchIsIsolatedSoTheGoodItemsStillSync with the new body), and a golden for
+the 400 body in :shared's commonTest if iOS wants the code named.
+
+COST OF REVERSING: none.
+
+STATE:      OPEN - an Android task, small; do it with the next :app change.

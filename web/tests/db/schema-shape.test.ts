@@ -66,6 +66,9 @@ describe('the migrations produced the schema they describe', () => {
       'Entry_userId_clientMutationId_key',
       'Entry_userId_dayDate_idx',
       'Entry_userId_dayDate_portion_key',
+      // R499. The exclusion constraint's own gist index (R490: one granularity
+      // per day). Sorts after the Prisma-named ones, lowercase.
+      'entry_one_granularity_per_day',
     ]);
   });
 

@@ -192,16 +192,20 @@ describe('the order is total, and stated rather than inherited', () => {
     expect(days).toEqual(['2026-01-14', '2026-05-22', '2026-09-03']);
   });
 
-  it('orders one day FULL, AM, PM - the literal sequence', async () => {
+  it('orders one day AM, PM - the literal sequence', async () => {
     // INSERTED IN THE WRONG ORDER ON PURPOSE, so "is sorted" cannot pass by the
     // rows happening to arrive sorted.
+    //
+    // FW-GRANULARITY (R490, R499): this used to seed FULL beside the halves. The
+    // database now refuses that day, so a FULL row can no longer share a day
+    // with AM or PM and the FULL-first position is exercised by the adverse
+    // comparator test below, which hands the sort input no database can hold.
     await seed(userId, '2026-04-07', { portion: 'PM' });
-    await seed(userId, '2026-04-07', { portion: 'FULL' });
     await seed(userId, '2026-04-07', { portion: 'AM' });
 
     const portions = entriesOf(await readYear('2026')).map((entry) => entry.portion);
 
-    expect(portions).toEqual(['FULL', 'AM', 'PM']);
+    expect(portions).toEqual(['AM', 'PM']);
   });
 
   it('sorts adverse input, which the route-level test above cannot prove', () => {
@@ -453,7 +457,10 @@ describe('the read is unbounded, and that is a proven claim', () => {
     // THE CEILING IS COMPUTED, NEVER TYPED (R171). It is a structural
     // consequence of @@unique([userId, dayDate, portion]): one row per portion
     // per day. Growing EntryPortion changes this number and the test follows.
-    const portions = Object.keys(EntryPortion);
+    // FW-GRANULARITY (R499): a day holds FULL alone OR the halves, never both, so
+    // the most rows one day can hold is the number of HALF portions - still
+    // computed from the enum, never typed.
+    const portions = Object.keys(EntryPortion).filter((portion) => portion !== 'FULL');
     const days: string[] = [];
     const cursor = new Date('2028-01-01T00:00:00.000Z');
 
