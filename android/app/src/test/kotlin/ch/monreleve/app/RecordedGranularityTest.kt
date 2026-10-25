@@ -1,5 +1,7 @@
 package ch.monreleve.app
 
+import ch.monreleve.app.aujourdhui.AujourdhuiController
+import ch.monreleve.app.aujourdhui.AujourdhuiState
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.calendar.CalendarController
@@ -47,6 +49,9 @@ private val JUNE_15: Clock = Clock.fixed(Instant.parse("2026-06-15T10:00:00Z"), 
 
 /** A recordable past working day under [JUNE_15] (a Wednesday). */
 private const val PAST = "2026-06-10"
+
+/** Today, in Paris, under [JUNE_15]. */
+private const val TODAY = "2026-06-15"
 
 private class GranularitySetting(private val value: String) : SettingsStore {
     override fun load(): Settings = Settings("GE", 100, "SIMPLIFIED240", null, value, null)
@@ -129,6 +134,23 @@ private fun TestScope.sheetOn(
     CalendarController(repo, settings, 2026, JUNE_15, this).also {
         advanceUntilIdle()
         it.openDay(day)
+    }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+private fun TestScope.todayOn(
+    repo: RecordedWrites,
+    settings: SettingsStore,
+): AujourdhuiController = AujourdhuiController(repo, settings, 2026, JUNE_15, this).also { advanceUntilIdle() }
+
+/**
+ * The slots Aujourd'hui's manual card offers for [state] - ChoiceCard's own dispatch, read off the state the
+ * controller emits: DAY is DayChoiceCard (RecordSection on Slot.FULL), HALF_DAY is HalfDayChoiceCard (one
+ * RecordSection per half). A tap after « Modifier » records through one of these.
+ */
+private fun slotsTheCardOffers(state: AujourdhuiState): List<Slot> =
+    when (state.granularity) {
+        GranularityChoice.DAY -> listOf(Slot.FULL)
+        GranularityChoice.HALF_DAY -> listOf(Slot.MORNING, Slot.AFTERNOON)
     }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -237,6 +259,73 @@ class RecordedGranularityTest : FunSpec({
             val emptyWhole = sheetOn(holding(), WHOLE_DAYS).state.value.editing.shouldNotBeNull()
             emptyWhole.slots.map { it.slot } shouldBe listOf(Slot.FULL)
             emptyWhole.recordedAs shouldBe null
+        }
+    }
+    // -------------------------------------------------------------------------------------------------------------
+    // Aujourd'hui, its choice and its « Modifier » (R493; AN-CALENDAR Q4).
+    // -------------------------------------------------------------------------------------------------------------
+
+    test("R490 Aujourd'hui: today held WHOLE, in half-day mode, is ONE whole-day answer - and says why") {
+        runTest {
+            val state = todayOn(holding(row(Portion.FULL, EntryKind.HOME, TODAY)), HALF_DAYS).state.value
+
+            state.granularity shouldBe GranularityChoice.DAY
+            state.fullDay.shouldNotBeNull().kind shouldBe RecordedKind.DOMICILE
+            state.morning shouldBe null
+            state.afternoon shouldBe null
+            state.recordedAs shouldBe GranularityChoice.DAY
+        }
+    }
+
+    test("R490 Aujourd'hui: « Modifier » on that day writes ONE whole-day row - never half-day controls writing FULL") {
+        runTest {
+            val repo = holding(row(Portion.FULL, EntryKind.HOME, TODAY))
+            val controller = todayOn(repo, HALF_DAYS)
+
+            // « Modifier », then « En Suisse », on the first slot the card offers.
+            controller.record(RecordedKind.SUISSE, slotsTheCardOffers(controller.state.value).first())
+            advanceUntilIdle()
+
+            repo.made.map { it.portion to it.kind } shouldBe listOf(Portion.FULL to EntryKind.CH)
+            repo.day(TODAY) shouldBe listOf(Portion.FULL to EntryKind.CH)
+        }
+    }
+
+    test("R490 Aujourd'hui, the mirror: today held in HALVES, in whole-day mode, keeps its halves - and says why") {
+        runTest {
+            val repo = holding(row(Portion.AM, EntryKind.CH, TODAY), row(Portion.PM, EntryKind.HOME, TODAY))
+            val state = todayOn(repo, WHOLE_DAYS).state.value
+
+            state.granularity shouldBe GranularityChoice.HALF_DAY
+            state.morning.shouldNotBeNull().kind shouldBe RecordedKind.SUISSE
+            state.afternoon.shouldNotBeNull().kind shouldBe RecordedKind.DOMICILE
+            state.fullDay shouldBe null
+            state.recordedAs shouldBe GranularityChoice.HALF_DAY
+        }
+    }
+
+    test("R490 Aujourd'hui, the mirror: « Modifier » on the afternoon writes that half only - never a FULL row") {
+        runTest {
+            val repo = holding(row(Portion.AM, EntryKind.CH, TODAY), row(Portion.PM, EntryKind.HOME, TODAY))
+            val controller = todayOn(repo, WHOLE_DAYS)
+
+            controller.record(RecordedKind.SUISSE, slotsTheCardOffers(controller.state.value).last())
+            advanceUntilIdle()
+
+            repo.made.map { it.portion to it.kind } shouldBe listOf(Portion.PM to EntryKind.CH)
+            repo.day(TODAY) shouldBe listOf(Portion.AM to EntryKind.CH, Portion.PM to EntryKind.CH)
+        }
+    }
+
+    test("R493 Aujourd'hui: an empty today is asked for in the setting's granularity, with no notice") {
+        runTest {
+            val halves = todayOn(holding(), HALF_DAYS).state.value
+            halves.granularity shouldBe GranularityChoice.HALF_DAY
+            halves.recordedAs shouldBe null
+
+            val whole = todayOn(holding(), WHOLE_DAYS).state.value
+            whole.granularity shouldBe GranularityChoice.DAY
+            whole.recordedAs shouldBe null
         }
     }
 })

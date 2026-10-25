@@ -3130,7 +3130,12 @@ switch whenever any half row exists in the year.
 COST OF REVERSING: depends on R478's answer. The display would sit beside shownFor
 (CalendarController) and wholeDayHalf (AujourdhuiController).
 
-STATE:      OPEN - folded into R478's question.
+STATE:      CLOSED 25 OCTOBER 2026 BY RULING (R490, relay/AN-GRANULARITY.txt): "a day
+held in halves, seen in whole-day mode, keeps half-day editing (PARK-C1, closed by this
+ruling) - never a FULL row added beside them." Built by AN-GRANULARITY: the calendar
+sheet and Aujourd'hui offer such a day its two halves with one sentence
+(AujourdhuiCopy.RECORDED_HALF_DAYS), and the repository refuses a FULL row beside them
+(R492, RecordResult.MixedGranularityRefused). R290's guard in Parametres is unchanged.
 
 ## PARK-C2 - uidrive.mjs cannot see which option is chosen  [AN-CALENDAR, 2026-10-21]
 

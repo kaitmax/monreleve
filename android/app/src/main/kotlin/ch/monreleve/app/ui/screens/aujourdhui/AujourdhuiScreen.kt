@@ -57,6 +57,7 @@ import ch.monreleve.app.fr.format.formatDayLong
 import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.format.formatSignedDays
 import ch.monreleve.app.settings.LoggingMode
+import ch.monreleve.app.ui.screens.calendrier.RecordedGranularityNotice
 
 // The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
 // 0.40 becomes "40,0 %". PERCENT scales the fraction; THRESHOLD_DECIMALS matches SPEC 9.3's "40,0 %".
@@ -115,9 +116,12 @@ fun AujourdhuiScreen(
         // Section B - today's choice (manual) or the detection surface (auto).
         if (autoMode) {
             if (state.nearBorderNotice) NearBorderNotice()
+            // AN-GRANULARITY (R490, R493): today recorded in the other granularity than the setting's says so, once.
+            RecordedGranularityNotice(state.recordedAs)
             AutoSection(state, AutoActions(actions.onRecord, actions.onConfirmDetected, actions.onCorrectDetected))
         } else {
             Text(text = AujourdhuiCopy.QUESTION, style = FrontierType.h3)
+            RecordedGranularityNotice(state.recordedAs)
             ManualSection(state, actions.onRecord)
         }
 
