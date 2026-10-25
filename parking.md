@@ -4034,3 +4034,129 @@ the server's write path and annex, the client's record path and sync reconcile, 
 the repository's refusal (DayGranularity.wouldMixGranularity) taught the new event.
 
 STATE:      OPEN - deferred by ruling (R490).
+
+## PARK-W2 - the evening notification records an empty day whole, even in half-day mode  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY.txt (R491, the write paths listed).
+
+WHAT IT IS: The evening notification's buttons (EveningTap / EveningActionReceiver) record
+today as ONE whole-day row, whatever the setting. They only ever write a day that holds no
+row at all (any recorded portion suppresses the notification and refuses the tap), so they
+can never make a day mixed - and since R492 the repository refuses one anyway, and a refused
+tap no longer says "Enregistre". But R490 says the setting decides how NEW days are asked
+for: in half-day mode the notification makes a day held whole, which the calendar and
+Aujourd'hui then offer as one whole-day choice (with R490's notice) and which can never be
+split (PARK-W1).
+
+TAKEN:      Unchanged. No ruling names the notification, and writing a morning and an
+afternoon from one button - or asking per half in a notification - is a product decision.
+
+NOT TAKEN:  (a) in half-day mode, the button writes AM and PM of the kind tapped; (b) in
+half-day mode, the notification asks per half; (c) in half-day mode, no recording buttons
+("Autre..." opens the app).
+
+COST OF REVERSING: (a) decideEveningTap returns the setting's portions instead of one
+RecordCommand, and the receiver writes each; its tests. (b) new notification copy and
+actions. (c) one branch in EveningNotifier.recordActions.
+
+STATE:      OPEN - a question for the operator (REPORT-AN-GRANULARITY.txt, QUESTIONS).
+
+## PARK-W3 - a mixed today is read-only on Aujourd'hui  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY.txt (R494).
+
+WHAT IT IS: A today ALREADY holding a whole-day row beside a half is shown on Aujourd'hui as
+its rows say (MixedDayAnswer: each row under its name, the sync truth) with nothing to tap -
+no option for the empty half (it would add a row beside FULL) and no "Modifier". R494 allows
+editing an existing row's kind; on Aujourd'hui that is not offered, only in the calendar
+sheet, which shows such a day's rows each editable and adds none.
+
+TAKEN:      Read-only on Aujourd'hui - conservative: no path there can add a row.
+
+NOT TAKEN:  A per-row "Modifier" on Aujourd'hui for a mixed today.
+
+COST OF REVERSING: MixedDayAnswer gains a per-row editor (RecordSection on that row's slot);
+the repository already allows the edit and refuses the add.
+
+STATE:      OPEN.
+
+## PARK-W4 - the refusal's write lock is per repository instance  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY.txt (R492).
+
+WHAT IT IS: LocalEntryRepository.record() reads the day and writes under a Mutex, so two
+writes through ONE repository (the whole shell shares one) cannot both pass the check. The
+evening notification's receiver builds its own repository, so a notification tap and an
+in-app write landing in the same instant are checked without a shared lock. The receiver
+writes only a day with no row at all; the window is the few milliseconds between its read
+and its write.
+
+TAKEN:      Stated in the code (EntryRepository.kt) and here; not closed.
+
+NOT TAKEN:  A database transaction around the check and the write (the platform supplies
+one - EntriesDownload's seam); one process-wide repository.
+
+COST OF REVERSING: a transaction seam on LocalEntryRepository (the shape EntriesDownload
+already takes), wired by :app and by any iOS writer.
+
+STATE:      OPEN.
+
+## PARK-W5 - the calendar legend has no entry for the corrected mark  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY.txt (NOTICED BUT NOT TOUCHING), while closing R519.
+
+WHAT IT IS: design/Legend.kt says "No << detection corrigee >> entry: the manual product has
+no detection". Detected days now reach the phone (AN-AUTO records them, AN-PULL brings them
+down), so a cell can carry the corrected corner mark while the legend under the grid does
+not explain it. R519 made every surface NAME the provenance; the legend explains marks, a
+different surface, outside R519's list.
+
+TAKEN:      Unchanged.
+
+NOT TAKEN:  A legend entry for the corrected mark.
+
+COST OF REVERSING: one legend row, its copy (fr/), the legend's baselines.
+
+STATE:      OPEN.
+
+## PARK-W6 - Aujourd'hui's half-day answer states no provenance when its halves differ  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY.txt (R519).
+
+WHAT IT IS: On Aujourd'hui, a day answered in halves shows a detection provenance line only
+when both halves share it ("a mixed pair (one manual) carries none", ChoiceCard.
+halfDayAnswerParts). That is silence, not a misstatement, so R519 ("says what the record
+says") is not broken there - but it is the one surface that names who recorded a day and
+says nothing for a split one.
+
+TAKEN:      Unchanged.
+
+NOT TAKEN:  A provenance line per half on the answer card.
+
+COST OF REVERSING: halfDayAnswerParts builds one line per half from DayCellCopy.
+provenanceLabel / DetectionCopy.provenanceLine; the answer card's baselines.
+
+STATE:      OPEN.
+
+## PARK-W7 - R496's drive on the S9 is owed: the phone dropped off USB  [AN-GRANULARITY, 2026-10-25]
+
+RAISED BY:  REPORT-AN-GRANULARITY.txt (R496).
+
+WHAT IT IS: The S9 was read as found, the audit build of 942581c installed, a new test
+account (an-granularity@monreleve.test) signed in by code against the local stack, and
+onboarding reached step 6 of 8 - then the session was interrupted and the phone dropped:
+"offline", then, after one `adb reconnect offline`, "unauthorized" (the phone asks for USB
+debugging authorization on its screen). R496's four steps were not driven; the server's
+trail for the account holds no event.
+
+TAKEN:      Nothing driven, nothing claimed. The unit, controller and screen tests and the
+instrumented tests that DID run on the S9 before the drop are the evidence; R496 is NO
+RESULT.
+
+NOT TAKEN:  Waiting in a loop for the phone.
+
+COST OF REVERSING: a follow-up drive: re-authorize USB debugging on the phone, restore
+stay_on_while_plugged_in to 0, finish onboarding (or sign the test account out), run R496's
+four steps, then leave the phone as found (REPORT-AN-GRANULARITY.txt, R496).
+
+STATE:      OPEN - the operator decides whether R496 runs in a follow-up.
