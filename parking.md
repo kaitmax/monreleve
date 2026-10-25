@@ -3688,11 +3688,21 @@ ruling asked for; the versions did not force it.
 
 COST OF REVERSING: one gradle property, proven by the next gate's task list.
 
-STATE:      OPEN - RULED by the operator, 24 October 2026, on merging kmp-up2: DROP the
-Windows gate's iOS klib compilation - it proves nothing the common metadata compilation
-does not, and costs time on every gate - and REPLACE it with a rule, R573 in CLAUDE.md:
-any branch touching :shared gets the iOS cloud run before merge. The rule is in force
-now; the gate change is a task not yet scheduled, and this closes when it lands.
+STATE:      CLOSED by KMP-DT R575 (commit b43c6e2, kmp-dt) - pending merge. RULED by the
+operator, 24 October 2026, on merging kmp-up2: DROP the Windows gate's iOS klib
+compilation - it proves nothing the common metadata compilation does not, and costs time
+on every gate - and REPLACE it with a rule, R573 in CLAUDE.md: any branch touching :shared
+gets the iOS cloud run before merge. LANDED as kotlin.native.enableKlibsCrossCompilation=
+false in android/gradle.properties (the property What's new in Kotlin 2.2.20 names; KGP
+v2.2.21 reads it with a default of true and compiles a target off its host only when it is
+on). Off a Mac compileKotlinIosArm64 / compileKotlinIosSimulatorArm64 are SKIPPED and
+downloadKotlinNativeDistribution does not run; compileCommonMainKotlinMetadata still runs;
+iOS run 40232989897 on b43c6e2 compiled both klibs with Room's generated code and ran the
+same 98 tests. The gate text and the two :shared comments say what runs now. COST, said
+plainly: Kotlin's "targets cannot be built on this machine and are disabled" warning is
+back (one w: line per build, as before Kotlin 2.2.20), left visible. CLAUDE.md R573 still
+says the compilation "is to be dropped" - see PARK-Z2. REPORT-KMP-DT.txt R575 has the
+task lists before and after.
 
 ## PARK-X4 - :app's kotlinOptions did not warn on 2.2.21 where :probe's identical block did  [KMP-UP2, 2026-10-24]
 
@@ -4448,3 +4458,62 @@ the 400 body in :shared's commonTest if iOS wants the code named.
 COST OF REVERSING: none.
 
 STATE:      OPEN - an Android task, small; do it with the next :app change.
+
+## PARK-Z1 - kotlinx-datetime 0.7 has no route on Kotlin 2.2.21 that keeps all three of KMP-DT's rules  [KMP-DT, 2026-10-25]
+
+RAISED BY:  REPORT-KMP-DT.txt (R550, STOPPED; R551 the inventory both routes need).
+
+WHAT IT IS: Compose Multiplatform 1.10.3's Material3 (1.10.0-alpha05) requires
+kotlinx-datetime 0.7.1 on iOS - measured: with it added, :shared's iOS configurations
+resolve 0.7.1 over the catalog's 0.6.1 ("between versions 0.7.1 and 0.6.1"). 0.7.0
+removed kotlinx.datetime.Instant and Clock in favour of kotlin.time.Instant and Clock, and
+in the standard library this project pins (Kotlin 2.2.21) those are @ExperimentalTime at
+RequiresOptIn.Level.ERROR; they are stable only from Kotlin 2.3.0 (@WasExperimental). So:
+  - REGULAR 0.7.1: kotlinx.datetime.Instant/Clock are deprecated typealiases to the
+    experimental types. Probe (uncommitted): 34 "This declaration needs opt-in" errors
+    - 17 in each of commonMain's two compilations, at 9 lines of CalendarDay, ParisDay,
+    LatenessForecast and EntryRepository - plus "Unresolved reference 'System'"
+    (Clock.System through the typealias); :app was not reached. Breaks the hard boundary
+    NO EXPERIMENTAL OPT-IN.
+  - 0.7.1-0.6.x-compat (the publisher's compatibility artifact, no opt-in): :shared
+    compiles with 63 new deprecation w: lines (commonMain's two compilations and its
+    tests; :app's not counted, it did not compile); :app fails at its 5 java.time.Instant ->
+    kotlinx Instant conversions ("Cannot access 'fun Instant.toKotlinInstant()': it is
+    internal") - the library's own converter is @PublishedApi internal in that artifact,
+    so the boundary needs either a hand-written mapping (R553 forbids it) or the
+    standard library's experimental converter (the boundary forbids it). Every line of
+    iOS code would also be written against a deprecated type - what KMP-DT exists to
+    avoid. Gradle orders 0.7.1-0.6.x-compat ABOVE 0.7.1 (extra numeric part), and
+    Material3 resolves to it: measured.
+
+TAKEN:      Nothing version-related. On 0.6.1, the goldens a 0.7 bump must keep
+(R552, d9a3dae) and R575's gate change (b43c6e2), each its own commit.
+
+NOT TAKEN:  the bump, every code fix for it, and R556 (the in-place upgrade on the S9 -
+nothing to upgrade to). The worktree probe of each route was reverted (catalog read back
+as 0.6.1, git status clean).
+
+COST OF REVERSING: none - no datetime change landed.
+
+STATE:      OPEN - THE OPERATOR'S DECISION (REPORT-KMP-DT.txt QUESTIONS Q1): (A) 0.7.1 with
+@OptIn(ExperimentalTime::class) at the Instant/Clock sites only, removable unchanged at
+Kotlin 2.3; (B) 0.7.1-0.6.x-compat with a hand-written epoch conversion at 5 :app sites
+and ~63+ deprecation warnings; (C) wait for the Kotlin 2.3 move (stable Instant; also the
+KSP2 decision, PARK-X2).
+
+## PARK-Z2 - CLAUDE.md R573 still says the Windows iOS klib compilation "is to be dropped"  [KMP-DT, 2026-10-25]
+
+RAISED BY:  REPORT-KMP-DT.txt (R575, NOTICED BUT NOT TOUCHING).
+
+WHAT IT IS: R575 dropped it (b43c6e2, PARK-X3 closed). CLAUDE.md's R573 bullet still reads
+"It replaces the Windows gate's compilation of :shared's iOS klibs, which is to be dropped
+(PARK-X3)" - true on main, false once kmp-dt merges. A finding that names a second site is
+not closed until that site is checked (R267): this is that second site.
+
+TAKEN:      Nothing. CLAUDE.md is the operator's file; a session does not edit it.
+
+NOT TAKEN:  the one-phrase edit ("which KMP-DT R575 dropped").
+
+COST OF REVERSING: none.
+
+STATE:      OPEN - the operator's, at or after the merge of kmp-dt.

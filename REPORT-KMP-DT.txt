@@ -1,0 +1,739 @@
+================================================================================
+REPORT-KMP-DT
+kotlinx-datetime 0.7: STOPPED AT R550 - NO ROUTE ON KOTLIN 2.2.21 KEEPS ALL THREE
+RULES. WHAT LANDED: THE GOLDENS ON 0.6.1, AND THE WINDOWS GATE'S iOS KLIB DROP.
+================================================================================
+TASK     relay/KMP-DT.txt and its ADDENDUM (GitHub Actions, the iOS count, R575),
+         read in full by absolute path from the main checkout (untracked there,
+         never copied or committed). Rulings R550-R557 and R575 - all free when
+         taken: no REPORT-*.txt, parking.md or unmerged origin branch uses them;
+         the only other mention is relay/SERIES-TO-IOS-1a.txt, naming this task.
+BASE     1c1eb82 (origin/main: Merge fw-granularity)
+BRANCH   kmp-dt, worktree C:/wt/kmp-dt (R349), lock .session-lock.json in it
+         (gitignored, .gitignore:62), upstream unset after creation; every push
+         `git push origin kmp-dt`. PENDING MERGE - the merge is the operator's.
+DEVICE   SM-G960F (Galaxy S9), serial 232bcd8c300c7ece - READ, NEVER WRITTEN (R556
+         did not run; see R556).
+CLOUD    GitHub Actions, .github/workflows/ios-shared.yml, dispatched with
+         `gh workflow run ios-shared.yml --ref <ref>` and read with `gh run view`
+         and `gh run download`; gh used its own credential. No token was printed,
+         written or needed. The prompt's CODEMAGIC_API_TOKEN line is stale (the
+         ADDENDUM) and no Codemagic call was made.
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334). Numbers are read from logs and
+JUnit XML, never from the absence of an error.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+THE BUMP DID NOT HAPPEN, AND THAT IS THE R550 RESULT, NOT AN UNFINISHED STEP.
+kotlinx-datetime 0.7 replaced its own Instant and Clock with kotlin.time.Instant
+and kotlin.time.Clock, and in the standard library this project is pinned to -
+Kotlin 2.2.21 - those two are @ExperimentalTime at RequiresOptIn.Level.ERROR.
+They become stable only in Kotlin 2.3.0. Both published 0.7.1 artifacts were
+compiled against this repository (uncommitted probes, reverted):
+
+  0.7.1 (regular)           34 "This declaration needs opt-in" errors in :shared
+                            alone - the hard boundary's STOP condition.
+  0.7.1-0.6.x-compat        no opt-in, :shared compiles (63 new deprecation
+                            warnings), but :app's 5 java.time.Instant -> kotlinx
+                            conversions fail: in that artifact the library's own
+                            converter is internal. The only public bridges are a
+                            hand-written mapping (R553 forbids it) or the standard
+                            library's converter (experimental: the boundary forbids
+                            it). And every line iOS-1a writes would be written
+                            against a deprecated type - what this task exists to
+                            prevent.
+
+So no route keeps (1) no experimental opt-in, (2) the library's own converters
+at the Android boundary and (3) only the datetime version changing. That is an
+operator decision; it is asked as Q1 with three options and parked (PARK-Z1).
+
+WHAT LANDED, each in its own commit, each valid on 0.6.1:
+  b43c6e2  R575  the Windows gate no longer compiles :shared's iOS klibs
+                 (kotlin.native.enableKlibsCrossCompilation=false); PARK-X3
+                 CLOSED. iOS run 40232989897 green ON THAT COMMIT, 98 tests.
+  d9a3dae  R552  15 goldens for the date text a 0.7 bump must keep - 6 in
+                 :shared commonTest (they run on iOS too), 9 in :app - GREEN on
+                 0.6.1, RED under five verified one-character plants, reverted.
+And, with no code: R557's resolution check - Material3 1.10.0-alpha05 forces
+kotlinx-datetime 0.7.1 onto :shared's iOS configurations today, and resolves to
+whichever 0.7.1 artifact the catalog names, forcing nothing else in it.
+
+R556 (the S9) did not run: there is no AFTER build to install. The phone was read,
+never written, and is as it was found.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+STOPPED AT R550 - THE OPERATOR'S DECISION (Q1, PARK-Z1). NOT COMPLETE: R553's bump,
+its fixes and R556 did not run.
+
+WHAT LANDED is gated as follows; the full gate and the iOS run on the commit
+carrying this report are recorded in the completion block below, written after
+they ran (a report cannot contain the result of a gate run on itself).
+
+  R1 BEFORE, on 1c1eb82 (untouched main), this session, after ./gradlew --stop:
+      ./gradlew :app:gate --rerun-tasks
+      [clean-worktree] OK: no unstaged changes to tracked files (R393)
+      test floor OK: 1348 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 10m 53s
+      236 actionable tasks: 236 executed
+      GATE_EXIT=0
+      HEAD 1c1eb8286fc9027b1de6b792266be940bf9e858e before and after.
+  iOS on b43c6e2 (R575): run 40232989897, success, 98 tests (below).
+  d9a3dae's goldens: GREEN under a targeted run (:shared and :app
+      testDebugUnitTest filtered to the four classes, plus :app/:shared ktlintCheck
+      and detekt): BUILD SUCCESSFUL in 43s.
+
+COMPLETION BLOCK: PENDING - filled in by the next commit, which changes only this
+file.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
+--------------------------------------------------------------------------------
+relay/KMP-DT.txt and its ADDENDUM in full; the repository's CLAUDE.md (the
+parent-directory one belongs to another project and was ignored, as this
+repository's CLAUDE.md instructs); the memory index.
+REPORT-KMP-1.txt - R384, the DayOfWeek-typealias inventory (8 :app files, 3
+  :shared), re-measured under R551.
+REPORT-KMP-0.txt - the Paris/DST tests: ParisDayDstTest, written first, RED by a
+  UTC plant.
+REPORT-KMP-3.txt - R448's on-device format goldens (on-device-formats.txt,
+  OnDeviceFormatGoldenTest: key names and value shapes, no date values) and R449
+  (java.time -> kotlinx: nothing moved; R384 unchanged).
+REPORT-KMP-4.txt - R463's seam table (the clock AND the device zone are separate
+  seams), R464's CalendarDayGoldenTest (9 tests: Casablanca, both 2026 offset
+  changes, New Year's Eve, a whole minute, a zero offset written +00:00, truncation)
+  and the java.time bridge JavaTimeCalendarDay.kt, which KMP-4 left in :app.
+REPORT-KMP-UP2.txt - R548.3: Compose Multiplatform 1.10.3's Material3 requires
+  kotlinx-datetime 0.7.1; PARK-X1..X5; Q3 (PARK-X3), which the operator answered
+  with R575/R573. REPORT-KMP-2b.txt R417-R420 for R556's procedure (it did not run).
+
+--------------------------------------------------------------------------------
+R1 - THE PRECONDITIONS
+--------------------------------------------------------------------------------
+(a) origin/main contains kmp-up2                          PASS
+    `git fetch`: origin/main = 1c1eb82. origin/kmp-up2, an-forced-signout,
+    an-granularity, an-granularity-drive, fw-dossier-empty and fw-granularity are
+    each an ancestor of it (git merge-base --is-ancestor). No kmp-dt branch existed
+    locally or on origin.
+
+(b) FULL :app:gate --rerun-tasks on 1c1eb82               PASS (STATUS above)
+    From its JUnit XML, copied aside at once:
+      :app    1348 tests / 173 files, failures 0, errors 0, skipped 0
+      :shared  101 tests /  15 files, failures 0, errors 0, skipped 0
+    The sorted class#test name lists were kept as R554's comparison base.
+    Compiler `w:` lines: 6 - MainActivity.kt:777 LocalLifecycleOwner (x2),
+    LiveLocation.kt:134 OVERRIDE_DEPRECATION (x2, PARK-X1), MockProviderReplay.kt:4
+    Criteria (x2). The KSP1 notice once (PARK-X2). In its task log:
+      > Task :shared:compileCommonMainKotlinMetadata
+      > Task :shared:downloadKotlinNativeDistribution
+      > Task :shared:kspKotlinIosArm64 SKIPPED
+      > Task :shared:compileKotlinIosArm64
+      > Task :shared:kspKotlinIosSimulatorArm64 SKIPPED
+      > Task :shared:compileKotlinIosSimulatorArm64
+    - R575's BEFORE.
+
+(c) the iOS workflow green on 1c1eb82, run by this session  PASS
+    `gh workflow run ios-shared.yml --ref main`
+    run 40230906743  https://github.com/kaitmax/monreleve/actions/runs/40230906743
+    head_sha 1c1eb8286fc9..., conclusion: success; macos-15-arm64 20260907.0337.1;
+    Xcode 26.0.1 / Build version 17A400; zoneinfo.default +VERSION 2024a
+    BUILD SUCCESSFUL in 1m 23s, 10 actionable tasks: 10 executed
+    iOS SIMULATOR TESTS EXECUTED: 98 - 14 classes, failures 0 in every class:
+      GenevaConformanceTest 2, CalendarDayGoldenTest 9, StoredEnumNamesTest 6,
+      AuthWireGoldenTest 19, CancellationTest 5, GranularityRuleTest 15,
+      RhythmRepositoryPinTest 6, DownloadRateParityTest 1, EntriesDownloadTest 19,
+      EntriesWireGoldenTest 6, DossierWireGoldenTest 5, ParisDayDstTest 2,
+      FixtureGeneratorTest 2, SharedModuleTest 1
+    the six GENEVA lines, 39.16 and 4.16 included; iPhone 17 Pro (E952A9B0-...),
+    -- iOS 26.2 --. THE BEFORE COUNT IS 98, NOT THE PROMPT'S 82 OR THE ADDENDUM'S
+    83: an-forced-signout (+1 AuthWireGoldenTest) and an-granularity (+15,
+    GranularityRuleTest) are both on main. The 98 names were extracted from the
+    run's artifact and kept.
+
+(d) the S9 listed                                          PASS
+    `adb devices -l`: 232bcd8c300c7ece device product:starltexx model:SM_G960F.
+    stay_on_while_plugged_in READ: 0. adb reverse --list: empty. ch.monreleve.app
+    installed. Nothing was written to the phone.
+
+--------------------------------------------------------------------------------
+R550 - WHICH 0.7, WHICH ROUTE: THE RESEARCH, AND WHY IT STOPS
+--------------------------------------------------------------------------------
+SOURCES, each read 2026-10-25 from the publisher, never from memory:
+
+(1) kotlinx-datetime release notes (GitHub releases API):
+    v0.7.0, published 2025-06-24T14:52:21Z - "Breaking changes:
+      - Remove `kotlinx.datetime.Instant` and `kotlinx.datetime.Clock` in favor of
+        `kotlin.time.Instant` (#506). ...
+      - Unify the range of admissible `LocalDate` and `LocalDateTime` values on all
+        platforms (#432).
+      - Rename `dayOfMonth` to `day`, `monthNumber` to `month` (#84).
+      - Make `DayOfWeek` and `Month` no longer type aliases to
+        `java.time.DayOfWeek` and `java.time.Month` (#96).
+      - Make `"UTC"` and not `"Z"` be the timezone identifier for `TimeZone.UTC`
+        (#474).
+      - Accept `"z"` in `TimeZone.of`, with the same meaning as `"Z"` (#529).
+      - Add `DateTimeFormat`-based `KSerializer` implementations for datetime
+        entities, and change the default serializers to be based on
+        `toString`/`parse` pairs (#415)."
+    v0.7.1, published 2025-07-07T18:03:20Z - "Add `kotlinx.datetime.Instant` and
+      `kotlinx.datetime.Clock` type aliases to, respectively, `kotlin.time.Instant`
+      and `kotlin.time.Clock` to make migration more convenient. / Add a fallback
+      timezone database implementation for Darwin that uses the Foundation
+      framework ... / Restore binary compatibility in string format definitions
+      utilizing dates on the JVM (#545)."
+    Both far more than two weeks old. (Later: 0.8.0, 2026-05-07.)
+
+(2) The README at tag v0.7.1, "Deprecation of `Instant`": "If all else fails, use
+    the *compatibility release* of `kotlinx-datetime`. Instead of the version
+    `0.7.1`, use `0.7.1-0.6.x-compat`. This artifact still contains
+    `kotlinx.datetime.Instant` and `kotlinx.datetime.Clock` ... only resort to it
+    when libraries you don't control require that the removed classes still
+    exist." ... "Compatibility releases will be published for all `0.7.x` versions
+    of `kotlinx-datetime`, but not longer." And: "The library is compatible with the
+    Kotlin Standard Library not lower than `2.1.20`."
+    Maven Central: kotlinx-datetime 0.7.1 and 0.7.1-0.6.x-compat .module files
+    Last-Modified 2025-07-07; both declare only kotlin-stdlib requires 2.1.20 and
+    kotlinx-serialization-core requires 1.6.2 (common, JVM and iosarm64 alike) -
+    below this project's 2.2.21 and 1.7.3, so neither forces a version up.
+
+(3) THE STANDARD LIBRARY - the deciding fact. JetBrains/kotlin at tag v2.2.21,
+    libraries/stdlib/src/kotlin/time/Instant.kt:
+      @SinceKotlin("2.1") @ExperimentalTime public class Instant ...
+    Clock.kt: @SinceKotlin("2.1") @ExperimentalTime public interface Clock
+    ExperimentalTime.kt: @RequiresOptIn(level = RequiresOptIn.Level.ERROR)
+    jdk8 InstantConversions.kt: @SinceKotlin("2.1") @ExperimentalTime on both
+      Instant.toJavaInstant() and java.time.Instant.toKotlinInstant().
+    At tag v2.3.0 the same Instant reads @SinceKotlin("2.3")
+      @WasExperimental(ExperimentalTime::class) - stable from Kotlin 2.3.0, same
+      API. Kotlin stays at 2.2.21 by this task's hard boundary.
+
+(4) The 0.7.1 sources, both tarballs (gh api .../tarball/v0.7.1 and
+    /v0.7.1-0.6.x-compat), grepped whole:
+    - regular: core/common/src/DeprecatedInstant.kt is
+        @Deprecated(level = WARNING) public typealias Instant = kotlin.time.Instant
+      and DeprecatedClock.kt the same for Clock.
+    - compat: a real, deprecated (WARNING) kotlinx.datetime.Instant class and Clock
+      interface, with deprecated overloads of everything :shared calls
+      (Instant.toLocalDateTime(TimeZone), TimeZone.offsetAt,
+      Instant.format(DateTimeFormat<DateTimeComponents>, UtcOffset),
+      fromEpochMilliseconds, toEpochMilliseconds, parse, Clock.System) - BUT
+      core/jvm/src/Converters.kt:
+        @PublishedApi internal fun java.time.Instant.toKotlinInstant(): Instant
+        @PublishedApi internal fun Instant.toJavaInstant(): java.time.Instant
+      The only public bridges are toDeprecatedInstant()/toStdlibInstant(), whose
+      other side is kotlin.time.Instant - experimental on 2.2.21.
+
+(5) WHAT COMPOSE MULTIPLATFORM 1.10.3 REQUIRES. CHANGELOG.md, "1.10.3 (March
+    2026)": Material3 `org.jetbrains.compose.material3:material3*:1.10.0-alpha05`.
+    Its published .module (Last-Modified 2025-11-20): metadataApiElements and the
+    uikitArm64 / uikitSimArm64 variants depend on kotlinx-datetime
+    {"requires":"0.7.1"}; the Android variants do not depend on it. So the version
+    is 0.7.1 - and R557 shows Gradle will take either 0.7.1 artifact for it.
+
+THE TWO PROBES - THE EVIDENCE THE RESEARCH PREDICTED. In C:/wt/kmp-dt, the
+catalog line set by sed, uncommitted, then
+  ./gradlew :shared:compileCommonMainKotlinMetadata :shared:compileDebugKotlinAndroid
+    :shared:compileDebugUnitTestKotlinAndroid :app:compileDebugKotlin
+    :app:compileDebugUnitTestKotlin --continue
+and the line set back to "0.6.1" (git diff empty, git status clean; DEVIATION 1).
+
+  kotlinx-datetime = "0.7.1"               BUILD FAILED in 12s, 36 e: lines:
+    34x "This declaration needs opt-in. Its usage must be marked with
+         '@kotlin.time.ExperimentalTime' or '@OptIn(kotlin.time.ExperimentalTime::class)'"
+    2x  "Unresolved reference 'System'" (ParisDay.kt:35 - Clock.System cannot be
+         reached through a typealias)
+    at CalendarDay.kt:37/81/84/85, EntryRepository.kt:94, LatenessForecast.kt:
+    37/38, ParisDay.kt:32/35 - each twice (metadata and Android compilations).
+    :app never compiled. The positive control for the STOP condition.
+
+  kotlinx-datetime = "0.7.1-0.6.x-compat"  BUILD FAILED in 26s:
+    :shared:compileCommonMainKotlinMetadata, :shared:compileDebugKotlinAndroid,
+    :shared:compileDebugUnitTestKotlinAndroid all compiled - with 63 w: lines
+    (23 "'class Instant' is deprecated", 22 "'interface Clock' is deprecated", 6
+    "'expect class Instant' is deprecated", 2 each of toEpochMilliseconds,
+    dayOfMonth(), offsetAt, toLocalDateTime, Instant.format; by file:
+    CalendarDay 18, ParisDay 12, ParisDayDstTest 11, GranularityRuleTest 6,
+    CalendarDayProbe 6, LatenessForecast 6, EntryRepository 4). Zero opt-in
+    errors.
+    :app:compileDebugKotlin FAILED, 12 e: lines:
+      10x "Cannot access 'fun Instant.toKotlinInstant(): Instant': it is internal
+          in file." - the import and the call in AujourdhuiController.kt (62, 566),
+          BulkConfirmation.kt (7, 37), CalendarController.kt (30, 425),
+          CalendarModel.kt (19, 154), JavaTimeCalendarDay.kt (3, 35)
+      SimulationController.kt:160 "Argument type mismatch: actual type is
+          'java.time.DayOfWeek', but 'kotlinx.datetime.DayOfWeek' was expected."
+      SimulationController.kt:179 "Type inference failed ..." (a kotlinx-keyed map
+          indexed by java.time.DayOfWeek)
+    The two DayOfWeek errors are the expected post-bump fixes (toKotlinDayOfWeek,
+    the library's own converter, public in 0.7.1 and absent from 0.6.1). The ten
+    Instant errors are the collision.
+
+THE DECISION - R550 SAYS "IF NO SUCH ROUTE EXISTS, STOP AND ASK WITH THE OPTIONS",
+AND NONE EXISTS THAT KEEPS EVERY RULE:
+  (A) regular 0.7.1 + @OptIn(kotlin.time.ExperimentalTime::class) at the Instant/
+      Clock sites (9 lines in 4 :shared files, :app's 5 boundary sites, 5 test
+      files): the publisher's intended route; code lands on kotlin.time.Instant,
+      the API Kotlin 2.3.0 stabilised unchanged; the opt-ins are deleted at the
+      Kotlin 2.3 move. Breaks: the hard boundary (NO EXPERIMENTAL OPT-IN).
+  (B) 0.7.1-0.6.x-compat: no opt-in, Material3 resolves to it (R557). Breaks:
+      R553 at 5 :app sites (Instant.fromEpochSeconds(i.epochSecond, i.nano) -
+      exactly what the stdlib's own converter does, but hand-written), and the
+      task's purpose - every Instant/Clock in :shared and every new iOS line stays
+      on a deprecated type, the warning count rises by 63+ (unsuppressed), and the
+      README calls the artifact a last resort promised only through 0.7.x (a
+      0.8.0-0.6.x-compat was nonetheless published, Maven Central 200).
+  (C) wait for the Kotlin 2.3 move: Instant stable, regular 0.7.1/0.8 with no
+      opt-in - but that move is also the KSP2 decision (PARK-X2: KSP1 ends at
+      2.2.21), and until then Material3 cannot land on iOS.
+  RECOMMENDATION, for the operator to weigh: (A). The opt-in marks an API that is
+  stable, unchanged, one Kotlin version later; it is confined to the sites that
+  touch Instant/Clock and is removed mechanically at 2.3; (B) buys the absence of
+  an annotation with a deprecated type everywhere, a hand-written conversion and
+  a second migration still owed. Never a module-wide -opt-in compiler flag: that
+  is (A) without the visibility.
+
+--------------------------------------------------------------------------------
+R551 - THE INVENTORY, RE-MEASURED ON 1c1eb82
+--------------------------------------------------------------------------------
+METHOD: `grep -rn kotlinx.datetime` over android/ (every import), then the API
+names (Instant, Clock, DayOfWeek, TimeZone, offsetAt, toLocalDateTime,
+DateTimeComponents, LocalDate.parse, toEpochDays, isoDayNumber, todayInParis,
+parisDayOf, deviceClaimNow) over :shared and :app, main and test, by file:line;
+the "needs" column is read from the two probes above where they reached, and
+marked EXPECTED where they did not. POSITIVE CONTROL: the search finds
+todayInParis at shared dossier/ParisDay.kt:35, shared data/local/CalendarDay.kt:37
+and app data/local/JavaTimeCalendarDay.kt:24.
+
+Key: A = regular 0.7.1 (+opt-in); B = 0.7.1-0.6.x-compat. "no change" = the API
+exists unchanged in both (read in the 0.7.1 sources).
+
+:shared commonMain
+  data/local/CalendarDay.kt:37        todayInParis(clock: Clock)            A opt-in (measured) | B deprecation (measured)
+  data/local/CalendarDay.kt:45-62     CLAIM_FORMAT DSL: :48 monthNumber() no change; :50 dayOfMonth()
+                                      deprecated in 0.7.1 ("Use 'day' instead") - day() does not
+                                      exist in 0.6.1, so the rename is a fix valid only after
+  data/local/CalendarDay.kt:80-85     deviceClaimNow: Clock, TimeZone, Instant.fromEpochMilliseconds,
+                                      Instant.format(CLAIM_FORMAT, offsetAt)  A opt-in x4 lines | B 18 warnings
+  data/repo/EntryRepository.kt:94-95  clock: Clock, deviceZone: TimeZone; :205 deviceClaimNow
+                                                                            A opt-in | B 4 warnings
+  data/repo/RhythmRepository.kt:41-47 toEntryKindMap(): Map<kotlinx DayOfWeek, ...>  (R384)
+                                      no source change; its :app callers meet a real enum
+  dossier/Aggregate.kt:156,161-164    LocalDate.parse, LocalDate(y,m,d), daysUntil   no change
+  dossier/Forecast.kt:48,129          rhythm: Map<DayOfWeek, EntryKind>  (R384)     no source change
+  dossier/Forecast.kt:54,61,65,92,103,104  plus(1, DAY), isoDayNumber, LocalDate.parse,
+                                      day.toString()                                 no change
+  dossier/LatenessForecast.kt:37-38   observedAt: Instant .toEpochMilliseconds()  A opt-in | B 6 warnings
+  dossier/LatenessForecast.kt:55      toEpochDays(): Int on 0.6.1, LONG on 0.7.1 - same product,
+                                      but the comment at :53-54 ("Int days * Long ms promotes")
+                                      goes stale: a fix valid only after
+  dossier/ParisDay.kt:24              TimeZone.of("Europe/Paris")                    no change
+  dossier/ParisDay.kt:32              parisDayOf(Instant) = toLocalDateTime(PARIS_ZONE).date
+                                                                            A opt-in | B deprecation
+  dossier/ParisDay.kt:35              todayInParis(clock: Clock = Clock.System)
+                                      A opt-in AND kotlin.time.Clock.System (the typealias cannot
+                                      reach the nested object: measured) | B deprecation
+  dossier/Simulation.kt:31,67,88-89   SimChange.ExtraWeekday(val day: DayOfWeek); rhythm maps (R384)
+  dossier/Simulation.kt:116-130       LocalDate(taxYear, today.month, 1) - `month` is still Month in
+                                      0.7.1; plus(i, DAY).toString()                no change
+  fr/RythmeCopy.kt:17                 comment: "indexed by DayOfWeek.ordinal (MONDAY = 0)" (R384) -
+                                      still true: 0.7.1's DayOfWeek.entries run MONDAY..SUNDAY
+:shared commonTest
+  data/local/CalendarDayProbe.kt:3-5  Clock, Instant, TimeZone; `object : Clock`, Instant.parse
+                                      A opt-in (EXPECTED) | B 6 warnings (measured)
+  data/repo/GranularityRuleTest.kt:12-14,31-41  the same shape  A opt-in (EXPECTED) | B 6 warnings
+  dossier/ParisDayDstTest.kt:4        Instant.parse  A opt-in (EXPECTED) | B 11 warnings
+  data/repo/RhythmRepositoryPinTest.kt:25  comment: "in kotlinx-datetime 0.6.1 a JVM TYPEALIAS" -
+                                      stale after either route
+  data/sync/ServerInstantParseGoldenTest.kt (NEW, R552)  Instant.parse  A opt-in | B deprecation
+:shared androidUnitTest
+  shared/CommonMainFenceTest.kt:125   "import kotlinx.datetime.LocalDate" as an ALLOWED import - stays
+                                      true; an import of kotlin.time.* (route A) is also allowed by the
+                                      fence (it rejects java./android. only)
+:app main - the Android boundary
+  aujourdhui/AujourdhuiController.kt:62-63,565-567  toKotlinLocalDate (no change);
+                                      :566 clock.instant().toKotlinInstant()
+                                      A kotlin.time.toKotlinInstant + opt-in | B NO PUBLIC CONVERTER (measured)
+  calendar/BulkConfirmation.kt:7-8,37,43       the same: :37 toKotlinInstant   A | B as above (measured)
+  calendar/CalendarController.kt:30-31,424-425 the same: :425                  A | B as above (measured)
+  calendar/CalendarModel.kt:19-21,153-154      the same: :154; :106 WEEKEND = java.time
+                                      DayOfWeek, :app-internal (R384), no crossing
+  data/local/JavaTimeCalendarDay.kt:3-7,24-36  the bridge: java Clock -> kotlinx Clock adapter
+                                      (:35 toKotlinInstant), :27 clock.zone.toKotlinTimeZone()
+                                      (public, unchanged)                          A | B as above (measured)
+  data/repo/AndroidRecordSeams.kt:7,41-42      toKotlinClock (the bridge), toKotlinTimeZone  no change
+  forecast/ForecastController.kt:22,49,82      kotlinx LocalDate.parse(todayInParis(clock))  no change
+  forecast/ForecastController.kt:24,72,144-162 java.time DayOfWeek in :app's own UI map (R384) - no
+                                      crossing: the compat probe raised no error here
+  forecast/ForecastState.kt:4,22               Map<java DayOfWeek, RhythmChoice> (R384), UI only
+  forecast/SimulationController.kt:21,59,98    kotlinx LocalDate.parse  no change
+  forecast/SimulationController.kt:23,40,124,154,177,185  java DayOfWeek (R384); CROSSES at
+                                      :160 SimChange.ExtraWeekday(day) and :179 kinds[it] - both
+                                      ERRORS on 0.7 (measured) -> toKotlinDayOfWeek(), valid only after
+  forecast/SimulationState.kt:4,25,51          java DayOfWeek (R384), UI state
+  forecast/ThresholdForecast.kt:11,62          toKotlinLocalDate  no change
+  ui/screens/rythme/RythmeScreen.kt:42,52,59,113  java DayOfWeek (R384), UI only
+  ui/screens/simulation/SimulationScreen.kt:46,194-196  java DayOfWeek - NOT IN R384's LIST; UI
+                                      only (feeds SimulationController's java-typed state)
+  detection/EveningNotificationDecision.kt     comment only (R384)
+:app test - NOT IN R384's LIST, AND EACH LEANS ON THE TYPEALIAS: they import
+  java.time.DayOfWeek and pass it into :shared's kotlinx-typed rhythm maps or
+  SimChange (EXPECTED to fail to compile on 0.7; :app's tests were not reached by
+  either probe):
+  data/repo/RhythmMappingTest.kt:7, dossier/ForecastConformanceTest.kt:11,
+  dossier/SimulationConformanceTest.kt:13, dossier/SimulationR340Test.kt:9,
+  ui/screens/prevision/PrevisionScreenScreenshotTest.kt:24,
+  ui/screens/simulation/SimulationScreenScreenshotTest.kt:27 - the last two are
+  Paparazzi tests: their CONSTRUCTION would change, never their baselines.
+  Through :app's own java-typed API only (likely unaffected):
+  forecast/ForecastControllerTest.kt:21, forecast/SimulationControllerTest.kt:21,
+  ui/screens/rythme/RythmeScreenScreenshotTest.kt:15.
+  dossier/LatenessConformanceTest.kt:6 kotlinx Instant.parse  A opt-in | B deprecation.
+  dossier/Forecast*/Simulation*Test, the two screenshot tests: kotlinx LocalDate,
+  plus  no change.
+TimeZone, all sites: ParisDay.kt:24 (TimeZone.of), CalendarDay.kt:82,
+  EntryRepository.kt:95, JavaTimeCalendarDay.kt:27 and AndroidRecordSeams.kt:42
+  (toKotlinTimeZone). 0.7.0's TimeZone.UTC id change ("Z" -> "UTC") reaches none
+  of our strings - the claim prints an offset, never an id - and R552 pins it:
+  JavaTimeCalendarDayGoldenTest writes +00:00 for ZoneOffset.UTC, "UTC" and "Z".
+Serializers: no @Serializable date field anywhere (KMP-1: the wire carries dates
+  as strings), so 0.7.0's serializer change reaches nothing.
+
+--------------------------------------------------------------------------------
+R552 - THE GOLDENS, ON 0.6.1 (d9a3dae), AND THE RED PLANT
+--------------------------------------------------------------------------------
+WHAT ALREADY EXISTED AND WAS NOT DUPLICATED (R268): CalendarDayGoldenTest's 9
+(clientClaimedAt for a whole minute and both 2026 changes - exactly what R552
+names, on the common functions), ParisDayDstTest's 2, DatesTest (formatDate,
+formatDateTime), the 30 wire goldens. THERE IS NO ROOM TYPE CONVERTER: the
+database declares none (MonReleveDatabase.kt:36 says so) and every date column is
+a String (entry.dayDate, clientClaimedAt, detectedAt, firstRecordedAt,
+lastModifiedAt; daily_tally.dayDate) - so "converter output" is the text handed
+to Room, pinned below and by CalendarDayGoldenTest. firstRecordedAt and
+lastModifiedAt are the server's strings stored verbatim: no conversion exists.
+
+ADDED, 15 tests, 4 files:
+  :shared commonTest (JVM AND iOS simulator)
+    data/local/StoredDayStringGoldenTest       3  LocalDate.toString()/parse() of the stored
+                                                  day form (padding, year end, a leap day);
+                                                  the forecast's next-day strings across month
+                                                  and year ends; toEpochDays() as the server's
+                                                  UTC-midnight day number (compared as Long:
+                                                  Int on 0.6.1, Long on 0.7)
+    data/sync/ServerInstantParseGoldenTest     3  Instant.parse of every shape the server sends
+                                                  - toISOString(), ".sssZ" (web/lib/entries/
+                                                  read.ts, web/lib/dossier/service.ts) - and of
+                                                  every claim shape the client writes (+02:00,
+                                                  +01:00, +00:00, -08:00, +05:30); the October
+                                                  repeated hour is two instants 3 600 000 ms
+                                                  apart. EXPECTED VALUES ARE NODE'S Date.parse,
+                                                  the server's own parser.
+  :app (JVM)
+    data/local/JavaTimeCalendarDayGoldenTest   7  clientClaimedAt and the Paris day THROUGH THE
+                                                  java.time BRIDGE the tap path calls - the code
+                                                  a 0.7 bump must touch: a whole minute, both
+                                                  2026 changes, a nanosecond instant truncated,
+                                                  Casablanca at 23:30, UTC as ZoneOffset.UTC /
+                                                  "UTC" / "Z" (0.7's TimeZone.UTC id change),
+                                                  +05:30, New Year's Eve
+    fr/format/ReleveDateTextGoldenTest         2  formatDossierStamp and formatMonthName - the
+                                                  releve's printed date text, which only
+                                                  Paparazzi pixels covered. The forecast and
+                                                  simulation screens print no date (read from
+                                                  their sources: rates and day counts only).
+
+GREEN on 0.6.1 at their first run (BUILD SUCCESSFUL in 43s, with :app/:shared
+ktlintCheck and detekt; one ktlint/detekt line-length fix first). A first-run
+pass is evidence of nothing, so:
+
+THE RED PLANT - five one-character changes, applied together, each verified AT
+ITS LINE by git diff / grep before the run was read (R180):
+  CalendarDay.kt          secondFraction(3) -> secondFraction(2)
+  Dates.kt                "$year $hour..." -> "$year$hour..."   (one space)
+  Dates.kt                ofPattern("MMMM", FRENCH) -> ("MMM", FRENCH)
+  ServerInstantParseGoldenTest  "...19:36:04.876Z" -> "...04.877Z"
+  StoredDayStringGoldenTest     "2026-01-05" -> "2026-01-5"
+RESULT: :app "9 tests completed, 9 failed", :shared "6 tests completed, 2
+failed" - every new class RED:
+  JavaTimeCalendarDayGoldenTest 7/7  expected <...26-10-25T02:30:00.00[0]+02:00>
+                                     but was <...26-10-25T02:30:00.00[]+02:00>
+  ReleveDateTextGoldenTest 2/2       expected <24.10.2026[ ]19:36> but was
+                                     <24.10.2026[]19:36>; and [Janvier, ...] but
+                                     was [Janv., ...]
+  ServerInstantParseGoldenTest 1/3   expected <1792870564876> but was <...877>
+  StoredDayStringGoldenTest 1/3      expected <2026-01-[]5> but was <2026-01-[0]5>
+REVERTED: git checkout of the two production files; sed back on the two tests;
+sha256 of all four files equal to their pre-plant hashes (sha256sum -c: OK x4).
+
+--------------------------------------------------------------------------------
+R553 - THE BUMP AND ITS REVERT
+--------------------------------------------------------------------------------
+THE BUMP WAS NOT MADE (R550). No versions-only commit, no fix before or after it.
+No code fix valid on BOTH versions exists to land early: every fix the probes
+found needs an API 0.6.1 lacks (toKotlinDayOfWeek, day()) or the route decision
+(Instant).
+
+THE REVERTS FOR WHAT DID LAND, each independent and TESTED, not assumed: on a
+detached HEAD at d9a3dae, `git revert --no-edit b43c6e2` (REVERT_EXIT=0; the three
+build files then equal 1c1eb82's), then `git revert --no-edit d9a3dae`
+(REVERT_EXIT=0; `git diff --stat 1c1eb82 HEAD` empty). Back on kmp-dt; the two
+revert commits were never on a branch.
+    git revert --no-edit d9a3dae     # the R552 goldens
+    git revert --no-edit b43c6e2     # R575, the Windows iOS-klib drop
+
+--------------------------------------------------------------------------------
+R575 - THE WINDOWS GATE STOPS COMPILING :shared's iOS KLIBS (closes PARK-X3)
+--------------------------------------------------------------------------------
+ITS OWN COMMIT, b43c6e2, landed first, before any datetime work - so whatever
+datetime revert follows later never touches it.
+
+THE MECHANISM: kotlin.native.enableKlibsCrossCompilation=false, in
+android/gradle.properties, with the reasoning beside it.
+  THE KOTLIN DOCUMENTATION, quoted from kotlinlang.org/docs/whatsnew2220.html
+  ("What's new in Kotlin 2.2.20", released September 10, 2025), section "Stable
+  cross-platform compilation for Kotlin libraries":
+    "Kotlin 2.2.20 completes an important roadmap item, stabilizing
+    cross-platform compilation for Kotlin libraries. You can now use any
+    supported host to produce .klib artifacts for publishing Kotlin libraries.
+    ... The feature is available by default. If you have already enabled
+    cross-compilation with kotlin.native.enableKlibsCrossCompilation=true, you
+    can now remove it from your gradle.properties file."
+  THE PLUGIN'S OWN READING, JetBrains/kotlin at v2.2.21: PropertiesProvider.kt
+    val enableKlibsCrossCompilation: Boolean
+        get() = booleanProperty(PropertyNames.KOTLIN_NATIVE_ENABLE_KLIBS_CROSSCOMPILATION) ?: true
+    ... property("kotlin.native.enableKlibsCrossCompilation")
+  and KotlinNativeTarget.kt:
+    // Supported hosts can always compile
+    if (isSupportedHost) return@future true
+    // Unsupported hosts require cross-compilation enabled and no cinterops
+    crossCompilationEnabled && compilations.none { it.cinterops.isNotEmpty() }
+  So a Mac is unaffected by construction, and Windows (and CI's ubuntu job, which
+  reads the same file) stops compiling iOS klibs.
+WHY THIS ONE: it removes the cause. Excluding the iOS ktlint source sets would cut
+the one path the gate happened to take (ktlint -> KSP's iOS test tasks -> the
+klib) and leave every other path, and the K/N download, in place.
+
+THE PROOF:
+  BEFORE (R1(b), 1c1eb82): downloadKotlinNativeDistribution, compileKotlinIosArm64,
+    compileKotlinIosSimulatorArm64 EXECUTED; 236 actionable tasks.
+  A LIGHT TRIAL first (-Pkotlin.native.enableKlibsCrossCompilation=false,
+    :shared:compileCommonMainKotlinMetadata :shared:ktlintCheck), BUILD SUCCESSFUL
+    in 10s:
+      > Task :shared:compileKotlinIosArm64 SKIPPED
+      > Task :shared:compileKotlinIosSimulatorArm64 SKIPPED
+      > Task :shared:compileCommonMainKotlinMetadata          <- positive control
+      no downloadKotlinNativeDistribution line
+      w: Disabled Kotlin/Native Targets
+         The following Kotlin/Native targets cannot be built on this machine and
+         are disabled: iosArm64, iosSimulatorArm64
+         Solution: To hide this message, add 'kotlin.native.ignoreDisabledTargets
+         =true' to the Gradle properties.
+  AFTER, the full gate on the commit carrying this report: COMPLETION BLOCK.
+  ON THE MAC, ON b43c6e2 ITSELF: run 40232989897
+    https://github.com/kaitmax/monreleve/actions/runs/40232989897
+    head_sha b43c6e2cf5ec11ad6762b50b95ce04340d7a0d92, conclusion: success;
+    Xcode 26.0.1 / 17A400; konan cache restored (catalog unchanged)
+      > Task :shared:kspKotlinIosSimulatorArm64   (executed, not SKIPPED)
+      > Task :shared:compileKotlinIosSimulatorArm64
+      > Task :shared:iosSimulatorArm64Test
+      > Task :shared:kspKotlinIosArm64
+      > Task :shared:compileKotlinIosArm64
+    BUILD SUCCESSFUL in 50s, 10 actionable tasks: 10 executed
+    iOS SIMULATOR TESTS EXECUTED: 98, 14 classes, failures 0 - the 98 names
+    IDENTICAL to R1(c)'s (diff of the sorted lists: empty); the six GENEVA lines;
+    iPhone 17 Pro, iOS 26.2; no "Disabled Kotlin/Native" line on the Mac.
+THE COST, SAID BEFORE ANYONE READS IT AS A REGRESSION: the "targets cannot be built
+on this machine" w: line is back (one per build) - KMP-UP2's BEFORE gate on
+Kotlin 2.1.10 had it, and Kotlin 2.2.20's default removed it. Left visible:
+ignoreDisabledTargets would only mute it.
+THE TEXT 4685d2c CORRECTED, CORRECTED AGAIN to say what runs now: the gate's
+dependency comment and its SKIPPED entry (app/build.gradle.kts), the iOS-targets
+comment and the KSP comment (shared/build.gradle.kts). Verified with ./gradlew
+fastCheck plus :app/:shared ktlintKotlinScriptCheck: BUILD SUCCESSFUL in 30s.
+PARK-X3 is CLOSED (pending merge). The second site, CLAUDE.md R573's "is to be
+dropped", is PARK-Z2 (CLAUDE.md is the operator's).
+
+--------------------------------------------------------------------------------
+R554 - NOTHING VISIBLE CHANGED
+--------------------------------------------------------------------------------
+No datetime version moved, so nothing a bump could change has changed: no
+production source file differs from 1c1eb82 (`git diff --stat 1c1eb82..d9a3dae --
+android/*/src/main` is empty); the only non-test changes are R575's three build
+files. Test counts by name, Room schemas, checkMinifiedWireContract, Paparazzi and
+the w: count on the final tip: COMPLETION BLOCK.
+
+--------------------------------------------------------------------------------
+R555 - iOS
+--------------------------------------------------------------------------------
+R1's BEFORE is 98 (R1(c)). R552 added 6 common tests that run on iOS -
+StoredDayStringGoldenTest 3 and ServerInstantParseGoldenTest 3 - so the final
+tip's iOS run should count 104: the run is in the COMPLETION BLOCK. No datetime
+change ran on iOS because none was made.
+
+--------------------------------------------------------------------------------
+R556 - THE UPGRADE IN PLACE ON THE S9: NOT RUN
+--------------------------------------------------------------------------------
+NOT RUN, because there is no AFTER build: R550 stopped before the bump. Nothing was
+installed, signed in, recorded or pulled. The local stack was not started (port
+3000 never bound by this session; the dev database and its unapplied
+20261025200000_entry_granularity_exclusion migration untouched; no container
+touched).
+WHAT WAS DONE FIRST, IN KMP-2b's ORDER, BEFORE THE STOP WAS KNOWN: the BEFORE APK
+from untouched main, built in C:/wt/kmp-dt at 1c1eb82 with
+`:app:assembleAudit -PfrontalierHost=127.0.0.1` (BUILD SUCCESSFUL in 2m 20s) and
+copied out of the repository:
+    C:/Users/KAMXKAM/Downloads/kmpdt-apks/kmpdt-BEFORE-1c1eb82-audit.apk
+      2,014,356 bytes, sha256 ea760d3574a9c56d9dee521e4d9bb66b64b5e77c852cce4e325535ee9673de75
+      signer CN=Android Debug, SHA-256 ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+    C:/Users/KAMXKAM/Downloads/kmpdt-apks/kmpdt-BEFORE-1c1eb82-debug-reader.apk
+      (the gate's app-debug.apk), 11,952,662 bytes, sha256 4f1f7187a5af...
+  Never installed. Stale the day main moves; left for the operator to delete.
+THE PHONE AS LEFT: see the COMPLETION BLOCK (read again at the end, compared with
+R1(d) and with the installed audit APK's hash).
+
+--------------------------------------------------------------------------------
+R557 - WHAT THIS UNBLOCKS, AND THE RESUME NOTE FOR iOS-1a
+--------------------------------------------------------------------------------
+THE RESOLUTION CHECK, NO CODE: an init script in the scratchpad (applied with -I,
+no build file edited) adds org.jetbrains.compose.material3:material3:1.10.0-alpha05
+to :shared's commonMain and prints every resolved component, with Gradle's own
+selection reason, of iosSimulatorArm64CompileKlibraries, iosArm64CompileKlibraries,
+debugCompileClasspath, debugRuntimeClasspath and releaseRuntimeClasspath. Five
+runs, all exit 0; the catalog read back as "0.6.1" after (git status clean):
+  datetime 0.6.1, no Material3          0.6.1 everywhere ("requested")
+  datetime 0.6.1, + Material3           iOS: kotlinx-datetime:0.7.1 "requested;
+                                        between versions 0.7.1 and 0.6.1" - Material3
+                                        FORCES 0.7.1 onto iOS today; Android stays
+                                        0.6.1 (its variant has no datetime)
+  datetime 0.7.1-0.6.x-compat, + M3     iOS: 0.7.1-0.6.x-compat "between versions
+                                        0.7.1-0.6.x-compat and 0.7.1" - Gradle orders
+                                        the compat artifact ABOVE 0.7.1 ("A version
+                                        with an additional numeric part is higher",
+                                        Gradle 8.11.1 user guide, "Understanding
+                                        version ordering"), so it satisfies Material3
+  datetime 0.7.1, + M3                  0.7.1 everywhere ("requested")
+  compat + M3 against 0.7.1 + M3        identical resolution apart from the datetime
+                                        version (diff empty)
+NOTHING ELSE IN THE CATALOG IS FORCED: kotlin-stdlib stays 2.2.21 in every
+configuration; kotlinx-serialization, room and the catalog's coroutines 1.8.1 do
+not move. What Material3 itself brings into :shared (compat, with vs without):
+androidx.collection 1.4.2 -> 1.5.0, kotlinx-coroutines 1.7.3 -> 1.8.1 (:shared's
+transitive copy, to :app's own pin), atomicfu 0.21.0 -> 0.27.0 on iOS, and the
+kotlin-stdlib-jdk7/jdk8 1.8.20 stubs dropped - Compose's own dependencies, for the
+Compose decision, not forced by the datetime choice.
+SO: Material3 resolves against either 0.7.1 artifact without forcing anything
+else; it cannot coexist with 0.6.1 on iOS. The datetime move IS the prerequisite.
+
+RESUME NOTE FOR iOS-1a:
+  1. kotlinx-datetime is STILL 0.6.1. Material3 on iOS waits on Q1 (PARK-Z1).
+     Compose Multiplatform runtime alone pulls no datetime (KMP-UP2's probe).
+  2. If (A) is ruled: catalog "0.7.1" alone in one commit; before it nothing
+     (no fix is valid on both); after it, each its own commit: the Instant/Clock
+     sites to kotlin.time with the opt-in (R551, "A"), :app's 5 boundary sites to
+     kotlin.time.toKotlinInstant, ParisDay's Clock.System, DayOfWeek at
+     SimulationController:160/179 and the six :app tests R551 names via
+     toKotlinDayOfWeek/toJavaDayOfWeek, dayOfMonth() -> day(), the two stale
+     comments (LatenessForecast:53-54, RhythmRepositoryPinTest:25). The 15 R552
+     goldens and CalendarDayGoldenTest's 9 must pass UNEDITED except for imports
+     and the opt-in (an edited assertion is a failed bump).
+  3. THE iOS RUN WILL BE COLD: ios-shared.yml keys the ~/.konan cache on
+     hashFiles('android/gradle/libs.versions.toml'), so any catalog change
+     re-downloads the toolchain (measured here: R1(c) "Cache not found" for the
+     konan key, job 4m22s; R575's run restored it, 3m13s).
+  4. ios-shared.yml's comment "kotlinx-datetime 0.6.1 on the simulator reads its
+     zone rules from /usr/share/zoneinfo.default" must be re-read with the bump:
+     0.7.1 adds a Foundation fallback for Darwin.
+  5. R575 is in: the Windows gate no longer compiles iOS klibs. iOS proof is
+     ios-shared.yml only (R573), before every merge touching :shared.
+  6. Unchanged from KMP-UP2's note: the approved iOS SQLite driver, Xcode 26 in
+     place, KSP1 ends at 2.2.21 (PARK-X2), the four seams and PARK-N1..N3.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+THE Z SERIES WAS CLAIMED FROM THE REGISTER (R456): `node
+web/scripts/register-coverage.mjs` -> "register coverage: OK - 162 cited id(s)
+across 131 report(s)"; letters headed in parking.md on main: A-N, P-Y (O and Z
+unused); no unmerged origin branch other than kmp-dt itself carries a parking.md
+that differs (each of the others is an ancestor of main); the widened pattern
+PARK(?:AN)?-[A-Z]?\d+ was RUN against "see PARK-Z1 and PARK-Z2." and matched both
+whole (and did not match "PARK-ZZ1" - the one-letter rule). Z over O: O reads as
+zero.
+  NEW     PARK-Z1  no 0.7 route on Kotlin 2.2.21 keeps all three rules (Q1).
+  NEW     PARK-Z2  CLAUDE.md R573 still says the klib compilation "is to be
+                   dropped".
+  CLOSED  PARK-X3  by R575 (b43c6e2), pending merge.
+  UNCHANGED, confirmed: PARK-X1 (the LiveLocation warning, still 2 w: lines),
+  PARK-X2 (KSP1 notice, once per build), PARK-U2 (the four app/ deprecation
+  lines).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE TWO ROUTE PROBES AND THE FIVE RESOLUTION RUNS EDITED THE CATALOG LINE IN
+   THE WORKTREE, UNCOMMITTED, before R552's goldens existed - the work order puts
+   R550 research first and the goldens third, and the research could only be
+   settled by compiling. Each probe set one line by sed and set it back; `git
+   status --porcelain` was empty after each, and the BEFORE APK had been built
+   before the first probe. KMP-UP2 did the same and recorded it.
+2. THE WORK ORDER STOPPED AT STEP 3. Steps 4-6 (fixes, the bump, post-bump fixes)
+   and 8 (R556) did not run, because R550 is a STOP.
+3. R575 LANDED BEFORE R552, not after it: it is valid on 0.6.1 and independent,
+   and landing it on main's tree first let its iOS run compare 98 names against
+   R1's 98 exactly.
+4. THREE iOS RUNS, EACH REQUIRED BY A RULE: R1(c) on main, R575's own commit
+   (R575: "ON THAT SAME COMMIT"), and the report commit (R555 and R391 on the
+   reported tip, with R552's new count). No probe went to the cloud.
+5. THE BEFORE APK WAS BUILT BUT NEVER USED (R556), and stays outside the repo.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. android/shared/build.gradle.kts's "WHAT REMAINS UNPROVEN UNTIL A MAC RUNS IT"
+   paragraph has been stale since iOS-0 (KMP-UP2's NOTICED 1); R575's edit sits just
+   above it and says the Mac builds this. Not R575's subject; left.
+2. Stale lock files in other worktrees (C:/wt/an-account-tag, C:/wt/fw-gate-clean)
+   and the main checkout's orchestrator lock: read, never written (R392).
+3. The main checkout was only read (the relay prompt). No dev server ran from it.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 PARK-Z1 / R550. kotlinx-datetime 0.7 on Kotlin 2.2.21: which route?
+   (A) regular 0.7.1, @OptIn(kotlin.time.ExperimentalTime::class) at the
+       Instant/Clock sites only (R551 "A": 9 lines in 4 :shared files, 5 :app
+       boundary sites, 5 test files), removed unchanged at Kotlin 2.3 -
+       RECOMMENDED;
+   (B) 0.7.1-0.6.x-compat, no opt-in, a hand-written
+       Instant.fromEpochSeconds(epochSecond, nano) at 5 :app sites (an R553
+       exception), 63+ new deprecation warnings, everything still on the
+       deprecated kotlinx.datetime.Instant;
+   (C) wait for the Kotlin 2.3 move, which is also the KSP2 decision (PARK-X2).
+Q2 PARK-Z2. Edit CLAUDE.md R573's "which is to be dropped" when kmp-dt merges?
+Q3 The two unused BEFORE APKs in C:/Users/KAMXKAM/Downloads/kmpdt-apks/: delete?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+THE BRANCH IS PUSHED AND NOT MERGED. kmp-dt -> origin/kmp-dt, every push
+`git push origin kmp-dt`, each checked on its own exit code. PENDING MERGE.
+    b43c6e2  R575 - enableKlibsCrossCompilation=false  * [new branch] kmp-dt -> kmp-dt
+             - iOS run 40232989897 on it
+    d9a3dae  R552 - the 15 goldens                     b43c6e2..d9a3dae
+    <this>   the report and parking.md (X3 closed, Z1, Z2) - its SHA, its gate and
+             its iOS run are in the COMPLETION BLOCK of the next commit.
+WHAT THE BRANCH CHANGES against 1c1eb82: android/gradle.properties,
+android/app/build.gradle.kts, android/shared/build.gradle.kts (R575); four new
+test files (R552); parking.md; this report. Nothing under web/: gate:clone is not
+owed (R199) - `git diff --stat 1c1eb82..HEAD -- web/` is empty.
+ISOLATION (R334, R349, R392): all work in C:/wt/kmp-dt, created by this session
+from origin/main with its lock; every file staged by name; android/local.properties
+copied in (gitignored). Nothing was committed, stashed, reset or removed in any
+other worktree or in the main checkout. No GitHub object was deleted. The lock is
+removed after the final push; that removal is reported in the handback (R334).
+
+================================================================================
+END OF REPORT-KMP-DT
+================================================================================
