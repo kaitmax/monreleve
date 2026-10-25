@@ -321,7 +321,7 @@ hides that for the life of the client.
 |---|---|
 | `clientMutationId` | **The idempotency key (D30).** The client's own id, 1–64 characters, unique across the account. Re-sending a batch whose ids the server has already seen writes nothing, appends no event, and answers **200** — a replay is acknowledged, never an error, because the retry is what makes all-or-nothing safe. **"Already seen" means the server has applied this mutation at any point**, not that the day still carries it: the check reads the append-only trail, so a replay is still recognised after the day has been edited by something else. See section 6.4. |
 | `dayDate` | A calendar day as `YYYY-MM-DD`, **never an instant**. Validated as a real day: `2026-02-30` and `2026-13-01` match the pattern and are refused. Interpreted in Europe/Paris — the reader lives in France (SPEC §8). |
-| `portion` | `FULL`, `AM` or `PM`. Defaults to `FULL`. The row's identity is `(dayDate, portion)`, so `AM` and `PM` are two rows and either may sit beside a `FULL` one. |
+| `portion` | `FULL`, `AM` or `PM`. Defaults to `FULL`. The row's identity is `(dayDate, portion)`, so `AM` and `PM` are two rows. **A day keeps the granularity it was recorded in (R490): `FULL` may not sit beside `AM` or `PM` for one account and day** - see *One granularity per day* below. |
 | `kind` | `CH`, `HOME`, `MISSION_FR`, `MISSION_THIRD` or `ABSENT`. |
 | `absenceReason` | `CONGE`, `MALADIE`, `FERIE` or `AUTRE`. **Required iff `kind` is `ABSENT`**, and refused otherwise — both directions, in the schema *and* as a database CHECK constraint, so the rule survives a writer that does not know it exists (R196). |
 | `note` | Free text, at most 500 characters. A person's aide-mémoire, not a document. |
@@ -371,6 +371,24 @@ exists to remove.
 
 **A refusal carries no `entries` key at all.** The batch is all-or-nothing, so
 an error must not hand back rows that suggest something landed.
+
+**One granularity per day (R490, FW-GRANULARITY).** For one account and one
+calendar day the server holds either a `FULL` row or `AM` and/or `PM` rows,
+never both: a day holding `FULL` beside a half would be counted twice in the
+*Relevé* (a whole day plus half a day, twice over). The rule is a database
+**exclusion constraint**, so it holds for every writer. A write that would break
+it is refused **400 `granularity_conflict`** - a `FULL` where `AM` or `PM`
+exists, an `AM`/`PM` where `FULL` exists, or both in one batch - and
+**nothing of that batch is written, and no `EntryEvent` is appended**, because a
+batch is all-or-nothing. It is **400 and not 409 on purpose**: a client that
+isolates a refused multi-item batch item by item (the Android `SyncEngine` does,
+R296) lands the good days and holds only the refused one, whereas a 409 is held
+whole. `AM` beside `PM` stays legal; **editing a day's rows, including changing
+a `FULL` row's `kind`, is never refused**, and a day already holding both
+(none existed in production when this landed) is neither repaired nor rewritten
+by the rule. This is **additive** under the freeze: a new code on an existing
+refusal status, no field added or removed; a client built per section 6.5, which
+treats an unknown 4xx as terminal for that request, is already correct.
 
 **One batch may not name the same `(dayDate, portion)` twice.** It is refused
 with `invalid_payload`, and the message names both positions — *"entries[1]
@@ -757,6 +775,7 @@ Stable, ASCII, and **frozen**. The `code` is what a client branches on; the
 | `malformed_body` | `POST` | 400 | the body is not JSON |
 | `coordinates_refused` | both | 400 | a location key appears in the payload or the query string |
 | `invalid_payload` | `POST` | 400 | the batch fails validation; `issues[]` names each path and rule |
+| `granularity_conflict` | `POST` | 400 | the batch would leave one account-day holding `FULL` beside `AM` or `PM` (§6.1, R490). Nothing was written and no event appended; a client that isolates a multi-item 400 item by item lands the good days and holds the refused one. Additive. |
 | `conflict` | `POST` | 409 | **Reserved.** No path produces it today. It is kept for the out-of-order case in section 6.4 should that ruling land: a late write refused rather than silently applied is what a client would need to be told. Until then a client will not see it - and per section 6.5 must still treat it as terminal rather than retrying. |
 | `write_failed` | `POST` | 500 | ours. Nothing was written; the whole batch rolled back |
 | `invalid_year` | `GET` | 400 | `year` is absent, repeated, or not exactly four digits |

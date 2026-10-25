@@ -52,7 +52,31 @@ export interface WriteResult {
    */
   readonly entries: ReadEntry[];
   /** Set when ok is false. A stable code, never prose (R198). */
-  readonly code?: 'conflict' | 'write_failed';
+  readonly code?: 'conflict' | 'granularity_conflict' | 'write_failed';
+}
+
+/**
+ * R500: the exclusion constraint's refusal, recognised by WHICH RULE FIRED.
+ *
+ * R490 says a day keeps the granularity it was recorded in, and migration
+ * 20261025200000 makes the database refuse FULL beside AM or PM for one user and
+ * day (SQLSTATE 23P01). Prisma has no error class for an exclusion violation, so
+ * it surfaces as an unknown-request error and the constraint's NAME identifies
+ * it - matched on the name, never on 23P01 alone, so a different exclusion
+ * constraint added later is not misreported as this one (R198: the boundary
+ * preserves which rule fired).
+ */
+export const GRANULARITY_CONSTRAINT = 'entry_one_granularity_per_day';
+
+function isGranularityViolation(cause: unknown): boolean {
+  if (typeof cause !== 'object' || cause === null) {
+    return false;
+  }
+
+  const meta = 'meta' in cause ? JSON.stringify((cause as { meta?: unknown }).meta ?? null) : '';
+  const message = cause instanceof Error ? cause.message : '';
+
+  return `${message} ${meta}`.includes(GRANULARITY_CONSTRAINT);
 }
 
 /**
@@ -220,11 +244,12 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
     // R198: the boundary preserves WHICH rule fired. A unique-constraint
     // violation is the client sending two items for one day-and-portion, which
     // it can fix; anything else is ours and must not be reported as theirs.
-    const code =
-      typeof cause === 'object' &&
-      cause !== null &&
-      'code' in cause &&
-      (cause as { code?: unknown }).code === 'P2002'
+    const code = isGranularityViolation(cause)
+      ? 'granularity_conflict'
+      : typeof cause === 'object' &&
+          cause !== null &&
+          'code' in cause &&
+          (cause as { code?: unknown }).code === 'P2002'
         ? 'conflict'
         : 'write_failed';
 
