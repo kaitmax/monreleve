@@ -4495,11 +4495,18 @@ as 0.6.1, git status clean).
 
 COST OF REVERSING: none - no datetime change landed.
 
-STATE:      OPEN - THE OPERATOR'S DECISION (REPORT-KMP-DT.txt QUESTIONS Q1): (A) 0.7.1 with
-@OptIn(ExperimentalTime::class) at the Instant/Clock sites only, removable unchanged at
-Kotlin 2.3; (B) 0.7.1-0.6.x-compat with a hand-written epoch conversion at 5 :app sites
-and ~63+ deprecation warnings; (C) wait for the Kotlin 2.3 move (stable Instant; also the
-KSP2 decision, PARK-X2).
+STATE:      CLOSED by KMP-DT (resumed), pending merge. THE OPERATOR RULED ROUTE (A), R590,
+2026-10-25: the regular kotlinx-datetime 0.7.1 with @OptIn(ExperimentalTime::class) ONLY
+at the Instant/Clock sites - a ruling that narrows KMP-4's no-experimental rule for this
+one case, because kotlin.time.Instant/Clock are final, unchanged, in Kotlin 2.3
+(@WasExperimental), so the opt-in costs nothing and is deleted as-is later. Its three
+conditions, as landed: (1) ExperimentalTimeOptInAllowlistTest lists the exact files and
+counts (15 files, 24 opt-ins), shown RED once on planted opt-ins outside the list;
+(2) function, property, parameter or expression scope only - the same test refuses
+@file:OptIn, a class, a propagated @ExperimentalTime and any Gradle opt-in; (3) PARK-Z3.
+The bump is 486e1fd, its fixes 784e865, e0b6b7c, 09f3c3a, the test 9ef0346
+(REPORT-KMP-DT.txt R553). The options that were not taken: (B) 0.7.1-0.6.x-compat with a
+hand-written epoch conversion; (C) waiting for Kotlin 2.3.
 
 ## PARK-Z2 - CLAUDE.md R573 still says the Windows iOS klib compilation "is to be dropped"  [KMP-DT, 2026-10-25]
 
@@ -4516,4 +4523,33 @@ NOT TAKEN:  the one-phrase edit ("which KMP-DT R575 dropped").
 
 COST OF REVERSING: none.
 
-STATE:      OPEN - the operator's, at or after the merge of kmp-dt.
+STATE:      OPEN - the operator's, at or after the merge of kmp-dt. UPDATE (KMP-DT resumed,
+2026-10-26): the coordinator reports the rewording made on the main checkout (7ccddf6,
+"CLAUDE.md R573: the Windows iOS klib compilation was dropped"), merged locally with
+kmp-dt's landed part (98b6e23) but NOT yet pushed - origin/main is 1c1eb82. This closes
+when that commit reaches origin/main.
+
+## PARK-Z3 - delete every ExperimentalTime opt-in, and its allowlist test, at the Kotlin 2.3 move  [KMP-DT, 2026-10-26]
+
+RAISED BY:  REPORT-KMP-DT.txt (R590's third condition).
+
+WHAT IT IS: kotlinx-datetime 0.7.1 puts Instant and Clock in kotlin.time, @ExperimentalTime
+on Kotlin 2.2.21 (RequiresOptIn level ERROR). R590 allowed @OptIn(ExperimentalTime::class)
+at exactly the sites ExperimentalTimeOptInAllowlistTest lists (15 files, 24 opt-ins,
+android/app/src/test/.../fences/ExperimentalTimeOptInAllowlistTest.kt). In Kotlin 2.3.0
+those types are stable (@SinceKotlin("2.3") @WasExperimental(ExperimentalTime::class), read
+at tag v2.3.0), so every one of those opt-ins becomes noise, and the test that guards them
+guards nothing.
+
+TAKEN:      The allowlist and its test, the opt-ins at function/property/parameter/
+expression scope, the comment on each naming R590.
+
+NOT TAKEN:  Anything at 2.2.21 - the deletion is only valid once Kotlin is 2.3.
+
+COST OF REVERSING: none now. At the Kotlin 2.3 task: ONE COMMIT of that task deletes every
+@OptIn(ExperimentalTime::class) on the allowlist (and its trailing comment and the now
+unused kotlin.time.ExperimentalTime imports) AND ExperimentalTimeOptInAllowlistTest
+itself - the test's own allowlist is the checklist. Remember that the Kotlin 2.3 move is
+also the KSP2 decision (PARK-X2).
+
+STATE:      OPEN - tied to the Kotlin 2.3 upgrade, not yet scheduled.
