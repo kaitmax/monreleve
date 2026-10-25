@@ -164,6 +164,34 @@ class AujourdhuiAutoControllerTest : FunSpec({
         }
     }
 
+    // AN-GRANULARITY (R490, R493): detection's confirm is a writer too. A day already held in HALVES, seen in whole-day
+    // mode, keeps them - so detection proposes its EMPTY half, never a whole day that would land beside the recorded
+    // one. (Main proposed for the whole day here, and confirming it wrote FULL beside the morning.)
+    test("R490 detection: today held in halves, in whole-day mode, proposes the empty half - never a whole day") {
+        runTest {
+            val dao = FakeEntryDao()
+            val repo = LocalEntryRepository(dao, afterWindow)
+            repo.record(RecordCommand(dayDate = TODAY, kind = EntryKind.CH, portion = Portion.AM))
+            // Morning Swiss, afternoon in France: the day's vote ties (withheld), the afternoon's two checks agree.
+            val tallies = listOf(tally(TODAY, c1 = i, c2 = i, c3 = o, c4 = o))
+            val c = controller(repo, afterWindow, LoggingMode.AUTO_DETECT, tallies, this, settingsStore = store("DAY"))
+            advanceUntilIdle()
+
+            c.state.value.auto shouldBe null
+            val afternoon = c.state.value.autoAfternoon
+            afternoon.shouldBeInstanceOf<AutoDayState.ToConfirm>()
+            afternoon.kind shouldBe RecordedKind.DOMICILE
+
+            c.confirmDetected(afternoon.kind, Slot.AFTERNOON)
+            advanceUntilIdle()
+            dao.all().map { Triple(it.portion, it.kind, it.provenance) } shouldBe
+                listOf(
+                    Triple(Portion.AM, EntryKind.CH, Provenance.MANUAL),
+                    Triple(Portion.PM, EntryKind.HOME, Provenance.DETECTED_CONFIRMED),
+                )
+        }
+    }
+
     test("confirming a proposal records a FULL day with provenance DETECTED_CONFIRMED (R202/R314, D16)") {
         runTest {
             val dao = FakeEntryDao()
