@@ -1,5 +1,423 @@
 ================================================================================
 REPORT-KMP-DT
+kotlinx-datetime 0.6.1 -> 0.7.1 BY ROUTE (A), AND NO DATE ANYWHERE CHANGED BY A
+CHARACTER: THE GOLDENS, THE DATABASE BYTES AND THE SCREENS SAY SO
+================================================================================
+TASK     relay/KMP-DT.txt, its ADDENDUM and ADDENDUM 2 (R590), read in full by
+         absolute path from the main checkout (untracked there, never copied or
+         committed). Rulings R550-R557, R575 and R590.
+BASE     1c1eb82 (first pass); resumed on kmp-dt at f7a2f69 as the coordinator
+         directed - NOT fast-forwarded; origin/main moved to 79f1c1d meanwhile
+         (my landed part R575/R552 merged there) and was not merged in.
+BRANCH   kmp-dt, worktree C:/wt/kmp-dt (R349), lock .session-lock.json in it
+         (gitignored), upstream unset; every push `git push origin kmp-dt`.
+         PENDING MERGE - the merge is the orchestrator's.
+DEVICE   SM-G960F (Galaxy S9), serial 232bcd8c300c7ece - driven for R556 against
+         the LOCAL stack only, and left as found.
+CLOUD    GitHub Actions ios-shared.yml, `gh workflow run` / `gh run view`; gh's own
+         credential, no token anywhere.
+
+THIS REPORT HAS TWO PARTS. PART 2 (below, first) is the resumed session under the
+operator's ruling R590 - it SUPERSEDES PART 1 wherever they differ. PART 1 is the
+first pass exactly as committed in f7a2f69 (STOPPED at R550), kept as the record
+of the stop, the research and what landed then (R575, R552). EVERY SECTION SAYS
+ONLY WHAT HAS HAPPENED (R334).
+
+################################################################################
+PART 2 - RESUMED UNDER R590 (2026-10-25 22:37Z to 2026-10-26 13:00Z)
+################################################################################
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+kotlinx-datetime is 0.7.1 - the REGULAR artifact, by the operator's route (A).
+Instant and Clock are kotlin.time's, opted in with @OptIn(ExperimentalTime::class)
+at 24 declarations in 15 files and nowhere else, which a new test enforces both
+ways; DayOfWeek crosses :app's boundary through the library's own
+toKotlinDayOfWeek(), java.time.Instant through the library's own
+toKotlinInstant(). Nothing a person or the server sees moved: the 15 R552 goldens
+and every pre-existing golden pass with no assertion edited, Room schemas 1-6 and
+every Paparazzi baseline are untouched, the release APK is the same size to the
+byte, and on the S9 the 0.7.1 build opened the 0.6.1 build's database and left
+its .db and -wal BYTE-IDENTICAL, showed every day and timestamp identically,
+synced the 0.6.1 build's pending day, and wrote a new day whose clientClaimedAt
+is in the pinned format and reached the server as the same instant.
+
+The gate found one break the compiler did not: RhythmMappingTest compared a
+java.time-keyed map with the now kotlinx-keyed one - equal under the typealias,
+unequal under 0.7, and still compiling. Fixed by its import (a8957b5).
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+GREEN ON a8957b5 (the last commit carrying code) - FULL :app:gate --rerun-tasks
+and the iOS run on its :shared content; the final tip differs from a8957b5 only in
+REPORT-KMP-DT.txt (and from d372cb8, the iOS run's commit, only in parking.md, one
+:app test file and this report - nothing the iOS job compiles).
+
+  ./gradlew :app:gate --rerun-tasks   on a8957b5, after ./gradlew --stop, tree clean
+      [clean-worktree] OK: no unstaged changes to tracked files (R393)
+      test floor OK: 1360 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 11m 58s
+      233 actionable tasks: 233 executed
+      GATE_EXIT=0
+      HEAD a8957b5cb47392d0ea331d72713844f54017d022 before and after.
+
+  iOS run 40245120282 on d372cb8 (:shared identical to a8957b5's)
+      https://github.com/kaitmax/monreleve/actions/runs/40245120282
+      conclusion: success; konan cache COLD ("Cache not found" - the catalog
+      changed); BUILD SUCCESSFUL in 1m 5s, 10 actionable tasks: 10 executed;
+      iOS SIMULATOR TESTS EXECUTED: 104, 16 classes, failures 0, the 104 names
+      IDENTICAL to 6c31beb's; six GENEVA lines, 39.16 and 4.16 included.
+  iOS on the final tip: in the handback (a report cannot carry a run on itself).
+
+THE GATES THAT DID NOT COUNT, said plainly:
+  - d372cb8: REFUSED TO START by R393 ("unstaged changes to tracked files") - I had
+    edited parking.md while it configured. The guard working; NO RESULT.
+  - e9e6fa0: RED - "1360 tests completed, 1 failed", RhythmMappingTest (R553
+    below); fixed in a8957b5.
+  - a8957b5, first attempt: cut off when the orchestrator's process exited (no
+    BUILD line) - NO RESULT; re-run in full above.
+
+--------------------------------------------------------------------------------
+R590 - ROUTE (A), AND ITS THREE CONDITIONS, AS LANDED
+--------------------------------------------------------------------------------
+THE RULING (ADDENDUM 2): regular kotlinx-datetime 0.7.1, @OptIn(ExperimentalTime)
+only at the Instant/Clock sites, because kotlin.time.Instant/Clock are final and
+unchanged in Kotlin 2.3 (@WasExperimental) - read at JetBrains/kotlin tag v2.3.0
+in PART 1 R550(3). The general rule stays.
+
+  1. THE ALLOWLIST TEST (9ef0346) - android/app/src/test/kotlin/ch/monreleve/app/
+     fences/ExperimentalTimeOptInAllowlistTest.kt. It lists the exact files AND
+     the exact count per file (stricter than asked, so a second opt-in cannot slip
+     into a listed file): 15 files, 24 opt-ins, asserted equal both ways. Nine
+     source roots walked (app main/debug/test/testDebug/androidTest, shared
+     commonMain/commonTest/androidUnitTest, probe), each found and pinned (R460).
+     RED ONCE, plants verified at their lines first (R180):
+       @OptIn(kotlin.time.ExperimentalTime::class) on a function in
+         ReleveDateTextGoldenTest.kt              (not on the list)
+       @file:OptIn(kotlin.time.ExperimentalTime::class) in CalendarDayTest.kt
+     -> "3 tests completed, 2 failed": the allowlist test's "but was" named
+     ...fr/format/ReleveDateTextGoldenTest.kt=1 and ...data/local/
+     CalendarDayTest.kt=1; the scope test said "CalendarDayTest.kt:1 is a
+     FILE-level opt-in". Both reverted by git checkout; sha256 of both files equal
+     to the pre-plant hashes (sha256sum -c: OK x2).
+  2. THE NARROWEST SCOPE - the same test refuses @file:OptIn, an opt-in whose
+     target is a class/object/interface, a propagated @ExperimentalTime, and any
+     non-comment mention of ExperimentalTime in the seven Gradle files (no
+     languageSettings optIn, no -opt-in, no freeCompilerArgs). As landed, every
+     opt-in sits on a function, a property (GranularityRuleTest's FIXED clock), or
+     a parameter (LocalEntryRepository's clock). Two places needed a shape change
+     to stay at that scope, each said in its commit: JavaTimeCalendarDay's private
+     Clock class became an object expression inside toKotlinClock() (a class whose
+     supertype is Clock needs the opt-in on the whole class); and
+     LatenessConformanceTest's assertion moved into one opted-in helper,
+     forecastFor(case) - its expectation is unchanged. A primary-constructor
+     opt-in on LocalEntryRepository was tried first and dropped: ktlint's
+     class-signature rule reformatted the whole class around it.
+  3. THE PARK ENTRY - PARK-Z3: at the Kotlin 2.3 move, one commit of that task
+     deletes every opt-in on the allowlist and the test itself. PARK-Z1's STATE
+     records the ruling (e9e6fa0).
+
+--------------------------------------------------------------------------------
+R553 - THE BUMP, ONE VERSIONS-ONLY COMMIT, FIXES AFTER, AND THE REVERT
+--------------------------------------------------------------------------------
+BEFORE IT, valid on both versions: NOTHING exists (PART 1 R553): every fix needs
+an API 0.6.1 lacks (toKotlinDayOfWeek, day(), kotlin.time's converter) or a
+kotlin.time type kotlinx-datetime 0.6.1 does not accept.
+THE BUMP:
+    486e1fd  android/gradle/libs.versions.toml only: kotlinx-datetime "0.6.1" ->
+             "0.7.1" plus the catalog comment that cited 0.6.1 (R181). Does not
+             compile on its own - the commits after it are what 0.7.1 forces.
+AFTER IT, valid only on 0.7.1, each its own commit:
+    784e865  :shared - Instant/Clock to kotlin.time, opt-ins (4 main files, 4
+             tests: imports and opt-ins only); the claim format's dayOfMonth() ->
+             day() (deprecated in 0.7.1); LatenessForecast's Int*Long comment.
+    e0b6b7c  :app - the 5 java.time.Instant sites to kotlin.time's own
+             toKotlinInstant(), opt-ins; the bridge's object expression;
+             AndroidRecordSeams; LatenessConformanceTest's helper.
+    09f3c3a  DayOfWeek - SimulationController's two crossings via
+             toKotlinDayOfWeek(); five :app tests (four switch to the kotlinx
+             type and isoDayNumber; the simulation screenshot test converts
+             with toKotlinDayOfWeek() - construction only); two stale comments.
+    9ef0346  R590's allowlist test.
+    d372cb8  ios-shared.yml's comment: 0.7.1 still reads
+             /usr/share/zoneinfo.default on the simulator, Foundation only as a
+             fallback (darwin TimeZoneNative.kt at v0.7.1).
+    a8957b5  RhythmMappingTest's expected map keyed by kotlinx DayOfWeek - FOUND
+             BY THE GATE on e9e6fa0, not the compiler: the map equality compiles
+             across key types and simply failed ("a Domicile day projects to HOME
+             ..." FAILED, RhythmMappingTest.kt:22). One import.
+  (e9e6fa0 between them is the register only.)
+THE REVERT, TESTED: on a detached HEAD at a8957b5,
+    git revert --no-edit a8957b5 d372cb8 9ef0346 09f3c3a e0b6b7c 784e865 486e1fd
+  -> REVERT_EXIT=0; the catalog reads kotlinx-datetime = "0.6.1"; `git diff --stat
+  f7a2f69 HEAD -- android .github` empty (only parking.md differs - e9e6fa0, the
+  register, deliberately not in the list). Back on kmp-dt; the revert commits were
+  never on a branch. To undo R575/R552 as well, PART 1's two reverts still apply.
+
+--------------------------------------------------------------------------------
+R554 - NOTHING VISIBLE CHANGED (gate on a8957b5 against R1 and 6c31beb)
+--------------------------------------------------------------------------------
+  TEST COUNTS BY NAME   :app    1357 -> 1360 (175 -> 176 files), failures 0
+                        :shared  107 ->  107, names IDENTICAL, failures 0
+                        iOS      104 ->  104, names IDENTICAL, failures 0
+    The only :app difference is the three ExperimentalTimeOptInAllowlistTest
+    tests (diff of sorted class#test lists: three additions, nothing removed).
+  GOLDENS UNEDITED IN WHAT THEY ASSERT. `git diff f7a2f69..HEAD -- '*GoldenTest*'
+    '*ParisDayDstTest*' '*CalendarDayProbe*'` is, line for line, imports
+    (kotlinx.datetime.Clock/Instant -> kotlin.time.Clock/Instant/ExperimentalTime)
+    and @OptIn lines - no assertion, no expected string. CalendarDayGoldenTest,
+    JavaTimeCalendarDayGoldenTest, StoredDayStringGoldenTest,
+    ReleveDateTextGoldenTest and the 30 wire goldens: not touched at all.
+    LatenessConformanceTest is the one test whose BODY changed (the opted-in
+    helper); its cases and expectation are the fixture's, unchanged.
+  PARIS-DAY TESTS       ParisDayDstTest 2/2 and CalendarDayGoldenTest 9/9 (Casablanca
+                        at 23:30, both 2026 changes, New Year's Eve) green on the JVM
+                        and on iOS (40245120282).
+  ROOM                  schemas 1-6 sha256 prefixes 8d975205 318a71a1 62742436 b4157f5b
+                        9225f552 f2e5b3f6 after the gate's full KSP re-run - the same
+                        six; `git status` empty after the gate.
+  WIRE                  > Task :app:checkMinifiedWireContract executed, green.
+  PAPARAZZI             > Task :app:verifyPaparazziDebug executed, green, although two
+                        screenshot tests' construction changed; `git diff --stat
+                        f7a2f69..HEAD -- '*.png'` empty.
+  RELEASE APK           app-release-unsigned.apk 1,989,376 bytes - R1's size exactly.
+  COMPILER WARNINGS     w: lines 7 -> 8. The seven of 6c31beb, same text and sites,
+                        plus "w: Detected multiple Kotlin daemon sessions at ..." -
+                        the Kotlin daemon's own notice about this machine, not a
+                        source diagnostic. ZERO kotlinx-datetime deprecations
+                        (dayOfMonth() was renamed), ZERO opt-in warnings. The
+                        "Language version 1.9 is deprecated" line one of my
+                        intermediate compiles printed (from :shared:
+                        kspDebugKotlinAndroid) is NOT in the gate log.
+  iOS                   R555.
+
+--------------------------------------------------------------------------------
+R555 - iOS
+--------------------------------------------------------------------------------
+Run 40245120282 on d372cb8: 104 tests - R1's 98 plus R552's six common goldens
+(StoredDayStringGoldenTest 3, ServerInstantParseGoldenTest 3), names identical to
+6c31beb's 104; every Geneva case (a, b, c 39.16, d, e, special 4.16); both
+Paris-day classes; kotlinx-datetime 0.7.1 on Xcode 26.0.1 / iOS 26.2.
+
+THE CLOUD'S COST, all runs of this task (job startedAt -> completedAt, minutes up):
+    40230906743  main    1c1eb82  4m22s  5   R1(c), konan cold
+    40232989897  kmp-dt  b43c6e2  3m13s  4   R575 on its own commit
+    40234205023  kmp-dt  6c31beb  1m34s  2   first pass's report commit
+    40245120282  kmp-dt  d372cb8  3m04s  4   the bump, konan cold (catalog moved)
+    plus the run on the final tip - in the handback.
+
+--------------------------------------------------------------------------------
+R556 - THE UPGRADE IN PLACE ON THE S9
+--------------------------------------------------------------------------------
+LOCAL STACK ONLY: `PORT=3100 pnpm dev` (2026-10-25, port 3000 left for the parallel
+web session) and `PORT=3000 pnpm dev` (2026-10-26, the only session), both from the
+main checkout's web/; R169 first both times -
+{"service":"monreleve","instance":null,"status":"ok",...}; adb reverse
+tcp:3000 tcp:3100 then tcp:3000 tcp:3000. Never production: every API URL in both
+audit APKs' dex is http://127.0.0.1:3000 (grep of all classes*.dex). Real clock and
+zone throughout (auto_time 1, Africa/Casablanca). Migration 20261025200000 and its
+three rows were not touched.
+
+AS FOUND (read before any write, 2026-10-25 22:40Z): the d417d021...081034 audit APK;
+data read through the debug reader (install -r, same signer, never launched):
+entry 0, daily_tally 0, weekly_rhythm 0, user_version 6, identity a08f5454..., all
+six prefs `<map />`; stay_on 0, reverse empty, airplane 0, auto_time 1,
+auto_time_zone 1, mobile_data 0, wifi_on 1, font_scale 1.0.
+
+THE ACCOUNT: kmp-dt@monreleve.test, new (control: 0 rows for it, 19 users, 1454
+EntryEvents). Host setup by code (code and tokens only as sha256 prefixes): PATCH
+/me 200 (Camille Kmpdt, GE, 100, SIMPLIFIED240, DAY, whole year); revoke-all 200.
+
+BEFORE - built FIRST from the pre-bump tree (f7a2f69, the same Android code as
+1c1eb82 and as main): kmpdt-BEFORE-f7a2f69-audit.apk, 2,014,356 bytes, sha256
+ea760d3574a9...9673de75 - byte-identical to PART 1's build from 1c1eb82 (a
+reproducible build of identical code); signer ef336db5...e373d1, as are the
+reader, the AFTER builds and the as-found APK.
+  Installed with install -r; signed in through the screens BY CODE (typed by a
+  script that never printed or captured it - R574; POST /auth/code 200).
+  Days recorded through the real screens, both clocks real:
+    2026-10-25 (Sun) Domicile  at 22:47:17Z = 23:47 Paris        IN THE WINDOW
+    2026-10-23 (Fri) Suisse    at 22:49Z, via the calendar
+    2026-10-26 (Mon) Suisse    at 23:00:20Z = 00:00:20 Paris     IN THE WINDOW,
+                               the Paris day already the 26th
+    2026-10-22 (Thu) Domicile  at 23:01Z with adb reverse REMOVED - PENDING; no
+                               request reached the server (dev log), the cell read
+                               "en attente de synchronisation"
+  Server rows (psql): 23, 25, 26 with firstRecordedAt 22:49:16.482Z, 22:47:22.180Z,
+  23:00:24.120Z; no 22.
+  Screens kept as text: the calendar's cells 22-26 and each day's sheet - "Premiere
+  saisie enregistree le 25.10.2026 a 23:49" (23), "... 23:47" (25), "...
+  26.10.2026 a 00:00" (26), 22 with no stamp (pending).
+  DATABASE PULLED after force-stop, through the BEFORE debug reader, then the
+  BEFORE audit reinstalled over it (so the upgrade went audit -> audit):
+    monreleve.db  sha256 1f137ae1ca4a3ef2...dba9d16905
+    -wal          sha256 5c3c555e39ef249a...ab03c290ec
+    entry 4 (22 PENDING with clientClaimedAt "2026-10-26T00:01:09.810+01:00"),
+    user_version 6, identity a08f5454...
+  `adb backup` was tried first, to read the data without swapping the APK: it
+  wrote a 47-byte archive (header only) - NO RESULT, hence the reader.
+
+AFTER - built from a8957b5: kmpdt-AFTER-a8957b5-audit.apk 2,014,356 bytes, sha256
+370eb6e5eedfe55f...1d05c3f; reader = the gate's app-debug.apk (d18ec186...).
+  1. install -r over the BEFORE audit, reverse STILL REMOVED (12:28Z). Launched:
+     still signed in (no code asked), today Monday 26 "Enregistre", "1 journee en
+     attente d'envoi", and the expected offline banner. Calendar cells 22-26 and
+     the four sheets: IDENTICAL to BEFORE, text for text, timestamps included
+     (diff empty).
+  2. THE DATABASE BYTES: force-stop, reader, pull, AFTER audit reinstalled:
+       monreleve.db  sha256 1f137ae1...dba9d16905   BYTE-IDENTICAL (cmp)
+       -wal          sha256 5c3c555e...ab03c290ec   BYTE-IDENTICAL (cmp)
+     and the logical dump (rows, every date column, identity, user_version)
+     identical. The 0.7.1 build opened the 0.6.1 build's database, ran, and wrote
+     nothing.
+  3. A NEW DAY WITH THE AFTER BUILD, still offline: Wed 21 Suisse via the calendar
+     at 12:35:19Z; force-stop, reader, pull: entry 5, the new row PENDING with
+     clientClaimedAt "2026-10-26T13:35:17.458+01:00" - the pinned
+     yyyy-MM-dd'T'HH:mm:ss.SSS+HH:MM shape (regex checked). This pull is the wire
+     evidence: a synced row's stored claim is the server's Z echo, so the string
+     the client sends can only be read while it is pending.
+  4. THE PENDING DAYS SYNC: AFTER audit reinstalled, reverse tcp:3000 tcp:3000,
+     launched - POST /auth/refresh 200 (the access token had expired overnight),
+     then, at the SyncWorker's own backoff time, POST /api/v1/entries 200 (one
+     batch, 12:44Z). A forced `cmd jobscheduler run` was declined by WorkManager
+     ("being executed before schedule") and is not counted. Server rows:
+       2026-10-21 CH   clientClaimedAt 2026-10-26T12:35:17.458Z
+                       = "2026-10-26T13:35:17.458+01:00" (Date.parse)
+       2026-10-22 HOME clientClaimedAt 2026-10-25T23:01:09.810Z
+                       = "2026-10-26T00:01:09.810+01:00" - the BEFORE build's
+                       pending day, sent by the AFTER build unchanged
+       23 / 25 / 26 unchanged from BEFORE. EntryEvent 1454 -> 1459 (5 days).
+  SIGN-OUT: Parametres -> "Se deconnecter" -> confirm -> POST /auth/sign-out 200.
+  Server: the account's three device sessions all revoked (two REVOKED_ALL by
+  the host setup - one of them the session of my first, mis-parsed code exchange
+  - and the phone's SIGNED_OUT at 12:46Z).
+
+THE PHONE, LEFT AS FOUND (read at 12:47Z):
+    data         via the AFTER reader before the final install: entry 0,
+                 daily_tally 0, weekly_rhythm 0, user_version 6, identity
+                 a08f5454..., six prefs `<map />` - as found
+    the build    asfound-d417-audit.apk (copied out of C:/wt/an-pull, read only)
+                 install -r; the installed base.apk re-pulled: sha256
+                 d417d0210819...2a081034 - IDENTICAL to as-found
+    stay_on 0, adb reverse EMPTY (remove-all), airplane 0, auto_time 1,
+    auto_time_zone 1, mobile_data 0, wifi_on 1, font_scale 1.0; screen put to
+    sleep. firstInstallTime is unchanged (no uninstall ever ran);
+    lastUpdateTime is now 13:47 phone time.
+THE DEV SERVERS were stopped (TaskStop, then the surviving node process tree,
+started by this session, killed); port 3000 has no listener, 5436 still does (the
+control). The local database keeps kmp-dt@monreleve.test and its five days, like
+earlier sessions' accounts.
+
+--------------------------------------------------------------------------------
+R557 - WHAT THIS UNBLOCKS
+--------------------------------------------------------------------------------
+THE RESOLUTION CHECK ON THE COMMITTED TIP (the scratch init script, -I, no build
+file edited; copied to android/.an-auto-shots/kmp-dt/logs/r557.init.gradle): with
+org.jetbrains.compose.material3:material3:1.10.0-alpha05 added to :shared's
+commonMain, kotlinx-datetime resolves to 0.7.1 in all five configurations
+("requested" - nothing has to win a conflict any more), kotlin-stdlib stays 2.2.21,
+and the whole resolution is IDENTICAL to the 0.7.1 probe of 2026-10-25 (diff empty)
+- whose with/without-Material3 diff was only Compose's own dependencies
+(androidx.collection 1.5.0, atomicfu 0.27.0 on iOS, :shared's transitive
+coroutines to :app's 1.8.1). Material3 forces nothing else in the catalog.
+
+RESUME NOTE FOR iOS-1a:
+  1. kotlinx-datetime 0.7.1 is in. Write iOS code against kotlin.time.Instant /
+     kotlin.time.Clock; any NEW use needs an @OptIn(ExperimentalTime::class) AND
+     an entry in ExperimentalTimeOptInAllowlistTest, which will fail until it has
+     one - that is the point (R590). PARK-Z3 removes all of it at Kotlin 2.3.
+  2. The java.time converters are kotlin.time's (toKotlinInstant/toJavaInstant)
+     and kotlinx's toKotlinDayOfWeek/toJavaDayOfWeek; DayOfWeek is a real enum.
+  3. Compose Multiplatform 1.10.3's Material3 now resolves against the catalog as
+     is; its own transitive moves are listed above, for the CMP decision.
+  4. ios-shared.yml's konan cache is keyed on the catalog: the bump's run was
+     cold; the next ones are warm until the catalog moves again.
+  5. Unchanged from KMP-UP2/first pass: the approved iOS SQLite driver, Xcode 26,
+     KSP1 ends at 2.2.21 (PARK-X2), the seams, PARK-N1..N3.
+
+--------------------------------------------------------------------------------
+PARKED (PART 2)
+--------------------------------------------------------------------------------
+  CLOSED  PARK-Z1  by R590, route (A) (e9e6fa0 records it), pending merge.
+  NEW     PARK-Z3  delete every ExperimentalTime opt-in and the allowlist test at
+                   the Kotlin 2.3 move - one commit of that task.
+  UPDATED PARK-Z2  the CLAUDE.md rewording (7ccddf6) is on origin/main since 79f1c1d
+                   per the coordinator; the entry on this branch still reads
+                   "not yet pushed" - it closes on the merge.
+  Z series: claimed in PART 1 (O and Z were the only free letters); Z3 resolved
+  by the widened pattern; register-coverage OK on this text (PUSH PROOF).
+
+--------------------------------------------------------------------------------
+DEVIATIONS (PART 2)
+--------------------------------------------------------------------------------
+1. THE BEFORE APK WAS BUILT FROM f7a2f69, not from main - the coordinator told me
+   not to fast-forward. Its android/ tree equals origin/main's (79f1c1d; `git diff --stat
+   f7a2f69 origin/main -- android` empty) and the APK is byte-identical to PART 1's build
+   from 1c1eb82 (sha256 ea760d35...).
+2. ONE CALLBACK TOKEN APPEARED IN MY TOOL OUTPUT: the first magic-link mail of
+   kmp-dt@monreleve.test, printed before I masked the dev log. Local stack, test
+   account, single-use; that request's session was revoked by revoke-all. Every
+   later read masked tokens and codes; the copied dev logs are masked.
+3. MY FIRST HOST CODE EXCHANGE MIS-PARSED THE RESPONSE (accessToken, not access),
+   leaving one live session I could not sign out; revoke-all ended it (server
+   shows REVOKED_ALL).
+4. `taskkill //IM adb.exe` killed my own logcat capture and the adb server (it
+   restarted on the next command); no other session used adb.
+5. THE R393 REFUSAL ON d372cb8 (STATUS) - parking.md edited while a gate was
+   configuring.
+6. TWO SHAPE CHANGES TO KEEP R590's SCOPE (R590 above): the bridge's object
+   expression, LatenessConformanceTest's helper.
+7. THE DEVICE PHASE SPANNED TWO DAYS: BEFORE on 25-26 Oct night (the in-window
+   days), AFTER at 12:28-12:47Z on 26 Oct after the orchestrator's restart. The
+   phone held the BEFORE audit build, untouched, in between.
+8. PART 1's BEFORE APKs in C:/Users/KAMXKAM/Downloads/kmpdt-apks were deleted by
+   the operator's ruling; every artefact of PART 2 is in C:/wt/kmp-dt/android/
+   .an-auto-shots/kmp-dt/ (gitignored): the APKs, the pulled databases (the auth
+   prefs inside are ciphertext), masked dev logs, screen dumps, gate logs.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING (PART 2)
+--------------------------------------------------------------------------------
+1. The calendar kept "Aujourd'hui" on the 25th after Paris midnight until the app
+   was relaunched - the controller's today is read once (pre-existing, the
+   family of PARK-X5); not the bump: the BEFORE build did it.
+2. Samsung's accidental-touch overlay appeared twice during drives and swallowed
+   taps until dismissed; nothing was recorded through it.
+
+--------------------------------------------------------------------------------
+QUESTIONS (PART 2)
+--------------------------------------------------------------------------------
+Q1 PART 1's Q1 is answered (R590). Should the "multiple Kotlin daemon sessions"
+   notice be counted as a compiler warning in future R554-style counts, or
+   filtered as environment noise? It is a w: line but not a source diagnostic.
+
+--------------------------------------------------------------------------------
+PUSH PROOF (PART 2)
+--------------------------------------------------------------------------------
+PUSHED, NOT MERGED. kmp-dt -> origin/kmp-dt, `git push origin kmp-dt` each time:
+    486e1fd  R553 - THE BUMP (versions only)        f7a2f69..d372cb8 (one push)
+    784e865  :shared kotlin.time + opt-ins          }
+    e0b6b7c  :app Instant boundary                  }
+    09f3c3a  DayOfWeek                              }
+    9ef0346  R590 allowlist test                    }
+    d372cb8  ios-shared.yml comment                 } - iOS run 40245120282
+    e9e6fa0  the register (Z1, Z3, Z2)              d372cb8..a8957b5
+    a8957b5  RhythmMappingTest                      } - FULL GATE GREEN on it
+    <this>   REPORT-KMP-DT.txt only - its SHA and push in the handback.
+Nothing under web/ changed on this branch: gate:clone not owed (R199).
+REGISTER, against this final text: node web/scripts/register-coverage.mjs ->
+    OK (the line is in the final commit's message).
+ISOLATION: C:/wt/kmp-dt only, its lock; files staged by name; nothing written in
+any other worktree or in the main checkout (its web/ only ran the dev server, as
+every drive has). The lock is removed after the final push (handback).
+
+################################################################################
+PART 1 - THE FIRST PASS (2026-10-25), AS COMMITTED IN f7a2f69
+################################################################################
+================================================================================
+REPORT-KMP-DT
 kotlinx-datetime 0.7: STOPPED AT R550 - NO ROUTE ON KOTLIN 2.2.21 KEEPS ALL THREE
 RULES. WHAT LANDED: THE GOLDENS ON 0.6.1, AND THE WINDOWS GATE'S iOS KLIB DROP.
 ================================================================================
