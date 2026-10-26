@@ -1,6 +1,6 @@
 REPORT-IOS-1b-A - Mon Releve
 COMPOSE MULTIPLATFORM LANDS, AND AUJOURD'HUI BECOMES ONE SHARED SCREEN
-(PILOT, PART A) - STOPPED AT R601, BY THE PROMPT'S OWN STOP POINT
+(PILOT, PART A) - PART 1 STOPPED AT R601; PART 2 RESUMED UNDER R624-R626
 
 TASK     IOS-1b-A, rulings R600-R609 (free: the only other relay file citing
          R600-R609 is relay/IOS-1b-B.txt, which cites THESE rulings by number;
@@ -12,6 +12,149 @@ BRANCH   ios-1b-a, worktree C:/wt/ios-1b-a (R349), lock .session-lock.json in
 DEVICE   SM-G960F (Galaxy S9), serial 232bcd8c300c7ece - READ only, never
          written.
 EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+################################################################################
+PART 2 - RESUMED UNDER THE ADDENDUM (R624-R626), 2026-10-26 from ~21:40Z
+The operator chose option (B), gated on a probe. PART 1 (further down) is the
+first pass exactly as committed in bb416a7/ae7acc6 - the record of the R601
+stop. Where they differ, PART 2 governs. Same branch, same worktree, a new
+lock.
+################################################################################
+
+--------------------------------------------------------------------------------
+R624 - THE PROBE (one macOS run, throwaway branch, deleted)
+--------------------------------------------------------------------------------
+BRANCH   probe-ios1ba-cmp173 (not ios-*), one commit 20608cf on ae7acc6, in its
+         own worktree C:/wt/ios-1b-a-probe with its own lock. Dispatched with
+         `gh workflow run ios-shared.yml --ref probe-ios1ba-cmp173`.
+RUN      40408680643 - 21:57:49Z to 22:07:20Z (9m 31s, 10 billed macOS
+         minutes), Xcode 26.0.1. Conclusion "failure" - by design, test b.
+WHAT IT HELD: CMP 1.7.3 (runtime, ui, foundation, animation, material3,
+ui-test) on :shared's iOS test source set, the Kotlin 2.2.21 Compose compiler,
+kotlinx-datetime 0.7.1 as the catalog has it, and three tests run one at a
+time on the simulator (an extra workflow step, `--tests` each):
+  a  runComposeUiTest: MaterialTheme(lightColorScheme, Typography, Shapes),
+     Text, Button, OutlinedButton, TextButton, Icon (an ImageVector from a
+     Lucide path string), HorizontalDivider, FlowRow, verticalScroll,
+     clickable, border, RoundedCornerShape, liveRegion semantics,
+     AnimatedVisibility, animateFloatAsState, rememberSaveable - the Material3
+     and foundation surface Aujourd'hui really imports. Clicked "Oui", then
+     "Modifier", then the half-day row; asserted each recomposition.
+       -> PASSED (0.187 s). "R624 PROBE a: composition created, clicked,
+          recomposed". BUILD SUCCESSFUL in 3m 40s (the link included).
+  b  Material3 DatePicker + rememberDatePickerState - added beyond the
+     prompt, to test the date-library conflict where it lives.
+       -> FAILED: kotlin.internal.IrLinkageError: Can not get instance of
+          singleton 'Companion': No class found for symbol
+          'kotlinx.datetime/Instant.Companion|null[0]'
+  c  ComposeUIViewController (strict plist check off - a test binary has
+     no Info.plist) set as a UIWindow's root, makeKeyAndVisible, run loop
+     spun until the content composed.
+       -> PASSED (0.856 s). "R624 PROBE c: composed=true after 1 run-loop
+          spins".
+The full suite then ran as usual: iOS SIMULATOR TESTS EXECUTED: 195 (192 +
+the 3 probes), one failure (b), six GENEVA lines.
+THE LINK STEP NAMED THE BREAK before b reached it - 7 partial-linkage lines,
+all in Material3's calendar model:
+  darwinMain .../internal/PlatformDateFormat.darwin.kt:75   toCalendarDate
+  skikoMain  .../internal/KotlinxDatetimeCalendarModel.kt:72,78,93,112,131,161
+             (toCalendarDate, toCalendarMonth, 'instant')
+  - "uses unlinked class symbol 'kotlinx.datetime/Instant'". Material3 1.7.3
+  was compiled against kotlinx-datetime 0.6.0; 0.7.0 replaced that Instant.
+VERDICT: the probe PASSES on R624's own terms - clause 1 (link and run: a
+composition really created, in a test scene AND in a view controller) and
+clause 2 (the Material3 components Aujourd'hui uses) both hold. Clause 3's
+trigger (Material3 failing) did not fire for that surface; the failure is
+confined to Material3's date/calendar model, which Aujourd'hui does not use.
+It is FENCED, not ignored (see R604): no shared UI may import Material3's
+date pickers, and a canary test asserts the IrLinkageError until it goes
+(UNNUMBERED-6).
+The foundation-plus-tokens option, for the record and NOT taken: the shared
+screen would replace Text/Button/OutlinedButton/TextButton/Icon/
+HorizontalDivider with BasicText and clickable Boxes; to keep Android
+pixel-identical that needs an expect/actual wrapper per component (Android:
+the Material3 one; iOS: a foundation look-alike) - six wrappers, and iOS
+would not be Material3 at all. Not needed: the surface links.
+CLEANUP (KMP-UP2's way): `git push origin --delete probe-ios1ba-cmp173` ->
+[deleted]; the probe worktree removed (its only untracked file was this
+session's own probe-local.log); `git branch -D` -> was 20608cf; caches
+9550269089 (gradle, 1,376,541,328 B) and 9550251744 (konan, 406,805,717 B)
+deleted; `gh cache list --ref refs/heads/probe-ios1ba-cmp173` -> [] while
+`gh cache list` lists an-fr-text's and ios-1a's (the positive control).
+`git ls-remote origin 'refs/heads/probe*'` -> nothing. The probe test and
+its build file are kept in android/.an-auto-shots/ios-1b-a/probe/.
+
+--------------------------------------------------------------------------------
+R626 - ZERO TOLERANCE FIRST (commit 85579a4, test-only)
+--------------------------------------------------------------------------------
+All 14 Paparazzi rules (the 142 tests) pass maxPercentDifference = 0.0;
+fences/PaparazziZeroToleranceTest walks the test sources (FenceRoot-pinned),
+instantiates each screenshot class and READS the private field off its live
+rule - a value, never a text scan (R345).
+  ./gradlew :app:verifyPaparazziDebug fastCheck -> BUILD SUCCESSFUL;
+  1381 tests, 0 failures; 142 screenshot tests, 0 failures at 0.0.
+  NONE failed at zero, so nothing to list and no stop.
+Guard red on two plants, each verified landed and then restored (R180):
+  AppBottomBar 0.0 -> 0.1:   expected:<[]> but was:<[(...AppBottomBarScreenshotTest, 0.1)]>
+  AppBottomBar line deleted: expected:<[]> but was:<[(...AppBottomBarScreenshotTest, 0.1)]>
+  (the second is R345's point: absence IS the 0.1 default).
+WHAT ZERO DOES NOT CLOSE IN PAPARAZZI 1.3.5 (UNNUMBERED-7): its comparison is
+the OffByTwo differ - a pixel whose channels differ by <= 2 counts as
+identical - and a 1 px width/height difference passes. Neither is reachable
+from the constructor; exact comparison would need a custom SnapshotHandler.
+The guard's header says so.
+
+--------------------------------------------------------------------------------
+R625 - CMP 1.7.3, RECORDED (commit d335ef1)
+--------------------------------------------------------------------------------
+Catalog: compose-multiplatform = "1.7.3" with the why and the park; plugin
+org.jetbrains.compose; cmp-runtime/ui/foundation/animation/material3 as api()
+in :shared commonMain; the Compose compiler plugin on :shared; composeBom
+2024.09.00 -> 2024.12.01 so the BOM states what runs (UNNUMBERED-4 closed).
+R601's QUESTION, ANSWERED: the patch move to Compose 1.7.6 / Material3 1.3.1
+is approved (R625) because the 142 baselines prove it changes no pixel.
+Resolution of :app releaseRuntimeClasspath after the commit is IDENTICAL to
+PART 1's CMP-1.7.3 probe apart from compose-bom (and components-resources,
+which R603 adds).
+  ./gradlew :app:verifyPaparazziDebug fastCheck
+    :shared:compileCommonMainKotlinMetadata :shared:testDebugUnitTest
+  -> BUILD SUCCESSFUL in 7m 13s, 111 actionable tasks: 111 executed;
+     :app 1381 tests 0 failed; 142 screenshot 0 failed at 0.0;
+     ThemeCensusTest 2/2.
+THE PARKED UPGRADE (UNNUMBERED-8): CMP 1.10+/1.11 with Compose 1.10 and
+Material3 1.5 - TRIGGER: Material3 1.5 reaches STABLE AND a Paparazzi release
+renders Compose UI 1.10 text (PART 1's NoSuchMethodError). Then (A) is a
+normal toolkit upgrade with a full baseline review. It also retires the
+Material3 calendar-model break (UNNUMBERED-6) if that Material3 is built
+against kotlinx-datetime 0.7.
+iOS run on d335ef1 (the push of R626+R625): 40412510390 - success, 22:26:58Z-22:36:08Z
+(9m 10s, cold konan: the catalog hash moved), "iOS SIMULATOR TESTS EXECUTED:
+192", BUILD SUCCESSFUL in 4m - the Compose compiler on every :shared
+compilation and the five CMP libraries on commonMain build and test for iOS.
+
+--------------------------------------------------------------------------------
+R603 SPIKE - CAN PAPARAZZI SEE A CMP RESOURCE? (uncommitted, reverted)
+--------------------------------------------------------------------------------
+Before moving anything: ic_house.xml copied into shared composeResources, a
+throwaway Paparazzi test rendering Icon(painterResource(Res.drawable.ic_house))
+and Icon(painterResource(R.drawable.ic_house)) through a capturing
+SnapshotHandler and comparing the two frames pixel by pixel.
+  1. As is: IllegalStateException "Android context is not initialized" - CMP
+     1.7.3 reads Android resources through a context its ContentProvider
+     sets at app start, and Paparazzi starts no provider.
+  2. With PreviewContextConfigurationEffect(): the same - it only acts when
+     LocalInspectionMode is true, which Paparazzi 1.3.5 does not set.
+  3. With the provider's (Kotlin-internal) ANDROID_CONTEXT set to
+     paparazzi.context by reflection: "pixels differing: 0 of 461000; ink
+     pixels in R version: 350" - IDENTICAL to the Android drawable.
+So CMP resources render pixel-identically under Paparazzi, but only with a
+test-side seam into an internal field. The app itself is unaffected (the
+provider runs at process start, and in instrumented tests). CMP resources
+also add that ContentProvider to the merged manifest (R605 counts it).
+
+################################################################################
+PART 1 - THE FIRST PASS (STOPPED AT R601), AS COMMITTED
+################################################################################
 
 --------------------------------------------------------------------------------
 SUMMARY
