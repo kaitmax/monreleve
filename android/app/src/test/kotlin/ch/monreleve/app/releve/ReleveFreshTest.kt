@@ -1,5 +1,8 @@
 package ch.monreleve.app.releve
 
+import ch.monreleve.app.aujourdhui.AujourdhuiController
+import ch.monreleve.app.aujourdhui.RecordedKind
+import ch.monreleve.app.aujourdhui.Slot
 import ch.monreleve.app.auth.AuthedOutcome
 import ch.monreleve.app.auth.AuthenticatedPoster
 import ch.monreleve.app.auth.BytesOutcome
@@ -20,10 +23,13 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.sync.SyncEngine
 import ch.monreleve.app.data.sync.SyncOutcome
 import ch.monreleve.app.dossier.toTeleworkInput
+import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.settings.Settings
+import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.toAggregatableUser
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -373,6 +379,67 @@ class ReleveFreshTest : FunSpec({
             runCurrent()
             rig.shown().updating shouldBe false
             rig.shown().document.tiles.teleworkDays shouldBe 2.0
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------------------------
+    // R561: WHAT IS NOT SENT IS SAID, NOT COUNTED IN. The count is the store's, read as the screen renders; the
+    // document's figures stay the server's; Aujourd'hui (which counts local days) may differ by exactly those days,
+    // and R281's equality holds again once they are sent.
+    // -------------------------------------------------------------------------------------------------------------
+
+    test("R561: the sentence, singular and plural, accented, with the no-break space before the colon (R91)") {
+        ReleveCopy.pendingNotSynced(1) shouldBe
+            "1 journée enregistrée sur ce téléphone n’a pas encore été envoyée\u00A0: ce relevé ne la compte " +
+            "pas encore."
+        ReleveCopy.pendingNotSynced(3) shouldBe
+            "3 journées enregistrées sur ce téléphone n’ont pas encore été envoyées\u00A0: ce relevé ne les compte " +
+            "pas encore."
+    }
+
+    test("R561: a day not yet sent is said on the Releve and not counted in; once sent, R281's equality holds") {
+        runTest {
+            val rig = signedIn()
+            val settings =
+                object : SettingsStore {
+                    override fun load(): Settings = SETTINGS
+
+                    override fun save(settings: Settings) = Unit
+
+                    override fun clear() = Unit
+                }
+            val aujourdhui = AujourdhuiController(rig.repository, settings, TAX_YEAR, rig.clock, backgroundScope)
+            rig.openReleve()
+            runCurrent()
+
+            fun aujourdhuiRate(): Double? = aujourdhui.state.value.year?.result?.declarableRate
+            // Before: one day, on the server and the phone alike - the two screens agree (R281).
+            rig.shown().pendingCount shouldBe 0
+            rig.shown().document.zone.declarableRate shouldBe aujourdhuiRate()
+
+            // The adb reverse is removed: the day is recorded on Aujourd'hui and cannot be sent.
+            rig.server.online = false
+            aujourdhui.record(RecordedKind.DOMICILE, Slot.FULL)
+            runCurrent()
+            rig.drain() shouldBe SyncOutcome.Retryable
+            runCurrent()
+            val unsent = rig.shown()
+            // Said: one day not yet sent, counted from the store.
+            unsent.pendingCount shouldBe 1
+            ReleveCopy.pendingNotSynced(unsent.pendingCount) shouldBe ReleveCopy.pendingNotSynced(1)
+            // Not counted in: the document is still the server's, one telework day, and Aujourd'hui differs.
+            unsent.document.tiles.teleworkDays shouldBe 1.0
+            unsent.document.zone.declarableRate shouldNotBe aujourdhuiRate()
+
+            // The reverse is restored and the day is sent: the notice goes and the two rates are one again.
+            rig.server.online = true
+            rig.drain() shouldBe SyncOutcome.Settled(written = 1, defects = 0)
+            runCurrent()
+            val sent = rig.shown()
+            sent.pendingCount shouldBe 0
+            sent.updating shouldBe false
+            sent.document.tiles.teleworkDays shouldBe 2.0
+            sent.document.zone.declarableRate shouldBe aujourdhuiRate()
         }
     }
 })
