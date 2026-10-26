@@ -11,9 +11,8 @@ import kotlinx.datetime.number
 // specification only where the goldens agree with it, never the other way round.
 //
 // WHAT IS NOT HERE: the two formatters that start from an INSTANT (formatDateTime, formatDossierStamp). They
-// need kotlin.time.Instant, which is @ExperimentalTime in Kotlin 2.2, and an opt-in in commonMain would be a
-// new line on the allowlist test in :app - a file this task may not touch. They live in iosMain instead
-// (IosInstantFormat.kt) and run against the same golden file there.
+// need kotlin.time.Instant, which is @ExperimentalTime in Kotlin 2.2, so they sit in their own file beside this
+// one (FrInstants.kt, moved from iosMain by AN-FR-TEXT R622) with function-scope opt-ins on the allowlist.
 
 private const val DATE_SEPARATOR = '.'
 private const val YEAR_WIDTH = 4
