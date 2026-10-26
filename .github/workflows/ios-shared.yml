@@ -196,10 +196,40 @@ jobs:
       #               started with, which is how the step after this one names
       #               the simulator from the machine rather than from the
       #               plugin's source. The output is also kept in a file for it.
+      # IOS-1a R564. THE WIRE-RECORDING SERVER. NsUrlSessionTransportWireTest sends each request KMP-1's goldens
+      # describe through the iOS transport to this server, which echoes and RECORDS the raw request. Standard
+      # library Python only (no third-party code), loopback only, no secret. The recording is printed and
+      # uploaded after the run. The step refuses to go on unless the server answers its own control route.
+      - name: Start the wire-recording server
+        working-directory: .
+        run: |
+          mkdir -p "$RUNNER_TEMP/wire"
+          nohup python3 .github/scripts/ios-wire-server.py --port 18765 --record "$RUNNER_TEMP/wire/requests.jsonl" > "$RUNNER_TEMP/wire/server.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/wire/server.pid"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:18765/__events >/dev/null 2>&1; then echo "wire server is answering on 18765"; exit 0; fi
+            sleep 1
+          done
+          echo "NO RESULT: the wire server did not start"; cat "$RUNNER_TEMP/wire/server.log"; exit 1
+
       - name: iOS - simulator tests and device compile
         run: |
           set -o pipefail
           ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64 --no-daemon --stacktrace --continue --info 2>&1 | tee "$RUNNER_TEMP/gradle-ios.log"
+
+      - name: The wire recording (what the simulator really sent)
+        if: always()
+        working-directory: .
+        run: |
+          set +e
+          f="$RUNNER_TEMP/wire/requests.jsonl"
+          if [ ! -s "$f" ]; then echo "NO RESULT: the wire server recorded no request"; exit 0; fi
+          echo "RECORDED REQUESTS: $(wc -l < "$f")"
+          cut -c1-220 "$f"
+          echo "--- server events:"
+          curl -s http://127.0.0.1:18765/__events
+          kill "$(cat "$RUNNER_TEMP/wire/server.pid")" 2>/dev/null
+          exit 0
 
       - name: Save the Kotlin/Native toolchain
         if: always() && steps.konan.outputs.cache-hit != 'true'
@@ -273,5 +303,6 @@ jobs:
           path: |
             android/shared/build/test-results/
             android/shared/build/reports/
+            ${{ runner.temp }}/wire/
           retention-days: 14
           if-no-files-found: warn

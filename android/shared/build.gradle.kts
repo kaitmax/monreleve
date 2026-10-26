@@ -176,6 +176,10 @@ kotlin {
         // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
         // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
+        iosMain.dependencies {
+            // IOS-1a R567: the one approved new dependency, on iOS ONLY. Android keeps its own SQLite.
+            implementation(libs.androidx.sqlite.bundled)
+        }
         androidUnitTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -246,6 +250,8 @@ detekt {
         layout.projectDirectory.dir("src/commonMain/kotlin"),
         layout.projectDirectory.dir("src/commonTest/kotlin"),
         layout.projectDirectory.dir("src/androidMain/kotlin"),
+        layout.projectDirectory.dir("src/iosMain/kotlin"),
+        layout.projectDirectory.dir("src/iosTest/kotlin"),
         layout.projectDirectory.dir("src/androidUnitTest/kotlin"),
     )
 }
