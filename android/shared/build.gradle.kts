@@ -24,6 +24,10 @@ plugins {
     // separately from the code that will depend on it. Version from the catalog (the ksp ref; KMP-UP2
     // moved it with Kotlin) - this line names no version, so it does not move with one.
     alias(libs.plugins.ksp)
+    // IOS-1b-A R625. The Compose compiler (tracks the Kotlin version) and Compose Multiplatform 1.7.3, so the
+    // shared Aujourd'hui screen compiles for Android and iOS from commonMain. Versions in the catalog.
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
 }
 
 // KMP-2b increment 1 (R400/R206). WHERE ROOM EXPORTS THIS MODULE'S SCHEMAS. The ksp-arg form, NOT the
@@ -158,6 +162,13 @@ kotlin {
             // implementation(), not api(): :app declares room-runtime itself, so nothing about its
             // compile classpath changes when the database moves here.
             implementation(libs.androidx.room.runtime)
+            // IOS-1b-A R625. Compose Multiplatform 1.7.3 - the toolkit the shared screen is written in. api(),
+            // because :app hosts the shared composables and passes Modifier/Composable types across.
+            api(libs.cmp.runtime)
+            api(libs.cmp.ui)
+            api(libs.cmp.foundation)
+            api(libs.cmp.animation)
+            api(libs.cmp.material3)
         }
         commonTest {
             // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
