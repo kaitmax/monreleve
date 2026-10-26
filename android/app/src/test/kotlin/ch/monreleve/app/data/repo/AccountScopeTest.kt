@@ -5,6 +5,7 @@ import ch.monreleve.app.auth.AuthenticatedPoster
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.MemoryDossierCache
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
@@ -94,7 +95,7 @@ class AccountScopeTest {
                 )
             val poster = CapturingPoster()
 
-            SyncEngine(dao, poster, accountB).sync()
+            SyncEngine(dao, poster, accountB, MemoryDossierCache()).sync()
 
             val body = sent(poster)
             assertTrue("B's own row must be sent", body.contains("mut-b1"))
@@ -132,7 +133,7 @@ class AccountScopeTest {
             val poster = CapturingPoster()
             val repoAsB = LocalEntryRepository(dao, clock, currentAccount = { accountB })
 
-            SyncEngine(dao, poster, accountB).sync()
+            SyncEngine(dao, poster, accountB, MemoryDossierCache()).sync()
             val shownToB = repoAsB.observeAll().first()
 
             assertFalse("A's days are not sent under B", sent(poster).contains("mut-a1"))
@@ -142,7 +143,7 @@ class AccountScopeTest {
 
             // ...and when A signs back in, A's set-aside days sync under A.
             val posterA = CapturingPoster()
-            SyncEngine(dao, posterA, accountA).sync()
+            SyncEngine(dao, posterA, accountA, MemoryDossierCache()).sync()
             val backToA = sent(posterA)
             assertTrue("A's day syncs under A on return", backToA.contains("mut-a1"))
             assertTrue("A's day syncs under A on return", backToA.contains("mut-a2"))
@@ -160,7 +161,7 @@ class AccountScopeTest {
             val poster = CapturingPoster()
             val repoAsB = LocalEntryRepository(dao, clock, currentAccount = { accountB })
 
-            SyncEngine(dao, poster, accountB).sync()
+            SyncEngine(dao, poster, accountB, MemoryDossierCache()).sync()
             val shown = repoAsB.observeAll().first()
 
             assertFalse("an UNOWNED row is never sent", sent(poster).contains("mut-unowned"))

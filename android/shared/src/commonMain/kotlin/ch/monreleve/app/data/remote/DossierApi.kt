@@ -72,6 +72,16 @@ class DossierApi(
             AuthedOutcome.NoSession -> DossierResult.NoSession
         }
 
+    /**
+     * AN-RELEVE-FRESH (R560): the cached copy of [year], parsed, WHEN the cache is marked stale (R559) - the
+     * figures a screen shows at once while it fetches the server's current record. Null when the year is not
+     * stale (no refresh is due), or when there is no copy that parses (nothing to show meanwhile). No network.
+     */
+    fun staleCopy(year: Int): DossierDocument? {
+        val cached = if (cache.isStale(year)) cache.load(year) else null
+        return cached?.let { body -> runCatching { parseDossier(body) }.getOrNull() }
+    }
+
     private fun parseAndCache(
         year: Int,
         body: String,

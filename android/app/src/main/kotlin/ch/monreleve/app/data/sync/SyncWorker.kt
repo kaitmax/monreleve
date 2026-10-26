@@ -6,6 +6,7 @@ import androidx.work.WorkerParameters
 import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.processSession
 import ch.monreleve.app.data.local.MonReleveDatabase
+import ch.monreleve.app.data.local.SharedPrefsDossierCache
 import ch.monreleve.app.data.local.get
 
 // AN5 increment 3. The thin CoroutineWorker: it builds the engine from the app
@@ -41,5 +42,6 @@ internal fun buildSyncEngine(context: Context): SyncEngine {
     // session; and the next sign-in sets the tag BEFORE it sends (R509), so one account's queue never goes up under
     // another's token. A null account (nobody ever signed in, or a sign-out cleared it) drains nothing.
     val currentAccount = SharedPrefsAccountStore(context).current()
-    return SyncEngine(dao, session, currentAccount)
+    // AN-RELEVE-FRESH (R559): the same preferences file the Releve reads, so a year this drain sends is stale there.
+    return SyncEngine(dao, session, currentAccount, SharedPrefsDossierCache(context))
 }

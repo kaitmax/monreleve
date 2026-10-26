@@ -172,6 +172,16 @@ private val OFFLINE =
         offline = true,
     )
 
+// AN-RELEVE-FRESH (R560): a copy the last sync made stale, shown at once while the current record is fetched.
+private val UPDATING =
+    loaded(document(declarable = 18.33, raw = 19.50, remainingFiscal = 52.0, remainingSocial = 76.5))
+        .copy(updating = true)
+
+// R560: the refresh failed (the server answered without a document); the copy stays, dated, and nothing changed.
+private val REFRESH_FAILED =
+    loaded(document(declarable = 18.33, raw = 19.50, remainingFiscal = 52.0, remainingSocial = 76.5))
+        .copy(refreshFailed = true)
+
 private val OVER_CEILING =
     loaded(
         document(
@@ -261,6 +271,16 @@ class ReleveScreenScreenshotTest {
     @Test
     fun releveOffline() {
         paparazzi.snapshot { host(OFFLINE) }
+    }
+
+    @Test
+    fun releveUpdating() {
+        paparazzi.snapshot { host(UPDATING) }
+    }
+
+    @Test
+    fun releveRefreshFailed() {
+        paparazzi.snapshot { host(REFRESH_FAILED) }
     }
 
     @Test

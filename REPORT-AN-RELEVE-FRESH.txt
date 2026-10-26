@@ -1,0 +1,366 @@
+REPORT-AN-RELEVE-FRESH - THE RELEVE SHOWS THE SERVER'S RECORD AS IT IS NOW, AND SAYS WHAT IS NOT SENT
+Session: AN-RELEVE-FRESH, 2026-10-26. Worktree C:/wt/an-releve-fresh, branch an-releve-fresh
+(cut from origin/main 266b020, upstream unset), lock .session-lock.json (removed after
+this report's commit, as the session's last act).
+Pushed to the BRANCH only. PENDING MERGE - nothing landed on main or production.
+
+================================================================================
+SUMMARY
+================================================================================
+PARK-X5 (KMP-UP2 Q5) is fixed. A batch the server accepts marks that year's cached
+dossier stale (R559, in :shared, through DossierCache). Opening the Releve - or a sync
+landing while it is open - shows the cached figures marked as updating, then the
+server's (R560). Offline it shows R288's dated copy. A refresh the server cannot answer
+keeps the copy and says nothing was changed. Unsent days are said in the house words
+and never counted in (R561). R589 (granularity_conflict, 1 bad + 2 good) is test-only
+and passed on main's engine. Driven on the S9 against the local stack (R562).
+
+Commits on an-releve-fresh, in order, each pushed when made:
+  c2201ba  R589 - SyncEngineTest: one granularity_conflict among three days (test only)
+  e7f373a  R559 - DossierCache.markStale/isStale; SyncEngine marks on an accepted batch
+  8a1b756  R558/R560 - ReleveController.onOpened/onClosed, staleCopy seam, two new copies
+  21c44e2  R561 - pendingNotSynced re-worded; both-states test; releveWithPending.png
+  b4b048e  @OptIn on a test helper (removed the 8th compiler w: line, see GATES)
+  (this report + parking.md PARK-X5 STATE: the commit after b4b048e, no code)
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. FULL :app:gate --rerun-tasks GREEN on b4b048e, the last code commit, in this
+session:
+    BUILD SUCCESSFUL in 15m 22s
+    233 actionable tasks: 233 executed
+    GATE_EXIT=0
+iOS cloud run (R573) GREEN on b4b048e: run 40341210112, conclusion success, 104 tests,
+0 failures. The commit on top of b4b048e adds only REPORT-AN-RELEVE-FRESH.txt and an
+edit to parking.md; no gate was rerun for it. gate:clone not run: web/ is unchanged
+(`git diff origin/main...HEAD -- web/` empty).
+
+================================================================================
+R273 - READ
+================================================================================
+REPORT-KMP-UP2 Q5 / PARK-X5. The Releve kept its sign-in snapshot after a day was
+recorded and synced, until a relaunch. ReleveController.load() ran on init, on a year
+switch and on retry only.
+REPORT-KMP-3. DossierApi and DossierCache are in :shared. The cache's KDoc is the
+contract iOS implements from (R447). SharedPrefsDossierCache stays in :app.
+OnDeviceFormatGoldenTest pins "monreleve.dossier" and "dossier.<year>". The golden is
+unedited.
+REPORT-AN-FORCED-SIGNOUT. SignInCopy.sessionClosed counts held days when it renders. It
+is the house form for "journee(s) enregistree(s) sur ce telephone ... envoyee(s)".
+REPORT-AN-PULL. Its tone ("Rien n'a ete modifie") and its local-stack setup were reused
+here: dev server from the main checkout, codes read from its stdout.
+R281. Aujourd'hui's rate equals the Releve's. The new test checks this in both states.
+Already on main: R287's pending line (ReleveCopy.pendingNotSynced, a live count of
+PENDING rows for the year on screen) and R288's dated offline copy.
+
+================================================================================
+R1
+================================================================================
+origin/main = 266b020 = "Merge kmp-dt", re-verified. S9 232bcd8c300c7ece listed as
+`device`. stay_on READ 0. Reverse empty. Installed APK sha256 d417d021...081034 (read
+off the phone). App signed out (welcome screen).
+iOS on main's merge: run 40327017805 (merge-kmp-dt) success.
+DEVIATION 1: no separate FULL gate was run on 266b020. The FULL gate runs on this
+branch's tip, which contains main. It was green, and a red main would have shown there.
+
+================================================================================
+R558 - REPRODUCED FIRST, RED
+================================================================================
+ReleveFreshTest wires the real pieces end to end:
+  - ReleveController over the real DossierApi and a DossierCache;
+  - the real SyncEngine draining the same store (a hot FakeEntryDao, like Room);
+  - a fake server that answers POST /entries and GET /dossier from the rows it has
+    received, with the rates computed by the engine path Aujourd'hui uses.
+Steps: sign in (fetch + cache), record a day, drain, open the Releve.
+RED on main's code (266b020 + c2201ba; the open step is a no-op because main has no
+open hook):
+  R558: a day recorded and sent after sign-in reaches the Releve when it is opened,
+  without a relaunch - io.kotest.assertions.AssertionFailedError: expected:<2.0> but
+  was:<1.0>  (ReleveFreshTest.kt:240, the last assertion)
+Every assertion before it held: the sign-in snapshot showed 1.0, the drain returned
+Settled(written=1, defects=0), and the server held 2 rows.
+GREEN after R560 (8a1b756), with the open step = controller.onOpened().
+
+================================================================================
+R559 - A SENT DAY MAKES THE CACHE STALE (the interface change and its contract)
+================================================================================
+DossierCache (:shared commonMain) gains two abstract methods, with no default bodies:
+    fun markStale(year: Int)
+    fun isStale(year: Int): Boolean
+Contract, as written in the KDoc for iOS:
+  - markStale sets a per-year flag and never touches the body. load returns the same
+    bytes before and after. Marking a year with no copy is allowed, must not throw and
+    must not create a body.
+  - isStale is true exactly when markStale was called for that year after its last
+    save (or after the last clear, or ever, if the year was never saved). Years are
+    independent.
+  - save clears that year's flag in the same write as the body. A reader never sees the
+    new body still flagged, or the old body unflagged.
+  - clear erases every flag along with every body.
+  - The flag is as durable as the body and is shared by every instance in the process.
+    The sync worker and the screen hold different instances, so an in-memory field on
+    one instance does not meet the contract.
+  - The flag is not part of the body: a copy cached before this change reads back
+    unchanged, and reads as not stale.
+Android: SharedPrefsDossierCache stores the flag as its own key, "stale.<year>", in
+monreleve.dossier. "dossier.<year>" and its raw value are unchanged, and
+OnDeviceFormatGoldenTest passes unedited. save is putString + remove in one edit.
+SyncEngine takes `dossierCache: DossierCache` as a REQUIRED parameter. On HTTP 200 it
+marks every distinct year of the batch, before the reconcile writes SYNCED rows, so a
+screen reacting to rows leaving pending already sees the year stale. It marks even when
+the 200 body will not parse, because the server wrote. A refused batch (400/409/413), a
+transport fault, an empty queue or no session marks nothing. An isolated batch marks
+only the year of the day the server accepted. buildSyncEngine passes
+SharedPrefsDossierCache(context).
+Tests, SyncEngineTest (+4):
+  - anAcceptedBatchMarksEveryYearItTouchedStale: 2026 and 2027 marked, 2025 not;
+  - aDrainThatSendsNothingMarksNothing;
+  - anIsolatedBatchMarksOnlyTheYearOfTheDayTheServerAccepted: [2027];
+  - theYearIsMarkedBeforeItsRowsLeavePending: [PENDING] at the moment of the mark.
+Positive control: marking on every status, not only 200, fails 3 of the 4 tests:
+  - expected:<[]> but was:<[2027]>
+  - expected:<[2027]> but was:<[2027, 2026, 2027, 2027, 2026]>
+  - expected:<[PENDING]> but was:<[PENDING, PENDING]>
+The four existing test fakes gained the two methods. ForcedSignOutTest now uses the new
+shared test fake, app/src/test/.../data/local/MemoryDossierCache.kt.
+
+================================================================================
+R560 - OPENING THE RELEVE REFRESHES WHAT IS STALE
+================================================================================
+DossierApi.staleCopy(year): the parsed cached copy while the year is stale, else null.
+It makes no network call. It is threaded MainActivity -> ShellState -> MainGraph.build
+as `dossierStaleCopy`, a required parameter with no default (R291).
+ReleveController:
+  - onOpened()/onClosed(), from a DisposableEffect on AppTab.RELEVE.
+  - Online and stale: the shown (or cached) figures at once as Loaded(updating = true),
+    then the server's document.
+  - Online and fresh: no fetch. The sign-in fetch stays the only one, as before.
+  - Offline: R288's state (offline = true, the copy dated by its own generatedAt).
+  - A server answer that is not a document: the copy stays, refreshFailed = true, and
+    the cache and its flag are untouched, so the next opening retries.
+  - A session failure: shown as before (R288: the session is the problem).
+  - With the tab open, rows leaving pending refresh it at once. With it closed, nothing
+    is fetched until the next opening.
+  - A relaunch over a stale cache opens on the copy, updating.
+  - A newer load() cancels one still in flight.
+Other screens: the forecast does NOT read the server's dossier. ForecastController
+imports no DossierApi/DossierResult and computes from local entries and the rhythm. The
+employer comparison (AN-RECON) reads the Releve's own state, so it follows the refresh.
+Tests: ReleveFreshTest, 8 for R558/R560 (online stale, online fresh with a positive
+control, offline stale, refresh failed, open + sync, closed + sync, relaunch); and
+DossierApiTest +2 (staleCopy; a parsed 200 clears the flag, failures leave it).
+All passed on their first run after the code, so planted defects show they can fail
+(each reverted, file compared byte-identical):
+  - onOpened without refresh: 6 of 8 fail;
+  - no refresh when a sync lands while the tab is open: 1 fails (expected 2.0, was 1.0);
+  - an unreadable refresh mapped to the error screen: 1 fails (Failed(reason=SERVER)).
+New baselines (no existing one changed; the record produced exactly these two):
+releveUpdating.png and releveRefreshFailed.png.
+
+================================================================================
+R561 - WHAT IS NOT SENT IS SAID, NOT COUNTED IN
+================================================================================
+R287's line was already the one home for this count (R206). It is RE-WORDED, not added
+to. The count is still the store's PENDING rows for the year on screen, observed live.
+The figures stay the server's. The comparison screen shares the sentence; its baselines
+render 0 unsent days, so none of them moved.
+Test, through the real AujourdhuiController on the same store:
+  - one day unsent: pendingCount 1; the document still shows 1 telework day; its rate
+    differs from Aujourd'hui's.
+  - after the day is sent: pendingCount 0; 2 days; Releve rate == Aujourd'hui rate.
+RED:
+  - the copy test against the old wording: expected "1 journee ... envoyee ..." but
+    was "1 jour enregistre sur cet appareil n'est pas encore synchronise ...";
+  - the both-states test with the open-tab refresh planted out: expected 2.0, was 1.0.
+Baseline regenerated, stated before the run and equal to what it produced (R207):
+releveWithPending.png. Reason: the pending line's new wording (plural form, count 3).
+
+================================================================================
+R562 - ON THE S9, AGAINST THE LOCAL STACK
+================================================================================
+Setup: `PORT=3000 pnpm dev` from the main checkout's web/ (as AN-PULL did); stdout to a
+scratchpad log. R169: /api/health -> {"service":"monreleve",...}; /api/ready 200.
+NEVER production.
+Audit build of b4b048e with -PfrontalierHost=127.0.0.1, 2,014,356 bytes, sha256
+5eeacad72716e2ae...2110032ca. Its dex holds http://127.0.0.1:3000 and no 10.0.2.2:3000
+(grepped). Installed with install -r.
+stay_on 0 -> 3 for the drive -> 0. Real clock and zone: phone 15:23 +01,
+Africa/Casablanca; Paris 15:23 CET.
+Account: an-releve-fresh@monreleve.test, new (0 rows before). Host setup by code:
+magic-link 202, code exchange 200, PATCH /me 200 (Camille Fraiche, GE, 100,
+SIMPLIFIED240, DAY), revoke-all 200. The code and the token appear only as sha256
+prefixes (2f8efcc2713c, 85c3b0fe4d5f).
+Phone sign-in by code: the uidump was taken BEFORE any digit was typed (empty boxes).
+The code was typed by a script that never printed it (sha256 0883ad48b57f). No capture
+was taken while the code was on screen (R574). POST /auth/code 200, GET /me 200.
+  SIGN IN, OPEN THE RELEVE. The dev server's first compile of /entries and /dossier
+  took 27.9 s, so the sign-in fetches timed out on the phone:
+    - Aujourd'hui showed AN-PULL's notice; "Reessayer" -> GET /entries 2026 and 2025
+      200;
+    - the Releve showed ERROR_NETWORK; "Reessayer" -> GET /dossier?year=2026 200.
+  Then the Releve read: "Releve provisoire", Camille Fraiche, GE, 100 %, Forfait de
+  240 jours, generated "26.10.2026 14:30", the empty-record note, Teletravail 0,
+  0,00 %.
+  REVERSE REMOVED (list empty); RECORD A DAY. Aujourd'hui "Domicile" at 14:31:19Z
+  showed:
+    - the card "Domicile / Enregistre sur le telephone, en attente d'envoi";
+    - "1 journee en attente d'envoi.";
+    - the year card at 0,41 %.
+  The dev log showed no POST /entries, and the server held 0 rows for the account.
+  THE RELEVE, OPENED NOW:
+    "1 journee enregistree sur ce telephone n'a pas encore ete envoyee : ce releve ne
+    la compte pas encore."
+  Its figures were unchanged: generated 14:30, Teletravail 0, "0,00 %".
+  REVERSE RESTORED (14:32:41Z), WITH AUJOURD'HUI ON SCREEN. WorkManager's retry sent
+  the day: POST /api/v1/entries 200 at 14:33:50Z (log watched, not assumed). Server
+  row: 2026-10-26 FULL HOME MANUAL, firstRecordedAt 14:33:49.374. Aujourd'hui:
+  "Enregistre", 0,41 %.
+  OPEN THE RELEVE, NO RELAUNCH: GET /dossier?year=2026 200 in 194 ms, then:
+    - generated "26.10.2026 14:34";
+    - the pending sentence and the empty-record note gone;
+    - Teletravail 1, "0,41 %", 0,5 %, and the rates-differ note.
+  AUJOURD'HUI 0,41 % == RELEVE 0,41 %.
+  The "Mise a jour du releve..." line was not caught on the phone: the fetch took
+  194 ms and a uidump takes about 1 s. The JVM tests assert it, and the baseline shows
+  it.
+  OFFLINE OPEN: force-stop, reverse removed, relaunch, Releve ->
+    "Copie hors ligne / Ce releve n'a pas pu etre actualise. Voici la derniere copie
+    enregistree, generee le 26.10.2026 ; elle peut ne pas refleter les journees
+    enregistrees depuis."
+  then the document.
+  TEARDOWN:
+    - reverse restored; Parametres -> "Se deconnecter" -> confirmed
+      (POST /auth/sign-out 200); the welcome screen;
+    - force-stop; reverse --remove-all;
+    - the as-found APK reinstalled (install -r, the scratchpad copy taken from
+      C:/wt/an-pull without writing there);
+    - stay_on set back to 0;
+    - the dev server log (it held both printed sign-in mails: codes and link tokens,
+      all consumed or revoked) DELETED - it was this session's own file;
+    - dev server tree killed (taskkill /T on pid 6408, its scheduler pid); port 3000:
+      nothing listening, /api/health no answer.
+THE PHONE AS LEFT: `device`; stay_on 0; reverse empty; signed out (sign-out wiped the
+app's data); base.apk sha256 d417d0210819aab1...ed6182a081034, read off the phone.
+The local database keeps an-releve-fresh@monreleve.test and its one day. Migration
+20261025200000 and its three rows were not touched. :5432-:5435 were not touched.
+
+================================================================================
+NEW COPY
+================================================================================
+The accented originals are in android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/
+ReleveCopy.kt; the copy test in ReleveFreshTest asserts both forms of the R561 line
+character for character. Transliterated here (R155: this report is ASCII; the file is the
+source). Accents: journee(s), enregistree(s), telephone, ete, envoyee(s), releve, a (mise
+a jour), modifie, derniere, generee, actualise, refleter carry their e-acute / e-grave /
+a-grave, and etre its e-circumflex. The
+apostrophe is U+2019; the space before every colon is U+00A0 (R91); "..." is U+2026.
+
+R561 pendingNotSynced(count) - RE-WORDED (replaces R287's "N jour(s) enregistre(s) sur
+cet appareil ... synchronise(s) ..."):
+  1 day:  1 journee enregistree sur ce telephone n'a pas encore ete envoyee : ce releve
+          ne la compte pas encore.
+  N days: N journees enregistrees sur ce telephone n'ont pas encore ete envoyees : ce
+          releve ne les compte pas encore.
+R560 UPDATING:
+  Mise a jour du releve...
+R560 refreshFailed(day):
+  Le releve n'a pas pu etre mis a jour. Rien n'a ete modifie : voici la derniere copie
+  enregistree, generee le <JJ.MM.AAAA>.
+R560 offline - R288's OFFLINE_TITLE + offlineCaveat, UNCHANGED (proposed as they are):
+  Copie hors ligne
+  Ce releve n'a pas pu etre actualise. Voici la derniere copie enregistree, generee le
+  <JJ.MM.AAAA> ; elle peut ne pas refleter les journees enregistrees depuis.
+
+================================================================================
+R589 - ONE CONFLICTING DAY AND TWO VALID ONES (test only, its own commit c2201ba)
+================================================================================
+SyncEngineTest.aGranularityConflictInABatchOfThreeLandsTheTwoValidDaysAndHoldsTheConflictingOne.
+The server answers 400 {"code":"granularity_conflict"} for the whole batch, and again
+for the conflicting day alone.
+  - outcome Settled(written=2, defects=1);
+  - the two valid rows SYNCED, the conflicting one FAILED;
+  - 4 POSTs; the conflicting payload sent exactly twice;
+  - a second drain sends nothing.
+GREEN on main's engine, so this is not a defect.
+Positive control: a refused single item made Retryable instead of FAILED -> "expected
+Settled(written=2, defects=1) but was Retryable" (reverted).
+
+================================================================================
+GATES
+================================================================================
+- Fast check (R390) green before every commit.
+- FULL :app:gate --rerun-tasks on 21c44e2: BUILD SUCCESSFUL in 10m 51s, 233 tasks,
+  exit 0. Compiler w: lines: 8 against main's 7. The 8th was mine: ReleveFreshTest.kt:222
+  needed an ExperimentalCoroutinesApi opt-in. It was fixed in b4b048e (test only).
+- FULL :app:gate --rerun-tasks on b4b048e: BUILD SUCCESSFUL
+  in 15m 22s, 233 tasks, GATE_EXIT=0. w: lines 7 = main's 7, none from this branch.
+  `./gradlew --stop` ran before the audit build that preceded it, not again between
+  the two (the first gate, on 21c44e2, had its own stop immediately before it).
+- :app unit tests on 21c44e2: 1379, 0 failures. New in this branch: SyncEngineTest +5,
+  ReleveFreshTest 10, DossierApiTest +2, ReleveScreenScreenshotTest +2.
+- iOS cloud runs (R573), 2 runs:
+    40335245768 on 21c44e2: success, 104 tests, 13:57:51 -> 14:02:36 (4m45s);
+    40341210112 on b4b048e: success, 104 tests, 0 failures, 14:36:44 -> 14:38:22
+    (1m38s).
+  104 = main's count. The new tests are in :app; :shared gained no test.
+
+================================================================================
+PARKED
+================================================================================
+No new PARK id. web/scripts/register-coverage.mjs reads "COVERAGE OK - 167 cited ids",
+and parking.md's headings already use every letter A-Z, so no series letter is free
+under R456. PARK-X5 is marked CLOSED (PENDING MERGE). Its entry records one residual
+in prose: a dossier GET already in flight when a drain marks the year stale can save a
+body read before the day landed, and that save clears the flag. A relaunch, the retry,
+or the next sent day recovers it.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. No separate FULL gate on main's HEAD for R1 (see R1). The gate ran twice on this
+   branch.
+2. R558's RED was taken with the open step as a no-op, because main has no open hook.
+   The GREEN test calls onOpened() and adds a closeReleve() before recording. Neither
+   changes main's behaviour. The RED run's assertion and line are the ones quoted.
+3. R560's offline sentence is R288's existing one, unchanged; no new sentence was
+   proposed. The date it shows is the copy's server-assigned generatedAt, not the
+   device's fetch time. The DossierCache contract and R181 forbid the device time, and
+   for a fetched copy the two are the same moment.
+4. R561 re-worded R287's existing line instead of adding a second sentence (R206).
+5. On the phone, the sign-in dossier and entries fetches timed out against the dev
+   server's first compile (27.9 s). Each screen's "Reessayer" fetched them. The Releve's
+   first document therefore came from the retry, not from the sign-in itself.
+6. /sdcard/ui.xml: uidrive writes it on every dump. My before-check was NO RESULT (an
+   MSYS-mangled path), so whether it existed before this session is unknown. I removed
+   it at the end.
+8. Artefacts outside the worktree: the APK copies, the drive helper (code.mjs), the
+   node edit scripts and the dev log were written to the session scratchpad, not the
+   worktree. The gate logs are in the worktree (android/build/, ignored).
+7. The full gate on b4b048e ran while the dev server and the drive ran (RAM was enough;
+   the gate was green). The audit APK was built before the gate started and copied out
+   of the build directory first.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. Every PARK-<letter> series A-Z is taken, so R456 gives a new task no free letter.
+    How should the next park id be named?
+Q2. SignInCopy.sessionClosed is the house form the addendum names. It has an ASCII
+    space (U+0020) before ':', not U+00A0. ReleveCopy uses U+00A0 (R91), and the new
+    sentence follows ReleveCopy. Should sessionClosed be corrected? NOTICED BUT NOT
+    TOUCHED.
+Q3. The two screens now name an unsent day in different words. Aujourd'hui's year card
+    says "dont N jours pas encore synchronises" (AujourdhuiCopy.pendingNote). Its
+    "A traiter" line and the day card say "en attente d'envoi", and the Releve says
+    "envoyee". Align them? NOT TOUCHED.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Every push was `git push origin an-releve-fresh`, each gated on its own exit code:
+  [new branch] an-releve-fresh (e7f373a); e7f373a..8a1b756; 8a1b756..21c44e2;
+  21c44e2..b4b048e; then the report commit.
+Never main, never production. PENDING MERGE.
+Lock: .session-lock.json, created at the start, gitignored, never committed; removed
+after this report's commit as the session's last act.

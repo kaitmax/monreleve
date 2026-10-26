@@ -12,6 +12,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.InMemoryNearBorderNoticeStore
 import ch.monreleve.app.detection.NearBorderNoticeStore
+import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.forecast.ForecastController
 import ch.monreleve.app.forecast.SimulationController
 import ch.monreleve.app.forecast.SimulationSnapshot
@@ -94,6 +95,9 @@ object MainGraph {
         // AN11: the Releve controller's fetch seam (DossierApi::fetch in the app; a stub in tests), the same
         // lambda-seam idiom as requestSync. It reads GET /api/v1/dossier through the session.
         dossierFetch: suspend (Int) -> DossierResult,
+        // AN-RELEVE-FRESH (R560): the cached copy of a year the last sync made stale (DossierApi::staleCopy in the
+        // app), or null when no refresh is due. No default: forgetting it is the PARK-X5 defect again (R291).
+        dossierStaleCopy: (Int) -> DossierDocument?,
         // AN11: the export seam (SessionManager::authenticatedGetBytes in the app), for the PDF and CSV.
         exportBytes: suspend (String) -> BytesOutcome,
         // AN12: the /api/v1/me PATCH seam (SessionSettingsSaver(session) in the app; a stub in tests), the
@@ -152,7 +156,16 @@ object MainGraph {
                 ),
             calendar =
                 CalendarController(repository, settingsStore, taxYear, clock, scope, requestSync, restoredCalendar),
-            releve = ReleveController(dossierFetch, exportBytes, repository, taxYear, scope, restoredSelectedYear),
+            releve =
+                ReleveController(
+                    dossierFetch,
+                    exportBytes,
+                    repository,
+                    taxYear,
+                    scope,
+                    restoredSelectedYear,
+                    staleCopy = dossierStaleCopy,
+                ),
             parametres =
                 ParametresController(
                     settingsSaver,

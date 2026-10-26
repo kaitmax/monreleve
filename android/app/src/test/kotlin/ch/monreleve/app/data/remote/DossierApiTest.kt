@@ -48,9 +48,21 @@ private class FakeCache(seed: Map<Int, String> = emptyMap()) : DossierCache {
         body: String,
     ) {
         store[year] = body
+        stale -= year
     }
 
-    override fun clear() = store.clear()
+    val stale = mutableSetOf<Int>()
+
+    override fun clear() {
+        store.clear()
+        stale.clear()
+    }
+
+    override fun markStale(year: Int) {
+        stale += year
+    }
+
+    override fun isStale(year: Int): Boolean = year in stale
 }
 
 class DossierApiTest : FunSpec({
@@ -108,6 +120,44 @@ class DossierApiTest : FunSpec({
             val api = DossierApi(get = { AuthedOutcome.SessionExpired }, cache = cache)
 
             api.fetch(YEAR) shouldBe DossierResult.SessionExpired
+        }
+    }
+
+    test("R560: staleCopy is the cached document only while the year is stale, and never touches the network") {
+        var gets = 0
+        val cache = FakeCache(mapOf(YEAR to VALID_BODY))
+        val api =
+            DossierApi(
+                get = {
+                    gets++
+                    AuthedOutcome.NetworkError
+                },
+                cache = cache,
+            )
+
+        // Fresh: no refresh is due.
+        api.staleCopy(YEAR) shouldBe null
+        cache.markStale(YEAR)
+        api.staleCopy(YEAR)?.titulaire shouldBe "Camille Rey"
+        // Another year is independent, and a stale year with no copy has nothing to show meanwhile.
+        cache.markStale(YEAR - 1)
+        api.staleCopy(YEAR - 1) shouldBe null
+        // A copy that will not parse is never shown half-read.
+        cache.store[YEAR] = "{ truncated"
+        api.staleCopy(YEAR) shouldBe null
+        gets shouldBe 0
+    }
+
+    test("R559: a fetched body clears the year's stale flag; a refused or failed fetch leaves it") {
+        runTest {
+            val cache = FakeCache(mapOf(YEAR to VALID_BODY))
+            cache.markStale(YEAR)
+            DossierApi(get = { AuthedOutcome.NetworkError }, cache = cache).fetch(YEAR)
+            cache.isStale(YEAR) shouldBe true
+            DossierApi(get = { AuthedOutcome.Ok("this is not json") }, cache = cache).fetch(YEAR)
+            cache.isStale(YEAR) shouldBe true
+            DossierApi(get = { AuthedOutcome.Ok(VALID_BODY) }, cache = cache).fetch(YEAR)
+            cache.isStale(YEAR) shouldBe false
         }
     }
 })

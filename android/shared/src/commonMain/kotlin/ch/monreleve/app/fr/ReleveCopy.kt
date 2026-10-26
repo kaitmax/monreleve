@@ -45,13 +45,20 @@ object ReleveCopy {
      * device are not in it. Aujourd'hui's year panel includes them, so the two screens can differ - this
      * line names why, so a reader who sees two rates trusts the document rather than neither. Shown exactly
      * when something is pending (the screen gates on the count).
+     *
+     * AN-RELEVE-FRESH (R561): RE-WORDED, not added - this was already the one home for the count (R206). It now
+     * says what the person did and what the app has not yet done, in SignInCopy.sessionClosed's own words for
+     * the same fact ("journée enregistrée sur ce téléphone", "envoyée"), so the two screens that name unsent
+     * days name them alike. Singular for one day, plural above; the screen never renders it for zero.
      */
-    fun pendingNotSynced(count: Int): String {
-        val plural = if (count > 1) "s" else ""
-        val verbSync = if (count > 1) "ne sont pas encore synchronisés" else "n’est pas encore synchronisé"
-        val verbFigure = if (count > 1) "ne figurent pas" else "ne figure pas"
-        return "$count jour$plural enregistré$plural sur cet appareil $verbSync et $verbFigure dans ce relevé."
-    }
+    fun pendingNotSynced(count: Int): String =
+        if (count > 1) {
+            "$count journées enregistrées sur ce téléphone n’ont pas encore été envoyées$NB: ce relevé ne les " +
+                "compte pas encore."
+        } else {
+            "$count journée enregistrée sur ce téléphone n’a pas encore été envoyée$NB: ce relevé ne la compte " +
+                "pas encore."
+        }
 
     const val ERROR_SERVER = "Le relevé n’a pas pu être chargé pour le moment. Réessayez dans un instant."
     const val ERROR_NETWORK =
@@ -70,6 +77,17 @@ object ReleveCopy {
     fun offlineCaveat(generatedDay: String): String =
         "Ce relevé n’a pas pu être actualisé. Voici la dernière copie enregistrée, générée le " +
             "$generatedDay$NB; elle peut ne pas refléter les journées enregistrées depuis."
+
+    // ------------------------------------------------------------------
+    // AN-RELEVE-FRESH (R560): a copy the last sync made stale is shown at once while the server's current record is
+    // fetched, and SAYS it is being updated; a refresh the server could not answer keeps the copy and says that
+    // nothing was changed (AN-PULL's YEAR_DOWNLOAD_FAILED tone). Offline, R288's dated copy above is the sentence.
+    // ------------------------------------------------------------------
+    const val UPDATING = "Mise à jour du relevé…"
+
+    fun refreshFailed(generatedDay: String): String =
+        "Le relevé n’a pas pu être mis à jour. Rien n’a été modifié$NB: voici la dernière copie " +
+            "enregistrée, générée le $generatedDay."
 
     // ------------------------------------------------------------------
     // Provisional banner - SPEC 11.4 ("provisional until the year closes, and it says so"), FD7 section 2

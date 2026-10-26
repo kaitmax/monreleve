@@ -29,6 +29,7 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.fr.SignInCopy
+import ch.monreleve.app.fr.format.formatDossierStamp
 import ch.monreleve.app.releve.ReleveError
 import ch.monreleve.app.releve.ReleveState
 
@@ -112,6 +113,11 @@ private fun DocumentBody(
         verticalArrangement = Arrangement.spacedBy(Spacing.space16),
     ) {
         Text(text = ReleveCopy.TITLE, style = FrontierType.h2)
+        // AN-RELEVE-FRESH (R560): a copy the last sync made stale, shown while the current record is fetched.
+        if (loaded.updating) {
+            Text(text = ReleveCopy.UPDATING, style = FrontierType.caption, color = LightColors.textSecondary)
+        }
+        if (loaded.refreshFailed) RefreshFailedBanner(generatedAt = document.generatedAt)
         // R288: when this is a cached copy shown offline, it says so first - dated, never presented as current.
         if (loaded.offline) OfflineBanner(generatedAt = document.generatedAt)
         // PARKAN-26: a provisional banner for the live current year, a distinct "année close" caption for a
@@ -244,6 +250,20 @@ private fun YearChip(
 // The white card every section sits in: contrast on the grey canvas, no drawn 1 px border (the AN10/FD6
 // decision - a 1 dp hairline has no token; FD7's border is the named conflict). internal: the other two
 // releve files compose it too.
+@Composable
+private fun RefreshFailedBanner(generatedAt: String) {
+    // AN-RELEVE-FRESH (R560): the refresh of a stale copy failed and the copy stays - dated, as the offline copy is,
+    // and saying nothing was changed.
+    val generatedDay = formatDossierStamp(generatedAt).substringBefore(' ')
+    SectionCard {
+        Text(
+            text = ReleveCopy.refreshFailed(generatedDay),
+            style = FrontierType.caption,
+            color = LightColors.textSecondary,
+        )
+    }
+}
+
 @Composable
 internal fun SectionCard(content: @Composable () -> Unit) {
     Column(

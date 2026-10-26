@@ -90,6 +90,7 @@ import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.detection.maybeAlertThreshold
+import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.dossier.buildComparison
 import ch.monreleve.app.dossier.parseEmployerRate
 import ch.monreleve.app.forecast.RhythmChoice
@@ -313,6 +314,8 @@ class MainActivity : ComponentActivity() {
                                     SyncScheduler.requestSync(context)
                                 },
                                 dossierFetch = dossierApi::fetch,
+                                // AN-RELEVE-FRESH (R560): the same cache the sync worker marks stale (R559).
+                                dossierStaleCopy = dossierApi::staleCopy,
                                 exportBytes = session::authenticatedGetBytes,
                                 settingsSaver = SessionSettingsSaver(session),
                                 revokeServer = session::revokeServerSession,
@@ -608,6 +611,7 @@ internal fun MainShell(
     scope: CoroutineScope,
     requestSync: () -> Unit,
     dossierFetch: suspend (Int) -> DossierResult,
+    dossierStaleCopy: (Int) -> DossierDocument?,
     exportBytes: suspend (String) -> BytesOutcome,
     settingsSaver: SettingsSaver,
     revokeServer: suspend () -> Unit,
@@ -630,8 +634,8 @@ internal fun MainShell(
     // person back on Aujourd'hui. rememberMainControllers still builds through MainGraph.build (R291).
     val controllers =
         rememberMainControllers(
-            repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes,
-            settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
+            repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, dossierStaleCopy,
+            exportBytes, settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
         )
     var tab by rememberShellTab()
     // AN-FORECAST: the two forecast sub-screens (not bottom-nav tabs) are a nullable overlay over the shell,
@@ -850,7 +854,13 @@ internal fun MainShell(
                                 onCancelConfirmation = controllers.calendar::cancelBulkConfirmation,
                             ),
                     )
-                AppTab.RELEVE ->
+                AppTab.RELEVE -> {
+                    // AN-RELEVE-FRESH (R560): opening the tab refreshes a year the last sync made stale (R559);
+                    // leaving it stops a sync that lands meanwhile from fetching for a screen nobody is looking at.
+                    DisposableEffect(controllers.releve) {
+                        controllers.releve.onOpened()
+                        onDispose { controllers.releve.onClosed() }
+                    }
                     ReleveScreen(
                         state = releveState,
                         actions =
@@ -866,6 +876,7 @@ internal fun MainShell(
                                 },
                             ),
                     )
+                }
                 AppTab.PARAMETRES ->
                     ParametresTab(
                         state = parametresState,
