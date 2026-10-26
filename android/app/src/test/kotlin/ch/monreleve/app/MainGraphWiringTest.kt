@@ -104,6 +104,7 @@ class MainGraphWiringTest : FunSpec({
                     requestSync = { syncs++ },
                     // The Releve controller is not a DayWriter; stub seams keep this test about the sync wiring.
                     dossierFetch = { DossierResult.NetworkError },
+                    dossierStaleCopy = { null },
                     exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
                     settingsSaver = saver(),
                     revokeServer = {},
@@ -141,6 +142,7 @@ class MainGraphWiringTest : FunSpec({
                     scope = this,
                     requestSync = { syncs++ },
                     dossierFetch = { DossierResult.NetworkError },
+                    dossierStaleCopy = { null },
                     exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
                     settingsSaver = saver(),
                     revokeServer = {},

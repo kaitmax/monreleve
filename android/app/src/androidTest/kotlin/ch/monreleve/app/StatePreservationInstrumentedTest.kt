@@ -100,6 +100,7 @@ class StatePreservationInstrumentedTest {
                 scope = rememberCoroutineScope(),
                 requestSync = {},
                 dossierFetch = { DossierResult.NetworkError },
+                dossierStaleCopy = { null },
                 exportBytes = { BytesOutcome.NoSession },
                 settingsSaver =
                     object : SettingsSaver {

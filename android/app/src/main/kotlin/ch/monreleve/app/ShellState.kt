@@ -22,6 +22,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.DetectionScheduling
 import ch.monreleve.app.detection.SharedPrefsNearBorderNoticeStore
+import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.forecast.SimulationSnapshot
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
@@ -122,6 +123,7 @@ fun rememberMainControllers(
     scope: kotlinx.coroutines.CoroutineScope,
     requestSync: () -> Unit,
     dossierFetch: suspend (Int) -> DossierResult,
+    dossierStaleCopy: (Int) -> DossierDocument?,
     exportBytes: suspend (String) -> BytesOutcome,
     settingsSaver: SettingsSaver,
     revokeServer: suspend () -> Unit,
@@ -155,8 +157,8 @@ fun rememberMainControllers(
     val controllers =
         remember {
             MainGraph.build(
-                repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, exportBytes,
-                settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
+                repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, dossierStaleCopy,
+                exportBytes, settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
                 restoredSimulation = savedSimulation,

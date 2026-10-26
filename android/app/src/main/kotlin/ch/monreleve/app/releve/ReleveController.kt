@@ -8,6 +8,7 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.dossier.pendingEntriesForYear
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +66,16 @@ sealed interface ReleveState {
          * year (a distinct "année close" caption, R156 open-question 2 - a closed year is not "année en cours").
          */
         val isCurrentYear: Boolean = true,
+        /**
+         * AN-RELEVE-FRESH (R560): these figures are the cached copy a sync made stale (R559), shown at once while
+         * the server's current record is fetched to replace them. The screen says it is updating.
+         */
+        val updating: Boolean = false,
+        /**
+         * R560: the refresh of a stale copy failed for a reason that is not the network (the server answered, but
+         * not with a document). The figures are the copy, unchanged, and the screen says nothing was changed.
+         */
+        val refreshFailed: Boolean = false,
     ) : ReleveState
 
     data class Failed(val reason: ReleveError) : ReleveState
@@ -109,7 +120,9 @@ sealed interface ExportEvent {
 // TooManyFunctions suppressed (as SessionManager / EveningNotifier / ReleveCopy are): this is a controller
 // whose small methods each hold one seam - fetch, year switch, export, state mapping - not tangled logic.
 // PARKAN-26's year switch (selectYear, probeAvailableYears) took it one past the per-class threshold.
-@Suppress("TooManyFunctions")
+// LongParameterList suppressed (AN-RELEVE-FRESH): each parameter is one seam the composition root injects - the
+// fetch, the export, the record, the year, the scope, the restore, and now the stale copy (R560) - not loose data.
+@Suppress("TooManyFunctions", "LongParameterList")
 class ReleveController(
     private val fetch: suspend (Int) -> DossierResult,
     private val exportBytes: suspend (String) -> BytesOutcome,
@@ -120,6 +133,10 @@ class ReleveController(
     // the viewed year survives; null on a fresh build opens on the current year (the design: "opening on the
     // current year"). The composition root holds it in rememberSaveable and re-seeds it here (the simulator's shape).
     restoredSelectedYear: Int? = null,
+    // AN-RELEVE-FRESH (R560): the cached copy of a year the last sync made stale (DossierApi::staleCopy), or null
+    // when no refresh is due. Defaulted (no copy is ever stale) only so the controller's own tests need not name it;
+    // MainGraph - the one construction site (R291) - takes it WITHOUT a default, so the app cannot forget it.
+    private val staleCopy: (Int) -> DossierDocument? = { null },
 ) {
     // One-shot export events (Channel, not a StateFlow): handing a file to the share sheet is an action that
     // happens once per tap, never a state that re-fires on recomposition.
@@ -148,27 +165,86 @@ class ReleveController(
     private var pendingCount = 0
     private var latestEntries: List<EntryEntity> = emptyList()
 
+    // AN-RELEVE-FRESH (R560). Whether the Releve tab is on screen (onOpened/onClosed, from the composition root),
+    // and the fetch in flight, so an opening and a sync landing at the same moment start ONE fetch, not two.
+    private var visible = false
+    private var loadJob: Job? = null
+
     init {
         scope.launch {
             repository.observeAll().collect { entries ->
                 latestEntries = entries
+                val before = pendingCount
                 pendingCount = pendingEntriesForYear(entries, mutableSelectedYear.value).size
                 mutableState.update { current ->
                     if (current is ReleveState.Loaded) current.copy(pendingCount = pendingCount) else current
                 }
+                // R560: days of the year on screen just left pending - the sync sent them and marked the year
+                // stale BEFORE writing them SYNCED (R559). With the Releve open, the figures follow at once rather
+                // than at the next opening; closed, the next opening does it.
+                if (visible && pendingCount < before) refreshIfStale()
             }
         }
-        load()
+        // R560: a year the last sync made stale opens on its cached figures, marked as updating, and fetches; any
+        // other year loads exactly as before (no fetch beyond what happened before this ruling).
+        if (!refreshIfStale()) load()
         probeAvailableYears()
     }
 
     /** Fetch (or refetch) the SELECTED year's dossier. Called on init, on a year switch, and from the retry. */
     fun load() {
         mutableState.value = ReleveState.Loading
-        scope.launch {
-            mutableState.value = toState(fetch(mutableSelectedYear.value))
-        }
+        // A newer load supersedes one still in flight (a year switch, a retry), so an older answer cannot land last.
+        loadJob?.cancel()
+        loadJob =
+            scope.launch {
+                mutableState.value = toState(fetch(mutableSelectedYear.value))
+            }
     }
+
+    /**
+     * AN-RELEVE-FRESH (R560): the Releve tab came on screen. If the last sync made the shown year stale (R559), the
+     * cached figures stay up, marked as updating, and the server's current record replaces them. A year that is
+     * not stale is not fetched: opening the tab costs nothing it did not cost before.
+     */
+    fun onOpened() {
+        visible = true
+        refreshIfStale()
+    }
+
+    /** R560: the Releve tab left the screen; a sync landing now waits for the next opening. */
+    fun onClosed() {
+        visible = false
+    }
+
+    // Returns true when a refresh started. A fetch already in flight brings the server's current record itself.
+    private fun refreshIfStale(): Boolean {
+        val year = mutableSelectedYear.value
+        val copy = if (loadJob?.isActive == true) null else staleCopy(year)
+        if (copy == null) return false
+        val shown = (mutableState.value as? ReleveState.Loaded)?.takeIf { it.selectedYear == year }?.document ?: copy
+        mutableState.value = loadedState(shown, offline = false).copy(updating = true)
+        loadJob =
+            scope.launch {
+                mutableState.value = refreshed(shown, fetch(year))
+            }
+        return true
+    }
+
+    // R560: what a refresh of a stale copy ends on. The server's document replaces the copy; a network failure keeps
+    // the copy, dated (R288's offline state); a server that answered without a document keeps the copy and says
+    // nothing was changed; a session failure is the session's problem and shows as it always has (R288).
+    private fun refreshed(
+        shown: DossierDocument,
+        result: DossierResult,
+    ): ReleveState =
+        when (result) {
+            is DossierResult.Loaded -> loadedState(result.document, offline = false)
+            is DossierResult.Cached -> loadedState(result.document, offline = true)
+            DossierResult.NetworkError -> loadedState(shown, offline = true)
+            DossierResult.Unreadable -> loadedState(shown, offline = false).copy(refreshFailed = true)
+            DossierResult.SessionExpired, DossierResult.SessionEnded, DossierResult.NoSession -> toState(result)
+        }
 
     /**
      * PARKAN-26: switch to a year the selector offers (a no-op for any other year, R328 read-only). Recomputes the

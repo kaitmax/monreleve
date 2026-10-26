@@ -72,6 +72,17 @@ object ReleveCopy {
             "$generatedDay$NB; elle peut ne pas refléter les journées enregistrées depuis."
 
     // ------------------------------------------------------------------
+    // AN-RELEVE-FRESH (R560): a copy the last sync made stale is shown at once while the server's current record is
+    // fetched, and SAYS it is being updated; a refresh the server could not answer keeps the copy and says that
+    // nothing was changed (AN-PULL's YEAR_DOWNLOAD_FAILED tone). Offline, R288's dated copy above is the sentence.
+    // ------------------------------------------------------------------
+    const val UPDATING = "Mise à jour du relevé…"
+
+    fun refreshFailed(generatedDay: String): String =
+        "Le relevé n’a pas pu être mis à jour. Rien n’a été modifié$NB: voici la dernière copie " +
+            "enregistrée, générée le $generatedDay."
+
+    // ------------------------------------------------------------------
     // Provisional banner - SPEC 11.4 ("provisional until the year closes, and it says so"), FD7 section 2
     // ------------------------------------------------------------------
     const val BANNER_PROVISIONAL_TITLE = "Relevé provisoire"
