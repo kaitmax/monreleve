@@ -25,8 +25,8 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.fr.MetricCopy
-import ch.monreleve.app.fr.format.SignedDays
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.SignedDays
+import ch.monreleve.app.fr.text.formatPercent
 import org.junit.Rule
 import org.junit.Test
 

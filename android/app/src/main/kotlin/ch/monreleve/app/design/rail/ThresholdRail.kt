@@ -50,11 +50,11 @@ import ch.monreleve.app.design.ZONE_BAND_COLOUR
 import ch.monreleve.app.design.Zone
 import ch.monreleve.app.design.ZoneThresholds
 import ch.monreleve.app.fr.Fr
-import ch.monreleve.app.fr.format.formatDeclarableRate
-import ch.monreleve.app.fr.format.formatPercent
 import ch.monreleve.app.fr.rail.RailCopy
 import ch.monreleve.app.fr.rail.ZONE_BAND_NAME
 import ch.monreleve.app.fr.rail.railAriaLabel
+import ch.monreleve.app.fr.text.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatPercent
 
 // R40: the rate label is declarableRate at its native two decimals - formatted by its one home (R479).
 

@@ -39,8 +39,8 @@ import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.LegendCopy
-import ch.monreleve.app.fr.format.formatDayLong
-import ch.monreleve.app.fr.format.formatDays
+import ch.monreleve.app.fr.text.formatDayLong
+import ch.monreleve.app.fr.text.formatDays
 import ch.monreleve.app.ui.screens.calendrier.LIST_FONT_SCALE_THRESHOLD
 import ch.monreleve.app.ui.screens.calendrier.dayWords
 

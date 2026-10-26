@@ -38,10 +38,10 @@ import ch.monreleve.app.design.zoneFor
 import ch.monreleve.app.forecast.ForecastState
 import ch.monreleve.app.forecast.Projection
 import ch.monreleve.app.fr.PrevisionCopy
-import ch.monreleve.app.fr.format.SignedDays
-import ch.monreleve.app.fr.format.formatDeclarableRate
-import ch.monreleve.app.fr.format.formatPercent
-import ch.monreleve.app.fr.format.formatSignedDays
+import ch.monreleve.app.fr.text.SignedDays
+import ch.monreleve.app.fr.text.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatPercent
+import ch.monreleve.app.fr.text.formatSignedDays
 import ch.monreleve.app.ui.screens.onboarding.BottomActions
 import ch.monreleve.app.ui.screens.onboarding.PrimaryButton
 import ch.monreleve.app.ui.screens.onboarding.TertiaryButton

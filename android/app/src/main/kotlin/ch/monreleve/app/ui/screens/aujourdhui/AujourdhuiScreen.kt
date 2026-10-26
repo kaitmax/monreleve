@@ -52,10 +52,10 @@ import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.fr.Fr
 import ch.monreleve.app.fr.MetricCopy
 import ch.monreleve.app.fr.RythmeCopy
-import ch.monreleve.app.fr.format.SignedDays
-import ch.monreleve.app.fr.format.formatDayLong
-import ch.monreleve.app.fr.format.formatPercent
-import ch.monreleve.app.fr.format.formatSignedDays
+import ch.monreleve.app.fr.text.SignedDays
+import ch.monreleve.app.fr.text.formatDayLong
+import ch.monreleve.app.fr.text.formatPercent
+import ch.monreleve.app.fr.text.formatSignedDays
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.ui.screens.calendrier.RecordedGranularityNotice
 

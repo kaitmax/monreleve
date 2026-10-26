@@ -29,7 +29,7 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.fr.SignInCopy
-import ch.monreleve.app.fr.format.formatDossierStamp
+import ch.monreleve.app.fr.text.formatDossierStamp
 import ch.monreleve.app.releve.ReleveError
 import ch.monreleve.app.releve.ReleveState
 

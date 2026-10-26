@@ -25,7 +25,7 @@ import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.forecast.ForecastController
 import ch.monreleve.app.forecast.ForecastState
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions

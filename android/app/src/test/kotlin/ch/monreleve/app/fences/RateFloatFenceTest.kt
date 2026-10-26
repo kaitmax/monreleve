@@ -53,7 +53,7 @@ private val PATH =
         // the Releve's rate, from the server's dossier
         "../shared/src/commonMain/kotlin/ch/monreleve/app/dossier/DossierPayload.kt",
         // the one formatting, the figure and the rail
-        "src/main/kotlin/ch/monreleve/app/fr/format/Numbers.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrNumbers.kt",
         "src/main/kotlin/ch/monreleve/app/design/RateDisplay.kt",
         "src/main/kotlin/ch/monreleve/app/design/Zones.kt",
         "src/main/kotlin/ch/monreleve/app/design/rail/RailGeometry.kt",
@@ -220,7 +220,7 @@ class RateFloatFenceTest {
         // reading of the files the rate passes through, not a vocabulary that matches nothing.
         val declarations =
             mapOf(
-                "src/main/kotlin/ch/monreleve/app/fr/format/Numbers.kt" to "rate",
+                "../shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrNumbers.kt" to "rate",
                 "src/main/kotlin/ch/monreleve/app/design/RateDisplay.kt" to "declarableRate",
                 "src/main/kotlin/ch/monreleve/app/design/rail/ThresholdRail.kt" to "percentage",
                 "../shared/src/commonMain/kotlin/ch/monreleve/app/calc/Types.kt" to "declarableRate",

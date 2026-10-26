@@ -46,8 +46,8 @@ import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.RecordQualityLegend
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.format.formatDays
-import ch.monreleve.app.fr.format.formatMonthYear
+import ch.monreleve.app.fr.text.formatDays
+import ch.monreleve.app.fr.text.formatMonthYear
 
 // AN10 increments 1-2. The calendar screen (SPEC 11.3, FD6): the month grid of DayCells inside a white
 // card, the mandatory kind legend directly under it (R119: letters need a key), the four-count month

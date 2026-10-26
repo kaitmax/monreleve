@@ -25,8 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import ch.monreleve.app.fr.RatesCopy
-import ch.monreleve.app.fr.format.formatDeclarableRate
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatPercent
 
 private const val RAW_DECIMALS = 1
 

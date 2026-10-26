@@ -1,4 +1,4 @@
-package ch.monreleve.app.fr.format
+package ch.monreleve.app.fr.text
 
 // AN3 increment 1. Kotlin port of web/tests/unit/ui-core/format-exhaustive.test.ts.
 //

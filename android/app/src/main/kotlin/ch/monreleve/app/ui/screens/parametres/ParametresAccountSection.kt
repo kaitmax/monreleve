@@ -13,7 +13,7 @@ import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.ParametresCopy
-import ch.monreleve.app.fr.format.formatDate
+import ch.monreleve.app.fr.text.formatDate
 import ch.monreleve.app.parametres.SignOutPrompt
 
 // AN12 increment 2, trimmed by AN-PARAMS. The shared section heading and the R295 sign-out confirmation. The old

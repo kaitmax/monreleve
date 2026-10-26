@@ -18,7 +18,7 @@ import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.format.formatMonthNameLower
+import ch.monreleve.app.fr.text.formatMonthNameLower
 
 // AN-CAL2 (section 3). When the month has unrecorded past working days, this card says how many and offers the
 // explicit « Sélectionner plusieurs jours » entry point. It is shown ONLY when there is something to complete

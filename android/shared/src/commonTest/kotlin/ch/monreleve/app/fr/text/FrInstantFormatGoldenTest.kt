@@ -1,14 +1,14 @@
-package ch.monreleve.app.ios
+package ch.monreleve.app.fr.text
 
-import ch.monreleve.app.fr.text.FrenchFormatGoldens
-import ch.monreleve.app.fr.text.GoldenPair
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-// IOS-1a R570. THE INSTANT FORMATTERS AGAINST ANDROID'S OUTPUT, on the simulator: every golden captured from
-// java.time on Android (Paris, UTC, New York and Zurich; both DST changes of 2026 and 2027; offset inputs;
-// fractional seconds; the refusals with their messages) through iOS's formatDateTime and formatDossierStamp.
-// The calendar-day and number formats are commonMain and are checked by FrTextGoldenTest on both platforms.
+// IOS-1a R570, moved from iosTest by AN-FR-TEXT R622. THE INSTANT FORMATTERS AGAINST ANDROID'S OUTPUT: every
+// golden captured from java.time on Android (Paris, UTC, New York and Zurich; both DST changes of 2026 and 2027;
+// offset inputs; fractional seconds; the refusals with their messages) through commonMain's formatDateTime and
+// formatDossierStamp (FrInstants.kt). In commonTest it runs on the JVM AND the simulator, so it is also the proof
+// that :app, which formats through these since R621, prints what its deleted java.time copy printed.
+// The calendar-day and number formats are checked by FrTextGoldenTest the same way.
 
 private fun check(
     name: String,

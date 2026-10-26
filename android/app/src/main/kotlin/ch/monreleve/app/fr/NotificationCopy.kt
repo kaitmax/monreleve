@@ -1,6 +1,6 @@
 package ch.monreleve.app.fr
 
-import ch.monreleve.app.fr.format.formatDate
+import ch.monreleve.app.fr.text.formatDate
 
 // R323 / PARKAN-36, extended by AN-NOTIF (R339). The evening notification's copy. Fully accented (R155),
 // typographic apostrophes and ellipsis (R126 / U+2019, U+2026). Rendered by the background notifier

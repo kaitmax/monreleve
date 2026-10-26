@@ -97,7 +97,7 @@ import ch.monreleve.app.forecast.RhythmChoice
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase

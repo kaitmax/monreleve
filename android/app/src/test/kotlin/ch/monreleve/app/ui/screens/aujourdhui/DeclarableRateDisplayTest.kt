@@ -15,8 +15,8 @@ import ch.monreleve.app.design.rail.RailVariant
 import ch.monreleve.app.design.rail.railGeometry
 import ch.monreleve.app.design.zoneFor
 import ch.monreleve.app.dossier.parseDossier
-import ch.monreleve.app.fr.format.formatDeclarableRate
 import ch.monreleve.app.fr.rail.railAriaLabel
+import ch.monreleve.app.fr.text.formatDeclarableRate
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain

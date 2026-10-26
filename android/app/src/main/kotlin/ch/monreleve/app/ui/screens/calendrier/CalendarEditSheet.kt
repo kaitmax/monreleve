@@ -37,7 +37,7 @@ import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.format.formatDayLong
+import ch.monreleve.app.fr.text.formatDayLong
 import ch.monreleve.app.onboarding.GranularityChoice
 
 // AN10 increment 2. The day edit sheet's CONTENT (SPEC 11.3, FD6 A2), a standalone composable so a

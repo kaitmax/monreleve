@@ -16,7 +16,7 @@ import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.get
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.Spacing
-import ch.monreleve.app.fr.format.DATE_TIME_ZONE
+import ch.monreleve.app.fr.text.DATE_TIME_ZONE
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId

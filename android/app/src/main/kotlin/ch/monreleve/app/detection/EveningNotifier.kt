@@ -21,7 +21,7 @@ import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.fr.NotificationCopy
 import ch.monreleve.app.fr.NotificationLines
-import ch.monreleve.app.fr.format.formatDayLong
+import ch.monreleve.app.fr.text.formatDayLong
 import ch.monreleve.app.notification.EveningTap
 import ch.monreleve.app.notification.eveningRecordIntent
 import ch.monreleve.app.settings.AlertThreshold

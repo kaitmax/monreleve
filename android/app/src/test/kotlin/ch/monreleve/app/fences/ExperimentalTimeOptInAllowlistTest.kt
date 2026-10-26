@@ -37,7 +37,7 @@ class ExperimentalTimeOptInAllowlistTest {
             FenceRoot(File("../shared/src/commonMain/kotlin"), pin = "ParisDay.kt"),
             FenceRoot(File("../shared/src/commonTest/kotlin"), pin = "CalendarDayGoldenTest.kt"),
             FenceRoot(File("../shared/src/androidUnitTest/kotlin"), pin = "CommonMainFenceTest.kt"),
-            FenceRoot(File("../shared/src/iosMain/kotlin"), pin = "IosInstantFormat.kt"),
+            FenceRoot(File("../shared/src/iosMain/kotlin"), pin = "IosMutationId.kt"),
             FenceRoot(File("../shared/src/iosTest/kotlin"), pin = "IosDatabaseTest.kt"),
             FenceRoot(File("../probe/src/main/kotlin"), pin = "ProbeActivity.kt"),
         )
@@ -78,11 +78,12 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
-            "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosInstantFormat.kt" to 3,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/local/CalendarDay.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/repo/EntryRepository.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/LatenessForecast.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/ParisDay.kt" to 2,
+            // AN-FR-TEXT R622: moved from iosMain/ios/IosInstantFormat.kt (3 there), function scope, same 3.
+            "shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrInstants.kt" to 3,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/local/CalendarDayProbe.kt" to 3,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/repo/GranularityRuleTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/sync/ServerInstantParseGoldenTest.kt" to 2,

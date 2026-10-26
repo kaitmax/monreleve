@@ -13,7 +13,7 @@ import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.DayCellCopy
-import ch.monreleve.app.fr.format.formatDateTime
+import ch.monreleve.app.fr.text.formatDateTime
 
 // AN-GRANULARITY (R519). The day sheet's provenance block - who recorded the day and when - split from
 // CalendarEditSheet.kt to keep that file within detekt's per-file function budget (the ReleveSections /
