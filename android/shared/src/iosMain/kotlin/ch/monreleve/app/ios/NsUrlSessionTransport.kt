@@ -11,7 +11,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSData
 import platform.Foundation.NSError
-import platform.Foundation.NSHTTPCookieAcceptPolicyNever
+import platform.Foundation.dataTaskWithRequest
 import platform.Foundation.NSHTTPURLResponse
 import platform.Foundation.NSMutableURLRequest
 import platform.Foundation.NSURL
@@ -110,9 +110,9 @@ class NsUrlSessionTransport(
         val url = NSURL.URLWithString(request.url) ?: throw TransportException("not a URL the platform can open")
         val nsRequest = NSMutableURLRequest.requestWithURL(url)
         nsRequest.setCachePolicy(NSURLRequestReloadIgnoringCacheData)
-        nsRequest.setHTTPMethod(request.method.wireName())
-        request.headers.forEach { (name, value) -> nsRequest.setValue(value, name) }
-        request.body?.let { nsRequest.setHTTPBody(it.encodeToByteArray().toNSData()) }
+        nsRequest.HTTPMethod = request.method.wireName()
+        request.headers.forEach { (name, value) -> nsRequest.setValue(value, forHTTPHeaderField = name) }
+        request.body?.let { nsRequest.HTTPBody = it.encodeToByteArray().toNSData() }
         return nsRequest
     }
 
@@ -127,7 +127,7 @@ class NsUrlSessionTransport(
             configuration.timeoutIntervalForResource = RESOURCE_TIMEOUT_SECONDS
             configuration.waitsForConnectivity = false
             configuration.HTTPShouldSetCookies = false
-            configuration.HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyNever
+            configuration.HTTPCookieStorage = null
             configuration.requestCachePolicy = NSURLRequestReloadIgnoringCacheData
             return NSURLSession.sessionWithConfiguration(configuration)
         }
