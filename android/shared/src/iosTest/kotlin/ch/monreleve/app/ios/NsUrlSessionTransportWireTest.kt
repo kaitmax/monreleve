@@ -188,7 +188,7 @@ class NsUrlSessionTransportWireTest {
     @Test
     fun entriesEnvelopeCarriesExactlyEntriesAndTheBytesArriveUnchanged() =
         runBlocking {
-            val sent = encodeEntries(listOf(row())).replaceFirst("{\"entries\"", "{\"plantedExtraKey\":1,\"entries\"") // PLANT (R564), reverted
+            val sent = encodeEntries(listOf(row()))
             val seen = postEntries(sent)
             assertEquals(setOf("entries"), keysOf(seen.body))
             assertContentEquals(sent.encodeToByteArray(), seen.body)
