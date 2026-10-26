@@ -278,6 +278,6 @@ providers.gradleProperty("iosSimulatorDevice").orNull?.let { udid ->
 providers.gradleProperty("iosSimulatorDevice").orNull?.let {
     val entitlements = layout.projectDirectory.file("ios-test.entitlements").asFile.absolutePath
     kotlin.iosSimulatorArm64().binaries.getTest("DEBUG").linkerOpts(
-        "-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__entitlements", "-Xlinker", entitlements,
+        "-sectcreate", "__TEXT", "__entitlements", entitlements,
     )
 }
