@@ -127,21 +127,23 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     // R583: A SETTINGS GAP, NAMED. It answered 500 read_failed, which sends a
     // reader to the database for what the account's own settings can fix.
+    // R587: with a message of its own, which says where to fix it - it
+    // borrowed read_failed's, which promised a retry that cannot succeed.
     if (cause instanceof CantonMissingError) {
       console.error(`[dossier] refused: ${cause.message}`);
 
-      return refuse('canton_missing', AUTH_API_COPY.readFailed, 422);
+      return refuse('canton_missing', AUTH_API_COPY.cantonMissing, 422);
     }
 
     // R580: A YEAR BEFORE THE ACTIVITY START IS A REFUSAL, with future_year's
     // status and its reason: there is no rate over zero working days, and a
-    // 0 % would be meaningless. It answered 500. Its French message is
-    // future_year's, as its status is (docs/api-v1.md: a client branches on
-    // the code, never on the French).
+    // 0 % would be meaningless. It answered 500. R587: its French message is
+    // its own - it borrowed invalid_year's, which called a well-formed year
+    // malformed (a client still branches on the code, never on the French).
     if (cause instanceof YearBeforeActivityError) {
       console.error(`[dossier] refused: ${cause.message}`);
 
-      return refuse('year_before_activity', AUTH_API_COPY.invalidYear);
+      return refuse('year_before_activity', AUTH_API_COPY.yearBeforeActivity(query.year));
     }
 
     console.error(

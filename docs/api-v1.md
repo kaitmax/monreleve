@@ -914,6 +914,16 @@ read_failed`**, the code that sends a reader to the database for something the
 account's own settings fix (R198). FW-DOSSIER-EMPTY (R583). The PDF route names
 the same state `dossier_incomplete` (§11.3).
 
+**Both carry a French `message` of their own** (FW-DOSSIER-EMPTY-3, R587), on
+this route and on the CSV — and `year_before_activity` on the PDF too. Until
+then they lent other codes' sentences: `year_before_activity` carried
+`invalid_year`'s, which calls a well-formed year malformed, and `canton_missing`
+`read_failed`'s, which promises a retry that cannot succeed. The first now names
+the year asked for and says it ends before the activity began; the second sends
+the reader to the canton in their settings. The text lives in
+`AUTH_API_COPY` and is not repeated here; a client still branches on the `code`
+(§1.4).
+
 **When an account has more than one gap, the canton is named first**: the
 dossier checks the canton, then the period, then the name, so an account with
 no canton asking for a year before its activity start is told
@@ -1280,7 +1290,8 @@ old one. FW-DOSSIER-EMPTY (R580).
 
 **From the titulaire check onward the French message is the same one**
 (`AUTH_API_COPY.readFailed`, also §8.3's), while the three earlier refusals each
-carry their own. That sentence tells the reader the app will retry, which is
+carry their own — with one exception since FW-DOSSIER-EMPTY-3 (R587):
+`year_before_activity` carries §8.3's own message for it. That sentence tells the reader the app will retry, which is
 true of a busy renderer and false of an account with no name — the sharpest
 available argument for §1.4's rule that a client branches on the `code` and
 never on the French.

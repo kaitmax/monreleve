@@ -4455,3 +4455,66 @@ the 400 body in :shared's commonTest if iOS wants the code named.
 COST OF REVERSING: none.
 
 STATE:      OPEN - an Android task, small; do it with the next :app change.
+
+## PARK-O1 - two concurrent writes of FULL and AM for one day can deadlock, and the loser answers 500 write_failed  [FW-DOSSIER-EMPTY-3, 2026-10-26]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY-3.txt (its R586 gate: test:db went red on a test
+this task did not touch).
+
+WHAT IT IS: web/tests/db/entries-granularity.test.ts, "two concurrent requests, one FULL
+and one AM, for the same day > exactly one wins and the other is a refusal, never a 500
+(100 runs)" (FW-GRANULARITY, R500) failed with
+    AssertionError: expected 'write_failed' to be 'granularity_conflict'
+and the log line "[entries] batch of 1 refused: write_failed ... Transaction failed due
+to a write conflict or a deadlock. Please retry your transaction" from tx.entry.upsert
+(lib/entries/write.ts) - Prisma P2034, on a tree whose write path is byte-identical to
+main's. MEASURED: 2 failures in 7 executions of the 100-race (the gate's test:db run, then
+6 reruns of the test alone) - roughly one race in 350. FW-GRANULARITY's "100/100 on four
+runs" sits inside that rate. The plausible mechanism (NOT proven here): both
+transactions insert their index tuple, each then finds the other's uncommitted conflicting
+tuple under the exclusion constraint and waits on it, and PostgreSQL breaks the cycle by
+aborting one - which the write path maps to write_failed, not granularity_conflict.
+
+IMPACT: the loser of the race is told 500 write_failed instead of 400
+granularity_conflict. SyncEngine retries a 5xx, so the client recovers (the retry meets
+the committed row and gets the clean 400). The larger cost is to the GATES: every
+test:db - including the one inside gate:clone before every push - carries roughly a 15 %
+chance of going red on this test.
+
+TAKEN:      Nothing. The write path is not this task's (R586-R588); a re-run of test:db
+on the unchanged tree was green and that is what the R586 commit records.
+
+NOT TAKEN:  (a) one retry of the transaction inside writeEntries on P2034; (b)
+serialising writers for one (userId, dayDate) before the upsert (pg_advisory_xact_lock
+on a hash of the pair), which removes the cycle rather than recovering from it; (c)
+mapping a deadlock whose victim touched entry_one_granularity_per_day to
+granularity_conflict. (b) is the one that makes the test's "never a 500" true by
+construction. Each needs a test that reproduces the deadlock deterministically first.
+
+COST OF REVERSING: none - nothing changed.
+
+STATE:      OPEN - a small server task; the operator's call which of (a)-(c).
+
+## PARK-O2 - the app names the canton field two ways: "Canton de travail" and "le canton de votre employeur"  [FW-DOSSIER-EMPTY-3, 2026-10-26]
+
+RAISED BY:  REPORT-FW-DOSSIER-EMPTY-3.txt (R587, choosing the label the new
+canton_missing message names).
+
+WHAT IT IS: android/shared/.../fr/OnboardingCopy.kt. The Parametres screen labels the
+canton row and its edit sheet CANTON_LABEL = "Canton de travail" (ParametresSections.kt:53,
+ParametresFields.kt:69) - and on that same screen a missing canton is reported with
+ERROR_CANTON_MISSING, "Choisissez le canton de votre employeur." Onboarding's step title
+is CANTON_TITLE "Canton de votre employeur", its note CANTON_INFO "... du canton de votre
+employeur", and the summary row READY_ROW_CANTON "Canton de l'employeur". The web
+document and calculator say "Canton de travail". So one field has three names in the app.
+
+TAKEN:      The server's canton_missing message (R587) names the field "canton de
+travail": it sends the reader to their settings, and that is the label they will find
+there. No Android string changed (out of scope).
+
+NOT TAKEN:  Settling one name across OnboardingCopy (and the web, if it differs) - a copy
+decision, the operator's.
+
+COST OF REVERSING: none on the server - one sentence in lib/fr/auth-api.ts.
+
+STATE:      OPEN - the operator's: which name the field carries everywhere.

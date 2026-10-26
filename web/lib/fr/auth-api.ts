@@ -165,6 +165,34 @@ export const AUTH_API_COPY = {
     `sur quatre chiffres.`,
 
   /**
+   * FW-DOSSIER-EMPTY-3 (R587): a well-formed year that ends before the
+   * account's activity start (`year_before_activity`, R580). Until now it
+   * borrowed invalidYear, which calls a well-formed year "absente ou mal
+   * formée". The operator's wording, house typography applied.
+   *
+   * THE YEAR IS THE REQUEST'S, NOT A FIGURE R153 MEANS: it is the value the
+   * reader asked for, echoed back, and it cannot go stale the way a typed rule
+   * or an example year does.
+   */
+  yearBeforeActivity: (year: number): string =>
+    `Aucun relevé ne peut être établi pour l${APOS}année ${year}${n(':')} elle se ` +
+    `termine avant le début de votre activité.`,
+
+  /**
+   * FW-DOSSIER-EMPTY-3 (R587): an account with no canton (`canton_missing`,
+   * R583). Until now it borrowed readFailed, which promises a retry that
+   * cannot succeed. The operator's wording.
+   *
+   * IT NAMES THE FIELD BY THE LABEL THE READER WILL FIND. The sentence sends
+   * them to their settings, and the app's Paramètres screen labels the row and
+   * its edit sheet « Canton de travail » (OnboardingCopy.CANTON_LABEL). The
+   * app's onboarding step and its field error say « canton de votre
+   * employeur » instead; that inconsistency is the app's own, parked as
+   * PARK-O2 rather than copied into this one.
+   */
+  cantonMissing: `Indiquez votre canton de travail dans vos paramètres pour établir votre relevé.`,
+
+  /**
    * A query parameter the route does not know.
    *
    * REFUSED RATHER THAN IGNORED, for the reason `.strict()` exists on the write

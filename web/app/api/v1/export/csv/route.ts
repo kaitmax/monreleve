@@ -113,17 +113,18 @@ export async function GET(request: Request): Promise<NextResponse> {
     // FW-DOSSIER-EMPTY: the dossier's two named refusals, answered here by the
     // same names because the CSV IS the dossier's annex (R175). R583: no canton
     // (it answered 500). R580: a year before the activity start (it answered
-    // 500), with future_year's status and message.
+    // 500), with future_year's status. R587: each with the dossier route's own
+    // message for it, not the borrowed ones (read_failed's, invalid_year's).
     if (cause instanceof CantonMissingError) {
       console.error(`[export] csv refused: ${cause.message}`);
 
-      return refuse('canton_missing', AUTH_API_COPY.readFailed, 422);
+      return refuse('canton_missing', AUTH_API_COPY.cantonMissing, 422);
     }
 
     if (cause instanceof YearBeforeActivityError) {
       console.error(`[export] csv refused: ${cause.message}`);
 
-      return refuse('year_before_activity', AUTH_API_COPY.invalidYear);
+      return refuse('year_before_activity', AUTH_API_COPY.yearBeforeActivity(query.year));
     }
 
     console.error(

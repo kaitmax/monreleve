@@ -26,6 +26,7 @@ import { buildDossierFor } from '@/lib/dossier/load';
 import { DOSSIER_RESPONSE_FIELDS } from '@/lib/dossier/service';
 import { parisDayOf } from '@/lib/entries/day';
 import { currentTaxYear } from '@/lib/content/tax-year';
+import { AUTH_API_COPY } from '@/lib/fr/auth-api';
 
 const ORIGIN = 'https://monreleve.ch';
 
@@ -509,5 +510,74 @@ describe('FW-DOSSIER-EMPTY R514: a year with no days, and its neighbours', () =>
 
     expect(following.status).toBe(400);
     expect((await body(following)).code).toBe('future_year');
+  });
+});
+
+// ============================================================================
+// FW-DOSSIER-EMPTY-3 (R587): EACH REFUSAL ANSWERS WITH ITS OWN MESSAGE
+// ============================================================================
+//
+// R580 and R583 named the two conditions but lent them other codes' French:
+// year_before_activity said the year was "absente ou mal formée" (invalid_year's)
+// and canton_missing that the application would retry (read_failed's). Neither
+// was true of them (FW-DOSSIER-EMPTY, DEVIATIONS 8). Asserted on the response
+// each surface actually sends (R225), the expected text read from lib/fr
+// (R181) - and each against the message it borrowed, so a route still lending
+// the old one fails here.
+describe('FW-DOSSIER-EMPTY-3 R587: each refusal answers with its own message', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** The three surfaces that build the dossier, asked for one year. */
+  async function surfaces(year: number): Promise<Array<[string, Response]>> {
+    process.env.AUTH_SECRET ??= 'dossier-route-test-secret';
+    const init = { headers: { authorization: `Bearer ${token}` } };
+
+    return [
+      ['/dossier', await GET(get(`?year=${year}`))],
+      ['/export/csv', await csvExport(new Request(`${ORIGIN}/api/v1/export/csv?year=${year}`, init))],
+      ['/export/pdf', await pdfExport(new Request(`${ORIGIN}/api/v1/export/pdf?year=${year}`, init))],
+    ];
+  }
+
+  it('year_before_activity says the year ends before the activity, on all three surfaces', async () => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activityStartDate: new Date('2026-03-02T00:00:00.000Z') },
+    });
+    captureErrors();
+
+    for (const [surface, response] of await surfaces(2025)) {
+      const payload = await body(response);
+
+      // THE CODE FIRST, so the message is read off the refusal it belongs to.
+      expect([surface, response.status, payload.code]).toEqual([surface, 400, 'year_before_activity']);
+      expect(payload.message, surface).toBe(AUTH_API_COPY.yearBeforeActivity(2025));
+      // R154: the interpolation delivers - the year asked for is in the sentence.
+      expect(payload.message, surface).toContain('2025');
+      expect(payload.message, surface).not.toBe(AUTH_API_COPY.invalidYear);
+    }
+  });
+
+  it('canton_missing asks for the canton in the settings, on /dossier and /export/csv', async () => {
+    await prisma.user.update({ where: { id: userId }, data: { canton: null } });
+    await seed(userId, '2025-03-03');
+    captureErrors();
+
+    // The PDF names this state dossier_incomplete (R583, not renamed); that code
+    // is not one of R587's two, so only the dossier and the CSV are read here.
+    const answers = (await surfaces(2025)).filter(([surface]) => surface !== '/export/pdf');
+
+    // PRESENCE FIRST: both surfaces answered, so the loop is not satisfied by none.
+    expect(answers.map(([surface]) => surface)).toEqual(['/dossier', '/export/csv']);
+
+    for (const [surface, response] of answers) {
+      const payload = await body(response);
+
+      expect([surface, response.status, payload.code]).toEqual([surface, 422, 'canton_missing']);
+      expect(payload.message, surface).toBe(AUTH_API_COPY.cantonMissing);
+      expect(payload.message, surface).not.toBe(AUTH_API_COPY.readFailed);
+    }
   });
 });

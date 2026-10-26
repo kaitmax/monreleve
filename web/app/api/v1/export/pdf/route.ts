@@ -170,9 +170,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     // under docs/api-v1.md 6 - no code is removed or renamed (dossier_incomplete
     // still answers every other failed build, the canton-less account among
     // them, R583), and 422 -> 400 stays within the class. The argument is in
-    // docs/api-v1.md 11.3.
+    // docs/api-v1.md 11.3. R587: with the dossier route's own message for it,
+    // no longer invalid_year's.
     if (cause instanceof YearBeforeActivityError) {
-      return refuse('year_before_activity', AUTH_API_COPY.invalidYear);
+      return refuse('year_before_activity', AUTH_API_COPY.yearBeforeActivity(query.year));
     }
 
     return refuse('dossier_incomplete', AUTH_API_COPY.readFailed, 422);
