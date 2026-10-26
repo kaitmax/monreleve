@@ -71,7 +71,8 @@ class ExperimentalTimeOptInAllowlistTest {
     /** File (relative to android/) -> how many @OptIn(ExperimentalTime::class) it may carry. Asserted EXACTLY. */
     private val allowlist =
         mapOf(
-            "app/src/main/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 1,
+            // IOS-1b-A R602d: the controller moved to :shared on kotlin.time; :app keeps the java.time factory.
+            "app/src/main/kotlin/ch/monreleve/app/aujourdhui/JavaTimeAujourdhui.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/calendar/BulkConfirmation.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarController.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
@@ -80,6 +81,8 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/detection/JavaTimeCheckWindows.kt" to 2,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
+            // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
+            "shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 5,
             "shared/src/commonMain/kotlin/ch/monreleve/app/calendar/CalendarModel.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/local/CalendarDay.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/repo/EntryRepository.kt" to 2,

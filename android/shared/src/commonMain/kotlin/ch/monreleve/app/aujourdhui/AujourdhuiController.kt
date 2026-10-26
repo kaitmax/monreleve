@@ -59,11 +59,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.toKotlinLocalDate
-import java.time.Clock
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.toKotlinInstant
 
 // AN5b increment 3. Recording a day (SPEC 11.2). The one question - where are you working today? -
 // answered in one tap, which records through AN5's EntryRepository (D16: the tap is the only writer,
@@ -78,6 +78,14 @@ import kotlin.time.toKotlinInstant
 // NO SUCCESS ANIMATION (DESIGN-SYSTEM section 2): the confirmation is the recorded row appearing,
 // which observing the repository produces. Pending is a persistent state read from SyncState, never a
 // toast. Today is the PARIS day (R28), not the device's.
+//
+// IOS-1b-A R602d: MOVED FROM :app to :shared commonMain, so Android and the iOS pilot drive Aujourd'hui through ONE
+// controller. java.time -> kotlin.time/kotlinx-datetime: the clock seam is kotlin.time.Clock plus the device zone the
+// claim's offset is written in (a java.time.Clock carried both; :app's JavaTimeAujourdhui.kt hands them over apart,
+// so MainGraph and every existing test construct it unedited). It was already a plain state holder - a
+// CoroutineScope is injected, no androidx ViewModel - so no multiplatform lifecycle dependency is needed. The
+// account tag stays read at write time (the repository's) and the settings stay read at use (R475). Every
+// @OptIn(ExperimentalTime) sits on the one property or private helper that touches the clock (R590).
 
 /** The screen's kinds. Orthogonal to the wire's EntryKind (R202) - two vocabularies, two jobs. */
 enum class RecordedKind { SUISSE, DOMICILE, MISSION_FRANCE, MISSION_THIRD, ABSENCE }
@@ -268,8 +276,9 @@ private fun Slot.toPortion(): Portion =
         Slot.AFTERNOON -> Portion.PM
     }
 
-// AN-GRANULARITY (R519): internal, so the calendar sheet names a day's provenance through this same mapping.
-internal fun Provenance.toRecordedProvenance(): RecordedProvenance =
+// AN-GRANULARITY (R519): the calendar sheet names a day's provenance through this same mapping. Public since R602d:
+// the controller is in :shared and the calendar sheet in :app, where `internal` would not reach.
+fun Provenance.toRecordedProvenance(): RecordedProvenance =
     when (this) {
         Provenance.MANUAL -> RecordedProvenance.MANUAL
         Provenance.DETECTED_CONFIRMED -> RecordedProvenance.DETECTED_CONFIRMED
@@ -296,7 +305,10 @@ class AujourdhuiController(
     private val repository: EntryRepository,
     private val settingsStore: SettingsStore,
     private val taxYear: Int,
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
+    // The zone clientClaimedAt takes its offset from: the device's, as the java.time.Clock this replaced carried it.
+    private val deviceZone: TimeZone,
     private val scope: CoroutineScope,
     // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
     // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
@@ -312,7 +324,7 @@ class AujourdhuiController(
     // F8 (AN-FIX): "today" and the tax year are RECOMPUTED FROM THE CLOCK at use time, not frozen at
     // construction. They start at the current values and move on refresh() (resume) and at record time, so an
     // Activity held open across midnight - or a tax-year boundary - no longer files a day under the stale date.
-    private var today: String = todayInParis(clock)
+    private var today: String = parisToday()
     private var currentTaxYear: Int = taxYear
     private var lastEntries: List<EntryEntity> = emptyList()
     private var lastTallies: List<TallyEntity> = emptyList()
@@ -358,10 +370,22 @@ class AujourdhuiController(
      * midnight, so this re-emits the LAST entries through the refreshed today/taxYear.
      */
     fun refresh() {
-        today = todayInParis(clock)
+        today = parisToday()
         currentTaxYear = LocalDate.parse(today).year
         emitState()
     }
+
+    /** Today's Paris day, read from the clock now (R28, F8). */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
+    private fun parisToday(): String = todayInParis(clock)
+
+    /** The device's claim of the moment, in its own zone - sent verbatim, never trusted as evidence. */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
+    private fun claimNow(): String = deviceClaimNow(clock, deviceZone)
+
+    /** R320: the day is concluded once the last check window has ended in Paris. */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
+    private fun dayConcluded(): Boolean = afterLastCheckWindow(clock)
 
     /** The first frame, before the repository's first emission: today, the mode and the greeting's name, read now. */
     private fun firstFrame(): AujourdhuiState {
@@ -398,7 +422,7 @@ class AujourdhuiController(
         val checks = (lastTallies.firstOrNull { it.dayDate == today }?.toDayChecks()).orEmpty()
         // R320: nothing is proposed until the day is concluded (after the last window, the evening) - "Votre
         // journée vous sera proposée ce soir." ETAT C (a recorded slot) shows the recorded row, not a re-proposal.
-        val concluded = afterLastCheckWindow(clock)
+        val concluded = dayConcluded()
         // DAY granularity drives the single auto surface; HALF_DAY drives the morning and afternoon independently.
         val dayAuto = slotAuto(autoMode && !halfDay && fullDay == null, dayProposal(checks), concluded)
         val amAuto = slotAuto(autoMode && halfDay && morning == null, morningProposal(checks), concluded)
@@ -445,7 +469,7 @@ class AujourdhuiController(
         settings: Settings?,
     ): MonthSummary? {
         val settingsNow = settings ?: return null
-        val month = LocalDate.parse(today).monthValue
+        val month = LocalDate.parse(today).month.number
         return buildMonthView(entries, settingsNow, currentTaxYear, today, month).summary
     }
 
@@ -561,12 +585,12 @@ class AujourdhuiController(
      * conservative choice (PARKAN-18): a small look-ahead claims less.
      */
     @Suppress("ReturnCount")
-    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock/Instant - on the allowlist.
     private fun latenessOf(oldestPendingDay: String?): PendingLateness {
         if (oldestPendingDay == null) return PendingLateness.NONE
-        val day = LocalDate.parse(oldestPendingDay).toKotlinLocalDate()
-        if (LatenessForecast.wouldBeLate(day, clock.instant().toKotlinInstant())) return PendingLateness.OVERDUE
-        val daysUntil = LatenessForecast.daysUntilLate(day, LocalDate.parse(today).toKotlinLocalDate())
+        val day = LocalDate.parse(oldestPendingDay)
+        if (LatenessForecast.wouldBeLate(day, clock.now())) return PendingLateness.OVERDUE
+        val daysUntil = LatenessForecast.daysUntilLate(day, LocalDate.parse(today))
         return if (daysUntil <= WARN_WINDOW_DAYS) PendingLateness.APPROACHING else PendingLateness.NONE
     }
 
@@ -582,7 +606,7 @@ class AujourdhuiController(
                     RecordCommand(
                         // F8 (AN-FIX): today is read FROM THE CLOCK at the tap, so a day tapped after midnight is
                         // filed under the new date even if the Activity was created the previous day.
-                        dayDate = todayInParis(clock),
+                        dayDate = parisToday(),
                         kind = kind.toEntryKind(),
                         portion = slot.toPortion(),
                         absenceReason = absence?.toReason(),
@@ -628,7 +652,7 @@ class AujourdhuiController(
             val written =
                 repository.record(
                     RecordCommand(
-                        dayDate = todayInParis(clock),
+                        dayDate = parisToday(),
                         kind = kind.toEntryKind(),
                         portion = slot.toPortion(),
                         absenceReason = absence?.toReason(),
@@ -638,7 +662,7 @@ class AujourdhuiController(
                         detectedKind = detectedKind.toEntryKind(),
                         // The device's clock at the confirming/correcting tap, sent verbatim (never trusted as
                         // evidence - the server assigns the recording timestamp).
-                        detectedAt = deviceClaimNow(clock),
+                        detectedAt = claimNow(),
                     ),
                 )
             if (written is RecordResult.Recorded) requestSync()
