@@ -11,7 +11,6 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSData
 import platform.Foundation.NSError
-import platform.Foundation.dataTaskWithRequest
 import platform.Foundation.NSHTTPURLResponse
 import platform.Foundation.NSMutableURLRequest
 import platform.Foundation.NSURL
@@ -20,6 +19,10 @@ import platform.Foundation.NSURLResponse
 import platform.Foundation.NSURLSession
 import platform.Foundation.NSURLSessionConfiguration
 import platform.Foundation.NSURLSessionDataTask
+import platform.Foundation.dataTaskWithRequest
+import platform.Foundation.setHTTPBody
+import platform.Foundation.setHTTPMethod
+import platform.Foundation.setValue
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -110,9 +113,9 @@ class NsUrlSessionTransport(
         val url = NSURL.URLWithString(request.url) ?: throw TransportException("not a URL the platform can open")
         val nsRequest = NSMutableURLRequest.requestWithURL(url)
         nsRequest.setCachePolicy(NSURLRequestReloadIgnoringCacheData)
-        nsRequest.HTTPMethod = request.method.wireName()
+        nsRequest.setHTTPMethod(request.method.wireName())
         request.headers.forEach { (name, value) -> nsRequest.setValue(value, forHTTPHeaderField = name) }
-        request.body?.let { nsRequest.HTTPBody = it.encodeToByteArray().toNSData() }
+        request.body?.let { nsRequest.setHTTPBody(it.encodeToByteArray().toNSData()) }
         return nsRequest
     }
 
