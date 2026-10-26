@@ -1,0 +1,346 @@
+REPORT-IOS-1b-A - Mon Releve
+COMPOSE MULTIPLATFORM LANDS, AND AUJOURD'HUI BECOMES ONE SHARED SCREEN
+(PILOT, PART A) - STOPPED AT R601, BY THE PROMPT'S OWN STOP POINT
+
+TASK     IOS-1b-A, rulings R600-R609 (free: the only other relay file citing
+         R600-R609 is relay/IOS-1b-B.txt, which cites THESE rulings by number;
+         no REPORT-*.txt uses them).
+BASE     origin/main 2458dbe (Merge an-fr-text), ios-1a merged in it (981e8a8).
+BRANCH   ios-1b-a, worktree C:/wt/ios-1b-a (R349), lock .session-lock.json in
+         it (gitignored), removed at the end. Pushed: the branch only. PENDING
+         MERGE / PENDING THE OPERATOR'S ANSWER - nothing here is for main yet.
+DEVICE   SM-G960F (Galaxy S9), serial 232bcd8c300c7ece - READ only, never
+         written.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+R601 is the prompt's stop point and it fired. Adding Compose Multiplatform
+1.10.3 (runtime, ui, foundation, animation, components-resources) and its
+Material3 1.10.0-alpha05 to :shared's commonMain moves EVERY androidx.compose
+artifact on :app's classpaths: compose 1.7.0/1.7.1 -> 1.10.5, material3
+1.3.0 -> 1.5.0-alpha08 (an ALPHA), material-ripple 1.7.0 -> 1.9.4, lifecycle
+2.8.7 -> 2.9.4, plus core 1.15.0 -> 1.16.0, savedstate 1.2.1 -> 1.3.3,
+collection 1.4.2 -> 1.5.0 and the catalog's own coroutines pin 1.8.1 -> 1.9.0.
+activity stays 1.9.3. That is an upgrade of every Android screen's toolkit,
+so this task stopped before its first change and asks the question below.
+
+Beyond the version diff, the probe measured what the upgrade would cost
+(never committed, no build file edited - an init script applied with -I):
+  - Paparazzi 1.3.5 CANNOT RENDER Compose UI 1.10.x text at all:
+    NoSuchMethodError StaticLayout$Builder.setUseBoundsForWidth(boolean) -
+    an API-35 method its bundled layoutlib lacks. The Compose move is also a
+    Paparazzi move, i.e. every one of the 142 baselines re-examined.
+  - Material3 1.5 no longer brings material-icons-core: CalendrierScreen.kt
+    and ParametresListRows.kt (two screens outside this task) stop compiling.
+  - ThemeCensusTest fails: Typography 15 -> 30 slots, new ColorScheme slots.
+  - compileSdk 35 does NOT bind: the new AARs ask minCompileSdk=35 exactly.
+
+NO SOURCE, BUILD OR BASELINE FILE CHANGED. The one commit on the branch is
+this report. R602-R609: NOT STARTED.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+STOPPED AT R601 - Android's Compose toolkit resolves 1.7.0 -> 1.10.5 with
+CMP 1.10.3 in :shared. No source, build or baseline file changed; the only
+commit is this report.
+FULL :app:gate --rerun-tasks ran on 2458dbe (main's HEAD, the tree this
+report sits on): BUILD SUCCESSFUL in 11m 15s, 237 actionable tasks: 237
+executed, exit 0. It did NOT run on the report commit itself, whose only
+change is this .txt. There is nothing to call GREEN: no work was done.
+
+--------------------------------------------------------------------------------
+R273 - READ
+--------------------------------------------------------------------------------
+relay/IOS-1b-A.txt in full (main checkout, untracked, not committed).
+REPORT-KMP-UP2 R542: the CMP 1.10.3 probe compiled a @Composable using
+remember for Android and iosSimulatorArm64 - in a scratch module :cmpprobe
+that :app did NOT depend on, and with runtime only. So it never measured what
+CMP does to the ANDROID APP's graph; that question was open until this task.
+REPORT-KMP-DT R557: the Material3 resolution check covered :shared's own five
+configurations, not :app's (its "Compose's own dependencies" list -
+collection 1.5.0, coroutines to 1.8.1, atomicfu - is :shared-side).
+REPORT-IOS-1a: read for the shared formatter and iOS implementations.
+The Aujourd'hui files (ui/screens/aujourdhui/*: AnswerIcon, AujourdhuiAuto,
+AujourdhuiScreen, AujourdhuiSections, ChoiceCard, ChoiceMotion,
+HalfDayChoiceCard, MovingRate, YearDownloadNotice; aujourdhui/
+AujourdhuiController) were inventoried by import only: they use Material3
+(Text, TextButton, OutlinedButton, Button, Icon, HorizontalDivider),
+foundation, animation, runtime-saveable and androidx.compose.ui.res
+.painterResource + @DrawableRes - which is why the probe includes Material3
+and components-resources. DESIGN-SYSTEM.md and the ui/ fences were NOT read
+in depth: the stop came first and nothing was written that they govern.
+
+--------------------------------------------------------------------------------
+R1 - PRECONDITIONS
+--------------------------------------------------------------------------------
+(a) origin/main contains ios-1a: 2458dbe; 981e8a8 (Merge ios-1a) is its
+    first parent's tip. HOLDS.
+(b) FULL :app:gate --rerun-tasks on 2458dbe, after ./gradlew --stop:
+      > Task :app:checkTestFloor
+      test floor OK: 1379 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 11m 15s
+      237 actionable tasks: 237 executed
+      real 11m16.723s ; exit 0
+    Test XML: 1379 tests, 0 failures, 0 errors (the count the coordinator
+    gave). Compiler "w: " lines: 7 (the count given); none is the Kotlin
+    daemon's "multiple sessions" notice (0 of those in the log). HOLDS.
+(c) iOS run on it: NO RUN EXISTS ON 2458dbe (ios-shared.yml is dispatch or
+    push to ios-*; main's newest run is on 1c1eb82). The nearest is
+    40381406212 on ed5a4ac (an-fr-text): success, 18:51:03Z-18:58:14Z,
+    "iOS SIMULATOR TESTS EXECUTED: 192". `git diff --stat ed5a4ac 2458dbe`
+    -> REPORT-AN-FR-TEXT.txt only (1 file, 290 insertions), and 981e8a8 is an
+    ancestor of ed5a4ac - so that run built and tested EXACTLY main's code
+    tree; the one differing file is in the workflow's paths-ignore. HOLDS by
+    tree identity; no macOS minute was spent to re-prove it.
+(d) The S9: `adb devices -l` -> 232bcd8c300c7ece device product:starltexx
+    model:SM_G960F; stay_on_while_plugged_in READ = 0; `adb reverse --list`
+    empty; installed ch.monreleve.app base.apk sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 = the
+    audit APK at C:/wt/an-pull (hashed in place, nothing copied or written).
+    Signed-in state NOT read (reading it needs a reader build installed over
+    the app - a write). Nothing was installed, granted or changed: the phone
+    is as found. HOLDS.
+
+--------------------------------------------------------------------------------
+R601 - THE DEPENDENCY DIFF (THE STOP)
+--------------------------------------------------------------------------------
+METHOD. No build file edited. An init script, applied with -I, adds to
+:shared's commonMain (when -Dr601.cmp=true):
+    org.jetbrains.compose.runtime:runtime:1.10.3
+    org.jetbrains.compose.ui:ui:1.10.3
+    org.jetbrains.compose.foundation:foundation:1.10.3
+    org.jetbrains.compose.animation:animation:1.10.3
+    org.jetbrains.compose.components:components-resources:1.10.3
+    org.jetbrains.compose.material3:material3:1.10.0-alpha05
+`./gradlew -q :app:dependencies --configuration <c>` was captured without
+and with it, for releaseRuntimeClasspath, debugRuntimeClasspath,
+debugCompileClasspath and debugUnitTestRuntimeClasspath (all exit 0), and
+each tree reduced to group:artifact -> final resolved version.
+POSITIVE CONTROL: the plant landed - org.jetbrains.compose.* (runtime 1.10.3,
+material3 1.10.0-alpha05, components-resources-android 1.10.3, ...) appear in
+every AFTER tree and in no BEFORE tree.
+The androidTest configurations were not captured; they take the same :shared
+dependency, so they move by the same mechanism (inferred, not measured).
+
+COUNTS (modules, constraint-only lines excluded):
+  configuration                   before after  version-changed  of which
+                                                                 compose/
+                                                                 lifecycle/
+                                                                 activity
+  releaseRuntimeClasspath           106   151        61             48
+  debugRuntimeClasspath             113   160        66             53
+  debugCompileClasspath              91   103        60             50
+  debugUnitTestRuntimeClasspath     217   264        62             53
+
+releaseRuntimeClasspath, every androidx.compose / material3 / lifecycle /
+activity artifact (each -android twin moves identically):
+  androidx.compose.animation:animation, animation-core     1.7.0  -> 1.10.5
+  androidx.compose.foundation:foundation, foundation-layout 1.7.0 -> 1.10.5
+  androidx.compose.runtime:runtime, runtime-saveable       1.7.1  -> 1.10.5
+  androidx.compose.runtime:runtime-annotation, -retain     (new)     1.10.5
+  androidx.compose.ui:ui, ui-geometry, ui-graphics, ui-text,
+    ui-unit, ui-util, ui-tooling-preview                   1.7.0  -> 1.10.5
+  androidx.compose.material3:material3                     1.3.0  -> 1.5.0-alpha08
+  androidx.compose.material:material-ripple                1.7.0  -> 1.9.4
+  androidx.compose.material:material-icons-core            1.7.0  -> REMOVED
+  androidx.lifecycle:lifecycle-common, -common-java8, -livedata,
+    -livedata-core(-ktx), -process, -runtime(-ktx), -runtime-compose,
+    -service, -viewmodel(-ktx), -viewmodel-savedstate      2.8.7  -> 2.9.4
+  androidx.activity:activity, activity-ktx, activity-compose 1.9.3 (UNCHANGED)
+  org.jetbrains.androidx.lifecycle:* 2.9.6, org.jetbrains.compose.*: new
+Other version moves on the same classpath:
+  androidx.collection:collection(-jvm,-ktx)  1.4.2 -> 1.5.0
+  androidx.core:core, core-ktx               1.15.0 -> 1.16.0  (catalog pin
+                                                                coreKtx moves)
+  androidx.emoji2:emoji2                     1.3.0 -> 1.4.0
+  androidx.profileinstaller                  1.3.1 -> 1.4.0
+  androidx.savedstate:savedstate(-ktx)       1.2.1 -> 1.3.3
+  kotlinx-coroutines-android/-core/-bom      1.8.1 -> 1.9.0   (catalog pin
+                                                                coroutines moves)
+New on it: androidx.window 1.5.0, graphics-shapes 1.1.0, transition 1.6.0,
+core-viewtree, documentfile, dynamicanimation, legacy-support-core-utils,
+loader, localbroadcastmanager, print, savedstate-compose.
+WHY: CMP's Android variants are not a second Compose - they are published as
+the androidx artifacts (org.jetbrains.compose.ui:ui:1.10.3's Android variant
+resolves to androidx.compose.ui:ui-android:1.10.5), and Gradle's conflict
+resolution takes the highest version over the BOM's 1.7.0 constraint.
+From Gradle, not inferred (`:app:dependencyInsight --dependency
+androidx.compose.ui:ui-android --configuration releaseRuntimeClasspath`, with
+the probe, exit 0):
+    androidx.compose.ui:ui-android:1.10.5
+      Selection reasons: By constraint;
+        By conflict resolution: between versions 1.10.5 and 1.7.0
+    --- androidx.compose.ui:ui:1.10.5
+         +--- androidx.compose:compose-bom:2024.09.00 (requested ...ui:1.7.0)
+         +--- org.jetbrains.compose.ui:ui:1.10.3 <- project :shared
+Raw trees: android/.an-auto-shots/ios-1b-a/{before,after}-<c>.txt and the
+reduced *.res lists (gitignored, kept in the worktree).
+
+DOES compileSdk CONSTRAIN IT? No - at the edge. aar-metadata.properties:
+  androidx.compose.ui:ui-android 1.10.5                minCompileSdk=35  AGP>=8.6.0
+  androidx.compose.material3:material3-android 1.5.0-alpha08  minCompileSdk=35
+  androidx.core:core 1.16.0                            minCompileSdk=35
+  androidx.lifecycle:lifecycle-runtime-android 2.9.4   minCompileSdk=34
+  (control) androidx.compose.ui:ui-android 1.7.0       minCompileSdk=34
+compileSdk is 35 and AGP 8.10.1, so
+  ./gradlew -I r601.init.gradle -Dr601.cmp=true :app:checkDebugAarMetadata
+            :app:checkReleaseAarMetadata  ->  BUILD SUCCESSFUL in 16s, exit 0
+
+DOES PAPARAZZI 1.3.5 CONSTRAIN IT? YES - IT CANNOT RENDER THE RESULT.
+`:app:verifyPaparazziDebug` with the probe (verify mode: writes no baseline):
+  run 1, -Dr601.cmp=true:  > Task :app:compileDebugKotlin FAILED, 8 errors,
+    all "Unresolved reference 'Icons'/'automirrored'" in
+    ui/screens/calendrier/CalendrierScreen.kt (21,22,23,139,151) and
+    ui/screens/parametres/ParametresListRows.kt (10,11,133): Material3 1.5
+    dropped its material-icons-core dependency, which these two screens used
+    transitively.
+  run 2, plus a SHIM (androidx.compose.material:material-icons-core:1.7.8 on
+    :app, only to get past that compile error - NOT part of the R601 diff):
+    1379 tests completed, 144 failed; BUILD FAILED in 3m 16s, exit 1.
+    The 144, by class:
+      142 screenshot tests in 14 classes (Aujourd'hui 35, Components 21,
+          Onboarding 16, Calendrier 14, SignIn 13, Releve 11, Prevision 7,
+          Simulation 7, ThresholdRail 6, Rythme 4, Comparison 3,
+          Disclosure 2, ParametresDialog 2, AppBottomBar 1): Paparazzi
+          rendering errors, every one
+            java.lang.NoSuchMethodError: 'android.text.StaticLayout$Builder
+            android.text.StaticLayout$Builder.setUseBoundsForWidth(boolean)'
+            at androidx.compose.ui.text.android.StaticLayoutFactory35
+              .disableUseBoundsForWidth(StaticLayoutFactory.android.kt:254)
+          - Compose UI 1.10.5's text layout calls an API-35 method that
+          Paparazzi 1.3.5's bundled layoutlib does not have. (111 report it
+          three times in one test, 1 twice, 30 once.) These are NOT
+          pixel diffs: the renderer crashed, so whether pixels change is
+          UNKNOWN, not "no".
+      2 ThemeCensusTest: "expected 15 Typography slots, found 30" and
+          "ColorScheme.onPrimaryFixed = ..." - Material3 1.5 widened the theme
+          surface the census pins.
+  git status --porcelain after both runs: empty - no baseline was written.
+  Kept: android/.an-auto-shots/ios-1b-a/probe/{test-results,paparazzi-failures}.
+SO: CMP 1.10.3 on Android = Compose 1.10.5 + Material3 1.5.0-alpha08 +
+Paparazzi past 1.3.5 + an explicit material-icons-core + a theme-census
+update + a full baseline review. Each is outside this task by the prompt's
+own words.
+
+--------------------------------------------------------------------------------
+R602 - R609
+--------------------------------------------------------------------------------
+R602 controller ............ NOT STARTED - stopped at R601.
+R603 tokens/resources ...... NOT STARTED - stopped at R601.
+R604 screen ................ NOT STARTED - stopped at R601.
+R605 Android proof ......... NOT STARTED. Paparazzi baselines touched: 0.
+                             APK size not measured (nothing to compare).
+R606 iOS compiles .......... NOT STARTED; no iOS run spent on it.
+R607 on the S9 ............. NOT STARTED. The phone was READ only (R1).
+R608 pilot fixture ......... NOT STARTED.
+R609 what Part B needs ..... NOT WRITTEN - Part B's entry point does not
+                             exist. What Part B inherits from this stop: the
+                             CMP version decision below must be made first.
+
+--------------------------------------------------------------------------------
+CI MINUTES
+--------------------------------------------------------------------------------
+ZERO macOS runs dispatched or triggered by work in this session before the
+push. R1's iOS proof is the existing run 40381406212 (above). The push of
+this report commit: see PUSH PROOF (the workflow paths-ignores REPORT-*.txt).
+
+--------------------------------------------------------------------------------
+PARKED (UNNUMBERED - no series letter is free; never a heading in parking.md)
+--------------------------------------------------------------------------------
+UNNUMBERED-1  Paparazzi 1.3.5 cannot render Compose UI >= the version that
+              calls StaticLayout$Builder.setUseBoundsForWidth (1.10.5
+              measured). Any Compose move past it is a Paparazzi move too.
+UNNUMBERED-2  CalendrierScreen.kt and ParametresListRows.kt use
+              Icons.AutoMirrored via a TRANSITIVE material-icons-core from
+              Material3 1.3.0. Any Material3 >= 1.5 breaks them; the fix is
+              an explicit dependency (a catalog addition - ask first).
+UNNUMBERED-3  ThemeCensusTest pins 15 Typography slots and the 1.3 ColorScheme;
+              Material3 1.5 has 30 and new fixed-colour slots. Its update
+              belongs to the toolkit-upgrade task.
+UNNUMBERED-4  CMP 1.10.3 also moves the catalog's coroutines pin (1.8.1 ->
+              1.9.0) and coreKtx (1.15.0 -> 1.16.0) by conflict resolution:
+              the catalog would then state versions the app does not run.
+UNNUMBERED-5  NOTICED, NOT TOUCHED: no Paparazzi test in app/src/test sets
+              maxPercentDifference (grep: no match), so verifyPaparazziDebug
+              runs at Paparazzi 1.3.5's DEFAULT tolerance - R345's "a default
+              is a setting nobody chose", on the Android baselines. Not
+              verified what that default is in 1.3.5; stated, not fixed.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R601's probe ran BEFORE R1's gate (both before any change). R601 was
+   pure resolution through an init script, no file in the tree touched, so
+   R1's "stop before the first change" still holds; the gate then ran on the
+   untouched 2458dbe.
+2. The probe went one step past "a dependency report diff": two Paparazzi
+   verify runs and an AAR-metadata check, to answer R601's own question
+   "whether Paparazzi 1.3.5 and compileSdk constrain the result" from
+   measurement. Verify mode writes no baseline; git status stayed empty.
+3. Option B was measured (resolution, Paparazzi, iOS resolution) beyond
+   R601's letter, to make the question answerable; no iOS compile or run
+   was spent on it.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 (THE STOP). CMP 1.10.3 in :shared upgrades Android's whole Compose
+toolkit (1.7 -> 1.10.5, Material3 1.3.0 -> 1.5.0-alpha08, lifecycle 2.8.7 ->
+2.9.4) and Paparazzi 1.3.5 cannot render the result. How should the pilot
+proceed?
+  (A) THE TOOLKIT UPGRADE FIRST, AS ITS OWN TASK, then IOS-1b-A resumes
+      unchanged on top. That task moves composeBom to one carrying 1.10.x
+      (or pins the versions CMP 1.10.3 resolves), decides whether an ALPHA
+      Material3 (1.5.0-alpha08, what CMP 1.10.3's 1.10.0-alpha05 maps to) is
+      acceptable on Android, moves Paparazzi to a release whose layoutlib has
+      API 35 (that is a plugin/dependency move - ask first), adds
+      material-icons-core explicitly, updates ThemeCensusTest, and reviews
+      every one of the 142 baselines under R135/R207. Cost: one task of its
+      own, with a real pixel review; benefit: R600 and R605 stay as written.
+  (B) AN OLDER CMP WHOSE ANDROID PAIRING IS 1.7.x. MEASURED (resolution
+      and Paparazzi only, same method, -Dr601.cmp173=true: CMP 1.7.3 and
+      its material3 1.7.3):
+        :app releaseRuntimeClasspath, exit 0: compose 1.7.0/1.7.1 -> 1.7.6,
+          material3 1.3.0 -> 1.3.1, material-icons-core 1.7.0 -> 1.7.6,
+          collection 1.4.2 -> 1.4.4; lifecycle STAYS 2.8.7, coroutines STAYS
+          1.8.1, core STAYS 1.15.0, activity STAYS 1.9.3.
+        :app:verifyPaparazziDebug with it: > Task :app:testDebugUnitTest
+          executed, 1379 tests, 0 failures, 0 errors, BUILD SUCCESSFUL in
+          3m 2s, exit 0 - ALL 142 baselines verify, no shim needed, git
+          status stayed clean. Under the suite's own settings, which set
+          no maxPercentDifference (UNNUMBERED-5): "verify" here is
+          Paparazzi's default tolerance, not a proven zero.
+        :shared iosSimulatorArm64CompileKlibraries, exit 0: material3 1.7.3
+          asks kotlinx-datetime 0.6.0 and is given 0.7.1.
+      So B is still a version MOVE (patch level: 1.7.0 -> 1.7.6), i.e. still
+      R601's stop as written - but Paparazzi says the pixels hold, so B
+      would be: approve a patch move of Android Compose (1.7.6, material3
+      1.3.1), with the zero-diff baseline run above as its proof.
+      Unknowns, none tested: whether Kotlin 2.2.21's Compose compiler plugin
+      and the CMP 1.7.3 runtime agree on iOS and on Xcode 26 (one macOS run
+      answers it); whether Material3 1.7.3, compiled against
+      kotlinx-datetime 0.6.0, LINKS against 0.7.1 on iOS (0.7 replaced
+      kotlinx.datetime.Instant) (the 0.7.1 move was made FOR
+      Material3 1.10.0-alpha05 - this would unwind that reasoning); R542
+      proved 1.10.3, not this.
+  (C) A SHARED UI USED BY iOS ONLY - Android keeps its own Aujourd'hui and
+      its Compose 1.7. This changes R600 ("used by Android from :shared") and
+      R605 ("Android is the proof"): the pilot's criteria, not just its
+      mechanics. It also needs CMP's Android variants kept off :app (a
+      separate module the Android target does not depend on).
+  NOT PROPOSED: forcing androidx.compose back to 1.7.x in :app. CMP
+  1.10.3's Android variant IS those 1.10.5 artifacts; forcing pins classes
+  compiled against 1.10.5 onto a 1.7 runtime. Not tested.
+  No recommendation: the prompt's wording ("its own task with its own
+  baseline review") reads as (A); (B)'s Android half is measured green,
+  its iOS half is not measured at all.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Branch ios-1b-a only (never main, never production), pushed with
+`git push -u origin ios-1b-a`; the result is appended below by the
+follow-up commit.
