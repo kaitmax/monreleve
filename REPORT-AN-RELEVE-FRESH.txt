@@ -1,6 +1,7 @@
 REPORT-AN-RELEVE-FRESH - THE RELEVE SHOWS THE SERVER'S RECORD AS IT IS NOW, AND SAYS WHAT IS NOT SENT
 Session: AN-RELEVE-FRESH, 2026-10-26. Worktree C:/wt/an-releve-fresh, branch an-releve-fresh
-(cut from origin/main 266b020, upstream unset), lock .session-lock.json (removed at the end).
+(cut from origin/main 266b020, upstream unset), lock .session-lock.json (removed after
+this report's commit, as the session's last act).
 Pushed to the BRANCH only. PENDING MERGE - nothing landed on main or production.
 
 ================================================================================
@@ -235,6 +236,8 @@ was taken while the code was on screen (R574). POST /auth/code 200, GET /me 200.
     - the as-found APK reinstalled (install -r, the scratchpad copy taken from
       C:/wt/an-pull without writing there);
     - stay_on set back to 0;
+    - the dev server log (it held both printed sign-in mails: codes and link tokens,
+      all consumed or revoked) DELETED - it was this session's own file;
     - dev server tree killed (taskkill /T on pid 6408, its scheduler pid); port 3000:
       nothing listening, /api/health no answer.
 THE PHONE AS LEFT: `device`; stay_on 0; reverse empty; signed out (sign-out wiped the
@@ -290,8 +293,10 @@ GATES
 - FULL :app:gate --rerun-tasks on 21c44e2: BUILD SUCCESSFUL in 10m 51s, 233 tasks,
   exit 0. Compiler w: lines: 8 against main's 7. The 8th was mine: ReleveFreshTest.kt:222
   needed an ExperimentalCoroutinesApi opt-in. It was fixed in b4b048e (test only).
-- FULL :app:gate --rerun-tasks on b4b048e (`./gradlew --stop` first): BUILD SUCCESSFUL
+- FULL :app:gate --rerun-tasks on b4b048e: BUILD SUCCESSFUL
   in 15m 22s, 233 tasks, GATE_EXIT=0. w: lines 7 = main's 7, none from this branch.
+  `./gradlew --stop` ran before the audit build that preceded it, not again between
+  the two (the first gate, on 21c44e2, had its own stop immediately before it).
 - :app unit tests on 21c44e2: 1379, 0 failures. New in this branch: SyncEngineTest +5,
   ReleveFreshTest 10, DossierApiTest +2, ReleveScreenScreenshotTest +2.
 - iOS cloud runs (R573), 2 runs:
@@ -329,6 +334,9 @@ DEVIATIONS
 6. /sdcard/ui.xml: uidrive writes it on every dump. My before-check was NO RESULT (an
    MSYS-mangled path), so whether it existed before this session is unknown. I removed
    it at the end.
+8. Artefacts outside the worktree: the APK copies, the drive helper (code.mjs), the
+   node edit scripts and the dev log were written to the session scratchpad, not the
+   worktree. The gate logs are in the worktree (android/build/, ignored).
 7. The full gate on b4b048e ran while the dev server and the drive ran (RAM was enough;
    the gate was green). The audit APK was built before the gate started and copied out
    of the build directory first.
@@ -354,5 +362,5 @@ Every push was `git push origin an-releve-fresh`, each gated on its own exit cod
   [new branch] an-releve-fresh (e7f373a); e7f373a..8a1b756; 8a1b756..21c44e2;
   21c44e2..b4b048e; then the report commit.
 Never main, never production. PENDING MERGE.
-Lock: .session-lock.json, created at the start, removed at the end (gitignored, never
-committed).
+Lock: .session-lock.json, created at the start, gitignored, never committed; removed
+after this report's commit as the session's last act.
