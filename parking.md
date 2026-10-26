@@ -3751,6 +3751,18 @@ online fetches it again; while days are unsent the screen says how many are not 
 sent rather than letting the document look complete. The Releve shows the SERVER's
 record only, never local pending days.
 
+CLOSED BY AN-RELEVE-FRESH (R558-R561), branch an-releve-fresh, PENDING MERGE. A batch
+the server accepts marks that year's cached dossier stale (DossierCache.markStale, its
+contract in the KDoc for iOS); opening the Releve - or a sync landing while it is open -
+shows the cached figures marked as updating and replaces them with the server's; offline
+it shows R288's dated copy; a refresh the server cannot answer keeps the copy and says
+nothing was changed; unsent days are said, never counted in. Driven on the S9 against the
+local stack (REPORT-AN-RELEVE-FRESH.txt, R562).
+RESIDUAL, NOT GIVEN ITS OWN ID (every PARK-<letter> series is taken, R456 - see that
+report's QUESTIONS): a dossier GET already IN FLIGHT when a drain marks the year stale
+can save a body read before the day landed, and that save clears the flag. A relaunch
+(the init fetch), the retry, or the next sent day recovers it; no test pins it.
+
 ## PARK-E1 - the detection file survives a forced sign-out: /me carries its loggingMode, and nothing restores it  [AN-FORCED-SIGNOUT, 2026-10-24]
 
 RAISED BY:  REPORT-AN-FORCED-SIGNOUT.txt (R521).
