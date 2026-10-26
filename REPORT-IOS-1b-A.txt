@@ -344,3 +344,11 @@ PUSH PROOF
 Branch ios-1b-a only (never main, never production), pushed with
 `git push -u origin ios-1b-a`; the result is appended below by the
 follow-up commit.
+    git push -u origin ios-1b-a  ->  * [new branch] ios-1b-a -> ios-1b-a, exit 0
+    git ls-remote origin refs/heads/ios-1b-a
+      -> bb416a78109300df93748d8fe497d1f470798d94 (the report commit)
+    gh run list --workflow ios-shared.yml --branch ios-1b-a -> []  20 s
+      after the push (the same command lists an-fr-text's and ios-1a's runs -
+      the positive control): the report-only push triggered NO macOS run
+      (paths-ignore REPORT-*.txt). macOS minutes spent by this session: 0.
+    This push-proof follow-up is report-only too and is pushed the same way.
