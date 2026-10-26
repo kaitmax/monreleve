@@ -24,7 +24,10 @@ import java.io.File
  * it cannot pass over nothing.
  */
 class ExperimentalTimeOptInAllowlistTest {
-    private val roots =
+    // IOS-1a R592: THE ALLOWLIST SEES EVERY SOURCE SET. The pinned roots below are the ones known to exist; on top
+    // of them, every other src/<set>/kotlin directory of :app and :shared is DISCOVERED (androidMain, iosMain,
+    // iosTest, a future set), so a new source set cannot hide an opt-in the way iosMain did before this ruling.
+    private val pinnedRoots =
         listOf(
             FenceRoot(File("src/main/kotlin"), pin = "MainActivity.kt"),
             FenceRoot(File("src/debug/kotlin"), pin = "SessionInjection.kt"),
@@ -34,8 +37,24 @@ class ExperimentalTimeOptInAllowlistTest {
             FenceRoot(File("../shared/src/commonMain/kotlin"), pin = "ParisDay.kt"),
             FenceRoot(File("../shared/src/commonTest/kotlin"), pin = "CalendarDayGoldenTest.kt"),
             FenceRoot(File("../shared/src/androidUnitTest/kotlin"), pin = "CommonMainFenceTest.kt"),
+            FenceRoot(File("../shared/src/iosMain/kotlin"), pin = "IosInstantFormat.kt"),
+            FenceRoot(File("../shared/src/iosTest/kotlin"), pin = "IosDatabaseTest.kt"),
             FenceRoot(File("../probe/src/main/kotlin"), pin = "ProbeActivity.kt"),
         )
+
+    private val roots: List<FenceRoot> by lazy {
+        val pinnedPaths = pinnedRoots.map { it.dir.canonicalFile }.toSet()
+        val discovered =
+            listOf(File("src"), File("../shared/src"))
+                .flatMap { it.listFiles { f -> f.isDirectory }?.toList().orEmpty() }
+                .map { File(it, "kotlin") }
+                .filter { it.isDirectory && it.canonicalFile !in pinnedPaths }
+                .map { dir ->
+                    val pin = dir.walkTopDown().first { f -> f.isFile && f.extension == "kt" }.name
+                    FenceRoot(dir, pin = pin)
+                }
+        pinnedRoots + discovered
+    }
 
     /** Every Gradle file that could opt a whole module in. */
     private val buildFiles =
@@ -59,6 +78,7 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
+            "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosInstantFormat.kt" to 3,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/local/CalendarDay.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/repo/EntryRepository.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/LatenessForecast.kt" to 1,

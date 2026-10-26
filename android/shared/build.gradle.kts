@@ -176,6 +176,10 @@ kotlin {
         // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
         // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
+        iosMain.dependencies {
+            // IOS-1a R567: the one approved new dependency, on iOS ONLY. Android keeps its own SQLite.
+            implementation(libs.androidx.sqlite.bundled)
+        }
         androidUnitTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -246,6 +250,37 @@ detekt {
         layout.projectDirectory.dir("src/commonMain/kotlin"),
         layout.projectDirectory.dir("src/commonTest/kotlin"),
         layout.projectDirectory.dir("src/androidMain/kotlin"),
+        layout.projectDirectory.dir("src/iosMain/kotlin"),
+        layout.projectDirectory.dir("src/iosTest/kotlin"),
         layout.projectDirectory.dir("src/androidUnitTest/kotlin"),
+    )
+}
+
+// IOS-1a R565. THE KEYCHAIN NEEDS A BOOTED SIMULATOR. The Kotlin Gradle plugin runs the iOS test binary with
+// `xcrun simctl spawn --standalone <device>`, a bare process with no launchd, no securityd and therefore no
+// keychain: every SecItem call answered errSecNotAvailable (-25291) in IOS-1a's first cloud run. When the workflow
+// passes a device (it boots one first), the tests run non-standalone INSIDE that booted simulator instead. Nothing
+// changes on any other machine: with no property set, the plugin's defaults apply untouched.
+providers.gradleProperty("iosSimulatorDevice").orNull?.let { udid ->
+    tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+        device.set(udid)
+        standalone.set(false)
+    }
+}
+
+// IOS-1a R565 (second half). With the simulator booted the Keychain answers - but an UNSIGNED test binary has no
+// keychain access group and every call fails errSecMissingEntitlement (-34018). The simulator reads a binary's
+// entitlements from a Mach-O section (__TEXT,__entitlements), which is how Xcode embeds them for simulator builds,
+// so in CI only (the same property) the test executable is linked with ios-test.entitlements in that section. The
+// linker's own ad-hoc signature then covers it. Test binary only: it never reaches an app, no Apple account.
+// (Signing it afterwards with `codesign --entitlements` was tried first and the simulator refused to spawn it:
+// "Codesigning issue", launchd code 162.)
+providers.gradleProperty("iosSimulatorDevice").orNull?.let {
+    val entitlements = layout.projectDirectory.file("ios-test.entitlements").asFile.absolutePath
+    kotlin.iosSimulatorArm64().binaries.getTest("DEBUG").linkerOpts(
+        "-sectcreate",
+        "__TEXT",
+        "__entitlements",
+        entitlements,
     )
 }

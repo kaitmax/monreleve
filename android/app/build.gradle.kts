@@ -327,6 +327,13 @@ tasks.withType<Test> {
     inputs.dir("$projectDir/../shared/src/commonMain/kotlin")
         .withPropertyName("sharedCommonMainSourceForFences")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // IOS-1a R592. ExperimentalTimeOptInAllowlistTest now reads EVERY :shared source set (iosMain, iosTest,
+    // androidUnitTest, a future androidMain) as text, so an opt-in planted in an iOS file must re-run it. Without
+    // this line that edit leaves testDebugUnitTest UP-TO-DATE and the widened fence passes over what it was
+    // widened to see (R283 again, found while planting the RED).
+    inputs.dir("$projectDir/../shared/src")
+        .withPropertyName("sharedEverySourceSetForOptInAllowlist")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("$projectDir/src/main/assets")
         .withPropertyName("bundledAssets")
         .withPathSensitivity(PathSensitivity.RELATIVE)
