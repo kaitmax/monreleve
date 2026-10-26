@@ -1,0 +1,290 @@
+================================================================================
+REPORT-AN-FR-TEXT
+ONE FRENCH FORMATTER: :app MOVES TO THE SHARED fr/text, AND NOTHING ON SCREEN CHANGES
+================================================================================
+TASK     relay/AN-FR-TEXT.txt (read in full from the main checkout, untracked, never
+         committed), rulings R620-R623. A scan of relay/*.txt and REPORT-*.txt
+         found R620-R623 only in that prompt, so none was renumbered (R162).
+BRANCH   an-fr-text, from origin/main 981e8a8 (ios-1a merged). PENDING MERGE -
+         not merged; nothing pushed to main or production.
+WORKTREE C:/wt/an-fr-text, created by this session; .session-lock.json
+         (gitignored) written at the start, removed at the end. Session artefacts
+         (gate logs, test lists) in C:/wt/an-fr-text/.an-fr-text/, untracked,
+         never staged.
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+:app no longer has a French formatter of its own. Every :app import of
+ch.monreleve.app.fr.format.* now names ch.monreleve.app.fr.text.* (the shared,
+pure-Kotlin formatter from IOS-1a), and android/app/.../fr/format/Dates.kt and
+Numbers.kt are DELETED. The two instant formatters (formatDateTime,
+formatDossierStamp) moved from iosMain to commonMain, so iOS and Android now run
+the SAME function for every French string.
+
+Nothing users can see changed: 0 Paparazzi baselines touched (verifyPaparazziDebug
+green in the full gate), every existing golden green unedited, and every :app
+test runs with its expectations as written - the fr/format tests were MOVED, not
+deleted, and now test the shared code. No copy change, no engine change.
+
+Two commits of code: a50ccc5 (R622), ed5a4ac (R621), in that order (DEVIATION 1).
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+Increments green under fast check. FULL :app:gate GREEN on ed5a4ac; iOS RUN NOT
+COMPLETE on ed5a4ac - STATUS IS NOT COMPLETE.
+  Android: ./gradlew :app:gate --rerun-tasks on code tip ed5a4ac:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1379 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 10m 13s
+    237 actionable tasks: 237 executed
+    EXIT=0
+  iOS (R573): gh workflow run ios-shared.yml --ref an-fr-text -> run 40381406212,
+    workflow_dispatch, headSha ed5a4ac. IN PROGRESS when this report was
+    committed: NO RESULT, neither pass nor fail. The operator reads its
+    conclusion with: gh run view 40381406212. One run dispatched; minutes not yet
+    known.
+  gate:clone NOT RUN and not claimed: nothing under web/ changed.
+  This report commit changes only REPORT-AN-FR-TEXT.txt (paths-ignore).
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ
+--------------------------------------------------------------------------------
+REPORT-IOS-1a.txt: R570 (fr/text in commonMain; FrenchFormatGoldens.kt, 12,021
+input->output strings captured from :app's fr/format; FrTextGoldenTest 7/7),
+DEVIATION 1 (instant formatters in iosMain to avoid the allowlist), DEVIATION 2
+(different package, so :app call sites stay unambiguous), R592 (the allowlist
+discovers every src/<set>/kotlin), UNNUMBERED-3 (this task). R590's rule (opt-ins
+at function scope, allowlist edited in the same commit) from the allowlist test
+itself. Every :app caller of fr/format: R620 below.
+
+--------------------------------------------------------------------------------
+R1 - THE BASELINE ON origin/main 981e8a8
+--------------------------------------------------------------------------------
+origin/main = 981e8a8 "Merge ios-1a: ...", re-verified by git fetch.
+./gradlew --stop (the two leftover daemons), then
+./gradlew :app:gate --rerun-tasks on 981e8a8:
+    test floor OK: 1379 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 15m 30s
+    237 actionable tasks: 237 executed
+    EXIT=0
+Compiler w: lines: 7. Kotlin daemon "multiple sessions" notices: 0 (filtered by
+that exact text and counted separately, per the operator's ruling; none occurred).
+The 7 are: MockProviderReplay.kt:4:8 Criteria deprecated (x2), LiveLocation.kt
+:134:30 overrides a deprecated member (x2), MainActivity.kt:781:26
+LocalLifecycleOwner deprecated (x2), and KGP's "Disabled Kotlin/Native Targets"
+notice (x1) - which is printed with a "w:" prefix and so is counted, but is a
+Gradle plugin notice about the iOS targets on Windows, not a compiler warning.
+
+--------------------------------------------------------------------------------
+R620 - THE CALL SITES, LISTED FIRST
+--------------------------------------------------------------------------------
+Search: git grep "import ch.monreleve.app.fr.format\." 981e8a8 -- android
+-> 59 import lines in 31 files, plus the 5 test files that lived IN the package.
+The replacement for EVERY site is the same-named symbol in ch.monreleve.app.fr.text
+(identical signature), so each row's change is its import line only.
+
+POSITIVE CONTROL - the Aujourd'hui year card (AujourdhuiScreen.kt, YearSection at
+L179, YearHeroCard at L200): the search found L195-196 (SignedDays,
+formatSignedDays - the animated remaining days) and L207-208 (formatPercent - the
+fiscal and social ceilings); the card's rate goes through RateDisplay.kt L45
+(formatDeclarableRate), also found.
+
+file (android/app/src/...)                         line: call                         -> fr/text
+main/.../MainActivity.kt                           977 formatPercent                  -> fr.text.formatPercent
+main/.../design/MetricTile.kt                      28 SignedDays (type)               -> fr.text.SignedDays
+main/.../design/RateDisplay.kt                     45 formatDeclarableRate, 57 formatPercent
+main/.../design/rail/ThresholdRail.kt              166, 202 formatDeclarableRate; 293 formatPercent
+main/.../detection/EveningNotifier.kt              318, 320 formatDayLong
+main/.../dev/DevRecorderActivity.kt                114, 130 formatDate
+main/.../dev/GalleryComponentSections.kt           48 formatPercent; 92, 101 formatSignedDays;
+                                                   143 formatDate; 144 formatDateTime; 145 formatDays
+main/.../fr/ComparisonCopy.kt                      26 formatPoints; 29, 42, 47 formatDays
+main/.../fr/NotificationCopy.kt                    61 formatDate
+main/.../aujourdhui/AujourdhuiScreen.kt            151 formatDayLong; 195 SignedDays; 196
+                                                   formatSignedDays; 207, 208 formatPercent
+main/.../aujourdhui/AujourdhuiSections.kt          191 formatDayLong; 232 formatDays
+main/.../calendrier/BulkConfirmationDialog.kt      63 formatDate
+main/.../calendrier/CalendarEditSheet.kt           98 formatDayLong
+main/.../calendrier/CalendarList.kt                139 formatDayLong
+main/.../calendrier/CalendarSheetProvenance.kt     60, 61 formatDateTime
+main/.../calendrier/CalendrierScreen.kt            144 formatMonthYear; 305 formatDays
+main/.../calendrier/CompleteCard.kt                46 formatMonthNameLower
+main/.../comparison/ComparisonScreen.kt            164 formatDeclarableRate; 165 formatPercent
+main/.../parametres/ParametresAccountSection.kt    113 formatDate
+main/.../parametres/ParametresListRows.kt          40 formatDate
+main/.../parametres/ParametresRateChange.kt        67 formatDeclarableRate
+main/.../parametres/ParametresSections.kt          180 formatPercent
+main/.../prevision/PrevisionScreen.kt              166, 167 formatPercent; 216, 222
+                                                   formatDeclarableRate; 252, 258
+                                                   formatSignedDays; 271 SignedDays
+main/.../releve/ReleveHeader.kt                    54, 146 formatPercent; 59, 150, 178, 181,
+                                                   189, 193 formatDays; 83, 101, 151
+                                                   formatDossierStamp; 139 formatDate
+main/.../releve/ReleveScreen.kt                    257 formatDossierStamp
+main/.../releve/ReleveSections.kt                  77, 78, 114 formatPercent; 99, 222
+                                                   formatDeclarableRate; 137 formatSignedDays;
+                                                   218 formatMonthName; 219-221 formatDays;
+                                                   316, 342 formatDate; 331-333 formatDossierStamp
+main/.../simulation/SimulationCard.kt              58, 59 formatPercent; 95, 101
+                                                   formatDeclarableRate; 116, 122 formatSignedDays
+debug/.../debug/DebugSeederActivity.kt             94 DATE_TIME_ZONE (const) -> fr.text.DATE_TIME_ZONE
+androidTest/.../RateOneStringInstrumentedTest.kt   87, 108 formatPercent
+test/.../design/ComponentsScreenshotTest.kt        42 formatPercent; 99, 110 SignedDays
+test/.../aujourdhui/DeclarableRateDisplayTest.kt   92-140 formatDeclarableRate (13 calls)
+test/.../fr/format/{DatesTest, LocaleTrapsTest, NumbersExhaustiveTest, NumbersTest,
+  ReleveDateTextGoldenTest}.kt                      in-package calls -> moved to fr/text (R621)
+
+No caller needed a form fr/text does not produce: STOP was not needed.
+DATE_TIME_ZONE was the one symbol fr/text did not export; it moved with the instant
+formatters (R622) - the same constant, moved, not a second implementation.
+
+After: git grep "ch\.monreleve\.app\.fr\.format" ed5a4ac -- android -> 0 lines
+(the same search found 59 import lines before: the absence has its control).
+
+--------------------------------------------------------------------------------
+R621 - ONE HOME (commit ed5a4ac)
+--------------------------------------------------------------------------------
+- 31 files' imports switched (main 27 incl. 2 in fr/, debug 1, androidTest 1,
+  test 2), plus the 5 moved test files' package lines. No call expression changed.
+- DELETED: android/app/src/main/kotlin/ch/monreleve/app/fr/format/Dates.kt and
+  Numbers.kt. The release dex no longer references java.text.DecimalFormat
+  (1 reference before, 0 after - R623).
+- THE fr/format TESTS ARE MOVED, NOT DELETED: git mv to
+  android/app/src/test/kotlin/ch/monreleve/app/fr/text/, same package as the
+  shared code, so they call fr/text's functions with no import. Edits: the
+  package line of each, and NumbersTest's own self-path (its no-literal-NBSP
+  check reads its own file). Every expectation is as written. Reason: the
+  goldens SAMPLE (every 13th n for formatPercent) where NumbersExhaustiveTest is
+  EXHAUSTIVE against an integer oracle (R26: every n in 0..10000, every half day
+  to 5000, every signed half day to 2000); LocaleTrapsTest proves the output
+  immune across device locales and DatesTest across JVM default zones - none of
+  which the goldens express. Keeping them is the stronger proof, and it keeps them
+  in a JVM test source set with Kotest (which :shared's test sets do not have;
+  adding it there would be a dependency - Ask first).
+- RateFloatFenceTest: its PATH entry and its positive-control declaration map
+  named app/.../fr/format/Numbers.kt; both now name
+  shared/src/commonMain/.../fr/text/FrNumbers.kt (which declares `rate: Double`,
+  so the positive control still finds a real declaration). A path, not an
+  expectation (DEVIATION 2).
+- ktlint import ordering: ThresholdRail.kt and DeclarableRateDisplayTest.kt
+  (fr.rail now sorts before fr.text).
+- FrNumbers.kt header: no longer says :app keeps its own copy.
+The 12,021 goldens (FrTextGoldenTest, 7 tests) and the 1,910 instant goldens
+(FrInstantFormatGoldenTest, 5 tests) are unedited and green on the JVM in the gate
+and on the simulator in the iOS run.
+
+--------------------------------------------------------------------------------
+R622 - THE INSTANT FORMATTERS (commit a50ccc5)
+--------------------------------------------------------------------------------
+MOVED, because it removes a duplicate: :app called formatDateTime
+(CalendarSheetProvenance, GalleryComponentSections) and formatDossierStamp
+(ReleveHeader, ReleveScreen, ReleveSections) from its own java.time copy in
+fr/format/Dates.kt; iosMain is invisible to :app, so leaving them in iosMain would
+have meant keeping that copy. Now one implementation:
+  shared/src/iosMain/.../ios/IosInstantFormat.kt
+    -> shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrInstants.kt
+  (git mv; package ch.monreleve.app.fr.text; DATE_TIME_ZONE made public there,
+  for DebugSeederActivity; `(48).toChar()` written as '0' - the same char; header
+  rewritten). Opt-ins: 3, all at function scope (formatDateTime,
+  formatDossierStamp, private parseInstant) - unchanged from iOS.
+  shared/src/iosTest/.../ios/FrInstantFormatGoldenTest.kt
+    -> shared/src/commonTest/kotlin/ch/monreleve/app/fr/text/ (package line, two
+  now-redundant imports and the header comment changed; no expectation touched).
+  It now runs on the JVM too: 5/5 in the gate.
+ALLOWLIST, SAME COMMIT (R590): ExperimentalTimeOptInAllowlistTest's entry
+"shared/src/iosMain/.../IosInstantFormat.kt to 3" became
+"shared/src/commonMain/.../fr/text/FrInstants.kt to 3"; the iosMain root's pin
+(R460) moved from IosInstantFormat.kt to IosMutationId.kt, an existing file.
+The allowlist test passed (fastCheck + the targeted run, then the full gate): it
+asserts the counts EXACTLY, so the moved file was found with its 3 and the old
+path's absence is checked by the same equality.
+FrDates.kt's "WHAT IS NOT HERE" comment updated to point at FrInstants.kt.
+
+--------------------------------------------------------------------------------
+R623 - PROOF
+--------------------------------------------------------------------------------
+TEST COUNTS (JUnit XML of testDebugUnitTest, both full gates, --rerun-tasks):
+                     981e8a8 (before)            ed5a4ac (after)
+  :app               1379 tests, 177 classes     1379 tests, 177 classes
+  :shared (JVM)       140 tests,  24 classes      145 tests,  25 classes
+  failures/errors/skipped: 0/0/0 in all four.
+:app names: the before and after lists are IDENTICAL once
+ch.monreleve.app.fr.format. is read as ch.monreleve.app.fr.text. - the 66 fr/format
+tests (DatesTest 23, LocaleTrapsTest 7, NumbersExhaustiveTest 12, NumbersTest 22,
+ReleveDateTextGoldenTest 2) all still run, now against fr/text. NO TEST DISAPPEARED.
+:shared +5, exactly FrInstantFormatGoldenTest's five, which previously ran only on
+iOS: dateTimeInParisMatchesAndroid, dateTimeInUtcNewYorkAndZurichMatchesAndroid,
+dossierStampMatchesAndroid, refusalsCarryAndroidsMessages, theGoldensAreNotEmpty.
+iOS: run 40381406212 still in progress at report time - count NOT KNOWN (IOS-1a: 192).
+PAPARAZZI: verifyPaparazziDebug ran in the after-gate and passed; 0 files changed
+under android/app/src/test/snapshots (git diff 981e8a8 ed5a4ac -- that path: empty;
+working tree clean); no record task was run.
+RELEASE APK (app-release-unsigned.apk, built from 981e8a8 in a detached worktree
+of this session at C:/wt/an-fr-text/.an-fr-text/before, removed after, and from
+ed5a4ac by the gate):
+  file size        1,989,376 -> 1,989,376 bytes (the files differ: cmp, byte 271)
+  classes.dex      3,256,872 -> 3,264,360 bytes uncompressed (+7,488)
+                   1,552,343 -> 1,557,188 bytes compressed   (+4,845)
+  Ljava/text/DecimalFormat; in classes.dex: 1 -> 0
+  The pure-Kotlin formatter (shortest digits, Dekker product, tables) is a few KB
+  more dex than the java.text calls it replaces. That the APK's total size is
+  identical to the byte while its dex grew is measured, not explained (PARKED).
+COMPILER w: LINES in the after-gate: 7, the same 7 as before; daemon "multiple
+sessions" notices: 0. (The fastCheck runs printed "Language version 1.9 is
+deprecated" twice, from :shared's kspDebug/kspReleaseKotlinAndroid; neither full
+gate printed it - 0 in both - and no language setting was changed.)
+
+--------------------------------------------------------------------------------
+PARKED (UNNUMBERED - no series letter is free, per the prompt; no parking.md edit)
+--------------------------------------------------------------------------------
+UNNUMBERED-1  ParisDay.kt's "two Europe/Paris literals ... wait on fr/format's
+  multiplatform story" is now resolvable: fr.text.DATE_TIME_ZONE is in commonMain
+  beside PARIS_ZONE. Not done (scope: no engine/dossier change).
+UNNUMBERED-2  Comments that still describe fr/format as present in :app, now
+  stale but harmless: CopyDuplicationTest.kt:24, CopyReachabilityTest.kt:56,162,
+  169 (a failure-message string), ParametresCopyAccentTest.kt:28,
+  ParametresAccountSection.kt:94, CalendarCopy.kt:5, ParametresCopy.kt:153,
+  StatusCopy.kt:28, ServerInstantParseGoldenTest.kt:24, FrTextGoldenTest.kt:7 and
+  FrenchFormatGoldens.kt:5 (these two are history and true), docs/audit-android.md
+  552-553. Left: editing test messages and copy-file comments is outside R621.
+UNNUMBERED-3  The moved fr/format tests run on the JVM only (they are Kotest, in
+  :app). Porting them to :shared commonTest (kotlin.test) would run the R26
+  exhaustive oracle on the simulator too; it is a rewrite of test structure, so it
+  is a question (Q1), not done.
+UNNUMBERED-4  The release APK's total size is identical before and after while
+  classes.dex grew by 4,845 compressed bytes; the packager's padding is the likely
+  cause and was not investigated.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. ORDER: R622 was committed BEFORE R621 (prompt order: R621, then R622). :app
+   calls formatDateTime/formatDossierStamp, which lived only in :app and iosMain;
+   fr/format could not be deleted until they had a commonMain home.
+2. :app TEST FILES EDITED, NO EXPECTATION EDITED: RateFloatFenceTest (two paths to
+   the deleted Numbers.kt re-pointed to FrNumbers.kt), the five moved fr/format
+   tests (package line; NumbersTest's self-path), ExperimentalTimeOptInAllowlistTest
+   (R622's allowlist entry and pin, required by R590), import lines in
+   ComponentsScreenshotTest, DeclarableRateDisplayTest (also re-ordered for ktlint)
+   and RateOneStringInstrumentedTest.
+3. The fr/format tests were MOVED rather than allowed to disappear (R623 permits
+   disappearance; this keeps more coverage - see R621).
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  Should the moved fr/format tests (now app/src/test/.../fr/text/, Kotest, JVM)
+    be ported to :shared commonTest with kotlin.test so the R26 exhaustive checks
+    also run on iOS (UNNUMBERED-3)? Or is Kotest in :shared's androidUnitTest
+    wanted (a test dependency - Ask first)?
+Q2  ParisDay's PARIS_ZONE and fr.text.DATE_TIME_ZONE: one constant (UNNUMBERED-1)?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Branch an-fr-text pushed: code tip ed5a4ac (gate green); this report commit follows it.
+The lock .session-lock.json is removed after the push.
