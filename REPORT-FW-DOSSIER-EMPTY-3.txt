@@ -1,0 +1,340 @@
+REPORT-FW-DOSSIER-EMPTY-3 - Mon Releve
+THE RELEVE SHOWS PARIS TIME, NAMED; THE TWO NEW REFUSALS SPEAK FOR THEMSELVES;
+A REFUSED BATCH STILL LANDS ITS GOOD DAYS; AND (SCOPE ADDITION R591) A RACE
+LOSER ANSWERS granularity_conflict, NEVER write_failed
+Branch fw-dossier-empty-3, from origin/main 1c1eb82. Session 2026-10-25/26.
+Worktree C:/wt/fw-dossier-empty-3, lock .session-lock.json (removed at the end).
+
+================================================================================
+SUMMARY
+================================================================================
+Four commits on the branch, each gated (gate:changed) before it was made:
+  3a496fe  R586  Paris time, the zone named, on the PDF and the verifier
+                 (closes PARK-H5)
+  14086f8  R587  year_before_activity and canton_missing carry their own French
+  80d733f  R588  the server half of "a refused batch still lands its good days"
+  c11ebf8  R591  SCOPE ADDITION (the operator, 2026-10-26, mid-session): the
+                 write path retries a transaction that lost a race exactly
+                 once (closes PARK-O1, which this task's own R586 gate opened)
+plus this report's commit. No schema, no migration, no engine change; /v1
+additive only (message text, and a 500 that becomes the 400 the contract
+already documents); stored instants stay UTC.
+
+The session was cut off once (the orchestrator's process exited) after
+3a496fe, with R587's tree uncommitted and its visual/db run in flight: that run
+is recorded as NO RESULT and was repeated on the unchanged tree.
+
+================================================================================
+STATUS (R391)
+================================================================================
+GREEN on c11ebf8 (the code tip) - gate:changed before each of the four
+commits (exit lines under GATES) and gate:clone on c11ebf887f43473094e1f98345f8d987d5d95dcf
+("GATE:CLONE PASSED", CLONE_EXIT=0), in this session. The pushed tip adds only
+this report; gate:clone on that commit ran before its push - its exit line is in
+the handback (a report cannot carry the run on the commit that carries it).
+:app:gate not run - no Android change.
+
+================================================================================
+R273 - READ FIRST
+================================================================================
+REPORT-FW-DOSSIER-EMPTY.txt (Q7/PARK-H5, Q8/DEVIATIONS 8, the R582 audit list,
+R580, R583), REPORT-FW-GRANULARITY.txt (R500, R502, its DEVIATIONS 1 - the
+whole-batch 400), relay/FW-DOSSIER-EMPTY-3-COPY.txt (UTF-8 originals). Rulings
+R586-R588 and R591 were free on main and every remote branch (git grep);
+relay/SERIES-TO-IOS-1a.txt allocates the same R586-R588 to this task.
+
+================================================================================
+R1 - THE BASE IS GREEN
+================================================================================
+On 1c1eb82 (origin/main), in this worktree, before any change:
+  pnpm gate       3290 tests passed (191 files), build, size (all routes pass
+                  both gates), parity                         GATE_EXIT=0
+  pnpm gate:clone "GATE:CLONE PASSED" on
+                  1c1eb8286fc9027b1de6b792266be940bf9e858e     CLONE_EXIT=0
+                  (ran register-coverage, fixture-coverage, install, typecheck,
+                  lint, test, build, size, db:deploy, test:db,
+                  test:container:write)
+
+================================================================================
+R586 - PARIS TIME, LABELLED (Q7, closes PARK-H5)            commit 3a496fe
+================================================================================
+SURFACES (every time the R582 audit listed for the PDF and the verifier):
+  1. PDF header, "Date de generation" (generatedAt): app/releve/print/page.tsx
+     stamp() was a second implementation of formatDateTime reading the UTC
+     fields; it IS formatDateTime now (Europe/Paris, SPEC 6.4's one home,
+     R206), and the cell is DOSSIER_COPY.parisTime(stamp) - the operator's
+     label after the time. Prints e.g. "24.10.2026 a 14:32 (heure de Paris)"
+     (a-grave in the product; formatDateTime's own form, a-grave bound by
+     no-break spaces, R29).
+  2. PDF annex, the three stamp columns (firstRecordedAt, lastModifiedAt,
+     clientClaimedAt): same stamp(), Paris; the zone is named ONCE per column,
+     in its heading - "Enregistre le / Modifie le / Saisi hors ligne le
+     (heure de Paris)" - not on each of up to 261 x 3 cells. See DEVIATIONS 1.
+  3. Verifier /verifier/<code>, all three dates (the vouch "emis ... le",
+     the superseded notice, and the "Date de generation" field):
+     VerificationContent.tsx dateOf() was formatDate(iso.slice(0, 10)), the
+     UTC date; it is formatDate(parisDayOf(...)) now - the Paris DAY, the date
+     the document itself carries. The page shows a date, never a time (R330's
+     subset, unchanged), so there is no hour to label. See DEVIATIONS 2.
+  The label lives once in lib/fr/dossier.ts (PARIS_ZONE / inParisTime,
+  exported as DOSSIER_COPY.parisTime) and the annex headings are built from it.
+THE TWO DST TESTS, RED THEN GREEN (instants either side of 03:00 Paris on
+25 October 2026, asserted on the rendered output, R225; label read from
+DOSSIER_COPY.parisTime, R181; the wall times are the assertion, R171):
+  tests/db/print-route.test.ts - both read the SAME wall time, 14:32, so the
+  offset is the only variable:
+    x on 24 October (UTC+2), 12:32Z prints as 14:32, the zone named
+    x on 26 October (UTC+1), 13:32Z prints as 14:32, the zone named
+      RED: the page printed "24.10.2026 12:32" / "26.10.2026 13:32"
+      ("expected '<link rel=...' to contain '<dt>Date de generation</dt><dd>
+      24.10....'"); 2 failed | 19 passed.  GREEN after: 21 passed.
+  tests/unit/pages/verifier.test.tsx - midnight-crossing instants:
+    x on 24 October (UTC+2), 22:30Z is already the 25th
+    x on 26 October (UTC+1), 23:30Z is the 27th and 22:30Z still the 26th
+      (the second instant is the control that tells UTC+1 from a fixed +2)
+      RED: "emis ... le 24.10.2026" against expected 25.10.2026, and
+      26.10.2026 against 27.10.2026; 2 failed | 6 passed.  GREEN: 8 passed.
+BASELINES: none photographs a time (only verifier-inconnu, which shows no
+date). R207 expectation written before the run: none. Visual: 111 passed, none
+regenerated.
+
+================================================================================
+R587 - THE TWO MESSAGES (Q8)                                commit 14086f8
+================================================================================
+lib/fr/auth-api.ts gains yearBeforeActivity(year) and cantonMissing - the
+operator's wording, typographic apostrophe and a no-break space before the
+colon (n(':')). Wired on /api/v1/dossier and /api/v1/export/csv (both codes)
+and /api/v1/export/pdf (year_before_activity). The PDF's canton-less answer is
+dossier_incomplete (R583, not renamed) and keeps its message (QUESTIONS 2).
+THE LABEL CHOSEN: "canton de travail". The prompt's premise was that the app
+asks for "le canton de votre employeur" - true of onboarding (CANTON_TITLE,
+CANTON_INFO) and of the field error ERROR_CANTON_MISSING. But the message sends
+the reader to "vos parametres", and there the app labels the row AND its edit
+sheet OnboardingCopy.CANTON_LABEL = "Canton de travail"
+(ParametresSections.kt:53, ParametresFields.kt:69). That is the app's own
+LABEL for the field, it is the word the reader will find, it is the document's
+own header label, and it keeps the operator's sentence verbatim. The app's
+second name for the same field is parked (PARK-O2). See QUESTIONS 1.
+TESTS (tests/db/dossier-route.test.ts), asserted on each response (R225), the
+expected text read from AUTH_API_COPY (R181), each also against the borrowed
+message:
+  RED: year_before_activity - "expected 'L'annee demandee est absente ou mal
+  f...' to be 'Aucun releve ne peut etre etabli pour...'"; canton_missing -
+  "expected 'Le service n'a pas pu lire ces journe...' to be 'Indiquez votre
+  canton de travail dans...'"; 2 failed | 24 passed.  GREEN: 26 passed
+  (40 with export-csv). The year reaches the sentence (R154: toContain('2025')).
+docs/api-v1.md 8.3 (both carry their own message; the text lives in
+AUTH_API_COPY, not repeated) and 11.3 (the year_before_activity exception).
+
+================================================================================
+R588 - A REFUSED BATCH STILL LANDS ITS GOOD DAYS (server half)  commit 80d733f
+================================================================================
+tests/db/entries-granularity.test.ts, through the route (R204), "FW-DOSSIER-
+EMPTY-3 R588: one conflicting day and two valid ones: 400 and nothing written,
+then 200, 200, 400 item by item":
+  - stored day 2026-04-07 FULL via the route; POSITIVE CONTROL: 1 row, 1 event
+    (CREATED FULL);
+  - batch [04-08 FULL HOME, 04-09 FULL CH, 04-07 AM HOME] -> 400
+    granularity_conflict; rows equal to before, event count still 1;
+  - each item alone, in order -> [200, 200, 400];
+  - end: rows 04-07 FULL CH / 04-08 FULL HOME / 04-09 FULL CH; the two valid
+    days one CREATED event each; the stored day's row toEqual its pre-batch
+    row and its events toEqual its single original event.
+A pin of existing behaviour, so it passed first run and was PROVEN ABLE TO
+FAIL (R180): the route planted to answer the conflict 409 (plant verified: 1
+occurrence) -> "AssertionError: expected 409 to be 400"; restored and
+cmp-identical, git diff empty.
+
+================================================================================
+R591 - SCOPE ADDITION: A RACE LOSER ANSWERS granularity_conflict  commit c11ebf8
+================================================================================
+Added by the operator on 2026-10-26 after this task's own gates met it (PARK-O1
+below). lib/entries/write.ts: retryOnceIfRaceLost wraps the transaction; it
+retries EXACTLY ONCE, ONLY when the error's code is P2034, 40P01 or 40001 (or
+the SQLSTATE is in Prisma's meta); everything else is rethrown untouched; a
+retry that fails again falls through to today's mapping (write_failed); there
+is no third attempt. One console.warn line when it retries.
+THE TEST FORCES THE PATH (tests/db/entries-retry.test.ts, 6 tests, through the
+route): the cached client's $transaction runs the REAL transaction and throws
+the deadlock inside it on the chosen attempts - after the body's writes where
+the case needs them - so PostgreSQL rolls the attempt back as it would a real
+victim.
+  RED on the old code: 5 failed | 1 passed -
+    "expected 500 to be 400"  (a loser against the winner's FULL)
+    "expected 500 to be 200"  (a loser with nothing to conflict with; 40P01,
+                               40001 alike)
+    "expected 1 to be 2"      (a double failure: only one attempt)
+    (passing: "any other failure behaves as before" - not retried, 500)
+  GREEN: 6 passed -
+    loser vs winner's other granularity: 400 granularity_conflict, 2
+      attempts, event count unchanged;
+    no conflict: 200, 2 attempts, EXACTLY ONE row and ONE CREATED event -
+      the rolled-back first attempt left none;
+    SQLSTATE 40P01 and 40001 retried the same way;
+    retry fails again: 500 write_failed, exactly 2 attempts, no row, no event;
+    any other error: not retried (1 attempt), 500 write_failed.
+  The 100-run race test stays: 8 of 8 runs green after the change (800 races);
+  before it, 2 of 7 runs failed (below).
+docs/api-v1.md 6.1 gains one paragraph (the retry, and that a race alone never
+answers 500).
+
+================================================================================
+GATES
+================================================================================
+gate:changed before each commit; test:db always on the scratch database
+monreleve_fwde3 (frontalier-postgres :5436), migrated with db:deploy and
+verified by current_database() before any run.
+  R586 (3a496fe): run 1 typecheck, lint, test 3292 passed, build, test:e2e 338
+    passed; test:visual NO RESULT (ENOMEM in the container's pnpm install,
+    before any test; host ~2.1 GB free). Then on the unchanged tree:
+    test:visual 111 passed; test:db 1 failed | 704 passed (the race, PARK-O1);
+    test:db 705 passed | 26 skipped; test:late 10 passed.
+  R587 (14086f8): run 1 typecheck, lint, test 3292, build, e2e 338; visual
+    ENOMEM NO RESULT; run 2 NO RESULT (session cut off mid-install); run 3
+    visual 111 passed, test:db 1 failed | 706 passed (the race again); run 4
+    test:db 707 passed | 26 skipped, test:late 10 passed.
+  R588 (80d733f): selection typecheck, lint, test, build, test:db -
+    test 3292, test:db 708 passed | 26 skipped; "GATE PASSED for the paths
+    changed", GATE_CHANGED_EXIT=0.
+  R591 (c11ebf8): same selection - test 3292, test:db 714 passed | 26
+    skipped; "GATE PASSED", GATE_CHANGED_EXIT=0.
+  gate:clone on c11ebf887f43473094e1f98345f8d987d5d95dcf: "GATE:CLONE PASSED",
+    CLONE_EXIT=0 - ran register-coverage, fixture-coverage, install,
+    typecheck, lint, test, build, size, db:deploy, test:db,
+    test:container:write (claim: this commit builds and passes those from a
+    clean checkout; not run there, named by the harness: e2e, visual,
+    runtime - e2e and visual ran in gate:changed for R586 and R587).
+:app:gate not run: no Android file changed (git diff 1c1eb82..HEAD -- android/
+is empty).
+
+================================================================================
+WALKTHROUGH (R176) - pnpm dev on :3000, scratch database, real HTTP
+================================================================================
+/api/health -> 200 service "monreleve". One @example.invalid account, bearer
+token seeded in the scratch database.
+R588 over HTTP: store 2026-10-05 FULL -> 200 (events: 1 CREATED); batch [Y
+2026-10-06, Z 2026-10-07, X-AM 2026-10-05] -> 400 granularity_conflict (events
+still 1); Y alone 200, Z alone 200, X-AM alone 400 granularity_conflict; ends
+with three FULL rows, one CREATED each; X's row identical to before.
+R587 over HTTP (activityStartDate 2026-03-02, year 2025):
+  /dossier, /export/csv, /export/pdf -> 400 year_before_activity, each with
+  the new sentence naming 2025; with canton NULL, year 2026: /dossier and
+  /export/csv -> 422 canton_missing with the new sentence; /export/pdf -> 422
+  dossier_incomplete with read_failed's sentence (unchanged, QUESTIONS 2).
+R586 over HTTP: /releve/print?generatedAt=2026-10-24T22:30:00Z -> "Date de
+  generation: 25.10.2026 a 00:30 (heure de Paris)"; ?generatedAt=
+  2026-10-26T13:32:00Z -> "26.10.2026 a 14:32 (heure de Paris)"; the three
+  annex headings carry "(heure de Paris)"; the 07.10.2026 row, recorded
+  through the API at 2026-10-26T11:33Z, shows "26.10.2026 a 12:33" (UTC+1).
+  /verifier/<code> for an issuance generated 2026-10-24T22:30Z, superseded
+  2026-10-26T23:30Z: "Ce releve correspond a celui emis par Mon Releve le
+  25.10.2026.", "Une version plus recente ... a ete emise le 27.10.2026.",
+  Date de generation 25.10.2026.
+The dev server tree was killed by PID (taskkill /T) and port 3000 asserted
+free, with :5436 listed as the positive control.
+
+================================================================================
+NEW COPY (verbatim, UTF-8 in lib/fr; this report is ASCII, so it is quoted
+from the source by key - R168/R206)
+================================================================================
+  DOSSIER_COPY.parisTime(text)       `${text} (heure de Paris)`
+  DOSSIER_COPY.annex.firstRecordedAt  "Enregistre le (heure de Paris)"   [e acute]
+  DOSSIER_COPY.annex.lastModifiedAt   "Modifie le (heure de Paris)"      [e acute]
+  DOSSIER_COPY.annex.clientClaimedAt  "Saisi hors ligne le (heure de Paris)"
+  AUTH_API_COPY.yearBeforeActivity(year)
+      "Aucun releve ne peut etre etabli pour l'annee {year} : elle se termine
+      avant le debut de votre activite."
+      [releve, etre, etabli, annee, debut, activite accented; U+2019
+      apostrophe; U+00A0 before the colon]
+  AUTH_API_COPY.cantonMissing
+      "Indiquez votre canton de travail dans vos parametres pour etablir
+      votre releve."   [parametres, etablir, releve accented]
+
+================================================================================
+PARKED (series O, claimed free via register-coverage.mjs; Z is kmp-dt's)
+================================================================================
+PARK-H5  CLOSED by R586.
+PARK-O1  NEW and CLOSED in this task - two concurrent FULL/AM writes for one
+         day could deadlock and the loser answered 500 write_failed; measured
+         2 failures in 7 executions of the 100-race (~1 race in 350), red in
+         this task's gates twice. Closed by R591 (option (a), retry once).
+PARK-O2  NEW, OPEN - the app names the canton field two ways: "Canton de
+         travail" (Parametres row and sheet) and "le canton de votre
+         employeur" (onboarding, ERROR_CANTON_MISSING - shown on the same
+         Parametres screen). The operator's: one name everywhere.
+register-coverage.mjs: "register coverage: OK - 164 cited id(s) across 132 report(s), all have headings
+  in parking.md" (with this report present).
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R586's "every time ... with the zone named" is applied per instance on the
+   generation stamp, but ONCE PER COLUMN in the annex heading, not on each
+   annex cell: three stamps per row on up to 261 rows would double the
+   table's width for a label that is the same on every cell. Conservative
+   reading (R156); per-cell is a one-line change in stamp() if wanted.
+2. The verifier shows DATES, never times (R330's subset), so its dates became
+   the Paris DAY and carry no "(heure de Paris)" label - a date has no hour to
+   qualify. The time was not added to the page (that would be new information
+   on a public page, R330).
+3. The annex and the generation stamp now read formatDateTime's form,
+   "24.10.2026 a 14:32" (SPEC 6.4, a-grave bound by no-break spaces), where
+   stamp() printed "24.10.2026 14:32". The old form was the second
+   implementation being removed.
+4. R587's label: "canton de travail", not the prompt's expected "canton de
+   votre employeur" - the prompt asked for the app's own LABEL, and the app's
+   label for that field in Parametres is "Canton de travail" (R587 above).
+5. gate:changed for R586 and R587 did not finish in one run: test:visual's
+   container install hit ENOMEM (NO RESULT) and R587's second attempt was cut
+   off with the session; the remaining selected suites were run on the
+   UNCHANGED tree and only then were the commits made. test:db went red once
+   per increment on the pre-existing race (PARK-O1) and green on re-run; both
+   reds are in the commit bodies.
+6. SCOPE ADDITION R591 was added mid-session by the operator and has its own
+   commit (c11ebf8).
+7. The walkthrough's database readout of firstRecordedAt (pg driver, naive
+   timestamp read as local time) was an hour off and is not quoted; the API's
+   own firstRecordedAt is.
+
+================================================================================
+QUESTIONS
+================================================================================
+1. canton_missing says "canton de travail" (the Parametres label). If the
+   operator prefers the onboarding wording, it is one sentence in
+   lib/fr/auth-api.ts: "Indiquez le canton de votre employeur dans vos
+   parametres ...". Either way PARK-O2 asks for one name in the app.
+2. /export/pdf answers a canton-less account 422 dossier_incomplete with
+   read_failed's sentence ("l'application reessaiera"). R587 named only the
+   two codes; should dossier_incomplete's message, when the cause is the
+   canton, read like canton_missing's (code unchanged)?
+3. Should the annex label every cell rather than its headings (DEVIATIONS 1),
+   or the verifier show the time with the label (DEVIATIONS 2)?
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- Foreign session locks at the start: C:/wt/an-account-tag (AN-ACCOUNT-TAG,
+  2026-10-20) and C:/wt/fw-gate-clean (2026-10-16) - stale-looking, untouched.
+  C:/wt/kmp-dt's lock and its :app:gate (java, ~3.3 GB) appeared mid-session;
+  untouched.
+- Another project's dev server (tizicorp, :3200) and containers (homev2-after,
+  ux17-after, four other postgres) ran during the session; untouched. The
+  visual container's ENOMEM tracks host memory, not this change.
+- The dev database (frontalier-postgres :5436, database frontalier) was never
+  written; every test and the walkthrough ran on monreleve_fwde3.
+
+================================================================================
+PUSH PROOF
+================================================================================
+  c11ebf8  gate:clone PASSED on c11ebf887f43473094e1f98345f8d987d5d95dcf
+           (CLONE_EXIT=0, read from its log), then in its own step:
+           git push origin fw-dossier-empty-3
+           -> " * [new branch]      fw-dossier-empty-3 -> fw-dossier-empty-3"
+           git ls-remote origin refs/heads/fw-dossier-empty-3
+           -> c11ebf887f43473094e1f98345f8d987d5d95dcf
+  the report commit: gate:clone before its push - in the handback.
+PENDING MERGE (the operator's, after reading this report). main and production
+were never pushed; no production access of any kind; the upstream was unset at
+creation so a bare push could not aim at main.
+
+END OF REPORT-FW-DOSSIER-EMPTY-3

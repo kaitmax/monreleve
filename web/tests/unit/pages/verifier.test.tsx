@@ -96,3 +96,44 @@ describe('the neutral states (R330)', () => {
     expect(text).not.toContain(VERIFICATION_COPY.unknown);
   });
 });
+
+// FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5): THE PAGE'S DATES ARE PARIS DAYS.
+//
+// The page shows the issue date - in the vouch, in the superseded notice and
+// under the document's own "Date de génération" label - as a DATE, never a
+// time (R330's subset of what is printed). It printed the instant's UTC date,
+// so a relevé issued at 00:30 on 1 January in Paris was "émis le 31.12".
+// Now the Paris day: the date the document itself carries.
+//
+// Paris left summer time at 03:00 on 25 October 2026. Each instant below sits
+// half an hour either side of a Paris midnight, so only the right offset lands
+// it on the right day: 22:30Z on the 24th is 00:30 on the 25th at UTC+2; 23:30Z
+// on the 26th is 00:30 on the 27th at UTC+1, and 22:30Z the same evening is
+// still the 26th (23:30) - which a fixed UTC+2 would call the 27th. The dates
+// are the assertion (R171).
+describe('FW-DOSSIER-EMPTY-3 R586: the dates shown are the Paris day, either side of the DST change', () => {
+  it('on 24 October (UTC+2), 22:30Z is already the 25th', () => {
+    const text = textOf({
+      kind: 'found',
+      view: { ...VIEW, generatedAt: '2026-10-24T22:30:00.000Z', supersededAt: '2026-10-24T22:45:00.000Z' },
+    });
+
+    expect(text).toContain(VERIFICATION_COPY.vouch('25.10.2026'));
+    expect(text).toContain(VERIFICATION_COPY.superseded('25.10.2026'));
+    expect(text).toContain(`${DOSSIER_COPY.header.generatedAt}25.10.2026`);
+    expect(text).not.toContain('24.10.2026');
+  });
+
+  it('on 26 October (UTC+1), 23:30Z is the 27th and 22:30Z still the 26th', () => {
+    const late = textOf({ kind: 'found', view: { ...VIEW, generatedAt: '2026-10-26T23:30:00.000Z' } });
+
+    expect(late).toContain(VERIFICATION_COPY.vouch('27.10.2026'));
+    expect(late).toContain(`${DOSSIER_COPY.header.generatedAt}27.10.2026`);
+
+    // The control that tells UTC+1 from a fixed UTC+2.
+    const evening = textOf({ kind: 'found', view: { ...VIEW, generatedAt: '2026-10-26T22:30:00.000Z' } });
+
+    expect(evening).toContain(VERIFICATION_COPY.vouch('26.10.2026'));
+    expect(evening).not.toContain('27.10.2026');
+  });
+});

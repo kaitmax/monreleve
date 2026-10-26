@@ -56,6 +56,16 @@ const n = (mark: string): string => `${NB}${mark}`;
 /** The document's own name, as it appears at the top of the page. */
 const TITLE = 'Relevé annuel de télétravail';
 
+/**
+ * FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5): the zone every time on the
+ * document is shown in, NAMED. The operator's example, verbatim:
+ * « 14:32 (heure de Paris) ».
+ */
+const PARIS_ZONE = 'heure de Paris';
+
+/** A formatted time - or a column heading over such times - with the zone named after it. */
+const inParisTime = (text: string): string => `${text} (${PARIS_ZONE})`;
+
 export const DOSSIER_COPY = {
   title: TITLE,
 
@@ -80,6 +90,26 @@ export const DOSSIER_COPY = {
   emptyYear: (year: number): string =>
     `Aucune journée n${APOS}est enregistrée pour l${APOS}année ${year}. ` +
     `Les taux de ce relevé sont calculés sur zéro journée et ne décrivent pas votre situation.`,
+
+  /**
+   * FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5): EVERY TIME THE DOCUMENT SHOWS
+   * IS PARIS TIME, AND SAYS SO.
+   *
+   * The server stores every instant in UTC and still does - only what is
+   * printed changed. The document used to print those instants as a UTC wall
+   * clock with no zone named, so a relevé generated at 00:30 on 1 January in
+   * Paris said 31 December 23:30, and a day recorded at 00:30 carried a
+   * receipt stamp dated the day before it. Europe/Paris is the clock of every
+   * calendar day in this product (R28, R582); the label says which clock the
+   * reader is holding.
+   *
+   * It takes the instant ALREADY FORMATTED (formatDateTime, pinned to
+   * Europe/Paris) and appends the zone, so the generation stamp reads
+   * « 24.10.2026 à 14:32 (heure de Paris) ». The annex's three stamp columns
+   * carry the same label once, in their heading, rather than on every cell of
+   * a table that runs to 261 rows (annex below).
+   */
+  parisTime: inParisTime,
 
   // --------------------------------------------------------------------
   // 1. Header — SPEC 12 item 1
@@ -316,9 +346,12 @@ export const DOSSIER_COPY = {
     portion: 'Journée',
     kind: 'Nature',
     note: 'Note',
-    firstRecordedAt: `Enregistré le`,
-    lastModifiedAt: 'Modifié le',
-    clientClaimedAt: `Saisi hors ligne le`,
+    // R586: the three columns of instants name their zone in the heading - the
+    // operator's label after the column's own words. Every cell beneath is
+    // Paris time; the label on each would double a 261-row table's width.
+    firstRecordedAt: inParisTime('Enregistré le'),
+    lastModifiedAt: inParisTime('Modifié le'),
+    clientClaimedAt: inParisTime('Saisi hors ligne le'),
     provenance: 'Origine',
 
     /** Portions, in words. */

@@ -80,6 +80,58 @@ function isGranularityViolation(cause: unknown): boolean {
 }
 
 /**
+ * FW-DOSSIER-EMPTY-3 (R591): did this transaction LOSE A RACE rather than break?
+ *
+ * Two writers for one day can each wait on the other's uncommitted row under
+ * the exclusion constraint; PostgreSQL ends the cycle by aborting one, and the
+ * victim sees a deadlock or a write conflict - Prisma P2034, or the SQLSTATE
+ * itself (40P01 deadlock_detected, 40001 serialization_failure) where it
+ * surfaces unwrapped - instead of the 23P01 its retry would meet. Recognised by
+ * those codes only; every other error is not a race and is not retried.
+ */
+const RACE_LOST_CODES: readonly string[] = ['P2034', '40P01', '40001'];
+
+function isRaceLost(cause: unknown): boolean {
+  if (typeof cause !== 'object' || cause === null) {
+    return false;
+  }
+
+  const code = 'code' in cause ? (cause as { code?: unknown }).code : undefined;
+
+  if (typeof code === 'string' && RACE_LOST_CODES.includes(code)) {
+    return true;
+  }
+
+  const meta = 'meta' in cause ? JSON.stringify((cause as { meta?: unknown }).meta ?? null) : '';
+
+  return RACE_LOST_CODES.slice(1).some((sqlstate) => meta.includes(sqlstate));
+}
+
+/**
+ * R591: run the transaction, and if it lost a race, run it ONCE more.
+ *
+ * The loser's first attempt was rolled back whole by PostgreSQL, so the retry
+ * starts from nothing: it either meets the winner's committed row - and fails
+ * as the granularity_conflict it really is (400) - or, with no conflict to
+ * meet, lands. A retry that fails again is answered as any failure is
+ * (write_failed); there is never a third attempt, because a writer still
+ * losing on its second try is not a race this can wait out.
+ */
+async function retryOnceIfRaceLost<T>(attempt: () => Promise<T>): Promise<T> {
+  try {
+    return await attempt();
+  } catch (cause) {
+    if (!isRaceLost(cause)) {
+      throw cause;
+    }
+
+    console.warn('[entries] transaction lost a race (deadlock or write conflict); retrying once');
+
+    return attempt();
+  }
+}
+
+/**
  * Apply a batch.
  *
  * THE SERVER CLOCK IS TAKEN ONCE, at the top, and used for every row and every
@@ -92,7 +144,8 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
   const now = new Date();
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    // R591: ONE retry if this transaction lost a race (see retryOnceIfRaceLost).
+    return await retryOnceIfRaceLost(() => prisma.$transaction(async (tx) => {
       // ========================================================================
       // D30, AND THE SET COMES FROM THE APPEND-ONLY TRAIL (R219)
       // ========================================================================
@@ -239,7 +292,7 @@ export async function writeEntries(userId: string, items: EntryItem[]): Promise<
       });
 
       return { ok: true, written, duplicates: items.length - written, entries };
-    });
+    }));
   } catch (cause) {
     // R198: the boundary preserves WHICH rule fired. A unique-constraint
     // violation is the client sending two items for one day-and-portion, which
