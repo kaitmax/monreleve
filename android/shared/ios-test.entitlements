@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- IOS-1a R565. The entitlements the SIMULATOR TEST BINARY is ad-hoc signed with in CI, so SecItem* calls have an
+<!-- IOS-1a R565. The entitlements embedded in the SIMULATOR TEST BINARY in CI (Mach-O section __TEXT,__entitlements), so SecItem* calls have an
      access group to work in (an unsigned binary gets errSecMissingEntitlement, -34018). A test-only identity: it is
      never part of an app, carries no team, and is applied only when the workflow passes -PiosSimulatorDevice. -->
 <plist version="1.0">
