@@ -222,3 +222,93 @@ describe('through the route, as the Android queue sends it (R504)', () => {
     expect(events[0]).toMatchObject({ action: 'CREATED', portion: 'FULL' });
   });
 });
+
+// ============================================================================
+// FW-DOSSIER-EMPTY-3 (R588): A REFUSED BATCH STILL LANDS ITS GOOD DAYS - THE
+// SERVER HALF
+// ============================================================================
+//
+// FW-GRANULARITY kept a whole-batch 400 granularity_conflict (its DEVIATIONS
+// 1), and the operator accepted it on one proof: a batch holding ONE
+// conflicting day and TWO valid ones ends with the two valid days on the
+// server. The app half is SyncEngineTest (R296: a refused multi-item 400 is
+// isolated item by item, once); this is the server's, through the route
+// (R204), with the app's isolation replayed as the requests it sends.
+//
+// THE CONFLICTING DAY IS ALREADY STORED, so the refusal is against the record
+// rather than inside the batch (the R504 test above covers that one), and its
+// own CREATED event is the positive control: the count the refusal must leave
+// unchanged is 1, not 0, so "unchanged" cannot pass on a query that sees
+// nothing.
+describe('FW-DOSSIER-EMPTY-3 R588: a refused batch still lands its good days', () => {
+  it('one conflicting day and two valid ones: 400 and nothing written, then 200, 200, 400 item by item', async () => {
+    const token = (await issueTokenPair(userId)).accessToken;
+    const send = (entries: EntryItem[]): Promise<Response> =>
+      POST(
+        new Request('https://monreleve.ch/api/v1/entries', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({ entries }),
+        }),
+      );
+    const day = (stored: Date): string => stored.toISOString().slice(0, 10);
+
+    // The stored day: a FULL on the 7th, recorded through the route.
+    expect((await send([item({ dayDate: '2026-04-07' })])).status).toBe(200);
+
+    const storedRows = await prisma.entry.findMany({ where: { userId } });
+    const storedEvents = await prisma.entryEvent.findMany({ where: { userId } });
+
+    // POSITIVE CONTROL: the stored day's own event, so every "unchanged" below
+    // is measured against something real.
+    expect(storedRows).toHaveLength(1);
+    expect(storedEvents).toHaveLength(1);
+    expect(storedEvents[0]).toMatchObject({ action: 'CREATED', portion: 'FULL' });
+
+    // The batch as the queue holds it: two valid days, then a half of the
+    // stored whole day - the one conflict.
+    const valid1 = item({ dayDate: '2026-04-08', kind: 'HOME' });
+    const valid2 = item({ dayDate: '2026-04-09' });
+    const conflicting = item({ dayDate: '2026-04-07', portion: 'AM', kind: 'HOME' });
+
+    const batch = await send([valid1, valid2, conflicting]);
+
+    expect(batch.status).toBe(400);
+    expect(await batch.json()).toMatchObject({ status: 'error', code: 'granularity_conflict' });
+    // NOTHING WRITTEN: no row for either valid day, and no event appended.
+    expect(await prisma.entry.findMany({ where: { userId } })).toEqual(storedRows);
+    expect(await prisma.entryEvent.count({ where: { userId } })).toBe(storedEvents.length);
+
+    // The app's isolation (R296), replayed: each item alone, once, in order.
+    const statuses: number[] = [];
+    for (const single of [valid1, valid2, conflicting]) {
+      statuses.push((await send([single])).status);
+    }
+
+    expect(statuses).toEqual([200, 200, 400]);
+
+    // The server ends holding exactly the two valid days beside the stored one...
+    const rows = await prisma.entry.findMany({ where: { userId }, orderBy: { dayDate: 'asc' } });
+
+    expect(rows.map((row) => [day(row.dayDate), row.portion, row.kind])).toEqual([
+      ['2026-04-07', 'FULL', 'CH'],
+      ['2026-04-08', 'FULL', 'HOME'],
+      ['2026-04-09', 'FULL', 'CH'],
+    ]);
+
+    // ...each valid day with one CREATED event...
+    const events = await prisma.entryEvent.findMany({ where: { userId }, orderBy: { dayDate: 'asc' } });
+    const storedId = storedRows[0]?.id;
+
+    expect(
+      events.filter((event) => event.entryId !== storedId).map((event) => [day(event.dayDate), event.action]),
+    ).toEqual([
+      ['2026-04-08', 'CREATED'],
+      ['2026-04-09', 'CREATED'],
+    ]);
+
+    // ...and the conflicting day untouched: the same row, its one event alone.
+    expect(rows[0]).toEqual(storedRows[0]);
+    expect(events.filter((event) => event.entryId === storedId)).toEqual(storedEvents);
+  });
+});
