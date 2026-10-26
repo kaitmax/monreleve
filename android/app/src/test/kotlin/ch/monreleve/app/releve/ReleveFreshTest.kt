@@ -215,6 +215,7 @@ private class Rig(private val scope: CoroutineScope) {
     fun shown(): ReleveState.Loaded = releve.state.value.shouldBeInstanceOf<ReleveState.Loaded>()
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun TestScope.signedIn(): Rig {
     val rig = Rig(backgroundScope)
     rig.dao.upsert(synced("2026-10-20"))
