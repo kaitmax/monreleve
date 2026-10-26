@@ -267,3 +267,24 @@ providers.gradleProperty("iosSimulatorDevice").orNull?.let { udid ->
         standalone.set(false)
     }
 }
+
+// IOS-1a R565 (second half). With the simulator booted the Keychain answers - but an UNSIGNED test binary has no
+// keychain access group and every call fails errSecMissingEntitlement (-34018). In CI only (the same property), the
+// linked test executable is ad-hoc signed with ios-test.entitlements right after it is linked and before it runs.
+// The signature is on the test binary alone; it never reaches an app, and no Apple account is involved.
+providers.gradleProperty("iosSimulatorDevice").orNull?.let {
+    tasks.matching { task -> task.name == "linkDebugTestIosSimulatorArm64" }.configureEach {
+        doLast {
+            val kexe = layout.buildDirectory.file("bin/iosSimulatorArm64/debugTest/test.kexe").get().asFile
+            val entitlements = layout.projectDirectory.file("ios-test.entitlements").asFile
+            check(kexe.isFile) { "NO RESULT: no test.kexe at ${kexe.path} to sign" }
+            val process =
+                ProcessBuilder("codesign", "--force", "--sign", "-", "--entitlements", entitlements.path, kexe.path)
+                    .redirectErrorStream(true)
+                    .start()
+            val output = process.inputStream.bufferedReader().readText()
+            check(process.waitFor() == 0) { "codesign failed: $output" }
+            logger.lifecycle("IOS-1a: signed ${kexe.name} ad hoc with ${entitlements.name}: $output")
+        }
+    }
+}
