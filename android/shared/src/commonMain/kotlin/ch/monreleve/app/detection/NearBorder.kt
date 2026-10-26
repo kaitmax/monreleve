@@ -1,5 +1,7 @@
 package ch.monreleve.app.detection
 
+// IOS-1b-A R602: MOVED FROM :app to :shared commonMain (package unchanged), so the shared Aujourd'hui controller
+// can read it on every platform. Platform-free as it stood.
 // R313, as R320 translates it. The app recognises someone who lives near the border FROM DATA IT ALREADY KEEPS,
 // and NO COORDINATE. The day's four checks record how many landed in the 150 m strip; when that stays high,
 // detection cannot be reliable where the person lives, so the app tells them once and offers manual - respected

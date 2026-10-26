@@ -1,5 +1,7 @@
 package ch.monreleve.app.detection
 
+// IOS-1b-A R602: MOVED FROM :app to :shared commonMain (package unchanged), so the shared Aujourd'hui controller
+// can read it on every platform. Platform-free as it stood.
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import kotlin.math.max

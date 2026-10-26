@@ -19,22 +19,6 @@ import android.content.SharedPreferences
 // NO COORDINATE, by construction - it holds a single boolean. The near-border RULE (shouldSuggestManual...)
 // reads only the aggregate tally (buffer-fix share), never a position.
 
-/** Whether the one-time near-border notice has been shown to this account on this device. */
-interface NearBorderNoticeStore {
-    fun hasShown(): Boolean
-
-    fun markShown()
-}
-
-/** The test/default in-memory store. */
-class InMemoryNearBorderNoticeStore(private var shown: Boolean = false) : NearBorderNoticeStore {
-    override fun hasShown(): Boolean = shown
-
-    override fun markShown() {
-        shown = true
-    }
-}
-
 private const val DETECTION_PREFS = "monreleve.detection"
 private const val KEY_NEAR_BORDER_SHOWN = "nearBorderNoticeShown"
 

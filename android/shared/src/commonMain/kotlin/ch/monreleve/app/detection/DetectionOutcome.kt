@@ -1,5 +1,7 @@
 package ch.monreleve.app.detection
 
+// IOS-1b-A R602: MOVED FROM :app to :shared commonMain (package unchanged), so the shared Aujourd'hui controller
+// can read it on every platform. Platform-free as it stood.
 // AN-AUTO increment 1 (R311). THE PRODUCT LAYER OVER THE PROPOSAL: only HIGH proposes.
 //
 // R311 REVERSES SPEC 13.1/11.2's "MEDIUM proposes, LOW withholds". In the PRODUCT, a day is shown a

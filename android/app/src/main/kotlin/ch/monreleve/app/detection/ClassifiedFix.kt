@@ -16,12 +16,6 @@ package ch.monreleve.app.detection
 // day's fixes (increment 5) produces the same tally a real day would - nothing reads
 // System.currentTimeMillis for attribution.
 
-enum class Classification {
-    INSIDE,
-    OUTSIDE,
-    BUFFER,
-}
-
 /** The whole of what survives a fix: which side, and when. No coordinate (D18). */
 data class ClassifiedFix(
     val classification: Classification,
