@@ -41,14 +41,19 @@ class IosSyncTriggerTest {
     fun requestsDuringADrainAreCoalescedIntoExactlyOneMore() =
         runBlocking {
             var drains = 0
+            val started = CompletableDeferred<Unit>()
             val gate = CompletableDeferred<Unit>()
             val trigger =
                 IosSyncTrigger(this) {
                     drains++
-                    if (drains == 1) gate.await()
+                    if (drains == 1) {
+                        started.complete(Unit)
+                        gate.await()
+                    }
                     SyncOutcome.Settled(0, 0)
                 }
             val first = trigger.afterWrite()
+            started.await() // requests made BEFORE a drain starts are covered by it; only later ones coalesce
             trigger.afterWrite()
             trigger.requestDrain()
             trigger.afterWrite()

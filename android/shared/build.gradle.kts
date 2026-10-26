@@ -255,3 +255,15 @@ detekt {
         layout.projectDirectory.dir("src/androidUnitTest/kotlin"),
     )
 }
+
+// IOS-1a R565. THE KEYCHAIN NEEDS A BOOTED SIMULATOR. The Kotlin Gradle plugin runs the iOS test binary with
+// `xcrun simctl spawn --standalone <device>`, a bare process with no launchd, no securityd and therefore no
+// keychain: every SecItem call answered errSecNotAvailable (-25291) in IOS-1a's first cloud run. When the workflow
+// passes a device (it boots one first), the tests run non-standalone INSIDE that booted simulator instead. Nothing
+// changes on any other machine: with no property set, the plugin's defaults apply untouched.
+providers.gradleProperty("iosSimulatorDevice").orNull?.let { udid ->
+    tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+        device.set(udid)
+        standalone.set(false)
+    }
+}

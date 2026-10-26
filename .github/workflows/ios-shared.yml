@@ -188,14 +188,20 @@ jobs:
           fi
           ls -d "$HOME"/.konan/kotlin-native-prebuilt-macos-*
 
-      # THE SCRIPT (R530), with TWO additions, neither of which changes what
-      # is compiled or run:
-      #   --continue  a red test task does not stop compileKotlinIosArm64 from
-      #               also reporting in the same paid run;
-      #   --info      Gradle then logs the exact command each test process was
-      #               started with, which is how the step after this one names
-      #               the simulator from the machine rather than from the
-      #               plugin's source. The output is also kept in a file for it.
+      # IOS-1a R565. BOOT THE SIMULATOR THE TESTS WILL USE. The Kotlin Gradle plugin's default is
+      # `simctl spawn --standalone`, a bare process with no securityd: every Keychain call answered
+      # errSecNotAvailable (-25291) in IOS-1a's first run. The device is chosen by the plugin's own rule (the first
+      # device under the LAST iOS runtime), booted here, and handed to Gradle as -PiosSimulatorDevice, which makes
+      # the test task run non-standalone inside it (android/shared/build.gradle.kts).
+      - name: Boot the iPhone simulator
+        run: |
+          udid=$(xcrun simctl list devices available | awk '/^-- iOS/{h=1; first=""; next} /^-- /{h=0} h && first=="" {match($0,/[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}/); if (RSTART>0) {first=substr($0,RSTART,RLENGTH); last=first}} END{print last}')
+          if [ -z "$udid" ]; then echo "NO RESULT: no iOS simulator device found"; exit 1; fi
+          echo "$udid" > "$RUNNER_TEMP/sim.udid"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl list devices | grep "$udid"
+
       # IOS-1a R564. THE WIRE-RECORDING SERVER. NsUrlSessionTransportWireTest sends each request KMP-1's goldens
       # describe through the iOS transport to this server, which echoes and RECORDS the raw request. Standard
       # library Python only (no third-party code), loopback only, no secret. The recording is printed and
@@ -212,10 +218,18 @@ jobs:
           done
           echo "NO RESULT: the wire server did not start"; cat "$RUNNER_TEMP/wire/server.log"; exit 1
 
+      # THE SCRIPT (R530), with TWO additions, neither of which changes what
+      # is compiled or run:
+      #   --continue  a red test task does not stop compileKotlinIosArm64 from
+      #               also reporting in the same paid run;
+      #   --info      Gradle then logs the exact command each test process was
+      #               started with, which is how the step after this one names
+      #               the simulator from the machine rather than from the
+      #               plugin's source. The output is also kept in a file for it.
       - name: iOS - simulator tests and device compile
         run: |
           set -o pipefail
-          ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64 --no-daemon --stacktrace --continue --info 2>&1 | tee "$RUNNER_TEMP/gradle-ios.log"
+          ./gradlew :shared:iosSimulatorArm64Test :shared:compileKotlinIosArm64 -PiosSimulatorDevice="$(cat "$RUNNER_TEMP/sim.udid")" --no-daemon --stacktrace --continue --info 2>&1 | tee "$RUNNER_TEMP/gradle-ios.log"
 
       - name: The wire recording (what the simulator really sent)
         if: always()

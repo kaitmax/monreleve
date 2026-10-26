@@ -77,19 +77,19 @@ class Handler(BaseHTTPRequestHandler):
                 text = json.dumps(RECORDED)
             self._send(200, text.encode("utf-8"))
             return
-        if path == "/__hang":
-            event("open:/__hang")
+        if path.startswith("/__hang"):
+            event("open:" + path)
             deadline = time.time() + 25
             while time.time() < deadline:
                 readable, _, _ = select.select([self.connection], [], [], 0.1)
                 if readable:
                     try:
                         if self.connection.recv(1, 0x2) == b"":  # MSG_PEEK: an orderly close reads empty
-                            event("closed:/__hang")
+                            event("closed:" + path)
                             self.close_connection = True
                             return
                     except OSError:
-                        event("closed:/__hang")
+                        event("closed:" + path)
                         self.close_connection = True
                         return
             self._send(200, b"{}")

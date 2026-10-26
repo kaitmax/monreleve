@@ -279,7 +279,7 @@ class NsUrlSessionTransportWireTest {
             val failure =
                 assertFailsWith<TransportException> {
                     impatient.execute(
-                        HttpRequest(HttpMethod.GET, "$WIRE_BASE/__hang"),
+                        HttpRequest(HttpMethod.GET, "$WIRE_BASE/__hang?id=timeout"),
                     )
                 }
             assertEquals(-1001L, assertIs<NsErrorException>(failure.cause).code, "NSURLErrorTimedOut")
@@ -295,18 +295,20 @@ class NsUrlSessionTransportWireTest {
     @Test
     fun cancellingTheCoroutineClosesTheConnectionOnTheWire() =
         runBlocking {
+            val id = uniqueName("cancel")
+
             suspend fun events(): String = transport.execute(HttpRequest(HttpMethod.GET, "$WIRE_BASE/__events")).body
 
-            assertFalse(events().contains("closed:/__hang"), "control: nothing has been cancelled yet")
+            assertFalse(events().contains("closed:/__hang?id=$id"), "control: nothing has been cancelled yet")
             val job =
                 launch(
                     start = CoroutineStart.UNDISPATCHED,
-                ) { transport.execute(HttpRequest(HttpMethod.GET, "$WIRE_BASE/__hang")) }
-            assertTrue(eventually { events().contains("open:/__hang") }, "the server never saw the request open")
-            assertFalse(events().contains("closed:/__hang"), "control: the request is still in flight")
+                ) { transport.execute(HttpRequest(HttpMethod.GET, "$WIRE_BASE/__hang?id=$id")) }
+            assertTrue(eventually { events().contains("open:/__hang?id=$id") }, "the server never saw the request open")
+            assertFalse(events().contains("closed:/__hang?id=$id"), "control: the request is still in flight")
             job.cancelAndJoin()
             assertTrue(
-                eventually { events().contains("closed:/__hang") },
+                eventually { events().contains("closed:/__hang?id=$id") },
                 "cancelling the coroutine must cancel the task",
             )
         }
