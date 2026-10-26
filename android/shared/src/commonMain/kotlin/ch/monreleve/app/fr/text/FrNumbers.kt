@@ -3,11 +3,10 @@
 package ch.monreleve.app.fr.text
 
 // IOS-1a R570. THE SAME STRING ON BOTH PLATFORMS: the French number formats in pure Kotlin, so iOS prints
-// exactly what :app's fr/format prints on Android without asking NSNumberFormatter (whose CLDR data is not the
-// JVM's) for anything. :app's own fr/format is UNCHANGED and keeps its own java.text implementation - Android's
-// switch-over to this file is a later task, and this one proves it would be safe: FrenchFormatGoldens holds
-// ~12,700 strings captured from Android's actual output, and FrNumbersGoldenTest runs every one of them on the
-// JVM and on the iPhone simulator.
+// exactly what :app's fr/format printed on Android without asking NSNumberFormatter (whose CLDR data is not the
+// JVM's) for anything. Since AN-FR-TEXT R621 this is the ONE home (R206): :app formats through it and its
+// java.text fr/format is deleted. FrenchFormatGoldens holds the 12,021 strings captured from that deleted
+// implementation's output, and FrTextGoldenTest runs every one of them on the JVM and on the iPhone simulator.
 //
 // WHAT MAKES IT EXACT, AND WHERE IT WAS TRAPPED. java.text.DecimalFormat does not round the Double's binary
 // value; it rounds the Double's SHORTEST DECIMAL DIGITS (0.83 is the digits "83", not 0.82999999999999996...),
@@ -17,7 +16,7 @@ package ch.monreleve.app.fr.text
 // JDK looks at whether those digits were rounded up from the true binary value, and rounds up only if they were
 // not. [tieRoundsUp] answers the same question with an exact (error-free) product instead of BigDecimal.
 //
-// SEPARATORS ARE BUILT FROM CODEPOINTS, as Numbers.kt in :app does, so no editor can normalise one into
+// SEPARATORS ARE BUILT FROM CODEPOINTS, as :app's deleted Numbers.kt did, so no editor can normalise one into
 // another: U+202F narrow no-break space groups thousands, U+00A0 sits before the percent sign, the decimal
 // separator is a comma and the sign is U+002D.
 

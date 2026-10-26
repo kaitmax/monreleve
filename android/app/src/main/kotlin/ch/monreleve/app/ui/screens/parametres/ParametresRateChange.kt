@@ -15,7 +15,7 @@ import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.ParametresCopy
-import ch.monreleve.app.fr.format.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatDeclarableRate
 import ch.monreleve.app.parametres.RateChange
 
 // AN-PARAMS. R290's « cette modification recalcule votre année » confirmation: shown BEFORE a consequential save

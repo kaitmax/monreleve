@@ -24,7 +24,7 @@ import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.format.formatDate
+import ch.monreleve.app.fr.text.formatDate
 
 // AN-CAL2 (section 2, D16). The ONE confirmation before any write. It states the choice and the count, LISTS
 // the days, and shows the two conditional lines EXACTLY when they apply (C4): « déjà renseignés » when some

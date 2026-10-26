@@ -37,7 +37,7 @@ import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.RecorderCopy
-import ch.monreleve.app.fr.format.formatDate
+import ch.monreleve.app.fr.text.formatDate
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate

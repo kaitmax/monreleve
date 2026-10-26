@@ -43,8 +43,8 @@ import ch.monreleve.app.dossier.ComparisonGap
 import ch.monreleve.app.dossier.ComparisonView
 import ch.monreleve.app.fr.ComparisonCopy
 import ch.monreleve.app.fr.ReleveCopy
-import ch.monreleve.app.fr.format.formatDeclarableRate
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.ui.screens.onboarding.BottomActions
 import ch.monreleve.app.ui.screens.onboarding.InfoNote
 import ch.monreleve.app.ui.screens.rythme.ForecastTopBar

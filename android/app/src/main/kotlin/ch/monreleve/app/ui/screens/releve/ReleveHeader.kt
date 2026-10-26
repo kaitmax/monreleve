@@ -25,10 +25,10 @@ import ch.monreleve.app.design.tabularNums
 import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.dossier.DossierTiles
 import ch.monreleve.app.fr.ReleveCopy
-import ch.monreleve.app.fr.format.formatDate
-import ch.monreleve.app.fr.format.formatDays
-import ch.monreleve.app.fr.format.formatDossierStamp
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.formatDate
+import ch.monreleve.app.fr.text.formatDays
+import ch.monreleve.app.fr.text.formatDossierStamp
+import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.releve.ReleveRules
 
 // AN11 (SPEC 12 items 1-2, FD7). The head of the Releve document: the provisional banner, the identification

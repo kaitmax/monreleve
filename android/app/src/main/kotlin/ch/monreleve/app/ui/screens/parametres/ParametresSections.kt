@@ -9,7 +9,7 @@ import ch.monreleve.app.fr.CantonCopy
 import ch.monreleve.app.fr.OnboardingCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.RythmeCopy
-import ch.monreleve.app.fr.format.formatPercent
+import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.parametres.ParametresPhase

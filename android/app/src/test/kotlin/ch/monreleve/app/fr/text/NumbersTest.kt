@@ -1,4 +1,4 @@
-package ch.monreleve.app.fr.format
+package ch.monreleve.app.fr.text
 
 // AN3 increment 1. Kotlin port of web/tests/unit/ui-core/format-number.test.ts.
 //
@@ -164,7 +164,7 @@ class NumbersTest : FunSpec({
                 ch.monreleve.app.fences
                     .subjectFile(
                         "NBSP self-check",
-                        "src/test/kotlin/ch/monreleve/app/fr/format/NumbersTest.kt",
+                        "src/test/kotlin/ch/monreleve/app/fr/text/NumbersTest.kt",
                     ).readText()
 
             source.contains(0x00A0.toChar()) shouldBe false

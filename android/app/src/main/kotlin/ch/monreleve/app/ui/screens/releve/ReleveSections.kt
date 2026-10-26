@@ -37,13 +37,13 @@ import ch.monreleve.app.dossier.DossierZone
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.RatesCopy
 import ch.monreleve.app.fr.ReleveCopy
-import ch.monreleve.app.fr.format.formatDate
-import ch.monreleve.app.fr.format.formatDays
-import ch.monreleve.app.fr.format.formatDeclarableRate
-import ch.monreleve.app.fr.format.formatDossierStamp
-import ch.monreleve.app.fr.format.formatMonthName
-import ch.monreleve.app.fr.format.formatPercent
-import ch.monreleve.app.fr.format.formatSignedDays
+import ch.monreleve.app.fr.text.formatDate
+import ch.monreleve.app.fr.text.formatDays
+import ch.monreleve.app.fr.text.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatDossierStamp
+import ch.monreleve.app.fr.text.formatMonthName
+import ch.monreleve.app.fr.text.formatPercent
+import ch.monreleve.app.fr.text.formatSignedDays
 import ch.monreleve.app.releve.ReleveRules
 import ch.monreleve.app.releve.mergedMissionDays
 

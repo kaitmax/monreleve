@@ -23,7 +23,7 @@ import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.fr.ParametresCopy
-import ch.monreleve.app.fr.format.formatDate
+import ch.monreleve.app.fr.text.formatDate
 
 // AN-PARAMS. The settings list's row primitives (Material 3 ListItem) and the one card they sit in. Replaces
 // AN12's mixed input styles (a centred pill, a floating-label field, a placeholder field) with ONE row shape

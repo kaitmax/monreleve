@@ -26,9 +26,9 @@ import ch.monreleve.app.design.zoneFor
 import ch.monreleve.app.forecast.SimulationView
 import ch.monreleve.app.fr.PrevisionCopy
 import ch.monreleve.app.fr.SimulationCopy
-import ch.monreleve.app.fr.format.formatDeclarableRate
-import ch.monreleve.app.fr.format.formatPercent
-import ch.monreleve.app.fr.format.formatSignedDays
+import ch.monreleve.app.fr.text.formatDeclarableRate
+import ch.monreleve.app.fr.text.formatPercent
+import ch.monreleve.app.fr.text.formatSignedDays
 import ch.monreleve.app.ui.screens.prevision.Figure
 import ch.monreleve.app.ui.screens.prevision.ProjectionRail
 import ch.monreleve.app.ui.screens.prevision.RemainingTile

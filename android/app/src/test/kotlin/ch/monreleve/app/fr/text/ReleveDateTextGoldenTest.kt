@@ -1,4 +1,4 @@
-package ch.monreleve.app.fr.format
+package ch.monreleve.app.fr.text
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

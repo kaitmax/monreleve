@@ -27,7 +27,7 @@ import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.DayCellCopy
 import ch.monreleve.app.fr.LegendCopy
-import ch.monreleve.app.fr.format.formatDayLong
+import ch.monreleve.app.fr.text.formatDayLong
 
 // AN10 increment 4 (R271, AC3). Above a measured font scale, seven columns cannot hold 200 % text and no
 // cell sizing rescues it, so the grid BECOMES a list: one row per day, each saying the date, the kind,

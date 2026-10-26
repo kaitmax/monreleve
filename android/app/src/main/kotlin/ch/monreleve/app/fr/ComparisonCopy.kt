@@ -1,7 +1,7 @@
 package ch.monreleve.app.fr
 
-import ch.monreleve.app.fr.format.formatDays
-import ch.monreleve.app.fr.format.formatPoints
+import ch.monreleve.app.fr.text.formatDays
+import ch.monreleve.app.fr.text.formatPoints
 
 // AN-RECON (the comparison). All copy for « Votre employeur a-t-il le même chiffre ? », word for word from
 // design/decide/Employeur.dc.html, fully accented. THE VOCABULARY BAN HOLDS: no certifié / attesté / conforme /

@@ -1,4 +1,4 @@
-package ch.monreleve.app.fr.format
+package ch.monreleve.app.fr.text
 
 // AN3 increment 1. The three Kotlin locale traps the relay named, each
 // MEASURED by actually triggering it - not merely asserted as avoided.

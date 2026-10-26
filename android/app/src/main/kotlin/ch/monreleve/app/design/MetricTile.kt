@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import ch.monreleve.app.fr.format.SignedDays
+import ch.monreleve.app.fr.text.SignedDays
 
 @Composable
 fun MetricTile(

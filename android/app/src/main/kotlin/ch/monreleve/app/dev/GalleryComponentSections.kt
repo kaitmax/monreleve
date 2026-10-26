@@ -24,11 +24,11 @@ import ch.monreleve.app.design.ZoneBadge
 import ch.monreleve.app.fr.GalleryCopy
 import ch.monreleve.app.fr.GalleryFixtures
 import ch.monreleve.app.fr.MetricCopy
-import ch.monreleve.app.fr.format.formatDate
-import ch.monreleve.app.fr.format.formatDateTime
-import ch.monreleve.app.fr.format.formatDays
-import ch.monreleve.app.fr.format.formatPercent
-import ch.monreleve.app.fr.format.formatSignedDays
+import ch.monreleve.app.fr.text.formatDate
+import ch.monreleve.app.fr.text.formatDateTime
+import ch.monreleve.app.fr.text.formatDays
+import ch.monreleve.app.fr.text.formatPercent
+import ch.monreleve.app.fr.text.formatSignedDays
 import kotlin.math.floor
 
 private const val PERCENT_FACTOR = 100.0
