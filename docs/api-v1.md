@@ -390,6 +390,15 @@ by the rule. This is **additive** under the freeze: a new code on an existing
 refusal status, no field added or removed; a client built per section 6.5, which
 treats an unknown 4xx as terminal for that request, is already correct.
 
+**The same holds when two writers race** (FW-DOSSIER-EMPTY-3, R591). Two
+concurrent requests for one day in different granularities can make PostgreSQL
+abort one as a deadlock or write conflict rather than raise the exclusion
+violation; the server retries that transaction **exactly once** (the aborted
+attempt wrote nothing), so the loser is answered `400 granularity_conflict` -
+or, with nothing left to conflict with, its write lands - and never `500
+write_failed` for the race alone. A retry that fails again is `write_failed`,
+as before.
+
 **One batch may not name the same `(dayDate, portion)` twice.** It is refused
 with `invalid_payload`, and the message names both positions — *"entries[1]
 repeats 2026-04-07 FULL, already at entries[0]"* — because a client author is

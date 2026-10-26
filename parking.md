@@ -4493,7 +4493,16 @@ construction. Each needs a test that reproduces the deadlock deterministically f
 
 COST OF REVERSING: none - nothing changed.
 
-STATE:      OPEN - a small server task; the operator's call which of (a)-(c).
+STATE:      CLOSED 2026-10-26 by FW-DOSSIER-EMPTY-3 (R591, a scope addition the operator
+added to this task): option (a). writeEntries retries its transaction EXACTLY ONCE when it
+lost a race - Prisma P2034, or SQLSTATE 40P01 / 40001 surfacing unwrapped - and every
+other error behaves as before; a retry that fails again is write_failed, never a third
+attempt. tests/db/entries-retry.test.ts forces the path deterministically (the client's
+$transaction throws the deadlock inside a real transaction): RED on the old code (500
+write_failed), GREEN after (400 granularity_conflict against the winner's other
+granularity; a single row and a single CREATED event when there is nothing to conflict
+with). The 100-run race stays and stayed green (8 of 8 runs after the change). See
+REPORT-FW-DOSSIER-EMPTY-3.txt, R591.
 
 ## PARK-O2 - the app names the canton field two ways: "Canton de travail" and "le canton de votre employeur"  [FW-DOSSIER-EMPTY-3, 2026-10-26]
 
