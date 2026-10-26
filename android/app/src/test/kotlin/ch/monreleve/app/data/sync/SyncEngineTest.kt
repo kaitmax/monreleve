@@ -175,6 +175,47 @@ class SyncEngineTest {
         }
 
     @Test
+    fun aGranularityConflictInABatchOfThreeLandsTheTwoValidDaysAndHoldsTheConflictingOne() =
+        runTest {
+            // R589 (the operator, 2026-10-25, on FW-GRANULARITY's decision 1). The server refuses the WHOLE
+            // batch with 400 granularity_conflict when one day in it would sit FULL beside AM/PM (docs/api-v1.md
+            // section 6.1), and refuses that day again when it is sent alone. One conflicting day between two
+            // valid ones: the two valid rows end SYNCED, the conflicting one FAILED, its payload sent exactly
+            // twice (the batch, then alone) and never again. FW-DOSSIER-EMPTY-3 proves the server half.
+            val dao =
+                FakeEntryDao().apply {
+                    seed("mut-1", "2027-06-18") // valid
+                    seed("mut-2", "2027-06-19") // the conflicting day
+                    seed("mut-3", "2027-06-21") // valid
+                }
+            val conflict =
+                PostOutcome.Ok(
+                    status = 400,
+                    body = """{"status":"error","code":"granularity_conflict","message":"refused"}""",
+                )
+            val first = serverRow("srv-1", "mut-1", "2027-06-18", "2027-06-18T10:00:05.000Z")
+            val third = serverRow("srv-3", "mut-3", "2027-06-21", "2027-06-21T10:00:05.000Z")
+            // The batch of three (refused whole), then each alone in insertion order: valid, refused, valid.
+            val poster =
+                FakePoster(listOf(conflict, okBody(1, 0, listOf(first)), conflict, okBody(1, 0, listOf(third))))
+
+            val outcome = SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
+
+            assertEquals(SyncOutcome.Settled(written = 2, defects = 1), outcome)
+            assertEquals(SyncState.SYNCED, dao.row("2027-06-18").syncState)
+            assertEquals(SyncState.FAILED, dao.row("2027-06-19").syncState)
+            assertEquals(SyncState.SYNCED, dao.row("2027-06-21").syncState)
+            // One batch POST plus one isolation POST per item.
+            assertEquals(4, poster.bodies.size)
+            assertEquals("the conflicting payload is sent exactly twice", 2, poster.bodies.count { "mut-2" in it })
+            // And never again: a second drain finds nothing pending and sends nothing.
+            assertTrue("nothing left to retry", dao.pending().isEmpty())
+            SyncEngine(dao, poster, UNOWNED_ACCOUNT).sync()
+            assertEquals("no payload is re-sent", 4, poster.bodies.size)
+            assertEquals("the conflicting payload is never re-sent", 2, poster.bodies.count { "mut-2" in it })
+        }
+
+    @Test
     fun anEntirelyBadBatchLeavesEveryItemFailed() =
         runTest {
             val dao =
