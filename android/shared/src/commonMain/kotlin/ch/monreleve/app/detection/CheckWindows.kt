@@ -1,8 +1,10 @@
 package ch.monreleve.app.detection
 
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
+import ch.monreleve.app.dossier.PARIS_ZONE
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // R320. THE FOUR DAILY CHECK WINDOWS, Europe/Paris, chosen to AVOID LUNCH - the least reliable moment of a
 // working day, when people go out. Detection checks the position FOUR TIMES A DAY, not all day: Android 8+
@@ -24,8 +26,12 @@ import java.time.ZoneId
 //
 // PINNED TO PARIS (R28): a device travelling or set to UTC bounds its windows by the Paris wall clock, not its
 // own - the same trap AN5's today-in-Paris closed. Nothing here reads a coordinate (D18).
-
-private val PARIS: ZoneId = ZoneId.of("Europe/Paris")
+//
+// IOS-1b-A R602b: MOVED FROM :app to :shared commonMain and rewritten from java.time onto kotlinx-datetime, so the
+// shared Aujourd'hui controller can ask afterLastCheckWindow on every platform. The zone is dossier/ParisDay.kt's
+// PARIS_ZONE (R206: one home for Europe/Paris). CheckWindowsParisPinTest pinned every minute of three days
+// (an ordinary one and both 2026 DST changes) on the java.time code first and passes unedited on this one;
+// :app keeps java.time.Clock overloads in JavaTimeCheckWindows.kt that convert types and decide nothing.
 
 /** Half a check window, in minutes: a check fires anywhere within +/- this of its centre time (PROPOSED). */
 const val CHECK_WINDOW_RADIUS_MINUTES = 30
@@ -47,21 +53,23 @@ val CHECK_WINDOWS: List<CheckWindow> =
         CheckWindow(4, 16 * 60 + 30),
     )
 
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
 private fun parisMinuteOfDay(instant: Instant): Int {
-    // Instant.atZone / ZonedDateTime.toLocalTime are Java 8 (minSdk 26 safe); LocalTime.ofInstant is not (R308).
-    val now = instant.atZone(PARIS).toLocalTime()
+    val now = instant.toLocalDateTime(PARIS_ZONE)
     return now.hour * 60 + now.minute
 }
 
 /** The check window the current Paris time falls inside, or null when it is between windows (or at lunch). */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock - on the allowlist.
 fun currentCheckWindow(clock: Clock): CheckWindow? {
-    val minute = parisMinuteOfDay(clock.instant())
+    val minute = parisMinuteOfDay(clock.now())
     return CHECK_WINDOWS.firstOrNull { it.contains(minute) }
 }
 
 /** The check window a given instant falls inside (Paris), or null outside any window. */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
 fun checkWindowAt(epochMillis: Long): CheckWindow? {
-    val minute = parisMinuteOfDay(Instant.ofEpochMilli(epochMillis))
+    val minute = parisMinuteOfDay(Instant.fromEpochMilliseconds(epochMillis))
     return CHECK_WINDOWS.firstOrNull { it.contains(minute) }
 }
 
@@ -69,6 +77,7 @@ fun checkWindowAt(epochMillis: Long): CheckWindow? {
  * True once the last window has ended for the day (the evening): the day's vote is final and can be shown.
  * The Aujourd'hui auto surface waits for this before proposing - "Votre journée vous sera proposée ce soir."
  */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock - on the allowlist.
 fun afterLastCheckWindow(clock: Clock): Boolean {
-    return parisMinuteOfDay(clock.instant()) >= CHECK_WINDOWS.last().endMinuteOfDay
+    return parisMinuteOfDay(clock.now()) >= CHECK_WINDOWS.last().endMinuteOfDay
 }

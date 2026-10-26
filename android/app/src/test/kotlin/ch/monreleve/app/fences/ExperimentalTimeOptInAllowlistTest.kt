@@ -77,9 +77,12 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarModel.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
+            // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
+            "app/src/main/kotlin/ch/monreleve/app/detection/JavaTimeCheckWindows.kt" to 2,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/local/CalendarDay.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/repo/EntryRepository.kt" to 2,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/detection/CheckWindows.kt" to 4,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/LatenessForecast.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/ParisDay.kt" to 2,
             // AN-FR-TEXT R622: moved from iosMain/ios/IosInstantFormat.kt (3 there), function scope, same 3.
