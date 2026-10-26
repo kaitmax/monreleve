@@ -48,9 +48,21 @@ private class FakeCache(seed: Map<Int, String> = emptyMap()) : DossierCache {
         body: String,
     ) {
         store[year] = body
+        stale -= year
     }
 
-    override fun clear() = store.clear()
+    val stale = mutableSetOf<Int>()
+
+    override fun clear() {
+        store.clear()
+        stale.clear()
+    }
+
+    override fun markStale(year: Int) {
+        stale += year
+    }
+
+    override fun isStale(year: Int): Boolean = year in stale
 }
 
 class DossierApiTest : FunSpec({

@@ -5,8 +5,8 @@ import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.accountTagOf
-import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.EntryKind
+import ch.monreleve.app.data.local.MemoryDossierCache
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.remote.AuthApi
@@ -132,22 +132,6 @@ private fun dossierBody(
       "rateWithoutMissions": 42.08
     }
     """.trimIndent()
-
-/** R521: the cached releve - SharedPrefsDossierCache's contract, in memory. */
-private class MemoryDossierCache : DossierCache {
-    private val years = mutableMapOf<Int, String>()
-
-    override fun load(year: Int): String? = years[year]
-
-    override fun save(
-        year: Int,
-        body: String,
-    ) {
-        years[year] = body
-    }
-
-    override fun clear() = years.clear()
-}
 
 internal class MemoryAccountStore(
     private var tag: String?,
@@ -280,7 +264,7 @@ private class Device(
     val events = mutableListOf<AccountEvent>()
 
     /** What SyncWorker does on each run (buildSyncEngine): one drain of the current account's queue. */
-    suspend fun drain(): SyncOutcome = SyncEngine(dao, session, accounts.current()).sync()
+    suspend fun drain(): SyncOutcome = SyncEngine(dao, session, accounts.current(), cache).sync()
 
     /** The session ended server-side: another holder of the refresh token rotated it first (the race's winner). */
     suspend fun anotherHolderRotatesFirst() {

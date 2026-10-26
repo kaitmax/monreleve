@@ -2,6 +2,7 @@ package ch.monreleve.app.data.sync
 
 import ch.monreleve.app.auth.AuthenticatedPoster
 import ch.monreleve.app.auth.PostOutcome
+import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.EntryDao
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.data.local.Portion
@@ -38,6 +39,9 @@ private const val HTTP_BAD_REQUEST = 400
 private const val HTTP_CONFLICT = 409
 private const val HTTP_PAYLOAD_TOO_LARGE = 413
 
+/** The year prefix of an ISO dayDate ("2026-10-21" -> "2026"), which names the tax year it belongs to (R28). */
+private const val YEAR_LENGTH = 4
+
 sealed interface SyncOutcome {
     /**
      * The queue is drained. `written` rows were reconciled from the server's rows;
@@ -58,6 +62,10 @@ class SyncEngine(
     // AN-FIX F4 / R303: the account whose queue this drains. The worker reads it from the AccountStore
     // at drain time; a null account (no active session) drains NOTHING - fail closed.
     private val currentAccount: String?,
+    // AN-RELEVE-FRESH (R559): the cached releve, marked stale for every year a batch the server accepted
+    // touched. REQUIRED, not defaulted: a default no-op is exactly how a construction site forgets it, and the
+    // symptom - a releve frozen at its sign-in snapshot (PARK-X5) - is far from the cause.
+    private val dossierCache: DossierCache,
     private val batchLimit: Int = MAX_BATCH_ITEMS,
 ) {
     suspend fun sync(): SyncOutcome {
@@ -106,10 +114,17 @@ class SyncEngine(
         body: String,
     ): BatchResult =
         when (status) {
-            HTTP_OK ->
+            HTTP_OK -> {
+                // R559: the server ACCEPTED this batch, so its record for each year the batch touches has
+                // changed and the cached releve for that year no longer matches it. Marked before the reconcile
+                // writes SYNCED rows, so a screen that reacts to the rows leaving pending already sees the year
+                // stale. Marked even when the body will not parse: the server wrote, whatever the client read.
+                // A refused batch (400/409/413) or a transport fault never reaches here and marks nothing.
+                markYearsStale(batch)
                 parseEntriesResponse(body)
                     ?.let { BatchResult.Wrote(reconcile(batch, it)) }
                     ?: BatchResult.Retryable
+            }
             // R296: a 400 is a payload the CLIENT built and the server refused, but a MULTI-item batch
             // does not say WHICH item is at fault - so retry each on its own, ONCE (isolate): the good
             // ones sync, the refused one stays FAILED and named. A single-item batch is already isolated,
@@ -173,6 +188,10 @@ class SyncEngine(
             }
         }
         return if (retry) BatchResult.Retryable else BatchResult.Isolated(written, defects)
+    }
+
+    private fun markYearsStale(batch: List<EntryEntity>) {
+        batch.map { it.dayDate.substring(0, YEAR_LENGTH).toInt() }.toSet().forEach(dossierCache::markStale)
     }
 
     private suspend fun markFailed(batch: List<EntryEntity>): Int {

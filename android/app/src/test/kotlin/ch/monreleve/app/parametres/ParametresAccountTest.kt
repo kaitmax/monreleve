@@ -69,6 +69,8 @@ private class MutableTokenStore(private var pair: TokenPair? = TokenPair("a", "r
 }
 
 private class FakeDossierCache(private var body: String? = "{}") : DossierCache {
+    private var stale = false
+
     override fun load(year: Int): String? = body
 
     override fun save(
@@ -76,11 +78,19 @@ private class FakeDossierCache(private var body: String? = "{}") : DossierCache 
         body: String,
     ) {
         this.body = body
+        stale = false
     }
 
     override fun clear() {
         body = null
+        stale = false
     }
+
+    override fun markStale(year: Int) {
+        stale = true
+    }
+
+    override fun isStale(year: Int): Boolean = stale
 }
 
 private class FakePendingSignIn(private var email: String? = "camille@example.fr") : PendingSignInStore {

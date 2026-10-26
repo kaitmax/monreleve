@@ -54,17 +54,52 @@ package ch.monreleve.app.data.local
  * GET /api/v1/me deliberately omits and which exists in this one response for this one
  * purpose. It must not repair, normalise or re-serialise a stored body - a body that will
  * not parse is discarded by the caller, never shown half-read.
+ *
+ * ## Staleness (AN-RELEVE-FRESH, R559)
+ *
+ * A stored copy is the server's record AT THE MOMENT IT WAS FETCHED. When the sync engine has
+ * days of a year accepted by the server, that year's copy no longer matches the server, and the
+ * engine says so with [markStale]; the Releve reads [isStale] when it is opened and fetches again
+ * (R560). An implementation must guarantee all of the following:
+ *
+ * **[markStale] records a per-year flag and never touches the body.** [load] returns the same
+ * bytes before and after it. Marking a year with no stored copy is allowed, must not throw and
+ * must not create a body; marking an already-stale year is a no-op.
+ *
+ * **[isStale] is true exactly when [markStale] was called for that year after the year's last
+ * [save]** (or after the last [clear], or ever, if the year was never saved). A year never
+ * marked is not stale. Years are independent: marking 2026 says nothing about 2025.
+ *
+ * **[save] clears that year's flag, in the same write as the body.** A reader must never see the
+ * new body still flagged, nor the old body unflagged. Every other year's flag is left alone.
+ *
+ * **[clear] erases every flag along with every body.**
+ *
+ * **The flag has the body's durability and is shared by every instance in the process.** It
+ * survives an ordinary app restart. The writer and the reader are DIFFERENT objects - on Android
+ * the sync worker builds its own cache instance on every drain, and the screen holds another - so
+ * a flag set through one instance must be visible through any other at once. An in-memory field
+ * on one instance does not meet this contract.
+ *
+ * The flag is not part of the stored body and must not change how a body is stored or keyed: a
+ * copy cached before this contract existed reads back unchanged, and simply reads as not stale.
  */
 interface DossierCache {
     /** The last cached body for [year], or null if none has been stored. */
     fun load(year: Int): String?
 
-    /** Store the server's raw body for [year], replacing any previous copy. */
+    /** Store the server's raw body for [year], replacing any previous copy, and clear that year's stale flag. */
     fun save(
         year: Int,
         body: String,
     )
 
-    /** Drop every cached year (account deletion / sign-out, AN12). */
+    /** Drop every cached year and every stale flag (account deletion / sign-out, AN12). */
     fun clear()
+
+    /** R559: the server's record for [year] has changed since the stored copy was fetched. Leaves the body as it is. */
+    fun markStale(year: Int)
+
+    /** R559: true when [markStale] was called for [year] after that year's last [save] or [clear]. */
+    fun isStale(year: Int): Boolean
 }

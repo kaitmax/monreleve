@@ -26,16 +26,29 @@ class SharedPrefsDossierCache(context: Context) : DossierCache {
 
     override fun load(year: Int): String? = prefs.getString(key(year), null)
 
+    // R559: the body and its stale flag change in ONE edit, so a reader never sees the new body still flagged.
     override fun save(
         year: Int,
         body: String,
     ) {
-        prefs.edit().putString(key(year), body).apply()
+        prefs.edit().putString(key(year), body).remove(staleKey(year)).apply()
     }
 
     override fun clear() {
         prefs.edit().clear().apply()
     }
 
+    // AN-RELEVE-FRESH (R559). The flag is its OWN key beside the body, so "dossier.<year>" and its raw value are
+    // untouched (R448: a copy cached before this build reads back exactly as it did, and reads as not stale).
+    // Shared across instances because Android hands every caller in the process the same SharedPreferences
+    // object for a file name - the sync worker's instance and the screen's see one map, which the contract asks.
+    override fun markStale(year: Int) {
+        prefs.edit().putBoolean(staleKey(year), true).apply()
+    }
+
+    override fun isStale(year: Int): Boolean = prefs.getBoolean(staleKey(year), false)
+
     private fun key(year: Int): String = "dossier.$year"
+
+    private fun staleKey(year: Int): String = "stale.$year"
 }
