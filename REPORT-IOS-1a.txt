@@ -32,39 +32,33 @@ held to its KDoc by a test that runs on an iPhone simulator in the cloud:
     in commonMain reproduces ALL of them; iOS's two instant formatters too.
 
 Nothing was parked to iOS-1c that could be proven here, except what an app is
-needed for (R572). The Android app is unchanged: 0 files under android/app and
-shared/src/androidMain (androidMain does not exist; see R563 note).
+needed for (R572). The Android app is unchanged (0 files under android/app and
+shared/src/androidMain) EXCEPT the R592 test-only commit (two test-infrastructure files in android/app, ruled by the operator).
 
-Ten cloud runs, 58 billed macOS minutes (CI MINUTES).
+Eleven cloud runs, 66 billed macOS minutes (CI MINUTES).
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-COMPLETE. R563-R572 done; every iOS implementation is proven on a simulator in the cloud,
-with the exceptions named in PARKED/DEVIATIONS. GREEN is claimed on the CODE TIP
-1a4acf9d45220452070c1cd1aa83e8b76c6a3b66 (the only commit after it is this report):
+COMPLETE. R563-R572 and R592 done; every iOS implementation is proven on a simulator in the
+cloud, with the exceptions named in PARKED/DEVIATIONS. GREEN is claimed on the CODE TIP
+5598a4e6071e2c3dcc87bd19302a0643b7c37b62 (the only commit after it is this report update):
 
-  iOS cloud run 40361800958 (ios-shared.yml, push trigger), SHA 1a4acf9:
+  iOS cloud run 40365938173 (ios-shared.yml, push trigger), SHA 5598a4e:
     conclusion: success   BUILD SUCCESSFUL (iosSimulatorArm64Test, compileKotlinIosArm64)
-    iOS SIMULATOR TESTS EXECUTED: 192 (main was 104), failures=0 errors=0 skipped=0
-    in every class; device iPhone 17 Pro, runtime iOS 26.2, booted; RECORDED
-    REQUESTS: 11 on the wire.
-  Android: ./gradlew --stop, then ./gradlew :app:gate --rerun-tasks on 1a4acf9:
+    iOS SIMULATOR TESTS EXECUTED: 192, failures=0 errors=0 skipped=0 in every class;
+    7m00 job time, 8 billed macOS minutes.
+  Android: ./gradlew --stop, then ./gradlew :app:gate --rerun-tasks on 5598a4e:
     [clean-worktree] OK: no unstaged changes to tracked files (R393)
     test floor OK: 1379 unit tests observed (>= 10)
-    BUILD SUCCESSFUL in 14m
+    BUILD SUCCESSFUL in 13m 15s
     237 actionable tasks: 237 executed
     GATE_EXIT=0
-  (the FIRST gate run on the previous tip failed ktlintKotlinScriptCheck, a
-  formatting line in shared/build.gradle.kts; fixed, iOS re-run, gate re-run -
-  DEVIATION 7.) JVM :shared tests (incl. fr/text goldens, contracts,
-  identity hashes) are inside the gate.
   gate:clone NOT RUN and not claimed: nothing under web/ changed.
-  register-coverage: OK (node web/scripts/register-coverage.mjs).
-  ANDROID UNCHANGED: git diff origin/main --stat -- android/app
-  android/shared/src/androidMain prints nothing (0 files; androidMain does not
-  exist). The one non-:shared android file touched is gradle/libs.versions.toml
-  (the approved dependency, +4 lines).
+  ANDROID-UNCHANGED, WITH ONE RULED EXCEPTION (R592): the first pass changed 0 files
+  under android/app and shared/src/androidMain. The R592 commit changes exactly two
+  files under android/app, both TEST infrastructure: the allowlist test and the
+  test-input declaration in app/build.gradle.kts. No :app main source, no behaviour.
 
 --------------------------------------------------------------------------------
 R273 - WHAT WAS READ, BEFORE ANYTHING ELSE
@@ -357,9 +351,36 @@ R572 - WHAT iOS-1c NEEDS
   wired through -PiosSimulatorDevice and only in the workflow.
 
 --------------------------------------------------------------------------------
+R592 - THE ALLOWLIST SEES EVERY SOURCE SET (operator ruling, 2026-10-26)
+--------------------------------------------------------------------------------
+The first pass put three @OptIn(ExperimentalTime) in iosMain/IosInstantFormat.kt that
+ExperimentalTimeOptInAllowlistTest could not see (it walked nine roots; iosMain and
+iosTest were not among them). Done on this branch, test-only, in android/app:
+  - ExperimentalTimeOptInAllowlistTest: the pinned roots stay (each still asserted
+    found and pinned, R460), iosMain and iosTest are added as pinned roots, and EVERY
+    other src/<set>/kotlin directory of :app and :shared is DISCOVERED (so androidMain,
+    when it appears, or any later set, is scanned the day it exists; today none
+    other exists). IosInstantFormat.kt is on the allowlist with its 3 sites, all at
+    function scope (formatDateTime, formatDossierStamp, private parseInstant); the
+    scope test (no file-level, no class, no propagated) now covers iOS files too.
+  - app/build.gradle.kts: the :app test task declares all of shared/src as an input.
+    FOUND WHILE PLANTING: without it a plant in an iOS file left testDebugUnitTest
+    UP-TO-DATE and the widened test PASSED - the first plant run was GREEN, which
+    is R283's defect exactly. The input line is what makes the plant fail.
+RED ONCE: a planted
+    @OptIn(kotlin.time.ExperimentalTime::class) fun plantedOptIn(): Int = 1
+appended to shared/src/iosMain/.../IosMutationId.kt (landed, R180: grep count 1 at
+the file before the run). Result: "ExperimentalTimeOptInAllowlistTest >
+theOptInAppearsInExactlyTheAllowlistedFilesAndCounts FAILED", 3 tests completed, 1
+failed, and the failure's "but was" map names ...ios/IosMutationId.kt=1. Reverted
+(the file restored from a copy, grep count 0, git status showing only the two
+intended files); the test then passed with fastCheck.
+Then the full :app:gate and the iOS run on the new tip, above.
+
+--------------------------------------------------------------------------------
 CI MINUTES (R538)
 --------------------------------------------------------------------------------
-Repository is private; macOS minutes billed per job rounded up. Ten runs:
+Repository is private; macOS minutes billed per job rounded up. Eleven runs:
   1 40351046299 compile errors (Dispatchers.IO internal, category imports)  4m40 -> 5
   2 40351936340 compile errors (NSMutableURLRequest category members)       1m59 -> 2
   3 40352482226 192 run, 6 red (Keychain -25291, 2 test races)              2m51 -> 3
@@ -369,8 +390,151 @@ Repository is private; macOS minutes billed per job rounded up. Ten runs:
   7 40357208403 GREEN 192/192, Keychain live                                7m24 -> 8
   8 40358530311 R564 PLANT: 1 red by name (192 run)                         4m24 -> 5
   9 40359344327 GREEN after revert, 192/192                                 4m08 -> 5
- 10 40361800958 GREEN on the code tip 1a4acf9, 192/192                       7m03 -> 8
-TOTAL 58 billed macOS minutes (about 580 Linux-equivalent at the 10x rate). No
+ 10 40361800958 GREEN, 192/192 (before R592)                                     7m03 -> 8
+ 11 40365938173 GREEN on the R592 code tip 5598a4e, 192/192                      7m00 -> 8
+TOTAL 66 billed macOS minutes (about 660 Linux-equivalent at the 10x rate). No
+run was dispatched manually: every run was a push to ios-1a (the workflow's own
+trigger). Local gate runs cost nothing billed.
+
+--------------------------------------------------------------------------------
+PARKED (no id: every series letter A-Z is taken, R456 leaves none free; the
+operator has not ruled on a new scheme, so NOTHING was written to parking.md)
+--------------------------------------------------------------------------------
+UNNUMBERED-1  RESOLVED by R592 (below): the allowlist now scans every source set.
+UNNUMBERED-2).
+
+--------------------------------------------------------------------------------
+R567 - THE DATABASE ON iOS
+--------------------------------------------------------------------------------
+buildIosDatabase: monreleve.db under Application Support, DATABASE_VERSION 6, the
+five common migrations, BundledSQLiteDriver (the one approved dependency,
+androidx.sqlite 2.5.2 = the line room-runtime 2.7.2 uses, iOS source set only).
+Proven on the simulator (IosDatabaseTest 3/3):
+  - a fresh database: PRAGMA user_version = 6 and room_master_table identity_hash
+    = a08f54541b97835cb850e7d8e4b1cf2d, the hash in schemas/6.json (held in
+    commonTest SchemaIdentityHashes; IdentityHashConstantTest on the JVM reads the
+    schema files and fails if a constant drifts);
+  - a HAND-BUILT v1 database (schemas/1.json's createSql) with a row, opened:
+    migrated through the real 1->6 chain, Room's own schema validation passed,
+    the row survived tagged UNOWNED, hash and version = v6;
+  - a hand-built v5 database with an entry and a tally row: rhythm table created
+    empty, both rows kept.
+THE MATRIX: Room 2.7.2 has no multiplatform migration test helper
+(MigrationTestHelper is Android-only; room-testing is an androidTest dependency),
+so KMP-2b's nine-path matrix does NOT run on iOS. Two paths are proven by
+hand-built schemas, as R567 permits.
+
+--------------------------------------------------------------------------------
+R568 - THE MUTATION ID AND THE CANARY
+--------------------------------------------------------------------------------
+newIosMutationId = NSUUID().UUIDString().lowercase(). MutationIdContract
+(commonTest): canonical 8-4-4-4-12 lower-case version-4 shape over 200 ids, and
+2000 ids all distinct. Subclasses: IosMutationIdContractTest (simulator) and
+AndroidMutationIdContractTest (JVM, shared/androidUnitTest, the same expression
+AndroidRecordSeams passes) - so "one id format on the wire" is a checked
+statement about both platforms. IosUnownedReporter: debug throws
+IllegalStateException with the complaint and logs nothing; release logs
+"E/EntryRepository: <complaint>" (IosLoggerAndReporterTest, both branches).
+
+--------------------------------------------------------------------------------
+R569 - THE SYNC TRIGGER
+--------------------------------------------------------------------------------
+IosSyncTrigger(scope, drain): afterWrite()/requestDrain(); single-flight with
+coalescing. Tests (IosSyncTriggerTest 4/4): a write triggers exactly one drain;
+requests made DURING a drain coalesce into exactly one more (first version of
+the test raced the drain's start - a request before a drain starts is covered by
+it, which is correct, so the test now waits for the drain to start); a failure
+with the REAL SyncEngine over the real iOS database and a fake poster returning
+NetworkError: posts == 1 (positive control), lastOutcome Retryable, the day is
+still PENDING, no retry loop; cancelling the scope cancels the drain and records
+no outcome. Reschedule-on-Retryable belongs to the scheduler (iOS-1c).
+
+--------------------------------------------------------------------------------
+R570 - FRENCH FORMATTING IS THE SAME STRING ON BOTH PLATFORMS
+--------------------------------------------------------------------------------
+GOLDENS FIRST, ON ANDROID: a throwaway JVM test (deleted; never committed) ran
+:app's fr/format over its input ranges and wrote
+shared/src/commonTest/.../fr/text/FrenchFormatGoldens.kt: 12,021 input->output
+strings captured from java.text/java.time: formatPercent at 0/1/2 decimals (828
+each, every 13th n of 0..10000 plus negatives, -0.0, ties, E-notation values),
+formatDeclarableRate, formatDays and formatSignedDays (1825 each), formatPoints
+(612, random two-decimal differences plus ties), formatDate (988), formatDayLong
+(every day of 2025-2028: 1461), month names, formatDateTime (Paris, UTC, New York,
+Zurich x 380 instants incl. both 2026/2027 DST changes, offsets, fractions),
+formatDossierStamp (380), and 26 refusals with their exact messages.
+THE DECISION: a pure-Kotlin formatter CAN produce every one, so it is in
+commonMain (package ch.monreleve.app.fr.text - a different package so :app's own
+call sites cannot become ambiguous): numbers work on Double.toString()'s shortest
+digits exactly as DecimalFormat does (0.83 -> "0,83"; Geneva's 39.16 never
+39,15); HALF_UP ties are decided by an exact error-free product (Dekker
+TwoProduct) instead of BigDecimal; weekday and month names are tables, checked
+against CLDR by 1461 days. FrTextGoldenTest passes on the JVM (7/7) and on the
+simulator (7/7). Positive control: formatPoints switched to DOWN made it fail
+locally, then restored.
+THE INSTANT FORMATTERS (formatDateTime, formatDossierStamp) are in iosMain, not
+commonMain, because kotlin.time.Instant needs an @OptIn(ExperimentalTime) and a
+commonMain opt-in would be a new line on ExperimentalTimeOptInAllowlistTest, a
+file under android/app that this task may not edit. They carry the opt-in at
+function scope and run against the same goldens on the simulator
+(FrInstantFormatGoldenTest 5/5, all 1,910 strings equal).
+ANDROID'S OUTPUT IS UNCHANGED: :app was not touched; its fr/format still uses
+java.time. Switching :app to fr/text is a later task (UNNUMBERED-3).
+
+--------------------------------------------------------------------------------
+R571 - THE LOGGER LOGS NO PERSON
+--------------------------------------------------------------------------------
+IosLogger writes through NSLog("%@", line) (os_log is a C macro Kotlin cannot
+call) and scrubs every message: emails, ISO days, token-like runs of 24+
+characters, six-digit codes. IosLoggerAndReporterTest feeds an email, a
+JWT-shaped token, a day and a code through it: the captured line CONTAINS its tag
+and its fixed words (positive control) and contains none of the four.
+scrubLeavesOrdinarySentencesAlone guards against over-scrubbing the canary text.
+
+--------------------------------------------------------------------------------
+R572 - WHAT iOS-1c NEEDS
+--------------------------------------------------------------------------------
+- Info.plist: NSAppTransportSecurity (NSAllowsLocalNetworking, or cleartext for
+  the 10.0.2.2-equivalent dev server - the simulator TEST binary reached
+  http://127.0.0.1 with no plist, an app will need its own exception for dev);
+  CFBundleURLTypes / nothing for location (D18: no location keys at all);
+  BGTaskSchedulerPermittedIdentifiers; UIBackgroundModes (processing).
+- Entitlements: keychain-access-groups (the real app identifier prefix - this
+  task proved the Keychain with a TEST group only, on a simulator); the
+  associated domains entitlement for Universal Links (applinks:<domain>).
+- BGTaskScheduler registration: Settled -> done, Retryable -> reschedule,
+  Unauthenticated -> done and NOT a retry (R472); IosSyncTrigger.requestDrain is
+  the foreground hook.
+- Not in :shared and not in this task: the account tag (CC_SHA256 of the
+  account, the UNOWNED rule), AccountStore, the pending sign-in store, the local
+  wipe and its scope, the /me codec (PARK-D3) - R472's list, none has a
+  commonMain interface yet.
+- An app host for Keychain tests is NOT needed in the end (run 7), but a real
+  device test of the Keychain with the real access group is.
+- Decide backup for monreleve.db (default: included); the token and the cached
+  releve are already excluded/ThisDeviceOnly.
+- The iOS app builds LocalEntryRepository with: kotlinx Clock.System (opt-in),
+  the zone captured at construction (REPORT-KMP-4 item 1 asks for the same
+  capture rule as Android), IosUnownedReporter().report, newIosMutationId.
+- FOUND BY THIS TASK: the Kotlin/Native simulator test needs a BOOTED simulator
+  and a test-only entitlements section for anything touching the Keychain - both
+  wired through -PiosSimulatorDevice and only in the workflow.
+
+--------------------------------------------------------------------------------
+CI MINUTES (R538)
+--------------------------------------------------------------------------------
+Repository is private; macOS minutes billed per job rounded up. Eleven runs:
+  1 40351046299 compile errors (Dispatchers.IO internal, category imports)  4m40 -> 5
+  2 40351936340 compile errors (NSMutableURLRequest category members)       1m59 -> 2
+  3 40352482226 192 run, 6 red (Keychain -25291, 2 test races)              2m51 -> 3
+  4 40353378620 192 run, 4 red (Keychain -34018 booted simulator)           6m15 -> 7
+  5 40354628629 codesign refused (launchd 162)                              6m34 -> 7
+  6 40355901719 ld rejected -Xlinker                                        7m21 -> 8
+  7 40357208403 GREEN 192/192, Keychain live                                7m24 -> 8
+  8 40358530311 R564 PLANT: 1 red by name (192 run)                         4m24 -> 5
+  9 40359344327 GREEN after revert, 192/192                                 4m08 -> 5
+ 10 40361800958 GREEN, 192/192 (before R592)                                     7m03 -> 8
+ 11 40365938173 GREEN on the R592 code tip 5598a4e, 192/192                      7m00 -> 8
+TOTAL 66 billed macOS minutes (about 660 Linux-equivalent at the 10x rate). No
 run was dispatched manually: every run was a push to ios-1a (the workflow's own
 trigger). Local gate runs cost nothing billed.
 
@@ -407,6 +571,9 @@ UNNUMBERED-6  ios-wire-server.py is stdlib-only and used only by CI; if the
 --------------------------------------------------------------------------------
 DEVIATIONS
 --------------------------------------------------------------------------------
+0. R592 (operator ruling, ADDENDUM 2): a test-only commit in android/app, an EXCEPTION to
+   the Android-unchanged boundary - see the R592 section. Deviation 1 below (instant
+   formatters in iosMain) stands; its allowlist problem is what R592 closes.
 1. THE INSTANT FORMATTERS ARE IN iosMain, NOT commonMain (R570 prefers common):
    to avoid editing android/app's allowlist test (hard boundary). See R570.
 2. fr/text is a DIFFERENT PACKAGE from :app's fr/format, so :app call sites stay
@@ -446,7 +613,7 @@ Q4  Is a Robolectric dependency in :app tests acceptable to run the contracts
 PUSH PROOF
 --------------------------------------------------------------------------------
 Branch ios-1a only; never main, never production. The report commit follows the code
-tip 1a4acf9 and changes only REPORT-IOS-1a.txt (paths-ignore: it starts no run).
+tip 5598a4e (R592) and changes only REPORT-IOS-1a.txt (paths-ignore: it starts no run).
 No secret, token or key appears in any file or in this report. Nothing was merged
 (pending merge, operator reads this first). Untracked relay/*.txt and scripts in
 the main checkout were not touched. The session lock was removed at the end.
