@@ -169,6 +169,9 @@ kotlin {
             api(libs.cmp.foundation)
             api(libs.cmp.animation)
             api(libs.cmp.material3)
+            // IOS-1b-A R603: the resources runtime the generated Res class compiles against (design/Glyph.kt). Only iOS
+            // reads a resource through it; on Android its ContentProvider is removed from the merged manifest.
+            implementation(libs.cmp.components.resources)
         }
         commonTest {
             // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
@@ -223,6 +226,11 @@ dependencies {
 // UP-TO-DATE - the same R283 discipline :app applies to its source-scanning fences. Declaring the tree as a
 // test input makes the text-scanning assertion re-run on any commonMain edit, not only the ones that recompile.
 tasks.withType<Test>().configureEach {
+    // IOS-1b-A R603: GlyphResourceGeneratorTest reads the generator's real output and the app drawables it copies.
+    dependsOn("generateGlyphResources")
+    inputs.dir(rootProject.layout.projectDirectory.dir("app/src/main/res/drawable"))
+        .withPropertyName("appDrawablesForGlyphTest")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(layout.projectDirectory.dir("src/commonMain/kotlin"))
         .withPropertyName("commonMainSourceForFence")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -294,4 +302,41 @@ providers.gradleProperty("iosSimulatorDevice").orNull?.let {
         "__entitlements",
         entitlements,
     )
+}
+
+// IOS-1b-A R603. iOS DRAWS THE APP'S OWN GLYPH FILES (design/Glyph.kt; REPORT-IOS-1b-A DEVIATION 4 / Q2).
+//
+// The Lucide drawables' one home stays app/src/main/res/drawable, because Aujourd'hui's instrumented tests assert
+// literal ch.monreleve.app.R.drawable ids (a hard boundary). This task COPIES them - every ic_*.xml except the
+// launcher's - into a generated directory registered below as iosMain's Compose Multiplatform resources, so iOS
+// renders the very same path data Android does. Derived at build time, never a second hand-kept copy (R181/R206);
+// GlyphResourceGeneratorTest proves the copy delivered each file's paths unchanged (R154). The XML is Android's
+// vector-drawable format, which Compose Multiplatform's resource loader reads as is - no conversion step exists to
+// change a path.
+val appDrawables = rootProject.layout.projectDirectory.dir("app/src/main/res/drawable")
+val generatedGlyphResources = layout.buildDirectory.dir("generated/glyphResources")
+
+val generateGlyphResources by tasks.registering(Sync::class) {
+    from(appDrawables) {
+        include("ic_*.xml")
+        exclude("ic_launcher*")
+    }
+    into(generatedGlyphResources.map { it.dir("drawable") })
+}
+
+compose.resources {
+    packageOfResClass = "ch.monreleve.app.shared.resources"
+    generateResClass = always
+    customDirectory(
+        sourceSetName = "iosMain",
+        directoryProvider = generatedGlyphResources,
+    )
+}
+
+// Every Compose resource task may read the generated directory, so each runs after the copy that fills it (Gradle
+// refuses an undeclared dependency - measured: copyNonXmlValueResourcesForIosMain was the first to trip it).
+tasks.configureEach {
+    if (name != "generateGlyphResources" && name.contains("Resource")) {
+        dependsOn(generateGlyphResources)
+    }
 }

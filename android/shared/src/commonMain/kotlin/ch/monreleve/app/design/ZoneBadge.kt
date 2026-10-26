@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 4. Kotlin port of web/lib/ui/react/ZoneBadge/ZoneBadge.tsx.
 // The status chip. SPEC 6.2: "Every status carries icon + label +
 // one-line explanation, identical on web, Android, and PDF." SPEC 16:
@@ -33,7 +36,6 @@ package ch.monreleve.app.design
 // Clear/Notifications stand in for circle-check/triangle-alert/circle-x/
 // octagon-alert - the last two chosen for shape, not name.
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,22 +45,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import ch.monreleve.app.R
 
 // R293 (AN10b): the four status glyphs are now the REAL Lucide icons, converted to vector drawables and
 // committed (no runtime dependency, R136), replacing AN3's Material core stand-ins. Each is the glyph
 // LucideIconName names - circle-check, triangle-alert, circle-x, octagon-alert - not a shape chosen for
 // visual distinctness within the core set's real constraint. Icon(tint) recolours the stroke.
-@DrawableRes
-private fun iconFor(icon: LucideIconName): Int =
+// IOS-1b-A R603: a Glyph (design/Glyph.kt), so the same drawable file is drawn on Android and on iOS.
+private fun iconFor(icon: LucideIconName): Glyph =
     when (icon) {
-        LucideIconName.CIRCLE_CHECK -> R.drawable.ic_circle_check
-        LucideIconName.TRIANGLE_ALERT -> R.drawable.ic_triangle_alert
-        LucideIconName.CIRCLE_X -> R.drawable.ic_circle_x
-        LucideIconName.OCTAGON_ALERT -> R.drawable.ic_octagon_alert
+        LucideIconName.CIRCLE_CHECK -> Glyph.CIRCLE_CHECK
+        LucideIconName.TRIANGLE_ALERT -> Glyph.TRIANGLE_ALERT
+        LucideIconName.CIRCLE_X -> Glyph.CIRCLE_X
+        LucideIconName.OCTAGON_ALERT -> Glyph.OCTAGON_ALERT
     }
 
 @Composable
@@ -80,7 +80,7 @@ fun ZoneBadge(
             // thing in words, and SPEC 16 requires the words. Announcing
             // both would read the status twice.
             Icon(
-                painter = painterResource(iconFor(presentation.icon)),
+                painter = glyphPainter(iconFor(presentation.icon)),
                 contentDescription = null,
                 tint = presentation.colour,
                 modifier = Modifier.padding(end = Spacing.space4),

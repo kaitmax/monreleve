@@ -31,11 +31,32 @@ private fun stripComments(text: String): String =
         .replace(Regex("""/\*[\s\S]*?\*/"""), "")
         .replace(Regex("""//.*"""), "")
 
+// IOS-1b-A R602/R603/R604. A SUBJECT PACKAGE MAY NOW LIVE IN :app, IN :shared commonMain, OR IN BOTH - so each fence
+// reads every root that holds it, each root pinned by a file only it holds (R460). The old ktFiles walked
+// File(appSrcRoot, sub) alone, and `if (!dir.exists()) return emptyList()` is R460's pattern exactly: when design/
+// moved, the token fences went on scanning ui/ and dev/ and reported the moved tokens clean without reading them.
+private val sharedSrcRoot = File("../shared/src/commonMain/kotlin/ch/monreleve/app")
+
+private val SUBJECT_ROOTS: Map<String, List<FenceRoot>> =
+    mapOf(
+        "ui" to listOf(FenceRoot(File(appSrcRoot, "ui"), pin = "AppBottomBar.kt")),
+        "design" to listOf(FenceRoot(File(sharedSrcRoot, "design"), pin = "Tokens.kt")),
+        "dev" to listOf(FenceRoot(File(appSrcRoot, "dev"), pin = "GalleryScreen.kt")),
+        "detection" to
+            listOf(
+                FenceRoot(File(appSrcRoot, "detection"), pin = "SamplingWorker.kt"),
+                FenceRoot(File(sharedSrcRoot, "detection"), pin = "Vote.kt"),
+            ),
+    )
+
 private fun ktFiles(subpackage: String): List<File> {
-    val dir = File(appSrcRoot, subpackage)
-    if (!dir.exists()) return emptyList()
-    return dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    val roots = SUBJECT_ROOTS.getValue(subpackage)
+    roots.assertFound("FencesTest $subpackage/")
+    return roots.ktFiles()
 }
+
+/** The token DEFINITION files, wherever design/ lives - the exemptions follow the files, not a path typed twice. */
+private fun designFile(name: String): File = File(File(sharedSrcRoot, "design"), name).canonicalFile
 
 private fun allKtFilesExcept(excludedSubpackage: String): List<File> {
     val excludedDir = File(appSrcRoot, excludedSubpackage).canonicalFile
@@ -133,9 +154,8 @@ class FencesTest {
     // 2b's re-export gap - a text scan cannot see through string operations
     // or renaming; closing it needs semantic analysis. See REPORT-AN1.txt.
     // ------------------------------------------------------------------
-    // R461: :app ONLY, and correct - detection/ is Android (location, WorkManager, Notification) and has
-    // no counterpart in :shared commonMain. R460 is already delivered by the isNotEmpty() below: ktFiles()
-    // returns an empty list for a missing directory, and the assertion turns that into a named failure.
+    // IOS-1b-A R602: detection/'s pure vote, outcome, near-border and check-window code moved to :shared commonMain,
+    // so this reads BOTH roots (SUBJECT_ROOTS), each pinned (R460) - the app half is still location and WorkManager.
     @Test
     fun detectionNeverReferencesDataRemoteOrRetrofit() {
         val files = ktFiles("detection")
@@ -247,14 +267,14 @@ class FencesTest {
     // see through indirection; closing it needs dataflow analysis, out of
     // AN1's scope. See REPORT-AN1.txt.
     // ------------------------------------------------------------------
-    // R461: :app ONLY, and correct - ui/ and design/ are Jetpack Compose, which commonMain cannot hold.
-    // R460 is already delivered by the isNotEmpty() below: a renamed root scans zero files and fails here.
+    // IOS-1b-A R603: design/ lives in :shared commonMain now (Compose Multiplatform), so this reads it there; every
+    // root is pinned in SUBJECT_ROOTS and asserted before the walk (R460), and the isNotEmpty() below stays.
     @Test
     fun uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens() {
         val tokenDefinitionFiles =
             setOf(
-                File(appSrcRoot, "design/Tokens.kt").canonicalFile,
-                File(appSrcRoot, "design/Typography.kt").canonicalFile,
+                designFile("Tokens.kt"),
+                designFile("Typography.kt"),
             )
         val scanned =
             (ktFiles("ui") + ktFiles("design") + ktFiles("dev")).filterNot { it.canonicalFile in tokenDefinitionFiles }
@@ -390,9 +410,8 @@ class FencesTest {
     // whole of D16. Proven by a plant (REPORT-AN6a.txt): a reference to
     // EntryRepository placed in detection/ turns this red.
     // ------------------------------------------------------------------
-    // R461: :app ONLY, and correct - detection/ is Android (location, WorkManager, Notification) and has
-    // no counterpart in :shared commonMain. R460 is already delivered by the isNotEmpty() below: ktFiles()
-    // returns an empty list for a missing directory, and the assertion turns that into a named failure.
+    // IOS-1b-A R602: detection/'s pure vote, outcome, near-border and check-window code moved to :shared commonMain,
+    // so this reads BOTH roots (SUBJECT_ROOTS), each pinned (R460) - the app half is still location and WorkManager.
     @Test
     fun detectionNeverWritesAnEntry() {
         val forbidden = listOf("""\bEntryRepository\b""", """\bRecordCommand\b""")
@@ -424,11 +443,11 @@ class FencesTest {
     // and evades this text scan. Proven to fire by a planted `tween(200)`
     // (R178/R180), reverted - there were no live instances when it landed.
     // ------------------------------------------------------------------
-    // R461: :app ONLY, and correct - ui/ and design/ are Jetpack Compose, which commonMain cannot hold.
-    // R460 is already delivered by the isNotEmpty() below: a renamed root scans zero files and fails here.
+    // IOS-1b-A R603: design/ lives in :shared commonMain now (Compose Multiplatform), so this reads it there; every
+    // root is pinned in SUBJECT_ROOTS and asserted before the walk (R460), and the isNotEmpty() below stays.
     @Test
     fun uiAndDesignHaveNoRawAnimationDurationLiteral() {
-        val tokenDefinitionFiles = setOf(File(appSrcRoot, "design/Tokens.kt").canonicalFile)
+        val tokenDefinitionFiles = setOf(designFile("Tokens.kt"))
         val scanned =
             (ktFiles("ui") + ktFiles("design") + ktFiles("dev")).filterNot { it.canonicalFile in tokenDefinitionFiles }
         assertTrue("duration fence scanned no files - ui//design/ renamed? (F7 vacuity guard)", scanned.isNotEmpty())
@@ -470,16 +489,18 @@ class FencesTest {
     // (`val c = LightColors.brand; c.copy(alpha = 0.5f)`) moves the receiver
     // off the `brand.copy` anchor and evades this text scan.
     // ------------------------------------------------------------------
-    // R461: :app ONLY, and correct - the brand tint is a design/ token and Compose colour, and commonMain
-    // holds no design tokens. R460 is already delivered by the isNotEmpty() below.
+    // IOS-1b-A R603: the brand tint's one home (Tokens.kt) is in :shared commonMain now, so the scan covers both trees.
     @Test
     fun theBrandTintHasOneHomeAndIsNotOpenCodedElsewhere() {
-        val tokensFile = File(appSrcRoot, "design/Tokens.kt").canonicalFile
-        val scanned =
-            appSrcRoot.walkTopDown()
-                .filter { it.isFile && it.extension == "kt" }
-                .filterNot { it.canonicalFile == tokensFile }
-                .toList()
+        val tokensFile = designFile("Tokens.kt")
+        // IOS-1b-A R603: the whole of :app AND :shared commonMain - the token file (and its users) moved there.
+        val roots =
+            listOf(
+                FenceRoot(appSrcRoot, pin = "MainActivity.kt"),
+                FenceRoot(sharedSrcRoot, pin = "Tokens.kt"),
+            )
+        roots.assertFound("brandSoft fence")
+        val scanned = roots.ktFiles().filterNot { it.canonicalFile == tokensFile }
         assertTrue("brandSoft fence scanned no files - app root renamed? (F7 vacuity guard)", scanned.isNotEmpty())
 
         val pattern = Regex("""\bbrand\.copy\s*\(\s*alpha\s*=""")

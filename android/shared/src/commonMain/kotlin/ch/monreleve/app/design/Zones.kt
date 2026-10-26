@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 2. Kotlin port of web/lib/ui/core/zones.ts.
 //
 // SPEC 6.2. "Zones and statuses are different things."

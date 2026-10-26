@@ -1,5 +1,8 @@
 package ch.monreleve.app.design.rail
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 3. Kotlin port of web/lib/ui/core/rail/geometry.ts.
 //
 // SPEC 6.3: "an 8 px pill track, filled from 0 to the declarable rate in

@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -7,6 +10,8 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+
+// IOS-1b-A R603: public, not internal - ThemeCensusTest in :app reads it across the module boundary.
 
 /**
  * EVERY ColorScheme slot Material3 defines, in two groups (ThemeCensusTest.kt
@@ -25,7 +30,7 @@ import androidx.compose.ui.graphics.Color
  * Color.Transparent: M3 uses it to tint elevated surfaces with primary, which
  * is the exact "default surface tint" DESIGN-SYSTEM.md section 14 forbids.
  */
-internal fun frontierColorScheme(): ColorScheme =
+fun frontierColorScheme(): ColorScheme =
     lightColorScheme(
         // --- documented ---
         primary = LightColors.brand,

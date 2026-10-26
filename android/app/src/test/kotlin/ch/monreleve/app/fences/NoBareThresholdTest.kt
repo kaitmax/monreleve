@@ -31,7 +31,9 @@ import java.io.File
 // dev scans are unchanged.
 private val CALC_DIR = File("../shared/src/commonMain/kotlin/ch/monreleve/app/calc")
 private val UI_DIR = File("src/main/kotlin/ch/monreleve/app/ui")
-private val DESIGN_DIR = File("src/main/kotlin/ch/monreleve/app/design")
+
+// IOS-1b-A R603: design/ moved to :shared commonMain; the root follows it, still pinned by RailGeometry.kt.
+private val DESIGN_DIR = File("../shared/src/commonMain/kotlin/ch/monreleve/app/design")
 private val DEV_DIR = File("src/main/kotlin/ch/monreleve/app/dev")
 
 // AN-FENCE-ROOTS (R460). Each root asserted SEPARATELY, pinned by a file only it holds.

@@ -1,5 +1,8 @@
 package ch.monreleve.app.design.rail
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 3 (AC2, AC3). The Compose rendering of railGeometry's
 // numbers - web/lib/ui/react/ThresholdRail/ThresholdRail.tsx's counterpart.
 //

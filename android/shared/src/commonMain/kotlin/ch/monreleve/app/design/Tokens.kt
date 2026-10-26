@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
@@ -66,8 +69,10 @@ object Radius {
     val xxl: Dp = tokens.getValue("xxl")
     val pill: Dp = tokens.getValue("pill")
 
+    // IOS-1b-A R603: public, not internal - RadiusTest in :app reads it across the module boundary.
+
     /** For RadiusTest.kt only (R8 ported) - never referenced by ui/ code. */
-    internal val allForTest: Map<String, Dp> get() = tokens
+    val allForTest: Map<String, Dp> get() = tokens
 }
 
 /** The 4 dp spacing scale (DESIGN-SYSTEM 1). No spacing value off this scale in ui/. */
@@ -176,8 +181,10 @@ object Motion {
     /** 300 ms - a number change (the year panel's figures, AN-HOME). */
     val numbersMillis: Int = tokens.getValue("numbersMillis")
 
+    // IOS-1b-A R603: public, not internal - MotionTest in :app reads it across the module boundary.
+
     /** For MotionTest.kt only (R8 shape ported) - never referenced by ui/ code. */
-    internal val allForTest: Map<String, Int> get() = tokens
+    val allForTest: Map<String, Int> get() = tokens
 }
 
 /**

@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 4. Kotlin port of web/lib/ui/react/MetricTile/MetricTile.tsx.
 //
 // IT TAKES A SignedDays, NOT A NUMBER - the whole design (SPEC 7.2 step 6):

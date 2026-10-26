@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 4. Built from SPEC line 839 (see fr/ConfidenceCopy.kt's
 // own header) - no existing web component to port from, since detection
 // is AN6+ scope on both platforms.

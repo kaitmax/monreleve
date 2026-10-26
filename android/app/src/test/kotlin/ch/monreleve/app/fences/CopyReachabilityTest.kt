@@ -66,7 +66,8 @@ private val FR_DIRS =
 private val SURFACE_DIRS =
     listOf(
         FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "AppBottomBar.kt"),
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/design"), pin = "Tokens.kt"),
+        // IOS-1b-A R603: design/ moved to :shared commonMain - the surface root follows it, still pinned by Tokens.kt.
+        FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/design"), pin = "Tokens.kt"),
         FenceRoot(File("src/main/kotlin/ch/monreleve/app/dev"), pin = "GalleryScreen.kt"),
     )
 

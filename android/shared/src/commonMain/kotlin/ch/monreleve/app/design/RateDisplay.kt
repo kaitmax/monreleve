@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 4. Kotlin port of web/lib/ui/react/RateDisplay/RateDisplay.tsx.
 // The two rates (SPEC 9.3). Shown together only WHEN THEY DIFFER - a
 // component that always rendered the second block would print the same

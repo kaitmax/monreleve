@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IOS-1b-A R603. The shared design system finds these ten Lucide drawables BY NAME at run time
+     (shared design/Glyph.android.kt), which R8's resource shrinker cannot see - so they are kept here by name.
+     The list is asserted against the Glyph enum by GlyphDrawablesExistTest, so a glyph added to the enum and not
+     to this file fails a test rather than shipping blank. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_building_2,@drawable/ic_house,@drawable/ic_briefcase,@drawable/ic_plane,@drawable/ic_calendar_x,@drawable/ic_clock,@drawable/ic_circle_check,@drawable/ic_triangle_alert,@drawable/ic_circle_x,@drawable/ic_octagon_alert" />

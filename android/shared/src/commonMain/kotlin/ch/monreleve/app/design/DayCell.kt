@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 4. No direct web component to port from - detection and
 // the calendar are AN6+ scope on both platforms, so this is built directly
 // from SPEC line 847 and DESIGN-SYSTEM.md's FrontierCalendar row, rather
@@ -39,10 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import ch.monreleve.app.R
 import ch.monreleve.app.fr.DayCellCopy
 
 private val DOT_COLOURS =
@@ -188,7 +189,7 @@ fun DayCell(
 @Composable
 private fun BoxScope.SelectionCheck() {
     Icon(
-        painter = painterResource(R.drawable.ic_circle_check),
+        painter = glyphPainter(Glyph.CIRCLE_CHECK),
         contentDescription = null,
         tint = LightColors.brand,
         modifier =

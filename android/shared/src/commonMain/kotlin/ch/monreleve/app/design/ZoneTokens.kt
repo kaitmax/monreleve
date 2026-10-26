@@ -1,5 +1,8 @@
 package ch.monreleve.app.design
 
+// IOS-1b-A R603: MOVED FROM :app to :shared commonMain (package unchanged) - the design system the shared Aujourd'hui
+// screen draws with, one definition for both platforms.
+
 // AN3 increment 2. Kotlin port of web/lib/ui/core/zone-tokens.ts, adapted:
 // the web file's mapping targets CSS custom-property NAMES, resolved later
 // against tokens.scss. Android has no such indirection - Tokens.kt IS the
