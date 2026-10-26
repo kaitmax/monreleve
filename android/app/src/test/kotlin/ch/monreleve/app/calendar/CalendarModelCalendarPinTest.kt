@@ -74,9 +74,13 @@ class CalendarModelCalendarPinTest {
 
     @Test
     fun theWeekStripIsMondayToFridayOfTodaysWeek() {
+        fun span(
+            from: LocalDate,
+            to: LocalDate,
+        ) = generateSequence(from) { it.plusDays(1) }.takeWhile { it <= to }
         val days =
-            generateSequence(LocalDate.of(2026, 12, 20)) { it.plusDays(1) }.takeWhile { it <= LocalDate.of(2027, 1, 10) } +
-                generateSequence(LocalDate.of(2028, 2, 1)) { it.plusDays(1) }.takeWhile { it <= LocalDate.of(2028, 3, 3) }
+            span(LocalDate.of(2026, 12, 20), LocalDate.of(2027, 1, 10)) +
+                span(LocalDate.of(2028, 2, 1), LocalDate.of(2028, 3, 3))
         var checked = 0
         for (today in days) {
             val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())

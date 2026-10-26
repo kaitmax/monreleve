@@ -16,15 +16,16 @@ import ch.monreleve.app.design.DayProvenance
 import ch.monreleve.app.design.RecordQuality
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.settings.Settings
-import kotlinx.datetime.toKotlinLocalDate
-import java.time.DayOfWeek
-import java.time.Instant
-import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.YearMonth
-import java.time.format.DateTimeParseException
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
+import kotlinx.datetime.number
+import kotlinx.datetime.plus
 import kotlin.time.ExperimentalTime
-import kotlin.time.toKotlinInstant
+import kotlin.time.Instant
 
 // AN10 increment 1. The calendar's pure month model - no Android, no clock, no network. It turns the
 // device's stored rows (Room) into what one month's grid renders, so the controller (which holds the
@@ -32,8 +33,14 @@ import kotlin.time.toKotlinInstant
 //
 // R28 - THE DAY IS AN ISO STRING, "today" IS SUPPLIED, NOT READ. Every date is a YYYY-MM-DD string in
 // Europe/Paris; the caller passes the Paris `today` (todayInParis), so this file never touches a clock
-// and the month is identical whatever timezone the device is set to. java.time here is calendar-only
-// arithmetic on explicit dates (YearMonth, LocalDate, DayOfWeek), the same guarantee Aggregate.kt gets.
+// and the month is identical whatever timezone the device is set to. kotlinx-datetime here is calendar-only
+// arithmetic on explicit dates (LocalDate, DayOfWeek), the same guarantee Aggregate.kt gets.
+//
+// IOS-1b-A R602c: MOVED FROM :app to :shared commonMain and rewritten from java.time onto kotlinx-datetime, so the
+// shared Aujourd'hui controller builds its week strip and month counts on every platform. CalendarModelCalendarPinTest
+// pinned every month of 2024-2028, 54 week strips, the period start and serverLate's two timestamp forms on the
+// java.time code first, with java.time as the oracle; it and CalendarModelTest pass unedited on this one. An ISO day
+// is LocalDate.toString() (yyyy-MM-dd), which replaced the JVM-only String.format.
 // The calendar is always the TAX YEAR, so there is one year value, not two.
 //
 // R216 - THE CLIENT MAY PREDICT, IT MUST NOT ADJUDICATE. A cell's LATE quality is the SERVER'S flag,
@@ -107,20 +114,17 @@ private const val WEEKDAY_COUNT = 5
 private val WEEKEND = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
 
 /**
- * The instant a server timestamp names. The server serialises via toISOString() (a Z form), which
- * Instant.parse accepts; OffsetDateTime is the fallback for an offset form, so a stored value that
- * ever carried +02:00 still reads. A firstRecordedAt that will not parse cannot be judged late, so it
- * is treated as not-yet-confirmed rather than crashing the grid.
+ * The instant a server timestamp names. The server serialises via toISOString() (a Z form); kotlin.time's
+ * Instant.parse reads that AND an offset form, so a stored value that ever carried +02:00 still reads (the java.time
+ * version needed OffsetDateTime as a fallback; ServerInstantParseGoldenTest pins both shapes). A firstRecordedAt
+ * that will not parse cannot be judged late, so it is treated as not-yet-confirmed rather than crashing the grid.
  */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
 private fun parseServerInstant(iso: String): Instant? =
     try {
         Instant.parse(iso)
-    } catch (_: DateTimeParseException) {
-        try {
-            OffsetDateTime.parse(iso).toInstant()
-        } catch (_: DateTimeParseException) {
-            null
-        }
+    } catch (_: IllegalArgumentException) {
+        null
     }
 
 private fun EntryKind.toDayKind(): DayKind =
@@ -147,14 +151,11 @@ private fun Provenance.toDayProvenance(): DayProvenance =
  * (qualityOf) and the edit sheet (CalendarController), so the two cannot disagree.
  */
 @Suppress("ReturnCount")
-@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
 fun serverLate(entry: EntryEntity): Boolean {
     if (entry.syncState != SyncState.SYNCED) return false
     val recordedAt = entry.firstRecordedAt?.let { parseServerInstant(it) } ?: return false
-    return LatenessForecast.wouldBeLate(
-        LocalDate.parse(entry.dayDate).toKotlinLocalDate(),
-        recordedAt.toKotlinInstant(),
-    )
+    return LatenessForecast.wouldBeLate(LocalDate.parse(entry.dayDate), recordedAt)
 }
 
 /**
@@ -231,7 +232,7 @@ fun periodStartInYear(
     val parsed =
         try {
             LocalDate.parse(start)
-        } catch (_: DateTimeParseException) {
+        } catch (_: IllegalArgumentException) {
             return null
         }
     return if (parsed.year == taxYear) parsed else null
@@ -241,7 +242,7 @@ fun periodStartInYear(
 fun firstNavMonth(
     settings: Settings,
     taxYear: Int,
-): Int = periodStartInYear(settings, taxYear)?.monthValue ?: 1
+): Int = periodStartInYear(settings, taxYear)?.month?.number ?: 1
 
 /** Build one month's view (the tax year is the calendar year) from the year's rows and the settings. */
 fun buildMonthView(
@@ -254,14 +255,15 @@ fun buildMonthView(
     val periodStart = periodStartInYear(settings, taxYear)
     val firstMonth = firstNavMonth(settings, taxYear)
 
-    val yearMonth = YearMonth.of(taxYear, month)
-    val leadingBlanks = LocalDate.of(taxYear, month, 1).dayOfWeek.value - 1
+    val first = LocalDate(taxYear, month, 1)
+    val lengthOfMonth = first.daysUntil(first.plus(1, DateTimeUnit.MONTH))
+    val leadingBlanks = first.dayOfWeek.isoDayNumber - 1
     val byDay = entries.groupBy { it.dayDate }
 
     val days =
-        (1..yearMonth.lengthOfMonth()).map { d ->
-            val iso = "%04d-%02d-%02d".format(taxYear, month, d)
-            dayCellUi(LocalDate.of(taxYear, month, d), byDay[iso].orEmpty(), periodStart, today)
+        (1..lengthOfMonth).map { d ->
+            val date = LocalDate(taxYear, month, d)
+            dayCellUi(date, byDay[date.toString()].orEmpty(), periodStart, today)
         }
 
     return MonthView(
@@ -286,9 +288,9 @@ private fun dayCellUi(
     periodStart: LocalDate?,
     today: String,
 ): CalendarDayUi {
-    val iso = "%04d-%02d-%02d".format(date.year, date.monthValue, date.dayOfMonth)
+    val iso = date.toString()
     val isWeekend = date.dayOfWeek in WEEKEND
-    val inPeriod = periodStart == null || !date.isBefore(periodStart)
+    val inPeriod = periodStart == null || date >= periodStart
     val isPast = iso < today
 
     val cell = cellOf(rows)
@@ -302,7 +304,7 @@ private fun dayCellUi(
         }
 
     return CalendarDayUi(
-        dayOfMonth = date.dayOfMonth,
+        dayOfMonth = date.day,
         isoDate = iso,
         kind = cell.kind,
         secondKind = cell.secondKind,
@@ -328,13 +330,12 @@ fun weekdayCells(
     today: String,
 ): List<CalendarDayUi> {
     val todayDate = LocalDate.parse(today)
-    val monday = todayDate.minusDays((todayDate.dayOfWeek.value - 1).toLong())
+    val monday = todayDate.minus(todayDate.dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY)
     val periodStart = periodStartInYear(settings, taxYear)
     val byDay = entries.groupBy { it.dayDate }
     return (0 until WEEKDAY_COUNT).map { offset ->
-        val date = monday.plusDays(offset.toLong())
-        val iso = "%04d-%02d-%02d".format(date.year, date.monthValue, date.dayOfMonth)
-        dayCellUi(date, byDay[iso].orEmpty(), periodStart, today)
+        val date = monday.plus(offset, DateTimeUnit.DAY)
+        dayCellUi(date, byDay[date.toString()].orEmpty(), periodStart, today)
     }
 }
 
