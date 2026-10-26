@@ -152,6 +152,80 @@ test-side seam into an internal field. The app itself is unaffected (the
 provider runs at process start, and in instrumented tests). CMP resources
 also add that ContentProvider to the merged manifest (R605 counts it).
 
+--------------------------------------------------------------------------------
+R602 - THE CONTROLLER MOVED FIRST (commits 77a85f6, b24b622, 0ffee5f, 9edd39c,
+c5a7325, 886e717)
+--------------------------------------------------------------------------------
+Leaves first, each pinned before it moved, one commit per layer, package
+names unchanged (so no :app import moved):
+  R602a 77a85f6  vocabulary: detection/Vote, DetectionOutcome, NearBorder,
+        onboarding/Choices (git mv); split - Classification enum,
+        LoggingMode + DetectionModeStore + InMemory, NearBorderNoticeStore +
+        InMemory, TallyEntity.toDayChecks, DayWriter. The SharedPreferences
+        and org.json halves stay in :app. Pins: the existing :app tests,
+        unedited. iOS run 40414131018: success, 192 executed.
+  R602b b24b622 (pin) + 0ffee5f  CheckWindows -> :shared on kotlinx-datetime;
+        :app keeps java.time.Clock overloads (JavaTimeCheckWindows.kt).
+        CheckWindowsParisPinTest - every minute of 2026-06-15, 2026-03-29 and
+        2026-10-25 against java.time's own Paris clock - green on java.time,
+        then green unedited on the port.
+  R602c 9edd39c (pin) + c5a7325  CalendarModel -> :shared on kotlinx-datetime
+        (LocalDate.toString replaces the JVM-only String.format; Instant.parse
+        reads Z and offset forms); DayKind/Colours/RecordQuality/DayProvenance
+        split out of DayCell.kt. CalendarModelCalendarPinTest (60 months, 54
+        week strips, period start, serverLate's two forms; java.time oracle)
+        green before and after; it BITES - leadingBlanks planted off by one ->
+        "2024-01 blanks expected:<0> but was:<1>", restored (cmp). The pin
+        file took lint-only line wrapping in c5a7325 (no assertion changed).
+  R602d 886e717  AujourdhuiController -> :shared. kotlin.time.Clock + a
+        deviceZone (what a java.time.Clock carried); already a plain state
+        holder with an injected CoroutineScope, NO androidx ViewModel, so no
+        multiplatform lifecycle dependency and no question for the operator.
+        :app keeps JavaTimeAujourdhui.kt, a factory named like the class that
+        takes a java.time.Clock - MainGraph and all 25 test constructions are
+        UNEDITED. Account tag still read at write time, settings at use.
+  CommonMainFenceTest (c5a7325): androidx.compose. allowed; .ui.res and
+  .ui.tooling forbidden; Material3's date pickers forbidden by name (R624).
+  ExperimentalTime allowlist (R590): every new site function- or
+  property-scoped and listed - CheckWindows 4 + bridge 2, CalendarModel 2
+  (was 1 in :app), the controller 5 (was 1) + factory 1. These are new
+  sites for moved code; the allowlist's own message calls a new site "an
+  argument for the operator" - this paragraph is that argument (QUESTION Q3).
+  After R602d: :app 1386 tests 0 failures; 142 screenshot 0 failures at 0.0;
+  :shared 145 0 failures; fastCheck and compileCommonMainKotlinMetadata
+  green.
+
+--------------------------------------------------------------------------------
+R603 - A CONFLICT FOUND BEFORE ANY ICON MOVED (DEVIATION 4, QUESTION Q2)
+--------------------------------------------------------------------------------
+R603 says the Lucide drawables "move to Compose Multiplatform resources ...
+Android reads them from the shared resources". A HARD BOUNDARY says
+Aujourd'hui's "Compose UI tests and accessibility tests pass unedited in
+their assertions". They collide on one artefact: the answer line's glyph
+semantics (kindIconResKey / statusIconResKey) carry an Android drawable Int,
+and AnswerIconInstrumentedTest, AnswerStatusInstrumentedTest and
+KindIconMappingTest assert against literal ch.monreleve.app.R.drawable.* ids
+(KindIconMappingTest by reflection over R.drawable). Move the XMLs out of
+:app's res and those tests do not compile. A hard boundary outranks a
+ruling's mechanism, so - R156: conservative, reversible, recorded - the
+build keeps the boundary and asks:
+  (i)  AS BUILT: the XMLs' one home stays app/src/main/res/drawable; Android
+       draws them as today (pixel-identical by construction, no Paparazzi
+       seam, no ContentProvider or assets in the APK); the shared screen names
+       a glyph by an enum and reaches the painter through a seam; iOS gets
+       Compose Multiplatform resources GENERATED from the app's XMLs by a
+       Gradle task, and the path-comparison test proves the generator
+       delivered (R154). R603's "Android reads from the shared resources" is
+       NOT met.
+  (ii) R603 LITERALLY: the XMLs to commonMain composeResources, the
+       semantics key changes type -> assertion edits in the three tests
+       above, plus the Paparazzi context seam (the spike's reflection into
+       CMP's internal AndroidContextProvider) in all 14 screenshot classes.
+       Breaches the boundary as written; only the operator can relax it.
+  (iii) the XMLs to :shared androidMain/res with android.nonTransitiveRClass
+       =false so ch.monreleve.app.R.drawable.* resolves to the library's ids:
+       one property, app-wide blast radius - NOT measured.
+
 ################################################################################
 PART 1 - THE FIRST PASS (STOPPED AT R601), AS COMMITTED
 ################################################################################
