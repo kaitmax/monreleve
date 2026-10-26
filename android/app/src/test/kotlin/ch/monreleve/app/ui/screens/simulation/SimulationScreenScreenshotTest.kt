@@ -21,7 +21,9 @@ import ch.monreleve.app.forecast.SimulationState
 import ch.monreleve.app.forecast.SimulationView
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
+import kotlinx.datetime.toKotlinDayOfWeek
 import org.junit.Rule
 import org.junit.Test
 import java.time.DayOfWeek
@@ -44,11 +46,11 @@ class SimulationScreenScreenshotTest {
 
     private val rhythm =
         mapOf(
-            DayOfWeek.MONDAY to EntryKind.CH,
-            DayOfWeek.TUESDAY to EntryKind.HOME,
-            DayOfWeek.WEDNESDAY to EntryKind.CH,
-            DayOfWeek.THURSDAY to EntryKind.HOME,
-            DayOfWeek.FRIDAY to EntryKind.CH,
+            DayOfWeek.MONDAY.toKotlinDayOfWeek() to EntryKind.CH,
+            DayOfWeek.TUESDAY.toKotlinDayOfWeek() to EntryKind.HOME,
+            DayOfWeek.WEDNESDAY.toKotlinDayOfWeek() to EntryKind.CH,
+            DayOfWeek.THURSDAY.toKotlinDayOfWeek() to EntryKind.HOME,
+            DayOfWeek.FRIDAY.toKotlinDayOfWeek() to EntryKind.CH,
         )
 
     private val available = listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
@@ -57,7 +59,11 @@ class SimulationScreenScreenshotTest {
         val rows = mutableListOf<AggregatableEntry>()
         var day = LocalDate(2026, 1, 1)
         while (rows.size < count) {
-            if (day.dayOfWeek.value in 1..5) rows.add(AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME))
+            if (day.dayOfWeek.isoDayNumber in 1..5) {
+                rows.add(
+                    AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME),
+                )
+            }
             day = day.plus(1, DateTimeUnit.DAY)
         }
         return rows
@@ -83,7 +89,7 @@ class SimulationScreenScreenshotTest {
             scenario = SimScenario.EXTRA_WEEKDAY,
             inputs = SimInputs(extraWeekday = DayOfWeek.FRIDAY, targetRate = "100"),
             availableWeekdays = available,
-            view = view(SimChange.ExtraWeekday(DayOfWeek.FRIDAY)),
+            view = view(SimChange.ExtraWeekday(DayOfWeek.FRIDAY.toKotlinDayOfWeek())),
             canAdopt = true,
         )
 

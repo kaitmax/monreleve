@@ -1,8 +1,9 @@
 package ch.monreleve.app.dossier
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // AN5c increment 2 (R286). The CLIENT'S lateness forecast, used ONLY to warn - the pending line
 // escalates as the oldest unsynced day nears the backfill threshold (SPEC 11.3), before it is crossed.
@@ -32,6 +33,7 @@ object LatenessForecast {
     private const val BACKFILL_MS: Long = BACKFILL_DAYS * MS_PER_DAY
 
     /** Would a day dated [dayDate] be flagged late if the server observed it at [observedAt]? */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
     fun wouldBeLate(
         dayDate: LocalDate,
         observedAt: Instant,
@@ -51,6 +53,7 @@ object LatenessForecast {
 
     // toEpochDays() is whole days since 1970-01-01 UTC, so * MS_PER_DAY is UTC midnight of dayDate in
     // epoch millis - the same instant the server's Date.UTC(y, m, d) produces (web/lib/entries/late.ts).
-    // (Int days * Long ms promotes to Long; the product cannot overflow at this domain's dates.)
+    // (toEpochDays() is a Long since kotlinx-datetime 0.7 - an Int on 0.6.x, promoted then; either way the
+    // product is the same Long and cannot overflow at this domain's dates. StoredDayStringGoldenTest pins it.)
     private fun startOfStoredDayUtcMs(dayDate: LocalDate): Long = dayDate.toEpochDays() * MS_PER_DAY
 }

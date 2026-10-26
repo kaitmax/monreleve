@@ -34,9 +34,9 @@ data class WeeklyRhythm(
      * The weekday -> EntryKind map the forecast imagines from (dossier/Forecast.kt). A weekday left null
      * is absent from the map and is not a worked day. The value is the one EntryKind (KMP-4 R465 collapsed
      * KMP-0's second copy), so a RhythmKind projects through toEntryKind() alone, with no boundary mapping.
-     * DayOfWeek is kotlinx-datetime's (KMP-4 R463): in 0.6.1 a JVM TYPEALIAS of java.time.DayOfWeek, so :app's
-     * callers keep their java.time keys. This site was already on R384's inventory; it moves from the :app
-     * half of that list to the :shared half, with no new reliance.
+     * DayOfWeek is kotlinx-datetime's (KMP-4 R463). In 0.6.1 it was a JVM TYPEALIAS of java.time.DayOfWeek, so
+     * :app's callers kept their java.time keys; since 0.7 it is its own enum (KMP-DT), and :app converts at its
+     * boundary with the library's toKotlinDayOfWeek / toJavaDayOfWeek (R553).
      */
     fun toEntryKindMap(): Map<DayOfWeek, EntryKind> =
         buildMap {

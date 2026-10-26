@@ -4,7 +4,7 @@ import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.RhythmKind
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-FORECAST (R341). The pure rhythm mapping - domain <-> entity and the weekday -> EntryKind map the
 // forecast imagines from. The DAO itself is Room and is exercised on the device; this pins the mapping.

@@ -1,10 +1,11 @@
 package ch.monreleve.app.dossier
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // KMP-0 increment 6 (R371, R28). The multiplatform Paris-day resolution - the kotlinx-datetime twin of
 // :app's data.local.todayInParis (java.time), so iOS names a recorded day EXACTLY as Android does when
@@ -29,7 +30,9 @@ val PARIS_ZONE: TimeZone = TimeZone.of("Europe/Paris")
  * already the next Paris day. Every LocalDate computation downstream is zone-free and DST-invariant by
  * construction - a calendar date carries no offset.
  */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
 fun parisDayOf(instant: Instant): LocalDate = instant.toLocalDateTime(PARIS_ZONE).date
 
 /** Today's Paris calendar day from [clock] (the system clock by default). The caller resolves it ONCE (R28). */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock - on the allowlist.
 fun todayInParis(clock: Clock = Clock.System): LocalDate = parisDayOf(clock.now())

@@ -4,10 +4,11 @@ import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.dossier.LatenessForecast
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.Instant
 import java.time.LocalDate
+import kotlin.time.ExperimentalTime
+import kotlin.time.toKotlinInstant
 
 // AN-CAL2 (section 2, D16). The ONE confirmation shown before a bulk write. Pure: it takes the chosen days,
 // the rows already stored, the choice and the current instant, and computes the confirmation's two CONDITIONAL
@@ -25,6 +26,7 @@ data class BulkConfirmation(
     val lateThresholdDays: Int,
 )
 
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
 fun bulkConfirmation(
     selectedDays: Set<String>,
     entries: List<EntryEntity>,

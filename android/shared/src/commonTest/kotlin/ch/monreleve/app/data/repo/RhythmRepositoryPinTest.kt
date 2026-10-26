@@ -22,8 +22,8 @@ import kotlin.test.assertTrue
  * directions are pinned here, as AccountScopeTest pins them for the record (R196).
  *
  * WRITTEN TO CROSS UNEDITED. Every import is common Kotlin: kotlin.test, kotlinx.coroutines, and
- * kotlinx.datetime.DayOfWeek - which in kotlinx-datetime 0.6.1 is a JVM TYPEALIAS of java.time.DayOfWeek, so
- * it names the very type WeeklyRhythm returns today. The rhythm's kinds are compared by NAME, so the
+ * kotlinx.datetime.DayOfWeek - a JVM TYPEALIAS of java.time.DayOfWeek in kotlinx-datetime 0.6.1, its own enum
+ * since 0.7 (KMP-DT) - the very type WeeklyRhythm returns either way. The rhythm's kinds are compared by NAME, so the
  * EntryKind collapse (R465) cannot touch this file. It moves to :shared's commonTest by git mv with the
  * repository.
  */

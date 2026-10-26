@@ -9,8 +9,6 @@ import ch.monreleve.app.data.sync.InMemoryEntryDao
 import ch.monreleve.app.data.sync.localRow
 import ch.monreleve.app.settings.Settings
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,6 +16,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // AN-GRANULARITY (R490, R492, R494). THE RULE, IN THE RECORD PATH, IN commonTest - iOS inherits it the day it builds.
 //
@@ -28,11 +29,13 @@ import kotlin.test.assertTrue
 
 private const val DAY = "2026-06-10"
 
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock and Instant - on the allowlist.
 private val FIXED: Clock =
     object : Clock {
         override fun now(): Instant = Instant.parse("2026-06-15T10:00:00Z")
     }
 
+@OptIn(ExperimentalTime::class) // KMP-DT R590: hands the kotlin.time.Clock seam over - on the allowlist.
 private fun repositoryOver(dao: InMemoryEntryDao): LocalEntryRepository {
     var minted = 0
     return LocalEntryRepository(

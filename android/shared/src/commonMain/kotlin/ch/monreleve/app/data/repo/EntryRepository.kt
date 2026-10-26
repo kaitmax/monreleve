@@ -13,8 +13,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 // AN5 increment 2. The mutation queue, and the only writer of entries (SPEC 5
 // fence 5: ui/ records through this, never through the DAO or the API directly).
@@ -84,6 +85,10 @@ interface EntryRepository {
 // zone, the account provider, the sign-in probe, the canary's reporter and the mutation-id mint. Bundling them into a
 // holder would only move the list (CalendarController's and MainGraph's reasoning), and would hide from the
 // next platform exactly what it has to supply.
+//
+// KMP-DT R590: the clock seam is kotlin.time.Clock, @ExperimentalTime on Kotlin 2.2 and stable unchanged in 2.3, so
+// the opt-in sits on the one constructor parameter that declares it and on write() (the one function that reads it)
+// - never on the class. Both are on ExperimentalTimeOptInAllowlistTest's list.
 @Suppress("LongParameterList")
 class LocalEntryRepository(
     private val dao: EntryDao,
@@ -91,6 +96,7 @@ class LocalEntryRepository(
     // Clock carried the zone clientClaimedAt takes its offset from; a kotlinx Clock is only an instant source,
     // so the zone the platform's clock was built with is passed beside it. :app passes both from the
     // java.time.Clock it always built (AndroidRecordSeams.kt), so every claim string is unchanged.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     private val deviceZone: TimeZone,
     // AN-FIX F4 / R303: the account that owns rows recorded and read through this repository. A null
@@ -180,6 +186,7 @@ class LocalEntryRepository(
         }
     }
 
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private suspend fun write(
         command: RecordCommand,
         account: String,

@@ -16,7 +16,6 @@ import ch.monreleve.app.design.DayProvenance
 import ch.monreleve.app.design.RecordQuality
 import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.settings.Settings
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.DayOfWeek
 import java.time.Instant
@@ -24,6 +23,8 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeParseException
+import kotlin.time.ExperimentalTime
+import kotlin.time.toKotlinInstant
 
 // AN10 increment 1. The calendar's pure month model - no Android, no clock, no network. It turns the
 // device's stored rows (Room) into what one month's grid renders, so the controller (which holds the
@@ -146,6 +147,7 @@ private fun Provenance.toDayProvenance(): DayProvenance =
  * (qualityOf) and the edit sheet (CalendarController), so the two cannot disagree.
  */
 @Suppress("ReturnCount")
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
 fun serverLate(entry: EntryEntity): Boolean {
     if (entry.syncState != SyncState.SYNCED) return false
     val recordedAt = entry.firstRecordedAt?.let { parseServerInstant(it) } ?: return false

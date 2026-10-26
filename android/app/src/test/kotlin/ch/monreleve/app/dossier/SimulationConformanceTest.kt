@@ -8,9 +8,10 @@ import io.kotest.matchers.doubles.plusOrMinus
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
-import java.time.DayOfWeek
 
 // AN-SIM (R340, R281). THE SIMULATOR'S ENGINE PATH, hand-checked against the design's own example.
 //
@@ -43,7 +44,11 @@ private fun recordedHome(count: Int): List<AggregatableEntry> {
     val rows = mutableListOf<AggregatableEntry>()
     var day = LocalDate(TAX_YEAR, 1, 1)
     while (rows.size < count) {
-        if (day.dayOfWeek.value in 1..5) rows.add(AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME))
+        if (day.dayOfWeek.isoDayNumber in 1..5) {
+            rows.add(
+                AggregatableEntry(day.toString(), Portion.FULL, EntryKind.HOME),
+            )
+        }
         day = day.plus(1, DateTimeUnit.DAY)
     }
     return rows

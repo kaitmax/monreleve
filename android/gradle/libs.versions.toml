@@ -55,7 +55,21 @@ coroutines = "1.8.1"
 # from a matrix (the AN2 Kotest discipline). Still 0.6.1 on Kotlin 2.2.21 (KMP-UP2):
 # the hard boundary keeps it, and the 2.2.21 compiler builds and tests against it on
 # the JVM and on the iOS simulator. 0.7.x stays a task of its own (R384's inventory).
-kotlinx-datetime = "0.6.1"
+#
+# KMP-DT (R550, R590): MOVED TO 0.7.1, the version Compose Multiplatform 1.10.3's
+# Material3 (1.10.0-alpha05) requires - its common and iOS variants declare
+# kotlinx-datetime {"requires":"0.7.1"}, and with 0.6.1 they forced 0.7.1 onto
+# :shared's iOS configurations anyway. Released 2025-07-07. The regular artifact, NOT
+# 0.7.1-0.6.x-compat: 0.7.0 replaced kotlinx.datetime.Instant/Clock with
+# kotlin.time.Instant/Clock, which Kotlin 2.2.21 marks @ExperimentalTime (stable,
+# unchanged, from Kotlin 2.3.0). The operator ruled the narrow opt-in (R590) over the
+# compatibility artifact, whose java.time converter is internal and whose Instant is
+# deprecated. Every @OptIn(ExperimentalTime) sits on a function, property or
+# expression in a file on ExperimentalTimeOptInAllowlistTest's list; never file- or
+# module-wide. PARK-Z3 deletes them, and that test, at the Kotlin 2.3 move. DayOfWeek
+# and Month are no longer java.time typealiases on the JVM: :app converts at its
+# boundary with the library's toKotlinDayOfWeek / toJavaDayOfWeek.
+kotlinx-datetime = "0.7.1"
 # KMP-1 increment 1 (R380/R136). kotlinx.serialization is the multiplatform JSON
 # runtime the MOVED wire code (data/remote, the data/sync wire DTOs, the dossier
 # parse) uses in place of org.json - a JVM library, which is the ONE thing holding

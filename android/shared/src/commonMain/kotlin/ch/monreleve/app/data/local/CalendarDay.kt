@@ -1,13 +1,14 @@
 package ch.monreleve.app.data.local
 
 import ch.monreleve.app.dossier.parisDayOf
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.char
 import kotlinx.datetime.offsetAt
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // AN5. Which calendar day "today" is, for the record (R28), and the device's claim
 // about when a day was recorded.
@@ -34,6 +35,7 @@ import kotlinx.datetime.offsetAt
  * The clock supplies only the instant; the zone is pinned so a device set to any timezone still records
  * the Paris day.
  */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock, stable unchanged in Kotlin 2.3 - on the allowlist.
 fun todayInParis(clock: Clock): String = parisDayOf(clock.now()).toString()
 
 // Explicit seconds, milliseconds and offset, always - the java.time pattern "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
@@ -47,7 +49,7 @@ private val CLAIM_FORMAT =
         char('-')
         monthNumber()
         char('-')
-        dayOfMonth()
+        day()
         char('T')
         hour()
         char(':')
@@ -75,8 +77,9 @@ private val CLAIM_FORMAT =
  * round 59.9996 up into the next minute. Measured in KMP-4: kotlinx-datetime 0.6.1's secondFraction(3)
  * already truncates - removing the explicit cut below leaves every golden green - so the cut is not what
  * makes the golden pass today. It is kept so the claim does not rest on a formatting detail of a library
- * whose next series (0.7) is a known upgrade.
+ * whose next series (0.7) is a known upgrade. KMP-DT: still kept on 0.7.1, where Instant is kotlin.time's.
  */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Clock and Instant - on the allowlist.
 fun deviceClaimNow(
     clock: Clock,
     deviceZone: TimeZone,
