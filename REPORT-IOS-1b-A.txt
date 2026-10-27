@@ -54,8 +54,10 @@ accessibility tree.
 --------------------------------------------------------------------------------
 STATUS (R391) - PART 2
 --------------------------------------------------------------------------------
-COMPLETE, WITH THE R603 ICON MECHANISM BUILT IN ITS CONSERVATIVE SHAPE AND
-ASKED (Q2), AND TALKBACK NOT DRIVEN ON THE DEVICE (DEVIATION 6).
+COMPLETE EXCEPT: R603's icon mechanism is built in its conservative shape,
+not as written (Q2 pending); R607's TalkBack reading was not driven
+(DEVIATION 6, Q5); the instrumented Compose UI tests compile unedited but were
+not RUN in this session (R605).
 FULL :app:gate --rerun-tasks on the code tip f0133cd, this session, after
 ./gradlew --stop:
     > Task :app:checkTestFloor - test floor OK: 1385 unit tests observed
@@ -353,7 +355,10 @@ touches a .png).
 COMPOSE UI / A11Y TESTS: the instrumented AnswerIcon/AnswerStatus/HalfDayChoice
 and RateOneString tests are UNEDITED and compile against the shared screen
 (:app:compileDebugAndroidTestKotlin green); the gate compiles, it does not run
-them (no emulator in the gate) - what ran is the S9 drive below.
+them (no emulator in the gate) - what ran is the S9 drive below. So the hard
+boundary's "pass unedited in their assertions" is proven here as: compiled
+unedited, plus the S9 accessibility tree (main vs tip identical) carrying the
+same semantics; NOT as a run of androidTest - nothing in this session ran it.
 R495: DeclarableRateDisplayTest (the formatted-string assertions) and
 RateFloatFenceTest green, the former unedited
 (DeclarableRateDisplayTest reaches rateBetween across the boundary).
@@ -382,7 +387,12 @@ acknowledged; pending; refused; morning and afternoon asked apart; one tap on
 ComposeUIViewController in a UIWindow ("composed=true after 1 spins").
 MaterialDatePickerCanaryTest (1): still IrLinkageError on
 'kotlinx.datetime/Instant.Companion' - asserted broken, as expected.
-commonTest on iOS: PilotFixtureTest (3), KindIconMappingTest (2).
+commonTest on iOS: PilotFixtureTest (3), KindIconMappingTest (2). PilotFixtureTest
+IS the commonTest that covers the moved controller's state on iOS (R606's
+"whatever commonTest covers its state"): it drives the real controller through
+the fixture. The controller's own pins (AujourdhuiControllerTest and kin) did
+NOT move - Kotest + java.time cannot run in commonTest - they stay in :app and
+now cross the module boundary, unedited.
   run 40484214560 on 4be07ba: 205 executed, 1 failure - the tap test found 3
      nodes saying "Domicile" (the legend says it too); test fixed (f0133cd).
   run 40488830486 on f0133cd: SUCCESS, "iOS SIMULATOR TESTS EXECUTED: 205",
@@ -428,6 +438,9 @@ the status bar's clock and the system navigation bar excluded):
   A4   Matin : Absence - Conge, Apres-midi : Domicile                 0 px
   a11y the uiautomator tree (text, content-desc, class, bounds, flags) of
        the A4 state, main vs tip: diff EMPTY (49 nodes each)
+THE HALF-DAY FLOW (AN-POLISH) was driven on the tip build; its in-flight state
+(the remaining half scrolled into view after the tap, s9/H1-tip-aftertap.png)
+was NOT compared with main - the compared H1 is the relaunched resting state.
 EACH ANSWER, driven on the tip build through " Modifier ": En Suisse,
 Domicile, Mission -> En France ("Matin : Mission (France)"), Mission -> Pays
 tiers ("Mission (pays tiers)"), Declarer une absence -> Conge. Server, read
@@ -593,7 +606,15 @@ Q5 (R607) - TalkBack: a dedicated device session to drive Voice Assistant
 --------------------------------------------------------------------------------
 PUSH PROOF (PART 2)
 --------------------------------------------------------------------------------
-@@PUSH2@@
+Branch ios-1b-a only (never main, never production):
+    git push origin ios-1b-a  ->  f0133cd..ec6241d  ios-1b-a -> ios-1b-a
+    git ls-remote origin refs/heads/ios-1b-a
+      -> ec6241db5eb00079f76a66832792ccfbb31f0047 (the PART 2 report commit)
+    gh run list --workflow ios-shared.yml --branch ios-1b-a --limit 1
+      -> f0133cd... completed (no run for the report-only commit, the
+         paths-ignore rule; f0133cd's run 40488830486 is the iOS proof)
+    git ls-remote origin 'refs/heads/probe*' -> nothing
+This push-proof follow-up is report-only and pushed the same way.
 
 ################################################################################
 PART 1 - THE FIRST PASS (STOPPED AT R601), AS COMMITTED
@@ -629,6 +650,7 @@ this report. R602-R609: NOT STARTED.
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
+SUPERSEDED BY PART 2 (above); kept as the record of the stop.
 STOPPED AT R601 - Android's Compose toolkit resolves 1.7.0 -> 1.10.5 with
 CMP 1.10.3 in :shared. No source, build or baseline file changed; the only
 commit is this report.
@@ -814,6 +836,7 @@ own words.
 --------------------------------------------------------------------------------
 R602 - R609
 --------------------------------------------------------------------------------
+SUPERSEDED BY PART 2 (above) - all of these were done there.
 R602 controller ............ NOT STARTED - stopped at R601.
 R603 tokens/resources ...... NOT STARTED - stopped at R601.
 R604 screen ................ NOT STARTED - stopped at R601.
