@@ -98,7 +98,12 @@ class LogFenceTest {
         // would pass vacuously if ui/ were renamed. AN-FENCE-ROOTS (R460) replaces the
         // `if (uiDir.exists()) ... else emptyList()` that produced that empty set with an assertion that
         // names what it could not find and where it looked - ui/ is :app-only and is NOT optional.
-        val uiRoot = listOf(FenceRoot(File(logFenceSrcRoot, "ui"), pin = "AppBottomBar.kt"))
+        val uiRoot =
+            listOf(
+                FenceRoot(File(logFenceSrcRoot, "ui"), pin = "AppBottomBar.kt"),
+                // IOS-1b-A R604: Aujourd'hui's screen moved to :shared commonMain.
+                FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/ui"), pin = "AujourdhuiScreen.kt"),
+            )
         uiRoot.assertFound("noRawToken fence")
         val scanned = uiRoot.ktFiles()
         assertTrue("noRawToken fence scanned no ui/ files - ui/ renamed? (F7 vacuity guard)", scanned.isNotEmpty())

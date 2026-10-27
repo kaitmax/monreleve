@@ -31,7 +31,26 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.9.3"
-composeBom = "2024.09.00"
+# IOS-1b-A R625: MOVED FROM 2024.09.00 (Compose 1.7.0, Material3 1.3.0) TO 2024.12.01 (Compose 1.7.6,
+# Material3 1.3.1) - the patch versions Compose Multiplatform 1.7.3 (below) resolves on Android anyway, so the
+# BOM states what the app runs instead of a version conflict resolution overrides (REPORT-IOS-1b-A
+# UNNUMBERED-4). The operator approved this patch move (R625) because all 142 Paparazzi baselines verify
+# against it unchanged, at maxPercentDifference 0.0 (R626).
+composeBom = "2024.12.01"
+# IOS-1b-A R625 (R600, R624). Compose Multiplatform, for the shared Aujourd'hui screen. 1.7.3, NOT 1.10.3:
+#   - CMP 1.10.3 moves Android's Compose to 1.10.5 and Material3 to 1.5.0-alpha08, and Paparazzi 1.3.5
+#     cannot render Compose UI 1.10 text (NoSuchMethodError StaticLayout$Builder.setUseBoundsForWidth) -
+#     REPORT-IOS-1b-A R601;
+#   - CMP 1.7.3's Android variants ARE androidx Compose 1.7.6 / Material3 1.3.1: a patch move, pixel-identical
+#     on all 142 baselines;
+#   - R624's probe (run 40408680643): on the iOS simulator, Kotlin 2.2.21 + CMP 1.7.3 created a composition
+#     with Aujourd'hui's Material3 surface, in a test scene and in a UIViewController.
+# KNOWN BREAK, fenced: Material3 1.7.3's calendar model was compiled against kotlinx-datetime 0.6.0 and is
+# UNLINKED on iOS against 0.7.1 (IrLinkageError: kotlinx.datetime/Instant.Companion) - no shared UI may use
+# Material3's date pickers; a canary test asserts the break until it disappears.
+# PARKED (REPORT-IOS-1b-A): the move to CMP 1.10+/1.11 when Material3 1.5 is STABLE and a Paparazzi release
+# renders it - then a normal toolkit upgrade with a full baseline review.
+compose-multiplatform = "1.7.3"
 # AN4 increment 1: made EXPLICIT rather than relied on transitively (it already
 # ships via lifecycle-runtime-ktx). data/remote's transport wraps the platform
 # HttpsURLConnection in withContext(Dispatchers.IO); R136 prefers the platform
@@ -175,6 +194,21 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+# IOS-1b-A R625. Compose Multiplatform 1.7.3 for :shared commonMain (see the version's comment). On Android
+# each resolves to the androidx artifact of the same name (runtime/ui/foundation/animation 1.7.6, material3
+# 1.3.1) - the same classes :app already uses, not a second Compose.
+cmp-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-multiplatform" }
+cmp-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "compose-multiplatform" }
+cmp-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose-multiplatform" }
+cmp-animation = { group = "org.jetbrains.compose.animation", name = "animation", version.ref = "compose-multiplatform" }
+cmp-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "compose-multiplatform" }
+# IOS-1b-A R603: Compose Multiplatform resources - how iOS draws the app's Lucide glyphs (design/Glyph.kt). Android
+# does not read them (its glyphs stay the app's own drawables); the library's Android ContentProvider is removed
+# from the merged manifest (app/src/main/AndroidManifest.xml), so it starts nothing there.
+cmp-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose-multiplatform" }
+# IOS-1b-A R606: Compose Multiplatform's UI-test API, iOS TEST scope only - runComposeUiTest composes and drives the
+# shared screen on the simulator (R624 proved it runs there). Android keeps its own androidx ui-test-junit4.
+cmp-ui-test = { group = "org.jetbrains.compose.ui", name = "ui-test", version.ref = "compose-multiplatform" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -219,6 +253,9 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [plugins]
+# IOS-1b-A R625. The Compose Multiplatform Gradle plugin: its resources (Res, painterResource on every target)
+# are how the shared screen's icons reach both platforms (R603).
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 # KMP-0 increment 1 (R368/R136). :shared is a Kotlin Multiplatform library with an Android target.
 # The setup chosen is com.android.library + org.jetbrains.kotlin.multiplatform with androidTarget() -

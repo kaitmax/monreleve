@@ -38,7 +38,6 @@ import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.text.formatDayLong
-import ch.monreleve.app.onboarding.GranularityChoice
 
 // AN10 increment 2. The day edit sheet's CONTENT (SPEC 11.3, FD6 A2), a standalone composable so a
 // Paparazzi baseline photographs it directly (a ModalBottomSheet's own scaffolding does not render
@@ -200,31 +199,6 @@ private fun LateNotice(day: EditableDay) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(Radius.md))
                 .background(LightColors.warningBg)
-                .padding(Spacing.space12),
-    )
-}
-
-/**
- * AN-GRANULARITY (R490, R493): why this day is offered in another granularity than the setting's - one sentence, only
- * when the day was recorded otherwise (a day held whole in half-day mode, or held in halves in whole-day mode). The
- * setting decides how new days are asked for; it never re-cuts a recorded one. Aujourd'hui shows the same sentence.
- */
-@Composable
-internal fun RecordedGranularityNotice(recordedAs: GranularityChoice?) {
-    val text =
-        when (recordedAs) {
-            GranularityChoice.DAY -> AujourdhuiCopy.RECORDED_WHOLE_DAY
-            GranularityChoice.HALF_DAY -> AujourdhuiCopy.RECORDED_HALF_DAYS
-            null -> return
-        }
-    Text(
-        text = text,
-        style = FrontierType.body,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(Radius.md))
-                .background(LightColors.infoBg)
                 .padding(Spacing.space12),
     )
 }

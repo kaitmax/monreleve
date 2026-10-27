@@ -71,23 +71,34 @@ class ExperimentalTimeOptInAllowlistTest {
     /** File (relative to android/) -> how many @OptIn(ExperimentalTime::class) it may carry. Asserted EXACTLY. */
     private val allowlist =
         mapOf(
-            "app/src/main/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 1,
+            // IOS-1b-A R602d: the controller moved to :shared on kotlin.time; :app keeps the java.time factory.
+            "app/src/main/kotlin/ch/monreleve/app/aujourdhui/JavaTimeAujourdhui.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/calendar/BulkConfirmation.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarController.kt" to 1,
-            "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarModel.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
+            // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
+            "app/src/main/kotlin/ch/monreleve/app/detection/JavaTimeCheckWindows.kt" to 2,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
+            // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
+            // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
+            "shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 5,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/calendar/CalendarModel.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/local/CalendarDay.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/repo/EntryRepository.kt" to 2,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/detection/CheckWindows.kt" to 4,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/LatenessForecast.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/ParisDay.kt" to 2,
             // AN-FR-TEXT R622: moved from iosMain/ios/IosInstantFormat.kt (3 there), function scope, same 3.
             "shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrInstants.kt" to 3,
+            // IOS-1b-A R608: the pilot fixture hands the controller its clock; the pilot screen reads the system clock.
+            "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt" to 1,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/PilotFixture.kt" to 1,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/local/CalendarDayProbe.kt" to 3,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/repo/GranularityRuleTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/sync/ServerInstantParseGoldenTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/dossier/ParisDayDstTest.kt" to 1,
+            "shared/src/commonTest/kotlin/ch/monreleve/app/pilot/PilotFixtureTest.kt" to 2,
         )
 
     private val optIn = Regex("""OptIn\(\s*(kotlin\.time\.)?ExperimentalTime::class\s*\)""")

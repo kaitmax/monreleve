@@ -34,7 +34,8 @@ import java.io.File
 
 private val ROOTS =
     listOf(
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "RateDisplay.kt"),
+        // IOS-1b-A R603: RateDisplay.kt moved to :shared with design/; :app's root is pinned by a file it holds.
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "MainActivity.kt"),
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app"), pin = "DeclarableRate.kt"),
     )
 
@@ -54,13 +55,13 @@ private val PATH =
         "../shared/src/commonMain/kotlin/ch/monreleve/app/dossier/DossierPayload.kt",
         // the one formatting, the figure and the rail
         "../shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrNumbers.kt",
-        "src/main/kotlin/ch/monreleve/app/design/RateDisplay.kt",
-        "src/main/kotlin/ch/monreleve/app/design/Zones.kt",
-        "src/main/kotlin/ch/monreleve/app/design/rail/RailGeometry.kt",
-        "src/main/kotlin/ch/monreleve/app/design/rail/ThresholdRail.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/design/RateDisplay.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/design/Zones.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/design/rail/RailGeometry.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/design/rail/ThresholdRail.kt",
         // the screens
-        "src/main/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreen.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/aujourdhui/MovingRate.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreen.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/MovingRate.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/ForecastController.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/ForecastState.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionScreen.kt",
@@ -221,8 +222,8 @@ class RateFloatFenceTest {
         val declarations =
             mapOf(
                 "../shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrNumbers.kt" to "rate",
-                "src/main/kotlin/ch/monreleve/app/design/RateDisplay.kt" to "declarableRate",
-                "src/main/kotlin/ch/monreleve/app/design/rail/ThresholdRail.kt" to "percentage",
+                "../shared/src/commonMain/kotlin/ch/monreleve/app/design/RateDisplay.kt" to "declarableRate",
+                "../shared/src/commonMain/kotlin/ch/monreleve/app/design/rail/ThresholdRail.kt" to "percentage",
                 "../shared/src/commonMain/kotlin/ch/monreleve/app/calc/Types.kt" to "declarableRate",
                 "src/main/kotlin/ch/monreleve/app/forecast/ForecastState.kt" to "currentRate",
             )

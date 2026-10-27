@@ -18,19 +18,6 @@ import ch.monreleve.app.data.local.TallyEntity
 // hasCheck guard prevents, but which stays safe here) never double-counts: gpsCheckCount + networkCheckCount always
 // equals the number of checks taken.
 
-/** Read the day's four checks from the stored row (an absent row -> all MISSED). No coordinate. */
-fun TallyEntity.toDayChecks(): DayChecks =
-    DayChecks(
-        check1 = check1?.let(::classificationOrNull),
-        check2 = check2?.let(::classificationOrNull),
-        check3 = check3?.let(::classificationOrNull),
-        check4 = check4?.let(::classificationOrNull),
-    )
-
-private fun classificationOrNull(name: String): Classification? {
-    return runCatching { Classification.valueOf(name) }.getOrNull()
-}
-
 /** Whether the day's row already has a check recorded for the given window (1-4). */
 fun TallyEntity?.hasCheck(windowIndex: Int): Boolean =
     when (windowIndex) {

@@ -88,6 +88,9 @@ class ComparisonScreenScreenshotTest {
         Paparazzi(
             deviceConfig = DeviceConfig.PIXEL_5.copy(screenHeight = TALL),
             theme = "android:Theme.Material.Light.NoActionBar",
+            // IOS-1b-A R626 (R345): zero, stated - never Paparazzi 1.3.5's default 0.1. Guarded by
+            // fences/PaparazziZeroToleranceTest, which reads the VALUE off this rule.
+            maxPercentDifference = 0.0,
         )
 
     @Composable

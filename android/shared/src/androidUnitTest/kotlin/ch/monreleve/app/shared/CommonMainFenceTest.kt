@@ -38,6 +38,22 @@ package ch.monreleve.app.shared
 // than being the next item in an established habit - and the classifier is exercised on known-offending
 // strings in both directions, so a regex that stopped matching anything would fail rather than report
 // perfect compliance.
+//
+// ------------------------------------------------------------------------------------------------
+// IOS-1b-A (R602c, R625). A THIRD androidx PREFIX: androidx.compose. - AND TWO ANDROID-ONLY HOLES IN IT.
+//
+// Compose Multiplatform 1.7.3 publishes Compose under its androidx package names on every target (R625), so the
+// shared Aujourd'hui screen and its design system import androidx.compose.* from commonMain. The compiler is again
+// the better witness (compileCommonMainKotlinMetadata resolves the common klibs only), and this scan follows it.
+// TWO subpackages stay forbidden because they are Android-only inside a common package - the androidx.sqlite.db
+// shape: androidx.compose.ui.res (painterResource(R.drawable.x), stringResource - Android resources; the shared
+// screen reads Compose Multiplatform resources, R603) and androidx.compose.ui.tooling (@Preview tooling).
+//
+// AND ONE MATERIAL3 FAMILY IS FORBIDDEN BY NAME (R624, UNNUMBERED-6): Material3 1.7.3's date pickers. Its calendar
+// model was compiled against kotlinx-datetime 0.6.0 and is UNLINKED on iOS against our 0.7.1 - the probe run
+// 40408680643 threw IrLinkageError ('kotlinx.datetime/Instant.Companion') the moment rememberDatePickerState ran.
+// No shared UI may reach it until the parked CMP upgrade; MaterialDatePickerCanaryTest (iosTest) asserts the break
+// is still there, so the day it is gone this rule and that canary are deleted together.
 
 import java.io.File
 import kotlin.test.Test
@@ -53,10 +69,14 @@ class CommonMainFenceTest {
     private val forbiddenImport = Regex("""^\s*import\s+(java|javax|android|androidx)\.""")
 
     // The multiplatform androidx packages, and the only ones. See the header.
-    private val allowedPrefixes = listOf("androidx.room.", "androidx.sqlite.")
+    private val allowedPrefixes = listOf("androidx.room.", "androidx.sqlite.", "androidx.compose.")
 
-    // The Android-only Support layer inside an otherwise-common package.
-    private val forbiddenPrefixes = listOf("androidx.sqlite.db.")
+    // The Android-only layers inside otherwise-common packages.
+    private val forbiddenPrefixes =
+        listOf("androidx.sqlite.db.", "androidx.compose.ui.res.", "androidx.compose.ui.tooling.")
+
+    // R624 / UNNUMBERED-6: Material3 1.7.3's date pickers are unlinked on iOS - any import that reaches them.
+    private val forbiddenMaterialDate = Regex("""^\s*import\s+androidx\.compose\.material3\.\w*Date\w*""")
 
     private fun importedPackage(line: String): String? =
         Regex("""^\s*import\s+([A-Za-z0-9_.]+)""").find(line)?.groupValues?.get(1)
@@ -65,7 +85,8 @@ class CommonMainFenceTest {
     internal fun offends(line: String): Boolean {
         if (!forbiddenImport.containsMatchIn(line)) return false
         val imported = importedPackage(line)
-        return imported == null ||
+        return forbiddenMaterialDate.containsMatchIn(line) ||
+            imported == null ||
             forbiddenPrefixes.any { imported.startsWith(it) } ||
             allowedPrefixes.none { imported.startsWith(it) }
     }
@@ -93,7 +114,8 @@ class CommonMainFenceTest {
         if (offenders.isNotEmpty()) {
             fail(
                 "commonMain must be platform-free (R369): no java./javax./android./androidx. imports except " +
-                    "androidx.room and androidx.sqlite (NOT androidx.sqlite.db), so it compiles for iOS. " +
+                    "androidx.room, androidx.sqlite (NOT .db) and androidx.compose (NOT .ui.res, .ui.tooling, nor " +
+                    "Material3's date pickers), so it compiles and links for iOS. " +
                     "Offending imports:\n" + offenders.joinToString("\n"),
             )
         }
@@ -107,11 +129,16 @@ class CommonMainFenceTest {
             "import java.time.LocalDate",
             "import javax.crypto.Cipher",
             "import android.content.Context",
-            "import androidx.compose.runtime.Composable",
             "import androidx.work.WorkManager",
             "import androidx.annotation.RestrictTo",
             // the one-letter distinction: the Android-only Support layer inside a common package
             "import androidx.sqlite.db.SupportSQLiteDatabase",
+            // IOS-1b-A: Android resources and tooling inside Compose, and the unlinked Material3 date pickers
+            "import androidx.compose.ui.res.painterResource",
+            "import androidx.compose.ui.tooling.preview.Preview",
+            "import androidx.compose.material3.DatePicker",
+            "import androidx.compose.material3.rememberDatePickerState",
+            "import androidx.compose.material3.DateRangePicker",
         ).forEach { line ->
             assertTrue(offends(line), "the fence must reject: $line")
         }
@@ -123,16 +150,24 @@ class CommonMainFenceTest {
             "import androidx.sqlite.execSQL",
             "import kotlin.jvm.JvmInline",
             "import kotlinx.datetime.LocalDate",
+            // IOS-1b-A: Compose Multiplatform under its androidx names
+            "import androidx.compose.runtime.Composable",
+            "import androidx.compose.ui.graphics.Color",
+            "import androidx.compose.material3.Text",
+            "import androidx.compose.material3.TextButton",
         ).forEach { line ->
             assertFalse(offends(line), "the fence must allow: $line")
         }
     }
 
     @Test
-    fun theExemptionListIsExactlyTheTwoMultiplatformAndroidxPackages() {
+    fun theExemptionListIsExactlyTheThreeMultiplatformAndroidxPackages() {
         // R206's corollary - asserted beats merely present. A third exemption has to change this line and
         // argue for itself, rather than arriving as the next entry in a list nobody reads back.
-        assertEquals(listOf("androidx.room.", "androidx.sqlite."), allowedPrefixes)
-        assertEquals(listOf("androidx.sqlite.db."), forbiddenPrefixes)
+        assertEquals(listOf("androidx.room.", "androidx.sqlite.", "androidx.compose."), allowedPrefixes)
+        assertEquals(
+            listOf("androidx.sqlite.db.", "androidx.compose.ui.res.", "androidx.compose.ui.tooling."),
+            forbiddenPrefixes,
+        )
     }
 }

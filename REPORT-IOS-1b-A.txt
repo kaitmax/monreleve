@@ -1,0 +1,963 @@
+REPORT-IOS-1b-A - Mon Releve
+COMPOSE MULTIPLATFORM LANDS, AND AUJOURD'HUI BECOMES ONE SHARED SCREEN
+(PILOT, PART A) - PART 1 STOPPED AT R601; PART 2 RESUMED UNDER R624-R626
+
+TASK     IOS-1b-A, rulings R600-R609 (free: the only other relay file citing
+         R600-R609 is relay/IOS-1b-B.txt, which cites THESE rulings by number;
+         no REPORT-*.txt uses them).
+BASE     origin/main 2458dbe (Merge an-fr-text), ios-1a merged in it (981e8a8).
+BRANCH   ios-1b-a, worktree C:/wt/ios-1b-a (R349), lock .session-lock.json in
+         it (gitignored), removed at the end. Pushed: the branch only. PENDING
+         MERGE / PENDING THE OPERATOR'S ANSWER - nothing here is for main yet.
+DEVICE   SM-G960F (Galaxy S9), serial 232bcd8c300c7ece - READ only, never
+         written.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+################################################################################
+PART 2 - RESUMED UNDER THE ADDENDUM (R624-R626), 2026-10-26 from ~21:40Z
+The operator chose option (B), gated on a probe. PART 1 (further down) is the
+first pass exactly as committed in bb416a7/ae7acc6 - the record of the R601
+stop. Where they differ, PART 2 governs. Same branch, same worktree, a new
+lock.
+################################################################################
+
+--------------------------------------------------------------------------------
+SUMMARY (PART 2)
+--------------------------------------------------------------------------------
+Aujourd'hui is one shared Compose Multiplatform screen. Its controller, its
+model and the design system it draws with live in :shared commonMain; Android's
+activity hosts it through the same call as before, and iOS composes, taps and
+hosts it on the simulator over an in-memory pilot fixture. Android is
+pixel-identical: all 142 Paparazzi baselines verify at maxPercentDifference 0.0
+with NONE re-recorded, and on the S9 every compared state of the release-shaped
+audit build matched main's build pixel for pixel (app area) and in its
+accessibility tree.
+  R624  probe passed (composition created in a test scene and in a
+        UIViewController; Material3's DATE PICKERS unlinked - fenced, canaried).
+  R626  zero tolerance stated on all 14 Paparazzi rules, guarded by value.
+  R625  CMP 1.7.3; Compose 1.7.6 / Material3 1.3.1 patch move; BOM 2024.12.01.
+  R602  controller + CheckWindows + CalendarModel + vocabulary to commonMain,
+        each pinned first; no ViewModel existed, so no lifecycle dependency.
+  R603  design system to commonMain; ICONS: a hard boundary kept the drawables
+        in :app (DEVIATION 4 / Q2) - Android draws them by name, iOS from
+        Compose resources generated from the same files.
+  R604  the screen to commonMain; every ui/ fence widened and RED once on a
+        plant in the shared screen.
+  R605  baselines untouched; release APK +12 bytes (after the shrinker fix).
+  R606  iOS: 205 simulator tests, 13 of them new, incl. a Compose UI test of
+        the shared screen - Compose's UI-test API DOES run on iOS here.
+  R607  S9 against the local stack: every compared state identical to main.
+        TalkBack NOT driven (DEVIATION 6).
+  R608  pilot fixture: in-memory, real controller and record path, no server.
+  R609  aujourdhuiPilotViewController(scenario) - below.
+
+--------------------------------------------------------------------------------
+STATUS (R391) - PART 2
+--------------------------------------------------------------------------------
+COMPLETE EXCEPT: R603's icon mechanism is built in its conservative shape,
+not as written (Q2 pending); R607's TalkBack reading was not driven
+(DEVIATION 6, Q5); the instrumented Compose UI tests compile unedited but were
+not RUN in this session (R605).
+FULL :app:gate --rerun-tasks on the code tip f0133cd, this session, after
+./gradlew --stop:
+    > Task :app:checkTestFloor - test floor OK: 1385 unit tests observed
+    BUILD SUCCESSFUL in 11m 25s
+    260 actionable tasks: 260 executed
+    real 11m26.908s ; exit 0
+  Test XML: :app 1385 tests 0 failures 0 errors (142 screenshot, 0 failures,
+  at 0.0); :shared 152 0 0. Compiler "w: " lines: 7 - main's count; none is the
+  daemon's "multiple sessions" notice.
+iOS run on the code tip: 40488830486 on f0133cd - SUCCESS, "iOS SIMULATOR TESTS
+EXECUTED: 205" (main: 192; +13 new), 4m24s.
+The report commits that follow f0133cd change REPORT-IOS-1b-A.txt only (the
+workflow paths-ignores it; nothing to build).
+gate:clone NOT RUN: no web/ change (web/.env and node_modules are gitignored
+and untracked).
+
+--------------------------------------------------------------------------------
+R624 - THE PROBE (one macOS run, throwaway branch, deleted)
+--------------------------------------------------------------------------------
+BRANCH   probe-ios1ba-cmp173 (not ios-*), one commit 20608cf on ae7acc6, in its
+         own worktree C:/wt/ios-1b-a-probe with its own lock. Dispatched with
+         `gh workflow run ios-shared.yml --ref probe-ios1ba-cmp173`.
+RUN      40408680643 - 21:57:49Z to 22:07:20Z (9m 31s, 10 billed macOS
+         minutes), Xcode 26.0.1. Conclusion "failure" - by design, test b.
+WHAT IT HELD: CMP 1.7.3 (runtime, ui, foundation, animation, material3,
+ui-test) on :shared's iOS test source set, the Kotlin 2.2.21 Compose compiler,
+kotlinx-datetime 0.7.1 as the catalog has it, and three tests run one at a
+time on the simulator (an extra workflow step, `--tests` each):
+  a  runComposeUiTest: MaterialTheme(lightColorScheme, Typography, Shapes),
+     Text, Button, OutlinedButton, TextButton, Icon (an ImageVector from a
+     Lucide path string), HorizontalDivider, FlowRow, verticalScroll,
+     clickable, border, RoundedCornerShape, liveRegion semantics,
+     AnimatedVisibility, animateFloatAsState, rememberSaveable - the Material3
+     and foundation surface Aujourd'hui really imports. Clicked "Oui", then
+     "Modifier", then the half-day row; asserted each recomposition.
+       -> PASSED (0.187 s). "R624 PROBE a: composition created, clicked,
+          recomposed". BUILD SUCCESSFUL in 3m 40s (the link included).
+  b  Material3 DatePicker + rememberDatePickerState - added beyond the
+     prompt, to test the date-library conflict where it lives.
+       -> FAILED: kotlin.internal.IrLinkageError: Can not get instance of
+          singleton 'Companion': No class found for symbol
+          'kotlinx.datetime/Instant.Companion|null[0]'
+  c  ComposeUIViewController (strict plist check off - a test binary has
+     no Info.plist) set as a UIWindow's root, makeKeyAndVisible, run loop
+     spun until the content composed.
+       -> PASSED (0.856 s). "R624 PROBE c: composed=true after 1 run-loop
+          spins".
+The full suite then ran as usual: iOS SIMULATOR TESTS EXECUTED: 195 (192 +
+the 3 probes), one failure (b), six GENEVA lines.
+THE LINK STEP NAMED THE BREAK before b reached it - 7 partial-linkage lines,
+all in Material3's calendar model:
+  darwinMain .../internal/PlatformDateFormat.darwin.kt:75   toCalendarDate
+  skikoMain  .../internal/KotlinxDatetimeCalendarModel.kt:72,78,93,112,131,161
+             (toCalendarDate, toCalendarMonth, 'instant')
+  - "uses unlinked class symbol 'kotlinx.datetime/Instant'". Material3 1.7.3
+  was compiled against kotlinx-datetime 0.6.0; 0.7.0 replaced that Instant.
+VERDICT: the probe PASSES on R624's own terms - clause 1 (link and run: a
+composition really created, in a test scene AND in a view controller) and
+clause 2 (the Material3 components Aujourd'hui uses) both hold. Clause 3's
+trigger (Material3 failing) did not fire for that surface; the failure is
+confined to Material3's date/calendar model, which Aujourd'hui does not use.
+It is FENCED, not ignored (see R604): no shared UI may import Material3's
+date pickers, and a canary test asserts the IrLinkageError until it goes
+(UNNUMBERED-6).
+The foundation-plus-tokens option, for the record and NOT taken: the shared
+screen would replace Text/Button/OutlinedButton/TextButton/Icon/
+HorizontalDivider with BasicText and clickable Boxes; to keep Android
+pixel-identical that needs an expect/actual wrapper per component (Android:
+the Material3 one; iOS: a foundation look-alike) - six wrappers, and iOS
+would not be Material3 at all. Not needed: the surface links.
+CLEANUP (KMP-UP2's way): `git push origin --delete probe-ios1ba-cmp173` ->
+[deleted]; the probe worktree removed (its only untracked file was this
+session's own probe-local.log); `git branch -D` -> was 20608cf; caches
+9550269089 (gradle, 1,376,541,328 B) and 9550251744 (konan, 406,805,717 B)
+deleted; `gh cache list --ref refs/heads/probe-ios1ba-cmp173` -> [] while
+`gh cache list` lists an-fr-text's and ios-1a's (the positive control).
+`git ls-remote origin 'refs/heads/probe*'` -> nothing. The probe test and
+its build file are kept in android/.an-auto-shots/ios-1b-a/probe/.
+
+--------------------------------------------------------------------------------
+R626 - ZERO TOLERANCE FIRST (commit 85579a4, test-only)
+--------------------------------------------------------------------------------
+All 14 Paparazzi rules (the 142 tests) pass maxPercentDifference = 0.0;
+fences/PaparazziZeroToleranceTest walks the test sources (FenceRoot-pinned),
+instantiates each screenshot class and READS the private field off its live
+rule - a value, never a text scan (R345).
+  ./gradlew :app:verifyPaparazziDebug fastCheck -> BUILD SUCCESSFUL;
+  1381 tests, 0 failures; 142 screenshot tests, 0 failures at 0.0.
+  NONE failed at zero, so nothing to list and no stop.
+Guard red on two plants, each verified landed and then restored (R180):
+  AppBottomBar 0.0 -> 0.1:   expected:<[]> but was:<[(...AppBottomBarScreenshotTest, 0.1)]>
+  AppBottomBar line deleted: expected:<[]> but was:<[(...AppBottomBarScreenshotTest, 0.1)]>
+  (the second is R345's point: absence IS the 0.1 default).
+WHAT ZERO DOES NOT CLOSE IN PAPARAZZI 1.3.5 (UNNUMBERED-7): its comparison is
+the OffByTwo differ - a pixel whose channels differ by <= 2 counts as
+identical - and a 1 px width/height difference passes. Neither is reachable
+from the constructor; exact comparison would need a custom SnapshotHandler.
+The guard's header says so.
+
+--------------------------------------------------------------------------------
+R625 - CMP 1.7.3, RECORDED (commit d335ef1)
+--------------------------------------------------------------------------------
+Catalog: compose-multiplatform = "1.7.3" with the why and the park; plugin
+org.jetbrains.compose; cmp-runtime/ui/foundation/animation/material3 as api()
+in :shared commonMain; the Compose compiler plugin on :shared; composeBom
+2024.09.00 -> 2024.12.01 so the BOM states what runs (UNNUMBERED-4 closed).
+R601's QUESTION, ANSWERED: the patch move to Compose 1.7.6 / Material3 1.3.1
+is approved (R625) because the 142 baselines prove it changes no pixel.
+Resolution of :app releaseRuntimeClasspath after the commit is IDENTICAL to
+PART 1's CMP-1.7.3 probe apart from compose-bom (and components-resources,
+which R603 adds).
+  ./gradlew :app:verifyPaparazziDebug fastCheck
+    :shared:compileCommonMainKotlinMetadata :shared:testDebugUnitTest
+  -> BUILD SUCCESSFUL in 7m 13s, 111 actionable tasks: 111 executed;
+     :app 1381 tests 0 failed; 142 screenshot 0 failed at 0.0;
+     ThemeCensusTest 2/2.
+THE PARKED UPGRADE (UNNUMBERED-8): CMP 1.10+/1.11 with Compose 1.10 and
+Material3 1.5 - TRIGGER: Material3 1.5 reaches STABLE AND a Paparazzi release
+renders Compose UI 1.10 text (PART 1's NoSuchMethodError). Then (A) is a
+normal toolkit upgrade with a full baseline review. It also retires the
+Material3 calendar-model break (UNNUMBERED-6) if that Material3 is built
+against kotlinx-datetime 0.7.
+iOS run on d335ef1 (the push of R626+R625): 40412510390 - success, 22:26:58Z-22:36:08Z
+(9m 10s, cold konan: the catalog hash moved), "iOS SIMULATOR TESTS EXECUTED:
+192", BUILD SUCCESSFUL in 4m - the Compose compiler on every :shared
+compilation and the five CMP libraries on commonMain build and test for iOS.
+
+--------------------------------------------------------------------------------
+R603 SPIKE - CAN PAPARAZZI SEE A CMP RESOURCE? (uncommitted, reverted)
+--------------------------------------------------------------------------------
+Before moving anything: ic_house.xml copied into shared composeResources, a
+throwaway Paparazzi test rendering Icon(painterResource(Res.drawable.ic_house))
+and Icon(painterResource(R.drawable.ic_house)) through a capturing
+SnapshotHandler and comparing the two frames pixel by pixel.
+  1. As is: IllegalStateException "Android context is not initialized" - CMP
+     1.7.3 reads Android resources through a context its ContentProvider
+     sets at app start, and Paparazzi starts no provider.
+  2. With PreviewContextConfigurationEffect(): the same - it only acts when
+     LocalInspectionMode is true, which Paparazzi 1.3.5 does not set.
+  3. With the provider's (Kotlin-internal) ANDROID_CONTEXT set to
+     paparazzi.context by reflection: "pixels differing: 0 of 461000; ink
+     pixels in R version: 350" - IDENTICAL to the Android drawable.
+So CMP resources render pixel-identically under Paparazzi, but only with a
+test-side seam into an internal field. The app itself is unaffected (the
+provider runs at process start, and in instrumented tests). CMP resources
+also add that ContentProvider to the merged manifest (R605 counts it).
+
+--------------------------------------------------------------------------------
+R602 - THE CONTROLLER MOVED FIRST (commits 77a85f6, b24b622, 0ffee5f, 9edd39c,
+c5a7325, 886e717)
+--------------------------------------------------------------------------------
+Leaves first, each pinned before it moved, one commit per layer, package
+names unchanged (so no :app import moved):
+  R602a 77a85f6  vocabulary: detection/Vote, DetectionOutcome, NearBorder,
+        onboarding/Choices (git mv); split - Classification enum,
+        LoggingMode + DetectionModeStore + InMemory, NearBorderNoticeStore +
+        InMemory, TallyEntity.toDayChecks, DayWriter. The SharedPreferences
+        and org.json halves stay in :app. Pins: the existing :app tests,
+        unedited. iOS run 40414131018: success, 192 executed.
+  R602b b24b622 (pin) + 0ffee5f  CheckWindows -> :shared on kotlinx-datetime;
+        :app keeps java.time.Clock overloads (JavaTimeCheckWindows.kt).
+        CheckWindowsParisPinTest - every minute of 2026-06-15, 2026-03-29 and
+        2026-10-25 against java.time's own Paris clock - green on java.time,
+        then green unedited on the port.
+  R602c 9edd39c (pin) + c5a7325  CalendarModel -> :shared on kotlinx-datetime
+        (LocalDate.toString replaces the JVM-only String.format; Instant.parse
+        reads Z and offset forms); DayKind/Colours/RecordQuality/DayProvenance
+        split out of DayCell.kt. CalendarModelCalendarPinTest (60 months, 54
+        week strips, period start, serverLate's two forms; java.time oracle)
+        green before and after; it BITES - leadingBlanks planted off by one ->
+        "2024-01 blanks expected:<0> but was:<1>", restored (cmp). The pin
+        file took lint-only line wrapping in c5a7325 (no assertion changed).
+  R602d 886e717  AujourdhuiController -> :shared. kotlin.time.Clock + a
+        deviceZone (what a java.time.Clock carried); already a plain state
+        holder with an injected CoroutineScope, NO androidx ViewModel, so no
+        multiplatform lifecycle dependency and no question for the operator.
+        :app keeps JavaTimeAujourdhui.kt, a factory named like the class that
+        takes a java.time.Clock - MainGraph and all 25 test constructions are
+        UNEDITED. Account tag still read at write time, settings at use.
+  CommonMainFenceTest (c5a7325): androidx.compose. allowed; .ui.res and
+  .ui.tooling forbidden; Material3's date pickers forbidden by name (R624).
+  ExperimentalTime allowlist (R590): every new site function- or
+  property-scoped and listed - CheckWindows 4 + bridge 2, CalendarModel 2
+  (was 1 in :app), the controller 5 (was 1) + factory 1. These are new
+  sites for moved code; the allowlist's own message calls a new site "an
+  argument for the operator" - this paragraph is that argument (QUESTION Q3).
+  After R602d: :app 1386 tests 0 failures; 142 screenshot 0 failures at 0.0;
+  :shared 145 0 failures; fastCheck and compileCommonMainKotlinMetadata
+  green.
+
+--------------------------------------------------------------------------------
+R603 - A CONFLICT FOUND BEFORE ANY ICON MOVED (DEVIATION 4, QUESTION Q2)
+--------------------------------------------------------------------------------
+R603 says the Lucide drawables "move to Compose Multiplatform resources ...
+Android reads them from the shared resources". A HARD BOUNDARY says
+Aujourd'hui's "Compose UI tests and accessibility tests pass unedited in
+their assertions". They collide on one artefact: the answer line's glyph
+semantics (kindIconResKey / statusIconResKey) carry an Android drawable Int,
+and AnswerIconInstrumentedTest, AnswerStatusInstrumentedTest and
+KindIconMappingTest assert against literal ch.monreleve.app.R.drawable.* ids
+(KindIconMappingTest by reflection over R.drawable). Move the XMLs out of
+:app's res and those tests do not compile. A hard boundary outranks a
+ruling's mechanism, so - R156: conservative, reversible, recorded - the
+build keeps the boundary and asks:
+  (i)  AS BUILT: the XMLs' one home stays app/src/main/res/drawable; Android
+       draws them as today (pixel-identical by construction, no Paparazzi
+       seam, no ContentProvider or assets in the APK); the shared screen names
+       a glyph by an enum and reaches the painter through a seam; iOS gets
+       Compose Multiplatform resources GENERATED from the app's XMLs by a
+       Gradle task, and the path-comparison test proves the generator
+       delivered (R154). R603's "Android reads from the shared resources" is
+       NOT met.
+  (ii) R603 LITERALLY: the XMLs to commonMain composeResources, the
+       semantics key changes type -> assertion edits in the three tests
+       above, plus the Paparazzi context seam (the spike's reflection into
+       CMP's internal AndroidContextProvider) in all 14 screenshot classes.
+       Breaches the boundary as written; only the operator can relax it.
+  (iii) the XMLs to :shared androidMain/res with android.nonTransitiveRClass
+       =false so ch.monreleve.app.R.drawable.* resolves to the library's ids:
+       one property, app-wide blast radius - NOT measured.
+
+--------------------------------------------------------------------------------
+R603 - AS BUILT (commits efd6273, cefbde4)
+--------------------------------------------------------------------------------
+TOKENS AND COMPONENTS: design/ (15 files incl. rail/) git mv to :shared
+commonMain, package unchanged - Tokens (colours, spacing, radii, motion), the
+type scale, FrontierTheme, DayCell, legends, ZoneBadge, the rail, RateDisplay,
+MetricTile. Three internals turned public because :app's tests read them
+across the boundary (Radius/Motion.allForTest, frontierColorScheme). Fonts:
+none are bundled (FrontierFontFamily = FontFamily.Default), so nothing moved.
+ICONS (shape (i) of the QUESTION above, the conservative one): enum Glyph in
+design/Glyph.kt (file name derived: "ic_" + the constant in lower case);
+  Android  Glyph.android.kt: Resources.getIdentifier on the app's own drawable,
+           androidx painterResource - the same resource, and the same Int in
+           kindIconResKey/statusIconResKey, the instrumented tests assert.
+           Measured before building: under Paparazzi, getIdentifier("ic_house")
+           = 2131034129 = R.drawable.ic_house.
+  iOS      Glyph.ios.kt: Compose resources GENERATED by :shared's
+           generateGlyphResources (a Sync of app/src/main/res/drawable/ic_*.xml,
+           launcher art excluded) into a directory registered as iosMain's
+           customDirectory; the accessors exist only because the files do.
+  PATH COMPARISON (R603's test): GlyphResourceGeneratorTest reads the
+           generator's real output and asserts, for every Glyph, a generated
+           file whose ordered android:pathData strings EQUAL the app XML's
+           (positive control: every original carries at least one path); and
+           that no launcher art reached iOS. 2/2 green.
+  GlyphDrawablesExistTest: every Glyph resolves to an R.drawable of :app (two
+           glyphs never share one) and glyph_keep.xml keeps exactly the enum.
+  Compose resources' Android ContentProvider is REMOVED from the merged
+           manifest (tools:node="remove"; merged audit manifest: 0
+           occurrences) - Android never reads a Compose resource.
+FENCES followed design/ (and detection/'s :shared half, which R602 had moved
+past two fences silently - found here, fixed here): FencesTest
+SUBJECT_ROOTS, CopyReachability, DayCellGridHasLegend, NoBareThreshold,
+RateFloatFence, each root pinned (R460). Token fence RED on a planted
+Color(0xFF123456) in shared MetricTile.kt, restored (cmp).
+iOS run 40421241530 on efd6273: success, 192 executed (generated resources
+and the Glyph actual compiled and linked on the Mac).
+
+--------------------------------------------------------------------------------
+R604 - THE SCREEN MOVED (commit 7e7fca3)
+--------------------------------------------------------------------------------
+ui/screens/aujourdhui (9 files) git mv to :shared commonMain. Android's
+activity hosts it through the same AujourdhuiScreen(state, actions) call.
+Edits beyond the move: AnswerIcon speaks Glyph; rememberReduceMotion is
+expect/actual (Android: its old body; iOS: UIAccessibilityIsReduceMotionEnabled);
+rateBetween public (a :app test reads it). The calendar UI Aujourd'hui
+already shared - LIST_FONT_SCALE_THRESHOLD, dayWords, RecordedGranularityNotice
+- moved unchanged into shared ui/screens/calendrier/SharedWithAujourdhui.kt;
+the calendar screen itself did not move (DEVIATION 3).
+EVERY FENCE THAT READ ui/ READS THE SHARED ROOT TOO, pinned by
+AujourdhuiScreen.kt: FencesTest, CopyReachability, DayCellGridHasLegend,
+LogFence, NoBareThreshold, RateFloatFence. RED ONCE each, on one planted file
+in the shared screen (PlantedForR604.kt, deleted after the run, `ls` -> no
+such file), 16 tests run, 4 failed - exactly the four:
+  tokens-only      "...\ui\screens\aujourdhui\PlantedForR604.kt: raw .dp
+                    literal outside Spacing/Radius"
+  provenance/wire  "...PlantedForR604.kt: references data/remote, data/local,
+                    Retrofit or a Dao directly" (the import of the wire
+                    Provenance - R202's fence)
+  no-inline-string "...PlantedForR604.kt: string literal "Bonjour, plante" in
+                    ui//dev/ - French copy must come from fr/"
+  no-Float-rate    "PlantedForR604.kt:10  a rate held as a Float"
+Then GREEN: :app 1385 tests 0 failures (1388 less KindIconMappingTest's 3,
+moved to :shared commonTest as 2 - DEVIATION 5); :shared 149 0.
+
+--------------------------------------------------------------------------------
+R605 - ANDROID IS THE PROOF
+--------------------------------------------------------------------------------
+PAPARAZZI: :app:verifyPaparazziDebug after every layer - 142 screenshot tests,
+0 failures, at maxPercentDifference 0.0 (R626); AujourdhuiScreenScreenshotTest
+35/35 on the shared screen. BASELINES RE-RECORDED: 0
+(`git status --porcelain android/app/src/test/snapshots` -> empty; no commit
+touches a .png).
+COMPOSE UI / A11Y TESTS: the instrumented AnswerIcon/AnswerStatus/HalfDayChoice
+and RateOneString tests are UNEDITED and compile against the shared screen
+(:app:compileDebugAndroidTestKotlin green); the gate compiles, it does not run
+them (no emulator in the gate) - what ran is the S9 drive below. So the hard
+boundary's "pass unedited in their assertions" is proven here as: compiled
+unedited, plus the S9 accessibility tree (main vs tip identical) carrying the
+same semantics; NOT as a run of androidTest - nothing in this session ran it.
+R495: DeclarableRateDisplayTest (the formatted-string assertions) and
+RateFloatFenceTest green, the former unedited
+(DeclarableRateDisplayTest reaches rateBetween across the boundary).
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on):
+  main 2458dbe (built in a throwaway worktree)   1,989,376 B
+  tip, resource shrinker in its default mode     2,022,380 B  (+33,004)
+  tip, glyph_keep.xml shrinkMode="strict"        1,989,388 B  (+12)  <- shipped
+WHY: Glyph.android.kt looks the ten drawables up BY NAME, and the shrinker's
+safe mode answers a run-time lookup by keeping 68 extra resources (every ic_*
+drawable, androidx core's notification/compat set: res/ +13,388 B, arsc
++15,708 B). In strict mode, with the ten kept by name, the resource table
+names EXACTLY main's 197 resources (aapt2 dump, diffed both ways: empty; the
+ten glyphs present). What remains: classes.dex +3,629 B stored (+5,532
+uncompressed) - Compose 1.7.6 over 1.7.0/1.7.1 and the shared Glyph/pilot
+code - offset by zip alignment to +12 B overall.
+
+--------------------------------------------------------------------------------
+R606 - iOS COMPILES, COMPOSES, TAPS AND HOSTS THE SCREEN
+--------------------------------------------------------------------------------
+YES, Compose Multiplatform's UI-test API runs on iOS in this setup:
+runComposeUiTest on iosSimulatorArm64 (cmp-ui-test, iOS TEST scope only).
+iosTest pilot/AujourdhuiPilotIosTest (7): the pilot (shared screen + real
+controller + in-memory fixture) composed with the question and the week strip;
+acknowledged; pending; refused; morning and afternoon asked apart; one tap on
+" Domicile " recorded into memory and shown pending; and hosted in a
+ComposeUIViewController in a UIWindow ("composed=true after 1 spins").
+MaterialDatePickerCanaryTest (1): still IrLinkageError on
+'kotlinx.datetime/Instant.Companion' - asserted broken, as expected.
+commonTest on iOS: PilotFixtureTest (3), KindIconMappingTest (2). PilotFixtureTest
+IS the commonTest that covers the moved controller's state on iOS (R606's
+"whatever commonTest covers its state"): it drives the real controller through
+the fixture. The controller's own pins (AujourdhuiControllerTest and kin) did
+NOT move - Kotest + java.time cannot run in commonTest - they stay in :app and
+now cross the module boundary, unedited.
+  run 40484214560 on 4be07ba: 205 executed, 1 failure - the tap test found 3
+     nodes saying "Domicile" (the legend says it too); test fixed (f0133cd).
+  run 40488830486 on f0133cd: SUCCESS, "iOS SIMULATOR TESTS EXECUTED: 205",
+     AujourdhuiPilotIosTest tests=7 failures=0, six GENEVA lines.
+
+--------------------------------------------------------------------------------
+R607 - ON THE S9, AGAINST THE LOCAL STACK
+--------------------------------------------------------------------------------
+STACK: port 3000 asserted free first (Get-NetTCPConnection: 0 of 44 listeners;
+5436, the control, 2). `PORT=3000 pnpm dev` from THIS worktree's web/ (pnpm
+install --frozen-lockfile there, web/.env copied - both gitignored), so no
+artefact outside the worktree. R169: /api/health -> {"service":"monreleve",
+...,"status":"ok"}; /api/ready 200. Database frontalier-postgres (5436), read
+with `docker exec ... psql` SELECTs only; migration 20261025200000 NOT applied,
+no other container touched. `adb reverse tcp:3000 tcp:3000` -> "UsbFfs
+tcp:3000 tcp:3000". NEVER production.
+BUILDS (-PfrontalierHost=127.0.0.1, audit = R8-minified), all signed
+ef336db5...e373d1, the installed APK's signer:
+  main 2458dbe audit  7e91be74eb884ada243d10bf44271506ae121701adf64275c8c8d08a059b7f2c
+  tip  audit          9040db1d6c44e956baca72058959b8d833f0c46218363a363a507e84eaa7e905
+                      (strict shrink mode; aapt2: all ten glyph drawables kept)
+ACCOUNT: ios-1b-a.pilot@monreleve.test, created for this - count 0 before
+(controls: 21 users, 11 @monreleve.test). Signed in through the real screens on
+main's build: address typed, POST magic-link 202, the 6-digit code read from
+the dev server's printed mail into a scratch file, typed as key events, file
+deleted (code never printed) -> POST /auth/code 200, GET /me 200, entries 200.
+R574: every capture during sign-in was a uiautomator dump through a helper
+that REDACTS every EditText ("[EditText redacted, N chars]"); no screenshot
+until the account was in the shell. (DEVIATION 7: the magic-link URL itself
+was printed once into this session's transcript.) Onboarding: "Pilote IOS",
+Geneve, 100 %, simplified, whole days, whole year, manual, "Pas maintenant".
+THE COMPARISON: `adb install -r` swaps the builds over the same data; each
+state captured on BOTH, compared pixel by pixel over the app area (rows 80-2076;
+the status bar's clock and the system navigation bar excluded):
+  W0   whole-day, unanswered (question, four choices, A traiter)      0 px differ
+  H0   half-day, unanswered (Matin / Apres-midi asked apart)          0 px
+  H1   morning answered En Suisse, afternoon still asked (AN-POLISH) 0 px
+  H2   both halves (Matin : En Suisse, Apres-midi : Domicile,
+       building and house glyphs, check + "Enregistre")             0 px
+  H2b  scrolled to the end: rail, 95,5 / 119 days, week strip (27:
+       "S D", today, on-time bar), legend, Ce mois 0,5 / 0,5         0 px
+  M    " Modifier " open                                              0 px
+  A4   Matin : Absence - Conge, Apres-midi : Domicile                 0 px
+  a11y the uiautomator tree (text, content-desc, class, bounds, flags) of
+       the A4 state, main vs tip: diff EMPTY (49 nodes each)
+THE HALF-DAY FLOW (AN-POLISH) was driven on the tip build; its in-flight state
+(the remaining half scrolled into view after the tap, s9/H1-tip-aftertap.png)
+was NOT compared with main - the compared H1 is the relaunched resting state.
+EACH ANSWER, driven on the tip build through " Modifier ": En Suisse,
+Domicile, Mission -> En France ("Matin : Mission (France)"), Mission -> Pays
+tiers ("Mission (pays tiers)"), Declarer une absence -> Conge. Server, read
+after: Entry 2026-10-27 AM ABSENT CONGE MANUAL, PM HOME MANUAL; 6 EntryEvents
+(one per write); User HALF_DAY / GE / 100.
+NOT SHOWN ON THE DEVICE: whole-day mode with a day ANSWERED - only one day
+(today) can be answered, it went to half-day mode first for the half-day flow,
+and switching back to whole days was REFUSED by the product ("Cette
+modification est incompatible avec des journees deja enregistrees, qui
+utilisent un decompte different.") - correct behaviour. Whole-day answered
+states are in the 35 Paparazzi baselines, verified at zero.
+TALKBACK: NOT DRIVEN (DEVIATION 6). Enabling Samsung's Voice Assistant
+(com.samsung.accessibility/...TalkBackService) opened its first-run tutorial
+over the app; it was turned off at once. What TalkBack reads is the
+accessibility tree, which is identical between the builds (above), and holds
+"Ou travaillez-vous aujourd'hui ?", "Matin : Absence - Conge",
+"Apres-midi : Domicile", "Enregistre".
+LEFT AS FOUND: signed out through Parametres -> " Se deconnecter " (POST
+sign-out 200; DeviceSession revokedReason SIGNED_OUT; the phone's data wiped
+by the product); the original audit APK reinstalled - installed base.apk
+sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034;
+`adb reverse --list` empty; stay_on_while_plugged_in 0;
+enabled_accessibility_services null (deleted), accessibility_enabled 0
+(both as read before enabling). The dev server's tree stopped (TaskStop, then
+its orphan node processes, found by this worktree's path, killed); port 3000:
+0 listeners, 5436: 2 (control). The test account and its two entries remain
+in the local database (no deletion was run).
+
+--------------------------------------------------------------------------------
+R608 - THE PILOT FIXTURE (commit 49fb0a3)
+--------------------------------------------------------------------------------
+shared commonMain pilot/PilotFixture.kt - InMemoryEntryDao (Room's EntryDao
+contract in memory), InMemorySettingsStore, PilotScenario (today UNANSWERED,
+UNANSWERED_HALF_DAY, ANSWERED_WHOLE, ANSWERED_HALVES, PENDING, REFUSED) and
+PilotFixture.controller(), which builds the REAL AujourdhuiController over the
+REAL LocalEntryRepository on the in-memory DAO. Seeded history: a past weekday
+answered whole, two in halves (opposite ways - in whole-day mode the engine
+refuses a half count, calc/Validate.kt, so the year panel would show no rate),
+one pending, one refused, the oldest left unanswered. NO SERVER: requestSync is
+a no-op, no transport exists; every row carries PILOT_ACCOUNT, a tag no server
+issues. pilot/AujourdhuiPilot.kt is the whole pilot as one composable.
+PilotFixtureTest (commonTest, JVM 3/3 and iOS 3/3): today in each scenario;
+the week strip, month (nonRenseigne 5,0) and A traiter from the history; a tap
+writes ONE pending row under PILOT_ACCOUNT; a whole day beside halves is
+refused (R492) and writes nothing.
+
+--------------------------------------------------------------------------------
+R609 - WHAT PART B NEEDS
+--------------------------------------------------------------------------------
+1. THE ENTRY POINT: shared iosMain pilot/AujourdhuiPilotViewController.kt
+     fun aujourdhuiPilotViewController(
+         scenario: PilotScenario = PilotScenario.UNANSWERED): UIViewController
+   From Swift: AujourdhuiPilotViewControllerKt
+     .aujourdhuiPilotViewController(scenario: .unanswered)
+   as the window's root (SwiftUI: a UIViewControllerRepresentable). It hosts
+   AujourdhuiPilot - FrontierTheme + AujourdhuiScreen + the real controller
+   over the fixture, ids from newIosMutationId, Clock.System.
+2. :shared DECLARES NO iOS FRAMEWORK YET (iosArm64()/iosSimulatorArm64() have
+   only their test binaries). Part B adds `binaries.framework { baseName = ... }`
+   (static recommended) - a build change, for that task to make.
+3. RESOURCES TO BUNDLE: the Compose resources of iosMain - the ten glyphs
+   generated by generateGlyphResources (any ic_*.xml of app/src/main/res/
+   drawable, launcher art excluded). They must land in the app bundle's
+   compose-resources directory as Compose Multiplatform 1.7.3's framework
+   integration places them; Part B should prove it by the screen showing the
+   glyphs on the device (the simulator test only proves they load in the test
+   binary). FONTS: none - FontFamily.Default is SF on iOS, so iOS text will
+   NOT match Android's Roboto pixel for pixel, by design.
+4. Info.plist: CADisableMinimumFrameDurationOnPhone = YES. The entry point
+   keeps Compose's strict plist check ON and will refuse to start without it.
+5. iOS-SPECIFIC, FOUND HERE: Material3 date pickers are unlinked (fenced in
+   commonMain, canaried in iosTest); reduce motion follows
+   UIAccessibilityIsReduceMotionEnabled; the pilot needs no server, account,
+   network or database - and must never be pointed at one.
+
+--------------------------------------------------------------------------------
+CI MINUTES (PART 2)
+--------------------------------------------------------------------------------
+  run          ref                   sha      result   wall    tests
+  40408680643  probe-ios1ba-cmp173   20608cf  failure* 9m31s   195 (1 failed*)
+  40412510390  ios-1b-a              d335ef1  success  9m10s   192
+  40414131018  ios-1b-a              e381370  success  3m54s   192
+  40416685158  ios-1b-a              886e717  success  4m40s   192
+  40421241530  ios-1b-a              efd6273  success  8m51s   192
+  40484214560  ios-1b-a              4be07ba  failure  8m10s   205 (1 failed)
+  40488830486  ios-1b-a              f0133cd  success  4m24s   205
+  * by design (R624's test b). TOTAL 48m40s wall; billed per run rounded up:
+  10+10+4+5+9+9+5 = 52 macOS minutes (520 of the 2,000 at the operator's
+  10x figure). Report-only pushes trigger no run (paths-ignore REPORT-*.txt).
+
+--------------------------------------------------------------------------------
+PARKED (PART 2; UNNUMBERED - no series letter is free)
+--------------------------------------------------------------------------------
+UNNUMBERED-6  Material3 1.7.3's calendar model is unlinked on iOS against
+              kotlinx-datetime 0.7.1. Fenced (CommonMainFenceTest) and
+              canaried (MaterialDatePickerCanaryTest); retired by UNNUMBERED-8.
+UNNUMBERED-7  Paparazzi 1.3.5's OffByTwo differ and 1 px size allowance remain
+              under maxPercentDifference 0.0 (QUESTION Q4).
+UNNUMBERED-8  The CMP 1.10+/1.11 upgrade - trigger: Material3 1.5 STABLE and a
+              Paparazzi that renders Compose UI 1.10 text.
+UNNUMBERED-9  Compose resources on Android need the library's ContentProvider
+              context, which Paparazzi does not start (the R603 spike). Matters
+              only if QUESTION Q2 is answered (ii).
+UNNUMBERED-10 NOTICED, NOT TOUCHED: in whole-day mode the engine refuses a half
+              count (calc/Validate.kt), so a day held in halves under whole-day
+              settings (R490 keeps halves; R494 mixed data) makes Aujourd'hui's
+              year panel show no rate. The product's settings sheet refuses the
+              switch itself (seen on the S9), so this needs data from elsewhere.
+UNNUMBERED-11 CommonMainFenceTest now allows androidx.compose.* except two
+              Android-only holes; anything else Android-only inside Compose's
+              packages is caught by compileCommonMainKotlinMetadata, not by text.
+
+--------------------------------------------------------------------------------
+DEVIATIONS (PART 2)
+--------------------------------------------------------------------------------
+1. ORDER: R608 was built before R607, so one iOS run carried R604-R608.
+2. R602c moved the grid vocabulary (DayKind, Colours, RecordQuality,
+   DayProvenance) with CalendarModel, before R603: the controller's state
+   carries them. Pure enums and one colour-holding data class - no UI.
+3. The calendar's three pieces Aujourd'hui shared moved to :shared
+   (SharedWithAujourdhui.kt); the calendar screen did not move.
+4. R603's ICON MECHANISM, NOT BUILT AS WRITTEN: the drawables stay in :app
+   because a hard boundary (unedited instrumented-test assertions on literal
+   R.drawable ids) forbids moving them; iOS gets generated Compose resources
+   (QUESTION Q2). Recorded in the report before any icon work (02df3e2).
+5. KindIconMappingTest - a JVM unit test, not a Compose UI or accessibility
+   test - moved to :shared commonTest and now compares Glyph file names; its
+   two invariants are unchanged, its R.drawable check went to
+   GlyphDrawablesExistTest.
+6. TALKBACK NOT DRIVEN on the S9 (Voice Assistant's tutorial); the
+   accessibility trees were compared instead.
+7. A magic-link sign-in URL (local dev server, this test account, single use,
+   15 minutes) was printed once into this session's transcript while locating
+   the printed mail; the code consumed the sign-in a minute later. No code was
+   printed; no screenshot was taken during sign-in.
+8. The local dev server ran from this worktree's web/ (pnpm install, .env
+   copied - gitignored), not the main checkout's.
+9. resources: glyph_keep.xml sets shrinkMode="strict" - a build behaviour
+   change, MEASURED to give exactly main's resource set (R605).
+10. Two throwaway worktrees of mine (C:/wt/ios-1b-a-probe, C:/wt/ios-1b-a-base)
+   were created, locked and removed; nothing of them landed.
+11. The ExperimentalTime allowlist gained sites for moved and new code
+   (QUESTION Q3) rather than stopping at the test's "argument for the
+   operator" message.
+12. The CalendarModel pin file took lint-only line wrapping after its pin
+   commit (no assertion changed).
+
+--------------------------------------------------------------------------------
+QUESTIONS (PART 2)
+--------------------------------------------------------------------------------
+Q2 (R603, the icons) - see "R603 - A CONFLICT": keep (i) as built, or relax
+   the hard boundary for (ii), or measure (iii)?
+Q3 (R590) - the new ExperimentalTime sites: CheckWindows 4 + its :app bridge 2,
+   CalendarModel 2 (was 1), the controller 5 (was 1) + its :app factory 1,
+   PilotFixture 1, AujourdhuiPilot 1, PilotFixtureTest 2. All function- or
+   property-scoped and listed. Accept, or prefer a non-experimental clock seam
+   until Kotlin 2.3 (PARK-Z3)?
+Q4 (R626) - exact pixel comparison needs a custom Paparazzi SnapshotHandler
+   (OffByTwo is not configurable in 1.3.5). Wanted?
+Q5 (R607) - TalkBack: a dedicated device session to drive Voice Assistant
+   through its tutorial, or the accessibility-tree evidence as it stands?
+
+--------------------------------------------------------------------------------
+PUSH PROOF (PART 2)
+--------------------------------------------------------------------------------
+Branch ios-1b-a only (never main, never production):
+    git push origin ios-1b-a  ->  f0133cd..ec6241d  ios-1b-a -> ios-1b-a
+    git ls-remote origin refs/heads/ios-1b-a
+      -> ec6241db5eb00079f76a66832792ccfbb31f0047 (the PART 2 report commit)
+    gh run list --workflow ios-shared.yml --branch ios-1b-a --limit 1
+      -> f0133cd... completed (no run for the report-only commit, the
+         paths-ignore rule; f0133cd's run 40488830486 is the iOS proof)
+    git ls-remote origin 'refs/heads/probe*' -> nothing
+This push-proof follow-up is report-only and pushed the same way.
+
+################################################################################
+PART 1 - THE FIRST PASS (STOPPED AT R601), AS COMMITTED
+################################################################################
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+R601 is the prompt's stop point and it fired. Adding Compose Multiplatform
+1.10.3 (runtime, ui, foundation, animation, components-resources) and its
+Material3 1.10.0-alpha05 to :shared's commonMain moves EVERY androidx.compose
+artifact on :app's classpaths: compose 1.7.0/1.7.1 -> 1.10.5, material3
+1.3.0 -> 1.5.0-alpha08 (an ALPHA), material-ripple 1.7.0 -> 1.9.4, lifecycle
+2.8.7 -> 2.9.4, plus core 1.15.0 -> 1.16.0, savedstate 1.2.1 -> 1.3.3,
+collection 1.4.2 -> 1.5.0 and the catalog's own coroutines pin 1.8.1 -> 1.9.0.
+activity stays 1.9.3. That is an upgrade of every Android screen's toolkit,
+so this task stopped before its first change and asks the question below.
+
+Beyond the version diff, the probe measured what the upgrade would cost
+(never committed, no build file edited - an init script applied with -I):
+  - Paparazzi 1.3.5 CANNOT RENDER Compose UI 1.10.x text at all:
+    NoSuchMethodError StaticLayout$Builder.setUseBoundsForWidth(boolean) -
+    an API-35 method its bundled layoutlib lacks. The Compose move is also a
+    Paparazzi move, i.e. every one of the 142 baselines re-examined.
+  - Material3 1.5 no longer brings material-icons-core: CalendrierScreen.kt
+    and ParametresListRows.kt (two screens outside this task) stop compiling.
+  - ThemeCensusTest fails: Typography 15 -> 30 slots, new ColorScheme slots.
+  - compileSdk 35 does NOT bind: the new AARs ask minCompileSdk=35 exactly.
+
+NO SOURCE, BUILD OR BASELINE FILE CHANGED. The one commit on the branch is
+this report. R602-R609: NOT STARTED.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+SUPERSEDED BY PART 2 (above); kept as the record of the stop.
+STOPPED AT R601 - Android's Compose toolkit resolves 1.7.0 -> 1.10.5 with
+CMP 1.10.3 in :shared. No source, build or baseline file changed; the only
+commit is this report.
+FULL :app:gate --rerun-tasks ran on 2458dbe (main's HEAD, the tree this
+report sits on): BUILD SUCCESSFUL in 11m 15s, 237 actionable tasks: 237
+executed, exit 0. It did NOT run on the report commit itself, whose only
+change is this .txt. There is nothing to call GREEN: no work was done.
+
+--------------------------------------------------------------------------------
+R273 - READ
+--------------------------------------------------------------------------------
+relay/IOS-1b-A.txt in full (main checkout, untracked, not committed).
+REPORT-KMP-UP2 R542: the CMP 1.10.3 probe compiled a @Composable using
+remember for Android and iosSimulatorArm64 - in a scratch module :cmpprobe
+that :app did NOT depend on, and with runtime only. So it never measured what
+CMP does to the ANDROID APP's graph; that question was open until this task.
+REPORT-KMP-DT R557: the Material3 resolution check covered :shared's own five
+configurations, not :app's (its "Compose's own dependencies" list -
+collection 1.5.0, coroutines to 1.8.1, atomicfu - is :shared-side).
+REPORT-IOS-1a: read for the shared formatter and iOS implementations.
+The Aujourd'hui files (ui/screens/aujourdhui/*: AnswerIcon, AujourdhuiAuto,
+AujourdhuiScreen, AujourdhuiSections, ChoiceCard, ChoiceMotion,
+HalfDayChoiceCard, MovingRate, YearDownloadNotice; aujourdhui/
+AujourdhuiController) were inventoried by import only: they use Material3
+(Text, TextButton, OutlinedButton, Button, Icon, HorizontalDivider),
+foundation, animation, runtime-saveable and androidx.compose.ui.res
+.painterResource + @DrawableRes - which is why the probe includes Material3
+and components-resources. DESIGN-SYSTEM.md and the ui/ fences were NOT read
+in depth: the stop came first and nothing was written that they govern.
+
+--------------------------------------------------------------------------------
+R1 - PRECONDITIONS
+--------------------------------------------------------------------------------
+(a) origin/main contains ios-1a: 2458dbe; 981e8a8 (Merge ios-1a) is its
+    first parent's tip. HOLDS.
+(b) FULL :app:gate --rerun-tasks on 2458dbe, after ./gradlew --stop:
+      > Task :app:checkTestFloor
+      test floor OK: 1379 unit tests observed (>= 10)
+      BUILD SUCCESSFUL in 11m 15s
+      237 actionable tasks: 237 executed
+      real 11m16.723s ; exit 0
+    Test XML: 1379 tests, 0 failures, 0 errors (the count the coordinator
+    gave). Compiler "w: " lines: 7 (the count given); none is the Kotlin
+    daemon's "multiple sessions" notice (0 of those in the log). HOLDS.
+(c) iOS run on it: NO RUN EXISTS ON 2458dbe (ios-shared.yml is dispatch or
+    push to ios-*; main's newest run is on 1c1eb82). The nearest is
+    40381406212 on ed5a4ac (an-fr-text): success, 18:51:03Z-18:58:14Z,
+    "iOS SIMULATOR TESTS EXECUTED: 192". `git diff --stat ed5a4ac 2458dbe`
+    -> REPORT-AN-FR-TEXT.txt only (1 file, 290 insertions), and 981e8a8 is an
+    ancestor of ed5a4ac - so that run built and tested EXACTLY main's code
+    tree; the one differing file is in the workflow's paths-ignore. HOLDS by
+    tree identity; no macOS minute was spent to re-prove it.
+(d) The S9: `adb devices -l` -> 232bcd8c300c7ece device product:starltexx
+    model:SM_G960F; stay_on_while_plugged_in READ = 0; `adb reverse --list`
+    empty; installed ch.monreleve.app base.apk sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 = the
+    audit APK at C:/wt/an-pull (hashed in place, nothing copied or written).
+    Signed-in state NOT read (reading it needs a reader build installed over
+    the app - a write). Nothing was installed, granted or changed: the phone
+    is as found. HOLDS.
+
+--------------------------------------------------------------------------------
+R601 - THE DEPENDENCY DIFF (THE STOP)
+--------------------------------------------------------------------------------
+METHOD. No build file edited. An init script, applied with -I, adds to
+:shared's commonMain (when -Dr601.cmp=true):
+    org.jetbrains.compose.runtime:runtime:1.10.3
+    org.jetbrains.compose.ui:ui:1.10.3
+    org.jetbrains.compose.foundation:foundation:1.10.3
+    org.jetbrains.compose.animation:animation:1.10.3
+    org.jetbrains.compose.components:components-resources:1.10.3
+    org.jetbrains.compose.material3:material3:1.10.0-alpha05
+`./gradlew -q :app:dependencies --configuration <c>` was captured without
+and with it, for releaseRuntimeClasspath, debugRuntimeClasspath,
+debugCompileClasspath and debugUnitTestRuntimeClasspath (all exit 0), and
+each tree reduced to group:artifact -> final resolved version.
+POSITIVE CONTROL: the plant landed - org.jetbrains.compose.* (runtime 1.10.3,
+material3 1.10.0-alpha05, components-resources-android 1.10.3, ...) appear in
+every AFTER tree and in no BEFORE tree.
+The androidTest configurations were not captured; they take the same :shared
+dependency, so they move by the same mechanism (inferred, not measured).
+
+COUNTS (modules, constraint-only lines excluded):
+  configuration                   before after  version-changed  of which
+                                                                 compose/
+                                                                 lifecycle/
+                                                                 activity
+  releaseRuntimeClasspath           106   151        61             48
+  debugRuntimeClasspath             113   160        66             53
+  debugCompileClasspath              91   103        60             50
+  debugUnitTestRuntimeClasspath     217   264        62             53
+
+releaseRuntimeClasspath, every androidx.compose / material3 / lifecycle /
+activity artifact (each -android twin moves identically):
+  androidx.compose.animation:animation, animation-core     1.7.0  -> 1.10.5
+  androidx.compose.foundation:foundation, foundation-layout 1.7.0 -> 1.10.5
+  androidx.compose.runtime:runtime, runtime-saveable       1.7.1  -> 1.10.5
+  androidx.compose.runtime:runtime-annotation, -retain     (new)     1.10.5
+  androidx.compose.ui:ui, ui-geometry, ui-graphics, ui-text,
+    ui-unit, ui-util, ui-tooling-preview                   1.7.0  -> 1.10.5
+  androidx.compose.material3:material3                     1.3.0  -> 1.5.0-alpha08
+  androidx.compose.material:material-ripple                1.7.0  -> 1.9.4
+  androidx.compose.material:material-icons-core            1.7.0  -> REMOVED
+  androidx.lifecycle:lifecycle-common, -common-java8, -livedata,
+    -livedata-core(-ktx), -process, -runtime(-ktx), -runtime-compose,
+    -service, -viewmodel(-ktx), -viewmodel-savedstate      2.8.7  -> 2.9.4
+  androidx.activity:activity, activity-ktx, activity-compose 1.9.3 (UNCHANGED)
+  org.jetbrains.androidx.lifecycle:* 2.9.6, org.jetbrains.compose.*: new
+Other version moves on the same classpath:
+  androidx.collection:collection(-jvm,-ktx)  1.4.2 -> 1.5.0
+  androidx.core:core, core-ktx               1.15.0 -> 1.16.0  (catalog pin
+                                                                coreKtx moves)
+  androidx.emoji2:emoji2                     1.3.0 -> 1.4.0
+  androidx.profileinstaller                  1.3.1 -> 1.4.0
+  androidx.savedstate:savedstate(-ktx)       1.2.1 -> 1.3.3
+  kotlinx-coroutines-android/-core/-bom      1.8.1 -> 1.9.0   (catalog pin
+                                                                coroutines moves)
+New on it: androidx.window 1.5.0, graphics-shapes 1.1.0, transition 1.6.0,
+core-viewtree, documentfile, dynamicanimation, legacy-support-core-utils,
+loader, localbroadcastmanager, print, savedstate-compose.
+WHY: CMP's Android variants are not a second Compose - they are published as
+the androidx artifacts (org.jetbrains.compose.ui:ui:1.10.3's Android variant
+resolves to androidx.compose.ui:ui-android:1.10.5), and Gradle's conflict
+resolution takes the highest version over the BOM's 1.7.0 constraint.
+From Gradle, not inferred (`:app:dependencyInsight --dependency
+androidx.compose.ui:ui-android --configuration releaseRuntimeClasspath`, with
+the probe, exit 0):
+    androidx.compose.ui:ui-android:1.10.5
+      Selection reasons: By constraint;
+        By conflict resolution: between versions 1.10.5 and 1.7.0
+    --- androidx.compose.ui:ui:1.10.5
+         +--- androidx.compose:compose-bom:2024.09.00 (requested ...ui:1.7.0)
+         +--- org.jetbrains.compose.ui:ui:1.10.3 <- project :shared
+Raw trees: android/.an-auto-shots/ios-1b-a/{before,after}-<c>.txt and the
+reduced *.res lists (gitignored, kept in the worktree).
+
+DOES compileSdk CONSTRAIN IT? No - at the edge. aar-metadata.properties:
+  androidx.compose.ui:ui-android 1.10.5                minCompileSdk=35  AGP>=8.6.0
+  androidx.compose.material3:material3-android 1.5.0-alpha08  minCompileSdk=35
+  androidx.core:core 1.16.0                            minCompileSdk=35
+  androidx.lifecycle:lifecycle-runtime-android 2.9.4   minCompileSdk=34
+  (control) androidx.compose.ui:ui-android 1.7.0       minCompileSdk=34
+compileSdk is 35 and AGP 8.10.1, so
+  ./gradlew -I r601.init.gradle -Dr601.cmp=true :app:checkDebugAarMetadata
+            :app:checkReleaseAarMetadata  ->  BUILD SUCCESSFUL in 16s, exit 0
+
+DOES PAPARAZZI 1.3.5 CONSTRAIN IT? YES - IT CANNOT RENDER THE RESULT.
+`:app:verifyPaparazziDebug` with the probe (verify mode: writes no baseline):
+  run 1, -Dr601.cmp=true:  > Task :app:compileDebugKotlin FAILED, 8 errors,
+    all "Unresolved reference 'Icons'/'automirrored'" in
+    ui/screens/calendrier/CalendrierScreen.kt (21,22,23,139,151) and
+    ui/screens/parametres/ParametresListRows.kt (10,11,133): Material3 1.5
+    dropped its material-icons-core dependency, which these two screens used
+    transitively.
+  run 2, plus a SHIM (androidx.compose.material:material-icons-core:1.7.8 on
+    :app, only to get past that compile error - NOT part of the R601 diff):
+    1379 tests completed, 144 failed; BUILD FAILED in 3m 16s, exit 1.
+    The 144, by class:
+      142 screenshot tests in 14 classes (Aujourd'hui 35, Components 21,
+          Onboarding 16, Calendrier 14, SignIn 13, Releve 11, Prevision 7,
+          Simulation 7, ThresholdRail 6, Rythme 4, Comparison 3,
+          Disclosure 2, ParametresDialog 2, AppBottomBar 1): Paparazzi
+          rendering errors, every one
+            java.lang.NoSuchMethodError: 'android.text.StaticLayout$Builder
+            android.text.StaticLayout$Builder.setUseBoundsForWidth(boolean)'
+            at androidx.compose.ui.text.android.StaticLayoutFactory35
+              .disableUseBoundsForWidth(StaticLayoutFactory.android.kt:254)
+          - Compose UI 1.10.5's text layout calls an API-35 method that
+          Paparazzi 1.3.5's bundled layoutlib does not have. (111 report it
+          three times in one test, 1 twice, 30 once.) These are NOT
+          pixel diffs: the renderer crashed, so whether pixels change is
+          UNKNOWN, not "no".
+      2 ThemeCensusTest: "expected 15 Typography slots, found 30" and
+          "ColorScheme.onPrimaryFixed = ..." - Material3 1.5 widened the theme
+          surface the census pins.
+  git status --porcelain after both runs: empty - no baseline was written.
+  Kept: android/.an-auto-shots/ios-1b-a/probe/{test-results,paparazzi-failures}.
+SO: CMP 1.10.3 on Android = Compose 1.10.5 + Material3 1.5.0-alpha08 +
+Paparazzi past 1.3.5 + an explicit material-icons-core + a theme-census
+update + a full baseline review. Each is outside this task by the prompt's
+own words.
+
+--------------------------------------------------------------------------------
+R602 - R609
+--------------------------------------------------------------------------------
+SUPERSEDED BY PART 2 (above) - all of these were done there.
+R602 controller ............ NOT STARTED - stopped at R601.
+R603 tokens/resources ...... NOT STARTED - stopped at R601.
+R604 screen ................ NOT STARTED - stopped at R601.
+R605 Android proof ......... NOT STARTED. Paparazzi baselines touched: 0.
+                             APK size not measured (nothing to compare).
+R606 iOS compiles .......... NOT STARTED; no iOS run spent on it.
+R607 on the S9 ............. NOT STARTED. The phone was READ only (R1).
+R608 pilot fixture ......... NOT STARTED.
+R609 what Part B needs ..... NOT WRITTEN - Part B's entry point does not
+                             exist. What Part B inherits from this stop: the
+                             CMP version decision below must be made first.
+
+--------------------------------------------------------------------------------
+CI MINUTES
+--------------------------------------------------------------------------------
+ZERO macOS runs dispatched or triggered by work in this session before the
+push. R1's iOS proof is the existing run 40381406212 (above). The push of
+this report commit: see PUSH PROOF (the workflow paths-ignores REPORT-*.txt).
+
+--------------------------------------------------------------------------------
+PARKED (UNNUMBERED - no series letter is free; never a heading in parking.md)
+--------------------------------------------------------------------------------
+UNNUMBERED-1  Paparazzi 1.3.5 cannot render Compose UI >= the version that
+              calls StaticLayout$Builder.setUseBoundsForWidth (1.10.5
+              measured). Any Compose move past it is a Paparazzi move too.
+UNNUMBERED-2  CalendrierScreen.kt and ParametresListRows.kt use
+              Icons.AutoMirrored via a TRANSITIVE material-icons-core from
+              Material3 1.3.0. Any Material3 >= 1.5 breaks them; the fix is
+              an explicit dependency (a catalog addition - ask first).
+UNNUMBERED-3  ThemeCensusTest pins 15 Typography slots and the 1.3 ColorScheme;
+              Material3 1.5 has 30 and new fixed-colour slots. Its update
+              belongs to the toolkit-upgrade task.
+UNNUMBERED-4  CMP 1.10.3 also moves the catalog's coroutines pin (1.8.1 ->
+              1.9.0) and coreKtx (1.15.0 -> 1.16.0) by conflict resolution:
+              the catalog would then state versions the app does not run.
+UNNUMBERED-5  NOTICED, NOT TOUCHED: no Paparazzi test in app/src/test sets
+              maxPercentDifference (grep: no match), so verifyPaparazziDebug
+              runs at Paparazzi 1.3.5's DEFAULT tolerance - R345's "a default
+              is a setting nobody chose", on the Android baselines. Not
+              verified what that default is in 1.3.5; stated, not fixed.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. R601's probe ran BEFORE R1's gate (both before any change). R601 was
+   pure resolution through an init script, no file in the tree touched, so
+   R1's "stop before the first change" still holds; the gate then ran on the
+   untouched 2458dbe.
+2. The probe went one step past "a dependency report diff": two Paparazzi
+   verify runs and an AAR-metadata check, to answer R601's own question
+   "whether Paparazzi 1.3.5 and compileSdk constrain the result" from
+   measurement. Verify mode writes no baseline; git status stayed empty.
+3. Option B was measured (resolution, Paparazzi, iOS resolution) beyond
+   R601's letter, to make the question answerable; no iOS compile or run
+   was spent on it.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1 (THE STOP). CMP 1.10.3 in :shared upgrades Android's whole Compose
+toolkit (1.7 -> 1.10.5, Material3 1.3.0 -> 1.5.0-alpha08, lifecycle 2.8.7 ->
+2.9.4) and Paparazzi 1.3.5 cannot render the result. How should the pilot
+proceed?
+  (A) THE TOOLKIT UPGRADE FIRST, AS ITS OWN TASK, then IOS-1b-A resumes
+      unchanged on top. That task moves composeBom to one carrying 1.10.x
+      (or pins the versions CMP 1.10.3 resolves), decides whether an ALPHA
+      Material3 (1.5.0-alpha08, what CMP 1.10.3's 1.10.0-alpha05 maps to) is
+      acceptable on Android, moves Paparazzi to a release whose layoutlib has
+      API 35 (that is a plugin/dependency move - ask first), adds
+      material-icons-core explicitly, updates ThemeCensusTest, and reviews
+      every one of the 142 baselines under R135/R207. Cost: one task of its
+      own, with a real pixel review; benefit: R600 and R605 stay as written.
+  (B) AN OLDER CMP WHOSE ANDROID PAIRING IS 1.7.x. MEASURED (resolution
+      and Paparazzi only, same method, -Dr601.cmp173=true: CMP 1.7.3 and
+      its material3 1.7.3):
+        :app releaseRuntimeClasspath, exit 0: compose 1.7.0/1.7.1 -> 1.7.6,
+          material3 1.3.0 -> 1.3.1, material-icons-core 1.7.0 -> 1.7.6,
+          collection 1.4.2 -> 1.4.4; lifecycle STAYS 2.8.7, coroutines STAYS
+          1.8.1, core STAYS 1.15.0, activity STAYS 1.9.3.
+        :app:verifyPaparazziDebug with it: > Task :app:testDebugUnitTest
+          executed, 1379 tests, 0 failures, 0 errors, BUILD SUCCESSFUL in
+          3m 2s, exit 0 - ALL 142 baselines verify, no shim needed, git
+          status stayed clean. Under the suite's own settings, which set
+          no maxPercentDifference (UNNUMBERED-5): "verify" here is
+          Paparazzi's default tolerance, not a proven zero.
+        :shared iosSimulatorArm64CompileKlibraries, exit 0: material3 1.7.3
+          asks kotlinx-datetime 0.6.0 and is given 0.7.1.
+      So B is still a version MOVE (patch level: 1.7.0 -> 1.7.6), i.e. still
+      R601's stop as written - but Paparazzi says the pixels hold, so B
+      would be: approve a patch move of Android Compose (1.7.6, material3
+      1.3.1), with the zero-diff baseline run above as its proof.
+      Unknowns, none tested: whether Kotlin 2.2.21's Compose compiler plugin
+      and the CMP 1.7.3 runtime agree on iOS and on Xcode 26 (one macOS run
+      answers it); whether Material3 1.7.3, compiled against
+      kotlinx-datetime 0.6.0, LINKS against 0.7.1 on iOS (0.7 replaced
+      kotlinx.datetime.Instant) (the 0.7.1 move was made FOR
+      Material3 1.10.0-alpha05 - this would unwind that reasoning); R542
+      proved 1.10.3, not this.
+  (C) A SHARED UI USED BY iOS ONLY - Android keeps its own Aujourd'hui and
+      its Compose 1.7. This changes R600 ("used by Android from :shared") and
+      R605 ("Android is the proof"): the pilot's criteria, not just its
+      mechanics. It also needs CMP's Android variants kept off :app (a
+      separate module the Android target does not depend on).
+  NOT PROPOSED: forcing androidx.compose back to 1.7.x in :app. CMP
+  1.10.3's Android variant IS those 1.10.5 artifacts; forcing pins classes
+  compiled against 1.10.5 onto a 1.7 runtime. Not tested.
+  No recommendation: the prompt's wording ("its own task with its own
+  baseline review") reads as (A); (B)'s Android half is measured green,
+  its iOS half is not measured at all.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Branch ios-1b-a only (never main, never production), pushed with
+`git push -u origin ios-1b-a`; the result is appended below by the
+follow-up commit.
+    git push -u origin ios-1b-a  ->  * [new branch] ios-1b-a -> ios-1b-a, exit 0
+    git ls-remote origin refs/heads/ios-1b-a
+      -> bb416a78109300df93748d8fe497d1f470798d94 (the report commit)
+    gh run list --workflow ios-shared.yml --branch ios-1b-a -> []  20 s
+      after the push (the same command lists an-fr-text's and ios-1a's runs -
+      the positive control): the report-only push triggered NO macOS run
+      (paths-ignore REPORT-*.txt). macOS minutes spent by this session: 0.
+    This push-proof follow-up is report-only too and is pushed the same way.

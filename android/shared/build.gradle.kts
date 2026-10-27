@@ -24,6 +24,10 @@ plugins {
     // separately from the code that will depend on it. Version from the catalog (the ksp ref; KMP-UP2
     // moved it with Kotlin) - this line names no version, so it does not move with one.
     alias(libs.plugins.ksp)
+    // IOS-1b-A R625. The Compose compiler (tracks the Kotlin version) and Compose Multiplatform 1.7.3, so the
+    // shared Aujourd'hui screen compiles for Android and iOS from commonMain. Versions in the catalog.
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
 }
 
 // KMP-2b increment 1 (R400/R206). WHERE ROOM EXPORTS THIS MODULE'S SCHEMAS. The ksp-arg form, NOT the
@@ -158,6 +162,16 @@ kotlin {
             // implementation(), not api(): :app declares room-runtime itself, so nothing about its
             // compile classpath changes when the database moves here.
             implementation(libs.androidx.room.runtime)
+            // IOS-1b-A R625. Compose Multiplatform 1.7.3 - the toolkit the shared screen is written in. api(),
+            // because :app hosts the shared composables and passes Modifier/Composable types across.
+            api(libs.cmp.runtime)
+            api(libs.cmp.ui)
+            api(libs.cmp.foundation)
+            api(libs.cmp.animation)
+            api(libs.cmp.material3)
+            // IOS-1b-A R603: the resources runtime the generated Res class compiles against (design/Glyph.kt). Only iOS
+            // reads a resource through it; on Android its ContentProvider is removed from the merged manifest.
+            implementation(libs.cmp.components.resources)
         }
         commonTest {
             // KMP-0 increment 3 (R370): the generated fixture constants are a commonTest source dir. Passing
@@ -176,6 +190,10 @@ kotlin {
         // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
         // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
+        // IOS-1b-A R606: the shared screen is composed and tapped on the simulator (pilot/AujourdhuiPilotIosTest).
+        iosTest.dependencies {
+            implementation(libs.cmp.ui.test)
+        }
         iosMain.dependencies {
             // IOS-1a R567: the one approved new dependency, on iOS ONLY. Android keeps its own SQLite.
             implementation(libs.androidx.sqlite.bundled)
@@ -212,6 +230,11 @@ dependencies {
 // UP-TO-DATE - the same R283 discipline :app applies to its source-scanning fences. Declaring the tree as a
 // test input makes the text-scanning assertion re-run on any commonMain edit, not only the ones that recompile.
 tasks.withType<Test>().configureEach {
+    // IOS-1b-A R603: GlyphResourceGeneratorTest reads the generator's real output and the app drawables it copies.
+    dependsOn("generateGlyphResources")
+    inputs.dir(rootProject.layout.projectDirectory.dir("app/src/main/res/drawable"))
+        .withPropertyName("appDrawablesForGlyphTest")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(layout.projectDirectory.dir("src/commonMain/kotlin"))
         .withPropertyName("commonMainSourceForFence")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -283,4 +306,41 @@ providers.gradleProperty("iosSimulatorDevice").orNull?.let {
         "__entitlements",
         entitlements,
     )
+}
+
+// IOS-1b-A R603. iOS DRAWS THE APP'S OWN GLYPH FILES (design/Glyph.kt; REPORT-IOS-1b-A DEVIATION 4 / Q2).
+//
+// The Lucide drawables' one home stays app/src/main/res/drawable, because Aujourd'hui's instrumented tests assert
+// literal ch.monreleve.app.R.drawable ids (a hard boundary). This task COPIES them - every ic_*.xml except the
+// launcher's - into a generated directory registered below as iosMain's Compose Multiplatform resources, so iOS
+// renders the very same path data Android does. Derived at build time, never a second hand-kept copy (R181/R206);
+// GlyphResourceGeneratorTest proves the copy delivered each file's paths unchanged (R154). The XML is Android's
+// vector-drawable format, which Compose Multiplatform's resource loader reads as is - no conversion step exists to
+// change a path.
+val appDrawables = rootProject.layout.projectDirectory.dir("app/src/main/res/drawable")
+val generatedGlyphResources = layout.buildDirectory.dir("generated/glyphResources")
+
+val generateGlyphResources by tasks.registering(Sync::class) {
+    from(appDrawables) {
+        include("ic_*.xml")
+        exclude("ic_launcher*")
+    }
+    into(generatedGlyphResources.map { it.dir("drawable") })
+}
+
+compose.resources {
+    packageOfResClass = "ch.monreleve.app.shared.resources"
+    generateResClass = always
+    customDirectory(
+        sourceSetName = "iosMain",
+        directoryProvider = generatedGlyphResources,
+    )
+}
+
+// Every Compose resource task may read the generated directory, so each runs after the copy that fills it (Gradle
+// refuses an undeclared dependency - measured: copyNonXmlValueResourcesForIosMain was the first to trip it).
+tasks.configureEach {
+    if (name != "generateGlyphResources" && name.contains("Resource")) {
+        dependsOn(generateGlyphResources)
+    }
 }
