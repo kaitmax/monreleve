@@ -91,10 +91,14 @@ class ExperimentalTimeOptInAllowlistTest {
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/ParisDay.kt" to 2,
             // AN-FR-TEXT R622: moved from iosMain/ios/IosInstantFormat.kt (3 there), function scope, same 3.
             "shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrInstants.kt" to 3,
+            // IOS-1b-A R608: the pilot fixture hands the controller its clock; the pilot screen reads the system clock.
+            "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt" to 1,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/PilotFixture.kt" to 1,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/local/CalendarDayProbe.kt" to 3,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/repo/GranularityRuleTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/sync/ServerInstantParseGoldenTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/dossier/ParisDayDstTest.kt" to 1,
+            "shared/src/commonTest/kotlin/ch/monreleve/app/pilot/PilotFixtureTest.kt" to 2,
         )
 
     private val optIn = Regex("""OptIn\(\s*(kotlin\.time\.)?ExperimentalTime::class\s*\)""")
