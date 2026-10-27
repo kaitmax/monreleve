@@ -190,6 +190,10 @@ kotlin {
         // KMP-0 increment 2 (R369). The commonMain platform-free FENCE lives in the Android unit-test source
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
         // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
+        // IOS-1b-A R606: the shared screen is composed and tapped on the simulator (pilot/AujourdhuiPilotIosTest).
+        iosTest.dependencies {
+            implementation(libs.cmp.ui.test)
+        }
         iosMain.dependencies {
             // IOS-1a R567: the one approved new dependency, on iOS ONLY. Android keeps its own SQLite.
             implementation(libs.androidx.sqlite.bundled)
