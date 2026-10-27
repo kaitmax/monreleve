@@ -1,9 +1,10 @@
-REPORT - AN-TALKBACK  (PART 1 - BLOCKED, pending resumption)
+REPORT - AN-TALKBACK  (PART 2 - resumed after the S9 was re-authorised; STOPPED ON AN R642
+FINDING. PART 1's text is kept below where still true and corrected in place where not.)
 TalkBack reads the shared Aujourd'hui screen on the S9; the instrumented tests run.
 BRANCH   an-talkback, worktree C:/wt/an-talkback (R349), lock .session-lock.json
-         (untracked, gitignored). A throwaway worktree C:/wt/an-talkback-base (detached at
-         2458dbe, its own lock) built the "before" APK; it is this session's and is kept until
-         the session completes.
+         (untracked, gitignored) - REMOVED at the end of PART 2. A throwaway worktree
+         C:/wt/an-talkback-base (detached at 2458dbe) built the "before" APK; its lock is
+         REMOVED too; the worktree itself is KEPT (its APK is copied into evidence/apk).
 EVIDENCE C:/wt/an-talkback/.an-talkback-evidence/ (untracked, NOT committed): every reading
          (reads/*.txt, *.json, *.raw.txt), the drivers, both audit APKs, the pulled original
          APK and settings snapshots (before/), the androidTest XML. Moved out of the
@@ -12,18 +13,26 @@ EVIDENCE C:/wt/an-talkback/.an-talkback-evidence/ (untracked, NOT committed): ev
 ================================================================================
 SUMMARY / STATUS
 ================================================================================
-STATUS: BLOCKED ON THE DEVICE. The S9 dropped off adb at 18:55:34 (phone clock) during the
-fifth state (H2b) and came back `unauthorized` - the phone is showing its "Autoriser le
-debogage USB ?" dialog, which only a person can answer. `adb devices` at the time of this
-report: "232bcd8c300c7ece  unauthorized".
+STATUS: STOPPED ON AN R642 FINDING at the both-halves-answered launch (R642-F1 below);
+5 of 7 states read, navigated stops IDENTICAL in all 5; M and A4 NOT READ; no code changed,
+no gate owed; phone RESTORED (shown below).
 NO CODE CHANGED - no product, test or harness file is touched on this branch, so no
 :app:gate and no iOS run is owed (R391: nothing is claimed GREEN).
 DONE:     R273, R1, R644 (47/47 on the S9), R640, R641 (mechanism + positive control),
-          R642 for 4 of 7 states (W0, H0, H1, H2: base and head IDENTICAL, line by line).
-NOT DONE: R642 for H2b, M, A4; R643 is written below from the 4 states read, not final;
-          PHONE NOT RESTORED (state below is LAST KNOWN, UNVERIFIED since the disconnect).
-R642 FINDINGS SO FAR: NONE (no difference between the two builds in any state read).
-R643 FINDINGS SO FAR: 5 (identical on both builds, so present before the shared screen too).
+          R642 for 5 of 7 states (W0, H0, H1, H2, H2b: navigated stops IDENTICAL line by line).
+FINDING:  R642-F1 - on the head build the launch into the both-halves-answered state speaks
+          an extra/doubled stop: the answer's live region in 4 of 11 launches (base 0 of 11),
+          the window title twice in 8 of 11 (base 1 of 11). The session STOPPED there to ask
+          (Q3); M and A4 were not read.
+NOT DONE: R642 for M and A4. R643 is final for the 5 states read only.
+R643 FINDINGS: 5, identical on both builds (present before the shared screen too).
+NOTICED BUT NOT TOUCHING: the restoring sign-out got POST /auth/sign-out 401, so the test
+          account's device session is NOT revoked server-side (details under PHONE STATE).
+THE S9 DISCONNECT (PART 1): it dropped off adb at 18:55:34 (phone clock) during the first
+H2b read and came back `unauthorized`; the operator re-authorised it. Uptime afterwards
+"up 10 days" - no reboot; every last-known value PART 1 listed was confirmed on reconnect
+(Voice Assistant on, touch_exploration 1, stay_on 7, base APK 0f4a17f8... installed,
+adb reverse empty).
 
 ================================================================================
 R273
@@ -59,20 +68,37 @@ BEFORE (read 17:28 phone clock, before anything was changed):
   Voice Assistant developer options (read, not changed): "Niveau de sortie du journal" =
     VERBOSE, "Aff. sortie TTS" = off, node-tree debugging = off.
 
-AFTER: NOT RESTORED. LAST KNOWN STATE, UNVERIFIED since 18:55:34:
-  - Voice Assistant probably ON: the H2b-base reading enabled it
-    (enabled_accessibility_services = com.samsung.accessibility/com.samsung.android.app.
-    talkback.TalkBackService, accessibility_enabled = 1); the tboff that follows each reading
-    ran after the disconnect and cannot have applied.
-  - stay_on_while_plugged_in = 7 (set for the instrumented run; restore value 0).
-  - adb reverse: lost with the disconnect.
-  - installed APK: the 2458dbe audit build (0f4a17f8...); the `install -r` of the head build
-    after H2b-base ran with the device offline and printed nothing - assumed not applied.
-  - app data: signed in as an-talkback.pilot@monreleve.test, HALF_DAY, today answered
-    (Matin En Suisse, Apres-midi Domicile). Server: that user, HALF_DAY, 2 entries.
-  - left as before by this session so far: the original APK is in evidence/ to reinstall.
-HOST: the dev server's tree stopped (TaskStop, then the two orphan node processes found by
-this worktree's path killed); port 3000: 0 listeners; 5436: 2 (control).
+AFTER (PART 2, restored and read back):
+  - signed out through Parametres -> " Se deconnecter " -> confirm: the app's data is wiped
+    by the product (welcome screen "Mon Releve / Vos jours de teletravail..." shown).
+    BUT the server answered POST /api/v1/auth/sign-out 401 (dev2.log line 219; the preceding
+    GETs were 200), so the test account's DeviceSession is NOT revoked: DB
+    revokedAt/revokedReason empty, 1 session. NOTICED BUT NOT TOUCHING - the route requires
+    a valid bearer (route.ts: authenticate -> 401), and the app does not appear to
+    refresh-and-retry on a sign-out 401; the access token had presumably expired while the
+    phone sat idle. Not diagnosed further (out of scope, Q4).
+  - installed APK: `adb install -r evidence/before/installed-base.apk` -> Success; on-device
+    sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (= before).
+  - enabled_accessibility_services: `settings delete` ("Deleted 1 rows") -> get = null;
+    accessibility_enabled = 0; touch_exploration_enabled = 0; dumpsys accessibility
+    "enabled services: { }".
+  - stay_on_while_plugged_in = 0.
+  - adb reverse --remove-all -> `reverse --list` empty.
+  - /data/local/tmp: this session's k.json and swipe.sh removed (dalvik-cache, detection.xml,
+    s.xml, settings.xml there are not this session's - untouched).
+  - SETTINGS DIFF before vs after (evidence/before vs evidence/after): secure IDENTICAL,
+    global IDENTICAL; system differs in 5 keys none of which this session set:
+    screen_brightness 110 -> 3 with screen_brightness_mode=1 (adaptive brightness, both
+    times), auto_brightness_transition_time 0 -> 1780, homescreenPreview_capturetime_land,
+    tips_regular_hour_timer_{absolute,renewal}_count 2829 -> 2831 - the system's own.
+  - packages: identical to before (503; monreleve's install path normalised).
+  - RESIDUE NOT RESTORABLE WITHOUT ROOT: Voice Assistant's private preferences (its log
+    level was already VERBOSE when found; nothing was changed in its settings UI).
+  - the test account an-talkback.pilot@monreleve.test remains in the local database
+    (HALF_DAY, 2 entries, 1 unrevoked device session); no deletion was run.
+HOST: the dev server's tree stopped (TaskStop, then the orphan node processes found by this
+worktree's path killed - 2 in PART 1, 2 in PART 2; 0 remaining); port 3000: 0 listeners;
+5436: 2 (control).
 
 ================================================================================
 R640 - THE SCREEN READER, ACTUALLY RUNNING
@@ -158,13 +184,47 @@ STATE BY STATE (counts are stops, launch stop 0 excluded; each read on both buil
   H1  morning answered En Suisse   base 60 / head 60   IDENTICAL (head read twice, see
                                                        DEVIATION 4; both reads identical)
   H2  both halves (Suisse/Domicile) base 58 / head 58  IDENTICAL
-  H2b scrolled to the end          NOT READ - the device dropped during the base read
-                                   (stops 1-2 captured, 3-5 silent; INVALID, to be redone)
-  M   "Modifier" open              NOT READ
-  A4  Matin Absence-Conge, Apres-midi Domicile   NOT READ
-Launch stop 0 differs only in launcher noise ("Ecran d'accueil One UI" present or not,
-depending on where the previous reading left the launcher); the app's own launch utterances
-match: W0/H0/H2 "Mon Releve"; H1 "Matin enregistre. Apres-midi : a renseigner." + "Mon Releve".
+  H2b scrolled to the end          base 42 / head 42   IDENTICAL
+      (first try on base INVALID - the device dropped at stop 3; kept as
+      reads/H2b-base.invalid.*; re-read in PART 2 on both builds.) Q2 RULING APPLIED: the
+      scrolled start is accepted because the FIRST FOCUSED STOP IS THE SAME ELEMENT ON BOTH
+      BUILDS: "Taux de teletravail declarable 0,20 %, imposition en Suisse., Mon Releve"
+      (the rate rail's summary), then "Jours restants avant 40,0 %", "95,5", ... to
+      "Parametres, Onglet, dernier element".
+  M   "Modifier" open              NOT READ (stopped on R642-F1)
+  A4  Matin Absence-Conge, Apres-midi Domicile   NOT READ (stopped on R642-F1)
+WHAT "IDENTICAL" COVERS - stated plainly: the verdicts above compare the NAVIGATED stops
+1..N. Stop 0 - what is spoken when the app is relaunched into the state, before any
+navigation - was first set aside as launch noise because the launcher's own utterances
+("Ecran d'accueil One UI", "Affichage Portrait") come and go with timing. Stop 0 is exactly
+where the difference turned out to live (R642-F1). For W0, H0 and H1 the app's own launch
+utterances match on both builds (W0 "Mon Releve"; H0 "Mon Releve"; H1 "Matin enregistre.
+Apres-midi : a renseigner." + "Mon Releve" on both).
+
+R642-F1 - FINDING: THE LAUNCH INTO THE BOTH-HALVES-ANSWERED STATE SPEAKS DIFFERENTLY
+After H2b's two stop-0 sequences differed, the launch alone (no navigation) was captured
+9 more times per build, alternating builds in batches (head 1-3, base 1-3, base 4-9,
+head 4-9). All 11 per build, verbatim with event types (reads/L-*.txt, H2-*, H2b-*):
+  base 2458dbe                                    | head 33c3578
+  H2   Ecran d'accueil One UI{WSC} Mon Releve{WC}  | H2   Mon Releve{WSC} Mon Releve{WC}
+  H2b  Affichage Portrait{ROT} Mon Releve{WSC}     | H2b  Ecran d'accueil One UI{WSC}
+       Mon Releve{WC}                              |      ANSWER{WCC} Mon Releve{WSC}
+  L1   Ecran d'accueil One UI{WSC} Mon Releve{WSC} | L1   ANSWER{WCC} Mon Releve{WC}
+  L2   Mon Releve{WC}                              | L2   Mon Releve{WSC} Mon Releve{WC}
+  L3   Mon Releve{WC}                              | L3   Mon Releve{WC} ANSWER{WCC}
+                                                   |      Mon Releve{WC}
+  L4   Mon Releve{WC}                              | L4   Ecran d'accueil One UI{WSC}
+                                                   |      ANSWER{WCC} Mon Releve{WSC}
+  L5-L9 Mon Releve{WC}  (x5)                       | L5-L9 Mon Releve{WC} Mon Releve{WC} (x5)
+  where ANSWER = "Matin : En Suisse, Apres-midi : Domicile, Enregistre",
+  WCC = TYPE_WINDOW_CONTENT_CHANGED (the answer column carries liveRegion = Polite),
+  WSC = TYPE_WINDOW_STATE_CHANGED, WC = TYPE_WINDOWS_CHANGED, ROT = rotate event.
+TALLY:  answer spoken at launch     base 0/11   head 4/11
+        window title spoken twice   base 1/11   head 8/11
+        either of the two           base 1/11   head 11/11
+Specific to this state: W0 and H0 launches match on both builds, and in H1 both builds
+announce the half-day attention line at launch. Reported, not diagnosed (HARD BOUNDARIES):
+the session STOPPED here to ask (Q3).
 FULL SEQUENCE, H2 (both builds; hints omitted where they are the plain "activer" hint):
    1 Matin : En Suisse, Apres-midi : Domicile, Enregistre, Mon Releve
    2 Bonjour Pilote          3 Mardi 27 octobre 2026      4 Saisie manuelle
@@ -189,8 +249,9 @@ FULL SEQUENCE, H2 (both builds; hints omitted where they are the plain "activer"
 All sequences: evidence/reads/<state>-<base|head>.txt.
 
 ================================================================================
-R643 - THE READING ON ITS OWN (from W0 H0 H1 H2; NOT FINAL - three states unread)
+R643 - THE READING ON ITS OWN (W0 H0 H1 H2 H2b - final for these five; M, A4 unread)
 ================================================================================
+H2b added nothing new: its stops are H2's from the rate rail onwards, in the same order.
 Every finding below is the SAME on 2458dbe and on 33c3578 - not introduced by the shared
 screen, but carried by it to iOS (R645). Listed, not fixed.
 F1  UNSELECTED CHOICES READ AS "NOT CHECKED" WITH A "DESELECT" HINT. Every unanswered option
@@ -198,8 +259,9 @@ F1  UNSELECTED CHOICES READ AS "NOT CHECKED" WITH A "DESELECT" HINT. Every unans
     deselectionner." (W0 x3, H0 x6, H1 x3). An unselected option is offered as something to
     DEselect. ("Declarer une absence, Touche" has no state and the plain "activer" hint.)
     The selected state is set in shared code (AujourdhuiScreen.kt:341,
-    `.semantics { this.selected = selected }`); how "selected" read when TRUE is the M state,
-    not yet read. Keyboard-mode hint wording; the touch wording was not measured.
+    `.semantics { this.selected = selected }`); how "selected" reads when TRUE is the M state,
+    which was NOT read - so whether the selected answer announces as selected is UNVERIFIED.
+    Keyboard-mode hint wording; the touch wording was not measured.
 F2  WEEK-STRIP DAY CELLS HAVE NO ROLE. "Jour 26, Non renseigne, non enregistre." + "Appuyez
     sur Alt + ENTER pour activer." - actionable, announced without a role (the tabs and
     buttons say "Onglet"/"Touche").
@@ -261,7 +323,9 @@ All five R643 findings live in, or are reached through, the shared Aujourd'hui s
 (commonMain) and will be carried to iOS. Check on VoiceOver: F1 (how an unselected option's
 state and hint read - VoiceOver has its own "selected" trait), F5 (whether the answered card
 is read before the greeting), F3/F4 (bare letters and unlabelled numbers), F2 (the day cells'
-trait). The M and A4 states are still unread here.
+trait). ADD R642-F1: whether the answered card's live region is announced when the screen
+opens on an already-answered day (it is shared code; VoiceOver handles live regions in its
+own way). The M and A4 states are unread here, so IOS-1b-B has no Android reference for them.
 
 ================================================================================
 PARKED
@@ -285,16 +349,34 @@ DEVIATIONS
    All later readings ran as background tasks.
 5. The audit APK hashes differ from R607's for the same commits (not byte-reproducible across
    worktrees); the source is identical (empty diff f0133cd..33c3578 under android/).
-6. The phone dropped off adb mid-reading and came back unauthorized - the session stops here.
+6. The phone dropped off adb mid-reading and came back unauthorized; PART 1 handed back,
+   the operator re-authorised the phone, PART 2 resumed (dev server restarted from this
+   worktree, R169 /api/health {"service":"monreleve",...} and /api/ready 200 re-checked,
+   adb reverse re-established) and re-read H2b on both builds.
+7. The coordinator's resume message listed M and A4 after H2b; they were NOT read because
+   R642-F1 is a finding and the prompt says the session STOPS to ask before anything else.
+   The phone was still restored (a standing rule, and Voice Assistant left running on the
+   phone is not a neutral state); resuming M/A4 needs a fresh sign-in of the same account.
+8. Nine extra launch-only captures per build were taken to tell R642-F1 from launch noise
+   (stop 0 was first treated as noise). No further diagnosis was attempted.
 
 ================================================================================
 QUESTIONS
 ================================================================================
-Q1 (BLOCKER) The S9 needs a person: tap "Autoriser" on the USB-debugging dialog (tick
+Q3 (R642-F1, THE STOP) On the head build, opening the app on a both-halves-answered day
+   speaks the answer's live region at launch in 4 of 11 launches (base 0 of 11) and the
+   window title twice in 8 of 11 (base 1 of 11). A defect to fix (a task of its own - this
+   one only observes), or accepted? And on that answer: resume for M and A4, or close?
+Q4 (NOTICED) The restoring sign-out got 401 and left the device session unrevoked
+   server-side while wiping the phone. Worth its own task (sign-out after an idle period),
+   and should the stale test session be revoked by hand?
+PART 1's questions, answered:
+Q1 (BLOCKER - RESOLVED by the operator re-authorising the S9) The S9 needs a person: tap "Autoriser" on the USB-debugging dialog (tick
    "Toujours autoriser sur cet ordinateur"). Voice Assistant is probably still ON, so that is
    a tap to focus then a DOUBLE-tap to activate. Then resume this session: H2b, M, A4 on both
    builds, R643 finalised, the phone restored and shown restored.
-Q2 H2b ("scrolled to the end") read from a scrolled screen starts wherever the reader's first
+Q2 (RULED 2026-10-27: accept the scrolled start only if both builds' first focused stop is
+   the same element - it is, named under R642) H2b ("scrolled to the end") read from a scrolled screen starts wherever the reader's first
    focus lands (here mid-screen, "Taux de teletravail declarable ..."). Accept that as the
    H2b reading on both builds, or anchor it differently (e.g. read from the top and compare
    only the stops past the fold)?
@@ -307,3 +389,6 @@ Branch an-talkback only (never main, never production):
     git ls-remote origin refs/heads/an-talkback
       -> b86fd6752f2e1f07131cc89bd72e21f285762c62 (the PART 1 report commit)
     This PUSH PROOF is the commit after it (report-only).
+    PART 1 tip after that: e80add5e6378957ce4381937e58d1002c886e239.
+PART 2: the PART 2 report commit is pushed to an-talkback; its sha is in the hand-back
+(a commit cannot name its own hash). Locks removed after the push.
