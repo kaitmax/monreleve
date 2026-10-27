@@ -59,6 +59,9 @@ import ch.monreleve.app.fr.text.formatSignedDays
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.ui.screens.calendrier.RecordedGranularityNotice
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // The threshold captions are derived from the RuleSet ceilings, never typed (R181): a fraction like
 // 0.40 becomes "40,0 %". PERCENT scales the fraction; THRESHOLD_DECIMALS matches SPEC 9.3's "40,0 %".
 private const val PERCENT = 100.0

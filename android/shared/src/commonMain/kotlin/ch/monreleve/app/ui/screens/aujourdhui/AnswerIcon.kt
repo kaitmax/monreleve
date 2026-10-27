@@ -1,6 +1,5 @@
 package ch.monreleve.app.ui.screens.aujourdhui
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -10,18 +9,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
-import ch.monreleve.app.R
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
+import ch.monreleve.app.design.glyphPainter
+import ch.monreleve.app.design.glyphSemanticsId
 import ch.monreleve.app.design.kindIconRes
 import ch.monreleve.app.design.statusIconRes
 import ch.monreleve.app.fr.AujourdhuiCopy
+
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
 
 // AN-ANSWER-ICON (R430). The answer the choice card closes into carries an icon for WHAT WAS ANSWERED, so a
 // glance tells the person the day is recorded AND what it was recorded as. Lucide glyphs, committed as vector
@@ -43,15 +46,17 @@ import ch.monreleve.app.fr.AujourdhuiCopy
 // error colour when the server refused. Different position, different row, and the status has never had a
 // glyph of its own to confuse this with (see the report's R432 note).
 
+// IOS-1b-A R604: a Glyph (design/Glyph.kt) - the same drawable file on Android and iOS; on Android the semantics
+// still carry the app's R.drawable id, so the instrumented tests' literal assertions hold unedited.
+
 /** The Lucide glyph for a recorded kind. The ONE mapping; the tests assert the drawables, never this. */
-@DrawableRes
-internal fun kindIcon(kind: RecordedKind): Int =
+internal fun kindIcon(kind: RecordedKind): Glyph =
     when (kind) {
-        RecordedKind.SUISSE -> R.drawable.ic_building_2
-        RecordedKind.DOMICILE -> R.drawable.ic_house
-        RecordedKind.MISSION_FRANCE -> R.drawable.ic_briefcase
-        RecordedKind.MISSION_THIRD -> R.drawable.ic_plane
-        RecordedKind.ABSENCE -> R.drawable.ic_calendar_x
+        RecordedKind.SUISSE -> Glyph.BUILDING_2
+        RecordedKind.DOMICILE -> Glyph.HOUSE
+        RecordedKind.MISSION_FRANCE -> Glyph.BRIEFCASE
+        RecordedKind.MISSION_THIRD -> Glyph.PLANE
+        RecordedKind.ABSENCE -> Glyph.CALENDAR_X
     }
 
 /**
@@ -77,7 +82,7 @@ internal fun answerGlyphSize(): Dp = Size.icon * LocalDensity.current.fontScale
 /** One answered kind, as the reader sees it: the glyph, then the words it belongs to. */
 internal data class AnswerLine(
     val label: String,
-    @param:DrawableRes val icon: Int,
+    val icon: Glyph,
 )
 
 /**
@@ -91,11 +96,12 @@ internal fun AnswerKindLine(line: AnswerLine) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
     ) {
+        val glyphId = glyphSemanticsId(line.icon)
         Icon(
-            painter = painterResource(line.icon),
+            painter = glyphPainter(line.icon),
             contentDescription = null,
             tint = LightColors.textPrimary,
-            modifier = Modifier.size(answerGlyphSize()).semantics { kindIconRes = line.icon },
+            modifier = Modifier.size(answerGlyphSize()).semantics { kindIconRes = glyphId },
         )
         Text(text = line.label, style = FrontierType.bodyM)
     }
@@ -109,7 +115,7 @@ internal fun AnswerKindLine(line: AnswerLine) {
  */
 internal data class AnswerStatus(
     val text: String,
-    @param:DrawableRes val icon: Int,
+    val icon: Glyph,
     val failed: Boolean,
 )
 
@@ -128,9 +134,9 @@ internal fun answerStatus(
     failed: Boolean,
 ): AnswerStatus =
     when {
-        failed -> AnswerStatus(AujourdhuiCopy.SYNC_FAILED, R.drawable.ic_triangle_alert, failed = true)
-        pending -> AnswerStatus(AujourdhuiCopy.PENDING, R.drawable.ic_clock, failed = false)
-        else -> AnswerStatus(AujourdhuiCopy.SYNCED, R.drawable.ic_circle_check, failed = false)
+        failed -> AnswerStatus(AujourdhuiCopy.SYNC_FAILED, Glyph.TRIANGLE_ALERT, failed = true)
+        pending -> AnswerStatus(AujourdhuiCopy.PENDING, Glyph.CLOCK, failed = false)
+        else -> AnswerStatus(AujourdhuiCopy.SYNCED, Glyph.CIRCLE_CHECK, failed = false)
     }
 
 /**
@@ -149,11 +155,12 @@ internal fun AnswerStatusLine(status: AnswerStatus) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.space8),
     ) {
+        val glyphId = glyphSemanticsId(status.icon)
         Icon(
-            painter = painterResource(status.icon),
+            painter = glyphPainter(status.icon),
             contentDescription = null,
             tint = colour,
-            modifier = Modifier.size(answerGlyphSize()).semantics { statusIconRes = status.icon },
+            modifier = Modifier.size(answerGlyphSize()).semantics { statusIconRes = glyphId },
         )
         Text(text = status.text, style = FrontierType.caption, color = colour)
     }

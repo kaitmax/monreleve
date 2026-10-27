@@ -19,14 +19,9 @@ import androidx.compose.ui.Modifier
 import ch.monreleve.app.calendar.CalendarDayUi
 import ch.monreleve.app.calendar.MonthView
 import ch.monreleve.app.calendar.SelectionState
-import ch.monreleve.app.design.DayProvenance
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
-import ch.monreleve.app.fr.AujourdhuiCopy
-import ch.monreleve.app.fr.CalendarCopy
-import ch.monreleve.app.fr.DayCellCopy
-import ch.monreleve.app.fr.LegendCopy
 import ch.monreleve.app.fr.text.formatDayLong
 
 // AN10 increment 4 (R271, AC3). Above a measured font scale, seven columns cannot hold 200 % text and no
@@ -91,40 +86,6 @@ private fun CalendarListRow(
             )
         }
         DayWords(day, Modifier.weight(1f))
-    }
-}
-
-/**
- * One day in words, as a list row prints them after its date: the kind (BOTH kinds of a split half-day, R292), the
- * quality, and who recorded it. ONE HOME (R206) for the calendar's large-text list and Aujourd'hui's week list, which
- * each render these words one Text apiece - so the words are asserted where both rows take them from (R225).
- */
-internal fun dayWords(day: CalendarDayUi): List<String> {
-    val kindWord = day.kind?.let { LegendCopy.forKind(it.letter) }
-    val secondKindWord = day.secondKind?.let { LegendCopy.forKind(it.letter) }
-    val qualityWord = CalendarCopy.qualityWord(day.quality.name)
-    return listOfNotNull(kindWord, secondKindWord, qualityWord) + provenanceWords(day.provenance, day.secondProvenance)
-}
-
-/**
- * AN-GRANULARITY (R519): who recorded the day, as its rows say - from the one home (DayCellCopy.provenanceLabel),
- * never a constant. The manual product named only « Saisie manuelle » and said NOTHING of a detected day; since
- * AN-PULL brings detected days down, that silence misstated them. Halves recorded differently each state their own.
- */
-private fun provenanceWords(
-    morning: DayProvenance?,
-    afternoon: DayProvenance?,
-): List<String> {
-    val first = morning?.let { DayCellCopy.provenanceLabel(it.name) }
-    val second = afternoon?.let { DayCellCopy.provenanceLabel(it.name) }
-    return when {
-        first == null -> emptyList()
-        second == null -> listOf(first)
-        else ->
-            listOf(
-                AujourdhuiCopy.halfLabel(AujourdhuiCopy.MORNING, first),
-                AujourdhuiCopy.halfLabel(AujourdhuiCopy.AFTERNOON, second),
-            )
     }
 }
 

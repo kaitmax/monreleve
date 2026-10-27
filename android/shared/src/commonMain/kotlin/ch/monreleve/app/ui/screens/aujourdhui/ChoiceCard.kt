@@ -40,6 +40,9 @@ import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.onboarding.GranularityChoice
 import kotlinx.coroutines.delay
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // AN-HOME section 1. The operator's main request: the choice CLOSES into the answer once a day is recorded,
 // instead of the options staying on screen. One white card (1 px border, no shadow - DESIGN-SYSTEM "Borders
 // preferred"): BEFORE a choice it holds the options; AFTER the tap it holds one compact answer line and a

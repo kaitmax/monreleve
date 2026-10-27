@@ -18,6 +18,9 @@ import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import ch.monreleve.app.fr.SignInCopy
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // AN-PULL (R484). The year could not be brought down: what happened in words, and a retry. The info treatment of the
 // near-border notice (AujourdhuiAuto.kt) - a fact to know, not an alarm: nothing was lost and nothing changed.
 @Composable

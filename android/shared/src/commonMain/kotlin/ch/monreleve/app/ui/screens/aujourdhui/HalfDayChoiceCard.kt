@@ -35,6 +35,9 @@ import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
 import kotlinx.coroutines.delay
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // AN-POLISH (R434). THE ANSWERED HALF SETTLES, THE OTHER COMES TO YOU.
 //
 // Until AN-POLISH, answering « Matin » in half-day mode changed ONE BUTTON'S FILL and nothing else: the

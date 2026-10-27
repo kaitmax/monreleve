@@ -1,6 +1,5 @@
 package ch.monreleve.app.ui.screens.aujourdhui
 
-import android.provider.Settings
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
@@ -11,10 +10,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import ch.monreleve.app.design.Motion
+
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
 
 // AN-HOME section 1. The choice card's motion, split out of ChoiceCard.kt so neither file carries too many
 // functions (the no-inline-string ui/ fence forbids a @Suppress here, so the split is the honest fix, not a
@@ -23,14 +23,12 @@ import ch.monreleve.app.design.Motion
 // The durations are Motion tokens, never inline numbers (Fence 8). With Android's "Remove animations" on
 // (animator duration scale 0) every transition becomes snap() - instant, nothing left half-drawn.
 
-/** True when Android's "Remove animations" accessibility setting is on (animator duration scale 0). */
+/**
+ * True when the platform's reduce-motion setting is on: Android's "Remove animations" (animator duration scale 0,
+ * ReduceMotion.android.kt - the code this was, unchanged) or iOS's Reduce Motion (ReduceMotion.ios.kt).
+ */
 @Composable
-internal fun rememberReduceMotion(): Boolean {
-    val context = LocalContext.current
-    return remember(context) {
-        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-    }
-}
+internal expect fun rememberReduceMotion(): Boolean
 
 // reduce -> snap() (instant); otherwise the 200 ms standard token. Two typed helpers because fade works on
 // Float and expand/shrink on IntSize. Block bodies so the formatter does not collapse them onto one long line.

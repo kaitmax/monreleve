@@ -32,6 +32,9 @@ import java.io.File
 private val CALC_DIR = File("../shared/src/commonMain/kotlin/ch/monreleve/app/calc")
 private val UI_DIR = File("src/main/kotlin/ch/monreleve/app/ui")
 
+// IOS-1b-A R604: Aujourd'hui's screen moved to :shared commonMain - its ui/ root is scanned too, pinned (R460).
+private val SHARED_UI_DIR = File("../shared/src/commonMain/kotlin/ch/monreleve/app/ui")
+
 // IOS-1b-A R603: design/ moved to :shared commonMain; the root follows it, still pinned by RailGeometry.kt.
 private val DESIGN_DIR = File("../shared/src/commonMain/kotlin/ch/monreleve/app/design")
 private val DEV_DIR = File("src/main/kotlin/ch/monreleve/app/dev")
@@ -49,11 +52,12 @@ private val SCANNED_ROOTS =
     listOf(
         FenceRoot(CALC_DIR, pin = "Rules.kt"),
         FenceRoot(UI_DIR, pin = "AppBottomBar.kt"),
+        FenceRoot(SHARED_UI_DIR, pin = "AujourdhuiScreen.kt"),
         FenceRoot(DESIGN_DIR, pin = "RailGeometry.kt"),
         FenceRoot(DEV_DIR, pin = "GalleryScreen.kt"),
     )
 
-private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR, DESIGN_DIR, DEV_DIR)
+private val SCANNED_DIRS = listOf(CALC_DIR, UI_DIR, SHARED_UI_DIR, DESIGN_DIR, DEV_DIR)
 
 /**
  * Scoped to a path, not a basename - the same reasoning the TS guard states

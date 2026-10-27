@@ -60,8 +60,8 @@ private val PATH =
         "../shared/src/commonMain/kotlin/ch/monreleve/app/design/rail/RailGeometry.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/design/rail/ThresholdRail.kt",
         // the screens
-        "src/main/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreen.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/aujourdhui/MovingRate.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreen.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/MovingRate.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/ForecastController.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/ForecastState.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionScreen.kt",

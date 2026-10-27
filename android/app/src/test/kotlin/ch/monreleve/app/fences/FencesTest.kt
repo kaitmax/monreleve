@@ -39,7 +39,12 @@ private val sharedSrcRoot = File("../shared/src/commonMain/kotlin/ch/monreleve/a
 
 private val SUBJECT_ROOTS: Map<String, List<FenceRoot>> =
     mapOf(
-        "ui" to listOf(FenceRoot(File(appSrcRoot, "ui"), pin = "AppBottomBar.kt")),
+        "ui" to
+            listOf(
+                FenceRoot(File(appSrcRoot, "ui"), pin = "AppBottomBar.kt"),
+                // IOS-1b-A R604: Aujourd'hui's screen moved to :shared commonMain.
+                FenceRoot(File(sharedSrcRoot, "ui"), pin = "AujourdhuiScreen.kt"),
+            ),
         "design" to listOf(FenceRoot(File(sharedSrcRoot, "design"), pin = "Tokens.kt")),
         "dev" to listOf(FenceRoot(File(appSrcRoot, "dev"), pin = "GalleryScreen.kt")),
         "detection" to

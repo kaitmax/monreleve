@@ -9,9 +9,14 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // AN-GRANULARITY (R495). The year card's moving rate, split from AujourdhuiScreen.kt to keep that file within detekt's
 // per-file function budget (the ReleveSections / PrevisionRail split idiom). The figure it returns is what RateDisplay
 // and ThresholdRail state; RateFloatFenceTest reads this file as part of the rate's path.
+
+// IOS-1b-A R604: public, not internal - DeclarableRateDisplayTest in :app reads it across the module boundary.
 
 /**
  * AN-GRANULARITY (R495). NO Float CARRIES THE DECLARABLE RATE TO THIS SCREEN - not at rest, not in between.
@@ -24,7 +29,7 @@ import androidx.compose.runtime.setValue
  * side of it. At rest the progress is 1 and the figure IS the engine's Double; in between it is a Double between them.
  * RateFloatFenceTest refuses a rate converted to, animated as, or held in a Float anywhere on the path.
  */
-internal fun rateBetween(
+fun rateBetween(
     from: Double,
     to: Double,
     progress: Float,

@@ -43,6 +43,9 @@ import ch.monreleve.app.fr.DetectionCopy
 import ch.monreleve.app.onboarding.GranularityChoice
 import kotlinx.coroutines.delay
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // AN-AUTO increment 5 / R320. The automatic-mode surfaces for Aujourd'hui (SPEC 11.2 ETATS A/B/C, R311-R314), split
 // out of AujourdhuiScreen.kt so neither file carries too many composables. Stateless (fence 5); every string from
 // fr/ (the no-literal fence). It reuses the manual RecordSection for the "enter it yourself" and correction paths.

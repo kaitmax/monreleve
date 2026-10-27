@@ -44,6 +44,9 @@ import ch.monreleve.app.fr.text.formatDays
 import ch.monreleve.app.ui.screens.calendrier.LIST_FONT_SCALE_THRESHOLD
 import ch.monreleve.app.ui.screens.calendrier.dayWords
 
+// IOS-1b-A R604: MOVED FROM :app to :shared commonMain (package unchanged) - Aujourd'hui is one shared screen,
+// hosted by Android's activity and by the iOS pilot.
+
 // AN-HOME sections C/E/F (R328). The stateless section composables Aujourd'hui renders below the choice card
 // and the year hero, kept in their own file so neither this nor AujourdhuiScreen.kt passes the file's function
 // threshold (the calendar does the same with CalendarList.kt). Fence 5: no literal, no wire enum, no write -

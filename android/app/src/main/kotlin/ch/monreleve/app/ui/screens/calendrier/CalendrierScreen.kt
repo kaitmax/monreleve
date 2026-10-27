@@ -62,15 +62,6 @@ import ch.monreleve.app.fr.text.formatMonthYear
 
 private const val WEEK_LENGTH = 7
 
-// R271, AC3: the font scale at and above which the seven-column grid stops being legible and the screen
-// becomes a list. MEASURED on the device, not chosen: at 1.5x the two-digit day number and the letter
-// already crowd a ~45 dp column, and at 2.0x they overlap; 1.3x still reads. The figure and how it was
-// measured are recorded in REPORT-AN10.txt. A behavioural constant, not a design token (not a radius,
-// colour or spacing value), so it lives here rather than in Tokens.kt.
-// AN-HOME (R328/R206): the home's « Cette semaine » strip follows the SAME rule, so it reads this one home
-// (the relay: "it follows the calendar's rule and becomes a list") rather than a second 1.5f.
-internal const val LIST_FONT_SCALE_THRESHOLD = 1.5f
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendrierScreen(

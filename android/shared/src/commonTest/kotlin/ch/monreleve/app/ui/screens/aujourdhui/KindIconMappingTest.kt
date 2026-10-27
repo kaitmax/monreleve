@@ -1,10 +1,9 @@
 package ch.monreleve.app.ui.screens.aujourdhui
 
-import ch.monreleve.app.R
 import ch.monreleve.app.aujourdhui.RecordedKind
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 // AN-ANSWER-ICON (R430/R251). AnswerIconInstrumentedTest proves on a DEVICE that « Domicile » closes into a
 // house - the behavioural claim - but the JVM gate COMPILES the androidTest source set and does not RUN it,
@@ -21,41 +20,31 @@ import org.junit.Test
 //      pointed at a drawable that is committed but unattributed in docs/lucide-icons.md, or at one of the
 //      status glyphs, which R432 keeps separate.
 //
-// THE EXPECTED SET IS BUILT FROM THE DRAWABLE NAMES, by reflection over R.drawable, rather than from
-// kindIcon itself - so the two descriptions have to agree (R206) instead of one echoing the other.
+// IOS-1b-A R604: MOVED FROM :app's unit tests to :shared commonTest with the screen, so it runs on the JVM AND on
+// the iOS simulator. kindIcon now returns a Glyph (design/Glyph.kt), not an Android drawable Int, so the
+// comparison is by the drawable's FILE NAME (Glyph.fileName) instead of by reflection over :app's R.drawable -
+// the "five resolve to five distinct drawables" check moved to :app's GlyphDrawablesExistTest, which can read R.
+// The two invariants above are unchanged; only the type they compare changed.
 
 private val ANSWER_DRAWABLE_NAMES =
     listOf("ic_building_2", "ic_house", "ic_briefcase", "ic_plane", "ic_calendar_x")
 
-private fun drawableIdNamed(name: String): Int = R.drawable::class.java.getDeclaredField(name).getInt(null)
-
 class KindIconMappingTest {
-    @Test
-    fun theFiveAnswerDrawablesResolve() {
-        // Positive control: reflection found real, distinct resource ids. A lookup that silently produced 0
-        // for everything would make both assertions below vacuously true.
-        val ids = ANSWER_DRAWABLE_NAMES.map { drawableIdNamed(it) }
-        assertTrue("a drawable id resolved to 0 - R.drawable was not generated as expected", ids.none { it == 0 })
-        assertEquals("the five answer drawables must be five distinct resources", 5, ids.toSet().size)
-    }
-
     @Test
     fun everyRecordedKindHasItsOwnGlyph() {
         val byKind = RecordedKind.entries.associateWith { kindIcon(it) }
         assertEquals(
-            "two kinds share a glyph, so two different answers would read the same: $byKind",
             RecordedKind.entries.size,
             byKind.values.toSet().size,
+            "two kinds share a glyph, so two different answers would read the same: $byKind",
         )
     }
 
     @Test
     fun everyGlyphAKindPointsAtIsOneOfTheAttributedAnswerDrawables() {
-        val allowed = ANSWER_DRAWABLE_NAMES.map { drawableIdNamed(it) }.toSet()
-        val offenders = RecordedKind.entries.filter { kindIcon(it) !in allowed }
-        assertTrue(
-            "these kinds point at a drawable outside the attributed answer set: $offenders",
-            offenders.isEmpty(),
-        )
+        val allowed = ANSWER_DRAWABLE_NAMES.toSet()
+        assertEquals(5, allowed.size, "positive control: the attributed set names five distinct drawables")
+        val offenders = RecordedKind.entries.filter { kindIcon(it).fileName !in allowed }
+        assertTrue(offenders.isEmpty(), "these kinds point at a drawable outside the attributed answer set: $offenders")
     }
 }
