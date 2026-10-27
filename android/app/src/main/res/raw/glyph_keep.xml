@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- IOS-1b-A R603. The shared design system finds these ten Lucide drawables BY NAME at run time
+<!-- IOS-1b-A R603/R605. The shared design system finds these ten Lucide drawables BY NAME at run time
      (shared design/Glyph.android.kt), which R8's resource shrinker cannot see - so they are kept here by name.
      The list is asserted against the Glyph enum by GlyphDrawablesExistTest, so a glyph added to the enum and not
-     to this file fails a test rather than shipping blank. -->
+     to this file fails a test rather than shipping blank.
+
+     shrinkMode="strict", MEASURED, not assumed: in the default "safe" mode a run-time name lookup makes the shrinker
+     keep, defensively, every resource it cannot rule out - 68 more than main's release APK (every ic_* drawable, and
+     androidx core's notification and compat resources), +33,004 bytes. In strict mode the release APK's resource
+     table names EXACTLY main's 197 resources (aapt2 dump, diffed both ways: empty) and the APK is 12 bytes larger.
+     Strict mode keeps what is referenced from code or listed here; nothing in this app looks a resource up by name
+     except Glyph.android.kt, whose ten names are this list. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
+    tools:shrinkMode="strict"
     tools:keep="@drawable/ic_building_2,@drawable/ic_house,@drawable/ic_briefcase,@drawable/ic_plane,@drawable/ic_calendar_x,@drawable/ic_clock,@drawable/ic_circle_check,@drawable/ic_triangle_alert,@drawable/ic_circle_x,@drawable/ic_octagon_alert" />
