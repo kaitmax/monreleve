@@ -111,12 +111,31 @@ private fun AutoSlot(
     auto: AutoDayState?,
     actions: AutoActions,
 ) {
+    // AN-LAUNCH-SPEECH (R648, ChoiceCard.kt): ETAT C's answer is a live region only when a tap HERE - a confirm, a
+    // correction or a manual record - produced it. Held at the slot, because the proposal that was tapped and the
+    // recorded row that replaces it are different composables. NOT saveable: a relaunch is not a tap.
+    var answeredHere by remember(slot) { mutableStateOf(false) }
+    val heard =
+        AutoActions(
+            onRecord = { kind, s, absence ->
+                answeredHere = true
+                actions.onRecord(kind, s, absence)
+            },
+            onConfirmDetected = { kind, s ->
+                answeredHere = true
+                actions.onConfirmDetected(kind, s)
+            },
+            onCorrectDetected = { kind, s, absence, detected ->
+                answeredHere = true
+                actions.onCorrectDetected(kind, s, absence, detected)
+            },
+        )
     when {
-        recorded != null -> AutoRecordedSlot(slot, recorded, actions.onRecord) // ETAT C
-        auto is AutoDayState.ToConfirm -> ProposalCard(auto.kind, slot, actions)
-        auto is AutoDayState.NotSure -> NotSureBlock(slot, actions.onRecord)
-        auto is AutoDayState.Detecting -> DetectingBlock(slot, actions.onRecord)
-        else -> RecordSection(slot, null, actions.onRecord) // defensive: no auto decision -> manual
+        recorded != null -> AutoRecordedSlot(slot, recorded, heard.onRecord, answeredHere) // ETAT C
+        auto is AutoDayState.ToConfirm -> ProposalCard(auto.kind, slot, heard)
+        auto is AutoDayState.NotSure -> NotSureBlock(slot, heard.onRecord)
+        auto is AutoDayState.Detecting -> DetectingBlock(slot, heard.onRecord)
+        else -> RecordSection(slot, null, heard.onRecord) // defensive: no auto decision -> manual
     }
 }
 
@@ -129,6 +148,7 @@ private fun AutoRecordedSlot(
     slot: Slot,
     entry: DayEntry,
     onRecord: (RecordedKind, Slot, AbsenceChoice?) -> Unit,
+    announce: Boolean,
 ) {
     var editing by rememberSaveable(slot) { mutableStateOf(false) }
     val reduceMotion = rememberReduceMotion()
@@ -168,6 +188,7 @@ private fun AutoRecordedSlot(
         ) {
             RecordedAnswer(
                 parts = slotAnswerParts(entry),
+                announce = announce,
                 onModifier = { editing = true },
                 modifierFocus = modifierFocus,
             )
