@@ -302,4 +302,8 @@ Q2 H2b ("scrolled to the end") read from a scrolled screen starts wherever the r
 ================================================================================
 PUSH PROOF
 ================================================================================
-(filled after the push)
+Branch an-talkback only (never main, never production):
+    git push -u origin an-talkback  ->  * [new branch]  an-talkback -> an-talkback
+    git ls-remote origin refs/heads/an-talkback
+      -> b86fd6752f2e1f07131cc89bd72e21f285762c62 (the PART 1 report commit)
+    This PUSH PROOF is the commit after it (report-only).
