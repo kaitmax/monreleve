@@ -2,8 +2,10 @@ package ch.monreleve.app.pilot
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.window.ComposeUIViewController
@@ -80,7 +82,8 @@ class AujourdhuiPilotIosTest {
         runComposeUiTest {
             setContent { AujourdhuiPilot(PilotScenario.UNANSWERED, ::newIosMutationId) }
             waitForIdle()
-            onNodeWithText(AujourdhuiCopy.DOMICILE, useUnmergedTree = true).performClick()
+            // "Domicile" is also the week legend's word: the tap goes to the one that can be clicked - the choice.
+            onAllNodes(hasText(AujourdhuiCopy.DOMICILE) and hasClickAction()).onFirst().performClick()
             waitForIdle()
             assertTrue(shows(AujourdhuiCopy.PENDING), "one tap: recorded on the phone, pending")
         }
