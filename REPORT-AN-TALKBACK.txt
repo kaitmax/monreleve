@@ -1,0 +1,305 @@
+REPORT - AN-TALKBACK  (PART 1 - BLOCKED, pending resumption)
+TalkBack reads the shared Aujourd'hui screen on the S9; the instrumented tests run.
+BRANCH   an-talkback, worktree C:/wt/an-talkback (R349), lock .session-lock.json
+         (untracked, gitignored). A throwaway worktree C:/wt/an-talkback-base (detached at
+         2458dbe, its own lock) built the "before" APK; it is this session's and is kept until
+         the session completes.
+EVIDENCE C:/wt/an-talkback/.an-talkback-evidence/ (untracked, NOT committed): every reading
+         (reads/*.txt, *.json, *.raw.txt), the drivers, both audit APKs, the pulled original
+         APK and settings snapshots (before/), the androidTest XML. Moved out of the
+         conversation scratchpad so a resumed session has it.
+
+================================================================================
+SUMMARY / STATUS
+================================================================================
+STATUS: BLOCKED ON THE DEVICE. The S9 dropped off adb at 18:55:34 (phone clock) during the
+fifth state (H2b) and came back `unauthorized` - the phone is showing its "Autoriser le
+debogage USB ?" dialog, which only a person can answer. `adb devices` at the time of this
+report: "232bcd8c300c7ece  unauthorized".
+NO CODE CHANGED - no product, test or harness file is touched on this branch, so no
+:app:gate and no iOS run is owed (R391: nothing is claimed GREEN).
+DONE:     R273, R1, R644 (47/47 on the S9), R640, R641 (mechanism + positive control),
+          R642 for 4 of 7 states (W0, H0, H1, H2: base and head IDENTICAL, line by line).
+NOT DONE: R642 for H2b, M, A4; R643 is written below from the 4 states read, not final;
+          PHONE NOT RESTORED (state below is LAST KNOWN, UNVERIFIED since the disconnect).
+R642 FINDINGS SO FAR: NONE (no difference between the two builds in any state read).
+R643 FINDINGS SO FAR: 5 (identical on both builds, so present before the shared screen too).
+
+================================================================================
+R273
+================================================================================
+Read REPORT-IOS-1b-A.txt: R605 (instrumented AnswerIcon/AnswerStatus/HalfDayChoice and
+RateOneString tests compiled unedited, never run), R607 (W0 H0 H1 H2 H2b M A4, the a11y tree
+main vs tip identical; base 2458dbe audit 7e91be74..., tip 9040db1d...), DEVIATION 6 (Samsung
+Voice Assistant's first-run tutorial covered the app; the service was turned off at once),
+Q5 (answered by relay/RULINGS-2026-10-26.txt item 12: this session).
+
+================================================================================
+R1
+================================================================================
+git fetch; origin/main = 33c3578563f4f6425303eccc0587fde62c4501d2 ("Merge ios-1b-a"), the
+commit this branch was cut from. `git diff --stat f0133cd 33c3578 -- android/` is empty.
+R640-R645 free: `git grep -n "R64[0-5]\b"` hits only relay/AN-TALKBACK.txt.
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (read 17:28 phone clock, before anything was changed):
+  device SM-G960F, Android 10, serial 232bcd8c300c7ece, battery 100 %, USB powered
+  ch.monreleve.app installed: versionName 0.1.0, base.apk sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (= IOS-1b-A's left
+    state), signer ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1, not
+    debuggable; pulled to evidence/before/installed-base.apk (same hash)
+  secure enabled_accessibility_services = null, accessibility_enabled = 0,
+    touch_exploration_enabled = 0
+  global stay_on_while_plugged_in = 0
+  adb reverse --list: empty
+  full snapshots: evidence/before/settings-{secure,global,system}.txt (450/298/425 lines),
+    packages.txt (503 packages)
+  Voice Assistant developer options (read, not changed): "Niveau de sortie du journal" =
+    VERBOSE, "Aff. sortie TTS" = off, node-tree debugging = off.
+
+AFTER: NOT RESTORED. LAST KNOWN STATE, UNVERIFIED since 18:55:34:
+  - Voice Assistant probably ON: the H2b-base reading enabled it
+    (enabled_accessibility_services = com.samsung.accessibility/com.samsung.android.app.
+    talkback.TalkBackService, accessibility_enabled = 1); the tboff that follows each reading
+    ran after the disconnect and cannot have applied.
+  - stay_on_while_plugged_in = 7 (set for the instrumented run; restore value 0).
+  - adb reverse: lost with the disconnect.
+  - installed APK: the 2458dbe audit build (0f4a17f8...); the `install -r` of the head build
+    after H2b-base ran with the device offline and printed nothing - assumed not applied.
+  - app data: signed in as an-talkback.pilot@monreleve.test, HALF_DAY, today answered
+    (Matin En Suisse, Apres-midi Domicile). Server: that user, HALF_DAY, 2 entries.
+  - left as before by this session so far: the original APK is in evidence/ to reinstall.
+HOST: the dev server's tree stopped (TaskStop, then the two orphan node processes found by
+this worktree's path killed); port 3000: 0 listeners; 5436: 2 (control).
+
+================================================================================
+R640 - THE SCREEN READER, ACTUALLY RUNNING
+================================================================================
+Google TalkBack (com.google.android.marvin.talkback) is NOT installed (pm list packages:
+only com.samsung.accessibility and com.samsung.android.app.talkback 5.1.00.51). So Samsung's
+Voice Assistant, per the prompt's branch:
+  service string  com.samsung.accessibility/com.samsung.android.app.talkback.TalkBackService
+  (dumpsys accessibility: label=Voice Assistant, requestTouchExplorationMode=true,
+   requestFilterKeyEvents=true, feedbackType SPOKEN|HAPTIC|AUDIBLE; TTS com.samsung.SMT, fr_FR)
+  enabled by `settings put secure enabled_accessibility_services <that>` +
+  `accessibility_enabled 1`. ORIGINAL VALUES TO RESTORE: null / 0 / 0 (above).
+TUTORIAL: it did NOT appear on this enable (screenshot evidence/shots/tb-enable0.png: the home
+screen; the service spoke "La fonction Voice Assistant est activee", then the window title).
+Presumably IOS-1b-A's DEVIATION 6 consumed the first-run tutorial; nothing had to be dismissed.
+POSITIVE CONTROL (before any state was measured), on the home screen, two "next" steps:
+  focus 1 -> "Meteo, Ecran d'accueil One UI"
+  focus 2 -> "Localisation actuelle, Agadir, Temperature actuelle33deg, Beau, Meteo, Derniere
+             mise a jour 27 octobre 4:14 PM"
+  = the content-desc uiautomator dumped for that widget (evidence/dumps/tb-enable0.xml),
+  then the hint "Appuyez sur Alt + ENTER pour activer." (evidence/reads/control-home.txt
+  repeats it over 6 stops: "Mettre a jour la meteo, Touche", "Recherche Google, Touche"...).
+
+================================================================================
+R641 - WHAT WAS SPOKEN, CAPTURED - NOT INFERRED
+================================================================================
+MECHANISM: Voice Assistant's own VERBOSE log. Each utterance handed to the TTS engine is
+logged as
+  V/SpeechControllerImpl: Speaking fragment text "<text>" for event <type>
+followed by  D/FailoverTextToSpeech: Speak call for talkback_<n> returned 0
+and the queue's end by "No next item, stopping speech queue". The reading driver
+(evidence/read.mjs) streams `logcat SpeechControllerImpl:V KeyComboManager:D
+FailoverTextToSpeech:D *:S`, presses "next", waits until the queue is empty AND 2.5 s of
+silence (so a delayed usage hint is caught), and records every utterance per stop with its
+event type. Nothing is reconstructed from the node tree.
+NAVIGATION - and why it is not a swipe: on Android 10 `input swipe` / `input keyevent` are
+injected ABOVE the accessibility input filter and never reach the screen reader (a test
+swipe scrolled the launcher to Samsung News instead of moving focus - shots/control1.png);
+`sendevent` on /dev/input/event0 is refused by SELinux (Permission denied, enforcing). What
+works: Android's own `hid` tool (/system/bin/hid, over /dev/uhid; shell is in group uhid)
+registers a virtual USB keyboard, and Alt+Right is Voice Assistant's "navigate next" combo -
+logcat confirms each press: "KeyComboManager: matched > keycombo_shortcut_navigate_next".
+CONSEQUENCE (recorded, applies to both builds equally): usage hints are the KEYBOARD-mode
+wording ("Appuyez sur Alt + ENTER pour activer.") rather than the touch wording.
+uiautomator dumps SUSPEND the service while they run (logged "... est desactivee"), so no dump
+is ever taken during a reading; states are set up with the service off, then each reading
+enables it, force-stops and relaunches the app (stop 0 = what is spoken on launch), and reads
+from the first "next".
+REPEATABILITY CONTROL: the same state on the same build read twice is IDENTICAL (W0 base:
+two runs; H1 head: two runs).
+COMPARATOR CONTROL: evidence/cmp.mjs compares the stops line by line (text + event type +
+hints). Pointed at two different states (W0-head vs H0-head) it reports 50 differing stops,
+so "IDENTICAL" below is a result it can fail to give.
+
+================================================================================
+R642 - THE SAME STATES, ON TWO BUILDS
+================================================================================
+BUILDS (-PfrontalierHost=127.0.0.1, audit variant = R8-minified, signed ef336db5...e373d1,
+the installed app's signer - checked with apksigner before any install):
+  base 2458dbe audit  0f4a17f824e60cd967e3a5b42e27820191ead4c2528c79e01a709564599e35b3
+                      (built in C:/wt/an-talkback-base: BUILD SUCCESSFUL in 5m 32s)
+  head 33c3578 audit  cf51fdf60583ea41e26d0ca63940f18f24f22e8a7afcf06cc2502bdd6b6a4b2f
+                      (built here: BUILD SUCCESSFUL in 8m 51s, with debug + androidTest)
+  (Neither hash equals R607's 7e91be74.../9040db1d... for the same commits - the builds are
+  not byte-reproducible across worktree paths; the source is the same, diff above empty.)
+STACK: port 3000 asserted free first (0 listeners; 5436 control 2). `PORT=3000 pnpm dev`
+from this worktree's web/ (pnpm install --frozen-lockfile, web/.env copied - both
+gitignored). R169: /api/health -> {"service":"monreleve",...,"status":"ok"}; /api/ready 200.
+`adb reverse tcp:3000 tcp:3000` -> "UsbFfs tcp:3000 tcp:3000". NEVER production.
+ACCOUNT: an-talkback.pilot@monreleve.test, new (count 0 before; controls: 22 users,
+12 @monreleve.test). Signed in through the real screens on the base build: address typed,
+POST magic-link 202, the code extracted from the dev server's log by regex into a scratch
+file and typed from it - never printed, the file deleted (R574: every capture during
+sign-in was a redacting uiautomator dump; no screenshot until the account was in the
+shell; the magic-link URL never entered this transcript). One POST /auth/code 400 from a
+dropped keystroke (DEVIATION 3), then 200. Onboarding: "Pilote TalkBack", Geneve, 100 %,
+simplified, whole days, whole year, manual, "Pas maintenant". The account starts in WHOLE
+days so W0 is readable; switched to half days in Parametres (PATCH /me 200) for H0 onwards.
+STATE BY STATE (counts are stops, launch stop 0 excluded; each read on both builds after
+`adb install -r` over the same data):
+  W0  whole-day, unanswered        base 48 / head 48   IDENTICAL
+  H0  half-day, unanswered         base 54 / head 54   IDENTICAL
+  H1  morning answered En Suisse   base 60 / head 60   IDENTICAL (head read twice, see
+                                                       DEVIATION 4; both reads identical)
+  H2  both halves (Suisse/Domicile) base 58 / head 58  IDENTICAL
+  H2b scrolled to the end          NOT READ - the device dropped during the base read
+                                   (stops 1-2 captured, 3-5 silent; INVALID, to be redone)
+  M   "Modifier" open              NOT READ
+  A4  Matin Absence-Conge, Apres-midi Domicile   NOT READ
+Launch stop 0 differs only in launcher noise ("Ecran d'accueil One UI" present or not,
+depending on where the previous reading left the launcher); the app's own launch utterances
+match: W0/H0/H2 "Mon Releve"; H1 "Matin enregistre. Apres-midi : a renseigner." + "Mon Releve".
+FULL SEQUENCE, H2 (both builds; hints omitted where they are the plain "activer" hint):
+   1 Matin : En Suisse, Apres-midi : Domicile, Enregistre, Mon Releve
+   2 Bonjour Pilote          3 Mardi 27 octobre 2026      4 Saisie manuelle
+   5 Ou travaillez-vous aujourd'hui ?                     6 Modifier, Touche
+   7 A traiter               8 18 jours non renseignes ce mois
+   9 Voir le calendrier, Touche
+  10 Sous les deux seuils   11 Votre taux de teletravail declarable reste sous le plafond
+  fiscal.   12 0,20 %   13 Taux a declarer a l'AFC   14 0,3 %   15 Part de jours hors de
+  Suisse   16 Les jours de mission qui depassent le plafond annuel sortent du regime de
+  teletravail et sont imposes en France.   17 Taux de teletravail declarable 0,20 %,
+  imposition en Suisse.   18 Jours restants avant 40,0 %   19 95,5
+  20 Jours restants avant 49,9 %   21 119   22 Voir ma prevision, Touche
+  23 Cette semaine   24-28 L / M / M / J / V
+  29 Jour 26, Non renseigne, non enregistre.
+  30 Aujourd'hui, Jour 27, matin Suisse, apres-midi Domicile, enregistre a temps, saisie
+     manuelle.   31-33 Jour 28/29/30, Non renseigne, sans objet.
+  34-41 S / Suisse / D / Domicile / M / Mission / A / Absence
+  42 A temps   43 Saisie tardive   44 Non renseigne   45 Ce mois
+  46-49 Suisse / Domicile / Mission / Absence   50-53 0,5 / 0,5 / 0 / 0
+  54 Selectionne, Aujourd'hui, Onglet, Dans la liste, 4 elements
+  55-57 Calendrier / Releve / Parametres, Onglet   58 Parametres, Onglet, dernier element
+All sequences: evidence/reads/<state>-<base|head>.txt.
+
+================================================================================
+R643 - THE READING ON ITS OWN (from W0 H0 H1 H2; NOT FINAL - three states unread)
+================================================================================
+Every finding below is the SAME on 2458dbe and on 33c3578 - not introduced by the shared
+screen, but carried by it to iOS (R645). Listed, not fixed.
+F1  UNSELECTED CHOICES READ AS "NOT CHECKED" WITH A "DESELECT" HINT. Every unanswered option
+    card: "Non verifie, En Suisse, Touche" + hint "Appuyez sur Alt + ENTER pour
+    deselectionner." (W0 x3, H0 x6, H1 x3). An unselected option is offered as something to
+    DEselect. ("Declarer une absence, Touche" has no state and the plain "activer" hint.)
+    The selected state is set in shared code (AujourdhuiScreen.kt:341,
+    `.semantics { this.selected = selected }`); how "selected" read when TRUE is the M state,
+    not yet read. Keyboard-mode hint wording; the touch wording was not measured.
+F2  WEEK-STRIP DAY CELLS HAVE NO ROLE. "Jour 26, Non renseigne, non enregistre." + "Appuyez
+    sur Alt + ENTER pour activer." - actionable, announced without a role (the tabs and
+    buttons say "Onglet"/"Touche").
+F3  SINGLE LETTERS AS STOPS. Weekday headers "L", "M", "M", "J", "V" (two identical "M"), and
+    the legend's glyph letters "S", "D", "M", "A" each read as their own stop before the word
+    they label ("S" then "Suisse"...).
+F4  NUMBERS WITHOUT THEIR LABELS. "Ce mois": four labels then four bare values ("Suisse /
+    Domicile / Mission / Absence" then "0,5 / 0,5 / 0 / 0"); the threshold rail reads the
+    value BEFORE its label ("0,20 %" then "Taux a declarer a l'AFC"; "0,3 %" then "Part de
+    jours hors de Suisse"); "95,5" and "119" are separate stops after their labels.
+F5  READING ORDER IN H2. The answer ("Matin : En Suisse, Apres-midi : Domicile, Enregistre")
+    is the FIRST stop - before "Bonjour Pilote", the date and the question - while its own
+    "Modifier" stays in layout order after the question. In H1 (one half answered) the order
+    is the layout order. The answer column carries `semantics { liveRegion = Polite }`
+    (ChoiceCard.kt RecordedAnswer) - stated as the place to look, not as a diagnosis.
+No stop read a raw identifier, a token name or an empty label in the four states.
+The tabs read correctly: "Selectionne, Aujourd'hui, Onglet, Dans la liste, 4 elements".
+
+================================================================================
+R644 - THE INSTRUMENTED TESTS, RUN
+================================================================================
+Run FIRST (before any reading), against main's HEAD 33c3578, device awake and unlocked,
+stay_on 7 (restore 0):
+  ./gradlew :app:connectedDebugAndroidTest -PfrontalierHost=127.0.0.1
+  "Starting 47 tests on SM-G960F - 10"
+  BUILD SUCCESSFUL in 1m 25s      exit code 0
+  results XML (timestamp 2026-10-27T16:44:19Z = this run): tests="47" failures="0"
+  errors="0" skipped="0" (evidence/TEST-SM-G960F - 10-_app-.xml,
+  sha256 6a76412d09626d2ed2f078b1c82eb1316cfe840070791dcdc6f9a1e208c29c22)
+  Before installing, the debug and androidTest APKs were checked: signer ef336db5...e373d1,
+  the installed app's.
+PER CLASS (pass/total):
+  CanaryInstrumentedTest                                   1/1
+  StatePreservationInstrumentedTest                        2/2
+  auth.KeystoreTokenStoreInstrumentedTest                  3/3
+  data.local.MonReleveMigrationTest                        9/9
+  data.sync.YearDownloadRoomTransactionInstrumentedTest    2/2
+  ui.screens.RateOneStringInstrumentedTest                 2/2
+  ui.screens.aujourdhui.AnswerIconInstrumentedTest         8/8
+  ui.screens.aujourdhui.AnswerStatusInstrumentedTest       4/4
+  ui.screens.aujourdhui.HalfDayChoiceInstrumentedTest      7/7
+  ui.screens.calendrier.CalendarSheetSaveInstrumentedTest  3/3
+  ui.screens.calendrier.ProvenanceShownInstrumentedTest    6/6
+  all 47 names: evidence/connected-cases.txt
+COMPARED WITH R605: R605 named four classes and no count. Those four - AnswerIcon (8),
+AnswerStatus (4), HalfDayChoice (7), RateOneString (2) - are 21 of the 47 and all PASS,
+unedited. 47 = the `@Test` count across the 11 androidTest files (counted before the run).
+:shared has NO android instrumented source set (shared/src: androidMain, androidUnitTest,
+commonMain, commonTest, iosMain, iosTest; no androidInstrumentedTest/androidDeviceTest in
+shared/build.gradle.kts) - nothing there to run.
+The run uninstalled the app (pm list: ch.monreleve.app absent, 502 packages vs 503); the
+original was reinstalled at once from the pulled copy: on-device sha256 d417d021...081034.
+No failure, so nothing to diagnose.
+
+================================================================================
+R645 - FOR IOS-1b-B
+================================================================================
+All five R643 findings live in, or are reached through, the shared Aujourd'hui screen
+(commonMain) and will be carried to iOS. Check on VoiceOver: F1 (how an unselected option's
+state and hint read - VoiceOver has its own "selected" trait), F5 (whether the answered card
+is read before the greeting), F3/F4 (bare letters and unlabelled numbers), F2 (the day cells'
+trait). The M and A4 states are still unread here.
+
+================================================================================
+PARKED
+================================================================================
+none yet.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. Samsung Voice Assistant, not Google TalkBack - Google's is not installed (the prompt's
+   branch). No tutorial appeared, so none was dismissed.
+2. Navigation by a virtual HID keyboard (Alt+Right), not by swipes - injected input bypasses
+   the accessibility filter on Android 10 and sendevent is SELinux-denied. Hints are therefore
+   the keyboard-mode wording on both builds.
+3. One POST /api/v1/auth/code 400: typing the code as one `input text` dropped a digit; the
+   fields were cleared and the code retyped one key per field from the same scratch file
+   (never printed). Attempt count +1 on the test account.
+4. The dev server exited (exit 0, no error) when a foreground command reached its 600 s
+   timeout and was moved to the background, near the end of the first H1-head read. It was
+   restarted (R169 re-checked) and H1-head re-read: identical to base and to the first read.
+   All later readings ran as background tasks.
+5. The audit APK hashes differ from R607's for the same commits (not byte-reproducible across
+   worktrees); the source is identical (empty diff f0133cd..33c3578 under android/).
+6. The phone dropped off adb mid-reading and came back unauthorized - the session stops here.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (BLOCKER) The S9 needs a person: tap "Autoriser" on the USB-debugging dialog (tick
+   "Toujours autoriser sur cet ordinateur"). Voice Assistant is probably still ON, so that is
+   a tap to focus then a DOUBLE-tap to activate. Then resume this session: H2b, M, A4 on both
+   builds, R643 finalised, the phone restored and shown restored.
+Q2 H2b ("scrolled to the end") read from a scrolled screen starts wherever the reader's first
+   focus lands (here mid-screen, "Taux de teletravail declarable ..."). Accept that as the
+   H2b reading on both builds, or anchor it differently (e.g. read from the top and compare
+   only the stops past the fold)?
+
+================================================================================
+PUSH PROOF
+================================================================================
+(filled after the push)
