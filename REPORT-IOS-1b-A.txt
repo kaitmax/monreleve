@@ -22,6 +22,57 @@ lock.
 ################################################################################
 
 --------------------------------------------------------------------------------
+SUMMARY (PART 2)
+--------------------------------------------------------------------------------
+Aujourd'hui is one shared Compose Multiplatform screen. Its controller, its
+model and the design system it draws with live in :shared commonMain; Android's
+activity hosts it through the same call as before, and iOS composes, taps and
+hosts it on the simulator over an in-memory pilot fixture. Android is
+pixel-identical: all 142 Paparazzi baselines verify at maxPercentDifference 0.0
+with NONE re-recorded, and on the S9 every compared state of the release-shaped
+audit build matched main's build pixel for pixel (app area) and in its
+accessibility tree.
+  R624  probe passed (composition created in a test scene and in a
+        UIViewController; Material3's DATE PICKERS unlinked - fenced, canaried).
+  R626  zero tolerance stated on all 14 Paparazzi rules, guarded by value.
+  R625  CMP 1.7.3; Compose 1.7.6 / Material3 1.3.1 patch move; BOM 2024.12.01.
+  R602  controller + CheckWindows + CalendarModel + vocabulary to commonMain,
+        each pinned first; no ViewModel existed, so no lifecycle dependency.
+  R603  design system to commonMain; ICONS: a hard boundary kept the drawables
+        in :app (DEVIATION 4 / Q2) - Android draws them by name, iOS from
+        Compose resources generated from the same files.
+  R604  the screen to commonMain; every ui/ fence widened and RED once on a
+        plant in the shared screen.
+  R605  baselines untouched; release APK +12 bytes (after the shrinker fix).
+  R606  iOS: 205 simulator tests, 13 of them new, incl. a Compose UI test of
+        the shared screen - Compose's UI-test API DOES run on iOS here.
+  R607  S9 against the local stack: every compared state identical to main.
+        TalkBack NOT driven (DEVIATION 6).
+  R608  pilot fixture: in-memory, real controller and record path, no server.
+  R609  aujourdhuiPilotViewController(scenario) - below.
+
+--------------------------------------------------------------------------------
+STATUS (R391) - PART 2
+--------------------------------------------------------------------------------
+COMPLETE, WITH THE R603 ICON MECHANISM BUILT IN ITS CONSERVATIVE SHAPE AND
+ASKED (Q2), AND TALKBACK NOT DRIVEN ON THE DEVICE (DEVIATION 6).
+FULL :app:gate --rerun-tasks on the code tip f0133cd, this session, after
+./gradlew --stop:
+    > Task :app:checkTestFloor - test floor OK: 1385 unit tests observed
+    BUILD SUCCESSFUL in 11m 25s
+    260 actionable tasks: 260 executed
+    real 11m26.908s ; exit 0
+  Test XML: :app 1385 tests 0 failures 0 errors (142 screenshot, 0 failures,
+  at 0.0); :shared 152 0 0. Compiler "w: " lines: 7 - main's count; none is the
+  daemon's "multiple sessions" notice.
+iOS run on the code tip: 40488830486 on f0133cd - SUCCESS, "iOS SIMULATOR TESTS
+EXECUTED: 205" (main: 192; +13 new), 4m24s.
+The report commits that follow f0133cd change REPORT-IOS-1b-A.txt only (the
+workflow paths-ignores it; nothing to build).
+gate:clone NOT RUN: no web/ change (web/.env and node_modules are gitignored
+and untracked).
+
+--------------------------------------------------------------------------------
 R624 - THE PROBE (one macOS run, throwaway branch, deleted)
 --------------------------------------------------------------------------------
 BRANCH   probe-ios1ba-cmp173 (not ios-*), one commit 20608cf on ae7acc6, in its
@@ -225,6 +276,324 @@ build keeps the boundary and asks:
   (iii) the XMLs to :shared androidMain/res with android.nonTransitiveRClass
        =false so ch.monreleve.app.R.drawable.* resolves to the library's ids:
        one property, app-wide blast radius - NOT measured.
+
+--------------------------------------------------------------------------------
+R603 - AS BUILT (commits efd6273, cefbde4)
+--------------------------------------------------------------------------------
+TOKENS AND COMPONENTS: design/ (15 files incl. rail/) git mv to :shared
+commonMain, package unchanged - Tokens (colours, spacing, radii, motion), the
+type scale, FrontierTheme, DayCell, legends, ZoneBadge, the rail, RateDisplay,
+MetricTile. Three internals turned public because :app's tests read them
+across the boundary (Radius/Motion.allForTest, frontierColorScheme). Fonts:
+none are bundled (FrontierFontFamily = FontFamily.Default), so nothing moved.
+ICONS (shape (i) of the QUESTION above, the conservative one): enum Glyph in
+design/Glyph.kt (file name derived: "ic_" + the constant in lower case);
+  Android  Glyph.android.kt: Resources.getIdentifier on the app's own drawable,
+           androidx painterResource - the same resource, and the same Int in
+           kindIconResKey/statusIconResKey, the instrumented tests assert.
+           Measured before building: under Paparazzi, getIdentifier("ic_house")
+           = 2131034129 = R.drawable.ic_house.
+  iOS      Glyph.ios.kt: Compose resources GENERATED by :shared's
+           generateGlyphResources (a Sync of app/src/main/res/drawable/ic_*.xml,
+           launcher art excluded) into a directory registered as iosMain's
+           customDirectory; the accessors exist only because the files do.
+  PATH COMPARISON (R603's test): GlyphResourceGeneratorTest reads the
+           generator's real output and asserts, for every Glyph, a generated
+           file whose ordered android:pathData strings EQUAL the app XML's
+           (positive control: every original carries at least one path); and
+           that no launcher art reached iOS. 2/2 green.
+  GlyphDrawablesExistTest: every Glyph resolves to an R.drawable of :app (two
+           glyphs never share one) and glyph_keep.xml keeps exactly the enum.
+  Compose resources' Android ContentProvider is REMOVED from the merged
+           manifest (tools:node="remove"; merged audit manifest: 0
+           occurrences) - Android never reads a Compose resource.
+FENCES followed design/ (and detection/'s :shared half, which R602 had moved
+past two fences silently - found here, fixed here): FencesTest
+SUBJECT_ROOTS, CopyReachability, DayCellGridHasLegend, NoBareThreshold,
+RateFloatFence, each root pinned (R460). Token fence RED on a planted
+Color(0xFF123456) in shared MetricTile.kt, restored (cmp).
+iOS run 40421241530 on efd6273: success, 192 executed (generated resources
+and the Glyph actual compiled and linked on the Mac).
+
+--------------------------------------------------------------------------------
+R604 - THE SCREEN MOVED (commit 7e7fca3)
+--------------------------------------------------------------------------------
+ui/screens/aujourdhui (9 files) git mv to :shared commonMain. Android's
+activity hosts it through the same AujourdhuiScreen(state, actions) call.
+Edits beyond the move: AnswerIcon speaks Glyph; rememberReduceMotion is
+expect/actual (Android: its old body; iOS: UIAccessibilityIsReduceMotionEnabled);
+rateBetween public (a :app test reads it). The calendar UI Aujourd'hui
+already shared - LIST_FONT_SCALE_THRESHOLD, dayWords, RecordedGranularityNotice
+- moved unchanged into shared ui/screens/calendrier/SharedWithAujourdhui.kt;
+the calendar screen itself did not move (DEVIATION 3).
+EVERY FENCE THAT READ ui/ READS THE SHARED ROOT TOO, pinned by
+AujourdhuiScreen.kt: FencesTest, CopyReachability, DayCellGridHasLegend,
+LogFence, NoBareThreshold, RateFloatFence. RED ONCE each, on one planted file
+in the shared screen (PlantedForR604.kt, deleted after the run, `ls` -> no
+such file), 16 tests run, 4 failed - exactly the four:
+  tokens-only      "...\ui\screens\aujourdhui\PlantedForR604.kt: raw .dp
+                    literal outside Spacing/Radius"
+  provenance/wire  "...PlantedForR604.kt: references data/remote, data/local,
+                    Retrofit or a Dao directly" (the import of the wire
+                    Provenance - R202's fence)
+  no-inline-string "...PlantedForR604.kt: string literal "Bonjour, plante" in
+                    ui//dev/ - French copy must come from fr/"
+  no-Float-rate    "PlantedForR604.kt:10  a rate held as a Float"
+Then GREEN: :app 1385 tests 0 failures (1388 less KindIconMappingTest's 3,
+moved to :shared commonTest as 2 - DEVIATION 5); :shared 149 0.
+
+--------------------------------------------------------------------------------
+R605 - ANDROID IS THE PROOF
+--------------------------------------------------------------------------------
+PAPARAZZI: :app:verifyPaparazziDebug after every layer - 142 screenshot tests,
+0 failures, at maxPercentDifference 0.0 (R626); AujourdhuiScreenScreenshotTest
+35/35 on the shared screen. BASELINES RE-RECORDED: 0
+(`git status --porcelain android/app/src/test/snapshots` -> empty; no commit
+touches a .png).
+COMPOSE UI / A11Y TESTS: the instrumented AnswerIcon/AnswerStatus/HalfDayChoice
+and RateOneString tests are UNEDITED and compile against the shared screen
+(:app:compileDebugAndroidTestKotlin green); the gate compiles, it does not run
+them (no emulator in the gate) - what ran is the S9 drive below.
+R495: DeclarableRateDisplayTest (the formatted-string assertions) and
+RateFloatFenceTest green, the former unedited
+(DeclarableRateDisplayTest reaches rateBetween across the boundary).
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on):
+  main 2458dbe (built in a throwaway worktree)   1,989,376 B
+  tip, resource shrinker in its default mode     2,022,380 B  (+33,004)
+  tip, glyph_keep.xml shrinkMode="strict"        1,989,388 B  (+12)  <- shipped
+WHY: Glyph.android.kt looks the ten drawables up BY NAME, and the shrinker's
+safe mode answers a run-time lookup by keeping 68 extra resources (every ic_*
+drawable, androidx core's notification/compat set: res/ +13,388 B, arsc
++15,708 B). In strict mode, with the ten kept by name, the resource table
+names EXACTLY main's 197 resources (aapt2 dump, diffed both ways: empty; the
+ten glyphs present). What remains: classes.dex +3,629 B stored (+5,532
+uncompressed) - Compose 1.7.6 over 1.7.0/1.7.1 and the shared Glyph/pilot
+code - offset by zip alignment to +12 B overall.
+
+--------------------------------------------------------------------------------
+R606 - iOS COMPILES, COMPOSES, TAPS AND HOSTS THE SCREEN
+--------------------------------------------------------------------------------
+YES, Compose Multiplatform's UI-test API runs on iOS in this setup:
+runComposeUiTest on iosSimulatorArm64 (cmp-ui-test, iOS TEST scope only).
+iosTest pilot/AujourdhuiPilotIosTest (7): the pilot (shared screen + real
+controller + in-memory fixture) composed with the question and the week strip;
+acknowledged; pending; refused; morning and afternoon asked apart; one tap on
+" Domicile " recorded into memory and shown pending; and hosted in a
+ComposeUIViewController in a UIWindow ("composed=true after 1 spins").
+MaterialDatePickerCanaryTest (1): still IrLinkageError on
+'kotlinx.datetime/Instant.Companion' - asserted broken, as expected.
+commonTest on iOS: PilotFixtureTest (3), KindIconMappingTest (2).
+  run 40484214560 on 4be07ba: 205 executed, 1 failure - the tap test found 3
+     nodes saying "Domicile" (the legend says it too); test fixed (f0133cd).
+  run 40488830486 on f0133cd: SUCCESS, "iOS SIMULATOR TESTS EXECUTED: 205",
+     AujourdhuiPilotIosTest tests=7 failures=0, six GENEVA lines.
+
+--------------------------------------------------------------------------------
+R607 - ON THE S9, AGAINST THE LOCAL STACK
+--------------------------------------------------------------------------------
+STACK: port 3000 asserted free first (Get-NetTCPConnection: 0 of 44 listeners;
+5436, the control, 2). `PORT=3000 pnpm dev` from THIS worktree's web/ (pnpm
+install --frozen-lockfile there, web/.env copied - both gitignored), so no
+artefact outside the worktree. R169: /api/health -> {"service":"monreleve",
+...,"status":"ok"}; /api/ready 200. Database frontalier-postgres (5436), read
+with `docker exec ... psql` SELECTs only; migration 20261025200000 NOT applied,
+no other container touched. `adb reverse tcp:3000 tcp:3000` -> "UsbFfs
+tcp:3000 tcp:3000". NEVER production.
+BUILDS (-PfrontalierHost=127.0.0.1, audit = R8-minified), all signed
+ef336db5...e373d1, the installed APK's signer:
+  main 2458dbe audit  7e91be74eb884ada243d10bf44271506ae121701adf64275c8c8d08a059b7f2c
+  tip  audit          9040db1d6c44e956baca72058959b8d833f0c46218363a363a507e84eaa7e905
+                      (strict shrink mode; aapt2: all ten glyph drawables kept)
+ACCOUNT: ios-1b-a.pilot@monreleve.test, created for this - count 0 before
+(controls: 21 users, 11 @monreleve.test). Signed in through the real screens on
+main's build: address typed, POST magic-link 202, the 6-digit code read from
+the dev server's printed mail into a scratch file, typed as key events, file
+deleted (code never printed) -> POST /auth/code 200, GET /me 200, entries 200.
+R574: every capture during sign-in was a uiautomator dump through a helper
+that REDACTS every EditText ("[EditText redacted, N chars]"); no screenshot
+until the account was in the shell. (DEVIATION 7: the magic-link URL itself
+was printed once into this session's transcript.) Onboarding: "Pilote IOS",
+Geneve, 100 %, simplified, whole days, whole year, manual, "Pas maintenant".
+THE COMPARISON: `adb install -r` swaps the builds over the same data; each
+state captured on BOTH, compared pixel by pixel over the app area (rows 80-2076;
+the status bar's clock and the system navigation bar excluded):
+  W0   whole-day, unanswered (question, four choices, A traiter)      0 px differ
+  H0   half-day, unanswered (Matin / Apres-midi asked apart)          0 px
+  H1   morning answered En Suisse, afternoon still asked (AN-POLISH) 0 px
+  H2   both halves (Matin : En Suisse, Apres-midi : Domicile,
+       building and house glyphs, check + "Enregistre")             0 px
+  H2b  scrolled to the end: rail, 95,5 / 119 days, week strip (27:
+       "S D", today, on-time bar), legend, Ce mois 0,5 / 0,5         0 px
+  M    " Modifier " open                                              0 px
+  A4   Matin : Absence - Conge, Apres-midi : Domicile                 0 px
+  a11y the uiautomator tree (text, content-desc, class, bounds, flags) of
+       the A4 state, main vs tip: diff EMPTY (49 nodes each)
+EACH ANSWER, driven on the tip build through " Modifier ": En Suisse,
+Domicile, Mission -> En France ("Matin : Mission (France)"), Mission -> Pays
+tiers ("Mission (pays tiers)"), Declarer une absence -> Conge. Server, read
+after: Entry 2026-10-27 AM ABSENT CONGE MANUAL, PM HOME MANUAL; 6 EntryEvents
+(one per write); User HALF_DAY / GE / 100.
+NOT SHOWN ON THE DEVICE: whole-day mode with a day ANSWERED - only one day
+(today) can be answered, it went to half-day mode first for the half-day flow,
+and switching back to whole days was REFUSED by the product ("Cette
+modification est incompatible avec des journees deja enregistrees, qui
+utilisent un decompte different.") - correct behaviour. Whole-day answered
+states are in the 35 Paparazzi baselines, verified at zero.
+TALKBACK: NOT DRIVEN (DEVIATION 6). Enabling Samsung's Voice Assistant
+(com.samsung.accessibility/...TalkBackService) opened its first-run tutorial
+over the app; it was turned off at once. What TalkBack reads is the
+accessibility tree, which is identical between the builds (above), and holds
+"Ou travaillez-vous aujourd'hui ?", "Matin : Absence - Conge",
+"Apres-midi : Domicile", "Enregistre".
+LEFT AS FOUND: signed out through Parametres -> " Se deconnecter " (POST
+sign-out 200; DeviceSession revokedReason SIGNED_OUT; the phone's data wiped
+by the product); the original audit APK reinstalled - installed base.apk
+sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034;
+`adb reverse --list` empty; stay_on_while_plugged_in 0;
+enabled_accessibility_services null (deleted), accessibility_enabled 0
+(both as read before enabling). The dev server's tree stopped (TaskStop, then
+its orphan node processes, found by this worktree's path, killed); port 3000:
+0 listeners, 5436: 2 (control). The test account and its two entries remain
+in the local database (no deletion was run).
+
+--------------------------------------------------------------------------------
+R608 - THE PILOT FIXTURE (commit 49fb0a3)
+--------------------------------------------------------------------------------
+shared commonMain pilot/PilotFixture.kt - InMemoryEntryDao (Room's EntryDao
+contract in memory), InMemorySettingsStore, PilotScenario (today UNANSWERED,
+UNANSWERED_HALF_DAY, ANSWERED_WHOLE, ANSWERED_HALVES, PENDING, REFUSED) and
+PilotFixture.controller(), which builds the REAL AujourdhuiController over the
+REAL LocalEntryRepository on the in-memory DAO. Seeded history: a past weekday
+answered whole, two in halves (opposite ways - in whole-day mode the engine
+refuses a half count, calc/Validate.kt, so the year panel would show no rate),
+one pending, one refused, the oldest left unanswered. NO SERVER: requestSync is
+a no-op, no transport exists; every row carries PILOT_ACCOUNT, a tag no server
+issues. pilot/AujourdhuiPilot.kt is the whole pilot as one composable.
+PilotFixtureTest (commonTest, JVM 3/3 and iOS 3/3): today in each scenario;
+the week strip, month (nonRenseigne 5,0) and A traiter from the history; a tap
+writes ONE pending row under PILOT_ACCOUNT; a whole day beside halves is
+refused (R492) and writes nothing.
+
+--------------------------------------------------------------------------------
+R609 - WHAT PART B NEEDS
+--------------------------------------------------------------------------------
+1. THE ENTRY POINT: shared iosMain pilot/AujourdhuiPilotViewController.kt
+     fun aujourdhuiPilotViewController(
+         scenario: PilotScenario = PilotScenario.UNANSWERED): UIViewController
+   From Swift: AujourdhuiPilotViewControllerKt
+     .aujourdhuiPilotViewController(scenario: .unanswered)
+   as the window's root (SwiftUI: a UIViewControllerRepresentable). It hosts
+   AujourdhuiPilot - FrontierTheme + AujourdhuiScreen + the real controller
+   over the fixture, ids from newIosMutationId, Clock.System.
+2. :shared DECLARES NO iOS FRAMEWORK YET (iosArm64()/iosSimulatorArm64() have
+   only their test binaries). Part B adds `binaries.framework { baseName = ... }`
+   (static recommended) - a build change, for that task to make.
+3. RESOURCES TO BUNDLE: the Compose resources of iosMain - the ten glyphs
+   generated by generateGlyphResources (any ic_*.xml of app/src/main/res/
+   drawable, launcher art excluded). They must land in the app bundle's
+   compose-resources directory as Compose Multiplatform 1.7.3's framework
+   integration places them; Part B should prove it by the screen showing the
+   glyphs on the device (the simulator test only proves they load in the test
+   binary). FONTS: none - FontFamily.Default is SF on iOS, so iOS text will
+   NOT match Android's Roboto pixel for pixel, by design.
+4. Info.plist: CADisableMinimumFrameDurationOnPhone = YES. The entry point
+   keeps Compose's strict plist check ON and will refuse to start without it.
+5. iOS-SPECIFIC, FOUND HERE: Material3 date pickers are unlinked (fenced in
+   commonMain, canaried in iosTest); reduce motion follows
+   UIAccessibilityIsReduceMotionEnabled; the pilot needs no server, account,
+   network or database - and must never be pointed at one.
+
+--------------------------------------------------------------------------------
+CI MINUTES (PART 2)
+--------------------------------------------------------------------------------
+  run          ref                   sha      result   wall    tests
+  40408680643  probe-ios1ba-cmp173   20608cf  failure* 9m31s   195 (1 failed*)
+  40412510390  ios-1b-a              d335ef1  success  9m10s   192
+  40414131018  ios-1b-a              e381370  success  3m54s   192
+  40416685158  ios-1b-a              886e717  success  4m40s   192
+  40421241530  ios-1b-a              efd6273  success  8m51s   192
+  40484214560  ios-1b-a              4be07ba  failure  8m10s   205 (1 failed)
+  40488830486  ios-1b-a              f0133cd  success  4m24s   205
+  * by design (R624's test b). TOTAL 48m40s wall; billed per run rounded up:
+  10+10+4+5+9+9+5 = 52 macOS minutes (520 of the 2,000 at the operator's
+  10x figure). Report-only pushes trigger no run (paths-ignore REPORT-*.txt).
+
+--------------------------------------------------------------------------------
+PARKED (PART 2; UNNUMBERED - no series letter is free)
+--------------------------------------------------------------------------------
+UNNUMBERED-6  Material3 1.7.3's calendar model is unlinked on iOS against
+              kotlinx-datetime 0.7.1. Fenced (CommonMainFenceTest) and
+              canaried (MaterialDatePickerCanaryTest); retired by UNNUMBERED-8.
+UNNUMBERED-7  Paparazzi 1.3.5's OffByTwo differ and 1 px size allowance remain
+              under maxPercentDifference 0.0 (QUESTION Q4).
+UNNUMBERED-8  The CMP 1.10+/1.11 upgrade - trigger: Material3 1.5 STABLE and a
+              Paparazzi that renders Compose UI 1.10 text.
+UNNUMBERED-9  Compose resources on Android need the library's ContentProvider
+              context, which Paparazzi does not start (the R603 spike). Matters
+              only if QUESTION Q2 is answered (ii).
+UNNUMBERED-10 NOTICED, NOT TOUCHED: in whole-day mode the engine refuses a half
+              count (calc/Validate.kt), so a day held in halves under whole-day
+              settings (R490 keeps halves; R494 mixed data) makes Aujourd'hui's
+              year panel show no rate. The product's settings sheet refuses the
+              switch itself (seen on the S9), so this needs data from elsewhere.
+UNNUMBERED-11 CommonMainFenceTest now allows androidx.compose.* except two
+              Android-only holes; anything else Android-only inside Compose's
+              packages is caught by compileCommonMainKotlinMetadata, not by text.
+
+--------------------------------------------------------------------------------
+DEVIATIONS (PART 2)
+--------------------------------------------------------------------------------
+1. ORDER: R608 was built before R607, so one iOS run carried R604-R608.
+2. R602c moved the grid vocabulary (DayKind, Colours, RecordQuality,
+   DayProvenance) with CalendarModel, before R603: the controller's state
+   carries them. Pure enums and one colour-holding data class - no UI.
+3. The calendar's three pieces Aujourd'hui shared moved to :shared
+   (SharedWithAujourdhui.kt); the calendar screen did not move.
+4. R603's ICON MECHANISM, NOT BUILT AS WRITTEN: the drawables stay in :app
+   because a hard boundary (unedited instrumented-test assertions on literal
+   R.drawable ids) forbids moving them; iOS gets generated Compose resources
+   (QUESTION Q2). Recorded in the report before any icon work (02df3e2).
+5. KindIconMappingTest - a JVM unit test, not a Compose UI or accessibility
+   test - moved to :shared commonTest and now compares Glyph file names; its
+   two invariants are unchanged, its R.drawable check went to
+   GlyphDrawablesExistTest.
+6. TALKBACK NOT DRIVEN on the S9 (Voice Assistant's tutorial); the
+   accessibility trees were compared instead.
+7. A magic-link sign-in URL (local dev server, this test account, single use,
+   15 minutes) was printed once into this session's transcript while locating
+   the printed mail; the code consumed the sign-in a minute later. No code was
+   printed; no screenshot was taken during sign-in.
+8. The local dev server ran from this worktree's web/ (pnpm install, .env
+   copied - gitignored), not the main checkout's.
+9. resources: glyph_keep.xml sets shrinkMode="strict" - a build behaviour
+   change, MEASURED to give exactly main's resource set (R605).
+10. Two throwaway worktrees of mine (C:/wt/ios-1b-a-probe, C:/wt/ios-1b-a-base)
+   were created, locked and removed; nothing of them landed.
+11. The ExperimentalTime allowlist gained sites for moved and new code
+   (QUESTION Q3) rather than stopping at the test's "argument for the
+   operator" message.
+12. The CalendarModel pin file took lint-only line wrapping after its pin
+   commit (no assertion changed).
+
+--------------------------------------------------------------------------------
+QUESTIONS (PART 2)
+--------------------------------------------------------------------------------
+Q2 (R603, the icons) - see "R603 - A CONFLICT": keep (i) as built, or relax
+   the hard boundary for (ii), or measure (iii)?
+Q3 (R590) - the new ExperimentalTime sites: CheckWindows 4 + its :app bridge 2,
+   CalendarModel 2 (was 1), the controller 5 (was 1) + its :app factory 1,
+   PilotFixture 1, AujourdhuiPilot 1, PilotFixtureTest 2. All function- or
+   property-scoped and listed. Accept, or prefer a non-experimental clock seam
+   until Kotlin 2.3 (PARK-Z3)?
+Q4 (R626) - exact pixel comparison needs a custom Paparazzi SnapshotHandler
+   (OffByTwo is not configurable in 1.3.5). Wanted?
+Q5 (R607) - TalkBack: a dedicated device session to drive Voice Assistant
+   through its tutorial, or the accessibility-tree evidence as it stands?
+
+--------------------------------------------------------------------------------
+PUSH PROOF (PART 2)
+--------------------------------------------------------------------------------
+@@PUSH2@@
 
 ################################################################################
 PART 1 - THE FIRST PASS (STOPPED AT R601), AS COMMITTED
