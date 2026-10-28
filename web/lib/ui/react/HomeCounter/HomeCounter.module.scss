@@ -1,0 +1,92 @@
+// web/lib/ui/react/HomeCounter/HomeCounter.module.scss
+//
+// Tokens only. The rate and the tiles side by side from the md breakpoint,
+// stacked below it; the two sliders wrap the same way. Nothing here sets a
+// width the content cannot shrink under, so the counter fits 320 px (R719).
+
+@use "../../core/styles/breakpoints" as bp;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.figures {
+  display: grid;
+  gap: var(--space-8);
+  align-items: start;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.rateColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.rateLabel {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+}
+
+.status {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-l-line);
+}
+
+.rail {
+  margin-top: var(--space-2);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.tile {
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.sliders {
+  display: grid;
+  gap: var(--space-6);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sliderLabel {
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-m-line);
+}
+
+.range {
+  width: 100%;
+  min-height: var(--size-touch-target-web);
+  margin: 0;
+  accent-color: var(--colour-brand);
+}

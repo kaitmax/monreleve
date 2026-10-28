@@ -134,6 +134,15 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   'lib/ui/react/PublicShell/PublicShell.tsx': 'burger.nojs.spec.ts',
   'lib/ui/react/Faq/Faq.tsx': 'faq.nojs.spec.ts',
   'lib/guides/mdx-components.tsx': 'guides.nojs.spec.ts',
+  // FW-HOME-A2 (R711): the home counter's GET form. Classified by WHY until
+  // the commit that renders it on "/", which rewrites home.nojs.spec.ts to
+  // drive it and names that spec here instead.
+  'lib/ui/react/HomeCounter/HomeCounter.tsx': {
+    why:
+      'Rendered by no page yet: the A2 home page is assembled in a later commit ' +
+      'of FW-HOME-A2, and only then is there a no-JS journey through this form ' +
+      'for home.nojs.spec.ts to drive.',
+  },
   'app/releve/print/page.tsx': {
     why:
       'The print document is rendered by Chromium to a PDF on the server and ' +
