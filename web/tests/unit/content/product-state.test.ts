@@ -310,6 +310,20 @@ const WIRING: ReadonlyArray<{
         file: 'home.ts',
         render: (s) => HOME_COPY.description(FISCAL, SOCIAL, s),
       },
+      // FW-HOME-A2 (R712): the design's present tense about recording a day,
+      // each sentence a function of the flag that makes it true.
+      { where: '/ excerpt caption', file: 'home.ts', render: (s) => HOME_COPY.excerpt.caption(s) },
+      { where: '/ counter app action', file: 'home.ts', render: (s) => HOME_COPY.counter.app(s) },
+      { where: '/ application body', file: 'home.ts', render: (s) => HOME_COPY.mobile.body(s) },
+      {
+        where: '/ year cards',
+        file: 'home.ts',
+        render: (s) =>
+          HOME_COPY.year
+            .cards(s)
+            .map((card) => `${card.title} ${card.body}`)
+            .join(' '),
+      },
       { where: '/a-propos lead', file: 'a-propos.ts', render: (s) => A_PROPOS_COPY.lead(s) },
       {
         where: '/releve-annuel stateBody',
@@ -336,6 +350,45 @@ const WIRING: ReadonlyArray<{
       { where: '/releve-annuel vocabularyHeading', file: 'releve-annuel.ts', render: (s) => RELEVE_COPY.vocabularyHeading(s) },
       { where: '/releve-annuel vocabularyBody', file: 'releve-annuel.ts', render: (s) => RELEVE_COPY.vocabularyBody(s) },
       { where: '/releve-annuel stateBody', file: 'releve-annuel.ts', render: (s) => RELEVE_COPY.stateBody(s) },
+      // FW-HOME-A2 (R712): the releve the home page promises, in the tense
+      // the dossier's existence allows.
+      {
+        where: '/ opening lead',
+        file: 'home.ts',
+        render: (s) => HOME_COPY.opening.lead(FISCAL, SOCIAL, s),
+      },
+      {
+        where: '/ year cards',
+        file: 'home.ts',
+        render: (s) =>
+          HOME_COPY.year
+            .cards(s)
+            .map((card) => `${card.title} ${card.body}`)
+            .join(' '),
+      },
+      {
+        where: '/ questions fiduciary',
+        file: 'home.ts',
+        render: (s) => HOME_COPY.questions.fiduciary.answer(s),
+      },
+    ],
+  },
+  {
+    // FW-HOME-A2 (R712, R713): the first sentences that depend on the app
+    // existing, so appExists leaves NOT_YET_WIRED below.
+    flag: 'appExists',
+    wired: [
+      {
+        where: '/ application availability',
+        file: 'home.ts',
+        render: (s) => HOME_COPY.mobile.availability(s),
+      },
+      { where: '/ application action', file: 'home.ts', render: (s) => HOME_COPY.mobile.cta(s) },
+      {
+        where: '/ questions phone',
+        file: 'home.ts',
+        render: (s) => HOME_COPY.questions.phone.answer(s),
+      },
     ],
   },
   {
@@ -378,11 +431,10 @@ const WIRING: ReadonlyArray<{
  * rather than as an oversight - the same reason gate:changed prints test:a11y
  * in its selection and then does not run it.
  */
+// appExists LEFT THIS LIST in FW-HOME-A2: the home page's application section
+// and its "Sur quel téléphone ?" answer are the first sentences that depend on
+// it, and they are in WIRING above.
 const NOT_YET_WIRED: ReadonlyArray<{ readonly flag: keyof ProductState; readonly why: string }> = [
-  {
-    flag: 'appExists',
-    why: '/application is FW20b increment 4, and it is the whole page rather than one sentence.',
-  },
   {
     flag: 'alertsExist',
     why: 'No page states whether the alert list exists; /alertes IS the statement.',

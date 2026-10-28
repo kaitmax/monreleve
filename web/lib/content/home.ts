@@ -48,6 +48,46 @@ export function heroExampleInput(taxYear: number): TeleworkInput {
 }
 
 /**
+ * What a sample day of the releve excerpt was, as the dots and the words
+ * render it (FW-HOME-A2, R714). The words live in lib/fr/home.ts; the dots are
+ * the France and Switzerland tokens, always beside those words.
+ */
+export type ReleveSampleKind = 'swiss' | 'home' | 'split' | 'absence';
+
+export interface ReleveSampleDay {
+  /** R28: a calendar day is an ISO YYYY-MM-DD string, formatted by formatDate. */
+  readonly day: string;
+  readonly kind: ReleveSampleKind;
+  /** An instant, rendered in Europe/Paris by formatDateTime (R28, R586). */
+  readonly recordedAt: string;
+}
+
+/**
+ * THE HOME PAGE'S RELEVE EXCERPT IS A SAMPLE, AND SAYS SO (R714).
+ *
+ * Five days of one week in the sample's year, with the instant each was
+ * recorded. DATA RATHER THAN DISPLAY STRINGS: the excerpt formats them with
+ * the product's own formatDate and formatDateTime, so the sample reads the
+ * way the real releve's annex reads (SPEC 6.4's Swiss dots, Paris time) and
+ * no second date format is typed into copy. The instants are UTC; 19-23
+ * October 2026 is summer time in Paris (UTC+2), so 16:42Z renders 18:42.
+ *
+ * A FIXED YEAR, unlike the hero example's: a sample week names weekdays, and
+ * a year read from the clock would put these dates on other weekdays next
+ * January. The excerpt's heading takes its year from here.
+ */
+export const RELEVE_SAMPLE = {
+  year: 2026,
+  days: [
+    { day: '2026-10-19', kind: 'swiss', recordedAt: '2026-10-19T16:42:00Z' },
+    { day: '2026-10-20', kind: 'home', recordedAt: '2026-10-20T17:05:00Z' },
+    { day: '2026-10-21', kind: 'split', recordedAt: '2026-10-21T16:11:00Z' },
+    { day: '2026-10-22', kind: 'swiss', recordedAt: '2026-10-22T16:37:00Z' },
+    { day: '2026-10-23', kind: 'absence', recordedAt: '2026-10-23T06:02:00Z' },
+  ],
+} as const satisfies { readonly year: number; readonly days: readonly ReleveSampleDay[] };
+
+/**
  * The three guides the home page's Guides section links to, by slug.
  *
  * SLUGS, NOT LABELS, and the labels are DERIVED from each guide's own
