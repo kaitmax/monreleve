@@ -5130,3 +5130,161 @@ AS WRITTEN: CommonMainFenceTest now allows androidx.compose.* except two
               Android-only holes; anything else Android-only inside Compose's
               packages is caught by compileCommonMainKotlinMetadata, not by text.
 STATE:      OPEN - recorded as a limit of the text fence.
+
+## PARK-HA1 - the canvas's "Se connecter" is not shipped  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  The approved A2 canvas puts a "Se connecter" button in the header.
+There is no web account and no web sign-in (D14 withdrew the signed-in web
+area; R209). A sign-in button today leads nowhere.
+
+TAKEN:     Not rendered, as R713 (the prompt's R624) instructs. The header is
+the shared PublicShell in any case (PARK-HA3).
+
+NOT TAKEN: A button to /application or to a "bientôt" page: both are a
+promise the product cannot keep. Switching costs one nav entry, in the
+web-account task.
+
+STATE:      OPEN - for the web-account task.
+
+## PARK-HA2 - "Voir un relevé d'exemple" is omitted: there is no sample to show  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  The canvas's second hero action links to a sample releve. R713
+says: link it to an existing page or PDF that shows a sample releve, or omit
+it and park. /releve-annuel describes the document in prose and shows none;
+/releve/print is token-gated and noindex; public/ holds no PDF; /verifier
+needs a seeded record.
+
+TAKEN:     Omitted. The hero keeps one action, "Calculer ma situation" to
+#calcul, and the excerpt card beside it is itself the sample (captioned
+"Exemple.").
+
+NOT TAKEN: Linking /releve-annuel under a label that promises a sample it
+does not show. Switching costs one anchor and one string once a public
+sample (a static PDF or a sample route) exists.
+
+STATE:      OPEN - waits on a public sample releve.
+
+## PARK-HA3 - the canvas's header and footer are not reproduced; the shell stays  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  Sections 1 and 9 of the canvas are a header (wordmark,
+Calculateur, Guides, L'application) and a short footer. On this site both are
+PublicShell, shared by every public page (FW34's operator Q1 kept it), and
+"any other page" is out of scope, with every non-home baseline required to
+pass untouched (R722).
+
+TAKEN:     The shell is unchanged: Calculateurs, Guides, Le relevé, Tarifs,
+and the trackerExists-gated CTA; the full footer, which also carries every
+guide link (R720).
+
+NOT TAKEN: A home-only header. Two headers on one site is a navigation that
+changes under the reader. Switching is a shell task with its own baselines.
+
+STATE:      OPEN - a shell decision for the operator.
+
+## PARK-HA4 - the alert card is AlertCapture as it is: its own words, the 'alertes' source  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  R718 requires the real sign-up. AlertCapture takes no copy props
+(its heading, intro and button are ALERTES_COPY's, one text in one home), and
+its sources are a closed set - calculateur, alertes, guide - mapped by the
+route handler to the page a reader returns to. The canvas's words are
+"Recevez un e-mail quand les règles changent", "Un seuil, un accord ou une
+source qui évolue. Rien d'autre." and "M'abonner".
+
+TAKEN:     AlertCapture source="alertes", centred alone in its own card. A
+submission returns the reader to /alertes, where the statuses show. The words
+are AlertCapture's.
+
+NOT TAKEN: A 'accueil' source (an API change - the zod enum and RETURN_TO -
+and the prompt forbids API changes) or copy props on AlertCapture (a second
+heading for the same card, R206). Switching: add the source and the map entry
+in an API task; or rule that the card's words change everywhere.
+
+STATE:      OPEN.
+
+## PARK-HA5 - Android's question has an ordinary space before its "?"  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  AujourdhuiCopy.QUESTION is "Où travaillez-vous aujourd’hui ?" with
+U+0020 before "?". lib/fr sets U+00A0 there (R91) and a guard refuses an
+ordinary space, so the web copy cannot equal the Kotlin byte for byte.
+
+TAKEN:     tests/unit/fr/home-copy.test.ts compares the phone words with the
+Kotlin constants MODULO that one character class (U+00A0 / U+202F vs U+0020);
+every letter, accent and apostrophe must match, with a positive control.
+
+NOT TAKEN: Editing the Kotlin string - Android is out of scope (NOTICED, NOT
+TOUCHING). Switching: set the no-break space in AujourdhuiCopy and tighten the
+comparison to equality.
+
+STATE:      OPEN - for an Android copy task.
+
+## PARK-HA6 - the counter's rail is the existing inline ThresholdRail, not the canvas's band rail  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  The canvas draws a rail of three flat bands (brandSoft, warning,
+error) with a round thumb at the rate, over 0-70 %. R711 says: the existing
+ThresholdRail "if it can show this state", extended only if needed. The
+existing rail shows the rate's position against ticks at both thresholds,
+filled in the zone colour, with the bands named in its legend; its band
+colours are DESIGN-SYSTEM's success / warning / error (section 4). The web
+has no brand-soft token (Tokens.kt holds it); adding one is ask-first.
+
+TAKEN:     The inline rail, unchanged, at FD1's 376 px panel width. No
+renderer change, so rail parity with Android is untouched.
+
+NOT TAKEN: A bands-only variant with an HTML thumb, and a web brand-soft
+token. Switching costs a renderer variant with its own tests, a parity
+decision, and a token ruling.
+
+STATE:      OPEN.
+
+## PARK-HA7 - the phones show the home's worked example, 15,83 %, not the canvas's 39,16 %  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  The canvas's phone screens show "39,16 %" (the Geneva figure).
+R710: a figure shown is read from where the current page reads its example -
+lib/content/home.ts's heroExampleInput, 38 days on the 240 basis, which the
+engine puts at 15,83 %.
+
+TAKEN:     The engine's answer for that example, unchanged.
+
+NOT TAKEN: Changing the fixture to 94 days (39,16 %), which would make the
+picture closer to the threshold and the canvas - a one-constant change, left
+to the operator because it changes what the example says.
+
+STATE:      OPEN.
+
+## PARK-HA8 - "<= 100 KB gzip" for "/" is below the framework floor  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  R711 and R723 set the home's first-load budget at 100 KB gzip.
+The measured framework floor alone is 100,6 KiB (next 15.5.25 / react
+19.2.8), and "/" was 110,3 KiB BEFORE this task; no page on this stack can
+meet 100.
+
+TAKEN:     Measured against the house's R2 gates (A <= 125 KiB, B <= 25 KiB
+over the floor), BEFORE and AFTER both reported, and the 100 KB figure
+raised as a question rather than claimed.
+
+STATE:      OPEN - which budget binds is the operator's.
+
+## PARK-HA9 - home baselines at 1440 and 390 (R127), not 375  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  R722 asks for home baselines at 1440 and 375. R127 ("1440 AND 390
+EVERYWHERE", e2e/pages.visual.spec.ts) removed a second width pair because
+two defensible pairs was itself the defect; the 360/320 cases are covered by
+the overflow checks.
+
+TAKEN:     page-accueil-desktop.png (1440) and page-accueil-mobile.png (390)
+regenerated; the 375 and 320 widths were driven and screenshot for the report
+and are covered by e2e/narrow.spec.ts and guides-narrow.spec.ts.
+
+STATE:      OPEN - a 375 pair is one line in the spec if the operator rules it.
+
+## PARK-HA10 - the calculator's slow-4G LCP was at 2,5 s before this task  [FW-HOME-A2, 2026-10-28]
+
+QUESTION:  R723: "LCP < 2.5 s slow 4G must still hold" on the calculator.
+Measured BEFORE on this machine (Lighthouse 12.6.1, mobile, simulated slow
+4G, median of 3): 2 528 ms - already at the line before any change.
+
+TAKEN:     Measured AFTER the same way and reported side by side; this task
+does not change the calculator page.
+
+STATE:      OPEN - the house Lighthouse gate is desktop; a mobile gate is a
+ruling.

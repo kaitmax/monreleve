@@ -1,0 +1,553 @@
+================================================================================
+REPORT-FW-HOME-A2
+THE NEW HOME PAGE: THE RELEVE FIRST, THEN THE COUNTER
+================================================================================
+
+TASK    FW-HOME-A2, relay/FW-HOME-A2.txt read in full from the main checkout
+        (untracked there), INCLUDING the orchestrator's ADDENDUM.
+BASE    origin/main c7a587f.
+BRANCH  fw-home-a2, worktree C:/wt/fw-home-a2 (R349), created by this session;
+        .session-lock.json (gitignored) written at the start. A copy of
+        web/.env (gitignored) was placed in the worktree and pointed at a
+        SCRATCH database, fw_home_a2_scratch, created by this session on
+        frontalier-postgres (:5436) - never the shared `frontalier` database.
+        The lock, web/.env and the scratch database are removed after the
+        push; that is confirmed in the handback, not claimed here.
+        PENDING MERGE - nothing is on main.
+DESIGN  docs/design/home-a2.dc.html was read in full. It is NOT committed on
+        origin/main: it exists untracked in the main checkout (docs/design/,
+        with an empty "Nouveau dossier"). It was read there, as a reference,
+        and is not added to this branch (it is the operator's file, R334).
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+French in this file is transliterated (R155, R168): the accented originals
+live in web/lib/fr/home.ts and are quoted, accented, in the handback.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+"/" is now the A2 design: the releve excerpt beside the hero, then the
+counter, then the application with two phones, the two thresholds on brand,
+the year in three cards, the alert sign-up alone in its card, and the
+questions - inside the unchanged public shell.
+
+The counter is the page's one client island and computes nothing: every
+figure is calculateTelework's for a documented simplified input, swept over
+both sliders' whole ranges (11 421 positions) through the real DOM. It is
+also a GET form to the result page, with a <noscript> canton and button, so
+the no-JS journey R346/R351 protect survives the redesign.
+
+Every sentence of the design that claims something PRODUCT_STATE says is not
+built (the app, the day register, the releve) is a function of the state;
+today it renders in the future tense. Two canvas actions with nowhere to go
+are not shipped, and are parked.
+
+Commits on the branch (oldest first):
+  9d35698  the two unused eslint-disable directives (the addendum's first commit)
+  747ca67  step 1 - the A2 copy, wired to PRODUCT_STATE        (R712)
+  0de152c  step 2 - ReleveExcerpt                              (R714)
+  1d9f193  step 3 - the counter on the engine, swept           (R711)
+  6d88602  step 4 - HeroPhone, Android and iPhone              (R716)
+  c721c34  step 5 - Faq: open entry, Avant/Apres pair, split   (R717)
+  b4f5af7  step 6 - the page assembled, FW34 removed           (R713 R718 R720 R721)
+  ad7e357  step 7 - the workbench, seven baselines             (R722)
+  (next)   this report and the PARK-HA entries in parking.md
+
+Every step commit ran `pnpm gate:changed` green before it was made; each
+commit body carries its printed selection.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+GREEN on the code tip ad7e357: `pnpm gate` EXIT=0 and `pnpm gate:clone`
+(below, PUSH PROOF) on ad7e357, test:visual 130 passed on ad7e357's tree,
+size and Lighthouse run. The commit carrying this report adds only this file
+and parking.md; its own gate:clone runs ALONE before the push and is
+confirmed in the handback, not claimed here.
+
+  pnpm gate on ad7e357:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    suite floor OK - 202 files collected, 4 canaries present, 3485 tests ran
+    Test Files  202 passed (202) / Tests  3485 passed (3485)
+    lint: 0 problems
+    All gated routes pass both gates.
+    format parity: all identical
+    EXIT=0
+
+--------------------------------------------------------------------------------
+THE ADDENDUM
+--------------------------------------------------------------------------------
+FIRST COMMIT, 9d35698, its own: `pnpm lint` on c7a587f reported
+  tests/unit/calc-engine/benchmark.test.ts
+    81:5  warning  Unused eslint-disable directive (... 'no-console')
+  tests/unit/calc-engine/verification-trace.test.ts
+    83:5  warning  Unused eslint-disable directive (... 'no-console')
+  2 problems (0 errors, 2 warnings)
+Both directive lines deleted, nothing else. After: `pnpm lint` prints its two
+command lines and no problem (0 warnings).
+
+RULINGS RENUMBERED (R162). The prompt's R620-R634 are taken on main. A scan of
+relay/*.txt, every REPORT-*.txt, parking.md, CLAUDE.md, `git log --all`
+bodies and the C:/wt worktrees' reports found R600-R686, R698, R699 (named as
+range ends), R700-R708 (claimed by AN-LAUNCH-SPEECH and AN-SIGNOUT-REFRESH)
+and R734 (in REPORT-FW-COMPARATEUR's list) in use; R687-R697 free but only
+eleven. The first free block of fifteen is R709-R723. Re-scanned before the
+push: still free, origin/main still c7a587f.
+
+  R620 -> R709   binding vs not binding in the design
+  R621 -> R710   one home for the numbers
+  R622 -> R711   the counter uses the engine
+  R623 -> R712   copy in lib/fr, accented
+  R624 -> R713   no dead link, no promise the product cannot keep
+  R625 -> R714   the releve excerpt is a sample
+  R626 -> R715   the two-thresholds band, contrast
+  R627 -> R716   the phones
+  R628 -> R717   the questions
+  R629 -> R718   the alert sign-up is the real one
+  R630 -> R719   responsive and accessible
+  R631 -> R720   what is removed
+  R632 -> R721   metadata
+  R633 -> R722   the workbench and baselines
+  R634 -> R723   the budgets
+
+PARK IDS: series HA, claimed from the register. On c7a587f
+`node web/scripts/register-coverage.mjs` printed "two letters FT IA IB PI ...
+phantom citations: FW ZZ"; HA is in neither list and in no branch's
+parking.md. With the entries written: "two letters FT HA IA IB PI" and
+"register coverage: OK".
+
+--------------------------------------------------------------------------------
+R273 - READ
+--------------------------------------------------------------------------------
+docs/design/home-a2.dc.html (all 331 lines, including the DCLogic script);
+DESIGN-SYSTEM.md sections 1 and 2 (and 4.1); app/(public)/page.tsx,
+home.module.scss, HeroPhone.tsx; lib/fr/home.ts; lib/content/home.ts;
+lib/content/product-state.ts; ThresholdRail (+ renderRailSvg, zone tokens),
+RateDisplay, MetricTile, Faq, AlertCapture (+ the /api/alertes handler's
+RETURN_TO), Container, ZoneBadge; the shell's nav (lib/fr/shell.ts); the
+params schema and codec; the result page; android AujourdhuiCopy, NavCopy,
+Fr. SPEC sections 11 and 20 were not re-read in full beyond what the rules
+above and CLAUDE.md quote.
+
+--------------------------------------------------------------------------------
+R1 - THE BEFORE
+--------------------------------------------------------------------------------
+pnpm gate on c7a587f (worktree, clean): EXIT=0, 3414 tests, 2 lint warnings.
+pnpm gate:clone on 9d35698 (c7a587f + the lint commit, test files only):
+GATE:CLONE PASSED, EXIT=0.
+First-load JS (pnpm size, gzip, after the gate's fresh build):
+  /                                    110.3 KiB  delta 9.7   A 14.7 spare
+  /calculateur-teletravail-frontalier  123.3 KiB  delta 22.7  A 1.7 spare
+Lighthouse, house config (`FRONTALIER_PORT=3100 pnpm lighthouse`, desktop,
+3 runs, median), on 747ca67 (the copy commit: "/" renders as on main):
+  /  perf 100 a11y 100 bp 100 seo 100   LCP 625 ms  CLS 0
+Lighthouse 12.6.1 mobile, simulated slow 4G, 3 runs, median (a scratch
+script against the same build - R723's "slow 4G" is not the house preset):
+  /                                    perf 96  LCP 2 469 ms  CLS 0
+  /calculateur-teletravail-frontalier  perf 95  LCP 2 528 ms  CLS 0
+
+--------------------------------------------------------------------------------
+R709 - DEVIATIONS FROM THE DESIGN, AND WHY
+--------------------------------------------------------------------------------
+Not binding and not followed, as R709 says: Newsreader / Public Sans (Inter
+throughout, the type tokens: hero 40/48 for the h1, h1 32/40 for section
+heads, display 48/56 for the band's figures); pill buttons and inputs
+(radius md, 48 high); the frame radii 40/48 of the phones (2xl / xl - the
+closed set).
+
+Binding, and departed from - each recorded:
+ 1. SECTIONS 1 AND 9 are the shared PublicShell, unchanged (PARK-HA3): the
+    header keeps Calculateurs / Guides / Le releve / Tarifs; no
+    "Se connecter" (PARK-HA1).
+ 2. COPY IN THE FUTURE TENSE where PRODUCT_STATE is false (R172, R712):
+    hero lead ("vous remettra ... portera"), excerpt caption ("seront
+    declarees"), application body and availability ("Bientot sur Android"),
+    year cards ("repondrez", "se tiendra seul", "se mettront", "pourra
+    verifier"), FAQ fiduciary ("verra ... aura ete emis") and phone
+    ("Bientot sur Android"). The design's present tense is the other branch
+    of each function; flipping the flag renders it.
+ 3. THE 40 % SENTENCE keeps FW34's verified wording ("teletravailler depuis
+    la France ne change pas l'imposition de votre salaire"), not the
+    design's "votre salaire reste impose en Suisse", which is false in the
+    eight 1983-accord cantons.
+ 4. THE EXCERPT'S DATES are the product's own formats (formatDate,
+    formatDateTime: "19.10.2026", "19.10.2026 a 18:42"), not "lun. 19 oct."
+    - a sample of the releve should read like the releve (SPEC 6.4, R28);
+    "heure de Paris" stays in the column heading. Its head rule is the
+    hairline, not 2 px (the only 2 px tokens mean other things; R344, and
+    var-references.test.ts refused the borrow).
+ 5. "VOIR UN RELEVE D'EXEMPLE" is omitted: nothing public shows a sample
+    (PARK-HA2).
+ 6. THE RAIL is the existing inline ThresholdRail (zone-coloured fill, both
+    ticks, legend) at FD1's 376 px, not the design's flat three-band rail
+    with a thumb over 0-70 % (PARK-HA6). Its first band is DESIGN-SYSTEM's
+    success colour; the web has no brand-soft token.
+ 7. THE TILES use MetricTile: "Jours restants avant 40 %, l'impot" (METRIC_COPY
+    plus the design's qualifier) and, when the engine's headroom is
+    negative, "Jours au-dessus de 40 %, l'impot" with the figure in the
+    error colour - SPEC 7.2's "reported, never clamped" - where the design
+    clamped at 0 and wrote "jours" after the figure.
+ 8. THE RATE is RateDisplay, coloured by zone with its caption "Taux a
+    declarer a l'AFC", under the design's label "Votre taux de
+    teletravail"; the status sentence stays beside it.
+ 9. THE PHONES show the home's worked example, 15,83 % (38/240), not 39,16 %
+    (PARK-HA7); their bar is the compact ThresholdRail.
+10. THE ALERT CARD is AlertCapture with its own words ("Etre prevenu quand
+    la regle change", "Me prevenir", the double opt-in helper), source
+    'alertes' (PARK-HA4). It has no privacy text, as asked.
+11. THE BRAND BAND's secondary text is white, not a light grey: there is no
+    token for secondary text on brand, and a border token used as text
+    would be chosen by value (R344). Source lines are smaller instead.
+12. A <noscript> canton choice and "Calculer" button inside the counter, for
+    the no-JS journey (R346, R351) - not in the design.
+
+--------------------------------------------------------------------------------
+NEW COPY (R712) - web/lib/fr/home.ts, transliterated; the accented originals
+are in the file and in the handback. n() sets U+00A0 before : ; ? and the
+thresholds arrive formatted (shown here as 40 % / 49,9 % / 10).
+--------------------------------------------------------------------------------
+opening.line      Pour les frontaliers qui vivent en France et travaillent en Suisse
+opening.heading   Votre annee de teletravail, jour par jour, dans un releve que l'on peut verifier.
+opening.lead      Mon Releve compte vos jours face aux deux seuils qui vous concernent,
+                  40 % pour l'impot et 49,9 % pour la securite sociale,
+                  [dossierExists] et vous remet un releve annuel ou chaque journee porte l'heure de son enregistrement.
+                  [today]         et vous remettra un releve annuel ou chaque journee portera l'heure de son enregistrement.
+opening.cta       Calculer ma situation
+opening.free      Gratuit, sans inscription pour le calcul.
+excerpt.label     Extrait d'un releve annuel d'exemple
+excerpt.title     Releve annuel de teletravail
+excerpt.subtitle  Annee 2026, Camille Martin
+excerpt.codeLabel Code de verification            (FW34's string, kept)
+excerpt.code      MR-7F3K-2Q9X                    (FW34's sample, kept)
+excerpt.columns   Date / Journee / Enregistree le (heure de Paris)
+excerpt.kinds     En Suisse / Teletravail en France / Matin en France, apres-midi en Suisse / Absence (conge)
+excerpt.caption   [trackerExists] Exemple. Les journees sont declarees par vous, enregistrees et horodatees par le serveur.
+                  [today]         Exemple. Les journees seront declarees par vous, enregistrees et horodatees par le serveur.
+counter.heading   Combien de jours pouvez-vous encore teletravailler cette annee ?
+counter.intro     Deplacez les curseurs : vous voyez ou vous en etes face aux deux seuils.
+counter.rateLabel Votre taux de teletravail
+counter.status    Sous les deux seuils. / Au-dela du seuil fiscal, sous le seuil social. / Au-dela des deux seuils.
+counter.tile      "<METRIC_COPY sentence>, <rule>"; fiscalRule l'impot; socialRule la securite sociale
+counter.teleworkLabel  Jours teletravailles depuis le 1er janvier :   (value appended)
+counter.basisLabel     Jours de travail sur l'annee :                  (value appended)
+counter.note      Apercu simplifie, sans missions ni canton. Le calculateur complet en tient compte.
+                  Le calcul est indicatif et ne constitue pas un conseil fiscal.
+counter.full      Faire le calcul complet
+counter.noscriptCanton  Canton de votre employeur   (FW34's calculator.cantonLabel, kept)
+counter.noscriptSubmit  Calculer                    (FW34's calculator.submit, kept)
+counter.app       [trackerExists] Suivre mes jours avec l'application   [today] Decouvrir l'application
+mobile.heading    L'application : une question chaque soir
+mobile.body       [trackerExists] Vous declarez votre journee en un geste. Votre taux se met a jour, et la journee est horodatee par le serveur.
+                  [today]         Vous declarerez votre journee en un geste. Votre taux se mettra a jour, et la journee sera horodatee par le serveur.
+mobile.availability [appExists] Disponible sur Android. / [today] Bientot sur Android.  + " La version iPhone est en preparation."
+mobile.cta        [appExists] Telecharger pour Android   [today] Decouvrir l'application
+phone.greeting    Bonjour Camille      (Fr.greeting of the sample holder)
+phone.date        mardi 27 octobre     (sample)
+phone.question    Ou travaillez-vous aujourd'hui ?          = AujourdhuiCopy.QUESTION
+phone.swiss/home/mission   En Suisse / Domicile / Mission   = SUISSE / DOMICILE / MISSION
+phone.absence     Declarer une absence                      = ABSENCE
+phone.recorded/edit  Enregistre / Modifier                  = SYNCED / MODIFIER
+phone.tabs        Aujourd'hui / Calendrier / Releve / Parametres   = NavCopy
+phone.rateLabel   Taux de teletravail, exemple
+phone.underFiscal Sous le seuil fiscal de 40 %
+phone.androidLabel  L'ecran Aujourd'hui, avant de repondre
+phone.iphoneLabel   Le meme ecran, une fois la journee declaree
+phone.androidName   Android
+phone.iphoneName    iPhone, en preparation
+thresholds.heading  Deux seuils, deux regles differentes
+thresholds.fiscalTitle  L'impot
+thresholds.fiscalBody   Jusqu'a 40 % de votre temps de travail par annee civile, teletravailler depuis la
+                        France ne change pas l'imposition de votre salaire. Jusqu'a 10 jours de mission
+                        peuvent compter dans ce quota.
+thresholds.socialTitle  La securite sociale
+thresholds.socialBody   Avec une attestation A1 demandee par votre employeur, vous restez affilie aux
+                        assurances sociales suisses jusqu'a 49,9 % de teletravail.
+thresholds.source       Source : <citation>   (SOURCE_CITATIONS, moved to lib/fr/sources.ts, words unchanged:
+                        "AFC Geneve ; accord amiable franco-suisse du 29 avril 2026",
+                        "Office federal des assurances sociales (OFAS)")
+year.heading      Le compteur, toute l'annee, et un releve a la fin
+year.cards        Chaque soir, une question / Ou avez-vous travaille aujourd'hui ? [today] Vous repondrez depuis la notification, en un geste.
+                  [today] Le compte se tiendra seul / Votre taux et vos jours restants se mettront a jour a chaque journee declaree.
+                  Un releve verifiable / Un releve annuel, jour par jour, horodate, avec un code que votre fiduciaire [today] pourra verifier.
+                  (present-tense branches: repondez / se tient seul / se mettent / peut verifier)
+questions.heading Vos questions
+questions.change  Qu'est-ce que ca change ? / Avant / Un tableur rempli de memoire, au moment de la declaration.
+                  / Apres / Chaque journee declaree le jour meme, horodatee par le serveur.
+questions.fiduciary  Que recoit ma fiduciaire ? / Un releve annuel, jour par jour, avec un code de verification.
+                  [today] Elle verra le document tel qu'il aura ete emis.  [dossierExists] Elle voit ... a ete emis.
+questions.position   Vous suivez ma position ? / Non. Ni carte, ni trajet, ni position conservee. Rien n'est enregistre sans votre reponse.
+questions.phone      Sur quel telephone ? / [today] Bientot sur Android. [appExists] Android aujourd'hui.
+                     + " L'iPhone est en preparation. Le calculateur fonctionne dans tout navigateur."
+lib/fr/workbench.ts  home: Accueil A2; ReleveExcerpt - l'extrait d'exemple; HomeCounter - sous les deux seuils /
+                     au-dela du seuil fiscal / au-dela des deux seuils; HeroPhone - Android, avant de repondre /
+                     iPhone, la journee declaree; Faq - disposition cote a cote, premiere question ouverte.
+The product's words hold: "declarees, enregistrees et horodatees", never
+"certifie"; the counter note keeps "indicatif" and "ne constitue pas un
+conseil fiscal". Ten new sentences are wired in product-state.test.ts
+(trackerExists 4, dossierExists 3, appExists 3); appExists left NOT_YET_WIRED.
+
+--------------------------------------------------------------------------------
+R711 - THE ENGINE SWEEP
+--------------------------------------------------------------------------------
+lib/content/home-counter.ts states the input: teleworkDays (slider 0-140),
+denominator EXACT with totalWorkDays (slider 160-240), employment 100 %, whole
+year, granularity day, no missions, canton GE (the engine needs one). It calls
+calculateTelework; there is no arithmetic of its own.
+lib/ui/react/HomeCounter/HomeCounter.test.tsx (9 tests, 130 s):
+  - drives both sliders through the real island over 141 x 81 = 11 421
+    positions, and at each reads the rate (RateDisplay), the status sentence
+    and both tiles OUT OF THE DOM against calculateTelework called directly
+    on the input written out in the test; the loop count is asserted;
+  - all three zones are reached inside the sliders;
+  - 94/240 renders the engine's 39,16 (declarableRate === 39.16), never 39,17;
+  - "sans canton" is true: for all 26 cantons, at every position, rate and
+    both remaining-day figures equal GE's (a second test shows both regimes
+    are in the list, so the comparison could differ);
+  - the form: GET, named sliders, hidden fields, the fallback rendered inside
+    it, no submit button of its own; sliders labelled with their value.
+RED: Failed to resolve import "@/lib/content/home-counter" (no test ran).
+The island receives its words as plain strings (no lib/fr/home.ts in the
+bundle); it renders the engine value on the server, before hydration
+(home.test.tsx and home.nojs.spec.ts both read it from the served markup).
+Walkthrough (keyboard, production build): 62/220 -> 28,18 %, "Sous les deux
+seuils."; +40 days by ArrowRight -> 46,36 %, label "... : 102", "Au-dela du
+seuil fiscal, sous le seuil social."; basis -60 -> 63,75 %, "Au-dela des deux
+seuils.", tiles "Jours au-dessus de 40 %, l'impot 38" and "... 49,9 % ... 22,5".
+
+--------------------------------------------------------------------------------
+R713 - EACH LINK, AND WHERE IT GOES
+--------------------------------------------------------------------------------
+  Calculer ma situation         -> #calcul (the counter section)
+  Faire le calcul complet       -> /calculateur-teletravail-frontalier
+  Decouvrir l'application (x2)  -> /application (SHELL_COPY.ctaHref, the shell's
+                                   own link; words by PRODUCT_STATE; no store link)
+  counter form (no JS)          -> GET /calculateur-teletravail-frontalier/resultat
+  alert form                    -> POST /api/alertes, source alertes
+  the shell header and footer   -> unchanged
+NOT SHIPPED: Se connecter (PARK-HA1); Voir un releve d'exemple (PARK-HA2).
+The test: e2e/home.spec.ts "every internal link on / resolves (R713)" requests
+every href on "/" (page and shell) and requires 200, or an element for a
+fragment. Positive control: plants /cette-page-nexiste-pas and #nulle-part,
+counts both landed before AND after the walk (R180), and requires the walk to
+name both. Its first run returned [] - hydration had removed the plant; it now
+plants after networkidle. tests/unit/pages/home.test.tsx also checks every
+href is a live registry route and that the page's actions are exactly
+{#calcul, /application, the calculator}.
+
+--------------------------------------------------------------------------------
+R715 - CONTRAST (WCAG 2.1, computed from the token hexes)
+--------------------------------------------------------------------------------
+  white (--colour-surface) on brand #173B63         11,40:1  (band text, all
+                                                              sizes; FAQ "Apres")
+  for reference, the design's greys on brand: #F9FAFB 10,91:1, #E4E7EC 9,20:1
+  text secondary on canvas / on surface              4,68:1 / 4,97:1
+  brand on surface                                   11,40:1
+  success on surface ("Enregistre" in the phone)     5,02:1
+tests/unit/tokens/contrast.test.ts resolves the band's five white rules to
+--colour-brand (the nested list now names them) and passes. The band is the
+page's only full brand band.
+
+--------------------------------------------------------------------------------
+R716 - THE PHONES
+--------------------------------------------------------------------------------
+HeroPhone moved to lib/ui/react/HeroPhone and gained platform="android" |
+"iphone" (punch-hole / pill); FW34's app/(public)/HeroPhone.tsx was deleted
+with the old page. No status bar (a test asserts no time of day on either).
+Each is one role="img" named by its label, figcaption "Android" / "iPhone, en
+preparation". Words = Kotlin, by tests/unit/fr/home-copy.test.ts, with one
+normalisation (PARK-HA5). Four named tokens (R344): --size-phone-frame-height
+620 (a MINIMUM: at 320 px a fixed height clipped the tab bar, found by the
+walkthrough), --size-phone-camera 10, --size-phone-island-width 84,
+--size-phone-island-height 24, recorded in DESIGN-SYSTEM.md's R344 paragraph.
+
+--------------------------------------------------------------------------------
+R717, R718, R719
+--------------------------------------------------------------------------------
+R717: Faq gains optional open, pair and layout="split"; the default renders as
+before (asserted). The first question opens with the pair. No FAQPage JSON-LD
+on "/" - Faq does not emit one; the calculator's is built by its page.
+R718: AlertCapture, POST /api/alertes, its existing statuses (shown on
+/alertes via :target). Centred alone in its card.
+R719: no horizontal overflow at 1440, 375 and 320 (measured; narrow.spec and
+guides-narrow.spec's 320 dp element check pass - the excerpt's scroll box is
+marked data-scroll, R159). jest-axe: tests/unit/pages/accessibility.test.tsx
+renders the new home and passes. Keyboard order (walkthrough, Tab from
+<main>): Calculer ma situation, the excerpt's scroll region, telework slider,
+basis slider, Faire le calcul complet, Decouvrir l'application x2, alert
+e-mail, Me prevenir, the four summaries, then the footer - reading order.
+Focus: the product ring (auto). Sliders: label carries the value. No motion
+was added, so prefers-reduced-motion has nothing new to suppress.
+
+--------------------------------------------------------------------------------
+R720 - WHAT WAS REMOVED
+--------------------------------------------------------------------------------
+Sections: FW34's hero (eyebrow pill, bullets, the engine phone card), the
+calculator card (its GET form now lives in the counter), the two-rules cards,
+how-it-works, the releve thumbnail + QR section, the privacy band, the app /
+notification section, the guides section (lake SVG + three guide links), the
+sources strip.
+Copy: HOME_COPY.hero, calculator, rules, how, releve, privacy, app, guides,
+sources. Exports: HOME_GUIDE_SLUGS (deleted), HERO_EXAMPLE_TELEWORK_DAYS (no
+longer exported). File: app/(public)/HeroPhone.tsx. Styles: all of FW34's
+home.module.scss.
+THE GUIDE LINKS: the footer of the shell links every published guide on every
+page, including the three FW34 linked; e2e/home.spec.ts now asserts each
+guideNavLinks() href is on "/". Not parked - nothing was lost.
+Also gone with the form: the "/" census in singletons.test (0 "Calculer"
+buttons with scripting on - the one left is in <noscript>), and
+no-js-coverage's page.tsx line (the form is HomeCounter's now, same spec).
+
+--------------------------------------------------------------------------------
+R721 - METADATA
+--------------------------------------------------------------------------------
+Unchanged: title (the layout's bare product name), canonical (layout),
+JSON-LD (none on "/" before or after), description ("Calculez votre part de
+teletravail annuelle et les jours qui vous restent avant les seuils de 40 % et
+49,9 %.") - the new hero makes none of it false.
+
+--------------------------------------------------------------------------------
+R722 - BASELINES, NAMED BEFORE RECORDING
+--------------------------------------------------------------------------------
+b4f5af7 regenerated, named before the run, 2 of 2 written:
+  tests/visual/baselines/page-accueil-desktop.png  (1440)  the A2 page
+  tests/visual/baselines/page-accueil-mobile.png   (390)   the A2 page
+ad7e357 added, named before the run, 7 of 7 written ("doesn't exist, writing
+actual"):
+  composants-home-excerpt.png, composants-home-counter-compliant.png,
+  composants-home-counter-exposure.png, composants-home-counter-social.png,
+  composants-home-phone-android.png, composants-home-phone-iphone.png,
+  composants-home-faq-pair.png
+R207 STOPPED ONE RUN: the first recording also rewrote composants-shell-
+desktop, -mobile, -mobile-open and -nav-disclosure, outside the named set. The
+cause: the new section sat above the shell specimen, which is taller than the
+viewport with a sticky header, so its screenshot moved. The four were restored
+from HEAD, the section moved after the shell, the seven deleted and recorded
+again: 130 passed, nothing else written. (visual.mjs's R208 line then said
+"wrote nothing" - it counts regenerated files, not new ones; noted, not
+changed.) Every pre-existing baseline outside the home passes untouched.
+375 vs 390: PARK-HA9.
+
+--------------------------------------------------------------------------------
+R723 - THE BUDGETS, BEFORE AND AFTER
+--------------------------------------------------------------------------------
+First-load JS, gzip (pnpm size after a fresh build; AFTER = pnpm gate on
+ad7e357, and gate:clone's size step):
+                                       BEFORE     AFTER      gates (R2)
+  /                                    110.3      113.8      A 11.2 spare, B 11.8 spare
+  /calculateur-teletravail-frontalier  123.3      124.4      A 0.6 spare,  B 1.2 spare
+The prompt's "<= 100 KB gzip" for "/" is below the 100.6 KiB framework floor
+and was already exceeded BEFORE (PARK-HA8); against the house gates both
+routes pass. The calculator moved +1.1 KiB with no change to it: the counter
+shares the engine and the rate/rail/tile components with it, and the chunk
+split moved; its A headroom is now 0.6 KiB - worth knowing before the next
+calculator change.
+Lighthouse, house config (desktop, 3 runs, median), AFTER on ad7e357:
+  /  perf 100 a11y 100 bp 100 seo 100   LCP 614 ms (BEFORE 625)  CLS 0 (0)
+  (/guides, the pillar and /guides/geneve: 100/100/100/100, as the gate asserts)
+Mobile, simulated slow 4G, 3 runs, median:
+  /                                    LCP 2 469 ms (BEFORE 2 469)  CLS 0
+  /calculateur-teletravail-frontalier  LCP 2 403 ms (BEFORE 2 528)  CLS 0
+The calculator's LCP was at the 2,5 s line before this task (PARK-HA10); the
+page is unchanged, so the difference is sampling.
+
+--------------------------------------------------------------------------------
+SCREENSHOTS
+--------------------------------------------------------------------------------
+Committed: page-accueil-desktop.png / page-accueil-mobile.png at c7a587f
+(before) and at b4f5af7 (after), 1440 and 390. Driven for the report and kept
+in the session scratchpad (not committed): home-before-1440/375.png,
+home-after-1440/375/320.png, and section crops at 320, 375 and 1440. Read
+at 1440: the opening and the excerpt side by side; at 375 and 320 everything
+stacks, the excerpt table scrolls in its box, the phones stack, the tiles
+stay two-up.
+
+--------------------------------------------------------------------------------
+PARKED (series HA, parking.md)
+--------------------------------------------------------------------------------
+PARK-HA1   "Se connecter" not shipped - for the web-account task.
+PARK-HA2   "Voir un releve d'exemple" omitted - no public sample exists.
+PARK-HA3   the canvas header/footer not reproduced - the shell is shared.
+PARK-HA4   the alert card keeps AlertCapture's words and the 'alertes' source.
+PARK-HA5   Android's QUESTION has U+0020 before "?" (noticed, not touched).
+PARK-HA6   the existing inline rail, not the canvas's band rail; no web brand-soft.
+PARK-HA7   the phones show 15,83 % (the worked example), not 39,16 %.
+PARK-HA8   "<= 100 KB" is below the framework floor.
+PARK-HA9   home baselines at 1440/390 (R127), not 375.
+PARK-HA10  the calculator's slow-4G LCP sat at 2,5 s before this task.
+
+--------------------------------------------------------------------------------
+DEVIATIONS (from the prompt, not the design)
+--------------------------------------------------------------------------------
+1. THE COMMIT PLAN. Sections were built as components first (steps 2-5) and
+   the page swapped in one commit (step 6), so the two home baselines were
+   regenerated once rather than per section; sections 5-7 (band, cards,
+   alert placement) are page markup and landed with the swap. Step 5 is the
+   Faq, not "sections 5-8, commit each".
+2. THE DESIGN FILE is not committed on origin/main (DESIGN above); read from
+   the main checkout, not added here.
+3. A SCRATCH DATABASE. gate:changed selected test:db on three commits; the
+   worktree's .env pointed at the shared `frontalier` database, and the
+   first copy-commit gate was stopped (in its build step, before test:db)
+   when that was seen. From then on the worktree's .env named
+   fw_home_a2_scratch, created for this session and migrated with db:deploy.
+   test:db ran only against it.
+4. My own scripted edit clobbered my own uncommitted lib/content/home.ts once
+   (a RED demonstration copied two files named home.ts to one directory); the
+   change was re-applied from the session's record before anything was
+   committed. Nothing of anyone else's was touched.
+5. The prompt names SPEC sections 11 and 20 for R273; they were not re-read
+   in full.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- AujourdhuiCopy.QUESTION's ordinary space before "?" (PARK-HA5).
+- visual.mjs's R208 summary counts regenerated baselines and not new ones,
+  so a run that only adds baselines reports "wrote nothing" and exits 1.
+- gate:clone prints "CI readiness: quiet - the repository is private and
+  CI_FULL is unset - jobs will skip", while CLAUDE.md's R248 says the
+  repository went public and CI_FULL is set.
+- The dev server started the reminder scheduler against the scratch database
+  during the workbench measurement ("considered 0, sent 0").
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  The copy's tense. Accept the PRODUCT_STATE-gated future tense for the
+    hero lead, the excerpt caption, the application section, the year cards
+    and two FAQ answers - or rule that the home page speaks of the app in the
+    present before its release?
+Q2  The 40 % sentence: keep the verified "ne change pas l'imposition de votre
+    salaire", or adopt the design's "reste impose en Suisse" with a canton
+    qualifier?
+Q3  Labels for the two app actions while the app is unreleased: "Decouvrir
+    l'application" (reused from FW34) - approve, or name another (R713 asks
+    the operator to approve the label)?
+Q4  Which first-load budget binds "/" - the prompt's 100 KB (unattainable on
+    this stack) or R2's gates (PARK-HA8)?
+Q5  A 375 home baseline in addition to R127's 390 (PARK-HA9)?
+Q6  The phones' example: keep 38 days (15,83 %) or move the fixture to 94
+    days to show 39,16 % as the design does (PARK-HA7)?
+Q7  The canvas's rail (flat bands, thumb, 0-70 %) and a web brand-soft token
+    - wanted as a ThresholdRail variant (PARK-HA6)?
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+gate:clone, run ALONE (no other gate, server or container running), on the
+code tip ad7e357:
+  GATE:CLONE PASSED
+  
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  ad7e35792a4e6cb8ff359ebafc23efa6f85c09ef
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-ZsMQD2 (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+  
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  EXIT=0
+
+The branch is pushed only after the commit carrying this report has passed
+its own gate:clone; that run and the push are confirmed in the handback.
