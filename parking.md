@@ -144,9 +144,10 @@ not an entry - to illustrate a pattern, say - cites a phantom the moment the
 pattern can see it. Two did, and are exempted one report each (PARK-PI1). Write
 a placeholder such as `PARK-<XY><n>` instead.
 
-**THE NUMERIC SERIES.** `PARK-<n>` still resolves, and PARK-28..PARK-32 were
-written in it when no letter was free. Whether new tasks may still use it is
-for the operator (REPORT-FW-PARK-IDS-2.txt, R683).
+**THE NUMERIC SERIES IS CLOSED (R685, the operator's ruling of 28.10.2026,
+answering PARK-31).** PARK-1 to PARK-32 keep resolving, and they are the ONLY
+plain-number ids: the check holds them as an explicit frozen list and FAILS on
+any other `## PARK-<n> -` heading. A new entry takes a two-letter series.
 
 ---
 

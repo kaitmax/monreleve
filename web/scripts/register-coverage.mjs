@@ -124,6 +124,49 @@ export const CITATION = new RegExp(String.raw`\b${PARK_ID}`, 'g');
 // and asserted, like SHARED_IDS. Recorded as PARK-PI1.
 const PHANTOM_CITATIONS = Object.freeze(['REPORT-FW-PARK-IDS.txt:PARK-FW34', 'REPORT-KMP-DT.txt:PARK-ZZ1']);
 
+// THE NUMBERED SERIES IS CLOSED (R685, FW-PARK-IDS-2 second pass). These are
+// the ONLY plain-number ids, and every one of them keeps resolving. A new
+// "## PARK-<n> -" heading FAILS. The series was claimed as "main's highest + 1",
+// so any two branches parking in parallel took the same number and met at
+// merge; a two-letter series is claimed once per task from the series line
+// instead. Listed explicitly rather than as a range, and frozen at 32 by a test
+// that reads this declaration (R206's corollary): a thirty-third is an argument
+// someone has to make, not a number someone happens to take.
+const NUMBERED_IDS = Object.freeze([
+  'PARK-1',
+  'PARK-2',
+  'PARK-3',
+  'PARK-4',
+  'PARK-5',
+  'PARK-6',
+  'PARK-7',
+  'PARK-8',
+  'PARK-9',
+  'PARK-10',
+  'PARK-11',
+  'PARK-12',
+  'PARK-13',
+  'PARK-14',
+  'PARK-15',
+  'PARK-16',
+  'PARK-17',
+  'PARK-18',
+  'PARK-19',
+  'PARK-20',
+  'PARK-21',
+  'PARK-22',
+  'PARK-23',
+  'PARK-24',
+  'PARK-25',
+  'PARK-26',
+  'PARK-27',
+  'PARK-28',
+  'PARK-29',
+  'PARK-30',
+  'PARK-31',
+  'PARK-32',
+]);
+
 /** The ids named by PHANTOM_CITATIONS, each of which must never carry a heading. */
 const PHANTOM_IDS = Object.freeze(PHANTOM_CITATIONS.map((pair) => pair.slice(pair.indexOf(':') + 1)));
 
@@ -238,6 +281,18 @@ export function checkRegisterCoverage(repoRoot) {
           `and must not carry a "## ${id} -" heading in parking.md`,
       );
     }
+  }
+
+  // R685: a plain-number heading outside the closed set. Reported once per id.
+  const newNumbered = new Set(
+    headings.map((heading) => heading.id).filter((id) => /^PARK-\d+$/.test(id) && !NUMBERED_IDS.includes(id)),
+  );
+
+  for (const id of newNumbered) {
+    problems.push(
+      `${id} is a new plain-number heading in parking.md - the numbered series closed at PARK-32 (R685); ` +
+        "a new entry takes a two-letter series, claimed as parking.md's header describes",
+    );
   }
 
   // An entry that exists as a heading but still carries the placeholder is not yet an entry.

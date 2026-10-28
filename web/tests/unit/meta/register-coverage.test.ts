@@ -514,6 +514,50 @@ describe('R681 - the register reports which series are taken', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// R685 (FW-PARK-IDS-2, second pass). THE NUMBERED SERIES IS CLOSED, AND THE
+// CHECK SAYS SO. PARK-1..PARK-32 keep resolving; a NEW plain-number heading
+// fails. The numbered series was claimed as "main's highest + 1", so any two
+// branches parking in parallel took the same number. The allowed ids are an
+// explicit, frozen list - asserted, not merely present (R206's corollary) - so
+// a thirty-third must survive its own argument.
+// ---------------------------------------------------------------------------
+
+/** The plain-number ids that existed when the series closed: PARK-1..PARK-32. */
+const NUMBERED_AT_CLOSE = Array.from({ length: 32 }, (_, i) => `PARK-${i + 1}`);
+
+describe('R685 - the numbered series is closed', () => {
+  it('a new plain-number heading fails, naming it; the existing ones beside it pass', () => {
+    const result = runCheck(makeRoot(entriesFor(['PARK-12', 'PARK-32', 'PARK-33']), 'Cites PARK-12 and PARK-33.'));
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARK-33 is a new plain-number heading');
+    // Exactly one problem: PARK-12 and PARK-32 are in the closed set.
+    expect(result.out.match(/is a new plain-number heading/g)).toHaveLength(1);
+  });
+
+  it('every closed-set id still passes, so the closure removes nothing (positive control)', () => {
+    const result = runCheck(makeRoot(entriesFor(NUMBERED_AT_CLOSE), `Cites ${NUMBERED_AT_CLOSE.join(', ')}.`));
+
+    expect(result.status).toBe(0);
+    expect(result.out).toContain(`register coverage: OK - ${NUMBERED_AT_CLOSE.length} cited id(s) across 1 report(s)`);
+  });
+
+  it('names exactly PARK-1..PARK-32, read out of the script itself', () => {
+    const source = readFileSync(SCRIPT, 'utf8');
+    const declared = /const NUMBERED_IDS = Object\.freeze\(\[([^\]]*)\]\)/.exec(source);
+
+    expect(declared).not.toBeNull();
+
+    const ids = (declared?.[1] ?? '')
+      .split(',')
+      .map((entry) => entry.trim().replace(/^'|'$/g, ''))
+      .filter((entry) => entry !== '');
+
+    expect(ids).toEqual(NUMBERED_AT_CLOSE);
+  });
+});
+
 describe('the exemption list is frozen at three', () => {
   it('names exactly PARK-F1, PARK-F2 and PARK-F3, read out of the script itself', () => {
     // READ FROM SOURCE RATHER THAN IMPORTED, and the reason is mechanical: this
