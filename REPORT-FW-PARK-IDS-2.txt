@@ -10,11 +10,14 @@ TASK    FW-PARK-IDS-2, relay/FW-PARK-IDS-2.txt (read in full from the main
         this task. Nothing renumbered (R162).
 BASE    origin/main ad7a937 (Merge fw-comparateur).
 BRANCH  fw-park-ids-2, worktree C:/wt/fw-park-ids-2 (R349), created by this
-        session. .session-lock.json (gitignored) written at the start, removed
-        at the end. A copy of web/.env (gitignored; gate:clone reads the
-        database host from it) and android/local.properties (gitignored; the
-        SDK path) were placed in the worktree and are removed with the lock.
-        PENDING MERGE - the branch is pushed, nothing is on main.
+        session. .session-lock.json (gitignored) written at the start. A copy
+        of web/.env (gitignored; gate:clone reads the database host from it)
+        and of android/local.properties (gitignored; the SDK path) were
+        placed in the worktree. The branch is pushed only after the commit
+        carrying this sentence has passed its own gate:clone; the push, and
+        the removal of the lock, web/.env and android/local.properties, are
+        confirmed in the handback, not claimed here. PENDING MERGE - nothing
+        is on main.
 
 EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
 
@@ -50,15 +53,19 @@ Commits on the branch:
   060a0a8  R681: how a session claims a series, in parking.md's header
   912e031  R682: the 21 UNNUMBERED items, PARK-FT1..FT4, PARK-IA1..IA6,
            PARK-IB1..IB11
-  (next)   this report
+  f24b569  this report
+  (next)   the push proof, in this file
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-See PUSH PROOF for the gate:clone run on the commit carrying this report.
-What is established at the time of writing:
+COMPLETE. gate:clone PASSED on f24b569, the commit that first carried this
+report, in this session (pasted under PUSH PROOF). The commit carrying this
+sentence is itself gate:cloned before the push; that result can only live
+in the handback. :app:gate NOT RUN (android diff empty); RegisterCoverageTest
+alone, green.
 
-  gate:changed on every code commit, in this session, green (base chain:
+  gate:changed on every commit, in this session, green (base chain:
   typecheck, lint, test, build; 197 files, 3411 tests each time).
   register coverage at 912e031: OK - 172 cited id(s) across 139 report(s);
   with this report on disk: OK - 195 cited id(s) across 140 report(s).
@@ -82,7 +89,8 @@ The PARKED, DEVIATIONS and QUESTIONS sections of REPORT-AN-FR-TEXT.txt,
 REPORT-IOS-1a.txt (with its R592 section) and REPORT-IOS-1b-A.txt (both
 PARKED blocks, R624-R626, PART 1's superseded markers).
 
-EVERY PLACE THE PATTERN IS RESTATED (R206). `git grep` for the expression:
+EVERY PLACE THE PATTERN IS RESTATED (R206). `git grep` for the expression,
+line numbers as at ad7a937:
   web/scripts/register-coverage.mjs:79   the one live definition (const ID)
   web/tests/unit/meta/register-coverage.test.ts:51
                                          R442's pinned historical literal -
@@ -422,5 +430,24 @@ NOT the full :app:gate), on 912e031 with this report's draft on disk:
   found" - the new worktree had no android/local.properties. The main
   checkout's (gitignored) was copied in and the run repeated.
 
-gate:clone on the commit carrying this report: recorded in the next commit,
-which is pushed only after its own gate:clone.
+gate:clone, ALONE (no Gradle daemon, no other suite running), on f24b569 -
+the commit that first carried this report:
+    GATE:CLONE PASSED
+      commit  f24b569cfb765c4f4a89a566e2d30efde625c3b0
+      ran     register-coverage, fixture-coverage, install, typecheck, lint,
+              test, build, size, db:deploy, test:db, test:container:write
+      claim   this commit builds and passes register-coverage,
+              fixture-coverage, install, typecheck, lint, test, build, size,
+              db:deploy, test:db, test:container:write from a clean checkout
+    EXIT=0
+  Its register step, in the clone - proof that the exported constants and
+  the new stdout line survive a fresh checkout:
+    series taken: one letter A B C D E F G H I J K L M N O P Q R S T U V W X
+    Y Z; two letters FT IA IB PI; PARK-<n> up to 32; PARKAN-<n> up to 50;
+    two-letter series held by phantom citations: FW ZZ
+    register coverage: OK - 195 cited id(s) across 140 report(s), all have
+    headings in parking.md
+
+The commit adding this section changes only this file. It is gate:cloned
+again before the push (R199); that run, the push of branch fw-park-ids-2
+(never main, never production) and the cleanup are reported in the handback.
