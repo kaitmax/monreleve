@@ -44,8 +44,10 @@ import { Container } from '@/lib/ui/react/Container/Container';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
+import { ReleveExcerpt } from '@/lib/ui/react/ReleveExcerpt/ReleveExcerpt';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
 
@@ -124,6 +126,11 @@ export function IslandHarness() {
       </FieldGroup>
 
       <LegalNote />
+
+      {/* FW-HOME-A2: a server component, imported here rather than excused -
+          the exclusion list has reached half the library, which is the point
+          island-harness.test.ts says to stop adding to it. */}
+      <ReleveExcerpt state={PRODUCT_STATE} />
     </Container>
   );
 }
