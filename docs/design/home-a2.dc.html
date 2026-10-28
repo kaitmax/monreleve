@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Accueil, variante A2 : le relevé et le compteur</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+details>summary::-webkit-details-marker{display:none}
+details[open]>summary svg{transform:rotate(180deg)}
+a{color:#173B63}a:hover{color:#111827}
+</style>
+</helmet>
+<div style="font-family: 'Public Sans', system-ui, sans-serif; color: #111827; background: #F7F8FA; font-size: 17px; line-height: 1.55">
+
+<header style="border-bottom: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 20px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+<a href="#" style="font-family: 'Newsreader', Georgia, serif; font-size: 26px; font-weight: 600; color: #111827; text-decoration: none">Mon Relevé</a>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; align-items: center; gap: 28px; font-size: 16px">
+<a href="#calcul" style="color: #111827; text-decoration: none">Calculateur</a>
+<a href="#" style="color: #111827; text-decoration: none">Guides</a>
+<a href="#" style="color: #111827; text-decoration: none">L’application</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; background: #173B63; color: #FFFFFF; border-radius: 999px; text-decoration: none; font-weight: 600">Se connecter</a>
+</nav>
+</div>
+</header>
+
+<section style="max-width: 1200px; margin: 0 auto; padding: 88px 32px 96px; display: flex; flex-wrap: wrap; gap: 64px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0">
+<p style="margin: 0 0 20px; font-size: 16px; color: #667085">Pour les frontaliers qui vivent en France et travaillent en Suisse</p>
+<h1 style="margin: 0 0 24px; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 60px; line-height: 1.05; letter-spacing: -0.01em">Votre année de télétravail, jour par jour, dans un relevé que l’on peut vérifier.</h1>
+<p style="margin: 0 0 36px; max-width: 34em; font-size: 19px; color: #667085">Mon Relevé compte vos jours face aux deux seuils qui vous concernent, 40 % pour l’impôt et 49,9 % pour la sécurité sociale, et vous remet un relevé annuel où chaque journée porte l’heure de son enregistrement.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 14px">
+<a href="#calcul" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px; background: #173B63; color: #FFFFFF; border-radius: 999px; text-decoration: none; font-weight: 600">Calculer ma situation</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px; color: #111827; border-radius: 999px; text-decoration: none; font-weight: 600; border: 1px solid #D0D5DD; background: #FFFFFF">Voir un relevé d’exemple</a>
+</div>
+<p style="margin: 20px 0 0; font-size: 14px; color: #667085">Gratuit, sans inscription pour le calcul.</p>
+</div>
+
+<figure aria-label="Extrait d’un relevé annuel d’exemple" style="flex: 1 1 460px; min-width: 0; margin: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 32px">
+<div style="display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 2px solid #111827; padding-bottom: 14px">
+<div>
+<p style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-size: 22px; font-weight: 600">Relevé annuel de télétravail</p>
+<p style="margin: 2px 0 0; font-size: 14px; color: #667085">Année 2026, Camille Martin</p>
+</div>
+<p style="margin: 0; font-size: 13px; color: #667085; text-align: right">Code de vérification<br><span style="font-size: 16px; font-weight: 700; color: #111827; letter-spacing: 0.04em">MR-7F3K-2Q9X</span></p>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px">
+<thead>
+<tr style="text-align: left; color: #667085">
+<th scope="col" style="padding: 10px 8px 8px 0; font-weight: 600">Date</th>
+<th scope="col" style="padding: 10px 8px 8px; font-weight: 600">Journée</th>
+<th scope="col" style="padding: 10px 0 8px 8px; font-weight: 600">Enregistrée le (heure de Paris)</th>
+</tr>
+</thead>
+<tbody>
+<tr style="border-top: 1px solid #E4E7EC"><td style="padding: 9px 8px 9px 0">lun. 19 oct.</td><td style="padding: 9px 8px"><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: #D84B4B; margin-right: 8px; vertical-align: middle"></span>En Suisse</td><td style="padding: 9px 0 9px 8px; font-variant-numeric: tabular-nums">19 oct., 18:42</td></tr>
+<tr style="border-top: 1px solid #E4E7EC"><td style="padding: 9px 8px 9px 0">mar. 20 oct.</td><td style="padding: 9px 8px"><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: #315FA8; margin-right: 8px; vertical-align: middle"></span>Télétravail en France</td><td style="padding: 9px 0 9px 8px; font-variant-numeric: tabular-nums">20 oct., 19:05</td></tr>
+<tr style="border-top: 1px solid #E4E7EC"><td style="padding: 9px 8px 9px 0">mer. 21 oct.</td><td style="padding: 9px 8px"><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: #315FA8; margin-right: 8px; vertical-align: middle"></span><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: #D84B4B; margin-right: 8px; vertical-align: middle"></span>Matin en France, après-midi en Suisse</td><td style="padding: 9px 0 9px 8px; font-variant-numeric: tabular-nums">21 oct., 18:11</td></tr>
+<tr style="border-top: 1px solid #E4E7EC"><td style="padding: 9px 8px 9px 0">jeu. 22 oct.</td><td style="padding: 9px 8px"><span aria-hidden="true" style="display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: #D84B4B; margin-right: 8px; vertical-align: middle"></span>En Suisse</td><td style="padding: 9px 0 9px 8px; font-variant-numeric: tabular-nums">22 oct., 18:37</td></tr>
+<tr style="border-top: 1px solid #E4E7EC; border-bottom: 1px solid #E4E7EC"><td style="padding: 9px 8px 9px 0">ven. 23 oct.</td><td style="padding: 9px 8px">Absence (congé)</td><td style="padding: 9px 0 9px 8px; font-variant-numeric: tabular-nums">23 oct., 08:02</td></tr>
+</tbody>
+</table>
+</div>
+<figcaption style="margin-top: 16px; font-size: 13px; color: #667085">Exemple. Les journées sont déclarées par vous, enregistrées et horodatées par le serveur.</figcaption>
+</figure>
+</section>
+
+<section id="calcul" style="background: #FFFFFF; border-top: 1px solid #E4E7EC; border-bottom: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 88px 32px">
+<h2 style="margin: 0; max-width: 16em; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 48px; line-height: 1.05">Combien de jours pouvez-vous encore télétravailler cette année ?</h2>
+<p style="margin: 16px 0 0; max-width: 36em; font-size: 19px; color: #667085">Déplacez les curseurs : vous voyez où vous en êtes face aux deux seuils.</p>
+
+<div style="margin-top: 40px; background: #F7F8FA; border: 1px solid #E4E7EC; border-radius: 20px; padding: 40px; display: flex; flex-direction: column; gap: 36px">
+<div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-end; justify-content: space-between">
+<div style="flex: 1 1 420px; min-width: 0">
+<p style="margin: 0; font-size: 16px; color: #667085">Votre taux de télétravail</p>
+<p style="margin: 4px 0 0; font-family: 'Newsreader', Georgia, serif; font-size: 112px; line-height: 0.95; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums">{{rateText}}</p>
+<p style="margin: 12px 0 0; font-size: 18px; font-weight: 600">{{statusText}}</p>
+</div>
+<div style="flex: 1 1 360px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div style="border: 1px solid #D0D5DD; border-radius: 16px; padding: 16px 18px">
+<p style="margin: 0; font-size: 14px; color: #667085">Avant 40 %, l’impôt</p>
+<p style="margin: 2px 0 0; font-family: 'Newsreader', Georgia, serif; font-size: 44px; font-weight: 600; font-variant-numeric: tabular-nums">{{fiscalLeft}} <span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 17px; font-weight: 600">jours</span></p>
+</div>
+<div style="border: 1px solid #D0D5DD; border-radius: 16px; padding: 16px 18px">
+<p style="margin: 0; font-size: 14px; color: #667085">Avant 49,9 %, la sécurité sociale</p>
+<p style="margin: 2px 0 0; font-family: 'Newsreader', Georgia, serif; font-size: 44px; font-weight: 600; font-variant-numeric: tabular-nums">{{socialLeft}} <span style="font-family: 'Public Sans', system-ui, sans-serif; font-size: 17px; font-weight: 600">jours</span></p>
+</div>
+</div>
+</div>
+
+<div aria-hidden="true" style="position: relative; height: 72px">
+<div style="position: absolute; left: 0; right: 0; top: 24px; height: 20px; border-radius: 999px; overflow: hidden; display: flex">
+<div style="width: 57.14%; background: #EAF0F7"></div>
+<div style="width: 14.14%; background: #B7791F"></div>
+<div style="flex: 1; background: #C53030"></div>
+</div>
+<div style="position: absolute; left: 57.14%; top: 14px; height: 40px; border-left: 2px solid #111827"></div>
+<div style="position: absolute; left: 71.28%; top: 14px; height: 40px; border-left: 2px solid #111827"></div>
+<div style="position: absolute; left: 57.14%; top: 56px; transform: translateX(-50%); font-size: 13px; font-weight: 700">40 %</div>
+<div style="position: absolute; left: 71.28%; top: 56px; transform: translateX(-50%); font-size: 13px; font-weight: 700">49,9 %</div>
+<div style="position: absolute; left: {{markerLeft}}; top: 8px; width: 28px; height: 52px; margin-left: -14px; border-radius: 999px; background: #FFFFFF; border: 3px solid #173B63; box-shadow: 0 1px 3px rgba(17,24,39,0.2)"></div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="a2-tt" style="font-weight: 600">Jours télétravaillés depuis le 1er janvier : {{teleworkDays}}</label>
+<input id="a2-tt" type="range" min="0" max="140" step="1" value="{{teleworkDays}}" onChange="{{setTelework}}" style="width: 100%; min-height: 44px; accent-color: #173B63">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="a2-base" style="font-weight: 600">Jours de travail sur l’année : {{baseDays}}</label>
+<input id="a2-base" type="range" min="160" max="240" step="1" value="{{baseDays}}" onChange="{{setBase}}" style="width: 100%; min-height: 44px; accent-color: #173B63">
+</div>
+</div>
+<p style="margin: 0; font-size: 14px; color: #667085">Aperçu simplifié, sans missions ni canton. Le calculateur complet en tient compte. Le calcul est indicatif et ne constitue pas un conseil fiscal.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 14px">
+<a href="#" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px; background: #173B63; color: #FFFFFF; border-radius: 999px; text-decoration: none; font-weight: 600">Faire le calcul complet</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px; color: #111827; border-radius: 999px; text-decoration: none; font-weight: 600; border: 1px solid #D0D5DD; background: #FFFFFF">Suivre mes jours avec l’application</a>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background: #FFFFFF; border-bottom: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 32px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
+<div style="flex: 1 1 360px; min-width: 0">
+<h2 style="margin: 0 0 16px; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 44px; line-height: 1.08">L’application : une question chaque soir</h2>
+<p style="margin: 0 0 14px; color: #667085; max-width: 30em">Vous déclarez votre journée en un geste. Votre taux se met à jour, et la journée est horodatée par le serveur.</p>
+<p style="margin: 0 0 28px; color: #667085; max-width: 30em">Disponible sur Android. La version iPhone est en préparation.</p>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px; background: #173B63; color: #FFFFFF; border-radius: 999px; text-decoration: none; font-weight: 600">Télécharger pour Android</a>
+</div>
+<div style="flex: 2 1 640px; min-width: 0; display: flex; flex-wrap: wrap; gap: 40px; justify-content: center">
+<figure style="margin: 0; display: flex; flex-direction: column; align-items: center; gap: 16px">
+<div role="img" aria-label="L’écran Aujourd’hui, avant de répondre" style="width: 300px; height: 620px; box-sizing: border-box; padding: 10px; border-radius: 40px; background: #111827; flex: none"><div style="width: 100%; height: 100%; border-radius: 30px; overflow: hidden; display: flex; flex-direction: column; background: #F7F8FA; position: relative"><div aria-hidden="true" style="height: 26px; display: flex; justify-content: center; align-items: center; background: #F7F8FA"><span style="width: 10px; height: 10px; border-radius: 999px; background: #111827"></span></div><div style="flex: 1; background: #F7F8FA; display: flex; flex-direction: column">
+<div style="padding: 18px 18px 6px">
+<p style="margin: 0; font-size: 20px; font-weight: 700; color: #111827">Bonjour Camille</p>
+<p style="margin: 2px 0 0; font-size: 13px; color: #667085">mardi 27 octobre</p>
+</div>
+<div style="margin: 10px 18px 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 16px">
+<p style="margin: 0 0 12px; font-size: 17px; font-weight: 700; color: #111827">Où travaillez-vous aujourd’hui ?</p>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; border: 1px solid #D0D5DD; border-radius: 14px; background: #FFFFFF; font-size: 15px; font-weight: 600; color: #111827"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v18"></path><path d="M3 22h18"></path><path d="M10 7h4"></path><path d="M10 11h4"></path><path d="M10 15h4"></path></svg><span>En Suisse</span></div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; border: 1px solid #D0D5DD; border-radius: 14px; background: #FFFFFF; font-size: 15px; font-weight: 600; color: #111827"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M10 21v-6h4v6"></path></svg><span>Domicile</span></div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; border: 1px solid #D0D5DD; border-radius: 14px; background: #FFFFFF; font-size: 15px; font-weight: 600; color: #111827"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 13h18"></path></svg><span>Mission</span></div>
+</div>
+<p style="margin: 12px 0 0; font-size: 13px; font-weight: 600; color: #173B63; text-align: center">Déclarer une absence</p>
+</div>
+<div style="margin: 12px 18px 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 14px 16px">
+<p style="margin: 0; font-size: 12px; color: #667085">Taux de télétravail, exemple</p>
+<p style="margin: 2px 0 0; font-size: 30px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums">39,16 %</p>
+<div aria-hidden="true" style="margin-top: 10px; height: 8px; border-radius: 999px; overflow: hidden; display: flex"><div style="width: 55%; background: #173B63"></div><div style="flex: 1; background: #EAF0F7"></div></div>
+<p style="margin: 8px 0 0; font-size: 12px; color: #667085">Sous le seuil fiscal de 40 %</p>
+</div>
+<div style="flex: 1"></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #E4E7EC; background: #FFFFFF; padding: 8px 4px 14px"><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #173B63; font-size: 11px; font-weight: 600"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.9 4.9 1.4 1.4"></path><path d="m17.7 17.7 1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m4.9 19.1 1.4-1.4"></path><path d="m17.7 6.3 1.4-1.4"></path></svg><span>Aujourd’hui</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #667085; font-size: 11px; font-weight: 500"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg><span>Calendrier</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #667085; font-size: 11px; font-weight: 500"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h8"></path></svg><span>Relevé</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #667085; font-size: 11px; font-weight: 500"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"></path><path d="M18 6h2"></path><circle cx="16" cy="6" r="2"></circle><path d="M4 12h2"></path><path d="M10 12h10"></path><circle cx="8" cy="12" r="2"></circle><path d="M4 18h12"></path><path d="M20 18h0"></path><circle cx="18" cy="18" r="2"></circle></svg><span>Paramètres</span></div></div>
+</div></div></div>
+<figcaption style="text-align: center"><span style="display: block; font-weight: 700; color: #111827">Android</span><span style="font-size: 14px; color: #667085">L’écran Aujourd’hui, avant de répondre</span></figcaption>
+</figure>
+<figure style="margin: 0; display: flex; flex-direction: column; align-items: center; gap: 16px">
+<div role="img" aria-label="Le même écran, une fois la journée déclarée" style="width: 300px; height: 620px; box-sizing: border-box; padding: 10px; border-radius: 48px; background: #111827; flex: none"><div style="width: 100%; height: 100%; border-radius: 38px; overflow: hidden; display: flex; flex-direction: column; background: #F7F8FA; position: relative"><div aria-hidden="true" style="height: 34px; display: flex; justify-content: center; align-items: center; background: #F7F8FA"><span style="width: 84px; height: 24px; border-radius: 999px; background: #111827"></span></div><div style="flex: 1; background: #F7F8FA; display: flex; flex-direction: column">
+<div style="padding: 18px 18px 6px">
+<p style="margin: 0; font-size: 20px; font-weight: 700; color: #111827">Bonjour Camille</p>
+<p style="margin: 2px 0 0; font-size: 13px; color: #667085">mardi 27 octobre</p>
+</div>
+<div style="margin: 10px 18px 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 16px">
+<p style="margin: 0 0 4px; font-size: 13px; color: #667085">Aujourd’hui</p>
+<div style="display: flex; align-items: center; gap: 10px; color: #111827"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M10 21v-6h4v6"></path></svg><span style="font-size: 20px; font-weight: 700">Domicile</span></div>
+<div style="margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #15803D; font-weight: 600"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg><span>Enregistré</span></div>
+<p style="margin: 12px 0 0; font-size: 14px; font-weight: 600; color: #173B63">Modifier</p>
+</div>
+<div style="margin: 12px 18px 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 14px 16px">
+<p style="margin: 0; font-size: 12px; color: #667085">Taux de télétravail, exemple</p>
+<p style="margin: 2px 0 0; font-size: 30px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums">39,16 %</p>
+<div aria-hidden="true" style="margin-top: 10px; height: 8px; border-radius: 999px; overflow: hidden; display: flex"><div style="width: 55%; background: #173B63"></div><div style="flex: 1; background: #EAF0F7"></div></div>
+<p style="margin: 8px 0 0; font-size: 12px; color: #667085">Sous le seuil fiscal de 40 %</p>
+</div>
+<div style="flex: 1"></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #E4E7EC; background: #FFFFFF; padding: 8px 4px 14px"><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #173B63; font-size: 11px; font-weight: 600"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.9 4.9 1.4 1.4"></path><path d="m17.7 17.7 1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m4.9 19.1 1.4-1.4"></path><path d="m17.7 6.3 1.4-1.4"></path></svg><span>Aujourd’hui</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #667085; font-size: 11px; font-weight: 500"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg><span>Calendrier</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #667085; font-size: 11px; font-weight: 500"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h8"></path></svg><span>Relevé</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 3px; color: #667085; font-size: 11px; font-weight: 500"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"></path><path d="M18 6h2"></path><circle cx="16" cy="6" r="2"></circle><path d="M4 12h2"></path><path d="M10 12h10"></path><circle cx="8" cy="12" r="2"></circle><path d="M4 18h12"></path><path d="M20 18h0"></path><circle cx="18" cy="18" r="2"></circle></svg><span>Paramètres</span></div></div>
+</div></div></div>
+<figcaption style="text-align: center"><span style="display: block; font-weight: 700; color: #111827">iPhone, en préparation</span><span style="font-size: 14px; color: #667085">Le même écran, une fois la journée déclarée</span></figcaption>
+</figure>
+</div>
+</div>
+</section>
+<section style="background: #173B63; color: #FFFFFF">
+<div style="max-width: 1200px; margin: 0 auto; padding: 88px 32px; display: flex; flex-wrap: wrap; gap: 48px">
+<div style="flex: 1 1 380px; min-width: 0">
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 44px; line-height: 1.08">Deux seuils, deux règles différentes</h2>
+</div>
+<div style="flex: 2 1 560px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 32px">
+<article>
+<p style="margin: 0 0 8px; font-family: 'Newsreader', Georgia, serif; font-size: 64px; line-height: 1; font-weight: 500; color: #FFFFFF">40 %</p>
+<h3 style="margin: 0 0 8px; font-size: 20px">L’impôt</h3>
+<p style="margin: 0 0 10px; color: #F9FAFB">Jusqu’à 40 % de votre temps de travail par année civile, votre salaire reste imposé en Suisse. Jusqu’à 10 jours de mission peuvent compter dans ce quota.</p>
+<p style="margin: 0; font-size: 14px; color: #E4E7EC">Source : AFC Genève ; accord amiable du 29 avril 2026</p>
+</article>
+<article>
+<p style="margin: 0 0 8px; font-family: 'Newsreader', Georgia, serif; font-size: 64px; line-height: 1; font-weight: 500; color: #FFFFFF">49,9 %</p>
+<h3 style="margin: 0 0 8px; font-size: 20px">La sécurité sociale</h3>
+<p style="margin: 0 0 10px; color: #F9FAFB">Avec une attestation A1 demandée par votre employeur, vous restez affilié aux assurances sociales suisses jusqu’à 49,9 % de télétravail.</p>
+<p style="margin: 0; font-size: 14px; color: #E4E7EC">Source : Office fédéral des assurances sociales (OFAS)</p>
+</article>
+</div>
+</div>
+</section>
+
+<section style="background: #F7F8FA">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 32px">
+<h2 style="margin: 0 0 40px; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 44px; line-height: 1.08; max-width: 18em">Le compteur, toute l’année, et un relevé à la fin</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px">
+<article style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 28px">
+<h3 style="margin: 0 0 8px; font-size: 21px">Chaque soir, une question</h3>
+<p style="margin: 0; color: #667085">Où avez-vous travaillé aujourd’hui ? Vous répondez depuis la notification, en un geste.</p>
+</article>
+<article style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 28px">
+<h3 style="margin: 0 0 8px; font-size: 21px">Le compte se tient seul</h3>
+<p style="margin: 0; color: #667085">Votre taux et vos jours restants se mettent à jour à chaque journée déclarée.</p>
+</article>
+<article style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 28px">
+<h3 style="margin: 0 0 8px; font-size: 21px">Un relevé vérifiable</h3>
+<p style="margin: 0; color: #667085">Un relevé annuel, jour par jour, horodaté, avec un code que votre fiduciaire peut vérifier.</p>
+</article>
+</div>
+
+<div style="margin-top: 24px; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 48px; display: flex; justify-content: center">
+<form style="width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center">
+<label for="a2-mail" style="font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 32px; line-height: 1.15; color: #111827">Recevez un e-mail quand les règles changent</label>
+<p style="margin: 0; color: #667085">Un seuil, un accord ou une source qui évolue. Rien d’autre.</p>
+<div style="width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px">
+<input id="a2-mail" type="email" placeholder="vous@exemple.fr" style="flex: 1 1 220px; min-height: 48px; border: 1px solid #D0D5DD; border-radius: 999px; padding: 0 18px; background: #FFFFFF; font: inherit; color: #111827">
+<button type="button" style="min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; background: #173B63; color: #FFFFFF; font: inherit; font-weight: 700; cursor: pointer">M’abonner</button>
+</div>
+</form>
+</div>
+</div>
+</section>
+
+<section style="background: #FFFFFF; border-top: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 32px; display: flex; flex-wrap: wrap; gap: 56px">
+<div style="flex: 1 1 300px; min-width: 0">
+<h2 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 44px; line-height: 1.08">Vos questions</h2>
+</div>
+<div style="flex: 2 1 600px; min-width: 0; border-bottom: 1px solid #E4E7EC">
+<details open style="border-top: 1px solid #E4E7EC; padding: 24px 0">
+<summary style="list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 44px"><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.15; color: #111827">Qu’est-ce que ça change ?</h3><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></summary>
+<div style="margin-top: 16px"><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px">
+<div style="background: #F7F8FA; border: 1px solid #E4E7EC; border-radius: 16px; padding: 20px 24px"><p style="margin: 0 0 6px; font-weight: 700; color: #111827">Avant</p><p style="margin: 0; color: #667085">Un tableur rempli de mémoire, au moment de la déclaration.</p></div>
+<div style="background: #173B63; border-radius: 16px; padding: 20px 24px"><p style="margin: 0 0 6px; font-weight: 700; color: #FFFFFF">Après</p><p style="margin: 0; color: #F9FAFB">Chaque journée déclarée le jour même, horodatée par le serveur.</p></div>
+</div></div>
+</details>
+<details style="border-top: 1px solid #E4E7EC; padding: 24px 0">
+<summary style="list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 44px"><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.15; color: #111827">Que reçoit ma fiduciaire ?</h3><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></summary>
+<div style="margin-top: 16px"><p style="margin: 0; max-width: 60ch; color: #667085">Un relevé annuel, jour par jour, avec un code de vérification. Elle voit le document tel qu’il a été émis.</p></div>
+</details>
+<details style="border-top: 1px solid #E4E7EC; padding: 24px 0">
+<summary style="list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 44px"><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.15; color: #111827">Vous suivez ma position ?</h3><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></summary>
+<div style="margin-top: 16px"><p style="margin: 0; max-width: 60ch; color: #667085">Non. Ni carte, ni trajet, ni position conservée. Rien n’est enregistré sans votre réponse.</p></div>
+</details>
+<details style="border-top: 1px solid #E4E7EC; padding: 24px 0">
+<summary style="list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 44px"><h3 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.15; color: #111827">Sur quel téléphone ?</h3><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#173B63" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="m6 9 6 6 6-6"></path></svg></summary>
+<div style="margin-top: 16px"><p style="margin: 0; max-width: 60ch; color: #667085">Android aujourd’hui. L’iPhone est en préparation. Le calculateur fonctionne dans tout navigateur.</p></div>
+</details>
+</div>
+</div>
+</section>
+<footer style="border-top: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; color: #667085">
+<p style="margin: 0; max-width: 40em">Mon Relevé calcule à partir des sources officielles citées. Le relevé est votre propre registre ; la déclaration officielle reste celle de votre employeur.</p>
+<nav aria-label="Liens légaux" style="display: flex; flex-wrap: wrap; gap: 20px">
+<a href="#">Sources</a><a href="#">Confidentialité</a><a href="#">Mentions légales</a>
+</nav>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { t: 62, base: 220 };
+  }
+  pct(t, base) {
+    var v = Math.floor((t * 10000) / base);
+    var whole = Math.floor(v / 100);
+    var frac = String(v % 100);
+    if (frac.length < 2) { frac = '0' + frac; }
+    return { value: v, text: whole + ',' + frac + '\u00a0%' };
+  }
+  renderVals() {
+    var t = this.state.t;
+    var base = this.state.base;
+    var p = this.pct(t, base);
+    var fiscalLeft = Math.max(0, Math.floor((base * 400) / 1000 - t));
+    var socialLeft = Math.max(0, Math.floor((base * 499) / 1000 - t));
+    var status;
+    if (p.value < 4000) {
+      status = 'Sous les deux seuils.';
+    } else if (p.value < 4990) {
+      status = 'Au-delà du seuil fiscal, sous le seuil social.';
+    } else {
+      status = 'Au-delà des deux seuils.';
+    }
+    var shown = Math.min(p.value, 7000);
+    var left = (shown / 7000) * 100;
+    var self = this;
+    return {
+      teleworkDays: t,
+      baseDays: base,
+      rateText: p.text,
+      statusText: status,
+      fiscalLeft: fiscalLeft,
+      socialLeft: socialLeft,
+      markerLeft: left.toFixed(2) + '%',
+      setTelework: function (e) { self.setState({ t: Number(e.target.value) }); },
+      setBase: function (e) { self.setState({ base: Number(e.target.value) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
