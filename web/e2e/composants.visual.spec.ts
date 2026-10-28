@@ -66,6 +66,14 @@ const SPECIMENS = [
   'container-public',
   'container-narrow',
   'container-article',
+  // FW-HOME-A2 (R722): the A2 home page's components, every state.
+  'home-excerpt',
+  'home-counter-compliant',
+  'home-counter-exposure',
+  'home-counter-social',
+  'home-phone-android',
+  'home-phone-iphone',
+  'home-faq-pair',
   'shell-desktop',
   // FW33: the Calculateurs menu with its caret, which no page renders while
   // the menu has one live child.

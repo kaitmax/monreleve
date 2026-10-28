@@ -42,6 +42,14 @@ import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
 import { ComparisonPanel } from '@/lib/ui/react/Comparison/ComparisonPanel';
 import { IrrevocabilityBanner } from '@/lib/ui/react/Comparison/IrrevocabilityBanner';
 import { DEFAULT_YEAR } from '@/lib/lamal/years';
+import { calculateTelework } from '@/lib/calc-engine';
+import { heroExampleInput } from '@/lib/content/home';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
+import { HOME_COPY } from '@/lib/fr/home';
+import { Faq } from '@/lib/ui/react/Faq/Faq';
+import { HeroPhone } from '@/lib/ui/react/HeroPhone/HeroPhone';
+import { HomeCounter, type HomeCounterCopy } from '@/lib/ui/react/HomeCounter/HomeCounter';
+import { ReleveExcerpt } from '@/lib/ui/react/ReleveExcerpt/ReleveExcerpt';
 import styles from './page.module.scss';
 
 export const metadata: Metadata = {
@@ -90,6 +98,30 @@ const FIELD_ERROR = errorMessage({ code: 'NEGATIVE_DAYS', field: 'teleworkDays' 
 // open question and deliberately not decided here.
 const FISCAL = formatPercent(RULES.fiscalCeiling * 100, 1);
 const SOCIAL = formatPercent(RULES.socialCeiling * 100, 1);
+
+// FW-HOME-A2 (R722). The counter's words, built the way the home page builds
+// them; the thresholds as the page formats them (whole 40, one-decimal 49,9).
+const HOME_FISCAL = formatPercent(RULES.fiscalCeiling * 100, 0);
+const HOME_SOCIAL = formatPercent(RULES.socialCeiling * 100, 1);
+const COUNTER_COPY: HomeCounterCopy = {
+  rateLabel: HOME_COPY.counter.rateLabel,
+  status: HOME_COPY.counter.status,
+  fiscalTile: HOME_COPY.counter.tile(METRIC_COPY.remaining(HOME_FISCAL), HOME_COPY.counter.fiscalRule),
+  fiscalOver: HOME_COPY.counter.tile(METRIC_COPY.over(HOME_FISCAL), HOME_COPY.counter.fiscalRule),
+  socialTile: HOME_COPY.counter.tile(METRIC_COPY.remaining(HOME_SOCIAL), HOME_COPY.counter.socialRule),
+  socialOver: HOME_COPY.counter.tile(METRIC_COPY.over(HOME_SOCIAL), HOME_COPY.counter.socialRule),
+  teleworkLabel: HOME_COPY.counter.teleworkLabel,
+  basisLabel: HOME_COPY.counter.basisLabel,
+};
+/** A form that goes nowhere a specimen should send anyone: the workbench itself. */
+const COUNTER_FORM = { action: '/dev/composants', teleworkName: 'tt', basisName: 'total', hidden: [] };
+/**
+ * One slider position per zone, on a 220-day year: 62 days is 28,18 %, 100 is
+ * 45,45 % and 130 is 59,09 % - the engine places each; the specimens only
+ * choose where the sliders start.
+ */
+const COUNTER_AT = { compliant: 62, exposure: 100, social: 130, basis: 220 };
+const PHONE_EXAMPLE = calculateTelework(heroExampleInput(2026));
 
 function Specimen({
   id,
@@ -395,6 +427,80 @@ export default function WorkbenchPage() {
               shows it; the specimen stays as the menu's isolated record. */}
           <Specimen id="shell-nav-disclosure" caption={WORKBENCH.shell.navDisclosure}>
             <NavMenu entries={SHELL_NAV.filter((entry) => entry.children !== undefined)} />
+          </Specimen>
+        </div>
+      </section>
+
+      {/* FW-HOME-A2 (R722): LAST, AFTER THE SHELL, on purpose. The shell
+          specimen is taller than the viewport and its header is sticky, so
+          its element screenshot depends on where the specimen sits on the
+          page: placed above it, these specimens moved it down and four shell
+          baselines changed with no change to the shell. Measured, then moved. */}
+      <section className={styles.section}>
+        <h2>{WORKBENCH.home.title}</h2>
+        <div className={styles.stack}>
+          <Specimen id="home-excerpt" caption={WORKBENCH.home.excerpt}>
+            <ReleveExcerpt state={PRODUCT_STATE} />
+          </Specimen>
+          <Specimen id="home-counter-compliant" caption={WORKBENCH.home.counterCompliant}>
+            <HomeCounter
+              taxYear={2026}
+              copy={COUNTER_COPY}
+              form={COUNTER_FORM}
+              initialTelework={COUNTER_AT.compliant}
+              initialBasis={COUNTER_AT.basis}
+            />
+          </Specimen>
+          <Specimen id="home-counter-exposure" caption={WORKBENCH.home.counterExposure}>
+            <HomeCounter
+              taxYear={2026}
+              copy={COUNTER_COPY}
+              form={COUNTER_FORM}
+              initialTelework={COUNTER_AT.exposure}
+              initialBasis={COUNTER_AT.basis}
+            />
+          </Specimen>
+          <Specimen id="home-counter-social" caption={WORKBENCH.home.counterSocial}>
+            <HomeCounter
+              taxYear={2026}
+              copy={COUNTER_COPY}
+              form={COUNTER_FORM}
+              initialTelework={COUNTER_AT.social}
+              initialBasis={COUNTER_AT.basis}
+            />
+          </Specimen>
+          {PHONE_EXAMPLE.ok ? (
+            <>
+              <Specimen id="home-phone-android" caption={WORKBENCH.home.phoneAndroid}>
+                <HeroPhone platform="android" result={PHONE_EXAMPLE.value} taxYear={2026} fiscal={HOME_FISCAL} />
+              </Specimen>
+              <Specimen id="home-phone-iphone" caption={WORKBENCH.home.phoneIphone}>
+                <HeroPhone platform="iphone" result={PHONE_EXAMPLE.value} taxYear={2026} fiscal={HOME_FISCAL} />
+              </Specimen>
+            </>
+          ) : null}
+          <Specimen id="home-faq-pair" caption={WORKBENCH.home.faqPair}>
+            <Faq
+              heading={HOME_COPY.questions.heading}
+              layout="split"
+              entries={[
+                {
+                  id: 'wb-change',
+                  question: HOME_COPY.questions.change.question,
+                  answer: HOME_COPY.questions.change.afterBody,
+                  open: true,
+                  pair: {
+                    before: { label: HOME_COPY.questions.change.before, body: HOME_COPY.questions.change.beforeBody },
+                    after: { label: HOME_COPY.questions.change.after, body: HOME_COPY.questions.change.afterBody },
+                  },
+                },
+                {
+                  id: 'wb-position',
+                  question: HOME_COPY.questions.position.question,
+                  answer: HOME_COPY.questions.position.answer,
+                },
+              ]}
+            />
           </Specimen>
         </div>
       </section>
