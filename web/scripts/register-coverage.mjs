@@ -45,12 +45,17 @@
 // for long enough that twenty-eight lettered ids accumulated with no entry.
 //
 // THE SHAPES ARE A CENSUS, NOT A GUESS. Across REPORT-*.txt, relay/ and
-// parking.md, every id of this register is PARK-<n>, PARKAN-<n> or
+// parking.md, every id of this register WAS PARK-<n>, PARKAN-<n> or
 // PARK-<ONE letter><n> - A1, B1..B4, F1..F3, G1, I1..I5, K1..K7, P1, P2, R1,
-// R2, S1..S3, U1..U3. Hence ONE optional letter, not `[A-Z]*`: PARK-FW34-LAUNCH
-// is a real citation of a different shape, and `[A-Z]*\d+\b` matches PARK-FW34
-// out of it, because the hyphen that follows is a word boundary - reporting a
-// cited id that exists nowhere. It is left unmatched and parked (PARK-25).
+// R2, S1..S3, U1..U3. Hence, in R442, ONE optional letter, not `[A-Z]*`:
+// PARK-FW34-LAUNCH is a real citation of a different shape, and `[A-Z]*\d+\b`
+// matches PARK-FW34 out of it, because the hyphen that follows is a word
+// boundary - reporting a cited id that exists nowhere (PARK-25).
+//
+// R679 (FW-PARK-IDS-2) WIDENED IT TO TWO LETTERS once all twenty-six single
+// letters were taken, and kept PARK-25's protection by a different means: not
+// by refusing the second letter, but by refusing a following hyphen, letter or
+// digit after the number. See PARK_ID below, and PARK-PI2.
 //
 // WHAT IS STILL NOT MATCHED, AND WHY. The task-local series - PARK4-<n>
 // (Phase4parking.md), PARK5-<n>, PARK5b-<n>, PARK26-<n>, PARK27-<n>,
@@ -76,11 +81,94 @@ const DEFAULT_ROOT = resolve(dirname(SELF), '..', '..');
 // reached only the first would have left the placeholder scan blind to every
 // heading this change makes legal. A second description of one rule is the
 // thing that can disagree with it, so there is one.
-const ID = String.raw`PARK(?:AN)?-[A-Z]?\d+`;
+//
+// R679 (FW-PARK-IDS-2): ONE OR TWO CAPITAL LETTERS, AND A BOUNDARY AFTER THE
+// DIGITS. Every single letter A-Z was taken by 28.10.2026, so the series widened
+// to two letters. What made one letter the safe choice in R442 was
+// PARK-FW34-LAUNCH: a two-letter class closed only by `\b` reads PARK-FW34 out
+// of it, because the hyphen that follows IS a word boundary. So the id ends at a
+// lookahead refusing a following hyphen, letter, digit or underscore - `\w`
+// keeps the underscore `\b` already refused, so nothing that `\b` refused is
+// newly accepted. A longer token is never read as a shorter id: PARK-FW34-LAUNCH
+// yields nothing, PARK-FW34 written on its own resolves.
+//
+// EXPORTED, AND IMPORTED WHEREVER IT IS USED (R679, R206). This file's two
+// scans read it; R680's census imported it rather than retyping it. A copy
+// anywhere else is a second definition.
+const BOUNDARY = String.raw`(?![\w-])`;
 
-// PARK-12, PARKAN-18 or PARK-K6; never PARK4-2 (a different series), never a
-// bare PARK-, never PARKED, and never the published P<n>.
-const CITATION = new RegExp(String.raw`\b${ID}\b`, 'g');
+export const PARK_ID = String.raw`PARK(?:AN)?-[A-Z]{0,2}\d+${BOUNDARY}`;
+
+// PARK-12, PARKAN-18, PARK-K6 or PARK-FT1; never PARK4-2 (a different series),
+// never a bare PARK-, never PARKED, never the published P<n>, and never a
+// shorter id read out of a longer token.
+export const CITATION = new RegExp(String.raw`\b${PARK_ID}`, 'g');
+
+// CITATIONS THAT ARE NOT ENTRIES, AND MUST NEVER BECOME ONE.
+//
+// R680's census ran the widened pattern over every tracked file. Two ids in
+// reports on main resolve under it that never resolved before and are not
+// entries of this register: PARK-FW34 in REPORT-FW-PARK-IDS.txt, which names the
+// phantom a wrong pattern would read out of PARK-FW34-LAUNCH, and PARK-ZZ1 in
+// REPORT-KMP-DT.txt, which names an id the one-letter rule did not match. Those
+// reports are history and are not edited.
+//
+// SO THE EXEMPTION IS A (REPORT, ID) PAIR, NEVER AN ID. Exempting the bare id
+// PARK-FW34 would exempt exactly the string R680 exists to test: a new report
+// citing PARK-FW34, or a pattern that read it out of PARK-FW34-LAUNCH, would
+// pass in silence. Keyed to the one report that names it, any OTHER report
+// citing it still fails like any unheaded id.
+//
+// AND A HEADING UNDER EITHER ID FAILS, because the citation in that report would
+// then resolve to an entry it never meant (R196: both directions). Frozen at two
+// and asserted, like SHARED_IDS. Recorded as PARK-PI1.
+const PHANTOM_CITATIONS = Object.freeze(['REPORT-FW-PARK-IDS.txt:PARK-FW34', 'REPORT-KMP-DT.txt:PARK-ZZ1']);
+
+// THE NUMBERED SERIES IS CLOSED (R685, FW-PARK-IDS-2 second pass). These are
+// the ONLY plain-number ids, and every one of them keeps resolving. A new
+// "## PARK-<n> -" heading FAILS. The series was claimed as "main's highest + 1",
+// so any two branches parking in parallel took the same number and met at
+// merge; a two-letter series is claimed once per task from the series line
+// instead. Listed explicitly rather than as a range, and frozen at 32 by a test
+// that reads this declaration (R206's corollary): a thirty-third is an argument
+// someone has to make, not a number someone happens to take.
+const NUMBERED_IDS = Object.freeze([
+  'PARK-1',
+  'PARK-2',
+  'PARK-3',
+  'PARK-4',
+  'PARK-5',
+  'PARK-6',
+  'PARK-7',
+  'PARK-8',
+  'PARK-9',
+  'PARK-10',
+  'PARK-11',
+  'PARK-12',
+  'PARK-13',
+  'PARK-14',
+  'PARK-15',
+  'PARK-16',
+  'PARK-17',
+  'PARK-18',
+  'PARK-19',
+  'PARK-20',
+  'PARK-21',
+  'PARK-22',
+  'PARK-23',
+  'PARK-24',
+  'PARK-25',
+  'PARK-26',
+  'PARK-27',
+  'PARK-28',
+  'PARK-29',
+  'PARK-30',
+  'PARK-31',
+  'PARK-32',
+]);
+
+/** The ids named by PHANTOM_CITATIONS, each of which must never carry a heading. */
+const PHANTOM_IDS = Object.freeze(PHANTOM_CITATIONS.map((pair) => pair.slice(pair.indexOf(':') + 1)));
 
 // THE IDS ALLOWED TO CARRY MORE THAN ONE ENTRY, AND NOTHING ELSE EVER IS.
 //
@@ -114,7 +202,7 @@ const SHARED_IDS = Object.freeze(['PARK-F1', 'PARK-F2', 'PARK-F3']);
 
 /**
  * @param {string} repoRoot
- * @returns {{ ok: boolean, problems: string[], cited: number, reports: number }}
+ * @returns {{ ok: boolean, problems: string[], cited: number, reports: number, series?: string }}
  */
 export function checkRegisterCoverage(repoRoot) {
   const parkingFile = join(repoRoot, 'parking.md');
@@ -157,6 +245,13 @@ export function checkRegisterCoverage(repoRoot) {
     for (const match of text.matchAll(CITATION)) {
       const id = match[0];
 
+      // A phantom is a citation of nothing, by design, in the ONE report that
+      // makes it; it is checked below for the opposite fault - a heading - and
+      // is not counted as cited. The same id from any other report is not exempt.
+      if (PHANTOM_CITATIONS.includes(`${name}:${id}`)) {
+        continue;
+      }
+
       if (!citedBy.has(id)) {
         citedBy.set(id, new Set());
       }
@@ -177,6 +272,29 @@ export function checkRegisterCoverage(repoRoot) {
 
   const headings = headingsOf(parking);
 
+  // The other direction: a phantom that gains a heading would give a citation
+  // its report never meant a destination.
+  for (const id of PHANTOM_IDS) {
+    if (hasHeading(parking, id)) {
+      problems.push(
+        `${id} is a phantom citation - a report on main names it as an example, not an entry - ` +
+          `and must not carry a "## ${id} -" heading in parking.md`,
+      );
+    }
+  }
+
+  // R685: a plain-number heading outside the closed set. Reported once per id.
+  const newNumbered = new Set(
+    headings.map((heading) => heading.id).filter((id) => /^PARK-\d+$/.test(id) && !NUMBERED_IDS.includes(id)),
+  );
+
+  for (const id of newNumbered) {
+    problems.push(
+      `${id} is a new plain-number heading in parking.md - the numbered series closed at PARK-32 (R685); ` +
+        "a new entry takes a two-letter series, claimed as parking.md's header describes",
+    );
+  }
+
   // An entry that exists as a heading but still carries the placeholder is not yet an entry.
   for (const id of placeholderEntries(parking, headings)) {
     const who = citedBy.has(id) ? [...citedBy.get(id)].join(', ') : 'no report';
@@ -196,7 +314,56 @@ export function checkRegisterCoverage(repoRoot) {
     );
   }
 
-  return { ok: problems.length === 0, problems, cited: citedBy.size, reports: reports.length };
+  return {
+    ok: problems.length === 0,
+    problems,
+    cited: citedBy.size,
+    reports: reports.length,
+    series: seriesTaken(headings),
+  };
+}
+
+/**
+ * R681: WHICH SERIES THE REGISTER'S HEADINGS USE, so a session claims a free one
+ * by asking the register rather than reading a list or trusting a prompt (R456).
+ * Derived from headingsOf() - the same scan the coverage checks read - so the
+ * answer cannot disagree with what the check sees.
+ *
+ * @param {Array<{ id: string }>} headings
+ * @returns {string}
+ */
+function seriesTaken(headings) {
+  const one = new Set();
+  const two = new Set();
+  let park = 0;
+  let parkan = 0;
+
+  for (const { id } of headings) {
+    const [, an, letters, digits] = /^PARK(AN)?-([A-Z]*)(\d+)$/.exec(id) ?? [];
+
+    if (letters === undefined) {
+      continue;
+    }
+
+    if (letters.length === 1) {
+      one.add(letters);
+    } else if (letters.length === 2) {
+      two.add(letters);
+    } else if (an === undefined) {
+      park = Math.max(park, Number(digits));
+    } else {
+      parkan = Math.max(parkan, Number(digits));
+    }
+  }
+
+  const list = (set) => (set.size === 0 ? 'none' : [...set].sort().join(' '));
+  const held = [...new Set(PHANTOM_IDS.map((id) => /^PARK-([A-Z]+)/.exec(id)?.[1] ?? ''))].sort().join(' ');
+
+  return (
+    `series taken: one letter ${list(one)}; two letters ${list(two)}; ` +
+    `PARK-<n> up to ${park === 0 ? 'none' : park}; PARKAN-<n> up to ${parkan === 0 ? 'none' : parkan}; ` +
+    `two-letter series held by phantom citations: ${held}`
+  );
 }
 
 function hasHeading(parking, id) {
@@ -222,7 +389,7 @@ function hasHeading(parking, id) {
 function headingsOf(parking) {
   const found = [];
 
-  for (const match of parking.matchAll(new RegExp(String.raw`^##\s+(${ID})\s+-.*$`, 'gm'))) {
+  for (const match of parking.matchAll(new RegExp(String.raw`^##\s+(${PARK_ID})\s+-.*$`, 'gm'))) {
     const index = match.index ?? 0;
     const line = parking.slice(0, index).split('\n').length;
 
@@ -311,6 +478,12 @@ function isMain() {
 if (isMain()) {
   const root = process.argv[2] ? resolve(process.argv[2]) : DEFAULT_ROOT;
   const result = checkRegisterCoverage(root);
+
+  // R681: printed on every run, pass or fail, so claiming a series needs no
+  // second tool. stdout, so it never reads as part of a failure.
+  if (result.series !== undefined) {
+    process.stdout.write(`${result.series}\n`);
+  }
 
   if (!result.ok) {
     process.stderr.write('R294/R327: parking.md does not cover every cited register entry:\n');

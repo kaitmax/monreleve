@@ -12,13 +12,17 @@
 // PARK-<letter><n> were invisible to the check that exists to make a citation
 // followable.
 //
-// THE WIDENED PATTERN IS FITTED TO A CENSUS, not guessed. Every id shape in
-// REPORT-*.txt, relay/ and parking.md is PARK-<n>, PARKAN-<n> or
-// PARK-<ONE letter><n>. `[A-Z]?` rather than `[A-Z]*` is the whole of the
+// THE WIDENED PATTERN IS FITTED TO A CENSUS, not guessed. At R442 every id
+// shape in REPORT-*.txt, relay/ and parking.md was PARK-<n>, PARKAN-<n> or
+// PARK-<ONE letter><n>. `[A-Z]?` rather than `[A-Z]*` was then the whole of the
 // difference between fitting it and over-reaching: `PARK-FW34-LAUNCH` is a
 // real citation of a different shape, and `[A-Z]*\d+\b` matches `PARK-FW34`
 // out of it - the hyphen that follows IS a word boundary - which would report
 // a cited id that exists nowhere. See PARK-25.
+//
+// R679 (FW-PARK-IDS-2, below) later allowed two letters and moved that
+// protection to a boundary after the digits; the R680 tests pin it on the
+// exact string.
 //
 // R443: THE GAP IS DEMONSTRATED, NOT ASSERTED. The first test runs the OLD
 // pattern over the same fixture the widened check is driven on, and the
@@ -316,6 +320,241 @@ describe('one id, one entry - the duplicate-heading check', () => {
 
     expect(result.status).toBe(0);
     expect(result.out).toContain('register coverage: OK');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R679/R680 (FW-PARK-IDS-2). TWO LETTERS, AND THE BOUNDARY THAT MAKES THEM SAFE.
+//
+// Every single letter A-Z was taken by 28.10.2026, so sessions parked as
+// UNNUMBERED-<n> in their reports. R679 widens the series to one OR TWO
+// capital letters. The reason R456 stopped at one is PARK-FW34-LAUNCH: with
+// only `\b` after the digits, a two-letter pattern reads PARK-FW34 out of it,
+// because the hyphen that follows IS a word boundary. So the widening carries
+// a boundary refusing a following "-", letter, digit (or underscore, which
+// `\b` already refused), and these tests pin it on that exact string.
+// ---------------------------------------------------------------------------
+
+/**
+ * THE COUNTERFACTUAL, pinned as a literal (R171: the value IS the assertion).
+ * This is the two-letter pattern WITHOUT the boundary - what R679 would have
+ * been had it only widened the letter class. It is never the live rule; the
+ * live rule is exercised through the CLI below.
+ */
+const TWO_LETTERS_WITHOUT_THE_BOUNDARY = /\bPARK(?:AN)?-[A-Z]{0,2}\d+\b/g;
+
+describe('R680 - the trap, on its exact string', () => {
+  it('a two-letter pattern without the boundary reads PARK-FW34 out of PARK-FW34-LAUNCH', () => {
+    const found = 'PARK-FW34-LAUNCH, beside PARKAN-45.'.match(TWO_LETTERS_WITHOUT_THE_BOUNDARY) ?? [];
+
+    // Positive control: the counterfactual is working on this text.
+    expect(found).toContain('PARKAN-45');
+    // And it reads a phantom out of the longer token - the reason for the boundary.
+    expect(found).toContain('PARK-FW34');
+  });
+
+  it('PARK-FW34-LAUNCH does NOT resolve as PARK-FW34 - with a real id present to prove the scan ran (R169)', () => {
+    const result = runCheck(makeRoot('# register\n', 'The launch list is PARK-FW34-LAUNCH; see also PARKAN-45.'));
+
+    // PRESENCE FIRST: the one real id is reported, so the scan ran.
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARKAN-45 is cited by REPORT-FIXTURE.txt');
+    expect(result.out.match(/is cited by/g)).toHaveLength(1);
+
+    // And the longer token produced no id at all, truncated or otherwise.
+    expect(result.out).not.toContain('PARK-FW34');
+  });
+
+  it('PARK-FW34 written as its own token DOES resolve', () => {
+    const result = runCheck(makeRoot('# register\n', 'A token of its own: PARK-FW34.'));
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARK-FW34 is cited by REPORT-FIXTURE.txt');
+  });
+});
+
+describe('R679 - one or two capital letters, and nothing longer read as shorter', () => {
+  const TWO_LETTER_IDS = ['PARK-AB1', 'PARK-FT12', 'PARK-IB11'];
+
+  it('a two-letter id resolves, alongside every shape that resolved before', () => {
+    const report = `Two letters: ${TWO_LETTER_IDS.join(', ')}. ${CITING_REPORT}`;
+    const result = runCheck(makeRoot('# register\n', report));
+
+    expect(result.status).toBe(1);
+
+    for (const id of [...TWO_LETTER_IDS, ...REAL_IDS]) {
+      expect(result.out).toContain(`${id} is cited by REPORT-FIXTURE.txt`);
+    }
+  });
+
+  it('passes once the two-letter ids have entries, and counts them', () => {
+    const report = `Two letters: ${TWO_LETTER_IDS.join(', ')}. ${CITING_REPORT}`;
+    const result = runCheck(makeRoot(entriesFor([...TWO_LETTER_IDS, ...REAL_IDS]), report));
+
+    expect(result.status).toBe(0);
+    expect(result.out).toContain(
+      `register coverage: OK - ${TWO_LETTER_IDS.length + REAL_IDS.length} cited id(s) across 1 report(s)`,
+    );
+  });
+
+  it('refuses a following hyphen, letter, digit or underscore, and three letters - with a real id present (R169)', () => {
+    const longer = [
+      'PARK-AB1-LAUNCH, PARK-AB1x, PARK-AB1_x, PARK-ABC1, PARK-A1-era, PARKAN-2-era,',
+      'and the one real id: PARKAN-45.',
+    ].join('\n');
+
+    const result = runCheck(makeRoot('# register\n', longer));
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARKAN-45 is cited by REPORT-FIXTURE.txt');
+    expect(result.out.match(/is cited by/g)).toHaveLength(1);
+
+    for (const shorter of ['PARK-AB1 ', 'PARK-AB ', 'PARK-BC1', 'PARK-A1 ', 'PARKAN-2 ']) {
+      expect(result.out).not.toContain(shorter);
+    }
+  });
+
+  it('the duplicate-heading check covers two-letter ids too, naming both lines', () => {
+    const result = runCheck(makeRoot(twoEntriesUnder('PARK-FT1'), 'Cites PARK-FT1 once.'));
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARK-FT1 has 2 "## PARK-FT1 -" headings in parking.md (lines 3, 7)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R680's census found two ids in reports on main that the widening makes
+// resolvable and that are NOT entries: PARK-FW34 (REPORT-FW-PARK-IDS.txt,
+// naming the phantom a wrong pattern would read) and PARK-ZZ1
+// (REPORT-KMP-DT.txt, naming an id the one-letter rule did not match). The
+// reports are history and are not edited, so they are a frozen list of
+// (report, id) PAIRS - never bare ids, because exempting the id PARK-FW34 would
+// exempt the very string R680 tests. BOTH DIRECTIONS are asserted (R196): a
+// listed pair passes; the same id cited by any other report still fails; and a
+// listed id that GAINS a heading fails, because the citation would then resolve
+// to an entry its report never meant.
+// ---------------------------------------------------------------------------
+
+const PHANTOMS = ['REPORT-FW-PARK-IDS.txt:PARK-FW34', 'REPORT-KMP-DT.txt:PARK-ZZ1'] as const;
+
+/** A throwaway root whose reports carry the given names, with one parking.md. */
+function makeRootWith(parking: string, reports: Readonly<Record<string, string>>): string {
+  const root = mkdtempSync(join(tmpdir(), 'register-coverage-test-'));
+
+  tempRoots.push(root);
+  writeFileSync(join(root, 'parking.md'), parking);
+
+  for (const [name, text] of Object.entries(reports)) {
+    writeFileSync(join(root, name), text);
+  }
+
+  return root;
+}
+
+describe('the phantom citations - frozen at two pairs, both directions', () => {
+  const PHANTOM_REPORTS = {
+    'REPORT-FW-PARK-IDS.txt': 'would truncate it to a phantom `PARK-FW34`. Also PARKAN-45.',
+    'REPORT-KMP-DT.txt': 'and did not match "PARK-ZZ1" - the one-letter rule.',
+  };
+
+  it('each listed phantom, cited by its own report with no heading, does not fail', () => {
+    const result = runCheck(makeRootWith(entriesFor(['PARKAN-45']), PHANTOM_REPORTS));
+
+    // Presence: PARKAN-45 is counted, so the scan ran; the phantoms are not.
+    expect(result.status).toBe(0);
+    expect(result.out).toContain('register coverage: OK - 1 cited id(s) across 2 report(s)');
+  });
+
+  it('the same id cited by ANY OTHER report still fails', () => {
+    const result = runCheck(
+      makeRootWith(entriesFor(['PARKAN-45']), { ...PHANTOM_REPORTS, 'REPORT-NEXT.txt': 'Cites PARK-ZZ1.' }),
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARK-ZZ1 is cited by REPORT-NEXT.txt but has no "## PARK-ZZ1 -" heading');
+  });
+
+  it('a listed phantom that gains a heading fails, naming it', () => {
+    const result = runCheck(makeRootWith(entriesFor(['PARKAN-45', 'PARK-ZZ1']), PHANTOM_REPORTS));
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARK-ZZ1 is a phantom citation');
+    expect(result.out).not.toContain('PARK-FW34 is a phantom citation');
+  });
+
+  it('names exactly those two pairs, read out of the script itself', () => {
+    const source = readFileSync(SCRIPT, 'utf8');
+    const declared = /const PHANTOM_CITATIONS = Object\.freeze\(\[([^\]]*)\]\)/.exec(source);
+
+    expect(declared).not.toBeNull();
+
+    const ids = (declared?.[1] ?? '')
+      .split(',')
+      .map((entry) => entry.trim().replace(/^'|'$/g, ''))
+      .filter((entry) => entry !== '');
+
+    expect(ids).toEqual([...PHANTOMS]);
+  });
+});
+
+describe('R681 - the register reports which series are taken', () => {
+  it('names the one- and two-letter series and the highest numbers its headings use', () => {
+    const parking = entriesFor(['PARK-K6', 'PARK-K7', 'PARK-FT1', 'PARK-FT2', 'PARK-A1', 'PARK-12', 'PARK-4', 'PARKAN-45']);
+    const result = runCheck(makeRoot(parking, 'Cites PARK-K6.'));
+
+    expect(result.status).toBe(0);
+    expect(result.out).toContain('series taken: one letter A K; two letters FT; PARK-<n> up to 12; PARKAN-<n> up to 45');
+  });
+
+  it('the real register: every single letter is taken, so a new series has two', () => {
+    const result = runCheck();
+
+    expect(result.status).toBe(0);
+    expect(result.out).toContain('series taken: one letter A B C D E F G H I J K L M N O P Q R S T U V W X Y Z;');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R685 (FW-PARK-IDS-2, second pass). THE NUMBERED SERIES IS CLOSED, AND THE
+// CHECK SAYS SO. PARK-1..PARK-32 keep resolving; a NEW plain-number heading
+// fails. The numbered series was claimed as "main's highest + 1", so any two
+// branches parking in parallel took the same number. The allowed ids are an
+// explicit, frozen list - asserted, not merely present (R206's corollary) - so
+// a thirty-third must survive its own argument.
+// ---------------------------------------------------------------------------
+
+/** The plain-number ids that existed when the series closed: PARK-1..PARK-32. */
+const NUMBERED_AT_CLOSE = Array.from({ length: 32 }, (_, i) => `PARK-${i + 1}`);
+
+describe('R685 - the numbered series is closed', () => {
+  it('a new plain-number heading fails, naming it; the existing ones beside it pass', () => {
+    const result = runCheck(makeRoot(entriesFor(['PARK-12', 'PARK-32', 'PARK-33']), 'Cites PARK-12 and PARK-33.'));
+
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('PARK-33 is a new plain-number heading');
+    // Exactly one problem: PARK-12 and PARK-32 are in the closed set.
+    expect(result.out.match(/is a new plain-number heading/g)).toHaveLength(1);
+  });
+
+  it('every closed-set id still passes, so the closure removes nothing (positive control)', () => {
+    const result = runCheck(makeRoot(entriesFor(NUMBERED_AT_CLOSE), `Cites ${NUMBERED_AT_CLOSE.join(', ')}.`));
+
+    expect(result.status).toBe(0);
+    expect(result.out).toContain(`register coverage: OK - ${NUMBERED_AT_CLOSE.length} cited id(s) across 1 report(s)`);
+  });
+
+  it('names exactly PARK-1..PARK-32, read out of the script itself', () => {
+    const source = readFileSync(SCRIPT, 'utf8');
+    const declared = /const NUMBERED_IDS = Object\.freeze\(\[([^\]]*)\]\)/.exec(source);
+
+    expect(declared).not.toBeNull();
+
+    const ids = (declared?.[1] ?? '')
+      .split(',')
+      .map((entry) => entry.trim().replace(/^'|'$/g, ''))
+      .filter((entry) => entry !== '');
+
+    expect(ids).toEqual(NUMBERED_AT_CLOSE);
   });
 });
 
