@@ -357,6 +357,17 @@ $size-menu-panel-width: 300px;
 // distinct names where values coincide, because the two move independently.
 $size-phone-frame-width: 300px;
 $size-phone-bezel: 10px;
+
+// R344 again, FW-HOME-A2 (R716): the home page's two phones are drawn to the
+// approved design's figures (R77), and each dimension that has no meaning
+// elsewhere is named for what it is. The frame is 620 tall; the Android
+// punch-hole camera is 10 across; the iPhone's pill cut-out is 84 by 24. None
+// borrows a dot, an icon or a spacing step that happens to be close - a
+// camera is not a status dot, and resizing the dots must not move it.
+$size-phone-frame-height: 620px;
+$size-phone-camera: 10px;
+$size-phone-island-width: 84px;
+$size-phone-island-height: 24px;
 $size-toast-min-width: 320px;
 $size-toast-max-width: 420px;
 $size-progress-height: 8px;
@@ -540,6 +551,10 @@ $motion-toast-max: 5000ms;
   --size-menu-panel-width: #{$size-menu-panel-width};
   --size-phone-frame-width: #{$size-phone-frame-width};
   --size-phone-bezel: #{$size-phone-bezel};
+  --size-phone-frame-height: #{$size-phone-frame-height};
+  --size-phone-camera: #{$size-phone-camera};
+  --size-phone-island-width: #{$size-phone-island-width};
+  --size-phone-island-height: #{$size-phone-island-height};
   --size-toast-min-width: #{$size-toast-min-width};
   --size-toast-max-width: #{$size-toast-max-width};
   --size-progress-height: #{$size-progress-height};

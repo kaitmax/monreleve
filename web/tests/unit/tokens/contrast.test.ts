@@ -790,6 +790,10 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .linkNoticeDismiss -> --colour-warning-soft',
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .linkNoticeLead -> --colour-warning-soft',
       'PublicShell .footerLink -> --colour-surface',
+      // FW-HOME-A2: the phone picture's answered-day card, whose label and
+      // the answer choices' glyphs sit on the card's own surface fill.
+      'HeroPhone .cardLabel -> --colour-surface',
+      'HeroPhone .choiceIcon -> --colour-surface',
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalLead -> --colour-info-soft',
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalLink -> --colour-info-soft',
       '(public)/calculateur-teletravail-frontalier/CalculatorForm .provisionalList -> --colour-info-soft',

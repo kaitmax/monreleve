@@ -49,6 +49,9 @@ import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
 import { ReleveExcerpt } from '@/lib/ui/react/ReleveExcerpt/ReleveExcerpt';
 import { HomeCounter } from '@/lib/ui/react/HomeCounter/HomeCounter';
+import { HeroPhone } from '@/lib/ui/react/HeroPhone/HeroPhone';
+import { calculateTelework } from '@/lib/calc-engine';
+import { heroExampleInput } from '@/lib/content/home';
 import { HOME_COPY } from '@/lib/fr/home';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
@@ -73,6 +76,9 @@ const STATUSES: readonly Status[] = [
   'regime-lost',
   'social-switch',
 ];
+
+/** The worked example the home page's phones show, for HeroPhone below. */
+const EXAMPLE = calculateTelework(heroExampleInput(2026));
 
 export function IslandHarness() {
   // STATE, SO THE BOUNDARY IS REAL. A 'use client' component that never uses a
@@ -149,6 +155,14 @@ export function IslandHarness() {
         }}
         form={{ action: '/', teleworkName: 'tt', basisName: 'total', hidden: [] }}
       />
+
+      {/* The home page's phone pictures, both platforms. */}
+      {EXAMPLE.ok ? (
+        <>
+          <HeroPhone platform="android" result={EXAMPLE.value} taxYear={2026} fiscal={ISLAND_HARNESS.tileLabel} />
+          <HeroPhone platform="iphone" result={EXAMPLE.value} taxYear={2026} fiscal={ISLAND_HARNESS.tileLabel} />
+        </>
+      ) : null}
     </Container>
   );
 }

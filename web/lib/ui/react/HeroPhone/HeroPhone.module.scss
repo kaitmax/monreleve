@@ -1,0 +1,231 @@
+// web/lib/ui/react/HeroPhone/HeroPhone.module.scss
+//
+// Tokens only. The frame's width, bezel and height and the two cut-outs are
+// named component tokens (R344): a picture of a phone is not a column, a
+// toast or a dot, so it borrows none of their numbers. Radii are the closed
+// set's (section 4.1) - the design drew the frame rounder than 2xl, and adding
+// a radius is a design-system change this task does not make (R709).
+
+@use "../../core/styles/fonts";
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.frame {
+  box-sizing: border-box;
+  flex: none;
+  width: var(--size-phone-frame-width);
+  max-width: 100%;
+  height: var(--size-phone-frame-height);
+  padding: var(--size-phone-bezel);
+  border-radius: var(--radius-2xl);
+  background: var(--colour-text-primary);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--colour-canvas);
+}
+
+.cutoutStrip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: var(--space-8);
+}
+
+.camera {
+  width: var(--size-phone-camera);
+  height: var(--size-phone-camera);
+  border-radius: 50%;
+  background: var(--colour-text-primary);
+}
+
+.island {
+  width: var(--size-phone-island-width);
+  height: var(--size-phone-island-height);
+  border-radius: var(--radius-pill);
+  background: var(--colour-text-primary);
+}
+
+.greeting {
+  padding: var(--space-3) var(--space-4) var(--space-1);
+}
+
+.hello {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.date,
+.rateLabel,
+.cardLabel {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.card {
+  margin: var(--space-2) var(--space-4) 0;
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--colour-surface);
+}
+
+.question {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-body-m-line);
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-touch-target-android);
+  padding: 0 var(--space-3);
+  border: var(--size-card-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-button-lg);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  line-height: var(--type-body-m-line);
+}
+
+.choiceIcon {
+  flex: none;
+  color: var(--colour-brand);
+}
+
+.textAction,
+.textActionStart {
+  margin: var(--space-3) 0 0;
+  color: var(--colour-brand);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.textAction {
+  text-align: center;
+}
+
+.answer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.recorded {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  color: var(--colour-success);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.rateCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.rate {
+  margin: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+
+  @include fonts.tabular-figures;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: var(--space-2) var(--space-1) var(--space-3);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  background: var(--colour-surface);
+}
+
+.tab,
+.tabActive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--type-micro-size);
+  font-weight: var(--type-micro-weight);
+  line-height: var(--type-micro-line);
+}
+
+.tab {
+  color: var(--colour-text-secondary);
+}
+
+.tabActive {
+  color: var(--colour-brand);
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.platformName {
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-body-m-line);
+}
+
+.captionLine {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
