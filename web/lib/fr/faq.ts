@@ -32,11 +32,25 @@ const NB = String.fromCharCode(0x00a0);
 const n = (mark: string): string => `${NB}${mark}`;
 
 /** One question and its answer, already resolved against the year's rules. */
+/** One side of an Avant / Après answer (FW-HOME-A2, R717). */
+export interface FaqPairSide {
+  readonly label: string;
+  readonly body: string;
+}
+
 export interface FaqEntry {
   /** Stable, so a link can address one question and a test can name it. */
   readonly id: string;
   readonly question: string;
+  /**
+   * The answer as plain text - ALWAYS, even when a pair is drawn instead, so
+   * anything that reads answers as text (a FAQPage) reads what is shown.
+   */
   readonly answer: string;
+  /** Open on arrival (FW-HOME-A2: the home page's first question). */
+  readonly open?: boolean;
+  /** An Avant / Après answer, drawn as two cards in place of the paragraph. */
+  readonly pair?: { readonly before: FaqPairSide; readonly after: FaqPairSide };
 }
 
 /**
