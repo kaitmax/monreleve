@@ -617,3 +617,14 @@ tip 5598a4e (R592) and changes only REPORT-IOS-1a.txt (paths-ignore: it starts n
 No secret, token or key appears in any file or in this report. Nothing was merged
 (pending merge, operator reads this first). Untracked relay/*.txt and scripts in
 the main checkout were not touched. The session lock was removed at the end.
+
+--------------------------------------------------------------------------------
+CORRECTION NOTE - 2026-10-28 (appended by the orchestrating session on the
+operator's word; the text above is left exactly as reported)
+--------------------------------------------------------------------------------
+Lines 400-404 above, a "PARKED" heading followed by UNNUMBERED-1 and a cut-off
+"UNNUMBERED-2).", are a leftover fragment of the in-place R592 update. They are
+NOT the parked list: the complete list is the PARKED section further down
+(UNNUMBERED-1 to UNNUMBERED-6). Since fw-park-ids-2 (R682) those six items are
+parking.md headings PARK-IA1 to PARK-IA6 (PARK-IA1 resolved by R592, PARK-IA3
+resolved by AN-FR-TEXT's R621).
