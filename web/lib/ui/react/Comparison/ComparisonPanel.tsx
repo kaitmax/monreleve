@@ -8,6 +8,8 @@
 // picture (R661's baselines).
 //
 // R673, WHAT THIS PANEL NEVER SAYS: which option to choose; « recommandé »;
+// and, since R674, no badge at all - one sentence states where the French
+// figure falls against the Swiss range;
 // an insurer's name; a single LAMal figure - there are always three; a
 // converted figure without its rate and date - the conversion line sits in
 // the same card as the euros it explains.
@@ -25,13 +27,17 @@ export type PanelState =
 
 export const PANEL_HEADING_ID = 'comparaison-titre';
 
-function Badge() {
-  return (
-    <p className={styles.badge} data-badge="true">
-      {COPY.result.badge}
-    </p>
-  );
-}
+/**
+ * R674 (the operator, 28.10.2026): ONE FACTUAL SENTENCE, CHOSEN BY THE CASE,
+ * in place of the badge. Between the lowest and the highest Swiss total there
+ * is no cheaper side, so a badge on one column could not stay true; a sentence
+ * about where the French figure falls always is.
+ */
+const CASE_SENTENCE: Readonly<Record<Comparison['cheaper'], string>> = {
+  france: COPY.result.below,
+  switzerland: COPY.result.above,
+  depends: COPY.result.depends,
+};
 
 function Figure({ label, centimes, eur }: { label: string; centimes: number; eur: number }) {
   return (
@@ -53,18 +59,15 @@ function ComparisonBody({ value }: { value: Comparison }) {
 
   return (
     <>
-      {cheaper === 'depends' ? (
-        <p className={styles.depends} data-depends="true">
-          {COPY.result.depends}
-        </p>
-      ) : null}
+      <p className={styles.caseSentence} data-case-sentence={cheaper}>
+        {CASE_SENTENCE[cheaper]}
+      </p>
 
       <div className={styles.columns}>
         <article className={styles.side} data-side="switzerland" aria-labelledby="cote-suisse">
           <h3 className={styles.sideHeading} id="cote-suisse">
             {COPY.result.swiss.heading}
           </h3>
-          {cheaper === 'switzerland' ? <Badge /> : null}
 
           <dl className={styles.figures}>
             <Figure label={COPY.result.swiss.lowest} centimes={swiss.lowestCentimes} eur={swiss.lowestEur} />
@@ -101,7 +104,6 @@ function ComparisonBody({ value }: { value: Comparison }) {
           <h3 className={styles.sideHeading} id="cote-france">
             {COPY.result.french.heading}
           </h3>
-          {cheaper === 'france' ? <Badge /> : null}
 
           <dl className={styles.figures}>
             <div className={styles.figure}>

@@ -4694,6 +4694,16 @@ STATE:      OPEN - reviewer question.
 
 ## PARK-29 - insurer 32's K3 child premium is not used  [FW-COMPARATEUR, 2026-10-28]
 
+RULED 28.10.2026 (the operator's Q3, R678 here): K3 STAYS OUT, PARKED. The
+page uses the standard child premium (K1). K3 - likely a discount for further
+children - can only LOWER the Swiss side, so leaving it out can only make an
+affected household's Swiss totals (insurer 32's, and through it possibly the
+lowest or the median) higher than a family with that many children would pay,
+never lower: the comparison errs toward overstating the Swiss cost for those
+households and in no case understates it. Looking K3 up in the 2027
+Tarife.csv is the operator's, later, with Claude in Chrome. The entry below is
+kept as written.
+
 QUESTION:  In both Praemien_EU files, every one of the 13 insurers files a
 child premium under age subgroup K1. Insurer 32 alone also files a second
 child premium under K3 (2027: 89.55 with accident, 83.30 without; 2026: 80.85

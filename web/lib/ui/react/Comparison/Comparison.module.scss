@@ -63,7 +63,7 @@
   line-height: var(--type-h3-line);
 }
 
-.depends {
+.caseSentence {
   margin: 0 0 var(--space-4);
   font-size: var(--type-body-m-size);
   font-weight: var(--type-body-m-weight);
@@ -98,18 +98,6 @@
   line-height: var(--type-body-m-line);
 }
 
-.badge {
-  display: inline-block;
-  margin: 0 0 var(--space-3);
-  padding: var(--space-1) var(--space-3);
-  border: var(--size-card-border) solid var(--colour-success);
-  border-radius: var(--radius-pill);
-  background: var(--colour-success-soft);
-  color: var(--colour-text-primary);
-  font-size: var(--type-label-size);
-  font-weight: var(--type-label-weight);
-  line-height: var(--type-label-line);
-}
 
 .figures {
   margin: 0 0 var(--space-3);

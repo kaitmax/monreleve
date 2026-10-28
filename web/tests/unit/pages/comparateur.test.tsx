@@ -161,26 +161,53 @@ describe('the panel, state by state', () => {
     return container;
   };
 
-  it('badges France only when it is below the LOWEST Swiss total', () => {
-    const container = panelText(2027, 12225);
+  // R674 (the operator, 28.10.2026): NO BADGE - one factual sentence chosen by
+  // the case. R225: each sentence is asserted on the RENDERED RESULT of the
+  // page, for an input that is in its case, and the other two are asserted
+  // absent - a test that always required a sentence would pass on the wrong
+  // case.
+  const SENTENCES = [COPY.result.below, COPY.result.above, COPY.result.depends] as const;
 
-    expect(container.querySelectorAll('[data-badge]')).toHaveLength(1);
-    expect(container.querySelector('[data-side="france"] [data-badge]')?.textContent).toBe(COPY.result.badge);
-    expect(container.querySelector('[data-depends]')).toBeNull();
+  const resultFor = (income: string): HTMLElement => {
+    const { container } = render(<ComparateurPage />);
+
+    fill(income, ['1985']);
+
+    const panel = container.querySelector<HTMLElement>('[data-panel="comparison"]');
+
+    if (panel === null) throw new Error('no result rendered');
+
+    return panel;
+  };
+
+  it.each([
+    // (12 225 - 12 225) x 8 % = 0 EUR, below the lowest Swiss total.
+    ['below the LOWEST Swiss total', '12225', COPY.result.below],
+    // (1 000 000 - 12 225) x 8 % = 79 022 EUR, above the highest.
+    ['above the HIGHEST Swiss total', '1000000', COPY.result.above],
+    // (60 000 - 12 225) x 8 % = 3 822 EUR, between the two.
+    ['between the two', '60000', COPY.result.depends],
+  ])('states the case in one sentence when the French contribution is %s', (_case, income, sentence) => {
+    const panel = resultFor(income);
+    const text = panel.textContent ?? '';
+
+    expect(panel.querySelector('[data-case-sentence]')?.textContent).toBe(sentence);
+    for (const other of SENTENCES.filter((candidate) => candidate !== sentence)) {
+      expect(text).not.toContain(other);
+    }
   });
 
-  it('badges Switzerland only when France is above the HIGHEST Swiss total', () => {
-    const container = panelText(2027, 1_000_000);
+  it('carries no badge, and not the badge wording, in any case', () => {
+    // Only the BADGE wording is forbidden: the operator kept the between-case
+    // sentence unchanged, and it says "l’un ou l’autre est moins cher".
 
-    expect(container.querySelector('[data-side="switzerland"] [data-badge]')).not.toBeNull();
-    expect(container.querySelectorAll('[data-badge]')).toHaveLength(1);
-  });
+    for (const income of ['12225', '1000000', '60000']) {
+      const panel = resultFor(income);
 
-  it('badges nothing inside the spread, and says it depends on the insurer', () => {
-    const container = panelText(2027, 60000);
-
-    expect(container.querySelectorAll('[data-badge]')).toHaveLength(0);
-    expect(container.querySelector('[data-depends]')?.textContent).toBe(COPY.result.depends);
+      expect(panel.querySelector('[data-badge]')).toBeNull();
+      expect((panel.textContent ?? '').toLowerCase()).not.toContain('selon ces hypoth');
+      cleanup();
+    }
   });
 
   it('labels the 2027 PASS as announced, and the 2026 one not', () => {

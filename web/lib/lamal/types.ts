@@ -49,6 +49,11 @@ export interface ComparatorYear {
   readonly passStatus: PassStatus;
   /** ISO date of the URSSAF page the PASS was read from. */
   readonly passPageDate: string;
+  /**
+   * R677: the day from which an ANNOUNCED plafond fails the gate if it is
+   * still marked announced - a stated value, ISO; null once final.
+   */
+  readonly passFinalBy: string | null;
   /** D380-2 I: the rate, in percent. */
   readonly ratePercent: number;
   /** D380-2 I: the allowance, as a share of the PASS, in percent. */

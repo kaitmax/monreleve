@@ -6,6 +6,10 @@
 //   comparateur-vide-*        the empty page: lead, form, banner, limits
 //   comparateur-rempli-*      a household compared: both sides, the spread
 //   comparateur-erreur-*      a field error, no result
+//   comparateur-inferieur-*   R674: the French contribution below the lowest
+//                             Swiss total - its own sentence
+//   comparateur-superieur-*   R674: above the highest - its own sentence
+//                             (rempli is the third case, between the two)
 //
 // - at 1440 and 390, and the third state the prompt names, the refusal of a
 // premium year the site does not hold, in composants.visual.spec.ts as
@@ -40,6 +44,26 @@ const STATES: readonly VisualState[] = [
       await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
     },
     mustShow: LAMAL_COPY.result.heading(DEFAULT_YEAR),
+  },
+  {
+    // R674. (12 225 - 12 225) x 8 % = 0 EUR: below the lowest Swiss total.
+    id: 'inferieur',
+    reach: async (page) => {
+      await page.locator('#revenu-fiscal').fill('12225');
+      await page.locator('#naissance-0').fill('1985');
+      await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
+    },
+    mustShow: LAMAL_COPY.result.below,
+  },
+  {
+    // R674. (1 000 000 - 12 225) x 8 % = 79 022 EUR: above the highest.
+    id: 'superieur',
+    reach: async (page) => {
+      await page.locator('#revenu-fiscal').fill('1000000');
+      await page.locator('#naissance-0').fill('1985');
+      await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
+    },
+    mustShow: LAMAL_COPY.result.above,
   },
   {
     id: 'erreur',

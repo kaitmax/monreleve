@@ -67,9 +67,16 @@ When the arrêté fixing the PASS is published (for 2027: announced by URSSAF
 on 20.10.2026, *« Un arrêté sera publié d'ici la fin de l'année »*):
 
 1. Read the arrêté on Légifrance and URSSAF's PASS page.
-2. If the figure is the one announced, set `passStatus: 'final'` and update
-   `passPageDate` in `web/lib/lamal/years.ts`. The page drops the
-   *annoncé* label by itself.
+2. If the figure is the one announced, set `passStatus: 'final'`,
+   `passFinalBy: null` and update `passPageDate` in
+   `web/lib/lamal/years.ts`. The page drops the *annoncé* label by itself.
+
+   **The gate enforces this (R677).** An announced year carries
+   `passFinalBy` - for 2027, `'2027-01-15'` - and from that day
+   `tests/unit/lamal/pass-deadline.test.ts` FAILS, with a message pointing
+   here, until the year is marked final. When you add a year whose PASS is
+   only announced (step 3), give it a `passFinalBy` of 15 January of that
+   year.
 3. If the figure differs, change `passEur` too, and re-run the tests: the
    2027 expectations in `tests/unit/lamal/compare.test.ts` name the announced
    figure and will fail, which is the point.

@@ -34,6 +34,7 @@ export const COMPARATOR_YEARS: readonly ComparatorYear[] = [
     passEur: 48060,
     passStatus: 'final',
     passPageDate: '2026-01-01',
+    passFinalBy: null,
     ratePercent: 8,
     allowancePercentOfPass: 25,
   },
@@ -43,6 +44,10 @@ export const COMPARATOR_YEARS: readonly ComparatorYear[] = [
     passEur: 48900,
     passStatus: 'announced',
     passPageDate: '2026-10-20',
+    // R677 (the operator's Q5): the arrete normally appears by late
+    // December, so from this day the gate fails while 2027 is still
+    // 'announced' (tests/unit/lamal/pass-deadline.test.ts).
+    passFinalBy: '2027-01-15',
     ratePercent: 8,
     allowancePercentOfPass: 25,
   },
@@ -59,6 +64,20 @@ export const AVAILABLE_YEARS: readonly number[] = COMPARATOR_YEARS.map((entry) =
 );
 
 export const DEFAULT_YEAR: number = Math.max(...AVAILABLE_YEARS);
+
+/**
+ * R677: the years whose plafond is still ANNOUNCED on or after the day it was
+ * due to be final. Pure - the caller passes today (ISO, Europe/Paris) - so
+ * both sides of the date are testable without a clock.
+ */
+export function overdueAnnouncedPasses(
+  years: readonly ComparatorYear[],
+  isoToday: string,
+): readonly ComparatorYear[] {
+  return years.filter(
+    (entry) => entry.passStatus === 'announced' && entry.passFinalBy !== null && isoToday >= entry.passFinalBy,
+  );
+}
 
 /** The year's parameters, or undefined - the caller refuses (R657). */
 export function comparatorYear(year: number): ComparatorYear | undefined {

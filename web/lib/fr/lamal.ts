@@ -6,8 +6,8 @@
 //
 // WHAT THIS PAGE NEVER SAYS (R673): which option to choose; « recommandé »;
 // an insurer's name; a single LAMal figure; a converted figure without its
-// rate and date. The badge says what it is - cheaper UNDER THESE ASSUMPTIONS -
-// and appears only when that is true across the whole insurer spread.
+// rate and date. There is NO badge (R674): one factual sentence says where
+// the French figure falls against the Swiss range - below, above, between.
 //
 // NO FIGURE IS TYPED HERE (R147, R153, R171). The rate, the allowance, the
 // PASS, the franchise, the insurer count, the years and the exchange rate all
@@ -43,8 +43,12 @@ export const LAMAL_COPY = {
    * maladie frontalier », « choix de l'assurance maladie ». In the title and
    * description, not stuffed into the visible copy.
    */
-  metaTitle:
-    'Droit d’option frontalier' + n(':') + ' coût de l’assurance maladie suisse ou française',
+  /**
+   * R675 (the operator's Q6, 28.10.2026): about 60 characters, the
+   * operator's own example, taken from relay/FW-COMPARATEUR-RULINGS-2026-10-28.txt
+   * with the product's typography (U+2019, U+00A0 before : and ?).
+   */
+  metaTitle: 'Droit d’option frontalier' + n(':') + ' LAMal ou CMU, quel coût' + n('?'),
 
   metaDescription: (years: string): string =>
     'Avant d’exercer le droit d’option, comparez sur une année le coût de ' +
@@ -160,8 +164,16 @@ export const LAMAL_COPY = {
     heading: (year: number): string => `Estimation pour ${year}`,
     perYear: 'par an',
 
-    /** R658: the badge, worded as what it is. Never « recommandé ». */
-    badge: 'Moins cher selon ces hypothèses',
+    /**
+     * R674 (the operator, 28.10.2026): NO BADGE. « Moins cher selon ces
+     * hypothèses » stopped working once the Swiss side became a range - between
+     * the lowest and the highest total there is no cheaper side. ONE factual
+     * sentence instead, chosen by the case, each a fact about the numbers with
+     * no label pointing toward a choice. Verbatim from
+     * relay/FW-COMPARATEUR-RULINGS-2026-10-28.txt; `depends` below is the third.
+     */
+    below: 'La cotisation française est inférieure au total suisse le plus bas.',
+    above: 'La cotisation française est supérieure au total suisse le plus haut.',
 
     depends:
       'Selon l’assureur suisse, l’un ou l’autre est moins cher' +
