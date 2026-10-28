@@ -25,7 +25,7 @@
 
 import type { Status } from '@/lib/ui/core/zones';
 
-/** SPEC 15's table, verbatim. comparator_calculated arrives with FW19. */
+/** SPEC 15's table, verbatim. comparator_calculated arrived with FW-COMPARATEUR. */
 export const EVENT_NAMES = [
   'page_view',
   'calculated',
@@ -36,6 +36,7 @@ export const EVENT_NAMES = [
   'share_clicked',
   'contextual_link_clicked',
   'app_cta_clicked',
+  'comparator_calculated',
 ] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];
@@ -94,6 +95,13 @@ export const pageView = (path: string): AnalyticsEvent => ({
  * asks without any of them.
  */
 export const calculated = (): AnalyticsEvent => ({ name: 'calculated' });
+
+/**
+ * SPEC 15: "Second-tool usage". CARRIES NOTHING, like `calculated`: the
+ * comparator's inputs are an income and a family, and R658 forbids any of it
+ * in an analytics event.
+ */
+export const comparatorCalculated = (): AnalyticsEvent => ({ name: 'comparator_calculated' });
 
 export const resultStatus = (status: Status): AnalyticsEvent => ({
   name: 'result_status',

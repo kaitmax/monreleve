@@ -22,7 +22,7 @@ faq:
   - question: "Auprès de qui le choix s’exerce-t-il ?"
     answer: "Auprès de l’organisme compétent du canton où vous travaillez si vous êtes en activité, ou auprès de l’Institution commune LAMal si vous percevez une pension du seul régime suisse. Le document est le formulaire « Choix du système d’assurance maladie », dont une partie est remplie par votre caisse primaire d’assurance maladie."
   - question: "Ce guide me dit-il lequel des deux coûte le moins cher ?"
-    answer: "Non, et il ne donne aucun montant. Ce site ne dispose pas de données de primes qu’il puisse citer, et un chiffre approximatif sur une décision irréversible serait pire que pas de chiffre du tout."
+    answer: "Non, et il ne donne aucun montant. Le comparateur LAMal / CMU de ce site estime les deux coûts sur une année pour votre foyer, à partir des primes publiées par l’Office fédéral de la santé publique et de la formule du Code de la sécurité sociale, et dit ce qu’il ne compare pas."
 claims:
   - key: droitOptionWindow
     says: "Le délai est de trois mois et il court à compter de l’une de quatre situations : prise d’activité en Suisse, reprise d’activité après une période de chômage, prise de résidence en France, ou passage du statut de travailleur à celui de pensionné."
@@ -38,6 +38,12 @@ claims:
     says: "Le choix s’exerce auprès de l’organisme compétent du canton de travail pour un travailleur frontalier, et auprès de l’Institution commune LAMal, à Olten, pour un titulaire d’une pension du seul régime suisse. Une partie du formulaire est remplie par la caisse primaire d’assurance maladie du lieu de résidence en France, et l’ensemble parvient à l’autorité suisse compétente dans le délai."
   - key: droitOptionForm
     says: "Le choix s’exerce au moyen du formulaire « Choix du système d’assurance maladie », que le CLEISS signale comme étant en cours d’actualisation."
+  - key: lamalPremiumByState
+    says: "Pour une personne qui réside dans un État de l’Union européenne, la prime de l’assurance maladie suisse est calculée selon l’État de résidence, et non selon le canton."
+  - key: lamalPremiumData
+    says: "L’Office fédéral de la santé publique publie les primes de chaque assureur pour les résidents de France, par classe d’âge et selon la couverture accidents."
+  - key: cmuContributionFormula
+    says: "La cotisation maladie du frontalier affilié en France est un pourcentage de ses revenus, après un abattement égal à une part du plafond annuel de la sécurité sociale."
 ---
 
 {/*
@@ -96,13 +102,17 @@ claims:
   paragraph is the reason this page is worth more than the dozen that already
   rank for the term.
 
-  NO MONTANTS. R157 still binds: the premium data is unlicensed and the
-  comparator is unbuilt. The article names what drives the cost and quantifies
-  nothing.
+  NO MONTANTS, STILL - BUT NOW A LINK. FW-COMPARATEUR built the comparator on
+  the sources R664-R673 cleared, so the section that carried no link (PARK-7)
+  links it, and the FAQ answer that said the site held no premium data says
+  where the figures are. The article itself still quantifies nothing: a cost
+  is computed for a household, not read in an article.
 
-  NO LINK TO /calculateur-lamal-cmu. It is `planned`, so R85 forbids an
-  anchor; the article does not mention a tool that does not exist rather than
-  naming one and telling a reader to wait. Parked as P7.
+  THE CANTON WAS WRONG FOR THIS READER. The section said the Swiss premium
+  depends on the canton. For a frontalier RESIDING IN FRANCE it depends on the
+  State of residence (LAMal art. 61 al. 4, row L4; the OFSP data has no
+  regional split for France), so the sentence now says so, under its own
+  claim key.
 */}
 
 Un frontalier qui travaille en Suisse et vit en France peut choisir le système
@@ -121,7 +131,7 @@ lentement une fois plutôt que vite deux fois.
 - La portée du choix : une seule fois, irrévocable
 - Votre famille : elle suit votre choix, sous conditions
 - Si vous ne faites rien : affiliation d’office en Suisse
-- Ce que ce guide ne donne pas : des montants
+- Ce que ce guide ne donne pas : des montants — [le comparateur LAMal / CMU](/calculateur-lamal-cmu) les estime
 
 </Encadre>
 
@@ -231,16 +241,20 @@ compris.
 ## Ce que ce guide ne chiffre pas
 
 Il ne vous dira pas lequel des deux systèmes vous coûterait le moins cher, et
-il ne contient aucun montant.
+il ne contient aucun montant : sur une décision qui ne se reprend pas, un coût
+se calcule pour votre foyer plutôt qu’il ne se lit dans un article.
 
-Ce site ne dispose pas de données de primes qu’il puisse citer, et il ne
-publie pas un chiffre qu’il ne peut pas sourcer. Sur une décision qui ne se
-reprend pas, un montant approximatif serait plus dangereux que pas de montant
-du tout.
+[Le comparateur LAMal / CMU](/calculateur-lamal-cmu) le fait, sur une année
+complète : la prime suisse d’après les primes que l’Office fédéral de la santé
+publique publie pour les résidents de France, la cotisation française d’après
+la formule du Code de la sécurité sociale. Il dit aussi ce qu’il ne compare
+pas.
 
 Ce qui fait varier le coût, en revanche, se nomme sans se chiffrer : du côté
-suisse, la prime dépend du canton, de l’âge, de la franchise choisie et du
-modèle d’assurance ; du côté français, la cotisation est assise sur le revenu.
+suisse, pour une personne qui réside en France, la prime est calculée selon
+l’État de résidence et non selon le canton, puis selon l’âge, l’assureur et la
+couverture accidents ; du côté français, la cotisation est assise sur le
+revenu.
 Les deux logiques sont différentes, et c’est pour cela qu’aucune règle simple
 du type « l’un est toujours moins cher » ne tient.
 

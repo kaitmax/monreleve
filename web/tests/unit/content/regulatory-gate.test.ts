@@ -172,7 +172,7 @@ describe('the third surface: the nav and the footer (R54)', () => {
     expect(hrefs(open)).toContain(CALCULATOR_PATH);
   });
 
-  it('drops the Calculateurs disclosure when the gate closes, since FW20', () => {
+  it('leaves the Calculateurs disclosure only the comparator when the gate closes, since FW-COMPARATEUR', () => {
     // THIS TEST ASSERTED THE OPPOSITE UNTIL FW20, and its premise was
     // "the comparator is planned but NOT gated, so the menu still has a child
     // and must not vanish with the calculator."
@@ -183,13 +183,19 @@ describe('the third surface: the nav and the footer (R54)', () => {
     // isHrefHidden now hides anything not live, which is R85's rule - a target
     // renders only when it is live - finally applied to the shell.
     //
-    // So with the review closed, the disclosure's only two children are a
-    // gated calculator and an unbuilt comparator, and it correctly vanishes -
-    // which is exactly what the next test says must happen to a disclosure
-    // that loses every child.
+    // So with the review closed, the disclosure's only two children were a
+    // gated calculator and an unbuilt comparator, and it vanished.
+    //
+    // FW-COMPARATEUR BUILT THE COMPARATOR, and it is NOT behind R54's gate:
+    // that gate is the Checkpoint A review of the TELEWORK constants, and the
+    // comparator stands on its own rows (L1-L14, R664-R673). So a closed
+    // review now leaves the menu ONE child - the comparator - and the shell's
+    // collapseLoneDisclosures renders it as a plain link, which is what the
+    // menu does with a lone child (FW33, H4).
     const closed = visibleNav(SHELL_NAV, null);
+    const menu = closed.find((entry) => entry.children !== undefined);
 
-    expect(closed.find((entry) => entry.children !== undefined)).toBeUndefined();
+    expect(menu?.children?.map((child) => child.href)).toEqual(['/calculateur-lamal-cmu']);
   });
 
   it('keeps it open today, because the calculator is live and the review is recorded', () => {
@@ -201,7 +207,7 @@ describe('the third surface: the nav and the footer (R54)', () => {
     const menu = open.find((entry) => entry.children !== undefined);
 
     expect(menu, 'the Calculateurs disclosure is gone even with the gate open').toBeDefined();
-    expect(menu?.children?.map((child) => child.href)).toEqual([CALCULATOR_PATH]);
+    expect(menu?.children?.map((child) => child.href)).toEqual([CALCULATOR_PATH, '/calculateur-lamal-cmu']);
   });
 
   it('drops a disclosure that loses every child', () => {

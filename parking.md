@@ -341,6 +341,14 @@ decides.
 
 ## PARK-7 - the article does not link /calculateur-lamal-cmu  [FW18b, 2026-09-16]
 
+CLOSED 28.10.2026 BY FW-COMPARATEUR. The comparator is live, so R85 no longer
+forbids the anchor: the section this entry named ("Ce que ce guide ne chiffre
+pas") links it, the En bref list and the FAQ answer point to it, and the
+comparator links back to the guide. The same section's sentence that the
+Swiss premium "depends on the canton" was corrected for this reader: for a
+France resident it is calculated by State of residence (LAMal art. 61 al. 4,
+row L4), under its own claim key.
+
 QUESTION:  The comparator is the natural next step for a reader who has just
 learned that the choice is irrevocable, and SPEC 9.6 names the page. It is
 `status: 'planned'` — FW19 reached R157 option (3) and built no UI, because
@@ -4754,3 +4762,27 @@ FOR THE OPERATOR: allocate the next scheme - a second letter cycle, or the
 numeric series as the default from now on.
 
 STATE:      OPEN - operator decision.
+
+## PARK-32 - the comparator has no e-mail capture yet  [FW-COMPARATEUR, 2026-10-28]
+
+QUESTION:  SPEC 9.6 says the comparator carries "same email capture" as the
+calculator. The calculator's capture is a plain POST to /api/alertes that
+redirects back to the page with a status, and the calculator survives the
+round trip because its scenario is in the URL. The comparator's inputs are
+deliberately NOT in the URL (R658: no income in any URL), so the redirect
+would return the reader to an empty comparator, and the page has no status
+notice for the capture's result.
+
+TAKEN:     No capture on /calculateur-lamal-cmu in this task. The prompt's
+R642 (R658 here) does not list it; lib/alerts/subscribe.ts still knows three
+sources. Reversible at zero cost: nothing was built.
+
+NOT TAKEN: Adding <AlertCapture source="comparateur"> as-is - it would cost
+the reader their typed household on every submission, and its success and
+error states would have nowhere to render.
+
+TOUCHES:    lib/alerts/subscribe.ts (SOURCES), app/api/alertes/route.ts
+(RETURN_TO), lib/analytics/events.ts (EventSource), the comparator page, and a
+status notice that does not need the URL.
+
+STATE:      OPEN - for the operator to schedule.

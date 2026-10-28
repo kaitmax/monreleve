@@ -61,7 +61,10 @@ describe('the constants table', () => {
     //
     // Hardcoded on purpose: deriving it from SOURCE_IDS would agree with
     // whatever SOURCE_IDS says, which is the thing being checked.
-    expect(SOURCE_ENTRIES.length).toBe(17);
+    // THIRTY SINCE FW-COMPARATEUR: thirteen rows for the LAMal / CMU
+    // comparator (docs/regulatory-sources.md L1-L14), one per fact the page
+    // or a guide states (R158).
+    expect(SOURCE_ENTRIES.length).toBe(30);
 
     for (const entry of SOURCE_ENTRIES) {
       expect(text, entry.id).toContain(SOURCES_COPY.rules[entry.id]);
@@ -234,7 +237,7 @@ describe('the assembled page', () => {
 
     expect(container.querySelectorAll('table')).toHaveLength(1);
     expect(container.querySelectorAll('th[scope="col"]')).toHaveLength(5);
-    expect(container.querySelectorAll('th[scope="row"]')).toHaveLength(17);
+    expect(container.querySelectorAll('th[scope="row"]')).toHaveLength(30);
   });
 });
 
@@ -249,7 +252,9 @@ describe('the verification date column', () => {
     // added since has arrived WITH its source read, and these two have not
     // moved in four tasks. FW20b's three came off the CLEISS fetch of
     // 16.09.2026 that D1-D7 already came from.
-    expect(transcribed).toHaveLength(15);
+    // TWENTY-EIGHT OF THIRTY since FW-COMPARATEUR's thirteen, all read on
+    // 27.10.2026 - and the same two still unread.
+    expect(transcribed).toHaveLength(28);
     expect(text).toContain(formatDate(CHECKPOINT_A));
   });
 

@@ -184,6 +184,9 @@ describe('the sitemap lists what exists and nothing else', () => {
       // it and tasks/todo.md never built it, so the product's only call to
       // action pointed at a 404 from every page until PARK-12 hid the link.
       '/application',
+      // FW-COMPARATEUR: the last planned route, built once R664-R673 cleared
+      // the premium licence and the French formula (PARK-4, PARK-24).
+      '/calculateur-lamal-cmu',
       '/calculateur-teletravail-frontalier',
       '/cgu',
       '/confidentialite',
@@ -215,15 +218,21 @@ describe('the sitemap lists what exists and nothing else', () => {
     // has to be lowered every time a page ships is a floor that will one day
     // be lowered to nothing; the set below says which five, so shipping one
     // is an edit that names it.
-    expect([...planned].sort()).toEqual([
-      // FW20 took /a-propos out of this list and into the sitemap one, and
-      // FW20b took /application - which leaves ONE planned route, blocked on
-      // a licence rather than on a task (PARK-4, R157 option 3).
-      '/calculateur-lamal-cmu',
-    ]);
-    for (const path of planned) {
-      expect(sitemapPaths(), path).not.toContain(path);
-    }
+    // FW20 took /a-propos out of this list and into the sitemap one, FW20b
+    // took /application, and FW-COMPARATEUR took /calculateur-lamal-cmu, the
+    // last one - so the set is EMPTY, asserted as a value (R345).
+    expect([...planned].sort()).toEqual([]);
+
+    // AND THE EXCLUSION STILL HAS TO BE SHOWN TO WORK, because "no planned
+    // route is listed" is satisfied by there being none (R169's corollary).
+    // A synthetic planned route, handed to the same function, stays out.
+    const synthetic = [
+      ...PUBLIC_ROUTES,
+      { path: '/pas-encore', status: 'planned' as const, task: 'TEST', changeFrequency: 'monthly' as const, priority: 0.1 },
+    ];
+
+    expect(sitemapPaths(synthetic)).not.toContain('/pas-encore');
+    expect(sitemapPaths(synthetic)).toContain('/calculateur-lamal-cmu');
   });
 
   it('lists nothing that robots disallows', () => {

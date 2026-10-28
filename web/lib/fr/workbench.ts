@@ -79,6 +79,13 @@ export const WORKBENCH = {
     march: 'Mars',
   },
 
+  /** FW-COMPARATEUR: the comparator's two states no reader can stage on the page. */
+  comparison: {
+    title: 'Comparateur LAMal / CMU',
+    banner: 'Bandeau d’irrévocabilité',
+    refusal: 'Refus d’une année sans primes',
+  },
+
   container: {
     title: 'Container',
     public: 'Largeur publique - 1200',

@@ -58,10 +58,13 @@ describe('isLive', () => {
     // and a default pointing at the wrong list would make every assertion here
     // decorative.
     expect(isLive('/mentions-legales')).toBe(true);
-    // FW20b: /application is live now, so the default-registry check needs a
-    // route that is still planned. /calculateur-lamal-cmu is the last one,
-    // blocked on a premium-data licence rather than on a task (PARK-4).
-    expect(isLive('/calculateur-lamal-cmu')).toBe(false);
+    // FW20b: /application is live now, so the default-registry check needed a
+    // route that was still planned - /calculateur-lamal-cmu, the last one.
+    // FW-COMPARATEUR built it, so NO route is planned any more and the check
+    // turns round: a route the REAL registry has live and the one-route
+    // fixture does not. Only the default list can answer true.
+    expect(isLive('/calculateur-lamal-cmu')).toBe(true);
+    expect(isLive('/calculateur-lamal-cmu', [LIVE])).toBe(false);
   });
 });
 

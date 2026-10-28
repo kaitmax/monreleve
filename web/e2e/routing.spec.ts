@@ -89,20 +89,14 @@ test.describe('sitemap.xml', () => {
     // A floor that has to be lowered every time a page ships gets lowered
     // until it guards nothing. The set says which five, so shipping one is an
     // edit that names it.
-    expect(planned.map((route) => route.path).sort()).toEqual([
-      // FW20 took /a-propos out of this list and FW20b took /application,
-      // which leaves ONE planned route - and it is blocked on a premium-data
-      // licence rather than on a task (PARK-4, R157 option 3). The set is
-      // down to a single entry, which is the point at which it is worth
-      // saying out loud: when this list empties, the shape of the assertion
-      // changes rather than the list, the way tests/unit/content/routes.test
-      // .ts's UNASSIGNED did in FW20b.
-      '/calculateur-lamal-cmu',
-    ]);
-
-    for (const route of planned) {
-      expect(body, route.path).not.toContain(`<loc>${ORIGIN}${route.path}</loc>`);
-    }
+    // FW20 took /a-propos out of this list, FW20b took /application, and
+    // FW-COMPARATEUR took /calculateur-lamal-cmu, the last one. The comment
+    // here said "when this list empties, the shape of the assertion changes
+    // rather than the list" - so: the set is asserted EMPTY, and the route
+    // that left it is asserted PRESENT in the served sitemap, which is the
+    // positive half an empty exclusion loop cannot provide (R169's corollary).
+    expect(planned.map((route) => route.path).sort()).toEqual([]);
+    expect(body).toContain(`<loc>${ORIGIN}/calculateur-lamal-cmu</loc>`);
   });
 
   test('every listed URL actually answers 200', async ({ request }) => {

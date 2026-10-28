@@ -8,8 +8,8 @@
 import { describe, expect, it } from 'vitest';
 import { formatChf, formatEur, formatRate, formatWholePercent, groupDigits } from '@/lib/lamal/format';
 
-const NNBSP = ' ';
-const NBSP = ' ';
+const NNBSP = '\u202F';
+const NBSP = '\u00A0';
 
 describe('the comparator formats', () => {
   it('groups thousands with U+202F', () => {

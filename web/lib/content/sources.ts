@@ -77,6 +77,25 @@ export const SOURCE_IDS = [
   // missionCapDays was in before R158.
   'droitOptionFiling',
   'droitOptionForm',
+
+  // THE LAMAL / CMU COMPARATOR, read on 27.10.2026 (docs/regulatory-sources.md
+  // rows L1-L14; the operator's R664-R673). One id per fact the comparator or
+  // a guide states (R158), several of them sharing a page: the age classes
+  // and the State-of-residence rule are two facts of one law, the formula and
+  // the prorata two paragraphs of one article.
+  'lamalPremiumData',
+  'lamalPremiumMonthly',
+  'lamalPremiumByState',
+  'lamalAgeClasses',
+  'lamalAccidentCover',
+  'cmuContributionFormula',
+  'cmuIncomeBase',
+  'cmuProrata',
+  'cmuRounding',
+  'cmuHousehold',
+  'pass2026',
+  'pass2027',
+  'ecbReferenceRate',
 ] as const;
 
 export type SourceId = (typeof SOURCE_IDS)[number];
@@ -112,6 +131,20 @@ export const CHECKPOINT_A = '2026-09-09';
 export const CLEISS_PASS = '2026-09-16';
 
 /**
+ * The pass that read the comparator's sources: the operator's collection of
+ * 27.10.2026 (docs/sources/primes-lamal/sources-2026-10.md), checked against
+ * the files by FW-COMPARATEUR. Its own constant, for CLEISS_PASS's reason.
+ */
+export const COMPARATOR_PASS = '2026-10-27';
+
+/**
+ * Which comparator figure a row shows in the value column. Rows that state a
+ * rule carry none. The value is read from lib/lamal/years.ts at render time,
+ * never typed here - the reason SOURCE_ENTRIES carries no values at all.
+ */
+export type ComparatorValueKey = 'pass2026' | 'pass2027' | 'ecbRate';
+
+/**
  * One row, and A PENDING ROW CANNOT CARRY A DATE.
  *
  * The first version of this interface had verifiedOn on every row, and I set
@@ -135,6 +168,8 @@ export type SourceEntry = {
    * Absent for the two rows that state a RULE rather than hold a number.
    */
   readonly ruleSetKey?: keyof RuleSet;
+  /** Which comparator figure this row publishes, if any (FW-COMPARATEUR). */
+  readonly comparatorKey?: ComparatorValueKey;
   readonly url: string;
 } & (
   | { readonly status: 'transcribed'; readonly verifiedOn: string }
@@ -278,6 +313,100 @@ export const SOURCE_ENTRIES: readonly SourceEntry[] = [
     sourceName: 'CLEISS',
     verifiedOn: CLEISS_PASS,
     url: 'https://www.cleiss.fr/faq/droit_d_option_des_frontaliers_france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'lamalPremiumData',
+    sourceName: 'OFSP (opendata.swiss)',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://opendata.swiss/fr/dataset/health-insurance-premiums',
+    status: 'transcribed',
+  },
+  {
+    id: 'lamalPremiumMonthly',
+    sourceName: 'priminfo.admin.ch',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.priminfo.admin.ch/fr/praemien',
+    status: 'transcribed',
+  },
+  {
+    id: 'lamalPremiumByState',
+    sourceName: 'fedlex.admin.ch',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.fedlex.admin.ch/eli/cc/1995/1328_1328_1328/fr',
+    status: 'transcribed',
+  },
+  {
+    id: 'lamalAgeClasses',
+    sourceName: 'fedlex.admin.ch',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.fedlex.admin.ch/eli/cc/1995/1328_1328_1328/fr',
+    status: 'transcribed',
+  },
+  {
+    id: 'lamalAccidentCover',
+    sourceName: 'fedlex.admin.ch',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.fedlex.admin.ch/eli/cc/1983/38_38_38/fr',
+    status: 'transcribed',
+  },
+  {
+    id: 'cmuContributionFormula',
+    sourceName: 'Légifrance',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038405782',
+    status: 'transcribed',
+  },
+  {
+    id: 'cmuIncomeBase',
+    sourceName: 'Légifrance',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036390105',
+    status: 'transcribed',
+  },
+  {
+    id: 'cmuProrata',
+    sourceName: 'Légifrance',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038405782',
+    status: 'transcribed',
+  },
+  {
+    id: 'cmuRounding',
+    sourceName: 'urssaf.fr',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.urssaf.fr/accueil/particulier/travailleur-frontalier-suisse/travail-suisse-declarer-revenus.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'cmuHousehold',
+    sourceName: 'urssaf.fr',
+    verifiedOn: COMPARATOR_PASS,
+    url: 'https://www.urssaf.fr/accueil/particulier/travailleur-frontalier-suisse/assurance-maladie-france-suisse.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'pass2026',
+    sourceName: 'urssaf.fr',
+    verifiedOn: COMPARATOR_PASS,
+    comparatorKey: 'pass2026',
+    url: 'https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'pass2027',
+    sourceName: 'urssaf.fr',
+    verifiedOn: COMPARATOR_PASS,
+    comparatorKey: 'pass2027',
+    url: 'https://www.urssaf.fr/accueil/actualites/plafond-annuel-securite-sociale.html',
+    status: 'transcribed',
+  },
+  {
+    id: 'ecbReferenceRate',
+    sourceName: 'BCE',
+    verifiedOn: COMPARATOR_PASS,
+    comparatorKey: 'ecbRate',
+    url: 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html',
     status: 'transcribed',
   },
 ];

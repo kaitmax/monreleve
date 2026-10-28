@@ -1,0 +1,198 @@
+// web/app/(public)/calculateur-lamal-cmu/comparateur.module.scss
+//
+// Tokens only (R8, R62). The comparator borrows the calculator's shape - a
+// narrow container, a card with the fields, the result below and never
+// replacing it - and its values, so the two tools read as one product.
+
+.page {
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-20);
+}
+
+.title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.lead {
+  margin: 0 0 var(--space-8);
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-body-l-weight);
+  line-height: var(--type-body-l-line);
+}
+
+// ---- the form ------------------------------------------------------------
+
+.form {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-6);
+  border: var(--size-input-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.form > * + * {
+  margin-top: var(--space-5);
+}
+
+.formHeading {
+  margin: 0;
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.select,
+.input {
+  width: 100%;
+}
+
+.amountField {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.input {
+  font-variant-numeric: tabular-nums;
+}
+
+.yearInput {
+  max-width: var(--size-button-min-width);
+}
+
+.suffix {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.persons {
+  min-width: 0;
+  margin-right: 0;
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+  font-size: var(--type-body-l-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-body-l-line);
+}
+
+.helper {
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.personList {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  padding: var(--space-4) 0;
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.checkRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  margin-top: var(--space-2);
+}
+
+.checkbox {
+  flex: 0 0 auto;
+  width: var(--icon-size-default);
+  height: var(--icon-size-default);
+  margin: 0;
+}
+
+.checkLabel {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+.addButton,
+.removeButton {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  padding: 0 var(--space-3);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+.removeButton {
+  margin-top: var(--space-2);
+}
+
+.buttonIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--colour-brand);
+  color: var(--colour-surface);
+  font-family: inherit;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  cursor: pointer;
+}
+
+// ---- what the comparison leaves out ----------------------------------------
+
+.limits {
+  margin-top: var(--space-12);
+}
+
+.limitsHeading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+.limitList {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.limit {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.links {
+  margin: var(--space-4) 0 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}

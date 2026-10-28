@@ -35,6 +35,11 @@ export interface ProvisionalEntry {
   readonly body: string;
 }
 
+/** An unknown that a page now answers carries the link to it (R659). */
+export interface UnknownEntry extends ProvisionalEntry {
+  readonly link?: { readonly text: string; readonly href: string };
+}
+
 /**
  * The three absences this page discloses.
  *
@@ -174,6 +179,35 @@ export const SOURCES_COPY = {
       "Organisme auprès duquel le choix s’exerce, selon la situation",
     droitOptionForm:
       "Formulaire par lequel le choix s’exerce",
+
+    // Le comparateur LAMal / CMU, lu le 27.10.2026 (lignes L1 à L14).
+    lamalPremiumData:
+      'Primes de l’assurance maladie suisse des résidents de France, par ' +
+      'assureur, classe d’âge et couverture accidents',
+    lamalPremiumMonthly: 'Période de la prime suisse' + n(':') + ' un montant mensuel',
+    lamalPremiumByState:
+      'Prime d’un résident de l’Union européenne calculée selon l’État de ' +
+      'résidence, et non selon le canton',
+    lamalAgeClasses:
+      'Classes d’âge de la prime selon l’année de naissance' + n(':') +
+      ' enfants, jeunes adultes, adultes',
+    lamalAccidentCover:
+      'Suspension de la couverture accidents pour un salarié assuré contre ' +
+      'les accidents en Suisse',
+    cmuContributionFormula:
+      'Cotisation maladie du frontalier affilié en France' + n(':') +
+      ' taux et abattement sur le plafond de la sécurité sociale',
+    cmuIncomeBase:
+      'Revenus sur lesquels la cotisation est assise, ceux de la dernière ' +
+      'année connue',
+    cmuProrata: 'Cotisation au prorata pour une période inférieure à une année',
+    cmuRounding: 'Arrondi de la base et de la cotisation à l’euro le plus proche',
+    cmuHousehold:
+      'Une déclaration par frontalier, les proches rattachés sans cotisation ' +
+      'distincte',
+    pass2026: 'Plafond annuel de la sécurité sociale 2026',
+    pass2027: 'Plafond annuel de la sécurité sociale 2027, annoncé, arrêté à paraître',
+    ecbReferenceRate: 'Taux de référence de l’euro en francs suisses',
   } satisfies Record<SourceId, string>,
 
   /**
@@ -285,12 +319,20 @@ export const SOURCES_COPY = {
    */
   unknownsHeading: 'Ce que ce site ne sait pas',
 
+  /**
+   * FW-COMPARATEUR (R659): THE THIRD ITEM IS NO LONGER AN ABSENCE. This said
+   * "Trois sujets ... ne figurent nulle part sur ce site", which became false
+   * the day the comparator was published. The two other items are untouched;
+   * the intro now counts what is still absent and says what changed for the
+   * third.
+   */
   unknownsIntro:
-    'Trois sujets reviennent souvent et ne figurent nulle part sur ce site. ' +
+    'Deux sujets reviennent souvent et ne figurent nulle part sur ce site. ' +
     "Ce n’est pas un oubli : aucune source primaire n’a pu être vérifiée " +
     'pour eux, et ce site ne publie pas une information réglementaire ' +
     "qu’il ne peut pas rattacher à son texte d’origine. Les nommer vaut " +
-    'mieux que de vous laisser les chercher.',
+    'mieux que de vous laisser les chercher. Un troisième, longtemps absent ' +
+    'pour la même raison, a désormais ses sources.',
 
   unknowns: {
     attestation: {
@@ -311,16 +353,27 @@ export const SOURCES_COPY = {
         "cette page coûterait à un lecteur bien plus qu’une date absente. " +
         'Votre centre des finances publiques la publie.',
     },
+    // R659: replaced by the comparator and its scope. The heading is kept -
+    // it is still the subject a reader comes looking for.
     primes: {
       heading: "Le coût comparé de l’assurance maladie suisse et française",
       body:
-        "Ce site ne dispose d’aucune donnée de primes qu’il puisse citer. Il " +
-        'ne publie donc pas de comparateur de coût, et le guide du droit ' +
-        "d’option ne donne aucun montant. Sur un choix qui ne se reprend " +
-        'pas, un chiffre approximatif serait plus dangereux que pas de ' +
-        'chiffre du tout.',
+        'Le comparateur LAMal / CMU l’estime désormais, sur une année ' +
+        "complète, à partir des primes publiées par l’Office fédéral de la " +
+        'santé publique pour les résidents de France et de la formule du Code ' +
+        'de la sécurité sociale. Ce qu’il ne compare pas' + NB + '— les soins ' +
+        "couverts, ce qui reste à charge, une assurance complémentaire, l’effet " +
+        'du choix sur chacun' + NB + '— est listé sur sa page.',
+      link: { text: 'Le comparateur LAMal / CMU', href: '/calculateur-lamal-cmu' },
     },
-  } satisfies Record<UnknownId, ProvisionalEntry>,
+  } satisfies Record<UnknownId, UnknownEntry>,
+
+  /** R664 (G1): the attribution the premium data's terms make mandatory, on /sources. */
+  premiumsHeading: 'Les primes du comparateur LAMal / CMU',
+  premiumsBefore: 'Les primes suisses du comparateur proviennent du jeu de données «' + NB,
+  premiumsAfter: (author: string, readOn: string): string =>
+    NB + '» de l’' + author + ', publié sur opendata.swiss sous la condition «' + NB +
+    'Utilisation libre. Obligation d’indiquer la source.' + NB + '», lu le ' + readOn + '.',
 
   /** The engine's own verification state, in one line. */
   fixturesHeading: 'Les cas de référence',

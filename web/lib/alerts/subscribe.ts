@@ -19,9 +19,9 @@ import { normaliseEmail } from '@/lib/db/alert-subscriber';
 /**
  * Where a subscription came from.
  *
- * SPEC section 8 lists four and includes 'comparateur'; the comparator has no
- * page yet (SPEC 9.6), so accepting it here would be a branch nothing can
- * reach. The database column is a String, so the fourth costs no migration on
+ * SPEC section 8 lists four and includes 'comparateur'. The comparator has a
+ * page since FW-COMPARATEUR but no capture card yet (PARK-32), so accepting it
+ * here would still be a branch nothing can reach. The database column is a String, so the fourth costs no migration on
  * the day that page ships.
  */
 export const SOURCES = ['calculateur', 'alertes', 'guide'] as const;

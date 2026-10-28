@@ -857,9 +857,10 @@ its list of what it does not compare.
 > Le montant de la base de calcul et la cotisation sont arrondis à l’euro le plus proche.
 
 Applied as: base = round(A − 0,25 × PASS) to the euro; contribution =
-round(8 % × base) to the euro. Half-euros round up, the usual reading of
-*« le plus proche »*; with A in whole euros and the PASS a multiple of four,
-the base is always whole, so only the contribution can land on ,50.
+round(8 % × base) to the euro. With A in whole euros and the PASS a multiple
+of four, the base is always whole; and 8 % of a whole number of euros is
+never exactly half a euro (2 × base / 25 cannot end in ,50), so the rounding
+never meets a tie and *« le plus proche »* needs no tie rule.
 
 ### L11 — who the contribution covers. URSSAF 6a, 6d; CLEISS.
 

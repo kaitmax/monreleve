@@ -42,7 +42,10 @@ import {
   readingAnchor,
 } from '@/lib/content/provisional';
 import { LAST_REGULATORY_REVIEW } from '@/lib/content/regulatory';
-import { SOURCE_ENTRIES } from '@/lib/content/sources';
+import { COMPARATOR_PASS, SOURCE_ENTRIES, type ComparatorValueKey } from '@/lib/content/sources';
+import { formatEur, formatRate } from '@/lib/lamal/format';
+import { EXCHANGE_RATE, PREMIUM_DATASET_URL, comparatorYear } from '@/lib/lamal/years';
+import { PREMIUM_DATASET } from '@/lib/fr/lamal';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { SOURCES_COPY as COPY, UNKNOWN_IDS } from '@/lib/fr/sources';
 import { Container } from '@/lib/ui/react/Container/Container';
@@ -87,6 +90,21 @@ function valueOf(key: string | undefined, year: number): string {
 
     default:
       return COPY.noValue;
+  }
+}
+
+/**
+ * A comparator row's value, from lib/lamal/years.ts - the same module the
+ * comparator computes from, so the table and the page cannot disagree.
+ */
+function comparatorValue(key: ComparatorValueKey): string {
+  switch (key) {
+    case 'pass2026':
+      return formatEur(comparatorYear(2026)?.passEur ?? 0);
+    case 'pass2027':
+      return formatEur(comparatorYear(2027)?.passEur ?? 0);
+    case 'ecbRate':
+      return formatRate(EXCHANGE_RATE.chfPerEurTenThousandths);
   }
 }
 
@@ -163,7 +181,11 @@ export default function SourcesPage() {
                     <th scope="row" className={styles.ruleCell}>
                       {COPY.rules[entry.id]}
                     </th>
-                    <td className={styles.valueCell}>{valueOf(entry.ruleSetKey, year)}</td>
+                    <td className={styles.valueCell}>
+                      {entry.comparatorKey === undefined
+                        ? valueOf(entry.ruleSetKey, year)
+                        : comparatorValue(entry.comparatorKey)}
+                    </td>
                     <td>
                       {/*
                         A plain anchor, per ruling R87, and rel="noreferrer"
@@ -275,10 +297,40 @@ export default function SourcesPage() {
             {UNKNOWN_IDS.map((id) => (
               <div className={styles.reading} key={id}>
                 <dt className={styles.readingHeading}>{COPY.unknowns[id].heading}</dt>
-                <dd className={styles.readingBody}>{COPY.unknowns[id].body}</dd>
+                <dd className={styles.readingBody}>
+                  {COPY.unknowns[id].body}
+                  {/*
+                    R659: AN UNKNOWN THE SITE NOW ANSWERS LINKS TO THE ANSWER.
+                    The comparator's entry carries the link; the two others,
+                    still absences, carry none.
+                  */}
+                  {'link' in COPY.unknowns[id] ? (
+                    <>
+                      {' '}
+                      <a href={COPY.unknowns.primes.link.href}>{COPY.unknowns.primes.link.text}</a>
+                    </>
+                  ) : null}
+                </dd>
               </div>
             ))}
           </dl>
+        </section>
+
+        {/*
+          R664 (G1): THE ATTRIBUTION THE PREMIUM DATA'S TERMS MAKE MANDATORY -
+          author, title, link to the dataset - here as well as under the
+          comparator's Swiss figures. Author and title from lib/fr/lamal.ts,
+          the link and the date from lib/lamal/years.ts: one home each.
+        */}
+        <section className={styles.section} data-premium-attribution="true">
+          <h2 className={styles.heading}>{COPY.premiumsHeading}</h2>
+          <p className={styles.prose}>
+            {COPY.premiumsBefore}
+            <a href={PREMIUM_DATASET_URL} rel="noreferrer" target="_blank">
+              {PREMIUM_DATASET.title}
+            </a>
+            {COPY.premiumsAfter(PREMIUM_DATASET.author, formatDate(COMPARATOR_PASS))}
+          </p>
         </section>
 
         <section className={styles.section}>
