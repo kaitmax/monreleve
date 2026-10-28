@@ -585,6 +585,334 @@ relevé per employer) and the **residence-change** PARK item.
   distinct document. The accord A itself is the primary ESTV instrument and is
   verified above.
 
+## THE LAMAL / CMU COMPARATOR — SOURCES READ 27.10.2026, CHECKED 28.10.2026 (FW-COMPARATEUR)
+
+> **WHERE THE WORDS COME FROM.** The operator collected every source below
+> with Claude in Chrome on **27 October 2026** and committed the collection
+> report and the data files to `docs/sources/primes-lamal/` (commit 49f8164).
+> The quotations in this section are copied FROM that report,
+> `docs/sources/primes-lamal/sources-2026-10.md` (section numbers in
+> brackets), which is the accented original and is not edited: its SHA-256 is
+> recorded in `CHECKSUMS.txt`. Nothing here was re-fetched except where a row
+> says so.
+>
+> **WHAT FW-COMPARATEUR CHECKED, ON 28.10.2026.** Every claim the report
+> makes about the FILES was re-derived from the files themselves, and the
+> report's claims about PAGES were checked for internal consistency only —
+> a page cannot be re-read from a file. Each check is listed under its row.
+> Nothing the files say contradicts the report.
+>
+> **THIS CLEARS PARK-4 AND PARK-24** under the operator's ruling recorded in
+> CLAUDE.md as R664–R673 (the addendum's G1–G10): *premium data licensed and
+> dated; French contribution primary-verified.*
+
+| # | Fact | Content | Source | Read |
+|---|---|---|---|---|
+| L1 | *The Swiss premium data* | Premiums of the compulsory Swiss health insurance for insured persons **residing in France**, by insurer (N° OFSP), age class and accident cover, for premium years **2026** and **2027** | OFSP / BAG, dataset *« Primes de l'assurance-maladie »* on opendata.swiss, files `Prämien_EU` | ☑ 27.10.2026 |
+| L2 | *The reuse terms* | `Prämien_EU.csv/.xlsx` carry the terms *« Utilisation libre. Obligation d'indiquer la source. »*: commercial use allowed; **the source (author, title, link to the dataset) is mandatory** | opendata.swiss terms of use; per-resource `license` field | ☑ 27.10.2026 |
+| L3 | *A monthly premium* | The premium is the amount paid **each month** to the insurer. Annual cost = 12 × the figure in the file | priminfo.admin.ch; cross-checked against ge.ch's *« Cotisations mensuelles »* | ☑ 27.10.2026, cross-check 28.10.2026 |
+| L4 | *By State, not by canton* | For insured persons residing in an EU State, the premium is calculated **by State of residence** | LAMal art. 61 al. 4 | ☑ 27.10.2026 |
+| L5 | *Age classes* | Young adults are **19 to 25 on 31 December** of the year; adults are the others aged **over 25**; the class follows the **year of birth**. The child bound (**18 and under**) is DERIVED, not quoted | LAMal art. 16a al. 1 and 4; OAMal art. 91 al. 3 | ☑ 27.10.2026 |
+| L6 | *Accident cover* | Suspended on request for a person fully covered under the LAA; a part-time worker employed **at least eight hours a week** by one employer is covered for non-occupational accidents | LAMal art. 8 al. 1; OLAA art. 13 al. 1 | ☑ 27.10.2026 |
+| L7 | *The French contribution* | `8 % × (A − 0,25 × PASS)` for a calendar year | CSS art. D380-2 I | ☑ 27.10.2026 |
+| L8 | *The income it is levied on* | A = the income defined at art. 1417 IV CGI, for the **last calendar year for which it is known** (in practice the year before last) | CSS art. L380-3-1 IV; CGI art. 1417 IV; URSSAF | ☑ 27.10.2026 |
+| L9 | *Prorata* | A period shorter than a year is prorated by days. **Not computed** by the comparator, which compares a full year | CSS art. D380-2 II; URSSAF | ☑ 27.10.2026 |
+| L10 | *Rounding* | The base and the contribution are rounded **to the nearest euro** | URSSAF | ☑ 27.10.2026 |
+| L11 | *Who it covers* | One declaration per frontalier; the frontalier's **ayants droit** (conjoint, concubin, pacsé, enfant) can be attached at no separate contribution | URSSAF; CLEISS (row D8) | ☑ 27.10.2026 |
+| L12 | *PASS 2026* | **48 060 €** | URSSAF | ☑ 27.10.2026 |
+| L13 | *PASS 2027* | **48 900 €, ANNOUNCED** — *« Un arrêté sera publié d'ici la fin de l'année. »* | URSSAF | ☑ 27.10.2026 (announcement) |
+| L14 | *The exchange rate* | ECB euro reference rate, **27 October 2026: 1 EUR = 0,9239 CHF**, published for information purposes | ECB | ☑ 27.10.2026 |
+
+### L1 — the Swiss premium data. VERIFIED from the files.
+
+- **Dataset (R167, the instrument):** *« Primes de l'assurance-maladie »*,
+  Office fédéral de la santé publique OFSP. Editeur *« Bundesamt für
+  Gesundheit, Sektion Prämien und finanzielle Risiken »*. Landing page
+  https://www.priminfo.admin.ch/de/praemien.
+- **URL (convenience):** https://opendata.swiss/fr/dataset/health-insurance-premiums
+  — the page showed *« Dernière mise à jour 29 septembre 2026 »*, *« Date de
+  publication 26 septembre 2013 »*, *« Couverture temporelle 1 janvier 2027
+  - 31 décembre 2027 »* [§1].
+- **Files** (committed under `docs/sources/primes-lamal/`, SHA-256 in
+  `CHECKSUMS.txt`, re-hashed 28.10.2026 and identical):
+  `2027_Praemien_EU.csv` (premium year 2027, survey year 2026) and
+  `2026_Praemien_EU.csv` (extracted from `Archiv_Praemien_2026.zip`,
+  archive entry dated 2025-09-23; premium year 2026, survey year 2025).
+
+**Checked against the files on 28.10.2026** (each claim of report §2 and §3):
+
+| Claim | 2027 file | 2026 file |
+|---|---|---|
+| Header row as quoted (17 columns, `Versicherer` … `Tarifbezeichnung`) | ☑ identical | ☑ identical |
+| France is coded | ☑ `FR` | ☑ `EU FR` |
+| `Hoheitsgebiet` / `Region` for France | ☑ `P_OKPEU` / `PR_REG_0` | ☑ `EU` / `PR-REG EU0` |
+| Rows for France | ☑ 80 | ☑ 80 |
+| Insurers for France | ☑ 13: 8, 32, 290, 376, 455, 509, 1384, 1479, 1509, 1542, 1555, 1560, 1562 | ☑ the same 13 |
+| Insurers in the whole file / countries | ☑ 14 / 30 | ☑ 14 / 30 |
+| Tariff, franchise level, franchise | ☑ `BASE` only; `FRASTU_01`; `FRA_01_E_0300`, `FRA_01_J_0300`, `FRA_01_K_0000` | ☑ `BASE`; `FRAST1`; `FRA-300` (adults, young adults), `FRA-0` (children) |
+| Age subgroups | ☑ `E1`, `J1`, `K1`, `K3` | ☑ empty, `K1`, `K3` |
+| The three example rows quoted in §2 | ☑ each present exactly once | ☑ present exactly once |
+| Line count of `Prämien_EU.csv` [§2] | ☑ 2 231 | — |
+
+The report's claims about `2027_Prämien_CH.csv`, which is not committed,
+were checked read-only against the operator's downloaded copy: SHA-256 equal
+to `CHECKSUMS.txt`, 219 917 lines, 28 canton codes including ZE and ZR,
+`PR_REG_0`–`3`, 32 insurers, 88 tariffs, subgroups E1 J1 K1 K3 K4 K5 — all as
+the report states. The comparator does not use that file. The 2027 change
+notice (`2027_to_whom_it_may_concern.pdf`) was read with `pdftotext`: its
+French part carries *« Dans le cadre de la publication des primes 2027, la
+structure des fichiers de primes est adaptée »* and the row *« Territoire
+national | Nouvelles valeurs P_OKPCH et P_OKPEU »*, as quoted [§2].
+
+**Every insurer offers all six France rows** (three age classes × with and
+without accident cover) under subgroups `K1`, `J1`, `E1`. **Insurer 32
+alone** also files two child rows under `K3`. The data files define no
+subgroup (`Erläuterungen`: *« Sous-groupe d'âge ("K1", "K2", "K3", "K4",
+"K5", "J1", "E1") »*, nothing more), so **the comparator uses `K1` for every
+child** and does not guess what `K3` means. Parked (PARK-29).
+
+### L2 — the reuse terms. Quoted from the report; not re-read.
+
+Report §1, from the dataset page (icon alt/title text):
+
+> Utilisation libre. Obligation d’indiquer la source.
+
+From the full terms page https://opendata.swiss/fr/terms-of-use (no page
+date), the definition of that symbol:
+
+> **Utilisation libre. Obligation d’indiquer la source.**
+> Vous pouvez utiliser ce jeu de données à des fins non commerciales.
+> Vous pouvez utiliser ce jeu de données à des fins commerciales.
+> L’indication de la source (auteur, titre et lien vers le jeu de données) est obligatoire.
+
+Per resource, from the portal's metadata API (`package_show`, field
+`license`): **`terms_by` for `Prämien_EU.csv` and `Prämien_EU.xlsx`** (and
+the `Erläuterungen` and change-notice files); `terms_open` for
+`Prämien_CH.*`, `Prämien_CHEU.xlsx` and every `Archiv_Praemien_20xx.zip`.
+**This row rests on the report's quotation of the API, dated 27.10.2026; it
+could not be re-read from a file.** The 2026 premiums were extracted from an
+archive marked `terms_open`, whose condition is weaker than `terms_by` — the
+page applies the stricter attribution to both years.
+
+**THE ATTRIBUTION THE PAGE CARRIES** (ruling R664): author *Office fédéral de
+la santé publique OFSP*, title *« Primes de l'assurance-maladie »*, link to
+the dataset page above — under the Swiss figures on `/calculateur-lamal-cmu`
+and on `/sources`, rendered from the dataset module's header rather than typed.
+
+### L3 — a monthly premium. Quoted, then CONFIRMED from the data.
+
+priminfo.admin.ch (no page date; read 27.10.2026) [§9]:
+
+> La prime est le montant que vous devez payer chaque mois à votre caisse-maladie.
+
+(https://www.priminfo.admin.ch/fr/praemien; the user guide
+https://www.priminfo.admin.ch/fr/anleitung says the same: *« La prime
+d’assurance, c’est le montant que vous devez payer chaque mois à votre
+caisse-maladie. »*) The data files say only *« Prime en CHF »*, with no
+period [§2, §15].
+
+**The sanity check the ruling asked for (R665), and it is stronger than "of
+the same order".** Source D, ge.ch's document *« Cotisations mensuelles
+assurance de base 2026 — Personnes domiciliées en France »*
+(https://www.ge.ch/document/40783/telecharger), was fetched again on
+**28.10.2026** (1-page PDF, SHA-256
+`52ce06bb1edce76e6b0ee1fc7c5a2e1304c1b99a618fb3e3240546af7655cb21`, footer
+date 26.09.2025) and read with `pdftotext`. It lists 13 insurers by N° OFSP —
+the same 13 — under six columns (26+, 19-25, 0-18, with and without accident
+cover). **All 78 of its figures equal the OFSP 2026 file's `EU FR` rows**
+(children: subgroup `K1`). A planted change of one figure in a copy of the
+CSV (insurer 8, adult, with accident, 750 → 751) produced exactly one
+mismatch, so the comparison can fail. A cantonal document titled *monthly*
+carrying the federal file's values one for one settles the period. For scale,
+the 2027 adult premiums of Geneva RESIDENTS (canton GE, base tariff, CHF 300,
+with accident) run from 711,20 to 915,70 CHF in the CH file; France
+residents' run from 225 to 885.
+
+ge.ch's figures are still **not republished** (R146: the document states no
+reuse terms). The page shows the OFSP figures; ge.ch is cited only as the
+cross-check that established their period.
+
+### L4 — by State of residence. LAMal art. 61 al. 4.
+
+https://www.fedlex.admin.ch/eli/cc/1995/1328_1328_1328/fr — *« du 18 mars
+1994 (État le 1er juillet 2026) »*, *« Ce texte est en vigueur »* [§10]:
+
+> 4 Pour les assurés résidant dans un État membre de l’Union européenne, en Islande, en Norvège ou au Royaume-Uni, les primes sont calculées en fonction de l’État de résidence. Le Conseil fédéral édicte les dispositions sur la fixation et l’encaissement des primes de ces assurés.
+
+The data agrees: France has one premium region (`PR_REG_0`, *« pas de
+subdivision par des régions »*). **The canton is therefore not an input**,
+and SPEC 9.6 is amended to say so.
+
+### L5 — age classes. LAMal art. 16a; OAMal art. 91 al. 3.
+
+LAMal (same page, État le 1er juillet 2026) [§10]:
+
+> 1 Les assureurs bénéficient d’un allégement de la compensation des risques pour les assurés âgés de 19 à 25 ans le 31 décembre de l’année concernée (jeunes adultes).
+> 4 Sont réputés adultes les jeunes adultes et les assurés qui ont plus de 26 ans le 31 décembre de l’année concernée.
+
+OAMal, https://www.fedlex.admin.ch/eli/cc/1995/3867_3867_3867/fr — *« (État
+le 22 octobre 2026) »*:
+
+> 3 L’échelonnement des primes selon le groupe d’âge pour les assurés visés à l’art. 61, al. 3, LAMal s’effectue d’après l’année de naissance.
+
+**WHAT IS QUOTED AND WHAT IS DERIVED.** Quoted: 19 to 25 on 31 December of
+the year is a young adult; the class follows the year of birth. **Derived,
+not quoted:** a child is 18 or younger on 31 December, and an adult (in the
+premium file's sense, class `ERW`) is 26 or older. Al. 4 literally says
+*« plus de 26 ans »*, which read alone leaves an insured person aged exactly
+26 in no class; the bound used is the one al. 1's upper limit implies (25 is
+the last young-adult year). Art. 61 al. 3 names children and young adults
+without ages [§10], and no text searched states *« 0 à 18 »* [§10, §15].
+ge.ch's document heads its columns *« 26+ »*, *« 19-25 »* and *« 0-18 »*,
+which agrees, and is a cantonal document rather than the law. The page
+therefore asks for each person's **year of birth** and derives the class:
+age = premium year − year of birth.
+
+### L6 — accident cover. LAMal art. 8 al. 1; OLAA art. 13 al. 1.
+
+LAMal [§11]:
+
+> 1 La couverture des accidents peut être suspendue tant que l’assuré est entièrement couvert pour ce risque, à titre obligatoire, en vertu de la loi fédérale du 20 mars 1981 sur l’assurance-accidents (LAA). L’assureur procède à la suspension lorsque l’assuré lui en fait la demande et apporte la preuve qu’il est entièrement assuré conformément à la LAA. Il réduit la prime en conséquence.
+
+OLAA, https://www.fedlex.admin.ch/eli/cc/1983/38_38_38/fr — *« (État le
+1er janvier 2026) »* [§11]:
+
+> 1 Les travailleurs à temps partiel occupés chez un employeur au moins huit heures par semaine sont également assurés contre les accidents non professionnels.
+
+So the default (ruling R667): **the frontalier** — employed at least eight
+hours a week by one employer — is computed **without** accident cover;
+**every other person** in the household is computed **with** it, because
+nothing says they are covered under the LAA. Each can be switched.
+
+### L7 — the contribution formula. CSS art. D380-2 I.
+
+https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038405782 —
+*« EN VIGUEUR DEPUIS LE 01 JANVIER 2019 »*, modified by décret n° 2019-349
+du 23 avril 2019 [§16b]:
+
+> I.-La cotisation due par les personnes mentionnées à l'article L. 380-3-1 au titre d'une année civile est calculée selon la formule suivante :
+>
+> Montant de la cotisation = 8 % × (A-0,25 × PASS)
+>
+> Où :
+>
+> A correspond à l'assiette des revenus définis au deuxième alinéa du IV de l'article L. 380-3-1 perçus au cours de la dernière année civile pour laquelle ces revenus sont connus.
+>
+> PASS correspond au plafond annuel de la sécurité sociale.
+
+URSSAF page 6a (*« Mis à jour le 24 septembre 2026 »*) states the same rate
+for 2026 — *« En 2026, le taux de cotisation d’assurance maladie est de
+8 % »* — and gives no separate rate for 2027 [§6b]. The article is in force
+without an end date, so **8 % applies to 2027 until the article changes**.
+
+**NO FLOOR IS WRITTEN ANYWHERE** [§6d, §8]. Below 25 % of the PASS the
+formula is negative. The comparator shows **0 €** there and says it is the
+site's reading, not a rule; the question is the expert reviewer's
+(Checkpoint E). Parked (PARK-28).
+
+### L8 — the income base. CSS art. L380-3-1 IV; CGI art. 1417 IV.
+
+L380-3-1, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036390105
+— *« EN VIGUEUR DEPUIS LE 01 JANVIER 2018 »* [§16a], IV al. 2:
+
+> Ils sont redevables d'une cotisation fixée en pourcentage du montant de leurs revenus définis selon les modalités fixées au IV de l'article 1417 du code général des impôts. Un décret détermine le taux et les modalités de calcul de cette cotisation ainsi que les obligations déclaratives incombant aux assujettis.
+
+Art. 1417 IV CGI, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373249
+— *« EN VIGUEUR DEPUIS LE 01 JUILLET 2026 »* [§16d] — is the definition of
+the *revenu fiscal de référence*: net income retained for income tax,
+increased by the items a) to e), among them (point c) income *« exonérés par
+application d'une convention internationale relative aux doubles
+impositions »*. So a frontalier's Swiss salary, exempt in France under the
+treaty where it applies, is **inside** A.
+
+URSSAF's practice [§6a, §6b]: *« Elle est basée sur vos revenus perçus au
+cours de l’avant dernière année »*; the declaration collects *« les salaires,
+pensions et rentes nets »* and *« les autres revenus »*, and *« Le revenu
+fiscal de référence n’est pas pris en compte dans le calcul de votre
+cotisation, il sert uniquement de base de vérification. »* ameli [§7b]: the
+contribution is computed *« sur la base du revenu fiscal de référence
+figurant sur avis d'imposition après déduction d'un abattement forfaitaire
+annuel »*.
+
+**What the page asks for** (ruling R670): *votre revenu fiscal de référence
+de l'avant-dernière année*, pointing to the avis d'imposition. **Two
+questions go to the expert reviewer and are not answered on the page**
+(PARK-30): whether URSSAF's two rubrics add up exactly to the 1417 IV amount;
+and how a JOINT tax return maps onto A — URSSAF 6b: *« Si vous avez une
+déclaration d’impôt commune : indiquez le montant des revenus vous concernant
+personnellement. Si vous avez perçus des revenus en commun au sein du foyer
+fiscal, veuillez en mentionner la moitié. »* The RFR printed on a joint avis
+is the household's, so a couple entering it overstates A. The page says so in
+its list of what it does not compare.
+
+### L9 — prorata. CSS art. D380-2 II.
+
+> II.-[…] Lorsque la période entre ces deux dates est inférieure à une année, le montant de la cotisation est calculé au prorata de la durée de cette période.
+
+(URSSAF 6a gives the same as *« × nombre de jours ÷ 365 »*.) **Not computed**
+(ruling R669): the comparator compares a full year, and says so.
+
+### L10 — rounding. URSSAF 6a.
+
+> Le montant de la base de calcul et la cotisation sont arrondis à l’euro le plus proche.
+
+Applied as: base = round(A − 0,25 × PASS) to the euro; contribution =
+round(8 % × base) to the euro. Half-euros round up, the usual reading of
+*« le plus proche »*; with A in whole euros and the PASS a multiple of four,
+the base is always whole, so only the contribution can land on ,50.
+
+### L11 — who the contribution covers. URSSAF 6a, 6d; CLEISS.
+
+6a: *« Cette déclaration est individuelle. Si votre conjoint(e) est
+également travailleur frontalier en Suisse et assuré(e) à l’assurance
+maladie française, vous devez faire les deux déclarations distinctes. »*
+6d (*« Publié le 19 avril 2024 »*): *« Vous pouvez demander le rattachement
+de vos proches (conjoint, concubin, pacsé, enfant) comme bénéficiaires, ce
+qui leur permettra de bénéficier des prestations de l’assurance maladie
+française. »* With row D8 (CLEISS): family members without activity of their
+own follow the worker's option. **One contribution on the French side; one
+premium per person on the Swiss side.**
+
+### L12, L13 — the PASS. URSSAF.
+
+2026, https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html
+— *« Mis à jour le 01 janvier 2026 »*: *« Année | 48 060 € »*; reference
+text *« Arrêté du 22 décembre 2025 portant fixation du plafond de la Sécurité
+sociale pour 2026 »* (not opened on Légifrance) [§12].
+
+2027, https://www.urssaf.fr/accueil/actualites/plafond-annuel-securite-sociale.html
+— *« Mis à jour le 20 octobre 2026 »*:
+
+> À compter du 1er janvier 2027 le plafond annuel de la Sécurité sociale sera fixé à 48 900 €.
+> […]
+> Un arrêté sera publié d’ici la fin de l’année.
+
+**The 2027 figure is published as ANNOUNCED** (ruling R671) and switches to
+final when the arrêté is published — `docs/lamal-refresh.md` says how.
+
+### L14 — the exchange rate. ECB.
+
+https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html
+— rate of **27 October 2026**: *« CHF Swiss franc 0.9239 »*, and *« The
+reference rates are published for information purposes only. Using the
+rates for transaction purposes is strongly discouraged. »* [§13]
+
+Terms, https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html:
+*« When such information is distributed or reproduced, it must appear
+accurately and the ECB must be cited as the source. »* and *« If the
+information is modified by the user […] this must be stated explicitly. »*
+The site stores the rate unmodified with its date (ruling R672) and shows
+both beside every converted figure, with the CHF amounts kept visible.
+
+### Source D, and the URSSAF line under "NOT rowed", after this pass
+
+- **Source D** (ge.ch, monthly premiums 2026 for France residents) is now the
+  cross-check of L3 above. Its figures are still not republished.
+- **URSSAF** under *NOT rowed* below said the CMU contribution rested on
+  secondary sources only. **Superseded on 27.10.2026** by L7–L13: the
+  formula is read from the Code de la sécurité sociale itself, the rounding
+  and the practice from URSSAF's own pages.
+
 ## COPY ITEMS FOR THE REVIEWER
 
 Wording the reviewer must confirm, kept separate from the readings above

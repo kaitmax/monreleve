@@ -790,7 +790,7 @@ Launch content (all written before release — the mesh only works complete):
 
 ### 9.6 LAMal/CMU comparator — `/calculateur-lamal-cmu`
 
-Same shell as the calculator. Inputs: revenu fiscal de référence, taille du foyer, canton. Output: two-column table of estimated annual cost either way, a badge on the cheaper option, and a prominent error banner stating the choice is **irrevocable** and the window is **three months**. Single-use by nature: its job is acquisition and email capture at the moment of highest need, not retention — design it as a funnel entrance. Same `LegalNote`, same email capture, no gating.
+Same shell as the calculator. Inputs: revenu fiscal de référence, and the year of birth of each person in the household. *Amended by FW-COMPARATEUR (R664–R673); this line named « taille du foyer, canton ». Under LAMal art. 61 al. 4 the premium of a France resident is calculated by State of residence, not by canton, so the canton is not an input; and the household is entered as one year of birth per person because the premium class follows the year of birth (OAMal art. 91 al. 3).* Output: two-column table of estimated annual cost either way, a badge on the cheaper option, and a prominent error banner stating the choice is **irrevocable** and the window is **three months**. Single-use by nature: its job is acquisition and email capture at the moment of highest need, not retention — design it as a funnel entrance. Same `LegalNote`, same email capture, no gating.
 
 ### 9.7 Offer, tarifs, alertes, legal
 
