@@ -78,7 +78,6 @@ describe('calculateTelework micro-benchmark', () => {
   it('measures and reports the median, without asserting a duration', () => {
     const { median, p95, mean, samples } = medianMs();
 
-    // eslint-disable-next-line no-console
     console.log(
       `\n  calculateTelework over ${samples} calls across ${INPUTS.length} representative inputs:\n` +
         `    median ${median.toFixed(5)} ms\n` +
