@@ -601,3 +601,8 @@ Branch fw-comparateur only; production and main untouched.
   The report commit's own push is recorded below, after it happened.
 
 
+  Report commit: git push origin fw-comparateur
+    2d481fc..9de4963  fw-comparateur -> fw-comparateur
+    git log --oneline -1 origin/fw-comparateur -> 9de4963 FW-COMPARATEUR: REPORT
+  This line is appended in a follow-up commit (FW-COMPARATEUR: REPORT - push
+  proof), itself pushed to the same branch; nothing in it is code.
