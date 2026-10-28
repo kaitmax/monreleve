@@ -1,0 +1,53 @@
+CHECKSUMS - docs/sources/primes-lamal/
+Every file the operator downloaded on 27 October 2026 (report: sources-2026-10.md, section A),
+committed or not. Size in bytes; SHA-256 of the bytes as downloaded (identical in the committed copy).
+Not committed (size): 2027_Praemien_CH.csv and Archiv_Praemien_2026.zip - verify a re-download
+against these lines. Dataset: https://opendata.swiss/fr/dataset/health-insurance-premiums
+
+downloaded as : sources_LAMal_CMU_comparateur.md
+committed as  : sources-2026-10.md
+size          : 47935
+sha256        : 97996e349ad3fcf852163d7a29e9938260c81b68b2b3350a0bcf1a333362cf72
+source        : the operator's collection report (Claude in Chrome, 27 October 2026)
+
+downloaded as : 2027_Prämien_EU.csv
+committed as  : 2027_Praemien_EU.csv
+size          : 234836
+sha256        : 41dd734f5a752dd61aaf6ff1a6f820bf7deb802ec9007c61f9a0f6e4289954a6
+source        : https://opendata.bagnet.ch/?r=/download&path=L1ByYWVtaWVuL1Byw6RtaWVuX0VVLmNzdg%3D%3D
+
+downloaded as : 2027_Prämien_EU.xlsx
+committed as  : 2027_Praemien_EU.xlsx
+size          : 128929
+sha256        : 9f08e0bdf044356d1bcd88ba3fbf5e8d3a763f4b479e6e293fe4a935ea2e6ec1
+source        : https://opendata.bagnet.ch/?r=/download&path=L1ByYWVtaWVuL1Byw6RtaWVuX0VVLnhsc3g%3D
+
+downloaded as : 2027_Prämien_CH.csv
+committed as  : NOT COMMITTED
+size          : 25832930
+sha256        : 957fef82f47eb8d8243e01be17699d864b98a741c466f5d07015c6e91fecfdaa
+source        : https://opendata.bagnet.ch/?r=/download&path=L1ByYWVtaWVuL1Byw6RtaWVuX0NILmNzdg%3D%3D
+
+downloaded as : 2027_Erläuterungen zu den Prämiendaten.xlsx
+committed as  : 2027_Erlaeuterungen_zu_den_Praemiendaten.xlsx
+size          : 21815
+sha256        : cffea26d28a735e6cc624beec1618dae95f88891ff81a90d87590148cfa03727
+source        : not recorded in full by the report: "opendata.bagnet.ch, same ?r=/download&path= pattern"
+
+downloaded as : 2027_to whom it may concern.pdf
+committed as  : 2027_to_whom_it_may_concern.pdf
+size          : 165110
+sha256        : 5a833863b3d2eecb9245b240d9e60dfac0ea803a14846b530be9353a5ca68ea4
+source        : https://opendata.bagnet.ch/?r=/download&path=L1ByYWVtaWVuL3RvIHdob20gaXQgbWF5IGNvbmNlcm4ucGRm
+
+downloaded as : Archiv_Praemien_2026.zip
+committed as  : NOT COMMITTED
+size          : 31923906
+sha256        : 01ef32ab0bd8e25ee01ebd3d1d601487ca21f1569b55da3edcf9f9170f99dc78
+source        : not recorded in full by the report: "opendata.bagnet.ch, same ?r=/download&path= pattern"
+
+extracted     : Archiv_Praemien_2026.zip -> Prämien_EU.csv (archive entry dated 2025-09-23)
+committed as  : 2026_Praemien_EU.csv
+size          : 204515
+sha256        : 7c5439fef6f1c342e2d664457fc855b1891ca16282f0b5ee06497f7ec481c4d9
+source        : not recorded in full by the report: "opendata.bagnet.ch, same ?r=/download&path= pattern" (the 2026 archive)
