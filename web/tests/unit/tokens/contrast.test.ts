@@ -755,33 +755,19 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       .sort();
 
     expect(nested).toEqual([
-      // FW34: the home page was rebuilt from design/home, so the two old
-      // "door" rules are gone and the new page's text rules that sit on a
-      // section or card fill resolve to it. The privacy band is the one that
-      // MATTERS - its five white rules sit on --colour-brand, and resolving
-      // them there (not to the page surfaces) is what keeps white-on-dark from
-      // being measured as white-on-white. The rest resolve to the surface or
-      // canvas they sit on and clear the bar. They arrived here by failing
-      // this assertion, which is what naming the set is for.
-      '(public)/home .heroHeading -> --colour-surface',
-      '(public)/home .heroLead -> --colour-surface',
-      '(public)/home .phoneTitle -> --colour-canvas',
-      '(public)/home .phoneCaption -> --colour-canvas',
-      '(public)/home .releveWordmark -> --colour-surface',
-      '(public)/home .releveHolderLabel -> --colour-surface',
-      '(public)/home .releveHolderName -> --colour-surface',
-      '(public)/home .releveCodeLabel -> --colour-surface',
-      '(public)/home .releveCodeValue -> --colour-surface',
-      '(public)/home .privacyEyebrow -> --colour-brand',
-      '(public)/home .privacyHeading -> --colour-brand',
-      '(public)/home .privacyLead -> --colour-brand',
-      '(public)/home .privacyItem -> --colour-brand',
-      '(public)/home .privacyIcon -> --colour-brand',
-      '(public)/home .notifApp -> --colour-surface',
-      '(public)/home .notifQuestion -> --colour-surface',
-      '(public)/home .notifDate -> --colour-surface',
-      '(public)/home .notifChoice -> --colour-surface',
-      '(public)/home .guidesAll -> --colour-surface',
+      // FW34's home rules left with FW34's sections (FW-HOME-A2, R720). The A2
+      // page's brand band is now the one that MATTERS (R715): its five white
+      // rules sit on --colour-brand, and resolving them there - not to the page
+      // surfaces - is what measures white on brand (11,40:1) rather than white
+      // on white. The year's two card rules resolve to the card's surface.
+      // They arrived here by failing this assertion, as the FW34 set did.
+      '(public)/home .bandBody -> --colour-brand',
+      '(public)/home .bandFigure -> --colour-brand',
+      '(public)/home .bandHeading -> --colour-brand',
+      '(public)/home .bandSource -> --colour-brand',
+      '(public)/home .bandTitle -> --colour-brand',
+      '(public)/home .cardBody -> --colour-surface',
+      '(public)/home .cardTitle -> --colour-surface',
       // FW13 added the link notice, whose three text rules sit on the fill
       // it paints. They arrived here by FAILING this assertion, which is
       // what naming the set is for: the derived scan found them without

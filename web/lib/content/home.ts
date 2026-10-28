@@ -1,17 +1,18 @@
 // web/lib/content/home.ts
 //
-// The non-copy facts the home page is built from: the hero's worked example and
-// the three guides its Guides section links to. Words live in lib/fr/home.ts;
-// this file holds the fixture and the identifiers, the same split as
-// lib/content/sources.ts against lib/fr/sources.ts.
+// The non-copy facts the home page is built from: the worked example its
+// phone pictures show, and the sample week of its releve excerpt. Words live
+// in lib/fr/home.ts; this file holds the fixture and the data, the same split
+// as lib/content/sources.ts against lib/fr/sources.ts.
 //
-// THE HERO EXAMPLE IS A FIXTURE, NOT A PICTURE (R147, R163). The phone card in
-// design/home is a mock whose figures - 15,83 %, 58, 81,5 - are sample data;
-// the real card is RENDERED by the engine from THIS input, so they can never
-// drift from it. The caption that narrates the example ("38 jours ... sur une
-// base de 240 jours") interpolates teleworkDays and the basis from here and
-// from the RuleSet rather than typing either, so the prose and the fixture
-// move together (R163, R181).
+// THE WORKED EXAMPLE IS A FIXTURE, NOT A PICTURE (R147, R163). FW34 drew it in
+// the hero's phone card; since FW-HOME-A2 the two phones of the application
+// section show it (R716). Either way the figure on screen is RENDERED by the
+// engine from THIS input, never typed beside it.
+//
+// FW34's HOME_GUIDE_SLUGS LEFT WITH ITS GUIDES SECTION (R720): the A2 page has
+// no such section, and the shell's footer links every published guide on
+// every page, which e2e/home.spec.ts asserts guide by guide.
 //
 // taxYear IS A PARAMETER, not a constant here, for R55's reason: the year comes
 // from the server's Europe/Paris clock at render, never from a literal that is
@@ -22,16 +23,17 @@
 import type { TeleworkInput } from '@/lib/calc-engine';
 
 /**
- * The hero's worked example: 38 telework days on the simplified 240-day basis,
+ * The worked example: 38 telework days on the simplified 240-day basis,
  * full time, a whole year, no missions. Canton GE because the example must name
  * one and Geneva is the published reference canton; the regime is source either
  * way below the ceiling, so the choice changes none of the three figures.
  *
  * A FUNCTION OF THE YEAR, so the RuleSet it is computed against is the same one
- * every other surface resolves (R55). The example days live here as the single
- * source the caption narrates (R163).
+ * every other surface resolves (R55). Not exported since FW-HOME-A2: the
+ * caption that narrated it went with FW34's hero, and nothing reads it but
+ * the input below (R720).
  */
-export const HERO_EXAMPLE_TELEWORK_DAYS = 38;
+const HERO_EXAMPLE_TELEWORK_DAYS = 38;
 
 export function heroExampleInput(taxYear: number): TeleworkInput {
   return {
@@ -86,25 +88,3 @@ export const RELEVE_SAMPLE = {
     { day: '2026-10-23', kind: 'absence', recordedAt: '2026-10-23T06:02:00Z' },
   ],
 } as const satisfies { readonly year: number; readonly days: readonly ReleveSampleDay[] };
-
-/**
- * The three guides the home page's Guides section links to, by slug.
- *
- * SLUGS, NOT LABELS, and the labels are DERIVED from each guide's own
- * breadcrumbLabel at render (R181) - the same mechanism guideNavLinks() uses
- * for the footer. The design mock labels them "Le plafond fiscal de 40 %", "Le
- * seuil de securite sociale de 49,9 %" and "Les missions temporaires et le
- * quota de 10 jours"; transcribing those would type three regulatory figures
- * (R147), so the home shows each guide's figure-free breadcrumbLabel instead -
- * "Le plafond fiscal", "Le seuil social", "Les jours de mission".
- *
- * These three are the two thresholds plus missions - the rules the page's own
- * "two rules" section explains. The slugs are SPEC 14 permanent identifiers,
- * not copy, so naming them here is not a typed figure even where one carries a
- * digit (teletravail-frontalier-40-pourcent).
- */
-export const HOME_GUIDE_SLUGS: readonly string[] = [
-  'teletravail-frontalier-40-pourcent',
-  'seuil-social-49-9-pourcent',
-  'jours-de-mission-hors-suisse',
-];

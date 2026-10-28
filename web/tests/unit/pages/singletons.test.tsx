@@ -95,11 +95,14 @@ const PAGES: readonly Expected[] = [
       );
     },
     contextualLinks: 0,
-    // FW34: the rebuilt home has a calculator section whose submit button is
-    // "Calculer" (design/home) - the page's one primary action, which is what
-    // R119 counts. The hero's other calls to action are anchors (they navigate
-    // to #calcul, #app and /alertes), so they are not buttons and not counted.
-    primaryActions: 1,
+    // FW-HOME-A2: NONE, where FW34 had one. The A2 home's calculator is the
+    // counter, which answers as its sliders move, so there is no "Calculer"
+    // button to press. The one that remains is inside the counter's
+    // <noscript> block (R346) and exists only for a reader with scripting
+    // off - home.nojs.spec.ts clicks it there; this census renders with
+    // scripting, where React leaves noscript content unrendered. The page's
+    // calls to action are anchors, which R119 does not count.
+    primaryActions: 0,
   },
   {
     label: '/calculateur-teletravail-frontalier',

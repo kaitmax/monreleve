@@ -61,7 +61,13 @@ export function ReleveExcerpt({ state }: ReleveExcerptProps) {
         </p>
       </div>
 
-      <div className={styles.scroll} tabIndex={0} role="region" aria-label={COPY.label}>
+      <div
+        className={styles.scroll}
+        data-scroll="true"
+        tabIndex={0}
+        role="region"
+        aria-label={COPY.label}
+      >
         <table className={styles.table}>
           <thead>
             <tr>
@@ -80,7 +86,7 @@ export function ReleveExcerpt({ state }: ReleveExcerptProps) {
             {RELEVE_SAMPLE.days.map((day) => (
               <tr className={styles.row} key={day.day}>
                 <td className={styles.cell}>{formatDate(day.day)}</td>
-                <td className={styles.cell}>
+                <td className={`${styles.cell} ${styles.cellKind}`}>
                   <span className={styles.kind}>
                     {DOTS[day.kind].map((country) => (
                       <span

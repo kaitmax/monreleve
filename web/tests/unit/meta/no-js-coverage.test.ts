@@ -96,7 +96,10 @@ function discovered(): string[] {
  * says "not needed" is the note the hole would have carried.
  */
 const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
-  'app/(public)/page.tsx': 'home.nojs.spec.ts',
+  // app/(public)/page.tsx LEFT THIS MAP in FW-HOME-A2: the home page no
+  // longer renders a <form> itself - its no-JS form is the counter's, and the
+  // HomeCounter entry below names the same spec. The census found the stale
+  // line, which is what its other direction is for.
 
   // THE CENSUS HAS NOW CORRECTED ITS AUTHOR TWICE, IN OPPOSITE DIRECTIONS,
   // AND THAT IS THE WHOLE ARGUMENT FOR DISCOVERING SURFACES RATHER THAN
@@ -134,15 +137,9 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   'lib/ui/react/PublicShell/PublicShell.tsx': 'burger.nojs.spec.ts',
   'lib/ui/react/Faq/Faq.tsx': 'faq.nojs.spec.ts',
   'lib/guides/mdx-components.tsx': 'guides.nojs.spec.ts',
-  // FW-HOME-A2 (R711): the home counter's GET form. Classified by WHY until
-  // the commit that renders it on "/", which rewrites home.nojs.spec.ts to
-  // drive it and names that spec here instead.
-  'lib/ui/react/HomeCounter/HomeCounter.tsx': {
-    why:
-      'Rendered by no page yet: the A2 home page is assembled in a later commit ' +
-      'of FW-HOME-A2, and only then is there a no-JS journey through this form ' +
-      'for home.nojs.spec.ts to drive.',
-  },
+  // FW-HOME-A2 (R711): the home counter's GET form, the A2 page's no-JS
+  // journey - home.nojs.spec.ts submits it with scripting off.
+  'lib/ui/react/HomeCounter/HomeCounter.tsx': 'home.nojs.spec.ts',
   'app/releve/print/page.tsx': {
     why:
       'The print document is rendered by Chromium to a PDF on the server and ' +

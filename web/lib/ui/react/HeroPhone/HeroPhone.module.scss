@@ -21,7 +21,12 @@
   flex: none;
   width: var(--size-phone-frame-width);
   max-width: 100%;
-  height: var(--size-phone-frame-height);
+
+  // A MINIMUM, not a height: at 320 px the frame is narrower than the
+  // design's 300 and its screen wraps taller - a fixed height clipped the
+  // tab bar there. The screen grows; the frame grows with it.
+  display: flex;
+  min-height: var(--size-phone-frame-height);
   padding: var(--size-phone-bezel);
   border-radius: var(--radius-2xl);
   background: var(--colour-text-primary);
@@ -29,8 +34,8 @@
 
 .screen {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
   border-radius: var(--radius-xl);
   background: var(--colour-canvas);

@@ -1,57 +1,32 @@
 // web/app/(public)/home.module.scss
-// Tokens only; camelCase class names for CSS Module addressing.
 //
-// The home page (FW34), rebuilt from design/home. Every colour, size, radius
-// and type value is a token. Where the mock-up carried a value no token names,
-// the nearest token is used and recorded in REPORT-FW34-PAGE (TOKENS WHERE THE
-// MOCK-UP HAD NONE) - e.g. section padding 88 -> --space-20 (80); the pill
-// button height 52 -> --size-button-large-height (56); card padding 28 ->
-// --space-7 (exact); the phone frame radius 44 -> --radius-2xl (24); the hero
-// eyebrow's brand-tint fill -> --colour-france-soft (web has no brand-soft).
+// The home page, A2 (FW-HOME-A2). Tokens only - stylelint refuses a raw colour,
+// spacing, size or radius. The canvas's colour ROLES are binding (R709) and
+// each is the existing token for that role: canvas, surface, text primary and
+// secondary, the two borders, brand. Its fonts and pill shapes are not: type
+// is DESIGN-SYSTEM's Inter scale, buttons are radius md at the button height,
+// cards radius lg, the counter's status card radius xl (R709).
 //
-// TYPE PAIRS WITHIN A FAMILY (R70): every rule takes its font-size, line-height
-// and font-weight from ONE --type-* family, never composed across two.
-//
-// line-height IS A TOKEN, not a ratio: stylelint policies line-height, so each
-// one is var(--type-*-line) rather than 1.5. The mock's negative letter-spacing
-// on the headings is dropped - there is no token for it (only --tracking-eyebrow
-// exists).
+// EVERY SECTION STACKS AT 320 px (R719): each two-column arrangement starts at
+// the md breakpoint, and nothing below it sets a width its content cannot
+// shrink under.
 
 @use "../../lib/ui/core/styles/breakpoints" as bp;
 
-// ---------------------------------------------------------------------------
-// SHARED
-// ---------------------------------------------------------------------------
-
-// .privacyEyebrow keeps the .privacy prefix so the contrast audit resolves it
-// to the brand band it sits on (R76/R121's nested resolution), not to the page
-// surfaces - a white eyebrow measured against white would fail.
-.eyebrow,
-.privacyEyebrow {
-  font-size: var(--type-eyebrow-size);
-  font-weight: var(--type-eyebrow-weight);
-  line-height: var(--type-eyebrow-line);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
-}
-
-.eyebrow {
-  color: var(--colour-brand);
-}
-
-.privacyEyebrow {
-  color: var(--colour-surface);
-}
+// ------------------------------------------------------------ shared pieces
 
 .sectionHeading {
+  max-width: var(--layout-narrow);
   margin: 0;
   color: var(--colour-text-primary);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-line);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
 }
 
-.lead {
+.sectionIntro,
+.body {
+  max-width: var(--layout-article);
   margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-body-l-size);
@@ -59,7 +34,79 @@
   line-height: var(--type-body-l-line);
 }
 
-.note {
+.sectionIntro {
+  margin-top: var(--space-4);
+}
+
+.small {
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+// Buttons per DESIGN-SYSTEM section 1: 48 high, radius md, brand fill or a
+// surface fill with a 1 px border. Not the canvas's pills (R709).
+.buttonPrimary,
+.buttonSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--size-button-min-width);
+  min-height: var(--size-button-height);
+  padding: 0 var(--space-6);
+  border: var(--size-button-border) solid var(--colour-brand);
+  border-radius: var(--radius-md);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-m-line);
+  text-decoration: none;
+}
+
+.buttonPrimary {
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.buttonSecondary {
+  border-color: var(--colour-border-strong);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+}
+
+// --------------------------------------------------------------- 2. opening
+
+.opening {
+  padding-block: var(--space-16) var(--space-20);
+  background: var(--colour-canvas);
+}
+
+.openingGrid {
+  display: grid;
+  gap: var(--space-12);
+  align-items: center;
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--space-16);
+  }
+}
+
+.openingText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.line {
   margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
@@ -67,80 +114,7 @@
   line-height: var(--type-body-line);
 }
 
-.sectionHead {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: var(--layout-article);
-  margin-bottom: var(--space-10);
-}
-
-// The pill buttons. 52 in the mock has no token; the nearest is the large
-// primary height (56). Pill radius exists. The shell owns the header CTA; these
-// are the body's.
-.pillPrimary,
-.pillSecondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-height: var(--size-button-large-height);
-  padding: 0 var(--space-6);
-  border: var(--size-button-border) solid var(--colour-brand);
-  border-radius: var(--radius-pill);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-  text-decoration: none;
-}
-
-.pillPrimary {
-  background: var(--colour-brand);
-  color: var(--colour-surface);
-}
-
-.pillSecondary {
-  background: var(--colour-surface);
-  color: var(--colour-brand);
-}
-
-// ---------------------------------------------------------------------------
-// HERO
-// ---------------------------------------------------------------------------
-
-.hero {
-  background: var(--colour-surface);
-  padding-block: var(--space-20);
-}
-
-.heroGrid {
-  display: grid;
-  gap: var(--space-12);
-  align-items: start;
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.heroText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.eyebrowPill {
-  align-self: flex-start;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--colour-france-soft);
-  color: var(--colour-brand);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-.heroHeading {
+.heading {
   margin: 0;
   color: var(--colour-text-primary);
   font-size: var(--type-hero-size);
@@ -148,729 +122,235 @@
   line-height: var(--type-hero-line);
 }
 
-.heroLead {
-  margin: 0;
+.lead {
+  max-width: var(--layout-article);
+  margin: 0 0 var(--space-3);
   color: var(--colour-text-secondary);
   font-size: var(--type-body-l-size);
   font-weight: var(--type-body-l-weight);
   line-height: var(--type-body-l-line);
 }
 
-.heroBullets,
-.checkList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+// --------------------------------------------------------------- 3. counter
 
-.heroBullet,
-.checkItem {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  color: var(--colour-text-primary);
-  font-size: var(--type-body-size);
-  font-weight: var(--type-body-weight);
-  line-height: var(--type-body-line);
-}
-
-.bulletIcon {
-  flex-shrink: 0;
-  color: var(--colour-success);
-}
-
-.bulletIconBrand {
-  flex-shrink: 0;
-  color: var(--colour-brand);
-}
-
-.heroActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-
-// ---------------------------------------------------------------------------
-// THE PHONE CARD (hero)
-// ---------------------------------------------------------------------------
-
-.phoneColumn,
-.notifColumn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.phone {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: var(--size-phone-frame-width);
-  padding: var(--space-5) var(--space-4) var(--space-6);
-  border: var(--size-phone-bezel) solid var(--colour-text-primary);
-  border-radius: var(--radius-2xl);
-  background: var(--colour-canvas);
-}
-
-.phoneHeader,
-.notifHead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.phoneMark {
-  flex-shrink: 0;
-  width: var(--size-icon);
-  height: var(--size-icon);
-  border-radius: var(--radius-sm);
-  background: var(--colour-brand);
-}
-
-.phoneTitle {
-  color: var(--colour-text-primary);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-.phoneCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
+.counter {
+  padding-block: var(--space-20);
+  border-block: var(--size-rule) solid var(--colour-border-default);
   background: var(--colour-surface);
 }
 
-.phoneRail {
-  margin-top: var(--space-2);
-}
-
-.phoneTiles {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-2);
-}
-
-.phoneCaption {
-  max-width: var(--size-phone-frame-width);
-  margin: 0;
-  color: var(--colour-text-secondary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-line);
-  text-align: center;
-}
-
-// ---------------------------------------------------------------------------
-// CALCULATOR
-// ---------------------------------------------------------------------------
-
-.calc {
+// The status card: radius xl, the large status card's (section 1).
+.counterCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-10);
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
   background: var(--colour-canvas);
-  padding-block: var(--space-20);
+
+  @media (width >= bp.$breakpoint-md) {
+    padding: var(--space-10);
+  }
 }
 
-.calcGrid {
+// ----------------------------------------------------------- 4. application
+
+.application {
+  padding-block: var(--space-20);
+  border-bottom: var(--size-rule) solid var(--colour-border-default);
+  background: var(--colour-surface);
+}
+
+.applicationGrid {
   display: grid;
   gap: var(--space-12);
-  align-items: start;
+  align-items: center;
 
   @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   }
 }
 
-.calcIntro {
+.applicationText {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
 }
 
-.calcCard {
+.phones {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-10);
   min-width: 0;
-  padding: var(--space-7);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
 }
 
-.field {
+// --------------------------------------------------------- 5. the brand band
+//
+// THE PAGE'S ONE FULL BRAND BAND (R715). Every word on it is the surface
+// colour - white - on brand; there is no token for a lighter secondary text
+// on brand, and borrowing a BORDER token for text would choose a colour by its
+// value rather than its meaning (R344). The source lines are told apart by
+// size instead. The ratio is quoted in the report.
+
+.band {
+  padding-block: var(--space-20);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.bandGrid {
+  display: grid;
+  gap: var(--space-10);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+.bandHeading {
+  margin: 0;
+  color: var(--colour-surface);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.bandRules {
+  display: grid;
+  gap: var(--space-8);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.bandRule {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-width: 0;
 }
 
-.fieldRow {
-  display: grid;
-  gap: var(--space-4);
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.fieldLabel {
-  color: var(--colour-text-primary);
-  font-size: var(--type-label-size);
-  font-weight: var(--type-label-weight);
-  line-height: var(--type-label-line);
-}
-
-// WIDTH 100% + MIN-WIDTH 0, so the canton select (26 options, one as long as
-// "Appenzell Rhodes-Exterieures") cannot set a min-content width that pushes the
-// card past 320 dp (R127). Its long option clips in the closed state and shows
-// in full when opened. The grid items above also carry min-width: 0.
-.select,
-.input {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  height: var(--size-input-height);
-  padding: 0 var(--size-input-padding-x);
-  border: var(--size-input-border) solid var(--colour-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--colour-surface);
-  color: var(--colour-text-primary);
-  font-family: inherit;
-  font-size: var(--type-body-l-size);
-  font-weight: var(--type-body-l-weight);
-  line-height: var(--type-body-l-line);
-}
-
-// ---------------------------------------------------------------------------
-// THE TWO RULES
-// ---------------------------------------------------------------------------
-
-.rules {
-  background: var(--colour-surface);
-  padding-block: var(--space-20);
-}
-
-.ruleCards {
-  display: grid;
-  gap: var(--space-6);
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.ruleCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-7);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
-}
-
-.ruleTag {
-  color: var(--colour-text-secondary);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-.ruleFigure {
-  color: var(--colour-brand);
+.bandFigure {
+  margin: 0;
+  color: var(--colour-surface);
   font-size: var(--type-display-size);
   font-weight: var(--type-display-weight);
   line-height: var(--type-display-line);
   font-variant-numeric: tabular-nums;
 }
 
-.ruleBody {
+.bandTitle {
   margin: 0;
-  color: var(--colour-text-primary);
+  color: var(--colour-surface);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
+.bandBody {
+  margin: 0;
+  color: var(--colour-surface);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line);
 }
 
-.ruleSource {
-  color: var(--colour-text-secondary);
+.bandSource {
+  margin: 0;
+  color: var(--colour-surface);
   font-size: var(--type-caption-size);
   font-weight: var(--type-caption-weight);
   line-height: var(--type-caption-line);
 }
 
-// ---------------------------------------------------------------------------
-// HOW IT WORKS
-// ---------------------------------------------------------------------------
+// ------------------------------------------------- 6 and 7. year and alerts
 
-.how {
-  background: var(--colour-canvas);
+.year {
   padding-block: var(--space-20);
+  background: var(--colour-canvas);
 }
 
-.steps {
+.cards {
   display: grid;
-  gap: var(--space-10);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--space-6);
+  margin-top: var(--space-10);
 
   @media (width >= bp.$breakpoint-md) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-.step {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.stepTop {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.stepNumber {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--space-8);
-  height: var(--space-8);
-  border-radius: var(--radius-pill);
-  background: var(--colour-brand);
-  color: var(--colour-surface);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-.stepIcon {
-  color: var(--colour-brand);
-}
-
-.stepTitle {
-  margin: 0;
-  color: var(--colour-text-primary);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-line);
-}
-
-.stepBody {
-  margin: 0;
-  color: var(--colour-text-secondary);
-  font-size: var(--type-body-size);
-  font-weight: var(--type-body-weight);
-  line-height: var(--type-body-line);
-}
-
-// ---------------------------------------------------------------------------
-// THE RELEVE
-// ---------------------------------------------------------------------------
-
-.releve {
-  background: var(--colour-surface);
-  padding-block: var(--space-20);
-}
-
-.releveGrid {
-  display: grid;
-  gap: var(--space-12);
-  align-items: start;
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.releveThumb {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+.card {
   padding: var(--space-6);
   border: var(--size-card-border) solid var(--colour-border-default);
   border-radius: var(--radius-lg);
   background: var(--colour-surface);
 }
 
-.releveThumbHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.releveWordmark {
-  color: var(--colour-text-secondary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-line);
-}
-
-.releveRow {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-top: var(--size-rule) solid var(--colour-border-default);
-  border-bottom: var(--size-rule) solid var(--colour-border-default);
-}
-
-.releveHolderLabel {
-  color: var(--colour-text-secondary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-line);
-}
-
-.releveHolderName {
+.cardTitle {
+  margin: 0 0 var(--space-2);
   color: var(--colour-text-primary);
-  font-size: var(--type-label-size);
-  font-weight: var(--type-label-weight);
-  line-height: var(--type-label-line);
-}
-
-.releveBars {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-// The bar widths are a decorative "document lines" placeholder (the thumbnail
-// is aria-hidden sample). They vary per line and have no token - a layout
-// proportion, not a design value - so they are inline on the elements, which
-// is where the mock set them too. The height, radius and fill are tokens.
-.releveBar {
-  height: var(--size-progress-height);
-  border-radius: var(--radius-xs);
-  background: var(--colour-border-default);
-}
-
-.releveVerify {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-top: var(--space-2);
-}
-
-.releveQr {
-  flex-shrink: 0;
-  fill: var(--colour-text-primary);
-}
-
-.releveCode {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.releveCodeLabel {
-  color: var(--colour-text-primary);
-  font-size: var(--type-label-size);
-  font-weight: var(--type-label-weight);
-  line-height: var(--type-label-line);
-}
-
-.releveCodeValue {
-  color: var(--colour-text-secondary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-line);
-  font-variant-numeric: tabular-nums;
-}
-
-.releveText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-// ---------------------------------------------------------------------------
-// PRIVACY (dark brand band)
-// ---------------------------------------------------------------------------
-
-.privacy {
-  background: var(--colour-brand);
-  padding-block: var(--space-20);
-}
-
-.privacyHead {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: var(--layout-article);
-  margin-bottom: var(--space-10);
-}
-
-.privacyHeading {
-  margin: 0;
-  color: var(--colour-surface);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-line);
-}
-
-.privacyLead {
-  margin: 0;
-  color: var(--colour-surface);
-  font-size: var(--type-body-l-size);
-  font-weight: var(--type-body-l-weight);
-  line-height: var(--type-body-l-line);
-}
-
-.privacyItems {
-  display: grid;
-  gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.privacyItem {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  color: var(--colour-surface);
   font-size: var(--type-h3-size);
   font-weight: var(--type-h3-weight);
   line-height: var(--type-h3-line);
 }
 
-.privacyIcon {
-  color: var(--colour-surface);
-}
-
-// ---------------------------------------------------------------------------
-// THE APP
-// ---------------------------------------------------------------------------
-
-.app {
-  background: var(--colour-canvas);
-  padding-block: var(--space-20);
-}
-
-.appGrid {
-  display: grid;
-  gap: var(--space-12);
-  align-items: start;
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.appText {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.notif {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: var(--size-toast-min-width);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-xl);
-  background: var(--colour-surface);
-}
-
-.notifApp {
-  color: var(--colour-text-secondary);
-  font-size: var(--type-caption-size);
-  font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-line);
-}
-
-.notifQuestion {
-  color: var(--colour-text-primary);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-.notifDate {
+.cardBody {
+  margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line);
 }
 
-.notifChoices {
+// The alert sign-up, alone and centred (R718): AlertCapture draws its own
+// card; this only places it.
+.alert {
+  max-width: var(--layout-narrow);
+  margin: var(--space-6) auto 0;
+}
+
+// ------------------------------------------------------------ 8. questions
+
+.questions {
+  padding-block: var(--space-20);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  background: var(--colour-surface);
+}
+
+// ------------------------------------------------- the counter, no script
+//
+// Inside <noscript>, so only a reader with scripting off ever lays this out
+// (R346): the canton the result page needs, and the button that submits.
+// An input per DESIGN-SYSTEM section 1: 48 high, radius md, 1 px border.
+
+.noscript {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-}
-
-.notifChoice {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--size-icon-button);
-  padding: 0 var(--space-3);
-  color: var(--colour-brand);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-// ---------------------------------------------------------------------------
-// GUIDES
-// ---------------------------------------------------------------------------
-
-.guides {
-  background: var(--colour-surface);
-  padding-block: var(--space-20);
-}
-
-.guidesGrid {
-  display: grid;
-  gap: var(--space-12);
-  align-items: start;
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.lake {
-  overflow: hidden;
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  line-height: 0;
-}
-
-// Width-scaled (height follows the 480:220 viewBox), so the illustration's
-// rects never exceed the container at 320 dp - R127. The mock used a fixed-
-// height cover crop, which kept its rects at 480 px wide; scaling by width
-// instead makes the banner shorter on a narrow phone and keeps it inside the
-// viewport.
-.lakeSvg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.lakeSky {
-  fill: var(--colour-canvas);
-}
-
-.lakeFar {
-  fill: var(--colour-border-strong);
-}
-
-.lakeNear {
-  fill: var(--colour-text-tertiary);
-}
-
-.lakeWater {
-  fill: var(--colour-border-default);
-}
-
-.guidesText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.guideLinks {
-  display: flex;
-  flex-direction: column;
-}
-
-.guideLink {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-3);
-  min-height: var(--size-icon-button);
-  padding: var(--space-3) 0;
-  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.noscriptLabel {
+  flex-basis: 100%;
   color: var(--colour-text-primary);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-  text-decoration: none;
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
 }
 
-// A dedicated class rather than a `.guideLink svg` descendant rule, so the
-// contrast audit reads one selector per block (it splits on whitespace).
-.guideArrow {
-  flex-shrink: 0;
-  color: var(--colour-brand);
-}
-
-.guidesAll {
-  align-self: flex-start;
-  min-height: var(--size-icon-button);
-  display: inline-flex;
-  align-items: center;
-  color: var(--colour-brand);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-  text-decoration: none;
-}
-
-// ---------------------------------------------------------------------------
-// SOURCES STRIP
-// ---------------------------------------------------------------------------
-
-.sourcesStrip {
-  background: var(--colour-canvas);
-  padding-block: var(--space-10);
-  border-top: var(--size-rule) solid var(--colour-border-default);
-}
-
-.sourcesRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.sourcesIcon {
-  flex-shrink: 0;
-  color: var(--colour-brand);
-}
-
-.sourcesClaim {
-  flex: 1 1 var(--layout-article);
+.noscriptSelect {
+  min-height: var(--size-input-height);
+  padding: 0 var(--size-input-padding-x);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
   color: var(--colour-text-primary);
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line);
-}
-
-.sourcesLink {
-  min-height: var(--size-icon-button);
-  display: inline-flex;
-  align-items: center;
-  color: var(--colour-brand);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-  text-decoration: none;
 }
