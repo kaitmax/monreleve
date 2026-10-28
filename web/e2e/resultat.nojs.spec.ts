@@ -262,8 +262,10 @@ test.describe('R351: a note about a calculation that did not happen', () => {
 
 test.describe('R351: the forms reach it', () => {
   test('the home page form submits to the result page and gets a figure', async ({ page }) => {
+    // FW-HOME-A2: the home form is now the counter, and its submit button is
+    // the <noscript> one - which is exactly the button this project sees.
     await page.goto('/');
-    await page.getByRole('button', { name: HOME_COPY.calculator.submit }).click();
+    await page.getByRole('button', { name: HOME_COPY.counter.noscriptSubmit }).click();
 
     // THE PATH EXACTLY, AND A QUERY. A RegExp over the whole URL makes every
     // character in the path a pattern - `resultat\?` reads as an optional

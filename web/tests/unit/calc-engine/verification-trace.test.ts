@@ -80,7 +80,6 @@ describe('verification trace on the fixtures (ruling R23)', () => {
       }
     }
 
-    // eslint-disable-next-line no-console
     console.log(
       `\n  VERIFICATION TRACE: ${unverified} of ${total} fixture cases are unverified` +
         `${unverified === total ? ' (all of them - Checkpoint A has not run)' : ''}.\n`,

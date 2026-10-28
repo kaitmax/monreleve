@@ -41,6 +41,22 @@ export interface UnknownEntry extends ProvisionalEntry {
 }
 
 /**
+ * THE INSTRUMENTS A PAGE CITES UNDER A THRESHOLD, by name (R167): the home
+ * page's two-thresholds band says where each rule comes from in one line.
+ *
+ * HERE RATHER THAN IN lib/fr/home.ts (FW-HOME-A2, R710: "the sources come
+ * from lib/fr/sources"). The home page typed these two lines in its own copy
+ * module since FW34; a citation is a statement about a source, and this file
+ * is where the product's sources are named. The words are unchanged.
+ */
+export const SOURCE_CITATIONS = {
+  /** The 40 % rule: the Geneva tax authority and the 29 April 2026 accord. */
+  fiscal: 'AFC Genève' + n(';') + ' accord amiable franco-suisse du 29 avril 2026',
+  /** The 49,9 % rule: the federal social-insurance office. */
+  social: 'Office fédéral des assurances sociales (OFAS)',
+} as const;
+
+/**
  * The three absences this page discloses.
  *
  * A UNION RATHER THAN A FREE RECORD, for the reason R113 gave the provisional

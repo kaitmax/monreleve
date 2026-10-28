@@ -26,6 +26,17 @@
 //
 // increment 5's accordion_opened event listens for the native `toggle` event,
 // which is another thing this shape gives away free.
+//
+// FW-HOME-A2 (R717) ADDS THREE OPTIONAL THINGS, each absent by default so the
+// calculator's FAQ renders exactly as before:
+//
+//   `open` on an entry - the home page opens its first question.
+//   `pair` on an entry - an Avant / Après answer, two cards side by side,
+//     rendered INSTEAD of the answer paragraph. The entry still carries
+//     `answer`, the same two sentences as plain text, so anything that reads
+//     answers as text (a FAQPage) reads what the cards say.
+//   `layout="split"` - the heading beside the questions from the md
+//     breakpoint, the home page's arrangement.
 
 import type { FaqEntry } from '@/lib/fr/faq';
 import styles from './Faq.module.scss';
@@ -35,20 +46,54 @@ export interface FaqProps {
   readonly heading: string;
   /** Already resolved against the year's rules - see lib/fr/faq.ts. */
   readonly entries: readonly FaqEntry[];
+  /** 'stacked' (the default) puts the heading above; 'split' beside. */
+  readonly layout?: 'stacked' | 'split';
 }
 
-export function Faq({ heading, entries }: FaqProps) {
+function Entry({ entry }: { readonly entry: FaqEntry }) {
+  return (
+    // id on the <details> so a link can address one question - a FAQ
+    // answer is the kind of thing a support reply wants to point at.
+    <details id={entry.id} className={styles.entry} open={entry.open === true ? true : undefined}>
+      <summary className={styles.question}>{entry.question}</summary>
+      {entry.pair === undefined ? (
+        <p className={styles.answer}>{entry.answer}</p>
+      ) : (
+        <div className={styles.pair}>
+          <div className={styles.before}>
+            <p className={styles.pairLabel}>{entry.pair.before.label}</p>
+            <p className={styles.pairBody}>{entry.pair.before.body}</p>
+          </div>
+          <div className={styles.after}>
+            <p className={styles.pairLabel}>{entry.pair.after.label}</p>
+            <p className={styles.pairBody}>{entry.pair.after.body}</p>
+          </div>
+        </div>
+      )}
+    </details>
+  );
+}
+
+export function Faq({ heading, entries, layout = 'stacked' }: FaqProps) {
+  if (layout === 'split') {
+    return (
+      <section className={styles.split} data-faq>
+        <h2 className={styles.heading}>{heading}</h2>
+        <div className={styles.entries}>
+          {entries.map((entry) => (
+            <Entry entry={entry} key={entry.id} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className={styles.faq} data-faq>
       <h2 className={styles.heading}>{heading}</h2>
 
       {entries.map((entry) => (
-        // id on the <details> so a link can address one question - a FAQ
-        // answer is the kind of thing a support reply wants to point at.
-        <details key={entry.id} id={entry.id} className={styles.entry}>
-          <summary className={styles.question}>{entry.question}</summary>
-          <p className={styles.answer}>{entry.answer}</p>
-        </details>
+        <Entry entry={entry} key={entry.id} />
       ))}
     </section>
   );

@@ -2,7 +2,7 @@
 // Smoke coverage for the e2e harness, and the half of FW1 AC1 that only a real
 // browser can prove: that Inter is reaching the page with tabular numerals on.
 
-import { expect, test } from '@playwright/test';
+import { type APIRequestContext, type Page, expect, test } from '@playwright/test';
 import { BASE_URL } from './support/base-url';
 import { LAST_REGULATORY_REVIEW, reviewNotice } from '../lib/content/regulatory';
 import { HOME_COPY } from '../lib/fr/home';
@@ -10,6 +10,7 @@ import { SHELL_COPY } from '../lib/fr/shell';
 import { formatDate } from '../lib/ui/core';
 import { currentTaxYear } from '../lib/content/tax-year';
 import { guideScope } from '../lib/guides/scope';
+import { guideNavLinks } from '../lib/guides/registry';
 
 /**
  * The server these tests actually hit, which is NOT the origin the build is
@@ -45,13 +46,14 @@ test('/ responds 200 and renders its heading from lib/fr', async ({ page }) => {
   // textContent keeps the codepoint - also measured - so this compares the
   // exact string, and the constant on the other side carries it too.
   expect(await page.getByRole('heading', { level: 1 }).textContent()).toBe(
-    HOME_COPY.hero.heading,
+    HOME_COPY.opening.heading,
   );
 
-  // And the codepoint itself, named, so a reader of a failure knows what to
-  // look for. U+00A0 is indistinguishable from a space on screen and in a diff.
-  // The hero headline carries it before its question mark (R91).
-  expect(HOME_COPY.hero.heading).toContain(String.fromCharCode(0x00a0));
+  // And the codepoint that matters, named. FW-HOME-A2's heading has no French
+  // mark before which R91 sets a no-break space, so the character a
+  // normalising matcher would erase is its typographic apostrophe, U+2019
+  // (R126) - textContent keeps it, and this says what to look for.
+  expect(HOME_COPY.opening.heading).toContain(String.fromCharCode(0x2019));
 });
 
 test('/ is wrapped in the public shell, header and footer both', async ({ page }) => {
@@ -224,4 +226,99 @@ test('the meta description delivers both thresholds, formatted (R147, R154)', as
   // The sentence around them is still the copy module's, and that it survived
   // is worth one assertion.
   expect(description).toContain('Calculez votre part de télétravail annuelle');
+});
+
+// ---------------------------------------------------------------------------
+// R713: NO DEAD LINK. Every internal link on "/" - the page's own and the
+// shell's - is requested and must answer 200; every in-page fragment must
+// name an element that exists. The canvas carried a sign-in button and a sample-releve button
+// with nowhere to go; neither ships, and this is the test
+// that would have caught either.
+// ---------------------------------------------------------------------------
+
+/** Every internal link on the current page that does not resolve, named. */
+async function brokenLinks(page: Page, request: APIRequestContext): Promise<string[]> {
+  const hrefs = await page
+    .locator('a[href]')
+    .evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href') ?? ''));
+  const broken: string[] = [];
+
+  for (const href of [...new Set(hrefs)]) {
+    if (href.startsWith('#')) {
+      const id = decodeURIComponent(href.slice(1));
+      const found = await page.locator(`[id="${id}"]`).count();
+
+      if (found === 0) broken.push(`${href} (no element with that id)`);
+      continue;
+    }
+
+    // External links are not this test's subject; the page has none today.
+    if (!href.startsWith('/')) continue;
+
+    const response = await request.get(href, { maxRedirects: 0 });
+
+    if (response.status() !== 200) broken.push(`${href} (${String(response.status())})`);
+  }
+
+  return broken;
+}
+
+test('every internal link on / resolves (R713)', async ({ page, request }) => {
+  await page.goto('/');
+
+  // PRESENCE FIRST: a page with no links would pass the walk perfectly.
+  expect(await page.locator('main a[href]').count()).toBeGreaterThanOrEqual(4);
+
+  expect(await brokenLinks(page, request)).toEqual([]);
+});
+
+test('the link walk catches a planted broken link (R713 positive control)', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/');
+  // Hydration first: React reconciles the document it hydrates, and a node
+  // planted before it finishes can be removed underneath the walk.
+  await page.waitForLoadState('networkidle');
+
+  // THE PLANT, verified before its result is read (R180).
+  await page.evaluate(() => {
+    const planted = document.createElement('a');
+
+    planted.href = '/cette-page-nexiste-pas';
+    planted.dataset.planted = 'true';
+    planted.textContent = 'x';
+    document.querySelector('main')?.append(planted);
+
+    const anchor = document.createElement('a');
+
+    anchor.href = '#nulle-part';
+    anchor.dataset.planted = 'true';
+    anchor.textContent = 'y';
+    document.querySelector('main')?.append(anchor);
+  });
+  expect(await page.locator('[data-planted]').count()).toBe(2);
+
+  const broken = await brokenLinks(page, request);
+
+  // And still there after the walk, so the walk saw it.
+  expect(await page.locator('[data-planted]').count()).toBe(2);
+  expect(broken).toContain('/cette-page-nexiste-pas (404)');
+  expect(broken.some((entry) => entry.startsWith('#nulle-part'))).toBe(true);
+});
+
+test('the guide links the old home page carried are still on / (R720)', async ({ page }) => {
+  // FW34's Guides section linked three guides. A2 has no such section; the
+  // shell's footer links EVERY published guide on every page, so the
+  // internal-linking surface is kept - this asserts it, guide by guide.
+  await page.goto('/');
+
+  const hrefs = await page
+    .locator('a[href]')
+    .evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href')));
+
+  for (const { href } of guideNavLinks()) {
+    expect(hrefs, `${href} is no longer linked from /`).toContain(href);
+  }
+  expect(guideNavLinks().length).toBeGreaterThanOrEqual(3);
 });

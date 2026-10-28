@@ -94,6 +94,19 @@ export const WORKBENCH = {
     sample: 'Contenu de démonstration',
   },
 
+  // FW-HOME-A2 (R722): every new or changed component of the A2 home page,
+  // in every state it has.
+  home: {
+    title: 'Accueil A2',
+    excerpt: 'ReleveExcerpt - l’extrait d’exemple',
+    counterCompliant: 'HomeCounter - sous les deux seuils',
+    counterExposure: 'HomeCounter - au-delà du seuil fiscal',
+    counterSocial: 'HomeCounter - au-delà des deux seuils',
+    phoneAndroid: 'HeroPhone - Android, avant de répondre',
+    phoneIphone: 'HeroPhone - iPhone, la journée déclarée',
+    faqPair: 'Faq - disposition côte à côte, première question ouverte',
+  },
+
   shell: {
     title: 'PublicShell',
     desktop: 'En-tête et pied de page',

@@ -44,8 +44,15 @@ import { Container } from '@/lib/ui/react/Container/Container';
 import { DataGrid } from '@/lib/ui/react/DataGrid/DataGrid';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { LegalNote } from '@/lib/ui/react/LegalNote/LegalNote';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
+import { ReleveExcerpt } from '@/lib/ui/react/ReleveExcerpt/ReleveExcerpt';
+import { HomeCounter } from '@/lib/ui/react/HomeCounter/HomeCounter';
+import { HeroPhone } from '@/lib/ui/react/HeroPhone/HeroPhone';
+import { calculateTelework } from '@/lib/calc-engine';
+import { heroExampleInput } from '@/lib/content/home';
+import { HOME_COPY } from '@/lib/fr/home';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
 
@@ -69,6 +76,9 @@ const STATUSES: readonly Status[] = [
   'regime-lost',
   'social-switch',
 ];
+
+/** The worked example the home page's phones show, for HeroPhone below. */
+const EXAMPLE = calculateTelework(heroExampleInput(2026));
 
 export function IslandHarness() {
   // STATE, SO THE BOUNDARY IS REAL. A 'use client' component that never uses a
@@ -124,6 +134,35 @@ export function IslandHarness() {
       </FieldGroup>
 
       <LegalNote />
+
+      {/* FW-HOME-A2: a server component, imported here rather than excused -
+          the exclusion list has reached half the library, which is the point
+          island-harness.test.ts says to stop adding to it. */}
+      <ReleveExcerpt state={PRODUCT_STATE} />
+
+      {/* The home page's counter island, with the engine it carries. */}
+      <HomeCounter
+        taxYear={2026}
+        copy={{
+          rateLabel: HOME_COPY.counter.rateLabel,
+          status: HOME_COPY.counter.status,
+          fiscalTile: ISLAND_HARNESS.tileLabel,
+          fiscalOver: ISLAND_HARNESS.tileOverLabel,
+          socialTile: ISLAND_HARNESS.tileLabel,
+          socialOver: ISLAND_HARNESS.tileOverLabel,
+          teleworkLabel: HOME_COPY.counter.teleworkLabel,
+          basisLabel: HOME_COPY.counter.basisLabel,
+        }}
+        form={{ action: '/', teleworkName: 'tt', basisName: 'total', hidden: [] }}
+      />
+
+      {/* The home page's phone pictures, both platforms. */}
+      {EXAMPLE.ok ? (
+        <>
+          <HeroPhone platform="android" result={EXAMPLE.value} taxYear={2026} fiscal={ISLAND_HARNESS.tileLabel} />
+          <HeroPhone platform="iphone" result={EXAMPLE.value} taxYear={2026} fiscal={ISLAND_HARNESS.tileLabel} />
+        </>
+      ) : null}
     </Container>
   );
 }
