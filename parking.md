@@ -4902,3 +4902,230 @@ TOUCHES:   `web/scripts/register-coverage.mjs` (PARK_ID, CITATION),
 `web/tests/unit/meta/register-coverage.test.ts` (the R679 and R680 blocks).
 
 STATE:      RECORDED DECISION - R679.
+
+## THE UNNUMBERED PARKS, GIVEN IDS  [appended 2026-10-28, FW-PARK-IDS-2]
+
+Three reports on `main` parked items as UNNUMBERED-<n> because no series letter
+was free: REPORT-AN-FR-TEXT.txt (1-4), REPORT-IOS-1a.txt (1-6) and
+REPORT-IOS-1b-A.txt (1-11, in two PARKED blocks: PART 1's 1-5 and PART 2's
+6-11). `grep UNNUMBERED REPORT-*.txt` on ad7a937 finds no other report. R682
+gives each its own id, one claimed two-letter series per report, and the
+number after the letters IS the report's UNNUMBERED number:
+
+    PARK-FT<n>   REPORT-AN-FR-TEXT.txt  UNNUMBERED-<n>   (FR-Text)
+    PARK-IA<n>   REPORT-IOS-1a.txt      UNNUMBERED-<n>   (IOS-1A)
+    PARK-IB<n>   REPORT-IOS-1b-A.txt    UNNUMBERED-<n>   (IOS-1B-A)
+
+The reports are not edited: they still say UNNUMBERED-<n>, and this table is
+how a reader gets from one to the other. Each entry carries the report's own
+words under AS WRITTEN, copied rather than re-decided (R181), and a STATE from
+the record only - OPEN, or RESOLVED citing what resolved it, never a closure
+the record does not show (R444's rule).
+
+## PARK-FT1 - ParisDay's two Europe/Paris literals can now be one constant  [AN-FR-TEXT UNNUMBERED-1, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-AN-FR-TEXT.txt, PARKED, UNNUMBERED-1; asked as its Q2.
+AS WRITTEN: ParisDay.kt's "two Europe/Paris literals ... wait on fr/format's
+  multiplatform story" is now resolvable: fr.text.DATE_TIME_ZONE is in commonMain
+  beside PARIS_ZONE. Not done (scope: no engine/dossier change).
+STATE:      OPEN - Q2 ("ParisDay's PARIS_ZONE and fr.text.DATE_TIME_ZONE: one
+constant?") has no answer in any report on main.
+
+## PARK-FT2 - comments still describe fr/format as present in :app  [AN-FR-TEXT UNNUMBERED-2, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-AN-FR-TEXT.txt, PARKED, UNNUMBERED-2.
+AS WRITTEN: Comments that still describe fr/format as present in :app, now
+  stale but harmless: CopyDuplicationTest.kt:24, CopyReachabilityTest.kt:56,162,
+  169 (a failure-message string), ParametresCopyAccentTest.kt:28,
+  ParametresAccountSection.kt:94, CalendarCopy.kt:5, ParametresCopy.kt:153,
+  StatusCopy.kt:28, ServerInstantParseGoldenTest.kt:24, FrTextGoldenTest.kt:7 and
+  FrenchFormatGoldens.kt:5 (these two are history and true), docs/audit-android.md
+  552-553. Left: editing test messages and copy-file comments is outside R621.
+STATE:      OPEN.
+
+## PARK-FT3 - the moved fr/format tests run on the JVM only  [AN-FR-TEXT UNNUMBERED-3, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-AN-FR-TEXT.txt, PARKED, UNNUMBERED-3; asked as its Q1.
+AS WRITTEN: The moved fr/format tests run on the JVM only (they are Kotest, in
+  :app). Porting them to :shared commonTest (kotlin.test) would run the R26
+  exhaustive oracle on the simulator too; it is a rewrite of test structure, so it
+  is a question (Q1), not done.
+STATE:      OPEN - Q1 has no answer in any report on main.
+
+## PARK-FT4 - the release APK's size did not move while classes.dex grew  [AN-FR-TEXT UNNUMBERED-4, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-AN-FR-TEXT.txt, PARKED, UNNUMBERED-4.
+AS WRITTEN: The release APK's total size is identical before and after while
+  classes.dex grew by 4,845 compressed bytes; the packager's padding is the likely
+  cause and was not investigated.
+STATE:      OPEN - not investigated.
+
+## PARK-IA1 - the opt-in allowlist test did not walk iosMain or iosTest  [IOS-1a UNNUMBERED-1, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1a.txt, PARKED, UNNUMBERED-1; asked as its Q1.
+AS WRITTEN: ExperimentalTimeOptInAllowlistTest (android/app) walks nine source
+  roots and iosMain/iosTest are NOT among them, so the two @OptIn(ExperimentalTime)
+  in iosMain/.../IosInstantFormat.kt (function scope, R590) and the opt-ins in
+  iosTest are unpoliced. Fix: add shared/src/iosMain and iosTest to that test's
+  roots and list IosInstantFormat.kt with its count of 3 (two functions and the
+  private parseInstant). It is an android/app edit, so it was not made here.
+STATE:      RESOLVED by R592 (operator ruling, 2026-10-26), in the same report:
+"UNNUMBERED-1 RESOLVED by R592 (below): the allowlist now scans every source
+set." Its R592 section records iosMain and iosTest added as pinned roots, every
+other src/<set>/kotlin discovered, IosInstantFormat.kt allowlisted with its 3
+sites, and a planted opt-in RED once. Merged with ios-1a (981e8a8).
+
+## PARK-IA2 - Android's stores have never run the shared contracts  [IOS-1a UNNUMBERED-2, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1a.txt, PARKED, UNNUMBERED-2; DEVIATION 3; asked as its
+Q4.
+AS WRITTEN: Android's SharedPrefsDossierCache, SharedPrefsSettingsStore and
+  KeystoreTokenStore have never run the new contracts (DossierCacheContract,
+  SettingsStoreContract, TokenStoreContract live in :shared commonTest; :app needs
+  a Context and has no Robolectric). One file in :app tests per contract (Robolectric
+  or an instrumented subclass) closes it; it needs an :app test dependency or a
+  device. Until then the contracts are proven to be PASSABLE (references, both
+  platforms) and to be able to FAIL, not that Android passes them.
+STATE:      OPEN. Q4 is answered - relay/RULINGS-2026-10-26.txt item 4 approves
+Robolectric in test scope as its own small task - and no report on main records
+that task run.
+
+## PARK-IA3 - :app still uses java.time fr/format  [IOS-1a UNNUMBERED-3, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1a.txt, PARKED, UNNUMBERED-3; asked as its Q1.
+AS WRITTEN: :app still uses java.time fr/format; fr/text in commonMain is proven
+  equal by 12,021 goldens. Switching :app (and deleting the duplicate) is a later
+  task; it moves ~13 import lines and the :app format tests become the goldens'
+  JVM twin.
+STATE:      RESOLVED by AN-FR-TEXT (R621, with R622): REPORT-AN-FR-TEXT.txt
+records every :app import of fr.format moved to fr.text and fr/format's
+Dates.kt and Numbers.kt deleted, naming "UNNUMBERED-3 (this task)". Merged as
+2458dbe. What that task left behind is PARK-FT1 to PARK-FT4.
+
+## PARK-IA4 - the nine-path migration matrix does not run on iOS  [IOS-1a UNNUMBERED-4, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1a.txt, PARKED, UNNUMBERED-4; DEVIATION 4.
+AS WRITTEN: Room 2.7.2 offers no multiplatform migration helper, so KMP-2b's
+  nine-path matrix does not run on iOS (two hand-built paths do). Revisit at the
+  Room line that ships one (it also moves KSP, PARK-X2).
+STATE:      OPEN - waits on a Room release.
+
+## PARK-IA5 - the Keychain is proven on a simulator only  [IOS-1a UNNUMBERED-5, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1a.txt, PARKED, UNNUMBERED-5.
+AS WRITTEN: The Keychain is proven in a booted SIMULATOR with a test access
+  group; a physical device and the real entitlement are unproven (iOS-1c).
+STATE:      OPEN - for iOS-1c.
+
+## PARK-IA6 - the CI wire server is cleartext loopback only  [IOS-1a UNNUMBERED-6, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1a.txt, PARKED, UNNUMBERED-6.
+AS WRITTEN: ios-wire-server.py is stdlib-only and used only by CI; if the
+  transport grows a redirect or TLS test it needs a TLS variant (the current
+  proof is cleartext loopback).
+STATE:      OPEN - conditional on a redirect or TLS test.
+
+## PARK-IB1 - Paparazzi 1.3.5 cannot render Compose UI 1.10.5  [IOS-1b-A UNNUMBERED-1, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 1 PARKED, UNNUMBERED-1.
+AS WRITTEN: Paparazzi 1.3.5 cannot render Compose UI >= the version that
+  calls StaticLayout$Builder.setUseBoundsForWidth (1.10.5
+  measured). Any Compose move past it is a Paparazzi move too.
+STATE:      OPEN - PART 2 stayed on CMP 1.7.3 and names a Paparazzi that renders
+Compose UI 1.10 text as half of PARK-IB8's trigger.
+
+## PARK-IB2 - two screens use AutoMirrored icons through a transitive dependency  [IOS-1b-A UNNUMBERED-2, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 1 PARKED, UNNUMBERED-2.
+AS WRITTEN: CalendrierScreen.kt and ParametresListRows.kt use
+  Icons.AutoMirrored via a TRANSITIVE material-icons-core from
+  Material3 1.3.0. Any Material3 >= 1.5 breaks them; the fix is
+  an explicit dependency (a catalog addition - ask first).
+STATE:      OPEN - binds at the Material3 1.5 move (PARK-IB8).
+
+## PARK-IB3 - ThemeCensusTest pins the Material3 1.3 slots  [IOS-1b-A UNNUMBERED-3, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 1 PARKED, UNNUMBERED-3.
+AS WRITTEN: ThemeCensusTest pins 15 Typography slots and the 1.3 ColorScheme;
+  Material3 1.5 has 30 and new fixed-colour slots. Its update
+  belongs to the toolkit-upgrade task.
+STATE:      OPEN - for the toolkit-upgrade task (PARK-IB8).
+
+## PARK-IB4 - CMP 1.10.3 would move the catalog's coroutines and coreKtx pins  [IOS-1b-A UNNUMBERED-4, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 1 PARKED, UNNUMBERED-4.
+AS WRITTEN: CMP 1.10.3 also moves the catalog's coroutines pin (1.8.1 ->
+  1.9.0) and coreKtx (1.15.0 -> 1.16.0) by conflict resolution:
+  the catalog would then state versions the app does not run.
+STATE:      RESOLVED in PART 2 of the same report, under R625 (CMP 1.7.3, not
+1.10.3): "composeBom 2024.09.00 -> 2024.12.01 so the BOM states what runs
+(UNNUMBERED-4 closed)". Merged with ios-1b-a (33c3578).
+
+## PARK-IB5 - no Paparazzi test set maxPercentDifference  [IOS-1b-A UNNUMBERED-5, 2026-10-26 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 1 PARKED, UNNUMBERED-5.
+AS WRITTEN: NOTICED, NOT TOUCHED: no Paparazzi test in app/src/test sets
+  maxPercentDifference (grep: no match), so verifyPaparazziDebug
+  runs at Paparazzi 1.3.5's DEFAULT tolerance - R345's "a default
+  is a setting nobody chose", on the Android baselines. Not
+  verified what that default is in 1.3.5; stated, not fixed.
+STATE:      RESOLVED by R626 in PART 2 of the same report (commit 85579a4):
+"All 14 Paparazzi rules (the 142 tests) pass maxPercentDifference = 0.0",
+guarded by value by fences/PaparazziZeroToleranceTest. The report does not
+write "UNNUMBERED-5 closed" in those words; R626 is the change it asked for.
+What zero does not close in Paparazzi 1.3.5 is PARK-IB7.
+
+## PARK-IB6 - Material3 1.7.3's calendar model is unlinked on iOS  [IOS-1b-A UNNUMBERED-6, 2026-10-27 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 2 PARKED, UNNUMBERED-6; R624.
+AS WRITTEN: Material3 1.7.3's calendar model is unlinked on iOS against
+              kotlinx-datetime 0.7.1. Fenced (CommonMainFenceTest) and
+              canaried (MaterialDatePickerCanaryTest); retired by UNNUMBERED-8.
+STATE:      OPEN - fenced and canaried; retired only when PARK-IB8 lands.
+
+## PARK-IB7 - Paparazzi 1.3.5's OffByTwo differ and 1 px size allowance remain  [IOS-1b-A UNNUMBERED-7, 2026-10-27 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 2 PARKED, UNNUMBERED-7; asked as its Q4.
+AS WRITTEN: Paparazzi 1.3.5's OffByTwo differ and 1 px size allowance remain
+              under maxPercentDifference 0.0 (QUESTION Q4).
+STATE:      OPEN. Q4 is answered - relay/RULINGS-2026-10-26.txt item 13: a
+custom SnapshotHandler requiring identical pixels, as its own test-only task,
+later - and no report on main records that task run.
+
+## PARK-IB8 - the CMP 1.10+/1.11 upgrade, and its trigger  [IOS-1b-A UNNUMBERED-8, 2026-10-27 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 2 PARKED, UNNUMBERED-8; R625.
+AS WRITTEN: The CMP 1.10+/1.11 upgrade - trigger: Material3 1.5 STABLE and a
+              Paparazzi that renders Compose UI 1.10 text.
+STATE:      OPEN - waits on its trigger.
+
+## PARK-IB9 - Compose resources need a ContentProvider Paparazzi does not start  [IOS-1b-A UNNUMBERED-9, 2026-10-27 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 2 PARKED, UNNUMBERED-9; the R603 spike.
+AS WRITTEN: Compose resources on Android need the library's ContentProvider
+              context, which Paparazzi does not start (the R603 spike). Matters
+              only if QUESTION Q2 is answered (ii).
+STATE:      OPEN - and dormant: relay/RULINGS-2026-10-26.txt item 14 keeps the
+icons as built and parks the move to Compose resources for later.
+
+## PARK-IB10 - in whole-day mode a day held in halves leaves the year with no rate  [IOS-1b-A UNNUMBERED-10, 2026-10-27 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 2 PARKED, UNNUMBERED-10 (NOTICED, NOT
+TOUCHED).
+AS WRITTEN: NOTICED, NOT TOUCHED: in whole-day mode the engine refuses a half
+              count (calc/Validate.kt), so a day held in halves under whole-day
+              settings (R490 keeps halves; R494 mixed data) makes Aujourd'hui's
+              year panel show no rate. The product's settings sheet refuses the
+              switch itself (seen on the S9), so this needs data from elsewhere.
+STATE:      OPEN. The same finding as PARK-J2 - cross-referenced, not merged.
+relay/RULINGS-2026-10-26.txt item 11 rules the fix (the card reads existing
+rows in whichever granularity they have, with a test); no report on main
+records it done.
+
+## PARK-IB11 - CommonMainFenceTest now allows androidx.compose.* except two holes  [IOS-1b-A UNNUMBERED-11, 2026-10-27 - given an id FW-PARK-IDS-2 2026-10-28]
+
+RAISED BY:  REPORT-IOS-1b-A.txt, PART 2 PARKED, UNNUMBERED-11.
+AS WRITTEN: CommonMainFenceTest now allows androidx.compose.* except two
+              Android-only holes; anything else Android-only inside Compose's
+              packages is caught by compileCommonMainKotlinMetadata, not by text.
+STATE:      OPEN - recorded as a limit of the text fence.
