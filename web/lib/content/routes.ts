@@ -112,6 +112,9 @@ export const CALCULATOR_PATH = '/calculateur-teletravail-frontalier';
  */
 export const RESULT_PATH = `${CALCULATOR_PATH}/resultat`;
 
+/** The LAMal / CMU comparator's slug (SPEC 9.6), for the same reason as CALCULATOR_PATH. */
+export const COMPARATOR_PATH = '/calculateur-lamal-cmu';
+
 export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   // ---- live today -------------------------------------------------------
   { path: '/', status: 'live', task: 'FW10 placeholder, FW20 real', changeFrequency: 'weekly', priority: 1 },
@@ -141,9 +144,15 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     // SPEC 9.1 and 9.6 both spell it "calculateur", not "comparateur", even
     // though the page IS a comparator and its LABEL says so. The slug carries
     // the search term (SPEC 14) and the label carries the meaning.
-    path: '/calculateur-lamal-cmu',
-    status: 'planned',
-    task: 'FW19',
+    //
+    // LIVE SINCE FW-COMPARATEUR. FW19 reached R157 option (3) and built
+    // nothing (PARK-4); the operator's R664-R673 cleared the premium licence
+    // and the French formula, and the page was built on them. Flipping this
+    // flag is what puts the Calculateurs menu back (collapseLoneDisclosures),
+    // lists the page in the sitemap and lets the guide link it (R85).
+    path: COMPARATOR_PATH,
+    status: 'live',
+    task: 'FW19, built FW-COMPARATEUR',
     changeFrequency: 'monthly',
     priority: 0.8,
   },

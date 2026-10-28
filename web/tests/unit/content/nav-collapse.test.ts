@@ -47,16 +47,16 @@ describe('collapseLoneDisclosures', () => {
     ]);
   });
 
-  it('collapses the real Calculateurs menu today, because its second child is planned', () => {
-    // THE SHIPPED STATE, pinned. /calculateur-lamal-cmu is `planned`, so
-    // visibleNav leaves the menu one child and the header offers the
-    // calculator by name. The day the comparator goes live this fails - and
-    // the fix is to delete this test, because the menu is then correct again.
+  it('keeps the real Calculateurs menu today, because both its children are live', () => {
+    // THE SHIPPED STATE, pinned. Until FW-COMPARATEUR this test asserted the
+    // collapse - /calculateur-lamal-cmu was `planned`, so the header offered
+    // the calculator by name - and said the day the comparator went live it
+    // would fail and the menu would be correct again. It failed on that day,
+    // for that reason; the menu is back, with both tools.
     const nav = collapseLoneDisclosures(visibleNav(SHELL_NAV));
+    const menu = nav.find((entry) => entry.children !== undefined);
 
-    expect(nav.some((entry) => entry.children !== undefined)).toBe(false);
-    expect(nav.find((entry) => entry.href === CALCULATOR_PATH)?.label).toBe(
-      SHELL_NAV[0]?.children?.[0]?.label,
-    );
+    expect(menu?.label).toBe(SHELL_NAV[0]?.label);
+    expect(menu?.children?.map((child) => child.href)).toEqual([CALCULATOR_PATH, '/calculateur-lamal-cmu']);
   });
 });

@@ -175,19 +175,26 @@ describe('the nav', () => {
     }
   });
 
-  it('renders a menu with one live child as a link to that child, under its label (H4)', () => {
-    // THE SHIPPED STATE. Opening a menu to find one item is a wasted
-    // interaction, and "Calculateurs" over one destination misnames it.
+  it('renders the Calculateurs menu as a disclosure now that both tools are live', () => {
+    // THE SHIPPED STATE SINCE FW-COMPARATEUR. Until then this test pinned H4's
+    // collapse - one live child, rendered as a link under its own label - and
+    // that behaviour is still proven on a synthetic menu in
+    // tests/unit/content/nav-collapse.test.ts. The real menu has two live
+    // children again, so the shell renders the disclosure the next describe
+    // block drives by keyboard.
     renderShell();
 
     const nav = screen.getByRole('navigation', { name: SHELL_COPY.navLabel });
-    const only = SHELL_NAV[0]?.children?.[0];
+    const button = within(nav).getByRole('button', { name: SHELL_NAV[0]?.label ?? '' });
 
-    expect(only?.href).toBe(CALCULATOR_PATH);
-    expect(within(nav).getByRole('link', { name: only?.label ?? '' }).getAttribute('href')).toBe(
+    fireEvent.click(button);
+
+    expect(within(nav).getByRole('link', { name: SHELL_NAV[0]?.children?.[0]?.label ?? '' }).getAttribute('href')).toBe(
       CALCULATOR_PATH,
     );
-    expect(within(nav).queryByRole('button', { name: SHELL_NAV[0]?.label ?? '' })).toBeNull();
+    expect(within(nav).getByRole('link', { name: SHELL_NAV[0]?.children?.[1]?.label ?? '' }).getAttribute('href')).toBe(
+      '/calculateur-lamal-cmu',
+    );
   });
 
   it('links every leaf to its href', () => {

@@ -205,6 +205,14 @@ ever verified.
 
 ## PARK-4 - the LAMal/CMU comparator is NOT published (R157 option 3)  [FW19, 2026-09-16]
 
+CLEARED 28.10.2026 BY R664-R673. Both reasons below moved. (1) The licence was
+read from a browser on 27.10.2026: the OFSP Praemien_EU files are "Utilisation
+libre. Obligation d'indiquer la source." - commercial use allowed, attribution
+mandatory (docs/regulatory-sources.md L1-L2). (2) The warning is sourced: rows
+D1-D10. R157 option (1) applies. The comparator is built on branch
+fw-comparateur (REPORT-FW-COMPARATEUR.txt). The entry is kept because the
+refusal was correct on the record as it stood.
+
 QUESTION:  R157 fixes an order of preference for premium data and forbids
 deviating upward from it. Two things had to be established: whether a dated,
 licensed premium dataset could be obtained, and whether the page could be
@@ -332,6 +340,14 @@ decisions that were later unblocked stops being a record of how the product
 decides.
 
 ## PARK-7 - the article does not link /calculateur-lamal-cmu  [FW18b, 2026-09-16]
+
+CLOSED 28.10.2026 BY FW-COMPARATEUR. The comparator is live, so R85 no longer
+forbids the anchor: the section this entry named ("Ce que ce guide ne chiffre
+pas") links it, the En bref list and the FAQ answer point to it, and the
+comparator links back to the guide. The same section's sentence that the
+Swiss premium "depends on the canton" was corrected for this reader: for a
+France resident it is calculated by State of residence (LAMal art. 61 al. 4,
+row L4), under its own claim key.
 
 QUESTION:  The comparator is the natural next step for a reader who has just
 learned that the choice is irrevocable, and SPEC 9.6 names the page. It is
@@ -1085,6 +1101,12 @@ TOUCHES:   Later, the dossier and aggregation. The source row already exists
 (source C).
 
 ## PARK-24 - the LAMal/URSSAF comparator, reopened on a new footing (reopens PARK-4)  [REG-APPLY, 2026-10-11]
+
+CLEARED 28.10.2026 BY R664-R673, with PARK-4. ge.ch's reuse terms were not
+needed: the federal dataset covers France residents and carries readable
+terms, so source D became a cross-check (its 78 figures for 2026 equal the
+OFSP file one for one) and is still not republished. The French side is read
+from CSS art. D380-2 and L380-3-1 and URSSAF's own pages (rows L7-L13).
 
 QUESTION:  PARK-4 refused the LAMal/CMU comparator (R157 option 3) for two
 reasons: the premium data could not be licensed (opendata.swiss returned 403 so
@@ -4646,3 +4668,131 @@ itself - the test's own allowlist is the checklist. Remember that the Kotlin 2.3
 also the KSP2 decision (PARK-X2).
 
 STATE:      OPEN - tied to the Kotlin 2.3 upgrade, not yet scheduled.
+
+## PARK-28 - the French contribution is shown as 0 EUR below 25 % of the PASS, and no text says so  [FW-COMPARATEUR, 2026-10-28]
+
+QUESTION:  CSS art. D380-2 I gives the contribution as `8 % x (A - 0,25 x
+PASS)`. For an income A below a quarter of the PASS the formula is negative.
+No text read - D380-2, L380-3-1, URSSAF 6a/6b/6c/6d, ameli - states a minimum,
+a floor, or what happens below the allowance (docs/regulatory-sources.md L7;
+sources-2026-10.md 6d and 8: NOT FOUND).
+
+TAKEN:     Ruling R669 (G6): the comparator shows 0 EUR and says, beside the
+figure, that this is the site's reading where the text is silent - never a
+rule. `lib/lamal` returns a `floored` flag so the page can say it only when it
+applies, and a test pins both sides of the boundary.
+
+NOT TAKEN: (a) Showing the negative number - a contribution is not a payment
+to the person, and a minus sign would read as one. (b) Refusing to compute
+below the allowance - the most common reason to be there is a first year with
+little French-taxed income, which is exactly when the choice is made.
+
+FOR THE EXPERT REVIEWER (Checkpoint E): is the contribution zero when A is
+below 25 % of the PASS, and is there any minimum?
+
+STATE:      OPEN - reviewer question.
+
+## PARK-29 - insurer 32's K3 child premium is not used  [FW-COMPARATEUR, 2026-10-28]
+
+RULED 28.10.2026 (the operator's Q3, R678 here): K3 STAYS OUT, PARKED. The
+page uses the standard child premium (K1). K3 - likely a discount for further
+children - can only LOWER the Swiss side, so leaving it out can only make an
+affected household's Swiss totals (insurer 32's, and through it possibly the
+lowest or the median) higher than a family with that many children would pay,
+never lower: the comparison errs toward overstating the Swiss cost for those
+households and in no case understates it. Looking K3 up in the 2027
+Tarife.csv is the operator's, later, with Claude in Chrome. The entry below is
+kept as written.
+
+QUESTION:  In both Praemien_EU files, every one of the 13 insurers files a
+child premium under age subgroup K1. Insurer 32 alone also files a second
+child premium under K3 (2027: 89.55 with accident, 83.30 without; 2026: 80.85
+and 75.20 - about half its K1 figure). The explanations file lists the
+subgroup codes ("K1", "K2", "K3", "K4", "K5", "J1", "E1") and defines none of
+them. The Tarife file, which names subgroups, was not collected.
+
+TAKEN:     K1 for every child, at every insurer. ge.ch's monthly table for
+France residents (source D) prints insurer 32's child premium as its K1
+figure (161,70 in 2026), which is at least consistent with K1 being the
+general child premium. The comparator does not guess what K3 is for.
+
+NOT TAKEN: Treating K3 as "third child and beyond" or any other reading -
+that is an invented rule. If it is a sibling discount, insurer 32's household
+total is overstated for families with that many children, and the LOWEST
+figure could move.
+
+TOUCHES:    web/scripts/lamal-generate.mjs (the subgroup filter, asserted),
+web/lib/lamal/premiums-*.ts. To resolve: download Tarife.csv for 2027 from the
+same opendata.swiss dataset (terms_by), read the K3 label, decide.
+
+STATE:      OPEN.
+
+## PARK-30 - URSSAF's two rubrics against art. 1417 IV, and the joint tax return  [FW-COMPARATEUR, 2026-10-28]
+
+QUESTION:  Two questions about the income the French side is computed from,
+both for the expert reviewer and neither answered on the page.
+1. URSSAF computes the contribution from two declared rubrics - "salaires,
+   pensions et rentes nets" and "les autres revenus" - and uses the revenu
+   fiscal de reference "uniquement de base de verification" (6b). The law
+   (L380-3-1 IV, D380-2 I) points to art. 1417 IV CGI, which IS the RFR's
+   definition. Are the rubrics and the 1417 IV amount exactly equal?
+2. URSSAF 6b: on a joint tax return, declare "le montant des revenus vous
+   concernant personnellement" and half of common income. The RFR printed on
+   a joint avis d'imposition is the HOUSEHOLD's, so a couple entering it
+   overstates A - by the other spouse's income.
+
+TAKEN:     Ruling R670 (G7): the field asks for "votre revenu fiscal de
+reference de l'avant-derniere annee" with one line pointing to the avis
+d'imposition, and the page claims no more than the law. Item 2 is stated on
+the page, in the list of what the comparison leaves out, from URSSAF 6b's own
+words - a couple is told the field wants their own share.
+
+NOT TAKEN: A second field splitting the RFR, or a "declaration commune"
+toggle that halves it. Halving is wrong as soon as incomes differ, and the
+split is what the reviewer is asked about.
+
+STATE:      OPEN - reviewer question.
+
+## PARK-31 - every park letter is taken, so FW-COMPARATEUR used the numeric series  [FW-COMPARATEUR, 2026-10-28]
+
+QUESTION:  R456 says a task claims a letter series nobody is using. On
+28.10.2026 parking.md on main carries all 26 letters (A..Z), so no series is
+free; the register-coverage check passed and could not have offered one.
+
+TAKEN:     The plain numeric series, continued from main's highest (PARK-27):
+PARK-28 to PARK-31. Its shape `PARK-<n>` is inside the register's pattern
+(`PARK(?:AN)?-[A-Z]?\d+`), so every id is seen by the check, and a duplicate
+heading at merge fails by name rather than silently.
+
+NOT TAKEN: Re-using a letter whose series looks finished (a series is a
+task's, and "finished" is a judgement); inventing a two-letter series (the
+pattern would not see it, R456).
+
+FOR THE OPERATOR: allocate the next scheme - a second letter cycle, or the
+numeric series as the default from now on.
+
+STATE:      OPEN - operator decision.
+
+## PARK-32 - the comparator has no e-mail capture yet  [FW-COMPARATEUR, 2026-10-28]
+
+QUESTION:  SPEC 9.6 says the comparator carries "same email capture" as the
+calculator. The calculator's capture is a plain POST to /api/alertes that
+redirects back to the page with a status, and the calculator survives the
+round trip because its scenario is in the URL. The comparator's inputs are
+deliberately NOT in the URL (R658: no income in any URL), so the redirect
+would return the reader to an empty comparator, and the page has no status
+notice for the capture's result.
+
+TAKEN:     No capture on /calculateur-lamal-cmu in this task. The prompt's
+R642 (R658 here) does not list it; lib/alerts/subscribe.ts still knows three
+sources. Reversible at zero cost: nothing was built.
+
+NOT TAKEN: Adding <AlertCapture source="comparateur"> as-is - it would cost
+the reader their typed household on every submission, and its success and
+error states would have nowhere to render.
+
+TOUCHES:    lib/alerts/subscribe.ts (SOURCES), app/api/alertes/route.ts
+(RETURN_TO), lib/analytics/events.ts (EventSource), the comparator page, and a
+status notice that does not need the URL.
+
+STATE:      OPEN - for the operator to schedule.

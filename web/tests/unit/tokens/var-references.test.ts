@@ -176,7 +176,10 @@ describe('every var() resolves to a token that exists', () => {
       0,
     );
 
-    expect(uses, 'the token is defined and nothing uses it').toBe(7);
+    // THE EIGHTH IS FW-COMPARATEUR'S IRREVOCABILITY BANNER, in the error tone
+    // rather than the warning one - the same accent width on a different
+    // colour, which is exactly what this token is for.
+    expect(uses, 'the token is defined and nothing uses it').toBe(8);
   });
 
   it("draws the total row's rule from its own token, not the input one (Q48)", () => {

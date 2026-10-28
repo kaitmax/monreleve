@@ -27,6 +27,7 @@ import {
   accordionOpened,
   appCtaClicked,
   calculated,
+  comparatorCalculated,
   contextualLinkClicked,
   emailSubmitted,
   missionsDeclared,
@@ -50,15 +51,17 @@ const EVERY_EVENT = [
   shareClicked('copy'),
   contextualLinkClicked('sources'),
   appCtaClicked('calculateur'),
+  comparatorCalculated(),
 ];
 
 describe('SPEC 15 event set', () => {
-  it('names the nine events and no others', () => {
+  it('names the ten events and no others', () => {
     expect([...EVENT_NAMES].sort()).toEqual(
       [
         'accordion_opened',
         'app_cta_clicked',
         'calculated',
+        'comparator_calculated',
         'contextual_link_clicked',
         'email_submitted',
         'missions_declared',
@@ -137,5 +140,14 @@ describe('result_status carries the Status enum', () => {
     const emitted = new Set(STATUSES.map((status) => JSON.stringify(resultStatus(status))));
 
     expect(emitted.size).toBe(STATUSES.length);
+  });
+});
+
+describe('comparator_calculated (SPEC 15, FW-COMPARATEUR R658)', () => {
+  it('carries NOTHING - no income, no year of birth, no household size', () => {
+    // The comparator's inputs are a person's income and their family. That
+    // somebody compared is the signal SPEC 15 asks for ("second-tool usage");
+    // what they compared is theirs, exactly as `calculated` carries nothing.
+    expect(comparatorCalculated()).toEqual({ name: 'comparator_calculated' });
   });
 });

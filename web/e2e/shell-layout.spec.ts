@@ -79,16 +79,25 @@ test.describe('the header, on desktop', () => {
     expect(gaps.every((gap) => gap === 32), `gaps measured: ${gaps.join(', ')}`).toBe(true);
   });
 
-  test('RED: the lone Calculateurs child is a link to the calculator, under its own label', async ({
+  test('the Calculateurs menu is a disclosure again, opening onto both tools (FW-COMPARATEUR)', async ({
     page,
   }) => {
-    const only = SHELL_NAV[0]?.children?.[0];
+    // Until FW-COMPARATEUR this pinned H4's collapse: one live child, shown as
+    // a link under its own label. The comparator is live, so the menu has two
+    // children and the header renders the disclosure. H4 itself is still
+    // proven on a synthetic menu (tests/unit/content/nav-collapse.test.ts).
+    const button = nav(page).getByRole('button', { name: SHELL_NAV[0]?.label ?? '' });
 
-    await expect(nav(page).getByRole('link', { name: only?.label ?? '', exact: true })).toHaveAttribute(
+    await expect(button).toHaveCount(1);
+    await button.click();
+    await expect(nav(page).getByRole('link', { name: SHELL_NAV[0]?.children?.[0]?.label ?? '', exact: true })).toHaveAttribute(
       'href',
       CALCULATOR_PATH,
     );
-    await expect(nav(page).getByRole('button', { name: SHELL_NAV[0]?.label ?? '' })).toHaveCount(0);
+    await expect(nav(page).getByRole('link', { name: SHELL_NAV[0]?.children?.[1]?.label ?? '', exact: true })).toHaveAttribute(
+      'href',
+      '/calculateur-lamal-cmu',
+    );
   });
 
   test('PIN: nav items stay text-primary (ruling H7: DESIGN-SYSTEM section 4 wins)', async ({

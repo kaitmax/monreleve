@@ -96,11 +96,11 @@ export const PRODUCT_STATE: ProductState = {
   // Flipped by: the FW2x backend series, after trackerExists.
   dossierExists: false,
 
-  // NOT BUILT. /calculateur-lamal-cmu is `planned` in the registry, and FW19
-  // reached R157 option (3) - no UI at all - because the premium data is
-  // unlicensed. PARK-4.
-  // Flipped by: whichever task resolves the licence question.
-  comparatorExists: false,
+  // BUILT, FW-COMPARATEUR. app/(public)/calculateur-lamal-cmu/ renders the
+  // form and lib/lamal compares from the OFSP premiums and CSS art. D380-2,
+  // on the sources the operator's R664-R673 cleared (PARK-4 and PARK-24).
+  // FW19 had reached R157 option (3) and built no UI.
+  comparatorExists: true,
 
   // NOT BUILT. android/ exists (AN1) but its release buildType is unsigned -
   // nobody outside this machine can install it. The comment used to name

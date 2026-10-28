@@ -121,6 +121,13 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   // not touch.
   'app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx': 'resultat.nojs.spec.ts',
 
+  // FW-COMPARATEUR. The comparator's form deliberately has NO no-JS journey
+  // to a figure: the arithmetic runs in the browser so that nothing typed is
+  // ever sent (R658). What a no-JS reader must get is the page's explanation
+  // and the irrevocability banner, and a native submission that carries NO
+  // income - its controls have no `name`. That spec drives exactly this.
+  'app/(public)/calculateur-lamal-cmu/ComparatorForm.tsx': 'comparateur.nojs.spec.ts',
+
   // The alert sign-up: the calculator's POST form, and the journey the
   // operator named.
   'lib/ui/react/AlertCapture/AlertCapture.tsx': 'calculateur.nojs.spec.ts',

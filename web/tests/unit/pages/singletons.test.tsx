@@ -33,6 +33,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import CalculateurPage from '@/app/(public)/calculateur-teletravail-frontalier/page';
+import ComparateurPage from '@/app/(public)/calculateur-lamal-cmu/page';
 import CguPage from '@/app/(public)/cgu/page';
 import ConfidentialitePage from '@/app/(public)/confidentialite/page';
 import GuidesHubPage from '@/app/(public)/guides/page';
@@ -114,6 +115,22 @@ const PAGES: readonly Expected[] = [
     // split matters.
     contextualLinks: 0,
     primaryActions: 1,
+  },
+  {
+    // FW-COMPARATEUR. One h1 and the footer's disclaimer like every page; no
+    // contextual link (that slot is the telework panel's, SPEC 9.3); and ZERO
+    // primary actions in this census's sense - it counts the CALCULATOR's
+    // Calculer button, and the comparator's own submit is "Comparer".
+    label: '/calculateur-lamal-cmu',
+    render: () => {
+      render(
+        <PublicShell guideLinks={guideNavLinks()}>
+          <ComparateurPage />
+        </PublicShell>,
+      );
+    },
+    contextualLinks: 0,
+    primaryActions: 0,
   },
   {
     label: '/alertes',

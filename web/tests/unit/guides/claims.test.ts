@@ -58,7 +58,7 @@ describe('the key universe is the product registry, not a list kept here', () =>
     );
   });
 
-  it('splits into fifteen verified and five unresolved, which is the state of the record', () => {
+  it('splits into twenty-eight verified and five unresolved, which is the state of the record', () => {
     // NON-VACUITY WITH TEETH: if a future pass verified the two pending rows,
     // this fails and whoever did it updates the guides' hedging in the same
     // change. The numbers are the record of 09.09.2026, not a preference.
@@ -71,7 +71,10 @@ describe('the key universe is the product registry, not a list kept here', () =>
     // the half worth asserting: adding verified facts must not quietly
     // resolve a pending one. FW20b added three and resolved none, which is
     // the correct outcome for a task that transcribed rather than researched.
-    expect(VERIFIED.size).toBe(15);
+    // TWENTY-EIGHT SINCE FW-COMPARATEUR: thirteen comparator rows (L1-L14,
+    // the terms folded into the data row), read 27.10.2026 and checked against
+    // the files - and, the half that matters, UNRESOLVED did not move.
+    expect(VERIFIED.size).toBe(28);
     expect(UNRESOLVED.size).toBe(5);
     expect([...UNRESOLVED].sort()).toEqual(
       ['P1', 'P2', 'P3', 'dayClassification', 'residence1983Cantons'].sort(),

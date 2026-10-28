@@ -39,6 +39,9 @@ import { SHELL_NAV } from '@/lib/fr/shell';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
+import { ComparisonPanel } from '@/lib/ui/react/Comparison/ComparisonPanel';
+import { IrrevocabilityBanner } from '@/lib/ui/react/Comparison/IrrevocabilityBanner';
+import { DEFAULT_YEAR } from '@/lib/lamal/years';
 import styles from './page.module.scss';
 
 export const metadata: Metadata = {
@@ -334,6 +337,22 @@ export default function WorkbenchPage() {
         </div>
       </section>
       <section className={styles.section}>
+        <h2>{WORKBENCH.comparison.title}</h2>
+        {/* FW-COMPARATEUR (R661's baselines). The refusal of a premium year
+            the site does not hold is reachable by no reader - the year
+            selector offers only the years the data has - so this is its only
+            picture. The year is the one after the newest, derived (R171). */}
+        <div className={styles.stack}>
+          <Specimen id="comparison-banner" caption={WORKBENCH.comparison.banner}>
+            <IrrevocabilityBanner />
+          </Specimen>
+          <Specimen id="comparison-refusal" caption={WORKBENCH.comparison.refusal}>
+            <ComparisonPanel state={{ kind: 'refusal', year: DEFAULT_YEAR + 1 }} />
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={styles.section}>
         <h2>{WORKBENCH.container.title}</h2>
         {/* Stacked rather than in the specimens row: three widths side by
             side in a flex row would each be squeezed to a third of the page
@@ -370,11 +389,10 @@ export default function WorkbenchPage() {
               <p className={styles.sample}>{WORKBENCH.container.sample}</p>
             </PublicShell>
           </Specimen>
-          {/* FW33. The shell collapses a menu with one live child into a
-              link, so no page shows the disclosure or its caret today. This
-              is SHELL_NAV's real, unfiltered menu - the entry the shell will
-              render the day its second child goes live - so the caret has a
-              visual record meanwhile. */}
+          {/* FW33. The shell collapsed a menu with one live child into a
+              link, so no page showed the disclosure or its caret. Since
+              FW-COMPARATEUR both children are live and every page header
+              shows it; the specimen stays as the menu's isolated record. */}
           <Specimen id="shell-nav-disclosure" caption={WORKBENCH.shell.navDisclosure}>
             <NavMenu entries={SHELL_NAV.filter((entry) => entry.children !== undefined)} />
           </Specimen>

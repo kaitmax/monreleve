@@ -59,6 +59,10 @@ const SPECIMENS = [
   'grid-populated',
   'grid-empty',
   'grid-total',
+  // FW-COMPARATEUR: the irrevocability banner, and the refusal of a premium
+  // year the site does not hold - a state no reader can reach on the page.
+  'comparison-banner',
+  'comparison-refusal',
   'container-public',
   'container-narrow',
   'container-article',
