@@ -379,6 +379,34 @@ export default tseslint.config(
     },
   },
 
+  // (b2) lib/lamal is pure and stands apart from the engine. FW-COMPARATEUR,
+  // R657: the LAMal / CMU comparison is a different domain from the telework
+  // engine, with different sources and a different verification status, so it
+  // never imports lib/calc-engine; and it is pure - no React, no Next, no
+  // filesystem - so the island and the tests run the same arithmetic. A
+  // separate file set from every other no-restricted-imports block, because
+  // flat config replaces a rule rather than merging it.
+  {
+    files: ['lib/lamal/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/lib/calc-engine', '@/lib/calc-engine/*', '**/calc-engine', '**/calc-engine/*'],
+              message: 'lib/lamal never imports lib/calc-engine (R657): a different domain and different sources.',
+            },
+            {
+              group: ['react', 'react-dom', 'next', 'next/*', 'node:*', 'fs', 'path'],
+              message: 'lib/lamal is pure (R657): no React, no Next, no I/O.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // The spike is quarantined. This block deliberately targets file sets that
   // carry no other no-restricted-imports rule: flat config replaces a rule
   // rather than merging it, so putting this on lib/** would silently delete
