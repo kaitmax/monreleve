@@ -4796,3 +4796,65 @@ TOUCHES:    lib/alerts/subscribe.ts (SOURCES), app/api/alertes/route.ts
 status notice that does not need the URL.
 
 STATE:      OPEN - for the operator to schedule.
+
+## PARK-PI1 - two phantom citations are exempted by report, not given entries  [FW-PARK-IDS-2, 2026-10-28]
+
+QUESTION:  R679 widened the pattern to two letters. R680's census ran it,
+and the pattern as at ad7a937, over every tracked file: two ids in reports on
+main resolve now that never resolved before, and neither is an entry.
+`PARK-FW34` in REPORT-FW-PARK-IDS.txt (lines 215 and 810) names the phantom a
+wrong pattern would read out of PARK-FW34-LAUNCH; `PARK-ZZ1` in
+REPORT-KMP-DT.txt (line 1165) names an id the one-letter rule did not match.
+Both are now "cited" with no heading, which reds the register check, and the
+reports are history and are not edited.
+
+TAKEN:     A frozen list of two (report, id) PAIRS in
+`web/scripts/register-coverage.mjs` (`PHANTOM_CITATIONS`): each id is skipped
+in the one report that names it and is not counted as cited. The same id cited
+by any other report still fails like any unheaded id, and a heading under
+either id FAILS, because the citation would then resolve to an entry its
+report never meant. A pair rather than a bare id because exempting the id
+PARK-FW34 would exempt the exact string R680 tests. Asserted at exactly two by
+a test that reads the list out of the script. Reversible: delete the list and
+write the two headings instead.
+
+NOT TAKEN: Two headings, `## PARK-FW34 -` and `## PARK-ZZ1 -`, each saying "not
+an entry". That claims the FW and ZZ series for something that is not a
+decision, and it is the "heading that resolves to a promise" class this check
+already refuses for placeholders. Switching costs two headings and the list.
+
+TOUCHES:   `web/scripts/register-coverage.mjs` (PHANTOM_CITATIONS),
+`web/tests/unit/meta/register-coverage.test.ts` (the phantom block).
+
+STATE:      OPEN - recorded; the operator may prefer the headings (QUESTION in
+REPORT-FW-PARK-IDS-2.txt).
+
+## PARK-PI2 - SUPERSEDES PARK-25 IN PART: two letters, and PARK-FW34-LAUNCH still reads as nothing  [FW-PARK-IDS-2, 2026-10-28]
+
+QUESTION:  PARK-25 took `[A-Z]?` - exactly one letter - so that
+PARK-FW34-LAUNCH could not be truncated to PARK-FW34. By 28.10.2026 all
+twenty-six single letters were taken (PARK-31), and three reports parked as
+UNNUMBERED-<n> because no series was free.
+
+TAKEN:     R679: `PARK(?:AN)?-[A-Z]{0,2}\d+` followed by `(?![\w-])` - one or
+two letters, and a lookahead refusing a following hyphen, letter, digit or
+underscore. PARK-25's protection is kept by the boundary instead of by the
+letter count: PARK-FW34-LAUNCH yields no id at all, and PARK-FW34 written on
+its own resolves. The underscore is refused because `\b` already refused it,
+so no following character the old pattern refused is newly accepted. The one
+occurrence whose
+reading changed among ids that already resolved is `PARKAN-2-era` in
+REPORT-AN12.txt, a longer token now read as nothing; PARKAN-2 is still cited
+by that report elsewhere and still resolves to the same heading. The part of
+PARK-25 that stands: PARK-FW34-LAUNCH itself gets no entry. PARK-31's reason
+for not inventing a two-letter series ("the pattern would not see it") no
+longer holds from this commit.
+
+NOT TAKEN: `[A-Z]{0,2}\d+\b` - the widening without the boundary. It reads
+PARK-FW34 out of PARK-FW34-LAUNCH; run against the real repository it reported
+"PARK-FW34 is cited by REPORT-FW34-PAGE.txt, REPORT-FW34.txt" and exited 1.
+
+TOUCHES:   `web/scripts/register-coverage.mjs` (PARK_ID, CITATION),
+`web/tests/unit/meta/register-coverage.test.ts` (the R679 and R680 blocks).
+
+STATE:      RECORDED DECISION - R679.
