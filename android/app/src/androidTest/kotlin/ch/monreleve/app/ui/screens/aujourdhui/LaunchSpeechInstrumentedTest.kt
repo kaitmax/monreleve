@@ -28,11 +28,11 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * AN-LAUNCH-SPEECH (R648). OPENING THE APP ON AN ANSWERED DAY ANNOUNCES NOTHING; ANSWERING STILL DOES.
+ * AN-LAUNCH-SPEECH (R702). OPENING THE APP ON AN ANSWERED DAY ANNOUNCES NOTHING; ANSWERING STILL DOES.
  *
- * AN-TALKBACK's R642-F1, reproduced 11 of 11 launches here (R646): on main's HEAD, opening the app on a day whose
+ * AN-TALKBACK's R642-F1, reproduced 11 of 11 launches here (R700): on main's HEAD, opening the app on a day whose
  * two halves are answered makes the screen reader speak « Matin : En Suisse, Après-midi : Domicile, Enregistré »
- * before anything is touched; 2458dbe spoke it in 0 of 11. R647 named the cause: the Compose 1.7.6 / Material3
+ * before anything is touched; 2458dbe spoke it in 0 of 11. R701 named the cause: the Compose 1.7.6 / Material3
  * 1.3.1 patch move (2458dbe with ONLY composeBom 2024.12.01 speaks it 11 of 11). Under it, a live region that
  * APPEARS - the recorded answer arriving with the repository's first emission, after the controller's first frame
  * (AujourdhuiController.firstFrame: today, no entries) - is now announced, where 1.7.0 announced it never.

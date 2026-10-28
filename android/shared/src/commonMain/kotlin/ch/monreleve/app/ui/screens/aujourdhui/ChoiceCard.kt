@@ -57,11 +57,11 @@ import kotlinx.coroutines.delay
 // ACCESSIBILITY: the answer is a POLITE live region, so TalkBack announces it when the options close; focus
 // lands on « Modifier » on that close (best-effort, after the enter settles), never lost.
 //
-// AN-LAUNCH-SPEECH (R648): ONLY THE ANSWER A TAP PRODUCED IS LIVE. Opening the app on a day already answered
+// AN-LAUNCH-SPEECH (R702): ONLY THE ANSWER A TAP PRODUCED IS LIVE. Opening the app on a day already answered
 // composes the controller's first frame (no entries) and then the repository's rows, so the answer APPEARS
 // without anyone touching anything. Compose 1.7.0 did not announce a live region appearing that way; after the
 // 1.7.6 / Material3 1.3.1 patch move (IOS-1b-A R625) the screen reader spoke the answer at every launch
-// (AN-TALKBACK R642-F1; AN-LAUNCH-SPEECH R646 11 of 11; R647: the patch move alone 11 of 11, the code move alone
+// (AN-TALKBACK R642-F1; AN-LAUNCH-SPEECH R700 11 of 11; R701: the patch move alone 11 of 11, the code move alone
 // 0 of 11). An answer that was there before the screen opened is not news. So each card remembers whether a tap
 // IN THIS COMPOSITION recorded it (`answeredHere`, not saveable: a rebuild or a relaunch is not a tap), and the
 // answer is a live region only then. The semantics node is kept either way, so the tree and its reading order
@@ -125,7 +125,7 @@ private fun DayChoiceCard(
     val reduceMotion = rememberReduceMotion()
 
     val modifierFocus = remember { FocusRequester() }
-    // R648: did a tap here record the day? NOT saveable - a day answered before this composition is not announced.
+    // R702: did a tap here record the day? NOT saveable - a day answered before this composition is not announced.
     var answeredHere by remember { mutableStateOf(false) }
     // NOT saveable: a config change restores focus itself, so this only fires on a within-session close.
     var optionsWereOpen by remember { mutableStateOf(showOptions) }
@@ -189,7 +189,7 @@ private fun DayChoiceOptions(
 
 /**
  * The answer a recorded day (or slot) closes into: the kind, the sync truth, the provenance, and « Modifier ».
- * [announce]: a POLITE live region only for the answer a tap in this composition produced (R648, above).
+ * [announce]: a POLITE live region only for the answer a tap in this composition produced (R702, above).
  */
 @Composable
 internal fun RecordedAnswer(

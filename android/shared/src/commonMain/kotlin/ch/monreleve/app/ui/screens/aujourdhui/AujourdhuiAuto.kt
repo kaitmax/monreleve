@@ -111,7 +111,7 @@ private fun AutoSlot(
     auto: AutoDayState?,
     actions: AutoActions,
 ) {
-    // AN-LAUNCH-SPEECH (R648, ChoiceCard.kt): ETAT C's answer is a live region only when a tap HERE - a confirm, a
+    // AN-LAUNCH-SPEECH (R702, ChoiceCard.kt): ETAT C's answer is a live region only when a tap HERE - a confirm, a
     // correction or a manual record - produced it. Held at the slot, because the proposal that was tapped and the
     // recorded row that replaces it are different composables. NOT saveable: a relaunch is not a tap.
     var answeredHere by remember(slot) { mutableStateOf(false) }

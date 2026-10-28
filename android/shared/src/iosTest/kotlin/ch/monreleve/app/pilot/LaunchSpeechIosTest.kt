@@ -17,7 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-// AN-LAUNCH-SPEECH (R648, R650). THE SAME SEMANTICS ON iOS: AN ANSWER THAT WAS THERE AT LAUNCH IS NOT A LIVE REGION;
+// AN-LAUNCH-SPEECH (R702, R704). THE SAME SEMANTICS ON iOS: AN ANSWER THAT WAS THERE AT LAUNCH IS NOT A LIVE REGION;
 // THE ANSWER A TAP PRODUCES IS.
 //
 // The fix lives in commonMain (ChoiceCard.kt's RecordedAnswer), so it is asserted on the iOS simulator too, through the

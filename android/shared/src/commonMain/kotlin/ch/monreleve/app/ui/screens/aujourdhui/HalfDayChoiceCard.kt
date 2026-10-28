@@ -102,7 +102,7 @@ internal fun HalfDayChoiceCard(
     val afternoonOpen = state.afternoon == null || editingAfternoon
     val reduceMotion = rememberReduceMotion()
     val modifierFocus = remember { FocusRequester() }
-    // AN-LAUNCH-SPEECH (R648, ChoiceCard.kt): the complete answer is a live region only when a tap HERE recorded a
+    // AN-LAUNCH-SPEECH (R702, ChoiceCard.kt): the complete answer is a live region only when a tap HERE recorded a
     // half. NOT saveable - two halves answered before this composition (a launch) are not announced.
     var answeredHere by remember { mutableStateOf(false) }
 
