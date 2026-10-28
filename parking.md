@@ -104,6 +104,50 @@ NOT TAKEN: the alternative, and what it would cost to switch.
 TOUCHES:   files, tests and baselines a switch would change.
 ```
 
+## CLAIMING A SERIES, AND CITING AN ID - R456, extended by R681  [FW-PARK-IDS-2, 2026-10-28]
+
+**An id is `PARK-<one or two capital letters><digits>`** - or, for older
+entries, `PARK-<n>` and `PARKAN-<n>`. The pattern has ONE definition,
+`PARK_ID` in `web/scripts/register-coverage.mjs`; nothing here restates it,
+and nothing anywhere else should (R206).
+
+**HOW A SESSION CLAIMS A SERIES.**
+
+1. On a tree equal to `origin/main`, run
+   `node web/scripts/register-coverage.mjs`. Its first line names every series
+   a heading in this file uses:
+   `series taken: one letter ...; two letters ...; PARK-<n> up to ...;
+   PARKAN-<n> up to ...; two-letter series held by phantom citations: ...`.
+2. A series is FREE when it appears in neither the "two letters" list nor the
+   phantom list. Every single letter A-Z is taken (since 28.10.2026), so a new
+   series has two letters. Avoid `AN`, which reads as the Android-era
+   `PARKAN-`.
+3. Take ONE series per task, numbered from 1, and confirm the check SEES your
+   id before you rely on it: cite it in your report, run the check, and read
+   it back in the cited count or in a failure naming it.
+4. Write each entry as `## PARK-<XY><n> - <title>  [<TASK>, <date>]`.
+
+**WHAT THE REGISTER CANNOT SEE, AND WHAT CATCHES IT.** It reads `main`, not
+branches still awaiting review. Two branches that claim the same series both
+pass on their own; at merge, the duplicate-heading check FAILS naming both
+line numbers - for two-letter ids exactly as for one-letter ones (proven by a
+planted duplicate, R681). The branch's ids move, not main's: a report on main
+is history (R456).
+
+**HOW AN ID IS CITED.** As its own token: followed by a space, punctuation or
+the end of the line. A following hyphen, letter, digit or underscore makes a
+longer token and is NOT read as the id - `PARK-FW34-LAUNCH` is not `PARK-FW34`,
+and `PARKAN-2-era` is not `PARKAN-2`.
+
+**NEVER WRITE AN EXAMPLE ID IN A REPORT.** A report that names an id that is
+not an entry - to illustrate a pattern, say - cites a phantom the moment the
+pattern can see it. Two did, and are exempted one report each (PARK-PI1). Write
+a placeholder such as `PARK-<XY><n>` instead.
+
+**THE NUMERIC SERIES.** `PARK-<n>` still resolves, and PARK-28..PARK-32 were
+written in it when no letter was free. Whether new tasks may still use it is
+for the operator (REPORT-FW-PARK-IDS-2.txt, R683).
+
 ---
 
 ## PARK-1 - the employer attestation is described, never asserted  [FW18, 2026-09-16]
