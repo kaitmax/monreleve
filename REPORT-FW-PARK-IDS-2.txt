@@ -57,13 +57,85 @@ Commits on the branch:
   (next)   the push proof, in this file
 
 --------------------------------------------------------------------------------
+SECOND PASS - THE OPERATOR'S ANSWERS, 28.10.2026 (R684-R686)
+--------------------------------------------------------------------------------
+Same branch and worktree; the lock re-taken, and web/.env and
+android/local.properties copied in again (removal confirmed in the
+handback, not claimed here). Rulings R684-R686: a scan of relay/, the
+reports, parking.md and CLAUDE.md found R684-R698 unused (R699 is named
+only as the end of a free range in REPORT-FW-COMPARATEUR.txt); R700-R708
+are claimed by queued prompts. "Merge granted once these land."
+
+R684 (Q1) - THE FROZEN TWO-PAIR PHANTOM EXEMPTION STAYS, as recommended.
+  No change. PARK-PI1 stands as written.
+
+R685 (Q2) - THE NUMBERED SERIES IS CLOSED, AND ENFORCED. Commit 307bd94.
+  - web/scripts/register-coverage.mjs: NUMBERED_IDS lists PARK-1 ... PARK-32
+    explicitly, one per line, frozen. Any "## PARK-<n> -" heading not in it
+    FAILS, named once per id. PARK-1..PARK-32 all still resolve.
+  - Three tests: a fixture with headings PARK-12, PARK-32 and the
+    thirty-third fails naming only the thirty-third; all 32 closed-set
+    entries pass (the positive control: the closure removes nothing); the
+    list read out of the script equals PARK-1..PARK-32 exactly (R206's
+    corollary).
+  - RED first, against the script at 0ea2ab8:
+        x a new plain-number heading fails, naming it; the existing ones
+          beside it pass   - AssertionError: expected +0 to be 1
+        x names exactly PARK-1..PARK-32, read out of the script itself
+                           - AssertionError: expected null not to be null
+        Tests  2 failed | 25 passed (27)
+    GREEN after: Tests 27 passed (27).
+  - THE PLANT, in the REAL parking.md (R180). In this section the id is
+    written PARK-<33>: a plain "PARK-" followed by 33 is a citation of a
+    heading that does not exist, and would red the check on this report.
+        --- git diff (the plant, verified landed) ---
+        @@ -5131,0 +5132,4 @@ STATE:      OPEN - recorded as a limit of
+        the text fence.
+        +## PARK-<33> - PLANTED (R685, R180) - to be removed
+        --- grep ---   5133:## PARK-<33> - PLANTED ...
+        --- run (script with R685) ---
+        R294/R327: parking.md does not cover every cited register entry:
+          - PARK-<33> is a new plain-number heading in parking.md - the
+            numbered series closed at PARK-32 (R685); a new entry takes a
+            two-letter series, claimed as parking.md's header describes
+        EXIT=1
+        --- the same plant, the script as at 0ea2ab8 ---
+        register coverage: OK - 195 cited id(s) across 140 report(s) EXIT=0
+    Removed by restoring the saved file: `git diff --stat parking.md` empty,
+    the check OK.
+  - parking.md's header: "THE NUMERIC SERIES" now says the series is closed
+    (R685, answering PARK-31) and that the check enforces it.
+
+R686 (Q3) - CLAUDE.md, ITS OWN COMMIT, cd8f572. In R456's bullet one sentence
+  replaced, the one proposed under Q3: the bullet now says the session
+  "confirms the citation pattern - PARK_ID in web/scripts/register-
+  coverage.mjs, one or two letters, ended by a boundary refusing a following
+  hyphen, letter, digit or underscore (R679) - can SEE the id it is about to
+  use." Nothing else in CLAUDE.md touched. (Its bold lead still reads
+  "PARK-<letter><number>" and "the letter series"; left as is, since letters
+  still describe both series and the operator named one sentence.)
+
+RegisterCoverageTest ALONE on cd8f572 (the script changed again, R267):
+    BUILD SUCCESSFUL in 53s  EXIT=0  :app:testDebugUnitTest executed (not
+    up-to-date)  tests="1" skipped="0" failures="0" errors="0"
+
+gate:changed, second pass: base chain (typecheck, lint, test, build),
+197 files, 3414 tests, GATE PASSED - before 307bd94, before cd8f572, and
+before the commit carrying this section.
+
+--------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-COMPLETE. gate:clone PASSED on f24b569, the commit that first carried this
-report, in this session (pasted under PUSH PROOF). The commit carrying this
-sentence is itself gate:cloned before the push; that result can only live
-in the handback. :app:gate NOT RUN (android diff empty); RegisterCoverageTest
-alone, green.
+SECOND PASS (this update): COMPLETE. gate:changed green on every second-pass
+commit (307bd94, cd8f572 and this report's update), in this session. The
+commit carrying this sentence is gate:cloned ALONE before the push; that
+result can only live in the handback. :app:gate NOT RUN (android diff
+empty); RegisterCoverageTest alone, green on cd8f572. See SECOND PASS above.
+
+FIRST PASS, as reported then: COMPLETE. gate:clone PASSED on f24b569, the
+commit that first carried this report, in this session (pasted under PUSH
+PROOF), and again on 0ea2ab8, the tip that was pushed (in that handback).
+:app:gate NOT RUN (android diff empty); RegisterCoverageTest alone, green.
 
   gate:changed on every commit, in this session, green (base chain:
   typecheck, lint, test, build; 197 files, 3411 tests each time).
@@ -403,6 +475,9 @@ DEVIATIONS
 --------------------------------------------------------------------------------
 QUESTIONS
 --------------------------------------------------------------------------------
+ALL THREE ANSWERED by the operator on 28.10.2026 - Q1 by R684, Q2 by R685,
+Q3 by R686 - and done in the SECOND PASS above. As asked in the first pass:
+
 Q1  PARK-PI1: keep the frozen (report, id) pairs, or give the two phantom
     ids headings that say "not an entry"? The pairs claim nothing; the
     headings would claim the FW and ZZ series for a non-decision.
