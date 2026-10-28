@@ -1,0 +1,426 @@
+================================================================================
+REPORT-FW-PARK-IDS-2
+PARK IDS GET A SECOND LETTER - AND PARK-FW34-LAUNCH STAYS ONE ID, NOT TWO
+================================================================================
+
+TASK    FW-PARK-IDS-2, relay/FW-PARK-IDS-2.txt (read in full from the main
+        checkout, where it is untracked). Rulings R679-R683, used as numbered:
+        a scan of relay/*.txt, REPORT-*.txt, parking.md and CLAUDE.md found
+        them only in that prompt and in relay/QUEUE-2026-10-28.txt, which names
+        this task. Nothing renumbered (R162).
+BASE    origin/main ad7a937 (Merge fw-comparateur).
+BRANCH  fw-park-ids-2, worktree C:/wt/fw-park-ids-2 (R349), created by this
+        session. .session-lock.json (gitignored) written at the start, removed
+        at the end. A copy of web/.env (gitignored; gate:clone reads the
+        database host from it) and android/local.properties (gitignored; the
+        SDK path) were placed in the worktree and are removed with the lock.
+        PENDING MERGE - the branch is pushed, nothing is on main.
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+A park id may now carry one OR two capital letters. Every single letter A-Z
+was taken, so three reports on main had parked as UNNUMBERED-<n>; their 21
+items now have ids in three claimed two-letter series (FT, IA, IB).
+
+THE TRAP IS CLOSED BY A BOUNDARY, NOT BY THE LETTER COUNT. With only `\b`
+after the digits, a two-letter class reads a phantom id out of
+PARK-FW34-LAUNCH, because the hyphen that follows is a word boundary. The id
+now ends at a lookahead refusing a following hyphen, letter, digit or
+underscore. On the real repository the boundaryless form fails the register
+check outright - it reports the truncated id as cited by REPORT-FW34.txt and
+REPORT-FW34-PAGE.txt - and the bounded form does not.
+
+THE CENSUS FOUND SOMETHING THE PROMPT DID NOT EXPECT, AND IT WAS NOT A STOP.
+Run with both patterns over every tracked file at ad7a937, only two ids
+became resolvable, and neither had resolved before (R680's expected
+category). No id lost resolution. But both are EXAMPLES written into
+reports on main - the truncated FW34 id in REPORT-FW-PARK-IDS.txt, and a
+"ZZ1" id in REPORT-KMP-DT.txt showing what the one-letter rule refused -
+so the widening would have turned the register check RED on two reports
+nobody may edit. They are exempted one (report, id) pair each, frozen at
+two and asserted, and a heading under either FAILS (PARK-PI1, Q1).
+
+Commits on the branch:
+
+  dd770c9  R679/R680: the pattern, the boundary, the tests, the phantom
+           pairs, the series line, PARK-PI1 and PARK-PI2
+  060a0a8  R681: how a session claims a series, in parking.md's header
+  912e031  R682: the 21 UNNUMBERED items, PARK-FT1..FT4, PARK-IA1..IA6,
+           PARK-IB1..IB11
+  (next)   this report
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+See PUSH PROOF for the gate:clone run on the commit carrying this report.
+What is established at the time of writing:
+
+  gate:changed on every code commit, in this session, green (base chain:
+  typecheck, lint, test, build; 197 files, 3411 tests each time).
+  register coverage at 912e031: OK - 172 cited id(s) across 139 report(s);
+  with this report on disk: OK - 195 cited id(s) across 140 report(s).
+  :app:gate NOT RUN, as a decision (R133): `git diff origin/main...HEAD --
+  android/` is EMPTY. The one Android consumer of the changed script,
+  RegisterCoverageTest, is reported under PUSH PROOF.
+
+--------------------------------------------------------------------------------
+R273 - WHAT WAS READ
+--------------------------------------------------------------------------------
+relay/FW-PARK-IDS-2.txt in full; relay/RULINGS-2026-10-26.txt (item 2 is this
+task; items 4, 11, 13 and 14 are cited by entries below); relay/QUEUE-2026-
+10-28.txt for ruling numbers. CLAUDE.md at the repository root (not the
+Morocco project's in the parent folder) including R456. REPORT-FW-PARK-IDS.txt
+in full: R442's census and why `[A-Z]?` was chosen, PARK-25 (the trap), the
+frozen PARK-F1..F3 exemption, the duplicate-heading check. parking.md's
+header, Format, PARK-25, PARK-26, PARK-31 and PARK-32.
+web/scripts/register-coverage.mjs and web/tests/unit/meta/register-coverage.
+test.ts in full; RegisterCoverageTest.kt; gate-clone.mjs's register step.
+The PARKED, DEVIATIONS and QUESTIONS sections of REPORT-AN-FR-TEXT.txt,
+REPORT-IOS-1a.txt (with its R592 section) and REPORT-IOS-1b-A.txt (both
+PARKED blocks, R624-R626, PART 1's superseded markers).
+
+EVERY PLACE THE PATTERN IS RESTATED (R206). `git grep` for the expression:
+  web/scripts/register-coverage.mjs:79   the one live definition (const ID)
+  web/tests/unit/meta/register-coverage.test.ts:51
+                                         R442's pinned historical literal -
+                                         an artefact, not a live copy
+  CLAUDE.md:223                          R456 restates `[A-Z]?` in prose and
+                                         says "a two-letter invention does
+                                         not" resolve - FALSE after R679. NOT
+                                         EDITED (outside this task's paths);
+                                         Q3 gives the correction.
+  parking.md (PARK-25, PARK-31, and the R442 section) and ten reports
+                                         history; not edited.
+No other implementation: gate-clone.mjs and RegisterCoverageTest.kt both run
+the script as a subprocess.
+
+--------------------------------------------------------------------------------
+R1 - origin/main GREEN UNDER gate:clone
+--------------------------------------------------------------------------------
+Run in this worktree with HEAD = origin/main = ad7a937, before any change:
+
+    GATE:CLONE PASSED
+      commit  ad7a937a428248ee437d80be42b73bfe62308ffa
+      claim   this commit builds and passes register-coverage,
+              fixture-coverage, install, typecheck, lint, test, build, size,
+              db:deploy, test:db, test:container:write from a clean checkout
+    register coverage: OK - 172 cited id(s) across 139 report(s), all have
+    headings in parking.md
+    EXIT=0
+
+172 is the BEFORE count.
+
+--------------------------------------------------------------------------------
+R679 - THE PATTERN
+--------------------------------------------------------------------------------
+    before  \bPARK(?:AN)?-[A-Z]?\d+\b
+    after   \bPARK(?:AN)?-[A-Z]{0,2}\d+(?![\w-])
+
+ONE DEFINITION, EXPORTED. `PARK_ID` (the id) and `CITATION` (the scan) are
+exported from web/scripts/register-coverage.mjs. The citation scan and the
+heading scan both read PARK_ID; R680's census and the heading comparison
+below IMPORTED it (and imported the old one from ad7a937's own file) rather
+than retyping either. No TypeScript file imports the script, so no .d.mts is
+owed (R185); the tests drive it as a subprocess, as both gates do (R204).
+
+THE BOUNDARY. `(?![\w-])` refuses a following hyphen, letter, digit or
+underscore. The underscore is in it because `\b` already refused one: no
+following character the old pattern refused is newly accepted. Three letters
+never match at all (the class is {0,2} and a digit must follow). The leading
+`\b` is unchanged. `PARKAN-` with letters is matched by the same class as
+before (no instance exists anywhere).
+
+THE SERIES LINE (R681's half that lives in the script). Every run now prints,
+on stdout, before the result:
+
+    series taken: one letter A B C D E F G H I J K L M N O P Q R S T U V W X Y
+    Z; two letters FT IA IB PI; PARK-<n> up to 32; PARKAN-<n> up to 50;
+    two-letter series held by phantom citations: FW ZZ
+
+The OK line is byte-identical to before, because three consumers match it
+(the test, gate-clone.mjs, RegisterCoverageTest.kt's exit code).
+
+--------------------------------------------------------------------------------
+R680 - THE TRAP, RED THEN GREEN, AND THE CENSUS
+--------------------------------------------------------------------------------
+THE TESTS (web/tests/unit/meta/register-coverage.test.ts), all through the
+CLI:
+  - PARK-FW34-LAUNCH beside PARKAN-45: exactly one id cited (PARKAN-45, the
+    positive control, R169) and the output never names the truncated id;
+  - the FW34 id written as its own token IS cited;
+  - two-letter ids resolve and are counted, beside all three older shapes;
+  - a following hyphen, letter, underscore, or a third letter, is never read
+    as a shorter id ("PARK-A1-era", "PARKAN-2-era" included);
+  - the duplicate-heading check names both lines for a two-letter id;
+  - the phantom pairs, both directions, frozen at two;
+  - the series line, on a fixture and on the real register;
+  - and the counterfactual: the boundaryless two-letter pattern, pinned as a
+    literal (R171), DOES read the truncated id out of PARK-FW34-LAUNCH.
+
+RED 1 - the new tests against the script as at ad7a937:
+    Tests  9 failed | 14 passed (23)
+  Among them: "<FW34-ID> written as its own token DOES resolve" - expected 1,
+  got 0 (the test's name, with the substitution explained under RED 2);
+  "refuses a following hyphen ..." - 3 ids cited where 1 was expected:
+  THE OLD `\b` ALREADY READ PARK-A1 OUT OF "PARK-A1-era" and PARKAN-2 out of
+  "PARKAN-2-era". The trap test itself was GREEN there, because one letter
+  cannot reach FW34 at all - which is why RED 2 was needed.
+
+RED 2 - THE TRAP, ON A PATTERN WITHOUT THE BOUNDARY. The script carried
+`[A-Z]{0,2}\d+` closed by `\b` (uncommitted, this run only):
+    Tests  7 failed | 17 passed (24)
+    FAIL  R680 - the trap, on its exact string > PARK-FW34-LAUNCH does NOT
+          resolve as <FW34-ID> - with a real id present to prove the scan
+          ran (R169)
+    AssertionError: expected [ 'is cited by', 'is cited by' ] to have a
+    length of 1 but got 2
+  And the same script on the real repository:
+    R294/R327: parking.md does not cover every cited register entry:
+      - <FW34-ID> is cited by REPORT-FW34-PAGE.txt, REPORT-FW34.txt but has
+        no "## <FW34-ID> -" heading in parking.md
+    EXIT=1
+  QUOTED WITH ONE SUBSTITUTION: <FW34-ID> stands for the truncated id
+  ("PARK-", then FW34). Written verbatim, it is a citation in this report
+  and reds the register check - measured: the first draft of this report
+  did exactly that, "... is cited by REPORT-FW-PARK-IDS-2.txt but has no
+  heading", EXIT=1. That is the header's "never write an example id" rule
+  applied to the report that wrote it.
+
+A FIRST VERSION OF THE PHANTOM EXEMPTION HID THE TRAP, and RED 2 is how that
+was found. It exempted the bare ids; with that, the trap test PASSED on the
+boundaryless pattern, because the truncated id was exempt everywhere. The
+exemption became a (report, id) pair before RED 2 above was taken: only the
+one report that names the id is exempt, so the fixture's REPORT-FIXTURE.txt
+is not, and the test fails as it must.
+
+GREEN - the boundary restored:
+    Test Files  1 passed (1)
+         Tests  24 passed (24)
+    register coverage: OK - 172 cited id(s) across 139 report(s)   EXIT=0
+
+THE CENSUS. scratch script, both patterns imported - the OLD from ad7a937's
+own register-coverage.mjs, the NEW from the working tree - run over every
+file `git ls-tree -r ad7a937` lists (1979 tracked, 1694 text):
+
+    distinct ids OLD 175, NEW 177
+    IDS GAINED (resolve now, did not before)
+      the FW34 id   REPORT-FW-PARK-IDS.txt (lines 215, 810), parking.md
+                    (PARK-25's body), register-coverage.mjs and its test
+                    (comments and the near-miss list)
+      the ZZ1 id    REPORT-KMP-DT.txt (line 1165)
+    IDS LOST (resolved before, do not now)            (none)
+    IDS WHOSE CITING-FILE SET SHRANK                  (none)
+    OCCURRENCES WHOSE READING CHANGED, beyond the gains:
+      PARKAN-2 -> nothing   REPORT-AN12.txt:438 "That is PARKAN-2-era text"
+
+EACH EXPLAINED.
+  - The two gained ids could not resolve before - two letters - so they are
+    R680's expected category. Both are examples, not entries, written into
+    reports on main; handled by the phantom pairs (PARK-PI1).
+  - PARKAN-2-era: a longer token, now read as nothing - R679's boundary doing
+    what it says, the same shape as PARK-FW34-LAUNCH. PARKAN-2 itself still
+    resolves, from the same report (four other citations), to the same
+    heading; it is not an id whose resolution changed. NOT A STOP.
+
+HEADINGS, THE HARD BOUNDARY'S OTHER HALF. parking.md at ad7a937 under both
+patterns (both imported): 173 headings each, the same ids at the same line
+numbers - "identical (same ids at the same lines): true". No heading in
+parking.md was renamed or renumbered by this branch; it only appends, plus
+one header section above PARK-1.
+
+AT THE TIP the same census (working tree, 912e031): ids lost (none), citing
+sets shrunk (none); the gains are the two phantoms, this task's own 23 new
+headings, and fixture ids inside register-coverage.test.ts.
+
+--------------------------------------------------------------------------------
+R681 - CLAIMING A SERIES, AND THE PLANTED DUPLICATE
+--------------------------------------------------------------------------------
+THE REGISTER REPORTS WHICH SERIES ARE TAKEN - the series line above, derived
+from the same heading scan the checks use. A series is free when it is in
+neither the "two letters" list nor the phantom list.
+
+parking.md's header gains "CLAIMING A SERIES, AND CITING AN ID - R456,
+extended by R681": run the check on origin/main; take one free two-letter
+series per task (not AN); confirm the check sees the id; write
+`## PARK-<XY><n> - <title>  [<TASK>, <date>]`; cite the id as its own token;
+never write an example id in a report; collisions between branches are
+caught at merge by the duplicate-heading check, for two-letter ids too, and
+the branch's ids move.
+
+THE PLANTED DUPLICATE, in the REAL parking.md, on the committed tree dd770c9:
+
+    --- git diff (the plant, verified landed, R180) ---
+    @@ -4860,0 +4861,4 @@ STATE:      RECORDED DECISION - R679.
+    +
+    +## PARK-PI1 - PLANTED DUPLICATE (R681, R180) - to be removed
+    +
+    +A body with content in it.
+    --- grep ---
+    4800:## PARK-PI1 - two phantom citations are exempted by report, ...
+    4862:## PARK-PI1 - PLANTED DUPLICATE (R681, R180) - to be removed
+    --- run ---
+    R294/R327: parking.md does not cover every cited register entry:
+      - PARK-PI1 has 2 "## PARK-PI1 -" headings in parking.md (lines 4800,
+        4862) - one id, two entries, and a citation of it resolves to
+        whichever a reader finds first
+    EXIT=1
+
+Removed by restoring the saved file: `git diff --stat parking.md` empty,
+`git status --porcelain` empty, the check OK again. (The line numbers are
+before the header section was inserted.) A unit test now pins the same case
+on a fixture: two `## PARK-FT1 -` headings fail, naming lines 3 and 7.
+
+--------------------------------------------------------------------------------
+R682 - EACH UNNUMBERED -> ITS ID
+--------------------------------------------------------------------------------
+`grep UNNUMBERED REPORT-*.txt` at ad7a937: three reports, no others. The
+series were claimed from the series line (two letters before: PI only, this
+task's). The number after the letters is the report's UNNUMBERED number.
+
+  REPORT-AN-FR-TEXT.txt  (series FT)
+    UNNUMBERED-1  -> PARK-FT1   ParisDay's two zone literals; OPEN (its Q2)
+    UNNUMBERED-2  -> PARK-FT2   stale fr/format comments; OPEN
+    UNNUMBERED-3  -> PARK-FT3   moved tests JVM-only; OPEN (its Q1)
+    UNNUMBERED-4  -> PARK-FT4   APK size vs classes.dex; OPEN
+
+  REPORT-IOS-1a.txt  (series IA)
+    UNNUMBERED-1  -> PARK-IA1   allowlist roots; RESOLVED by R592
+    UNNUMBERED-2  -> PARK-IA2   Android stores vs contracts; OPEN (Robolectric
+                                approved, RULINGS-2026-10-26 item 4; not run)
+    UNNUMBERED-3  -> PARK-IA3   :app on java.time fr/format; RESOLVED by
+                                AN-FR-TEXT, R621 (merged 2458dbe)
+    UNNUMBERED-4  -> PARK-IA4   migration matrix not on iOS; OPEN
+    UNNUMBERED-5  -> PARK-IA5   Keychain simulator-only; OPEN (iOS-1c)
+    UNNUMBERED-6  -> PARK-IA6   wire server cleartext; OPEN
+
+  REPORT-IOS-1b-A.txt  (series IB; PART 1 = 1-5, PART 2 = 6-11)
+    UNNUMBERED-1  -> PARK-IB1   Paparazzi vs Compose 1.10.5; OPEN
+    UNNUMBERED-2  -> PARK-IB2   AutoMirrored via transitive dep; OPEN
+    UNNUMBERED-3  -> PARK-IB3   ThemeCensusTest slots; OPEN
+    UNNUMBERED-4  -> PARK-IB4   catalog pins; RESOLVED in PART 2 under R625
+                                ("UNNUMBERED-4 closed")
+    UNNUMBERED-5  -> PARK-IB5   no maxPercentDifference; RESOLVED by R626
+                                (the report does not say "closed" in those
+                                words; the entry says so)
+    UNNUMBERED-6  -> PARK-IB6   Material3 calendar unlinked on iOS; OPEN
+    UNNUMBERED-7  -> PARK-IB7   OffByTwo; OPEN (item 13 rules a later task)
+    UNNUMBERED-8  -> PARK-IB8   CMP 1.10+ upgrade; OPEN, waits on trigger
+    UNNUMBERED-9  -> PARK-IB9   resources vs Paparazzi; OPEN, dormant (item 14)
+    UNNUMBERED-10 -> PARK-IB10  whole-day mode, halves, no rate; OPEN - same
+                                finding as PARK-J2, cross-referenced (item 11
+                                rules the fix; not done)
+    UNNUMBERED-11 -> PARK-IB11  the fence's Compose allowance; OPEN
+
+Each entry carries RAISED BY, AS WRITTEN (the report's words, copied) and
+STATE (from the record only), under a section that maps the reports to the
+series. The reports are unedited. register coverage: OK at 912e031.
+
+--------------------------------------------------------------------------------
+R683 - FOR THE NEXT SESSIONS
+--------------------------------------------------------------------------------
+THE LINE TO ADD TO FUTURE PROMPTS:
+
+  PARK IDS (R456/R681): run `node web/scripts/register-coverage.mjs` on
+  origin/main, take ONE two-letter series absent from its "series taken"
+  line (never AN), number it from 1 as `## PARK-<XY><n> - <title>  [<TASK>,
+  <date>]` in parking.md, and cite each id as its own token - never followed
+  by "-", a letter, a digit or "_" - and never write an example id in a
+  report.
+
+THE NUMERIC SERIES. FW-COMPARATEUR wrote PARK-28, PARK-29, PARK-30, PARK-31
+and PARK-32 when no letter was free (PARK-31 records why). All five resolve
+today and still do on this branch (headings unchanged, all cited by
+REPORT-FW-COMPARATEUR.txt).
+
+RECOMMENDATION (not a ruling): CLOSE the numeric series to new entries now,
+and keep every existing PARK-<n> resolving. Reasons: a two-letter series is
+claimed once per task and the register prints which are taken, so two
+branches collide only if they pick the same pair; the numeric series is
+claimed as "main's highest + 1", so ANY two branches parking in parallel
+take the same number, and the duplicate-heading check then forces a
+renumber at merge. 26 x 26 = 676 pairs (less AN and the two phantom
+series) is ample. If closed, the series line can keep printing the highest
+PARK-<n> as a record, and the header's "THE NUMERIC SERIES" paragraph
+becomes the rule.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+  NEW  PARK-PI1  two phantom citations are exempted by (report, id) pair,
+                 not given headings - OPEN, Q1.
+  NEW  PARK-PI2  SUPERSEDES PARK-25 IN PART: two letters, with
+                 PARK-FW34-LAUNCH still read as nothing - RECORDED DECISION.
+  NEW  PARK-FT1..FT4, PARK-IA1..IA6, PARK-IB1..IB11 - R682, above.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+1. CLAUDE.md's R456 bullet is now wrong in one clause (Q3).
+2. REPORT-IOS-1a.txt carries a stray fragment at lines 397-404 - a first
+   PARKED heading whose list is only "UNNUMBERED-1 RESOLVED by R592" and a
+   dangling "UNNUMBERED-2)." - left by its in-place R592 update; the full
+   list is at lines 541-569. History, not edited.
+3. Two other worktrees hold .session-lock.json files from earlier sessions
+   (C:/wt/an-account-tag, AN-ACCOUNT-TAG; C:/wt/fw-gate-clean,
+   FW-GATE-CLEAN). Not this session's; not touched (R392).
+4. `pnpm lint` prints two warnings (unused eslint-disable in
+   tests/unit/calc-engine/benchmark.test.ts:81 and verification-trace.test.
+   ts:83). Present on main; 0 errors.
+5. Test fixtures use some ids that are now real entries (PARK-FT1, PARK-FT2,
+   PARK-IB11), as the R442 tests already use PARK-K6 and PARK-P1. Fixture
+   roots are temporary directories; no real entry is affected.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE PHANTOM PAIRS (PARK-PI1) are not in the prompt. Without them the
+   widening is RED on two reports nobody may edit, and R182 puts the fix in
+   the same commit as the widening rather than after it.
+2. R680's RED was taken on an UNCOMMITTED boundaryless intermediate, because
+   the script on main already refuses PARK-FW34-LAUNCH by allowing only one
+   letter: the trap test is green there. A permanent counterfactual test
+   (the boundaryless pattern as a literal) keeps the reason visible.
+3. The census is reported at two levels, ids and occurrences. One occurrence
+   (PARKAN-2-era) changed for an id that resolves before and after; it is
+   explained above and was judged not a STOP, because the id's resolution -
+   which report cites it, which heading it reaches - did not change.
+4. This task claimed a fourth series, PI, for its own two entries, beside
+   R682's FT, IA and IB.
+5. The series line is printed on every run, pass or fail, on stdout - a new
+   output line; the OK line is unchanged.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1  PARK-PI1: keep the frozen (report, id) pairs, or give the two phantom
+    ids headings that say "not an entry"? The pairs claim nothing; the
+    headings would claim the FW and ZZ series for a non-decision.
+Q2  R683: close the numeric PARK-<n> series to new entries (recommended
+    above), or keep it as an alternative to two-letter series?
+Q3  CLAUDE.md R456 now says the pattern is `PARK(?:AN)?-[A-Z]?d+`, "exactly
+    one letter, so PARK-L1 resolves and a two-letter invention does not".
+    Proposed replacement for that sentence: "It also confirms the citation
+    pattern - PARK_ID in web/scripts/register-coverage.mjs, one or two
+    letters, ended by a boundary refusing a following hyphen, letter, digit
+    or underscore (R679) - can SEE the id it is about to use." Not edited
+    here (outside this task's paths); for the operator or a session told to.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+RegisterCoverageTest ALONE (the Android consumer of the changed script, R267;
+NOT the full :app:gate), on 912e031 with this report's draft on disk:
+    ./gradlew :app:testDebugUnitTest --tests
+        'ch.monreleve.app.register.RegisterCoverageTest'
+    BUILD SUCCESSFUL in 2m 51s     EXIT=0
+    TEST-...RegisterCoverageTest.xml: tests="1" skipped="0" failures="0"
+    errors="0"
+  A first attempt was NO RESULT, not a failure (R391): "SDK location not
+  found" - the new worktree had no android/local.properties. The main
+  checkout's (gitignored) was copied in and the run repeated.
+
+gate:clone on the commit carrying this report: recorded in the next commit,
+which is pushed only after its own gate:clone.
