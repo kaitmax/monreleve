@@ -36,7 +36,17 @@ Commits (all pushed to origin/fw-comparateur):
 ====================================================================
 STATUS (R391)
 ====================================================================
-FULL GATE GREEN on 2d481fc: gate:clone ran on 2d481fc in this session -
+SECOND PASS: FULL GATE GREEN on 33b3d26 - gate:clone ran ALONE on 33b3d26 in
+this session, before any push of the pass: "GATE:CLONE PASSED", "claim   this
+commit builds and passes register-coverage, fixture-coverage, install,
+typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+from a clean checkout", exit 0. Browser suites on the same tree via
+gate:changed: test:e2e 349 passed, test:visual 123 passed. The report commit
+on top of 33b3d26 changes REPORT-FW-COMPARATEUR.txt only; register-coverage on
+it: register coverage: OK - 172 cited id(s) across 139 report(s), all have headings in parking.md
+Pending merge (granted by the operator once these rulings landed).
+
+FIRST PASS, as reported then: FULL GATE GREEN on 2d481fc: gate:clone ran on 2d481fc in this session -
 "GATE:CLONE PASSED", "claim   this commit builds and passes register-coverage,
 fixture-coverage, install, typecheck, lint, test, build, size, db:deploy,
 test:db, test:container:write from a clean checkout", exit 0 (tree clean -
@@ -45,7 +55,97 @@ ran on the same tree via gate:changed: test:e2e 349 passed, test:visual 119
 passed. The report commit on top of 2d481fc adds REPORT-FW-COMPARATEUR.txt
 only and was pushed without a second gate:clone; the one check gate:clone
 makes on a report, register-coverage, was run locally on it (see PUSH PROOF).
-Pending merge: the operator reads this report first.
+
+====================================================================
+SECOND PASS - the operator's rulings of 2026-10-28 on this report
+====================================================================
+Source: relay/FW-COMPARATEUR-RULINGS-2026-10-28.txt (UTF-8, the accented
+originals; the French was taken from it by script, never retyped). Merge is
+granted once these land and the gates pass. Same branch and worktree; lock
+re-taken. Rulings numbered after R673 (rescanned: R674-R699 free; R700-R708
+claimed elsewhere), recorded in CLAUDE.md:
+
+  R674  NO BADGE. "Moins cher selon ces hypotheses" is gone. ONE factual
+        sentence chosen by the case: below the lowest Swiss total; above the
+        highest; between (result.depends, unchanged). Rendered as one
+        paragraph, data-case-sentence = france | switzerland | depends.
+  R675  TITLE about 60 characters - the operator's example (Q6).
+  R676  The droit-option guide's lastReviewed: 2026-09-16 -> 2026-10-28 (Q4).
+  R677  THE 2027 PLAFOND (Q5). Each announced year carries a STATED date,
+        passFinalBy - 2027: '2027-01-15'. tests/unit/lamal/pass-deadline.test.ts
+        runs in pnpm test (so in gate, gate:changed and gate:clone) and FAILS
+        from that day while the year is still 'announced', its message naming
+        docs/lamal-refresh.md section 4 (which now says so). Both sides proven:
+        overdueAnnouncedPasses(..., '2027-01-14') -> [] and
+        (..., '2027-01-15') -> [2027]; marked final -> [] again.
+  R678  K3 (Q3): stays out, PARKED with the stated reason in PARK-29 - K3,
+        likely a discount for further children, can only LOWER the Swiss side,
+        so leaving it out never understates it. The Tarife.csv look-up is the
+        operator's, later.
+
+TEST-FIRST (R225). Each of the three sentences is asserted on the RENDERED
+RESULT of the page (fill + submit) for an input in its case - income 12 225
+(contribution 0 EUR: below), 1 000 000 (79 022 EUR: above), 60 000 (3 822 EUR:
+between) - with the other two sentences asserted ABSENT, plus "no badge and
+not the badge wording" in every case. RED on the old panel:
+  AssertionError: expected undefined to be 'La cotisation francaise est inferieur...'
+  AssertionError: expected undefined to be 'La cotisation francaise est superieur...'
+  AssertionError: expected undefined to be 'Selon l'assureur suisse, l'un ou l'au...'
+  AssertionError: expected <p class="_badge_6f3215" ...></p> to be null
+then GREEN (19/19). My first no-badge test also forbade "moins cher" anywhere;
+it failed on the GREEN panel because the between-case sentence the operator
+kept unchanged says "l'un ou l'autre est moins cher" - the assertion was
+narrowed to the badge's own wording ("selon ces hypotheses").
+The deadline test: RED ("overdueAnnouncedPasses is not a function";
+"expected undefined to be '2027-01-15'"), then GREEN 6/6.
+
+BASELINES (R207), named BEFORE recording, in
+scratchpad expected2.txt at 2026-10-28 (before the comparison run):
+  NEW      comparateur-inferieur-desktop.png, comparateur-inferieur-mobile.png,
+           comparateur-superieur-desktop.png, comparateur-superieur-mobile.png
+           (two new visual states in e2e/comparateur.visual.spec.ts, each
+           confirmed showing its sentence before the shot)
+  CHANGED  guides-hub-desktop.png, guides-hub-mobile.png - the hub prints each
+           guide's review date, and R676 moved one.
+  Unchanged, as expected: comparateur-rempli-* (it is the between case; the
+           sentence there was already the depends sentence).
+  The comparison run failed exactly those 6 (117 passed); --update changed
+  exactly those 6 files (set equality by diff). Opened and read:
+  comparateur-inferieur-desktop (the below sentence under "Estimation pour
+  2027", 0 EUR, no badge).
+
+GATES, second pass:
+  gate:changed (FRONTALIER_PORT=3100): typecheck exit 0, lint exit 0,
+    test 3398 passed, build exit 0, test:visual 123 passed, test:e2e 349
+    passed, test:late 10 passed - GATE PASSED. (test:db was not selected this
+    time.) CLAUDE.md's R674-R678 block was added after that run;
+    tests/unit/meta re-run on it: 424 passed.
+  gate:clone, ALONE, before any push of this pass: GATE:CLONE PASSED on 33b3d26
+    ("commit  33b3d261bfb828abac0b3c03aabd22e07ac22f8d"; "claim   this commit
+    builds and passes register-coverage, fixture-coverage, install, typecheck,
+    lint, test, build, size, db:deploy, test:db, test:container:write from a
+    clean checkout"), exit 0. Nothing of this pass was pushed before it.
+
+NEW COPY - second pass (ASCII; authoritative accented text in web/lib/fr/lamal.ts)
+  metaTitle (R675):
+    Droit d'option frontalier : LAMal ou CMU, quel cout ?
+  result.below (R674):
+    La cotisation francaise est inferieure au total suisse le plus bas.
+  result.above (R674):
+    La cotisation francaise est superieure au total suisse le plus haut.
+  result.depends (R674, unchanged - the between case):
+    Selon l'assureur suisse, l'un ou l'autre est moins cher : la cotisation
+    francaise se situe entre le total le plus bas et le total le plus haut des
+    assureurs suisses.
+  REMOVED: result.badge ("Moins cher selon ces hypotheses").
+  The first-pass NEW COPY section below still lists metaTitle and
+  result.badge as they were; this block supersedes both.
+
+Answered questions: Q3 (R678), Q4 (R676), Q5 (R677), Q6 (R675). Q1 (park ids)
+and Q2 (e-mail capture) are scheduled separately by the operator.
+The web/.env copy is still present as this is written: gate:clone reads the
+database host from it. It is deleted after the final gate:clone, with the
+lock - that is confirmed in the handback, not claimed here.
 
 ====================================================================
 RULING NUMBERS (R162) - what this session took
