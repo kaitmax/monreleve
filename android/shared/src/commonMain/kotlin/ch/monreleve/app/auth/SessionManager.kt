@@ -138,26 +138,32 @@ class SessionManager(
      * other into exactly that replay, so a process holds ONE (AN-TOKEN-RACE, R507 - :app's SessionHolder.kt, and a
      * fence refusing a second construction). An iOS app owes the same: one SessionManager per process.
      */
-    suspend fun refresh(): RefreshOutcome {
+    suspend fun refresh(): RefreshOutcome = refresh(ending = ::end)
+
+    // [ending] is what a session found dead does: end() for every call (R520), nothing for the voluntary sign-out.
+    private suspend fun refresh(ending: suspend () -> Unit): RefreshOutcome {
         val before = tokenStore.load() ?: return RefreshOutcome.NoSession
         return refreshMutex.withLock {
             val latest = tokenStore.load()
             if (latest != null && latest.refreshToken != before.refreshToken) {
                 RefreshOutcome.Refreshed(latest)
             } else {
-                applyRefresh(before)
+                applyRefresh(before, ending)
             }
         }
     }
 
-    private suspend fun applyRefresh(before: TokenPair): RefreshOutcome =
+    private suspend fun applyRefresh(
+        before: TokenPair,
+        ending: suspend () -> Unit,
+    ): RefreshOutcome =
         when (val result = api.refresh(before.refreshToken)) {
             is RefreshResult.Rotated -> {
                 tokenStore.save(result.pair)
                 RefreshOutcome.Refreshed(result.pair)
             }
             RefreshResult.Invalid -> {
-                end()
+                ending()
                 RefreshOutcome.Expired
             }
             // R526: the server could not answer (a 5xx, a 429, a body that does not parse, no network) - TRY LATER. The
@@ -191,30 +197,45 @@ class SessionManager(
     // else ends the session (R210, replay). The verbs differ only in the request lambda's payload type T
     // and how each maps the result; ONE generic code path means the replay handling cannot drift between a
     // String read and a byte export.
-    private suspend fun <T> attempt(request: suspend (String) -> AuthedResult<T>): Attempt<T> {
+    //
+    // AN-SIGNOUT-REFRESH (R706): the sign-out revoke goes through here too, so it meets an expired access token the
+    // way every other call does - ONE refresh, ONE retry. [ending] is the one thing that differs: what a session
+    // found dead does (a refused refresh, a dead session's 401, a 401 the refresh could not recover). For every call
+    // it is end() - the tokens go and the owner is told (R520). For the voluntary sign-out it is NOTHING: the wipe
+    // that follows clears the device (R295), and a sign-out the person asked for is never a session the SERVER ended
+    // (SessionEnds.kt) - telling the owner would send the shell down the forced path in the middle of the voluntary
+    // one. A replayed refresh token still revokes the session on the server whatever this does (R210).
+    private suspend fun <T> attempt(
+        ending: suspend () -> Unit = ::end,
+        request: suspend (String) -> AuthedResult<T>,
+    ): Attempt<T> {
         val pair = tokenStore.load() ?: return Attempt.NoSession
         return when (val response = request(pair.accessToken)) {
             is AuthedResult.Ok -> Attempt.Ok(response.status, response.value)
             is AuthedResult.Failed -> Attempt.NetworkError
-            is AuthedResult.Unauthorized -> onUnauthorized(response.code, request)
+            is AuthedResult.Unauthorized -> onUnauthorized(response.code, ending, request)
         }
     }
 
     private suspend fun <T> onUnauthorized(
         code: AuthServerCode?,
+        ending: suspend () -> Unit,
         request: suspend (String) -> AuthedResult<T>,
     ): Attempt<T> =
         if (code == AuthServerCode.EXPIRED_TOKEN || code == AuthServerCode.ROTATED_TOKEN) {
-            retryAfterRefresh(request)
+            retryAfterRefresh(ending, request)
         } else {
             // revoked_session, unknown_token, or anything else: the session is dead.
-            end()
+            ending()
             Attempt.SessionEnded
         }
 
-    private suspend fun <T> retryAfterRefresh(request: suspend (String) -> AuthedResult<T>): Attempt<T> =
-        when (val outcome = refresh()) {
-            is RefreshOutcome.Refreshed -> retryWith(outcome.pair, request)
+    private suspend fun <T> retryAfterRefresh(
+        ending: suspend () -> Unit,
+        request: suspend (String) -> AuthedResult<T>,
+    ): Attempt<T> =
+        when (val outcome = refresh(ending)) {
+            is RefreshOutcome.Refreshed -> retryWith(outcome.pair, ending, request)
             RefreshOutcome.Expired -> Attempt.SessionExpired
             RefreshOutcome.NetworkError -> Attempt.NetworkError
             RefreshOutcome.NoSession -> Attempt.NoSession
@@ -222,13 +243,14 @@ class SessionManager(
 
     private suspend fun <T> retryWith(
         pair: TokenPair,
+        ending: suspend () -> Unit,
         request: suspend (String) -> AuthedResult<T>,
     ): Attempt<T> =
         when (val retry = request(pair.accessToken)) {
             is AuthedResult.Ok -> Attempt.Ok(retry.status, retry.value)
             is AuthedResult.Failed -> Attempt.NetworkError
             is AuthedResult.Unauthorized -> {
-                end()
+                ending()
                 Attempt.SessionEnded
             }
         }
@@ -313,11 +335,13 @@ class SessionManager(
      * changed is that the clear can no longer be skipped: a finally inside NonCancellable runs
      * whether the revoke returned, threw, or was cancelled. Signing out is a promise about the
      * device, and it is the half that must not depend on the network.
+     *
+     * AN-SIGNOUT-REFRESH (R706): the revoke is [revokeServerSession]'s, so an expired access token is refreshed
+     * once and the sign-out retried once here too.
      */
     suspend fun signOut() {
-        val pair = tokenStore.load()
         try {
-            if (pair != null) api.signOut(pair.accessToken)
+            revokeServerSession()
         } finally {
             withContext(NonCancellable) { tokenStore.clear() }
         }
@@ -329,9 +353,17 @@ class SessionManager(
      * queued sync - so a full sign-out revokes here and clears there, one owner each. A network failure is
      * swallowed (as signOut's is): a device with no connectivity must still be able to sign out and wipe its
      * local record.
+     *
+     * AN-SIGNOUT-REFRESH (R705, R706). THIS USED TO HAND THE STORED ACCESS TOKEN STRAIGHT TO AuthApi.signOut, whose
+     * Boolean answer dropped a 401 and its code. An access token lives fifteen minutes (web/lib/auth/tokens.ts
+     * ACCESS_TTL_MS) and the app refreshes only when a call meets a 401 - so a phone that sat idle on Paramètres sent
+     * an expired token, was refused, and wiped itself with its session still alive on the server (AN-TALKBACK, Q4).
+     * It now takes `attempt`'s path like every other call: a 401 expired_token/rotated_token -> ONE refresh -> ONE
+     * retry; a refused refresh, a dead session or a second 401 stops there. Nothing that happens here is a
+     * server-ended session (the `ending` is empty - see `attempt`), and the outcome is still not the caller's
+     * concern: the device is wiped whatever the server said.
      */
     suspend fun revokeServerSession() {
-        val pair = tokenStore.load() ?: return
-        api.signOut(pair.accessToken)
+        attempt(ending = {}) { token -> api.signOut(token) }
     }
 }

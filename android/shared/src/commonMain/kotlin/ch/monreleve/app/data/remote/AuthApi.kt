@@ -25,7 +25,6 @@ private const val HTTP_ACCEPTED = 202
 private const val HTTP_BAD_REQUEST = 400
 private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_TOO_MANY_REQUESTS = 429
-private const val HTTP_OK_MAX = 299
 
 /**
  * The outcome of asking for a sign-in link. `Sent` is the ONE answer for a 202,
@@ -403,10 +402,15 @@ class AuthApi(
     }
 
     /**
-     * End this session server-side. Best-effort: a network failure returns false,
-     * and the caller clears local storage regardless.
+     * End this session server-side. Best-effort: the caller clears local storage whatever this returns.
+     *
+     * AN-SIGNOUT-REFRESH (R706): it returns the SAME three-way shape as the other bearer calls - the status, the 401
+     * with its code, or a network failure - so SessionManager drives it through `attempt` and an expired access token
+     * is refreshed once and the sign-out retried once. It used to return a Boolean, which kept "not 2xx" and dropped
+     * the 401's code: an idle phone's expired token was refused and nothing could tell. THE REQUEST IS UNCHANGED - the
+     * same POST, the same single Authorization header, no body.
      */
-    suspend fun signOut(accessToken: String): Boolean {
+    suspend fun signOut(accessToken: String): AuthedResult<String> {
         val request =
             HttpRequest(
                 method = HttpMethod.POST,
@@ -417,16 +421,19 @@ class AuthApi(
         // runCatching catches Throwable, so this swallowed CancellationException -
         // before KMP-1 as well as after, making it the one site here whose fix is a
         // BEHAVIOUR CHANGE rather than a restoration. A sign-out whose scope is
-        // cancelled now ends cancelled instead of reporting `false`.
-        return try {
-            transport.execute(request).status in HTTP_OK..HTTP_OK_MAX
-        } catch (_: TransportException) {
-            // Sign-out is best-effort: the local session is cleared regardless, and the
-            // server expires the token anyway, so "unreachable" means "not confirmed"
-            // and nothing more. The exception is named `_` because nothing here acts on
-            // it - commonMain has no logger - and detekt's SwallowedException rule is
-            // right to ask which of those two it is.
-            false
+        // cancelled now ends cancelled instead of reporting a failure.
+        val response =
+            try {
+                transport.execute(request)
+            } catch (e: TransportException) {
+                // Sign-out is best-effort: the local session is cleared regardless, so "unreachable" means "not
+                // confirmed" and nothing more - reported as Failed, as every other bearer call reports it.
+                return AuthedResult.Failed(ApiFailure.Network(e.message ?: "network unreachable"))
+            }
+        return if (response.status == HTTP_UNAUTHORIZED) {
+            AuthedResult.Unauthorized(parseServerFailure(response.status, response.body).code)
+        } else {
+            AuthedResult.Ok(response.status, response.body)
         }
     }
 }
