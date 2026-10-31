@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Calculateur de télétravail frontalier, nouvelle maquette</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#173B63}a:hover{color:#111827}
+details>summary::-webkit-details-marker{display:none}
+</style>
+</helmet>
+<div style="font-family: 'Inter', system-ui, sans-serif; color: #111827; background: #F7F8FA; font-size: 16px; line-height: 1.55; font-variant-numeric: tabular-nums">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+<a href="#" style="font-size: 22px; font-weight: 700; color: #111827; text-decoration: none; letter-spacing: -0.01em">Mon Relevé</a>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; align-items: center; gap: 28px; font-size: 15px">
+<a href="#" aria-current="page" style="color: #173B63; font-weight: 600; text-decoration: none; border-bottom: 2px solid #173B63; padding-bottom: 4px">Calculateur</a>
+<a href="#" style="color: #111827; text-decoration: none">Comparateur LAMal / CMU</a>
+<a href="#" style="color: #111827; text-decoration: none">Guides</a>
+<a href="#" style="color: #111827; text-decoration: none">L’application</a>
+</nav>
+</div>
+</header>
+
+<section style="max-width: 1200px; margin: 0 auto; padding: 56px 32px 24px">
+<p style="margin: 0 0 14px; display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border-radius: 999px; background: #EAF0F7; color: #173B63; font-size: 14px; font-weight: 600">Année 2026</p>
+<h1 style="margin: 0; font-size: 48px; line-height: 1.08; font-weight: 700; letter-spacing: -0.02em; max-width: 18em">Calculateur de télétravail frontalier</h1>
+<p style="margin: 14px 0 0; font-size: 19px; color: #667085; max-width: 36em">Estimez votre pourcentage de télétravail annuel et le nombre de jours qu’il vous reste avant les seuils de 40 % et 49,9 %.</p>
+</section>
+
+<section style="max-width: 1200px; margin: 0 auto; padding: 16px 32px 88px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<form aria-label="Votre situation" style="flex: 1 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 26px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 700">Votre situation</h2>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="c-canton" style="font-weight: 600">Canton de travail</label>
+<select id="c-canton" style="min-height: 48px; border: 1px solid #D0D5DD; border-radius: 12px; padding: 0 14px; font: inherit; background: #FFFFFF; color: #111827"><option>Genève</option><option>Vaud</option><option>Neuchâtel</option><option>Bâle-Ville</option></select>
+<p style="margin: 0; font-size: 14px; color: #667085">Le canton détermine le régime applicable et ce que coûte un dépassement.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span id="c-rate-l" style="font-weight: 600">Taux d’activité (%)</span>
+<div role="group" aria-labelledby="c-rate-l" style="display: flex; align-items: center; border: 1px solid #D0D5DD; border-radius: 12px; overflow: hidden">
+<button type="button" onClick="{{rateDown}}" aria-label="Diminuer le taux d’activité" style="width: 48px; min-height: 48px; border: 0; background: #F7F8FA; font: inherit; font-size: 20px; cursor: pointer; color: #111827">−</button>
+<span style="flex: 1; text-align: center; font-weight: 600; font-size: 18px">{{rate}} %</span>
+<button type="button" onClick="{{rateUp}}" aria-label="Augmenter le taux d’activité" style="width: 48px; min-height: 48px; border: 0; background: #F7F8FA; font: inherit; font-size: 20px; cursor: pointer; color: #111827">+</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span id="c-days-l" style="font-weight: 600">Jours de télétravail déjà pris</span>
+<div role="group" aria-labelledby="c-days-l" style="display: flex; align-items: center; border: 1px solid #D0D5DD; border-radius: 12px; overflow: hidden">
+<button type="button" onClick="{{daysDown}}" aria-label="Retirer une demi-journée" style="width: 48px; min-height: 48px; border: 0; background: #F7F8FA; font: inherit; font-size: 20px; cursor: pointer; color: #111827">−</button>
+<span style="flex: 1; text-align: center; font-weight: 600; font-size: 18px">{{daysText}}</span>
+<button type="button" onClick="{{daysUp}}" aria-label="Ajouter une demi-journée" style="width: 48px; min-height: 48px; border: 0; background: #F7F8FA; font: inherit; font-size: 20px; cursor: pointer; color: #111827">+</button>
+</div>
+</div>
+</div>
+<p style="margin: -14px 0 0; font-size: 14px; color: #667085">Comptez uniquement vos journées de télétravail : les congés payés et les jours de maladie ne sont pas à déclarer ici, la base annuelle les absorbe déjà.</p>
+
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+<legend style="font-weight: 600; padding: 0; margin-bottom: 8px">Avez-vous effectué des missions hors de Suisse cette année ?</legend>
+<div style="display: inline-flex; border: 1px solid #D0D5DD; border-radius: 12px; overflow: hidden; align-self: flex-start">
+<button type="button" onClick="{{missionsNo}}" aria-pressed="{{noPressed}}" style="{{noStyle}}">Non</button>
+<button type="button" onClick="{{missionsYes}}" aria-pressed="{{yesPressed}}" style="{{yesStyle}}">Oui</button>
+</div>
+<p style="margin: 0; font-size: 14px; color: #667085">Les jours de mission sont comptés à l’intérieur des 40 %, et non en plus.</p>
+<sc-if value="{{missions}}" hint-placeholder-val="{{false}}">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 6px">
+<div style="display: flex; flex-direction: column; gap: 6px"><label for="c-mfr" style="font-weight: 600">Jours de mission en France</label><input id="c-mfr" type="number" value="4" style="min-height: 48px; border: 1px solid #D0D5DD; border-radius: 12px; padding: 0 14px; font: inherit"></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><label for="c-m3" style="font-weight: 600">Jours de mission dans un pays tiers</label><input id="c-m3" type="number" value="0" style="min-height: 48px; border: 1px solid #D0D5DD; border-radius: 12px; padding: 0 14px; font: inherit"></div>
+</div>
+</sc-if>
+</fieldset>
+
+<fieldset style="border: 0; margin: 0; padding: 0">
+<legend style="font-weight: 600; padding: 0; margin-bottom: 8px">Quels jours télétravaillez-vous d’habitude ?</legend>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{weekdays}}" as="w" hint-placeholder-count="5">
+<button type="button" onClick="{{w.toggle}}" aria-pressed="{{w.pressed}}" style="{{w.style}}">{{w.name}}</button>
+</sc-for>
+</div>
+<p style="margin: 8px 0 0; font-size: 14px; color: #667085">Cochez vos jours habituels pour voir où vous arrivez au 31 décembre. Sans réponse, le calcul montre votre position actuelle.</p>
+</fieldset>
+
+<details style="border-top: 1px solid #E4E7EC; padding-top: 18px">
+<summary style="list-style: none; cursor: pointer; font-weight: 600; color: #173B63; min-height: 44px; display: flex; align-items: center">Options avancées : méthode de calcul, décompte, début d’activité</summary>
+<div style="display: flex; flex-direction: column; gap: 18px; margin-top: 12px">
+<div><p style="margin: 0 0 8px; font-weight: 600">Méthode de calcul</p><div style="display: inline-flex; border: 1px solid #D0D5DD; border-radius: 12px; overflow: hidden"><span style="padding: 12px 16px; background: #173B63; color: #FFFFFF; font-weight: 600">Base simplifiée</span><span style="padding: 12px 16px">Décompte exact</span></div><p style="margin: 8px 0 0; font-size: 14px; color: #667085">Par défaut, la base simplifiée de 240 jours par an (circulaire n° 45). La méthode doit être la même pour tout le personnel.</p></div>
+<div><label for="c-start" style="display: block; font-weight: 600; margin-bottom: 6px">Début d’activité en cours d’année</label><input id="c-start" type="date" style="min-height: 48px; border: 1px solid #D0D5DD; border-radius: 12px; padding: 0 14px; font: inherit"></div>
+</div>
+</details>
+</form>
+
+<aside aria-label="Votre part de télétravail" style="flex: 1 1 400px; min-width: 0; position: sticky; top: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 28px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #667085">Votre part de télétravail</h2>
+<p aria-live="polite" style="margin: 4px 0 0; font-size: 80px; line-height: 1; font-weight: 700; letter-spacing: -0.03em">{{rateText}}</p>
+<p style="margin: 10px 0 0; font-weight: 600">{{status}}</p>
+<div aria-hidden="true" style="position: relative; height: 54px; margin-top: 18px">
+<div style="position: absolute; left: 0; right: 0; top: 14px; height: 14px; border-radius: 999px; overflow: hidden; display: flex"><div style="width: 57.14%; background: #EAF0F7"></div><div style="width: 14.14%; background: #B7791F"></div><div style="flex: 1; background: #C53030"></div></div>
+<div style="position: absolute; left: 57.14%; top: 6px; height: 30px; border-left: 2px solid #111827"></div>
+<div style="position: absolute; left: 71.28%; top: 6px; height: 30px; border-left: 2px solid #111827"></div>
+<div style="position: absolute; left: 57.14%; top: 38px; transform: translateX(-50%); font-size: 12px; font-weight: 700">40 %</div>
+<div style="position: absolute; left: 71.28%; top: 38px; transform: translateX(-50%); font-size: 12px; font-weight: 700">49,9 %</div>
+<div style="position: absolute; left: {{marker}}; top: 2px; width: 20px; height: 38px; margin-left: -10px; border-radius: 999px; background: #FFFFFF; border: 3px solid #173B63"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px">
+<div style="border: 1px solid #D0D5DD; border-radius: 16px; padding: 14px 16px"><p style="margin: 0; font-size: 13px; color: #667085">Avant 40 %, l’impôt</p><p style="margin: 2px 0 0; font-size: 30px; font-weight: 700">{{fiscalLeft}} <span style="font-size: 15px; font-weight: 600">jours</span></p></div>
+<div style="border: 1px solid #D0D5DD; border-radius: 16px; padding: 14px 16px"><p style="margin: 0; font-size: 13px; color: #667085">Avant 49,9 %, la sécurité sociale</p><p style="margin: 2px 0 0; font-size: 30px; font-weight: 700">{{socialLeft}} <span style="font-size: 15px; font-weight: 600">jours</span></p></div>
+</div>
+</div>
+<sc-if value="{{hasRhythm}}" hint-placeholder-val="{{true}}">
+<div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 24px">
+<p style="margin: 0 0 6px; display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid #D0D5DD; font-size: 13px; font-weight: 600">Projection</p>
+<h3 style="margin: 0; font-size: 18px">Fin décembre, projection</h3>
+<p style="margin: 6px 0 0; font-size: 30px; font-weight: 700">{{projText}}</p>
+<p style="margin: 6px 0 0; font-size: 14px; color: #667085">Si vous gardez ce rythme jusqu’au 31 décembre, sans congés ni missions. Une projection n’est pas un relevé.</p>
+</div>
+</sc-if>
+<div style="background: #173B63; color: #FFFFFF; border-radius: 20px; padding: 24px">
+<p style="margin: 0 0 12px; font-weight: 600">Gardez la preuve, jour par jour</p>
+<p style="margin: 0 0 16px; color: #F9FAFB; font-size: 15px">L’application compte à votre place et vous remet un relevé horodaté.</p>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; background: #FFFFFF; color: #173B63; border-radius: 12px; text-decoration: none; font-weight: 600">Découvrir l’application</a>
+</div>
+<p style="margin: 0; font-size: 13px; color: #667085">Estimation indicative, qui ne constitue pas un conseil fiscal. <a href="#">Sources et vérifications</a></p>
+</aside>
+</section>
+
+<section style="background: #FFFFFF; border-top: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 80px 32px; display: flex; flex-wrap: wrap; gap: 48px">
+<div style="flex: 1 1 340px; min-width: 0"><h2 style="margin: 0; font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em">Les deux seuils, et pourquoi ils ne sont pas le même</h2></div>
+<div style="flex: 2 1 560px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 32px">
+<article><p style="margin: 0 0 6px; font-size: 44px; font-weight: 700; color: #173B63">40 %</p><h3 style="margin: 0 0 8px; font-size: 18px">L’impôt</h3><p style="margin: 0 0 8px; color: #667085">Sous 40 % de votre temps de travail annuel, le télétravail depuis la France ne change pas l’imposition de votre salaire. Jusqu’à 10 jours de mission comptent dans ce quota.</p><p style="margin: 0; font-size: 13px; color: #667085">Source : AFC Genève ; accord amiable du 29 avril 2026</p></article>
+<article><p style="margin: 0 0 6px; font-size: 44px; font-weight: 700; color: #173B63">49,9 %</p><h3 style="margin: 0 0 8px; font-size: 18px">La sécurité sociale</h3><p style="margin: 0 0 8px; color: #667085">Avec une attestation A1 demandée par votre employeur, vous restez affilié aux assurances sociales suisses jusqu’à 49,9 % de télétravail.</p><p style="margin: 0; font-size: 13px; color: #667085">Source : Office fédéral des assurances sociales (OFAS)</p></article>
+</div>
+</div>
+</section>
+
+<footer style="border-top: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; color: #667085">
+<p style="margin: 0; max-width: 40em">Mon Relevé calcule à partir des sources officielles citées. Le relevé est votre propre registre ; la déclaration officielle reste celle de votre employeur.</p>
+<nav aria-label="Liens légaux" style="display: flex; flex-wrap: wrap; gap: 20px"><a href="#">Sources</a><a href="#">Confidentialité</a><a href="#">Mentions légales</a></nav>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2400}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { rate: 100, half: 188, missions: false, rhythm: [false, true, false, true, false] };
+  }
+  fmtPct(num, den) {
+    var v = Math.floor((num * 10000) / den);
+    var f = String(v % 100); if (f.length < 2) { f = '0' + f; }
+    return { v: v, t: Math.floor(v / 100) + ',' + f + '\u00a0%' };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var base = 240 * s.rate / 100;
+    var days = s.half / 2;
+    var counted = days + (s.missions ? 4 : 0);
+    var p = this.fmtPct(counted * 2, base * 2);
+    var status = p.v < 4000 ? 'Sous les deux seuils.' : (p.v < 4990 ? 'Au-delà du seuil fiscal, sous le seuil social.' : 'Au-delà des deux seuils.');
+    var fiscalLeft = Math.max(0, Math.floor(base * 0.4 - counted));
+    var socialLeft = Math.max(0, Math.floor(base * 0.499 - counted));
+    var per = s.rhythm.filter(function (x) { return x; }).length;
+    var proj = counted + per * 9;
+    var pp = this.fmtPct(proj * 2, base * 2);
+    var names = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+    var chip = 'min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; ';
+    var seg = 'min-height: 44px; padding: 0 20px; border: 0; font: inherit; font-weight: 600; cursor: pointer; ';
+    var dt = (s.half % 2 === 0) ? String(days) : (Math.floor(days) + ',5');
+    return {
+      rate: s.rate,
+      daysText: dt,
+      rateDown: function () { self.setState({ rate: Math.max(10, s.rate - 10) }); },
+      rateUp: function () { self.setState({ rate: Math.min(100, s.rate + 10) }); },
+      daysDown: function () { self.setState({ half: Math.max(0, s.half - 1) }); },
+      daysUp: function () { self.setState({ half: s.half + 1 }); },
+      missions: s.missions,
+      noPressed: s.missions ? 'false' : 'true',
+      yesPressed: s.missions ? 'true' : 'false',
+      noStyle: seg + (s.missions ? 'background: #FFFFFF; color: #111827;' : 'background: #173B63; color: #FFFFFF;'),
+      yesStyle: seg + (s.missions ? 'background: #173B63; color: #FFFFFF;' : 'background: #FFFFFF; color: #111827;'),
+      missionsNo: function () { self.setState({ missions: false }); },
+      missionsYes: function () { self.setState({ missions: true }); },
+      weekdays: names.map(function (n, i) {
+        var on = s.rhythm[i];
+        return {
+          name: n,
+          pressed: on ? 'true' : 'false',
+          style: chip + (on ? 'background: #EAF0F7; color: #173B63; border: 2px solid #173B63;' : 'background: #FFFFFF; color: #111827; border: 1px solid #D0D5DD;'),
+          toggle: function () { var r = s.rhythm.slice(); r[i] = !r[i]; self.setState({ rhythm: r }); }
+        };
+      }),
+      rateText: p.t,
+      status: status,
+      fiscalLeft: fiscalLeft,
+      socialLeft: socialLeft,
+      marker: (Math.min(p.v, 7000) / 70).toFixed(2) + '%',
+      hasRhythm: per > 0,
+      projText: pp.t
+    };
+  }
+}
+</script>
+</body>
+</html>

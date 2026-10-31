@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Comparateur LAMal / CMU, nouvelle maquette</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#173B63}a:hover{color:#111827}
+</style>
+</helmet>
+<div style="font-family: 'Inter', system-ui, sans-serif; color: #111827; background: #F7F8FA; font-size: 16px; line-height: 1.55; font-variant-numeric: tabular-nums">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+<a href="#" style="font-size: 22px; font-weight: 700; color: #111827; text-decoration: none; letter-spacing: -0.01em">Mon Relevé</a>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; align-items: center; gap: 28px; font-size: 15px">
+<a href="#" style="color: #111827; text-decoration: none">Calculateur</a>
+<a href="#" aria-current="page" style="color: #173B63; font-weight: 600; text-decoration: none; border-bottom: 2px solid #173B63; padding-bottom: 4px">Comparateur LAMal / CMU</a>
+<a href="#" style="color: #111827; text-decoration: none">Guides</a>
+<a href="#" style="color: #111827; text-decoration: none">L’application</a>
+</nav>
+</div>
+</header>
+
+<section style="max-width: 1200px; margin: 0 auto; padding: 56px 32px 24px">
+<h1 style="margin: 0; font-size: 48px; line-height: 1.08; font-weight: 700; letter-spacing: -0.02em">Comparateur LAMal / CMU</h1>
+<p style="margin: 14px 0 0; font-size: 19px; color: #667085; max-width: 40em">Le droit d’option vous fait choisir entre l’assurance maladie suisse et l’assurance maladie française. Cette page estime, sur une année complète, ce que coûterait chacune pour votre foyer.</p>
+<div role="note" style="margin-top: 28px; background: #FDECEC; border: 1px solid #C53030; border-radius: 16px; padding: 20px 24px; display: flex; gap: 14px; align-items: flex-start">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C53030" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+<div>
+<p style="margin: 0 0 4px; font-weight: 700; color: #111827">Ce choix ne se reprend pas</p>
+<p style="margin: 0; color: #111827">Le droit d’option ne s’exerce qu’une fois et il est irrévocable. Il s’exerce dans un délai de trois mois ; sans choix dans ce délai, l’affiliation se fait d’office en Suisse. <a href="#">Le guide du droit d’option</a></p>
+</div>
+</div>
+</section>
+
+<section style="max-width: 1200px; margin: 0 auto; padding: 16px 32px 72px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<form aria-label="Votre situation" style="flex: 1 1 420px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 24px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 700">Votre situation</h2>
+<div>
+<p style="margin: 0 0 8px; font-weight: 600">Année comparée</p>
+<div style="display: inline-flex; border: 1px solid #D0D5DD; border-radius: 12px; overflow: hidden">
+<span style="padding: 12px 20px; background: #173B63; color: #FFFFFF; font-weight: 600">2027</span>
+<span style="padding: 12px 20px; font-weight: 600">2026</span>
+</div>
+<p style="margin: 8px 0 0; font-size: 14px; color: #667085">Les primes suisses et le plafond de la sécurité sociale française de la même année.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="l-income" style="font-weight: 600">Votre revenu fiscal de référence de l’avant-dernière année</label>
+<div style="display: flex; align-items: center; border: 1px solid #D0D5DD; border-radius: 12px; overflow: hidden">
+<input id="l-income" type="number" inputmode="numeric" value="{{income}}" onChange="{{setIncome}}" style="flex: 1; min-width: 0; min-height: 48px; border: 0; padding: 0 14px; font: inherit; font-size: 18px; font-weight: 600; color: #111827">
+<span style="padding: 0 14px; color: #667085; font-weight: 600">EUR</span>
+</div>
+<p style="margin: 0; font-size: 14px; color: #667085">Pour 2027 : les revenus de 2025, qui figurent sur votre avis d’impôt de 2026.</p>
+</div>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px">
+<legend style="font-weight: 600; padding: 0; margin-bottom: 4px">Les personnes à assurer</legend>
+<p style="margin: 0; font-size: 14px; color: #667085">Vous d’abord, puis les membres de votre famille qui suivront votre choix.</p>
+<sc-for list="{{people}}" as="p" hint-placeholder-count="1">
+<div style="border: 1px solid #E4E7EC; border-radius: 12px; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; background: #F7F8FA">
+<div style="flex: 1 1 160px; display: flex; flex-direction: column; gap: 6px">
+<label for="{{p.id}}" style="font-weight: 600; font-size: 15px">{{p.label}}</label>
+<input id="{{p.id}}" type="number" value="{{p.by}}" onChange="{{p.setBy}}" style="min-height: 44px; border: 1px solid #D0D5DD; border-radius: 12px; padding: 0 12px; font: inherit; background: #FFFFFF">
+</div>
+<label style="flex: 1 1 200px; display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px"><input type="checkbox" checked="{{p.acc}}" onChange="{{p.toggleAcc}}" style="width: 20px; height: 20px; accent-color: #173B63">Avec la couverture accidents</label>
+<sc-if value="{{p.removable}}" hint-placeholder-val="{{false}}"><button type="button" onClick="{{p.remove}}" style="min-height: 44px; padding: 0 12px; border: 1px solid #D0D5DD; border-radius: 12px; background: #FFFFFF; font: inherit; cursor: pointer">Retirer</button></sc-if>
+</div>
+</sc-for>
+<p style="margin: 0; font-size: 13px; color: #667085">Décochée par défaut pour vous : employé au moins huit heures par semaine chez un même employeur, vous êtes assuré contre les accidents par la loi sur l’assurance-accidents.</p>
+<button type="button" onClick="{{addPerson}}" style="align-self: flex-start; min-height: 44px; padding: 0 16px; border: 1px solid #D0D5DD; border-radius: 12px; background: #FFFFFF; font: inherit; font-weight: 600; color: #173B63; cursor: pointer">Ajouter une personne</button>
+</fieldset>
+</form>
+
+<div aria-live="polite" style="flex: 1.3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 700">Estimation pour 2027</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+
+<article style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-size: 17px">Assurance maladie suisse (LAMal)</h3>
+<div style="display: grid; gap: 8px">
+<div style="display: flex; justify-content: space-between; gap: 12px; align-items: baseline"><span style="color: #667085; font-size: 14px">Total le plus bas</span><span style="font-weight: 700; font-size: 20px">{{lowEur}}</span></div>
+<div style="display: flex; justify-content: space-between; gap: 12px; align-items: baseline"><span style="color: #667085; font-size: 14px">Total médian</span><span style="font-weight: 700; font-size: 20px">{{medEur}}</span></div>
+<div style="display: flex; justify-content: space-between; gap: 12px; align-items: baseline"><span style="color: #667085; font-size: 14px">Total le plus haut</span><span style="font-weight: 700; font-size: 20px">{{highEur}}</span></div>
+</div>
+<p style="margin: 0; font-size: 13px; color: #667085">En francs, par an : {{lowChf}}, {{medChf}} et {{highChf}}. Primes mensuelles × 12 chez chacun des 13 assureurs qui assurent des résidents de France ; franchise de 300 CHF pour un adulte.</p>
+<p style="margin: 0; font-size: 13px; color: #667085">Taux BCE du 27.10.2026 : 1 EUR = 0,9239 CHF.</p>
+</article>
+
+<article style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-size: 17px">Assurance maladie française (cotisation Urssaf)</h3>
+<div><p style="margin: 0; color: #667085; font-size: 14px">Cotisation</p><p style="margin: 2px 0 0; font-weight: 700; font-size: 36px; letter-spacing: -0.02em">{{frEur}}</p><p style="margin: 0; color: #667085; font-size: 14px">par an</p></div>
+<p style="margin: 0; font-size: 13px; color: #667085">8 % × (revenu − 25 % du plafond de la sécurité sociale 2027, 48 900 EUR), arrondi à l’euro. Une seule cotisation, quel que soit le nombre de personnes rattachées.</p>
+<p style="margin: 0; display: inline-flex; align-self: flex-start; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: #FFF7E6; color: #111827; font-size: 13px; font-weight: 600">Plafond 2027 annoncé par l’Urssaf, arrêté à paraître</p>
+<sc-if value="{{floored}}" hint-placeholder-val="{{false}}"><p style="margin: 0; font-size: 13px; color: #667085">Votre revenu est inférieur à 25 % du plafond : la formule donne un montant négatif, affiché ici comme 0 EUR. Aucun texte ne fixe de minimum.</p></sc-if>
+</article>
+</div>
+
+<p style="margin: 0; background: #EAF0F7; border-radius: 16px; padding: 18px 20px; font-weight: 600; color: #173B63">{{verdict}}</p>
+<p style="margin: 0; font-size: 13px; color: #667085">Source : Office fédéral de la santé publique OFSP, « <a href="#">Primes de l’assurance-maladie</a> », primes 2027, opendata.swiss. Code de la sécurité sociale, articles L380-3-1 et D380-2 ; Urssaf. Taux de change : Banque centrale européenne. Aucun assureur n’est nommé ici ; pour les comparer : <a href="#">priminfo.admin.ch</a>.</p>
+<p style="margin: 0; font-size: 13px; color: #667085">Estimation fournie à titre indicatif. Elle ne constitue pas un conseil et n’engage ni l’administration française, ni l’administration suisse, ni aucun assureur.</p>
+</div>
+</section>
+
+<section style="background: #FFFFFF; border-top: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 80px 32px">
+<h2 style="margin: 0 0 32px; font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em">Ce que ce comparatif ne compare pas</h2>
+<ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 40px">
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Les soins remboursés.</strong> <span style="color: #667085">Les deux systèmes ne couvrent pas les mêmes soins de la même façon ; l’option ne porte que sur la couverture maladie.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Ce qui reste à votre charge.</strong> <span style="color: #667085">La franchise elle-même et ce qui reste à payer ne sont comptés d’aucun côté.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Une assurance complémentaire,</strong> <span style="color: #667085">d’un côté comme de l’autre.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Les membres de la famille qui ne suivent pas votre choix.</strong> <span style="color: #667085">Un conjoint qui travaille relève de sa propre affiliation.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Une déclaration d’impôt commune.</strong> <span style="color: #667085">Le revenu fiscal de référence de tout le foyer surestime votre cotisation.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Une année incomplète.</strong> <span style="color: #667085">Une affiliation en cours d’année est calculée au prorata des jours.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Le choix d’un assureur.</strong> <span style="color: #667085">Le plus bas, le médian et le plus haut encadrent les offres sans en désigner aucune.</span></li>
+<li style="border-top: 1px solid #E4E7EC; padding: 16px 0"><strong>Le cours du franc.</strong> <span style="color: #667085">Un seul taux, celui de la BCE du 27.10.2026 ; les primes sont fixées en francs.</span></li>
+</ul>
+<p style="margin: 28px 0 0"><a href="#">Sources et vérifications</a></p>
+</div>
+</section>
+
+<footer style="border-top: 1px solid #E4E7EC">
+<div style="max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; font-size: 14px; color: #667085">
+<p style="margin: 0; max-width: 40em">Mon Relevé calcule à partir des sources officielles citées.</p>
+<nav aria-label="Liens légaux" style="display: flex; flex-wrap: wrap; gap: 20px"><a href="#">Sources</a><a href="#">Confidentialité</a><a href="#">Mentions légales</a></nav>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2300}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { income: 42000, people: [{ by: 1985, acc: false }], next: 2 };
+  }
+  grp(n) {
+    var s = String(Math.round(n)); var out = '';
+    while (s.length > 3) { out = '\u202f' + s.slice(-3) + out; s = s.slice(0, -3); }
+    return s + out;
+  }
+  renderVals() {
+    var self = this;
+    var P = [[750,697.5,562.5,523.1,165,153.5],[778.6,724.1,576.2,535.9,179.1,166.6],[687.1,652.1,549.7,521.7,171.8,163.1],[885,823.1,818,760.7,265,246.5],[642,597.1,577.8,537.4,160.5,149.3],[496,461.3,357.2,332.2,248,230.7],[255.6,237.8,191.7,178.3,63.9,59.5],[371.3,345.4,297.1,276.4,123.8,115.2],[510,474.9,433.5,403.6,153,142.5],[473,439.9,458.8,426.7,150.3,139.8],[793.1,755.4,555.3,528.9,222.4,211.8],[515,489.3,510,484.5,180,171],[225,209.3,202.5,188.4,51.7,48.1]];
+    var people = this.state.people;
+    var totals = P.map(function (row) {
+      var m = 0;
+      people.forEach(function (p) {
+        var age = 2027 - Number(p.by);
+        var c = age <= 18 ? 4 : (age <= 25 ? 2 : 0);
+        m += row[c + (p.acc ? 0 : 1)];
+      });
+      return m * 12;
+    }).sort(function (a, b) { return a - b; });
+    var rate = 0.9239;
+    var low = totals[0], med = totals[6], high = totals[12];
+    var income = Number(this.state.income) || 0;
+    var base = Math.round(income - 0.25 * 48900);
+    var floored = base < 0;
+    var fr = floored ? 0 : Math.round(base * 0.08);
+    var lowE = low / rate, highE = high / rate;
+    var verdict;
+    if (fr < Math.round(lowE)) { verdict = 'La cotisation française est inférieure au total suisse le plus bas.'; }
+    else if (fr > Math.round(highE)) { verdict = 'La cotisation française est supérieure au total suisse le plus haut.'; }
+    else { verdict = 'Selon l’assureur suisse, l’un ou l’autre est moins cher : la cotisation française se situe entre le total le plus bas et le total le plus haut des assureurs suisses.'; }
+    var g = this.grp.bind(this);
+    return {
+      income: this.state.income,
+      setIncome: function (e) { self.setState({ income: e.target.value }); },
+      people: people.map(function (p, i) {
+        return {
+          id: 'l-by-' + i,
+          label: i === 0 ? 'Vous, année de naissance' : 'Personne ' + (i + 1) + ', année de naissance',
+          by: p.by,
+          acc: p.acc,
+          removable: i > 0,
+          setBy: function (e) { var l = people.slice(); l[i] = { by: e.target.value, acc: p.acc }; self.setState({ people: l }); },
+          toggleAcc: function () { var l = people.slice(); l[i] = { by: p.by, acc: !p.acc }; self.setState({ people: l }); },
+          remove: function () { self.setState({ people: people.filter(function (_, j) { return j !== i; }) }); }
+        };
+      }),
+      addPerson: function () { self.setState({ people: people.concat([{ by: 2015, acc: true }]) }); },
+      lowEur: g(lowE) + '\u00a0EUR', medEur: g(med / rate) + '\u00a0EUR', highEur: g(highE) + '\u00a0EUR',
+      lowChf: g(low) + '\u00a0CHF', medChf: g(med) + '\u00a0CHF', highChf: g(high) + '\u00a0CHF',
+      frEur: g(fr) + '\u00a0EUR',
+      floored: floored,
+      verdict: verdict
+    };
+  }
+}
+</script>
+</body>
+</html>
