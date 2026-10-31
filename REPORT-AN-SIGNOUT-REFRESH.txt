@@ -27,9 +27,11 @@ kotlin/ch/monreleve/app/fr/).
 ================================================================================
 SUMMARY / STATUS (R391)
 ================================================================================
-STATUS: NOT COMPLETE - full :app:gate GREEN on 61e5be2 (the code tip) this session; the
-iOS cloud run (R573) is owed because :shared changed and had NOT run when this report was
-written (Q1). Pending merge; must not merge before that run is green.
+STATUS: NOT COMPLETE - NOT PUSHED. Full :app:gate GREEN on 61e5be2 (the code tip) this
+session. FULL GATE NOT RUN on the report commit: free RAM never reached the 6 GB the
+orchestrator requires before a gate (waits under PHONE STATE), so the branch is held
+locally, pending that gate and the push. The iOS cloud run (R573) is owed because :shared
+changed and has NOT run (it needs the pushed branch; Q1). Pending merge after both.
 FULL :app:gate --rerun-tasks on 61e5be2, this session, ALONE (dev server stopped, port 3000
 free, no other gradle build; started after ./gradlew --stop), the tree clean of tracked
 changes:
@@ -43,9 +45,8 @@ changes:
   (unchanged count - CancellationTest was edited, not added to). Compiler "w: " lines: 7
   (main's count). Free RAM when it started was not measured (the orchestrator's 6 GB
   rule arrived while it ran); 3.1 GB free mid-run, and it completed.
-The pushed tip is the report commit that follows 61e5be2 and adds ONLY this file; the
-full gate is run again on THAT commit before the push - its result is in the session's
-hand-back, not here, because a report states only what has happened (R391).
+The tip to push is the report commit(s) that follow 61e5be2 and touch ONLY this file. The
+full gate owed on THAT commit before the push was NOT STARTED (RAM - see the waits).
 gate:clone / gate:changed NOT OWED: no web/ change (web/.env and node_modules are
 gitignored copies).
 iOS run (R573): NOT RUN at the time of writing - see PUSH PROOF and Q1.
@@ -258,8 +259,11 @@ tcp:3000`, both APKs `:app:assembleAudit -PfrontalierHost=127.0.0.1` built in th
 worktree, both signed ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
 (= the installed app's signer; checked with apksigner BEFORE any install):
   base 22b16bb  f4ea38ac002cba13ec5aefe2acb68978bfa298366629b8024df9db0f97e35a09
+               (install -r: Success; its ON-DEVICE hash was NOT read before the run -
+               what identifies the base build on the phone is its behaviour below, the
+               401 and nothing after it, which the fixed code cannot produce)
   tip  61e5be2  a9893dd6facc324bebfe9824316aa0bf02e3ce742795e7f854db424cc17b55b8
-               (on-device sha256 after install = the same)
+               (on-device sha256 after install = the same, read before the run)
 ACCOUNT: an-signout-refresh.pilot@monreleve.test, signed in BY CODE through the
 real screens (Commencer -> address -> "Recevoir mon lien de connexion" -> six
 digits). R574: the code was read from dev.log into a scratch file by a script,
@@ -323,7 +327,11 @@ DURING: stay_on_while_plugged_in 7 (to drive the screens); adb reverse tcp:3000.
 AFTER (14:37 UTC, restored and read back):
   - `adb install -r evidence/before/installed-base.apk` -> Success; on-device
     sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (=
-    before). The app's data: signed out, welcome screen - as found.
+    before). The app's data: signed out - re-observed at 15:00:59 UTC on the
+    restored build (am start -> dump: "Mon Releve / Vos jours de teletravail, prets
+    pour votre declaration." - the welcome screen), then HOME and screen off, as
+    found. (A first look at 15:00:43 met the lock screen; `am force-stop` was run
+    on the app then - it changes no stored state.)
   - stay_on_while_plugged_in 0; adb reverse --remove-all -> list empty;
     accessibility null / 0 / 0; /data/local/tmp as before; the driver's
     /sdcard/ui.xml and /sdcard/u.xml removed (absent).
@@ -338,6 +346,22 @@ AFTER (14:37 UTC, restored and read back):
     setting was changed for it.
 HOST: the dev server stopped (TaskStop, then this worktree's 2 orphan node
 processes killed; 0 remaining); port 3000: 0 listeners; 5436: 2 (control).
+
+WAITS FOR THE SECOND GATE (the orchestrator's rule, received mid-session: before a
+full gate, ./gradlew --stop, free RAM >= 6 GB, and no gate:clone / test:visual of
+FW-CALCS-A2 running in C:/wt/fw-calcs-a2; re-check every 5 minutes). ./gradlew --stop
+at 14:58 (1 daemon stopped); readings up to the writing of this paragraph:
+    14:59:16 freeGB=4.5 other=0
+    15:04:17 freeGB=1.1 other=0
+    15:09:36 freeGB=0.4 other=0
+    15:14:38 freeGB=1.8 other=0
+    15:19:43 freeGB=2 other=0
+    15:24:47 freeGB=2.2 other=0
+    15:29:50 freeGB=1.8 other=0
+    -> 6 GB was never reached in 33 minutes (low 0.4 GB at 15:09). The wait was
+       bounded there; the second gate was NOT STARTED, so nothing was pushed.
+(other = node processes of fw-calcs-a2 running gate-clone or playwright.) None of the
+memory in use was this session's to free (WSL ~2 GB, the browser ~3 GB).
 
 ================================================================================
 PARKED
@@ -374,10 +398,17 @@ D5 The voluntary sign-out's refresh path does NOT fire onEnded on a refused
 ================================================================================
 QUESTIONS
 ================================================================================
-Q1 The iOS cloud run (R573) is owed (:shared changed) - see PUSH PROOF. If GitHub
-   refuses it (repository PRIVATE, as for an-launch-speech), the branch must not
-   merge until it is run green.
-Q2 UNNUMBERED-1: revoke the control's local session by hand, or leave it?
+Q1 The push and the iOS cloud run (R573) are owed - see PUSH PROOF. RAM on this
+   machine stayed under the 6 GB gate threshold for 33 minutes; may the second gate
+   run below it (the first ran to green at ~3 GB free), or does the branch wait?
+   And if GitHub refuses the iOS run (repository PRIVATE), the branch must not merge
+   until it is run green.
+Q2 (TO RULE ON) D5: on a refused refresh, a dead session or a second 401, the
+   sign-out's path does NOT fire onEnded (no SessionEnds signal, no
+   clearForSessionEnd) - the voluntary wipe follows instead, exactly as before. Every
+   other call does fire it. Keep (my reading of R706 and SessionEnds.kt), or should
+   the sign-out also record a server ending in those cases?
+Q2b UNNUMBERED-1: revoke the control's local session by hand, or leave it?
 Q3 Should SPEC 10 / docs/api-v1.md say in one line that a client signs out with a
    possibly expired access token and therefore refreshes first? (No doc was
    changed here.)
@@ -385,11 +416,17 @@ Q3 Should SPEC 10 / docs/api-v1.md say in one line that a client signs out with 
 ================================================================================
 PUSH PROOF
 ================================================================================
-Pending push. Branch an-signout-refresh: code commit 61e5be2 on 22b16bb, then the
-report commit. To be pushed with `git push -u origin an-signout-refresh` (the branch
-only; never main, never production) once the full gate is green on the report commit.
-The iOS dispatch `gh workflow run ios-shared.yml --ref an-signout-refresh` is attempted
-after the push; `gh repo view` at writing: PRIVATE, so GitHub is expected to refuse it
-as it refused an-launch-speech's (run 40602671758) - if so it is NO RESULT, not a pass.
+NOT PUSHED. Branch an-signout-refresh exists only in C:/wt/an-signout-refresh: code commit
+61e5be2 on 22b16bb, then the report commits (this file only). origin has no
+an-signout-refresh ref. What is owed, in order, by whoever resumes:
+  1. ./gradlew --stop; free RAM >= 6 GB and no fw-calcs-a2 gate-clone/playwright;
+  2. ./gradlew :app:gate --rerun-tasks on the branch tip, ALONE - green (compare the
+     test count with 61e5be2's 1392 / 152 before reading any failure);
+  3. git push -u origin an-signout-refresh (the branch only; never main, never
+     production);
+  4. gh workflow run ios-shared.yml --ref an-signout-refresh (R573). `gh repo view`
+     at writing: PRIVATE - GitHub refused an-launch-speech's identical dispatch (run
+     40602671758, spending limit); a refusal is NO RESULT, never a pass.
+The worktree holds UNPUSHED COMMITS: under R392 it must not be removed or cleaned.
 
 END OF REPORT-AN-SIGNOUT-REFRESH
