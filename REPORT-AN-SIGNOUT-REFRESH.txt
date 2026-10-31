@@ -1,0 +1,395 @@
+================================================================================
+REPORT-AN-SIGNOUT-REFRESH
+SIGNING OUT ALWAYS CLOSES THE SESSION ON THE SERVER, EVEN AFTER IDLE
+================================================================================
+
+TASK     relay/AN-SIGNOUT-REFRESH.txt, rulings R705-R708 (renumbered from
+         R651-R654 by the orchestrator; R705-R708 are free: `git grep` on
+         origin/main finds them only in REPORT-FW-COMPARATEUR.txt,
+         REPORT-FW-HOME-A2.txt and REPORT-FW-PARK-IDS-2.txt, each listing them
+         as CLAIMED by this task, never as a ruling of their own). The prompt
+         is UNTRACKED and lives only in the main checkout; it was read whole
+         from there and is not committed here.
+BASE     22b16bb (origin/main = production at start; production never touched)
+BRANCH   an-signout-refresh, worktree C:/wt/an-signout-refresh (R349), lock
+         .session-lock.json in it (gitignored, never committed), removed at the
+         end. No other worktree under C:/wt was touched.
+DEVICE   SM-G960F (Galaxy S9) 232bcd8c300c7ece, Android 10, clock REAL and never
+         moved. USB only. This session was the only one using adb.
+EVIDENCE C:/wt/an-signout-refresh/.an-signout-refresh-evidence/ (untracked, NOT
+         committed): both APKs, the phone's settings/packages before and after,
+         the RED and GREEN JUnit XML, dev.log, the DB readings, the build, fast-
+         check and gate logs, the driver d.mjs.
+PURE ASCII. French below is a transliteration, never the source (R155): the
+accented originals are in ParametresCopy / SignInCopy (shared/src/commonMain/
+kotlin/ch/monreleve/app/fr/).
+
+================================================================================
+SUMMARY / STATUS (R391)
+================================================================================
+STATUS: NOT COMPLETE - full :app:gate GREEN on 61e5be2 (the code tip) this session; the
+iOS cloud run (R573) is owed because :shared changed and had NOT run when this report was
+written (Q1). Pending merge; must not merge before that run is green.
+FULL :app:gate --rerun-tasks on 61e5be2, this session, ALONE (dev server stopped, port 3000
+free, no other gradle build; started after ./gradlew --stop), the tree clean of tracked
+changes:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1392 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 19m 21s
+    260 actionable tasks: 260 executed
+    real 19m24.548s ; GATE_EXIT=0
+  Test XML: :app 1392 tests 0 failures 0 errors (= main's 1385 + this branch's 7;
+  SignOutRefreshTest 7/7, timestamp 2026-10-31T14:54:28 - this run); :shared 152 0 0
+  (unchanged count - CancellationTest was edited, not added to). Compiler "w: " lines: 7
+  (main's count). Free RAM when it started was not measured (the orchestrator's 6 GB
+  rule arrived while it ran); 3.1 GB free mid-run, and it completed.
+The pushed tip is the report commit that follows 61e5be2 and adds ONLY this file; the
+full gate is run again on THAT commit before the push - its result is in the session's
+hand-back, not here, because a report states only what has happened (R391).
+gate:clone / gate:changed NOT OWED: no web/ change (web/.env and node_modules are
+gitignored copies).
+iOS run (R573): NOT RUN at the time of writing - see PUSH PROOF and Q1.
+
+THE CAUSE (R705): the voluntary sign-out never entered the path every other
+authenticated call takes on a 401. It handed the stored access token straight
+to AuthApi.signOut, whose Boolean answer kept "not 2xx" and DROPPED the 401 and
+its code - so an access token past its fifteen minutes was refused, the phone
+wiped itself, and the server session stayed alive (revokedAt null).
+
+THE FIX (R706): AuthApi.signOut returns the bearer calls' AuthedResult (request
+bytes unchanged) and SessionManager.revokeServerSession runs through `attempt`:
+401 expired/rotated -> ONE refresh -> ONE retry; a refused refresh, a dead
+session, or a second 401 stops there. Nothing in it is a "session the server
+ended" (no onEnded), and the local wipe is unchanged in every case.
+
+R707: SignOutRefreshTest, 7 tests over TokenServer (tokens.ts's rules), each
+asserting the exact request sequence with its credential. RED 5/7 on 22b16bb
+(every refreshing case sent only the first sign-out); GREEN 7/7.
+
+R708 ON THE S9 against the local stack, the same sequence twice:
+  base 22b16bb  POST sign-out 401, nothing else -> revokedAt NULL     (control)
+  tip  61e5be2  POST sign-out 401 -> POST refresh 200 -> POST sign-out 200
+                -> revokedAt 2026-10-31 14:36:43.245, SIGNED_OUT
+
+Phone RESTORED and shown restored. No web change, no schema change, no copy
+change, /v1 untouched, R210 intact (a replayed refresh token still revokes the
+session - tested).
+
+================================================================================
+R273
+================================================================================
+- REPORT-AN-TALKBACK.txt, PHONE STATE AFTER (PART 2): the restoring sign-out got
+  POST /api/v1/auth/sign-out 401 (its dev2.log line 219, the preceding GETs 200),
+  the app wiped its data, the test account's DeviceSession kept revokedAt and
+  revokedReason empty. Its NOTICED line already guessed the cause - "the app does
+  not appear to refresh-and-retry on a sign-out 401; the access token had
+  presumably expired while the phone sat idle" - and Q4 asked for this task.
+- REPORT-AN-FORCED-SIGNOUT.txt: a SERVER-ended session (a refused refresh, a dead
+  session's 401, a 401 the refresh cannot recover) clears the tokens and tells
+  the owner (onEnded -> SessionEnds -> the shell leaves for sign-in, the notice
+  counts held days); the VOLUNTARY sign-out never passes there (ForcedSignOutTest
+  "R520 - a VOLUNTARY sign-out records no server ending"). R526: only 401
+  invalid_refresh_token ends a session on refresh; anything else is "try later".
+- REPORT-AN-TOKEN-RACE.txt: one SessionManager per process (SessionHolder.kt),
+  single-flight refresh on its Mutex, and a replayed refresh token revokes the
+  whole session TOKEN_REPLAYED (R210); TokenServer.kt is the fake that keeps
+  tokens.ts's rules.
+- web/app/api/v1/auth/sign-out/route.ts: authenticate(request) -> on refusal
+  unauthorised(auth.code) (401 with expired_token / rotated_token /
+  revoked_session / unknown_token, lib/auth/bearer.ts), else
+  revokeSession(sessionId, 'SIGNED_OUT') and 200; idempotent. Its tests
+  (tests/db) are DB suites - NOT run here (never against the shared database,
+  and nothing in web/ changed).
+
+================================================================================
+R1
+================================================================================
+origin/main = 22b16bb. R1 names an-launch-speech: it is NOT merged
+(`git merge-base --is-ancestor a9aaed4 origin/main` -> not contained; it waits on
+the operator's macOS minutes). This branch is based on main AS IT IS, as the
+orchestrator instructed. Overlap: none - an-launch-speech changes the Aujourd'hui
+UI files (AujourdhuiAuto.kt, ChoiceCard.kt, HalfDayChoiceCard.kt, a pilot test);
+this branch changes SessionManager.kt, AuthApi.kt, CancellationTest.kt and adds
+one test.
+Gate on main's HEAD: `git diff --stat 33c3578 22b16bb -- android/` is EMPTY, so
+android/ on main is byte-identical to the tree REPORT-IOS-1b-A gated green (and
+an-launch-speech re-stated that inheritance). No separate gate was run on 22b16bb
+itself this session; the full gate ran on this branch's code tip (STATUS).
+DB AT START (shared dev database frontalier-postgres :5436 `frontalier`, READ
+only, 13:41:56 UTC): User 1 (secret-holder@example.com), Entry 0, EntryEvent 0,
+DeviceSession 0, SessionToken 0, VerificationToken 0, CodeAttempt 10, Session 0,
+_prisma_migrations 14. (The orchestrator's note stands: an-talkback.pilot's
+stale session no longer exists; this proof never needed it.)
+
+================================================================================
+R705 - THE CAUSE, NAMED
+================================================================================
+THE LIFETIME. web/lib/auth/tokens.ts:41
+    export const ACCESS_TTL_MS = 15 * 60 * 1000;
+A constant - no environment variable reads it (see R708 / DEVIATIONS).
+
+THE PATH EVERY OTHER CALL TAKES (22b16bb, shared/.../auth/SessionManager.kt):
+    194  private suspend fun <T> attempt(request: ...): Attempt<T>
+           -> AuthedResult.Unauthorized -> onUnauthorized(code, request)
+    207  if (code == EXPIRED_TOKEN || code == ROTATED_TOKEN) retryAfterRefresh(...)
+    216  when (val outcome = refresh()) { Refreshed -> retryWith(new pair) ... }
+           -> retryWith: a second 401 ends; never a second refresh.
+authenticatedGet / authenticatedPost / authenticatedPatch / authenticatedGetBytes
+all go through it. The app never refreshes on a clock (accessExpiresAt is stored
+and never read for that); it refreshes only when a call meets a 401.
+
+THE PATH SIGN-OUT TOOK (22b16bb):
+  MainActivity.kt:321   revokeServer = session::revokeServerSession
+  ParametresController.confirmSignOut (line 515): revokeServer(), then in a
+                        NonCancellable finally clearForSignOut() + SignedOut.
+  SessionManager.kt:333 suspend fun revokeServerSession() {
+                            val pair = tokenStore.load() ?: return
+                            api.signOut(pair.accessToken)      // NOT attempt
+                        }
+  (signOut() at :317, the debug probe's, the same: api.signOut(pair.accessToken).)
+  AuthApi.kt:409        suspend fun signOut(accessToken: String): Boolean
+  AuthApi.kt:422            transport.execute(request).status in HTTP_OK..HTTP_OK_MAX
+So a 401 expired_token became `false` - the code discarded, the result ignored by
+the caller - and the wipe ran: "sign-out never fails" held for the DEVICE and
+silently failed for the SERVER.
+
+WHY IT DEPENDED ON IDLE, AND ON WHAT WAS PENDING. ParametresController.
+requestSignOut (line 442) drains pending days first only when there are some
+(line 444: `if (pendingDatesNow().isEmpty())` -> straight to the prompt). That
+drain is an authenticatedPost, which DOES refresh - so a sign-out after idle
+revoked the session by accident when days were waiting, and failed when nothing
+was (AN-TALKBACK's case, and this session's control). Any screen that fetched
+after the expiry (e.g. opening Releve) also refreshed by accident; a phone left
+on Parametres past fifteen minutes did not.
+
+================================================================================
+R706 - THE FIX
+================================================================================
+Commit 61e5be2. Files: android/shared/src/commonMain/kotlin/ch/monreleve/app/auth/
+SessionManager.kt, .../data/remote/AuthApi.kt; test edits below (R707).
+- AuthApi.signOut(accessToken): AuthedResult<String> - the same three-way shape as
+  authenticatedGet/Post/Patch: Ok(status, body), Unauthorized(code) on a 401,
+  Failed(Network) on a TransportException. THE REQUEST IS UNCHANGED: POST
+  /api/v1/auth/sign-out, one Authorization header, no body. HTTP_OK_MAX (used only
+  there) removed.
+- SessionManager.revokeServerSession() = attempt(ending = {}) { api.signOut(it) }.
+  So: 401 expired_token/rotated_token -> ONE refresh (the same single-flight
+  refresh, the same Mutex - a worker refreshing at the same moment cannot make the
+  sign-out replay) -> ONE retry with the new access token. A refused refresh, a
+  dead session's 401 (revoked_session/unknown_token: not refreshed, as on every
+  other call), a refresh the server could not answer, or a retry that meets a 401
+  - each stops there. Never more than one refresh and one retry: the structure is
+  `attempt`'s, which has no loop.
+- signOut() (the debug probe's) = revokeServerSession() then the NonCancellable
+  clear, unchanged.
+- THE ONE PARAMETER, `ending`: what a session found dead does. Every existing call
+  passes nothing and gets end() exactly as before (tokens cleared, onEnded told -
+  R520). The sign-out passes an empty one, because a sign-out the person asked for
+  is never a session the SERVER ended: firing onEnded there would record a
+  SessionEnds signal and run clearForSessionEnd while confirmSignOut's own wipe is
+  in flight - the shell could open sign-in on the FORCED path ("session closed by
+  the server, N days held") in the middle of the voluntary one. The local wipe that
+  follows is the one it always was (clearForSignOut, R295), in every case.
+- R210 is not weakened: a refresh with a replayed token is still refused by the
+  server, which revokes the whole session TOKEN_REPLAYED (tested below). The
+  client side of a replay on the sign-out path is the wipe, which is already the
+  strongest local answer.
+- Not touched: the controller, the wipe, any copy, any web file, the schema, /v1.
+  No new user-facing state, so no French was needed.
+STOP CONDITION CHECKED: the client HAD a reusable 401 path (`attempt`), and no new
+API shape was needed (no sign-out by refresh token) - so no STOP.
+
+================================================================================
+R707 - TESTS (RED, GREEN)
+================================================================================
+android/app/src/test/kotlin/ch/monreleve/app/auth/SignOutRefreshTest.kt (new).
+The fake transport is TokenServer (AN-TOKEN-RACE's: tokens.ts's rules, sessions
+with revokedReason, rotation, replay). A PhoneTransport in front records every
+request the phone sends as "METHOD /path credential" (the bearer, or the refresh
+token from the body), so each sequence proves the retry carried the NEW token.
+The phone is built as the app builds it: SessionManager with an onEnded that
+records into a SessionEnds, and ParametresController with revokeServer =
+session::revokeServerSession and a LocalStore spy; each case drives
+requestSignOut + confirmSignOut with nothing pending (AN-TALKBACK's case) and
+asserts "wiped" as: clearForSignOut ran once, AccountEvent.SignedOut emitted,
+SessionEnds count 0.
+  (a)  access expired -> [sign-out access-1, refresh refresh-1, sign-out access-2];
+       server revokedReason SIGNED_OUT; wiped.
+  (b)  refresh REFUSED (refresh token expired) -> [sign-out access-1, refresh
+       refresh-1]; nothing revoked (null); wiped.
+  (b') refresh is a REPLAY (another holder rotated first) -> [sign-out access-1
+       (rotated_token), refresh refresh-1]; server revokedReason TOKEN_REPLAYED
+       (R210); wiped.
+  (c)  retry also 401 (a revoke-all lands between rotation and retry) ->
+       [sign-out access-1, refresh refresh-1, sign-out access-2] and nothing
+       after; REVOKED_ALL; wiped.
+  (d)  happy path -> [sign-out access-1]; SIGNED_OUT; wiped.
+  (e)  dead session (revoked_session) -> [sign-out access-1] only, no refresh;
+       wiped.
+  (f)  SessionManager.signOut (the debug probe) -> the (a) sequence, SIGNED_OUT,
+       tokens cleared, SessionEnds 0.
+RED on 22b16bb (the test file alone; main sources untouched), `./gradlew
+:app:testDebugUnitTest --tests ch.monreleve.app.auth.SignOutRefreshTest`:
+    7 tests completed, 5 failed   BUILD FAILED in 1m 58s
+  (a), (b), (b'), (c), (f) FAILED, each for the SAME reason - "Missing elements
+  from index 1 ... but was: [POST /api/v1/auth/sign-out access-1]": the sign-out
+  was sent once, never refreshed. (d) and (e) passed on the base, as they must:
+  they pin behaviour that is unchanged, and are NOT evidence of the fix.
+GREEN on the fix, `--tests 'ch.monreleve.app.auth.*' --tests
+'ch.monreleve.app.parametres.*'`: BUILD SUCCESSFUL, 115 tests 0 failures 0 errors
+(SignOutRefreshTest 7/7; ForcedSignOutTest, TokenRaceTest, SessionManagerTest,
+SignOutNotCancellableTest, SignOutWipesOnRevokeFailureTest, ParametresAccountTest
+unchanged and green). `./gradlew fastCheck`: BUILD SUCCESSFUL in 2m 2s.
+The full gate: STATUS.
+TEST EDIT (DEVIATION 1): shared/src/commonTest/.../data/remote/CancellationTest.kt
+aTransportExceptionIsStillReportedAsANetworkFailure asserted
+`assertEquals(false, api.signOut("token"))`; signOut no longer returns a Boolean,
+so it now asserts `api.signOut("token") is AuthedResult.Failed` - the same claim
+(a transport failure is reported as a failure) in the new shape. The now-unused
+assertEquals import is removed. No other existing test changed.
+
+================================================================================
+R708 - PROVEN END TO END (both rows)
+================================================================================
+SETUP. Local stack only: `pnpm dev` from this worktree's web/ (its .env copied from
+C:/wt/an-launch-speech, pointing at frontalier-postgres :5436 `frontalier`;
+/api/health answered {"service":"monreleve",...}), `adb reverse tcp:3000
+tcp:3000`, both APKs `:app:assembleAudit -PfrontalierHost=127.0.0.1` built in this
+worktree, both signed ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1
+(= the installed app's signer; checked with apksigner BEFORE any install):
+  base 22b16bb  f4ea38ac002cba13ec5aefe2acb68978bfa298366629b8024df9db0f97e35a09
+  tip  61e5be2  a9893dd6facc324bebfe9824316aa0bf02e3ce742795e7f854db424cc17b55b8
+               (on-device sha256 after install = the same)
+ACCOUNT: an-signout-refresh.pilot@monreleve.test, signed in BY CODE through the
+real screens (Commencer -> address -> "Recevoir mon lien de connexion" -> six
+digits). R574: the code was read from dev.log into a scratch file by a script,
+typed one digit per field, the file deleted; never printed. Every capture during
+sign-in was a uiautomator dump whose driver MASKS every EditText's text before it
+is printed (the masking is in the dump function, so the first capture was masked);
+no screenshot was taken. No magic-link URL was printed. Onboarding (control run
+only - the tip run got the settings back from /me): name "Pilote Signout",
+Geneve, 100 %, simplified, whole days, whole year, manual, "Pas maintenant"
+(PATCH /me 200).
+THE TOKEN LIFETIME was NOT shortened: ACCESS_TTL_MS is a constant, no env reads
+it (DEVIATION 2). Each run waited the real fifteen minutes, with the phone on
+Parametres, "Se deconnecter" already on screen, and NO request in between (the
+dev log shows none) - so nothing refreshed the token by accident.
+
+ROW 1 - CONTROL, base 22b16bb:
+  DeviceSession cmvwgu3oa00024gv35vdc4o5z created 13:57:38.458 UTC
+  (access expires 14:12:38); last request 14:00 (GET dossier, on opening
+  Parametres); sign-out tapped and confirmed 14:14:08 UTC.
+  dev.log:   POST /api/v1/auth/sign-out 401 in 720ms        (nothing after it)
+  phone:     welcome screen ("Mon Releve / Vos jours de teletravail...") - wiped
+  database:  revokedAt NULL, revokedReason NULL             <- the defect
+
+ROW 2 - FIX, tip 61e5be2 (installed over the same data with install -r):
+  DeviceSession cmvwho1o400074gv3gagfs2d8 created 14:20:55.540 UTC
+  (access expires 14:35:55); last request 14:21 (GET dossier); sign-out tapped
+  and confirmed 14:36:40 UTC.
+  dev.log:   POST /api/v1/auth/sign-out 401 in 347ms
+             POST /api/v1/auth/refresh 200 in 344ms
+             POST /api/v1/auth/sign-out 200 in 85ms
+  phone:     welcome screen - wiped
+  database:  revokedAt 2026-10-31 14:36:43.245, revokedReason SIGNED_OUT
+
+DB AT END (14:37:12 UTC): User 2 (+ an-signout-refresh.pilot), Entry 0, EntryEvent
+0, DeviceSession 2 (1 live: the CONTROL's, left by design - it is the positive
+control's evidence), SessionToken 6 (the two sessions' pairs and rotations),
+VerificationToken 1, CodeAttempt 2, Session 0, _prisma_migrations 14.
+  - CodeAttempt 10 -> 2: the dev server's own scheduler at start-up
+    ("[code-attempts] older than 2026-10-30T13:47:59Z: considered 10, deleted 10"
+    - the product's purge-code-attempts job, not this session's code); the 2 are
+    this session's two code sign-ins.
+  - VerificationToken 1: an-signout-refresh.pilot@monreleve.testc - a TYPO
+    (DEVIATION 3): the first address typed got a stray "c" when a tap landed on
+    the keyboard; its magic link was requested (202), never used, expired 14:11.
+  - Nothing was deleted or edited by hand; no test:db or other DB-writing suite
+    ran against this database.
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (13:44 UTC, nothing changed yet): SM-G960F, Android 10, up 14 days, battery
+100 %, USB powered. ch.monreleve.app 0.1.0 (1), not debuggable, base.apk sha256
+d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034, signer
+ef336db5...e373d1 (pulled to evidence/before/installed-base.apk, same hash); app
+on its welcome screen (signed out). enabled_accessibility_services null,
+accessibility_enabled 0, touch_exploration_enabled 0, stay_on_while_plugged_in 0,
+auto_time 1, adb reverse empty, /data/local/tmp: dalvik-cache, detection.xml,
+s.xml, settings.xml (not this session's). Snapshots: settings secure/global/system
+450/298/425 lines, packages 503.
+DURING: stay_on_while_plugged_in 7 (to drive the screens); adb reverse tcp:3000.
+AFTER (14:37 UTC, restored and read back):
+  - `adb install -r evidence/before/installed-base.apk` -> Success; on-device
+    sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (=
+    before). The app's data: signed out, welcome screen - as found.
+  - stay_on_while_plugged_in 0; adb reverse --remove-all -> list empty;
+    accessibility null / 0 / 0; /data/local/tmp as before; the driver's
+    /sdcard/ui.xml and /sdcard/u.xml removed (absent).
+  - SETTINGS DIFF: secure IDENTICAL, global IDENTICAL; system differs in 4 keys,
+    none set by this session: screen_brightness 108 -> 3 and
+    auto_brightness_transition_time 0 -> 2050 (screen_brightness_mode=1, adaptive,
+    both times), tips_regular_hour_timer_{absolute,renewal}_count 2882 -> 2883 -
+    the system's own (AN-TALKBACK saw the same four).
+  - packages: IDENTICAL (503).
+  - Samsung's "Protection contre les appuis accidentels" overlay appeared three
+    times while driving (proximity sensor); it was dismissed by its own swipe, no
+    setting was changed for it.
+HOST: the dev server stopped (TaskStop, then this worktree's 2 orphan node
+processes killed; 0 remaining); port 3000: 0 listeners; 5436: 2 (control).
+
+================================================================================
+PARKED
+================================================================================
+UNNUMBERED-1 The control run's DeviceSession (an-signout-refresh.pilot,
+   cmvwgu3oa00024gv35vdc4o5z) stays unrevoked in the local database - it is the
+   positive control's evidence. Left as found by the control; revoke-all from a
+   later sign-in of that address would close it.
+UNNUMBERED-2 The access token's expiry is stored on the phone (accessExpiresAt) and
+   never read: every call spends one 401 round trip after fifteen idle minutes.
+   Refreshing ahead of a known-expired token would save it, but it is a behaviour
+   change on every call - not this task's.
+
+================================================================================
+DEVIATIONS
+================================================================================
+D1 CancellationTest.kt (:shared commonTest) - one assertion re-shaped from
+   `assertEquals(false, api.signOut(...))` to `is AuthedResult.Failed`, because
+   AuthApi.signOut's return type is now AuthedResult (R706). Same claim.
+D2 R708's "shorten its lifetime ONLY in your local server's env": there is no such
+   env - ACCESS_TTL_MS is a constant in web/lib/auth/tokens.ts. Rather than edit a
+   web file (even uncommitted), each run waited the real fifteen minutes. The
+   server was never altered.
+D3 A typo'd address (...@monreleve.testc) was requested once (a tap fell on the
+   keyboard); its VerificationToken expired unused and remains in the local DB.
+D4 R1's "full :app:gate green on its HEAD" is inherited (android/ unchanged since
+   33c3578), not re-run on 22b16bb; the gate ran on this branch's tip instead.
+D5 The voluntary sign-out's refresh path does NOT fire onEnded on a refused
+   refresh or a dead session, where every other call does - deliberately (R706's
+   "the local wipe proceeds exactly as today", and SessionEnds' rule that the
+   signal is the server's alone). Stated here because it is the one way the
+   sign-out's 401 path differs from the others'.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 The iOS cloud run (R573) is owed (:shared changed) - see PUSH PROOF. If GitHub
+   refuses it (repository PRIVATE, as for an-launch-speech), the branch must not
+   merge until it is run green.
+Q2 UNNUMBERED-1: revoke the control's local session by hand, or leave it?
+Q3 Should SPEC 10 / docs/api-v1.md say in one line that a client signs out with a
+   possibly expired access token and therefore refreshes first? (No doc was
+   changed here.)
+
+================================================================================
+PUSH PROOF
+================================================================================
+Pending push. Branch an-signout-refresh: code commit 61e5be2 on 22b16bb, then the
+report commit. To be pushed with `git push -u origin an-signout-refresh` (the branch
+only; never main, never production) once the full gate is green on the report commit.
+The iOS dispatch `gh workflow run ios-shared.yml --ref an-signout-refresh` is attempted
+after the push; `gh repo view` at writing: PRIVATE, so GitHub is expected to refuse it
+as it refused an-launch-speech's (run 40602671758) - if so it is NO RESULT, not a pass.
+
+END OF REPORT-AN-SIGNOUT-REFRESH
