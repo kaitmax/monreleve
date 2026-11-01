@@ -5288,3 +5288,138 @@ does not change the calculator page.
 
 STATE:      OPEN - the house Lighthouse gate is desktop; a mobile gate is a
 ruling.
+
+## PARK-CA1 - the comparator's year stays a select, not the A2 two-option toggle  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  R730 asks for the comparator's year as a two-option toggle, "REAL,
+as today". The prompt's hard boundary says every existing unit test passes
+UNEDITED in its assertions. tests/unit/pages/comparateur.test.tsx line 91
+reads the default year as `getByLabelText(COPY.form.year.label).value` - a
+property a radio group, a fieldset or a group of buttons does not have - and
+lines 73-82 require that NO comparator control carries a `name` (R658's
+zero-storage rule), so radios could not even be grouped natively. Both
+cannot hold with a toggle.
+
+TAKEN:     The select stays, with its label, its value, its options from the
+data's years and FieldGroup's frame. The two pieces of the boundary that are
+about logic (the year handling and zero storage) are untouched.
+
+NOT TAKEN: Rewriting line 91 to query a radio. Switching costs a
+SegmentedChoice without names (buttons with aria-pressed, as the canvas
+draws them) and one edited assertion - the operator's call.
+
+STATE:      OPEN - a ruling on whether line 91 may be re-pointed at a toggle.
+
+## PARK-CA2 - the calculator draws no projection card; /resultat does  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  calculateur-a2 draws a "Projection" card in the calculator's result
+column. R343 (named in the prompt's hard boundary as unchanged) decided the
+island CARRIES the rhythm but never draws the projection: it is rendered by
+the server on /resultat, because the calculator route has the least
+first-load headroom in the product.
+
+TAKEN:     The island keeps R343's line ("Votre projection apparait avec le
+resultat.") under the result card, only when a day is checked. /resultat
+draws the full projection as an A2 ResultCard with its "Projection" pill and
+its unchanged assumptions (R727).
+
+NOT TAKEN: Computing the projection in the island - a logic and budget
+change, both out of scope.
+
+STATE:      OPEN - for the task that reconsiders R343.
+
+## PARK-CA3 - the result card keeps all seven slots in their order  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  The canvas shows the rate, then a status sentence, a rail and TWO
+tiles. The panel's order is SPEC 9.3's and is asserted
+(tests/unit/pages/result-panel-order.test.tsx: badge, rate, rail, tiles,
+warnings, legal, link) and result-panel-tiles.test.tsx asserts FOUR tiles.
+
+TAKEN:     Restyled, not reduced: the status badge (ZoneBadge - words and an
+icon, never colour alone) above the rate, the rate with its caption and, when
+it diverges, the raw rate, the existing rail, four bordered tiles (the two
+"jours restants" first), the warnings, the legal note and the contextual
+link.
+
+NOT TAKEN: Dropping the Swiss and French taxed-day tiles or moving the status
+under the rate - both would edit asserted behaviour.
+
+STATE:      OPEN - a design question, not a defect.
+
+## PARK-CA4 - no brand-soft on the web, so no pale-blue fills  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  The canvases fill the year badge, the selected chip, the verdict
+line and the rail's first band with a pale brand blue (#EAF0F7). The web
+token set has no such role (PARK-HA6's finding); adding a token is an
+ask-first item (SPEC 20) and the rail variant is out of scope (the prompt).
+
+TAKEN:     The year badge is brand text on a surface pill with a hairline; a
+checked chip and a selected segment are brand-FILLED (a difference of shape
+and luminance, not of hue alone); the case sentence carries a brand rule on
+the surface; the rail is the existing ThresholdRail.
+
+NOT TAKEN: Borrowing --colour-info-soft or --colour-france-soft by value
+(R344).
+
+STATE:      OPEN - a token ruling.
+
+## PARK-CA5 - the calculators' baselines stay at 1440 and 390, not 375  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  R735 names 1440 and 375. Every page baseline in the product is
+1440 and 390 (R127; PARK-HA9 for the home page).
+
+TAKEN:     1440 and 390, the house pair, for every new and regenerated
+calculator, /resultat and comparator baseline. 375 and 320 were driven by
+hand for the report (screenshots, overflow measured).
+
+STATE:      OPEN - with PARK-HA9.
+
+## PARK-CA6 - ports 3100 and 3200 were held by another project  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  The orchestrator named FRONTALIER_PORT=3100, then 3200. During this
+session another project (tizicorp) published 3100 from its container and
+later served on 3200 with its own next start.
+
+TAKEN:     Ours moved, theirs untouched (CLAUDE.md's port rule): every gate,
+e2e and Lighthouse run used FRONTALIER_PORT=3400, free each time, and
+R169's health check named this product before every run.
+
+STATE:      CLOSED - recorded.
+
+## PARK-CA7 - the calculator's first-load headroom is 0.1 KiB  [FW-CALCS-A2, 2026-10-31]
+
+QUESTION:  GATE A is 125.0 KiB. The calculator stood at 124.4 (0.6 spare) on
+33abf79. The A2 work first measured 125.1 - a breach by 0.1 - from three
+sources: the island's new shared controls (Stepper, SegmentedChoice, Chip),
+the shell's aria-current (usePathname, on every route), and the page's own
+CSS-module class map, which ships in the client chunk even though page.tsx
+is a server component.
+
+TAKEN:     The island draws its two result regions with ResultCard's frame by
+a SCSS mixin (lib/ui/react/ResultCard/_frame.scss) instead of importing the
+component, and the page styles the explanation band's children by position
+instead of eleven classes. Measured after: 124.9 KiB, A 0.1 spare, B 0.7.
+
+NOT TAKEN: Dropping aria-current, or any control the design asks for.
+
+STATE:      OPEN - the next calculator change has 0.1 KiB. Worth a ruling on
+GATE A for this route, or a budget task (e.g. the page's class map).
+
+## PARK-CA8 - HomeCounter's sweep times out under coverage on this machine  [FW-CALCS-A2, 2026-11-01]
+
+QUESTION:  lib/ui/react/HomeCounter/HomeCounter.test.tsx drives both sliders
+through 11 421 positions (FW-HOME-A2, R711) inside vitest's 300 s test
+timeout. On this machine, under memory pressure (another project's WSL VM
+held 6-7.7 GB), it took 343 s and 326 s under `pnpm gate`'s test:coverage on
+cb28c33 (2.17 and 2.78 GB free), 489 s under `pnpm gate` on 33abf79 (main),
+and 334 s / 361 s in two plain-vitest gate:changed runs. It passed in
+gate:changed at 21:57 (plain vitest) and alone on main in 230 s.
+
+TAKEN:     Nothing changed. The component and its test are FW-HOME-A2's and
+untouched here; each timeout is recorded as NO RESULT (R391), never as a pass
+or a fail. No test, vitest config or gate config was edited.
+
+NOT TAKEN: Raising the timeout, splitting the sweep or skipping it under
+coverage - each a change to a test this task does not own.
+
+STATE:      OPEN - pre-existing; for the owner of R711's sweep.

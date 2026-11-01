@@ -1,0 +1,441 @@
+================================================================================
+REPORT-FW-CALCS-A2
+BOTH CALCULATORS IN THE STYLE OF THE NEW HOME PAGE, LOGIC UNTOUCHED
+================================================================================
+
+TASK    FW-CALCS-A2, relay/FW-CALCS-A2.txt read in full from the main checkout
+        (untracked there), plus the coordinator's three resume rulings
+        (recorded under DEVIATIONS).
+BASE    33abf79 (local main = origin/main 22b16bb + the two A2 artboards).
+BRANCH  fw-calcs-a2, worktree C:/wt/fw-calcs-a2 (R349), created by this
+        session, .session-lock.json (gitignored) written at the start. A
+        second worktree, C:/wt/fw-calcs-a2-before (detached at 33abf79, its
+        own lock), was created by this session for the BEFORE measurements
+        and R737's run on main. web/.env in both names a SCRATCH database,
+        fw_calcs_a2_scratch, created by this session on frontalier-postgres
+        (:5436) - never the shared `frontalier` database. Removal of the
+        locks, the second worktree and the scratch database is confirmed in
+        the handback, not claimed here.
+        PENDING MERGE - nothing is on main.
+
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+French in this file is transliterated (R155, R168); the accented originals
+are in web/lib/fr and in the handback.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Both calculators now read like the A2 home page: a page head, two columns
+(the form card; the result in a card that stays in view on a wide screen),
+the shared controls (stepper, segmented toggle, chips), the result card, an
+application card in brand colour, a white explanation band; the comparator
+with its irrevocability banner directly under the head, the two cost cards
+side by side, euros large with francs beneath, and its ten limits with bold
+leads. /resultat draws the same result column without JavaScript. No engine,
+data, codec, validation or copy-of-record changed: R737's figures test,
+committed and run on main first, passes unchanged on the branch.
+
+Commits on the branch (oldest first):
+  250921c  step 1 - R737's figures test alone, run on main first
+  cb28c33  step 2 - components, calculator, /resultat, comparator,
+           workbench, baselines (one gated commit, see DEVIATIONS)
+  (next)   step 3 - this report and PARK-CA1..CA7 in parking.md
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+Increments green under gate:changed (250921c, cb28c33). FULL GATE NOT RUN
+on this commit: gate:clone runs on it, alone, before the push - its
+result is not claimed here (PUSH PROOF).
+
+The gates, exactly as they ran (web-only branch; FRONTALIER_PORT=3400):
+  250921c  gate:changed EXIT 0 - typecheck, lint, test 3485 passed, build,
+           test:e2e 367 passed.
+  cb28c33  gate:changed EXIT 0 (01.11 21:57, 1.54 GB free) - typecheck 0,
+           lint 0, test 3537 passed, build 0, test:visual 151 passed,
+           test:e2e 367 passed, test:late 10 passed.
+  cb28c33  pnpm gate, twice: NO RESULT both times (R391), neither green nor a
+           failure. Each stopped at test:coverage on one test,
+           HomeCounter's 11 421-position sweep timing out under coverage:
+             01.11 22:24, 2.17 GB free: 343 s > 300 s; 3536 of 3537 passed
+             01.11 22:31, 2.78 GB free: 326 s > 300 s; 3536 of 3537 passed
+           The coordinator ruled that the full-gate proof for a web-only
+           branch is gate:clone on the tip (its test step is plain
+           `pnpm test`); `pnpm gate` was R1's BEFORE instrument. PARK-CA8.
+  After cb28c33 (plain `pnpm build`): pnpm size - all gated routes pass.
+  Earlier NO RESULTs, same test, same cause: 33abf79's BEFORE gate (489 s),
+  and two gate:changed runs on the tree before cb28c33's final shape (334 s,
+  361 s) - after which the coordinator's "twice" rule paused the session.
+
+MEMORY (the coordinator's rule, changed twice): heavy steps one at a time,
+no Gradle running, at >= 6 GB free (until 16:15, 31.10), >= 3 GB (until
+20:07), then >= 1.5 GB. 318 samples are logged; >= 3 GB was seen 5 times,
+>= 1.5 GB 111 times. The reading before each heavy step since 20:07:
+31.10 20:16 1.52, 20:27 2.20, 20:45 1.97, 20:58 2.18, 21:07 1.78, 21:33 1.73,
+21:37 1.69, 21:42 2.16, 21:45 2.69, 22:00 1.68; 01.11 21:44 2.50, 21:57 1.54,
+22:19 2.15, 22:21 2.45, 22:24 2.17, 22:31 2.78, then the readings in PUSH
+PROOF. Gradle never ran during a heavy step. The memory was held by another
+project's WSL VM (6 to 7.7 GB) - not touched.
+
+--------------------------------------------------------------------------------
+R273 - READ
+--------------------------------------------------------------------------------
+docs/design/calculateur-a2.dc.html and comparateur-lamal-a2.dc.html in full
+(both on 33abf79, committed by the operator), docs/design/home-a2.dc.html,
+REPORT-FW-HOME-A2 (tokens, components, R709/R720 readings on fonts and radii,
+PARK-HA6/HA9), REPORT-FW-COMPARATEUR (R655-R663, ruling numbers), the token
+layer (lib/ui/core/styles/tokens.scss) and DESIGN-SYSTEM's radius set, both
+pages' code (page.tsx, CalculatorForm.tsx, ResultPanel.tsx, resultat/page.tsx,
+resultat/Projection.tsx, ComparatorForm.tsx, Comparison/*), their copy
+(lib/fr/calculateur.ts, lamal.ts, home.ts, sources.ts) and the tests that pin
+them (calculateur*.test.tsx, result-panel-*.test.tsx, page-section-order,
+singletons, comparateur.test.tsx, product-state.test.ts, contrast.test.ts,
+island-harness, both visual specs).
+REPORT-FW-COMPARATEUR-SURFACE DOES NOT EXIST: the operator asked for this
+session before fw-comparateur-surface was written or run. The dependency it
+was to provide - the "Comparateur LAMal / CMU" link in the Calculateurs menu -
+is already on main (lib/fr/shell.ts), so this task only marks aria-current.
+
+--------------------------------------------------------------------------------
+RULINGS (R162) AND PARK SERIES
+--------------------------------------------------------------------------------
+Scanned relay/*.txt, REPORT-*.txt, parking.md, CLAUDE.md, git log --all and
+every C:/wt/*/REPORT-*.txt. R724-R737 appear only in this prompt, except R734,
+which REPORT-FW-COMPARATEUR records as "taken elsewhere" (28.10, before this
+prompt existed). R738-R760: no use.
+  R724-R733, R735-R737  as the prompt numbers them
+  R734 -> R738          responsive and accessible
+Park series CA: register-coverage.mjs on 33abf79 printed "two letters FT HA IA
+IB PI ... phantom citations: FW ZZ"; CA is in neither list.
+
+--------------------------------------------------------------------------------
+DEVIATIONS FROM THE DESIGNS, AND WHY
+--------------------------------------------------------------------------------
+Not binding, as fw-home-a2 read R709 and this prompt repeats: the canvases'
+80 px rate (RateDisplay's display token, 48/56), 48 px h1 (hero 40/48), pills
+for buttons and inputs (radius md), the 20 px card radius is radius xl (the
+token), the 16 px form card radius lg.
+Binding, and departed from - each recorded:
+ 1. CALCULATOR RESULT CARD keeps SPEC 9.3's seven slots in their asserted
+    order: the status badge ABOVE the rate (ZoneBadge: words and an icon),
+    the rate with the raw rate when it diverges, the existing rail, FOUR
+    bordered tiles (the two "jours restants" first), warnings, legal note,
+    contextual link. The design shows status under the rate and two tiles.
+    PARK-CA3.
+ 2. NO PROJECTION CARD ON THE CALCULATOR: R343 keeps the projection out of
+    the island (budget); the island keeps R343's line under the result, only
+    when a day is checked. /resultat draws the projection as an A2 card with
+    its "Projection" pill. PARK-CA2.
+ 3. NO PALE-BLUE FILLS: the web has no brand-soft token (PARK-HA6). The year
+    badge is brand text on a surface pill; selected segment and checked chip
+    are brand-filled; the comparator's case sentence has a brand rule on the
+    surface; the rail is the existing ThresholdRail (success / warning /
+    error bands) - the prompt's "brandSoft" band does not exist. PARK-CA4.
+ 4. THE COMPARATOR'S YEAR STAYS A SELECT (R730's toggle not built):
+    comparateur.test.tsx:91 reads `.value` off the labelled control and
+    :73-82 forbid a `name` on any comparator control; the operator ruled
+    (resume message, Q2): keep the select, do not edit the assertion.
+    PARK-CA1.
+ 5. THE DESIGN'S "Estimation indicative ..." LINE under the app card is not
+    added: the panel's LegalNote already carries the standing disclaimer
+    (R112: once). Only the /sources link moved there (R113).
+ 6. THE ADVANCED DISCLOSURE keeps its button and its label "Options
+    avancees"; the canvas's longer summary would be new copy. Restyled in
+    brand.
+ 7. THE CAPTURE CARD (AlertCapture), the share row, the link notice and the
+    provisional notice are not in the canvas; all stay, in their R137 order
+    (link notice and share row under the form, provisional notice above the
+    result, capture card after the two columns).
+ 8. THE EXPLANATION BAND keeps the third paragraph (missions) the canvas
+    drops; its threshold names are paragraphs, not h3 (the page's outline is
+    h1/h2, calculateur.test.tsx).
+ 9. THE COMPARATOR'S ATTRIBUTION, priminfo link and legal line move from
+    inside the Swiss card to below the case sentence, as the canvas sets them
+    (R664's attribution is still under the Swiss figures). The franc totals
+    stay one per row, under each euro total, rather than the canvas's new
+    "En francs, par an : ..." sentence (new copy).
+10. THE COMPARATOR'S EMPTY STATE: no result card until a comparison (as
+    today); the form keeps the narrow measure until then.
+11. BASELINES at 1440 and 390, not 375 (R127, PARK-HA9). PARK-CA5.
+12. PORT: 3100 and later 3200 were published by another project
+    (tizicorp); every run used 3400. PARK-CA6.
+13. THE SHELL'S CURRENT LINK carries aria-current="page" and NO style:
+    styling it changed the header on every page the nav lists (/guides,
+    /tarifs, /releve-annuel), against R735's "every other baseline
+    untouched". The canvas's underline is not drawn.
+
+--------------------------------------------------------------------------------
+NEW COPY (verbatim, transliterated; accented in lib/fr/calculateur.ts
+CALCULATOR_APP_CARD and in the handback)
+--------------------------------------------------------------------------------
+heading   Votre teletravail, jour par jour
+body      [trackerExists false, today]
+          Vous declarerez chaque journee en un geste ; l'application tiendra
+          le compte, et chaque journee sera horodatee par le serveur.
+          [trackerExists true]
+          Vous declarez chaque journee en un geste ; l'application tient le
+          compte, et chaque journee est horodatee par le serveur.
+link      HOME_COPY.mobile.cta(PRODUCT_STATE) -> SHELL_COPY.ctaHref
+          ("Decouvrir l'application" -> /application while appExists is false)
+The body keys on trackerExists, the flag the home page's application body
+uses for the same claim; product-state.test.ts's claim scan flagged it as
+"server timestamping, asserted as happening" until it was wired there (one row
+added to the trackerExists table, no assertion edited). Its own export, not a
+key of CALCULATEUR_COPY: the island imports that object, so a key would ship
+in the calculator's bundle.
+Workbench captions (lib/fr/workbench.ts): calcs.title, stepper, stepperError,
+toggleFirst, toggleSecond, toggleThree, chips, cardSurface, cardBrand;
+comparison.panel.
+
+--------------------------------------------------------------------------------
+R733 - THE SHARED PIECES (lib/ui/react), each with a unit test
+--------------------------------------------------------------------------------
+Stepper          the field between - and +, one frame; the caller owns the
+                 input (name, value, arithmetic); focus/invalid drawn on the
+                 frame. Calculator (rate, days, both mission fields).
+SegmentedChoice  a radio group painted as segments; real radios with their
+                 SPEC 9.4 names (missions, methode, decompte), so the no-JS
+                 GET form still carries them. Calculator (three groups).
+Chip             a checkbox painted as a chip, name `rythme`. Calculator.
+Notice           the error-style banner: full error border, soft fill,
+                 TriangleAlert, heading, text-primary. Comparator
+                 (IrrevocabilityBanner now renders it).
+ResultCard       the card frame, surface or brand; passes id/aria/data
+                 through. AppCard (brand), /resultat projection, the
+                 comparator's two cost cards. Its frame is also a SCSS
+                 mixin (_frame.scss) that the calculator island includes on
+                 its two result regions instead of importing the component
+                 (R736, PARK-CA7) - one definition of the look.
+The Stepper and SegmentedChoice tests were proven to fire by planting a
+fault (a removed `name`, a removed type="button"), each plant verified and
+reverted (R180). Every one is imported by /dev/island (R122) and has a
+workbench specimen in each state, on /dev/composants-a2 (see R735).
+Also: PublicShell marks aria-current="page" on the nav links to the current
+path (desktop and mobile), weight + underline; aria-current.test.tsx, with a
+positive control.
+
+--------------------------------------------------------------------------------
+R1 - THE BEFORE (33abf79, worktree C:/wt/fw-calcs-a2-before, port 3400)
+--------------------------------------------------------------------------------
+pnpm gate (31.10, 16:16): [clean-worktree] OK; suite floor OK (202 files);
+  typecheck, lint, coverage run: 3484 passed, 1 failed - HomeCounter's
+  11 421-position sweep TIMED OUT (489 s > 300 s) under memory pressure =
+  NO RESULT, the gate stopped there. Re-run alone: 9/9 passed (230 s).
+  The gate's remaining steps were then run by hand: pnpm build, pnpm size,
+  pnpm parity:check - EXIT 0 ("All gated routes pass both gates";
+  "11 codepoint cases and 10001 exhaustive values: all identical").
+gate:clone on 33abf79: NOT RUN, by the coordinator's ruling. 33abf79 is
+  22b16bb plus two documents; 22b16bb is origin/main, gate:cloned before its
+  push, and this branch's own gate:clone contains both files:
+    $ git diff --stat 22b16bb 33abf79
+     docs/design/calculateur-a2.dc.html       | 221 +++++++++++++++++++++++++++++++
+     docs/design/comparateur-lamal-a2.dc.html | 200 ++++++++++++++++++++++++++++
+     2 files changed, 421 insertions(+)
+R737 on main: 14 passed (see R737 below).
+Lighthouse and first-load JS: under R736 below.
+
+--------------------------------------------------------------------------------
+R735 - BASELINES, NAMED BEFORE RECORDING (R207)
+--------------------------------------------------------------------------------
+The expected set was written to a file before the first regeneration: 57
+files, all produced, every regeneration compared against it.
+  calculator, 1440 and 390 (calculateur-<id>-desktop|mobile.png), 28:
+    regenerated  vide faq-ouverte rempli erreur panneau-conforme
+                 panneau-regime-perdu panneau-bascule-sociale
+                 panneau-avis-provisoire lien-partage capture-succes
+                 capture-erreur lien-invalide
+    new          missions-ouvertes projection
+  /resultat, new (resultat-<id>-desktop|mobile.png), 4: resultat invalide
+  comparator (comparateur-<id>-desktop|mobile.png), 14:
+    regenerated  vide rempli (the household with a child) inferieur
+                 superieur erreur
+    new          adulte-seul (R737's sample) plancher (the floored case)
+  workbench (composants-<id>.png), 11:
+    regenerated  comparison-banner comparison-refusal (the missing-year
+                 refusal: no reader can reach it on the page)
+    new          calcs-stepper calcs-stepper-error calcs-toggle-first
+                 calcs-toggle-second calcs-toggle-three calcs-chips
+                 calcs-card-surface calcs-card-brand comparison-panel
+"With a projection": the calculator's state is R343's line under the result
+(PARK-CA2); the projection card itself is pictured by the brand/surface
+ResultCard specimens - a /resultat baseline with a projection would change
+every day (it counts the working days left from today).
+1440 and 390, not 375: PARK-CA5.
+
+OUTSIDE THE NAMED SET, AND COMMITTED FOR THE OPERATOR'S RULING (QUESTIONS):
+six workbench specimens of components this task does not touch.
+  composants-shell-desktop.png            69 px differ, max channel delta  6
+  composants-home-counter-compliant.png   83 px differ, max channel delta  1
+  composants-home-counter-social.png      36 px differ, max channel delta  1
+  composants-home-faq-pair.png            59 px differ, max channel delta 17
+  composants-home-phone-android.png      455 px differ, max channel delta 27
+  composants-home-phone-iphone.png       396 px differ, max channel delta 27
+Same dimensions as HEAD; the differences sit on rounded corners and glyph
+edges (faq-pair at (1,9) and (1229,9); the shell's at the wordmark, row 73).
+CAUSE, measured by placement: the two comparison specimens sit above them on
+/dev/composants and changed height with the A2 restyle, which moves every
+specimen below by a fraction of a pixel and re-antialiases its edges.
+  run 1  comparison in place, A2 specimens appended        -> these 6
+  run 2  comparison moved to the end, A2 specimens after   -> 5 of them
+  run 4  comparison in place (page = HEAD), A2 specimens on
+         their own page /dev/composants-a2                 -> these 6
+R207 stopped runs 1 and 2; nothing was committed from them. Run 4's layout
+is the one committed: /dev/composants is byte-for-byte HEAD's page and the
+only change on it is the restyle of its own two comparison specimens.
+Every pre-existing baseline outside the calculators, the comparator and
+these six passes untouched (test:visual 151 passed, cb28c33).
+A flake, recorded: in one gate run calculateur-panneau-avis-provisoire-
+desktop failed once and passed on its retry ("1 flaky"); the next three
+visual runs passed it first time.
+
+--------------------------------------------------------------------------------
+R736 - THE BUDGETS, BEFORE AND AFTER
+--------------------------------------------------------------------------------
+First-load JS, gzip, `pnpm size` after a plain `pnpm build`:
+                                               BEFORE   AFTER   GATE A spare
+  /calculateur-teletravail-frontalier          124.4    124.9   0.1 (B 0.7)
+  /calculateur-lamal-cmu                       116.8    117.1   7.9
+  /calculateur-teletravail-frontalier/resultat 109.5    109.8   15.2
+  /                                            113.8    114.0   11.0
+The first AFTER measurement was 125.1 KiB on the calculator - a GATE A
+breach by 0.1 (R2), found AFTER a green gate:changed (which does not select
+size). Fixed before committing: the island draws its two result regions with
+ResultCard's frame as a SCSS mixin rather than importing the component, and
+the page's explanation band is styled by position - its CSS-module class
+map ships in the client chunk although page.tsx is a server component. The
++0.2 KiB on every route is the shell's aria-current. PARK-CA7.
+Lighthouse 12.6.1, both routes, 3 runs each, median (scratch script, the
+house config covers neither route): perf / a11y / bp / seo, LCP, CLS
+  BEFORE desktop calculator   100/100/100/100   572 ms   0.0002
+  BEFORE desktop comparator   100/100/100/100   576 ms   0.0001
+  BEFORE mobile  calculator    91/100/100/100  2409 ms   0
+  BEFORE mobile  comparator    90/100/100/100  2376 ms   0.0138
+  AFTER  desktop calculator   100/100/100/100   597 ms   0
+  AFTER  desktop comparator   100/100/100/100   605 ms   0
+  AFTER  mobile  calculator    95/100/100/100  2367 ms   0
+  AFTER  mobile  comparator    97/100/100/100  2318 ms   0
+Mobile is Lighthouse's default simulated slow 4G: the calculator's LCP stays
+under 2.5 s (2367 ms). Machine under memory pressure throughout; the
+differences are within sampling.
+
+--------------------------------------------------------------------------------
+R737 - IDENTICAL FIGURES
+--------------------------------------------------------------------------------
+web/e2e/calcs-figures.spec.ts, committed alone as 250921c before any page
+changed. Literals are the engine's and lib/lamal's outputs for the inputs,
+computed directly; copy is read from its constants. Fourteen tests:
+  calculator  94/240 typed into the form: 39,16 % (raw 39,2 %), tiles
+              2 / 25,5 / 240 / 0, compliant, A1_REQUIRED;
+              four links, each on the island AND on /resultat:
+              Geneva case (c) GE tt=84 mfr=24 dj -> 39,16 % (raw 45,0 %),
+              2 / 25,5 / 226 / 14, mission-exposure, MISSION_CAP_EXCEEDED,
+              MISSIONS_EXCEED_HEADROOM, A1_REQUIRED; VD 80 % 40 days ->
+              20,83 %; GE exact 220 / 62 -> 28,18 %; GE 130 -> 54,16 %,
+              social-switch; /resultat refusing 50,5 under whole days.
+  comparator  1985, 42 000 EUR, 2027 -> 2 511,60 / 5 871,60 / 9 877,20 CHF
+              = 2 718 / 6 355 / 10 691 EUR, French 2 382 EUR, below,
+              announced; 1985 + 2016, 73 519 EUR -> 4 904 EUR, depends;
+              12 000 EUR -> 0 EUR floored; 2026 -> 2 399 EUR, final PASS.
+Run on main (33abf79): 14 passed - after one literal was corrected in both
+copies identically: the exact-method case lists its warnings in the panel's
+WARNING_ORDER (A1_REQUIRED first), not the engine's emission order.
+Run on the branch: inside test:e2e's 367 passed in cb28c33's gate:changed.
+
+--------------------------------------------------------------------------------
+R738 (the prompt's R734) - RESPONSIVE AND ACCESSIBLE
+--------------------------------------------------------------------------------
+Horizontal overflow measured (scrollWidth - innerWidth) on the calculator
+(with a result), the comparator (with a result) and /resultat at 1440, 375
+and 320: 0 everywhere, before and after. The two columns stack below the md
+breakpoint, the result after the form; the comparator's two cards stack.
+jest-axe: accessibility-calculateur (49) and comparateur.test.tsx's four axe
+cases pass unedited. Focus order is DOM order and the DOM order is R137's
+(asserted by page-section-order.test.tsx, unedited). The result regions keep
+their polite live regions (two on the calculator, as calculateur.test.tsx
+asserts; the comparator's data-result-region). Touch targets: steppers 44
+wide x 48, segments and chips min 44 high, the comparator's buttons 44.
+prefers-reduced-motion: the only new motion is none; the disclosure
+chevron's existing rotation is now switched off under reduced motion.
+The segments and chips are real radios and checkboxes at zero opacity over
+their labels, with the focus ring drawn on the label (:has(:focus-visible)).
+
+--------------------------------------------------------------------------------
+SCREENSHOTS
+--------------------------------------------------------------------------------
+Committed: every baseline above (1440 and 390). Driven for the report (not
+committed): before-/after-{calculateur,comparateur,resultat}-{1440,375,320}
+.png from a production build on port 3400, kept in the BEFORE worktree's
+handoff/shots folder. Read at 1440: the form card beside the result card,
+the brand application card under it; the comparator's banner across the
+page, form beside the two cost cards. At 375 and 320 everything stacks.
+
+--------------------------------------------------------------------------------
+PARKED (series CA, parking.md; register-coverage.mjs below)
+--------------------------------------------------------------------------------
+PARK-CA1  the comparator's year stays a select (comparateur.test.tsx:91 and
+          :73-82; the coordinator ruled: keep it, do not edit the assertion)
+PARK-CA2  no projection card in the calculator's island (R343); /resultat
+          draws it
+PARK-CA3  the result card keeps its seven asserted slots and four tiles
+PARK-CA4  no brand-soft token on the web: no pale-blue fills
+PARK-CA5  baselines at 1440 and 390, not 375 (R127, PARK-HA9)
+PARK-CA6  ports 3100 and 3200 held by another project; runs on 3400
+PARK-CA7  the calculator's first-load headroom is 0.1 KiB
+PARK-CA8  HomeCounter's sweep times out under coverage on this machine
+With the entries written, node web/scripts/register-coverage.mjs printed:
+  two letters CA FT HA IA IB PI ... phantom citations: FW ZZ
+  register coverage: OK - 213 cited id(s) across 142 report(s), all have
+  headings in parking.md
+
+--------------------------------------------------------------------------------
+DEVIATIONS (from the prompt and its process, not the design)
+--------------------------------------------------------------------------------
+1. REPORT-FW-COMPARATEUR-SURFACE does not exist: the operator ran this task
+   first. The header link it was to add is already on main.
+2. MEMORY THRESHOLD: the orchestrator's rule was 6 GB free; the coordinator
+   lowered it to 3 GB, then to 1.5 GB, because another project held the
+   memory (STATUS). The session paused three times for it.
+3. BEFORE gate:clone on 33abf79 NOT RUN, by the coordinator's ruling (R1
+   above, with the diff stat).
+4. BEFORE `pnpm gate` stopped at HomeCounter's NO RESULT; its build, size and
+   parity steps were run by hand afterwards (R1).
+5. COMMITS GROUPED (the coordinator's ruling on R132): three commits instead
+   of one per section - the R737 spec; all code and baselines; this report.
+   Each gated by gate:changed before it landed. To gate the spec alone, the
+   rest of this session's own uncommitted work was held in a git stash
+   (backed up to a tar first, diffed equal after the restore).
+6. PORT 3400, not 3100 or 3200 (PARK-CA6).
+7. R734 RENUMBERED to R738 (RULINGS above).
+8. THE PROMPT'S ORDER - step 1 committed before the components were written -
+   was not kept: the pages were authored while the session waited for
+   memory, then stashed so that step 1 was gated and committed alone, on
+   main's code. R737's run on main happened in the BEFORE worktree, on
+   33abf79 itself.
+9. TEST-FIRST: the five new components were written before their tests; each
+   test was then shown to fire by a verified plant (R180).
+
+--------------------------------------------------------------------------------
+QUESTIONS (for the operator, at merge)
+--------------------------------------------------------------------------------
+Q1. R735, "every other baseline passes untouched": six workbench baselines
+    of components this task does not touch changed by sub-pixel
+    antialiasing, cause measured (R735 above):
+      composants-shell-desktop           69 px, max delta  6
+      composants-home-counter-compliant  83 px, max delta  1
+      composants-home-counter-social     36 px, max delta  1
+      composants-home-faq-pair           59 px, max delta 17
+      composants-home-phone-android     455 px, max delta 27
+      composants-home-phone-iphone      396 px, max delta 27
+    Accept them, or rule another arrangement of the workbench.
+Q2. PARK-CA1 - may comparateur.test.tsx:91 be re-pointed so the year can be
+    the A2 two-option toggle?
+Q3. PARK-CA2 to CA5 - the four design deviations, as built.
+Q4. PARK-CA6 to CA8 - the port, the 0.1 KiB headroom (a GATE A ruling for
+    this route, or a budget task), and HomeCounter's coverage-mode timeout.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+gate:clone on this commit runs after the commit exists, so its verdict
+cannot be in it. It is recorded in the next commit, which carries only this
+section, or in the handback.
