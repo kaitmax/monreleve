@@ -1,46 +1,98 @@
+@use "../../../lib/ui/core/styles/breakpoints" as bp;
+
 // web/app/(public)/calculateur-lamal-cmu/comparateur.module.scss
 //
-// Tokens only (R8, R62). The comparator borrows the calculator's shape - a
-// narrow container, a card with the fields, the result below and never
-// replacing it - and its values, so the two tools read as one product.
+// Tokens only (R8, R62). FW-CALCS-A2 (R729-R732): comparateur-lamal-a2's
+// arrangement - the head, the banner, two columns (the form card, the
+// result), then the white "ne compare pas" band - with the design system's
+// type scale and radii, as the calculator and the home page use them.
 
 .page {
-  padding-top: var(--space-16);
-  padding-bottom: var(--space-20);
+  padding-top: var(--space-12);
+  background: var(--colour-canvas);
+}
+
+// ------------------------------------------------------------------- head
+
+.head {
+  margin-bottom: var(--space-6);
 }
 
 .title {
+  max-width: var(--layout-narrow);
   margin: 0 0 var(--space-3);
-  font-size: var(--type-h1-size);
-  font-weight: var(--type-h1-weight);
-  line-height: var(--type-h1-line);
+  font-size: var(--type-hero-size);
+  font-weight: var(--type-hero-weight);
+  line-height: var(--type-hero-line);
 }
 
 .lead {
-  margin: 0 0 var(--space-8);
+  max-width: var(--layout-article);
+  margin: 0;
+  color: var(--colour-text-secondary);
   font-size: var(--type-body-l-size);
   font-weight: var(--type-body-l-weight);
   line-height: var(--type-body-l-line);
 }
 
-// ---- the form ------------------------------------------------------------
+.note {
+  max-width: var(--layout-article);
+  margin: var(--space-3) 0 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// -------------------------------------------------------------- two columns
+
+// R729. The form and the result side by side from the md breakpoint, the
+// result after the form below it. Until there is a result the region is
+// empty - still in the page, so it announces what arrives (aria-live) - and
+// the form keeps the narrow measure rather than half a page beside nothing.
+.layout {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  padding-bottom: var(--space-16);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+  }
+}
+
+@media (width >= bp.$breakpoint-md) {
+  .layout:has(.result:empty) {
+    grid-template-columns: minmax(0, var(--layout-narrow));
+  }
+}
+
+.result {
+  min-width: 0;
+}
+
+// ---- the form card ---------------------------------------------------------
 
 .form {
-  margin: 0 0 var(--space-8);
+  min-width: 0;
+  margin: 0;
   padding: var(--space-6);
   border: var(--size-input-border) solid var(--colour-border-default);
   border-radius: var(--radius-lg);
   background: var(--colour-surface);
+
+  @media (width >= bp.$breakpoint-md) {
+    padding: var(--space-8);
+  }
 }
 
 .form > * + * {
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
 }
 
 .formHeading {
   margin: 0;
   font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
+  font-weight: var(--weight-bold);
   line-height: var(--type-h3-line);
 }
 
@@ -49,9 +101,12 @@
   width: 100%;
 }
 
+// R730: the EUR suffix inside the field's frame, as the design draws it.
+// The input keeps FieldGroup's own frame and states; the suffix sits beside it
+// in secondary text, so nothing about the field's focus or error drawing moves.
 .amountField {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: center;
 }
 
@@ -66,6 +121,7 @@
 .suffix {
   color: var(--colour-text-secondary);
   font-size: var(--type-body-size);
+  font-weight: var(--weight-semibold);
   line-height: var(--type-body-line);
 }
 
@@ -79,9 +135,9 @@
 
 .legend {
   padding: 0;
-  font-size: var(--type-body-l-size);
+  font-size: var(--type-label-size);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-body-l-line);
+  line-height: var(--type-label-line);
 }
 
 .helper {
@@ -93,14 +149,21 @@
 }
 
 .personList {
-  margin: var(--space-4) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-4);
   padding: 0;
   list-style: none;
 }
 
+// R730: one row per person, in a bordered box on the canvas, as the design
+// draws them: the year of birth, the accident cover, remove.
 .person {
-  padding: var(--space-4) 0;
-  border-top: var(--size-rule) solid var(--colour-border-default);
+  padding: var(--space-4);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-md);
+  background: var(--colour-canvas);
 }
 
 .checkRow {
@@ -116,6 +179,7 @@
   width: var(--icon-size-default);
   height: var(--icon-size-default);
   margin: 0;
+  accent-color: var(--colour-brand);
 }
 
 .checkLabel {
@@ -130,7 +194,7 @@
   gap: var(--space-2);
   align-items: center;
   min-height: var(--size-touch-target-web);
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-4);
   border: var(--size-input-border) solid var(--colour-border-strong);
   border-radius: var(--radius-md);
   background: var(--colour-surface);
@@ -139,6 +203,11 @@
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
   cursor: pointer;
+}
+
+.addButton {
+  color: var(--colour-brand);
+  font-weight: var(--weight-semibold);
 }
 
 .removeButton {
@@ -167,28 +236,48 @@
   cursor: pointer;
 }
 
-// ---- what the comparison leaves out ----------------------------------------
+// ---- what the comparison leaves out (R732) ---------------------------------
 
-.limits {
-  margin-top: var(--space-12);
+.band {
+  padding-block: var(--space-16);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  background: var(--colour-surface);
 }
 
 .limitsHeading {
-  margin: 0 0 var(--space-4);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-line);
+  margin: 0 0 var(--space-8);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
 }
 
+// Two columns from the md breakpoint, each item under a hairline.
 .limitList {
+  display: grid;
   margin: 0;
-  padding-left: var(--space-5);
+  padding: 0;
+  list-style: none;
+  column-gap: var(--space-10);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .limit {
-  margin: 0 0 var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0;
+  border-top: var(--size-rule) solid var(--colour-border-default);
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
+}
+
+.limitLead {
+  font-weight: var(--weight-semibold);
+}
+
+.limitRest {
+  color: var(--colour-text-secondary);
 }
 
 .links {

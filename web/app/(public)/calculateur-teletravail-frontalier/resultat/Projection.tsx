@@ -40,6 +40,7 @@ import { METRIC_COPY } from '@/lib/fr/metrics';
 import { formatPercent, formatSignedDays, zoneFor, type ZoneThresholds } from '@/lib/ui/core';
 import { MetricTile } from '@/lib/ui/react/MetricTile/MetricTile';
 import { RateDisplay } from '@/lib/ui/react/RateDisplay/RateDisplay';
+import { ResultCard } from '@/lib/ui/react/ResultCard/ResultCard';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import type { Projection as ProjectionData } from '@/lib/forecast/project';
 import styles from './projection.module.scss';
@@ -73,7 +74,9 @@ export function Projection({
   const zone = zoneFor(projected.declarableRate, thresholds);
 
   return (
-    <section className={styles.block} data-projection aria-labelledby="projection-titre">
+    // FW-CALCS-A2 (R726, R727): the A2 result card, the same frame as the
+    // result above it; the "Projection" label is its first line, as before.
+    <ResultCard data-projection aria-labelledby="projection-titre">
       {/*
         THE LABEL FIRST, before any figure. A reader who scrolls past the
         heading and lands on a percentage has already been told what kind of
@@ -148,6 +151,6 @@ export function Projection({
       </p>
 
       <p className={styles.app}>{COPY.app(appReleased)}</p>
-    </section>
+    </ResultCard>
   );
 }

@@ -66,6 +66,29 @@ const STATES: readonly VisualState[] = [
     mustShow: LAMAL_COPY.result.above,
   },
   {
+    // FW-CALCS-A2 (R735): R737's sample household - one adult born 1985,
+    // 42 000 EUR, the default year.
+    id: 'adulte-seul',
+    reach: async (page) => {
+      await page.locator('#revenu-fiscal').fill('42000');
+      await page.locator('#naissance-0').fill('1985');
+      await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
+    },
+    mustShow: LAMAL_COPY.result.below,
+  },
+  {
+    // FW-CALCS-A2 (R735): the floored case - 12 000 EUR is under a quarter of
+    // the PASS, the formula goes negative, the page shows 0 and says why.
+    id: 'plancher',
+    reach: async (page) => {
+      await page.locator('#revenu-fiscal').fill('12000');
+      await page.locator('#naissance-0').fill('1985');
+      await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
+      await expect(page.locator('[data-floored]')).toHaveCount(1);
+    },
+    mustShow: LAMAL_COPY.result.below,
+  },
+  {
     id: 'erreur',
     reach: async (page) => {
       await page.locator('#revenu-fiscal').fill('abc');

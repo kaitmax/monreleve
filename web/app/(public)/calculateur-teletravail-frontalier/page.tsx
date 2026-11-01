@@ -41,8 +41,11 @@ import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { FAQ_COPY } from '@/lib/fr/faq';
+import { HOME_COPY } from '@/lib/fr/home';
+import { SOURCE_CITATIONS } from '@/lib/fr/sources';
 import { formatDays, formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { AppCard } from './AppCard';
 import { CalculatorForm } from './CalculatorForm';
 import { AlertCapture } from '@/lib/ui/react/AlertCapture/AlertCapture';
 import { Faq } from '@/lib/ui/react/Faq/Faq';
@@ -189,96 +192,117 @@ export default function CalculateurPage() {
       />
       <JsonLd data={faqPageLd(faqEntries)} />
 
-      <Container width="narrow">
-        <h1 className={styles.title}>{COPY.title}</h1>
-        <p className={styles.lead}>{COPY.intro(fiscal, social)}</p>
-
-        {/* R55: the year the calculation applies to, above the form. */}
-        <p className={styles.year}>{COPY.yearCaption(year)}</p>
-
-        {/*
-          THE ISLAND. taxYear comes from the resolution above rather than from
-          a clock inside the island: a client-side new Date() reads the
-          VIEWER's timezone, so a frontalier travelling would see a different
-          year from the one their filing belongs to, and the first render would
-          disagree with the server's for anybody east of Paris.
-
-          It renders inside the server page with no wrapper and no Suspense
-          boundary. The form has nothing to wait for - the engine is
-          synchronous and bundled - so a fallback would only add a flash of
-          nothing between the static shell and the hydrated form.
-        */}
-        <CalculatorForm taxYear={year} />
+      {/*
+        FW-CALCS-A2, R724: THE PAGE HEAD - the year (R55, resolved on the
+        server as before), the h1 and the intro - then the two columns, on
+        the public measure. The year was a caption under the intro; the A2
+        design sets it as a badge above the h1, with the same words.
+      */}
+      <Container width="public">
+        <header>
+          <p className={styles.year}>{COPY.yearCaption(year)}</p>
+          <h1 className={styles.title}>{COPY.title}</h1>
+          <p className={styles.lead}>{COPY.intro(fiscal, social)}</p>
+        </header>
 
         {/*
-          THE CAPTURE CARD. SPEC 9.3 item 8, FW14 increment 5.
+          THE ISLAND, in a two-column grid it fills itself: its form column
+          and its result column (CalculatorForm). taxYear comes from the
+          resolution above rather than from a clock inside the island: a
+          client-side new Date() reads the VIEWER's timezone, so a frontalier
+          travelling would see a different year from the one their filing
+          belongs to.
 
-          BELOW EVERYTHING THE ISLAND RENDERS, which is where SPEC 9.3 puts it
-          and where R137 now asserts it stays. The island renders the form,
-          the link notice, the share row and the result panel; this comes
-          after all of them, because the reader's question is "how many days
-          do I have left" and the answer must never be behind an email field.
-          SPEC 9.3: the result is NEVER gated.
-
-          A SERVER COMPONENT INSIDE A STATIC PAGE. It is a plain form posting
-          to /api/alertes - no island, no client JavaScript, nothing against
-          the 4,4 KiB of GATE A headroom (R136).
+          THE ASIDE closes the result column: the application card (R726)
+          and the unconditional link to /sources (R113). Both are SERVER
+          elements passed in, so they are in the HTML with scripting off and
+          their words never reach the island's bundle. R113's link used to
+          sit above the explanation; the A2 design puts it under the result,
+          which is where a reader asks where a figure comes from.
         */}
-        <AlertCapture source="calculateur" />
+        <div className={styles.layout}>
+          <CalculatorForm
+            taxYear={year}
+            aside={
+              <>
+                <AppCard />
+                <p className={styles.sources}>
+                  <a href={COPY.form.sourcesLink.href}>{COPY.form.sourcesLink.text}</a>
+                </p>
+              </>
+            }
+          />
+        </div>
+      </Container>
 
       {/*
-          THE UNCONDITIONAL LINK TO /sources. RULING R113.
+        THE CAPTURE CARD. SPEC 9.3 item 8, FW14 increment 5.
 
-          UNCONDITIONAL, which is the whole reason it is here rather than in
-          the provisional notice. P2 - the 49,9 versus under-50 edge - has no
-          input trigger by design, so the conditional notice never names it; a
-          reader can only reach it through something present whatever they
-          type. A disclosure that appears only sometimes cannot carry an
-          interpretation that has no condition.
+        BELOW EVERYTHING THE ISLAND RENDERS, which is where SPEC 9.3 puts it
+        and where R137 asserts it stays: the reader's question is "how many
+        days do I have left", and the answer must never be behind an email
+        field. A server component - a plain form posting to /api/alertes, no
+        client JavaScript (R136). On the narrow measure, as before.
+      */}
+      <Container width="narrow">
+        <AlertCapture source="calculateur" />
+      </Container>
 
-          SERVER-RENDERED, above the explanation, so it is in the HTML with
-          scripting off too - the same reason the explanatory copy is.
+      {/*
+        R728: THE EXPLANATION BAND, as calculateur-a2 draws it - the heading
+        beside the two thresholds, each with its figure, its name, the page's
+        own paragraph and its source - from copy and sources the site already
+        carries: the figures from the RuleSet, the names from the home page's
+        band (HOME_COPY.thresholds, by key), the citations from lib/fr/sources.
+        The missions paragraph, which the design leaves out, follows them:
+        dropping copy is not styling.
 
-          THE LegalNote THAT USED TO SIT HERE IS GONE, and a baseline is why.
-          calculateur-panneau-regime-perdu-mobile.png showed the standing
-          sentence twice about 60 px apart: this copy, and the panel rendering
-          SPEC 9.3 slot 6 once there is a result. 1633 tests passed - every
-          assertion asked whether the note was PRESENT, and it was, twice.
+        The two names are paragraphs, not h3s: the page's outline is h1 and
+        h2 (tests/unit/pages/calculateur.test.tsx), and an h3 here would sit
+        under an h2 that is a statement rather than a section title.
+      */}
+      <section className={styles.band} data-explanation>
+        <Container width="public">
+            <h2 className={styles.heading}>{COPY.explanationHeading}</h2>
+            <div className={styles.rules}>
+              <div className={styles.rule}>
+                <p>{fiscal}</p>
+                <p>{HOME_COPY.thresholds.fiscalTitle}</p>
+                <p>{COPY.fiscal(fiscal)}</p>
+                <p>
+                  {HOME_COPY.thresholds.source(SOURCE_CITATIONS.fiscal)}
+                </p>
+              </div>
+              <div className={styles.rule}>
+                <p>{social}</p>
+                <p>{HOME_COPY.thresholds.socialTitle}</p>
+                <p>{COPY.social(social)}</p>
+                <p>
+                  {HOME_COPY.thresholds.source(SOURCE_CITATIONS.social)}
+                </p>
+              </div>
+              <p>{COPY.missions(fiscal)}</p>
+            </div>
+        </Container>
+      </section>
 
-          SPEC 9.3 puts a legal note in the panel and SPEC 9.1 puts -01
-          in the footer; both stay, a screen apart. This copy was mine, added
-          in increment 0 for a job the LINK does on its own - and the sentence
-          is still in the served HTML with scripting off, from the footer,
-          which is a server component too.
-        */}
-        <p className={styles.sources}>
-          <a href={COPY.form.sourcesLink.href}>{COPY.form.sourcesLink.text}</a>
-        </p>
+      {/*
+        THE INLINE FAQ. SPEC 14, FW15 increment 2.
 
-        <section className={styles.explanation} data-explanation>
-          <h2 className={styles.heading}>{COPY.explanationHeading}</h2>
-          <p className={styles.prose}>{COPY.fiscal(fiscal)}</p>
-          <p className={styles.prose}>{COPY.social(social)}</p>
-          <p className={styles.prose}>{COPY.missions(fiscal)}</p>
-        </section>
+        LAST, AND R137 ASSERTS IT. It elaborates the explanation above, so
+        above that prose it would be answering questions the reader has not
+        been given yet. Its answers are generated from the same lib/fr
+        source the FAQPage structured data is, which is what makes the two
+        impossible to disagree. On the article measure: the narrow one is
+        the capture card's, and the page has exactly one (calculateur.test).
 
-        {/*
-          THE INLINE FAQ. SPEC 14, FW15 increment 2.
-
-          LAST, AND R137 ASSERTS IT. It elaborates the explanation above -
-          the two thresholds, missions, sick days - so above that prose it
-          would be answering questions the reader has not been given yet. It
-          also stays BELOW the capture card: moving it between them would
-          push the card down behind three collapsed answers.
-
-          Its answers are generated from the same lib/fr source increment 3
-          turns into FAQPage structured data, which is what makes the two
-          impossible to disagree.
-        */}
-        <Faq
-          heading={FAQ_COPY.heading}
-          entries={faqEntries}
-        />
+        FEW CLASSES ON PURPOSE (R736): this page's CSS-module class map ships
+        in the calculator's client chunk, the route with the least headroom,
+        so the band's children are styled by position in
+        calculateur.module.scss rather than each carrying a class.
+      */}
+      <Container width="article">
+        <Faq heading={FAQ_COPY.heading} entries={faqEntries} />
       </Container>
     </main>
   );

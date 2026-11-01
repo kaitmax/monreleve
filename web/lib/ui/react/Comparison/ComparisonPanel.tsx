@@ -19,6 +19,7 @@ import { formatChf, formatEur, formatRate, formatWholePercent } from '@/lib/lama
 import { PREMIUM_DATASET_URL, PRIMINFO_URL } from '@/lib/lamal/years';
 import type { Comparison } from '@/lib/lamal/types';
 import { LAMAL_COPY as COPY, PREMIUM_DATASET } from '@/lib/fr/lamal';
+import { ResultCard } from '@/lib/ui/react/ResultCard/ResultCard';
 import styles from './Comparison.module.scss';
 
 export type PanelState =
@@ -39,14 +40,22 @@ const CASE_SENTENCE: Readonly<Record<Comparison['cheaper'], string>> = {
   depends: COPY.result.depends,
 };
 
+/**
+ * One Swiss total. FW-CALCS-A2, R731: comparateur-lamal-a2 sets the EUROS
+ * large and the FRANCS beneath - the reader compares against a French
+ * contribution in euros - where the panel set them the other way round. The
+ * same two figures, from the same Comparison; only their sizes swapped. The
+ * converted figure never stands without its rate and date: the conversion
+ * line is in this same card (R673).
+ */
 function Figure({ label, centimes, eur }: { label: string; centimes: number; eur: number }) {
   return (
     <div className={styles.figure}>
       <dt className={styles.figureLabel}>{label}</dt>
       <dd className={styles.figureValue}>
-        <span className={styles.amount}>{formatChf(centimes)}</span>{' '}
+        <span className={styles.amount}>{formatEur(eur)}</span>{' '}
         <span className={styles.perYear}>{COPY.result.perYear}</span>
-        <span className={styles.converted}>{formatEur(eur)}</span>
+        <span className={styles.converted}>{formatChf(centimes)}</span>
       </dd>
     </div>
   );
@@ -59,12 +68,9 @@ function ComparisonBody({ value }: { value: Comparison }) {
 
   return (
     <>
-      <p className={styles.caseSentence} data-case-sentence={cheaper}>
-        {CASE_SENTENCE[cheaper]}
-      </p>
-
+      {/* R731: the two cards side by side, then the case sentence. */}
       <div className={styles.columns}>
-        <article className={styles.side} data-side="switzerland" aria-labelledby="cote-suisse">
+        <ResultCard element="article" data-side="switzerland" aria-labelledby="cote-suisse">
           <h3 className={styles.sideHeading} id="cote-suisse">
             {COPY.result.swiss.heading}
           </h3>
@@ -85,22 +91,9 @@ function ComparisonBody({ value }: { value: Comparison }) {
           <p className={styles.note} data-conversion="true">
             {COPY.result.swiss.conversion(formatRate(rate.chfPerEurTenThousandths), formatDate(rate.date))}
           </p>
-          <p className={styles.source} data-attribution="true">
-            {COPY.result.swiss.attributionBefore}
-            <a href={PREMIUM_DATASET_URL} rel="noreferrer">
-              {PREMIUM_DATASET.title}
-            </a>
-            {COPY.result.swiss.attributionAfter(year.year)}
-          </p>
-          <p className={styles.note}>
-            {COPY.result.swiss.priminfo.lead}
-            <a href={PRIMINFO_URL} rel="noreferrer">
-              {COPY.result.swiss.priminfo.text}
-            </a>
-          </p>
-        </article>
+        </ResultCard>
 
-        <article className={styles.side} data-side="france" aria-labelledby="cote-france">
+        <ResultCard element="article" data-side="france" aria-labelledby="cote-france">
           <h3 className={styles.sideHeading} id="cote-france">
             {COPY.result.french.heading}
           </h3>
@@ -109,7 +102,7 @@ function ComparisonBody({ value }: { value: Comparison }) {
             <div className={styles.figure}>
               <dt className={styles.figureLabel}>{COPY.result.french.amount}</dt>
               <dd className={styles.figureValue}>
-                <span className={styles.amount}>{formatEur(french.contributionEur)}</span>{' '}
+                <span className={styles.amountLarge}>{formatEur(french.contributionEur)}</span>{' '}
                 <span className={styles.perYear}>{COPY.result.perYear}</span>
               </dd>
             </div>
@@ -124,7 +117,7 @@ function ComparisonBody({ value }: { value: Comparison }) {
             )}
           </p>
           {year.passStatus === 'announced' ? (
-            <p className={styles.note} data-pass="announced">
+            <p className={styles.badge} data-pass="announced">
               {COPY.result.french.passAnnounced(year.year)}
             </p>
           ) : null}
@@ -135,9 +128,31 @@ function ComparisonBody({ value }: { value: Comparison }) {
           ) : null}
           <p className={styles.note}>{COPY.result.french.household}</p>
           <p className={styles.source}>{COPY.result.french.source}</p>
-        </article>
+        </ResultCard>
       </div>
 
+      <p className={styles.caseSentence} data-case-sentence={cheaper}>
+        {CASE_SENTENCE[cheaper]}
+      </p>
+
+      {/*
+        R731: the OFSP attribution (R664's mandatory credit, under the Swiss
+        figures), the priminfo link and the legal line - as the page carried
+        them, below the comparison rather than inside the Swiss card.
+      */}
+      <p className={styles.source} data-attribution="true">
+        {COPY.result.swiss.attributionBefore}
+        <a href={PREMIUM_DATASET_URL} rel="noreferrer">
+          {PREMIUM_DATASET.title}
+        </a>
+        {COPY.result.swiss.attributionAfter(year.year)}
+      </p>
+      <p className={styles.source}>
+        {COPY.result.swiss.priminfo.lead}
+        <a href={PRIMINFO_URL} rel="noreferrer">
+          {COPY.result.swiss.priminfo.text}
+        </a>
+      </p>
       <p className={styles.legal} data-legal="true">
         {COPY.result.legal}
       </p>

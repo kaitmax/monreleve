@@ -52,6 +52,7 @@ import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { errorMessage } from '@/lib/fr/errors';
 import { PARAM_NOTICE } from '@/lib/fr/params';
 import { Container } from '@/lib/ui/react/Container/Container';
+import { AppCard } from '../AppCard';
 import { ResultPanel } from '../ResultPanel';
 import styles from './resultat.module.scss';
 
@@ -305,7 +306,13 @@ export default async function ResultatPage({
           </>
         ) : outcome.ok ? (
           <>
-            {/* The island's own panel, with the island's own arguments. */}
+            {/*
+              R727: THE SAME RESULT COLUMN the calculator draws - the
+              island's own panel, with the island's own arguments, then the
+              projection, then the application card - so a reader without
+              JavaScript sees the same result card.
+            */}
+            <div className={styles.column}>
             <ResultPanel result={outcome.value} thresholds={rules} />
 
             {/*
@@ -324,6 +331,8 @@ export default async function ResultatPage({
                 thresholds={rules}
               />
             )}
+            <AppCard />
+            </div>
             <p className={styles.actions}>
               {/* Carrying the query, so a scripted reader lands on the
                   calculator with their scenario already decoded - which is

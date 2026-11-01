@@ -23,10 +23,12 @@ import type { Metadata } from 'next';
 import { webApplicationLd } from '@/lib/content/jsonld';
 import { COMPARATOR_PATH } from '@/lib/content/routes';
 import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
+import { splitLead } from '@/lib/content/lead';
 import { formatChf } from '@/lib/lamal/format';
 import { formatDate } from '@/lib/ui/core';
 import { AVAILABLE_YEARS, COMPARATOR_YEARS, EXCHANGE_RATE } from '@/lib/lamal/years';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
+import { IrrevocabilityBanner } from '@/lib/ui/react/Comparison/IrrevocabilityBanner';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { JsonLd } from '@/lib/ui/react/JsonLd/JsonLd';
 import { ComparatorForm } from './ComparatorForm';
@@ -56,36 +58,66 @@ export default function ComparateurPage() {
         })}
       />
 
-      <Container width="narrow">
-        <h1 className={styles.title}>{COPY.title}</h1>
-        <p className={styles.lead}>{COPY.intro}</p>
-        <noscript>
-          <p className={styles.note}>{COPY.noScript}</p>
-        </noscript>
+      {/*
+        FW-CALCS-A2, R729: comparateur-lamal-a2's arrangement - the page head,
+        the IRREVOCABILITY BANNER directly under it (above the form and the
+        result, R642), then two columns: the form card and the result.
+      */}
+      <Container width="public">
+        <header className={styles.head}>
+          <h1 className={styles.title}>{COPY.title}</h1>
+          <p className={styles.lead}>{COPY.intro}</p>
+          <noscript>
+            <p className={styles.note}>{COPY.noScript}</p>
+          </noscript>
+        </header>
 
-        <ComparatorForm />
+        <IrrevocabilityBanner />
 
-        <section className={styles.limits} aria-labelledby="ne-compare-pas" data-limits="true">
+        <div className={styles.layout}>
+          <ComparatorForm />
+        </div>
+      </Container>
+
+      {/*
+        R732: "CE QUE CE COMPARATIF NE COMPARE PAS", as the design sets it -
+        a white band, two columns of items under a hairline each, a bold lead
+        per item - with ALL TEN items in their full text. The lead is SPLIT
+        from the item (lib/content/lead.ts), never retyped: lead, one space,
+        rest is the item, character for character.
+      */}
+      <section className={styles.band} aria-labelledby="ne-compare-pas" data-limits="true">
+        <Container width="public">
           <h2 className={styles.limitsHeading} id="ne-compare-pas">
             {COPY.limitsHeading}
           </h2>
           <ul className={styles.limitList}>
-            {COPY.limits(franchise, formatDate(EXCHANGE_RATE.date)).map((item) => (
-              <li className={styles.limit} key={item}>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </section>
+            {COPY.limits(franchise, formatDate(EXCHANGE_RATE.date)).map((item) => {
+              const { lead, rest } = splitLead(item);
 
-        <p className={styles.links}>
-          {COPY.guideLink.lead}
-          <a href={COPY.guideLink.href}>{COPY.guideLink.text}</a>
-        </p>
-        <p className={styles.links}>
-          <a href={COPY.sourcesLink.href}>{COPY.sourcesLink.text}</a>
-        </p>
-      </Container>
+              return (
+                <li className={styles.limit} key={item}>
+                  <strong className={styles.limitLead}>{lead}</strong>
+                  {rest === '' ? null : (
+                    <>
+                      {' '}
+                      <span className={styles.limitRest}>{rest}</span>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className={styles.links}>
+            {COPY.guideLink.lead}
+            <a href={COPY.guideLink.href}>{COPY.guideLink.text}</a>
+          </p>
+          <p className={styles.links}>
+            <a href={COPY.sourcesLink.href}>{COPY.sourcesLink.text}</a>
+          </p>
+        </Container>
+      </section>
     </main>
   );
 }

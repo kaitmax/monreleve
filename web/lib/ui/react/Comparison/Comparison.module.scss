@@ -2,76 +2,48 @@
 
 // web/lib/ui/react/Comparison/Comparison.module.scss
 //
-// The irrevocability banner and the comparison panel (FW-COMPARATEUR, R658).
-// Tokens only (R8, R62).
-
-// ---- the irrevocability banner: the error style (SPEC 9.6) -----------------
+// The comparison panel (FW-COMPARATEUR, R658), in comparateur-lamal-a2's
+// arrangement since FW-CALCS-A2 (R731): a heading, the two cost cards side by
+// side (ResultCard, R733), the case sentence, then the attribution, the
+// priminfo link and the legal line. Tokens only (R8, R62).
 //
-// The error colour on the RULE, the soft error background, the text in
-// text-primary - R57's split, the same as the calculator's warnings in the
-// warning tone. Above the result, always.
-
-.banner {
-  margin: 0 0 var(--space-8);
-  padding: var(--space-4) var(--space-5);
-  border-left: var(--size-notice-accent) solid var(--colour-error);
-  border-radius: var(--radius-sm);
-  background: var(--colour-error-soft);
-  color: var(--colour-text-primary);
-
-  a {
-    color: var(--colour-text-primary);
-  }
-}
-
-.bannerHeading {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  margin: 0 0 var(--space-2);
-  font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
-  line-height: var(--type-body-m-line);
-}
-
-.bannerIcon {
-  flex: 0 0 auto;
-  width: var(--icon-size-default);
-  height: var(--icon-size-default);
-}
-
-.bannerBody {
-  margin: var(--space-2) 0 0;
-  font-size: var(--type-body-size);
-  line-height: var(--type-body-line);
-}
+// The irrevocability banner's style moved to lib/ui/react/Notice (R733).
 
 // ---- the result ------------------------------------------------------------
 
+// No frame of its own: the two cost cards are the cards.
 .panel {
-  margin: 0 0 var(--space-8);
-  padding: var(--space-6);
-  border: var(--size-input-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
 }
 
 .panelHeading {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
+  font-weight: var(--weight-bold);
   line-height: var(--type-h3-line);
 }
 
+// R674's one factual sentence, set apart as the design's verdict line: a
+// brand rule on the surface, the words in text-primary. The design's
+// pale-blue fill has no token on the web (PARK-HA6's finding).
 .caseSentence {
-  margin: 0 0 var(--space-4);
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-left: var(--size-notice-accent) solid var(--colour-brand);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
   font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
+  font-weight: var(--weight-semibold);
   line-height: var(--type-body-m-line);
 }
 
-// Side by side at the measure, one above the other on a phone: two columns
-// of 160 px each cannot hold "2 511,60 CHF par an".
+// Side by side from the md breakpoint, one above the other on a phone: two
+// columns of 160 px each cannot hold "10 691 € par an".
 .columns {
   display: grid;
   gap: var(--space-4);
@@ -84,20 +56,12 @@
   }
 }
 
-.side {
-  min-width: 0;
-  padding: var(--space-4);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-md);
-}
-
 .sideHeading {
   margin: 0 0 var(--space-3);
   font-size: var(--type-body-m-size);
-  font-weight: var(--type-body-m-weight);
+  font-weight: var(--weight-bold);
   line-height: var(--type-body-m-line);
 }
-
 
 .figures {
   margin: 0 0 var(--space-3);
@@ -119,8 +83,16 @@
 
 .amount {
   font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
+  font-weight: var(--weight-bold);
   line-height: var(--type-h3-line);
+  font-variant-numeric: tabular-nums;
+}
+
+// The French contribution, large: one figure where the Swiss side has three.
+.amountLarge {
+  font-size: var(--type-h1-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-h1-line);
   font-variant-numeric: tabular-nums;
 }
 
@@ -148,10 +120,24 @@
   color: var(--colour-text-secondary);
 }
 
+// "Plafond annonce par l'Urssaf, arrete a paraitre": a badge while it
+// applies (R731), on the warning tone's soft fill with the words in
+// text-primary (R57) - the words carry it, not the colour.
+.badge {
+  display: inline-flex;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--colour-warning-soft);
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-caption-line);
+}
+
 .legal {
-  margin: var(--space-4) 0 0;
+  margin: 0;
   color: var(--colour-text-secondary);
   font-size: var(--type-caption-size);
   line-height: var(--type-caption-line);
 }
-

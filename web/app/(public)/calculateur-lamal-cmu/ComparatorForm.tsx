@@ -14,10 +14,14 @@
 //     it reloads this same static page with nothing attached.
 //   - comparator_calculated carries no value at all (SPEC 15; events.ts).
 //
-// THE BANNER IS RENDERED HERE, ALWAYS, between the form and the result: SPEC
-// 9.6's irrevocability warning, in the error style, ABOVE the result whether
-// or not there is one yet (R658). It is in the server HTML too, because the
-// island's first render is server-rendered.
+// THE BANNER IS THE PAGE'S since FW-CALCS-A2 (R729): SPEC 9.6's
+// irrevocability warning, in the error style, now directly under the page
+// head - above the form AND the result, whether or not there is one yet
+// (R642, R658). The page is a server component, so it is in the HTML with
+// scripting off, as before.
+//
+// THE ISLAND RENDERS TWO COLUMNS (R729): the form card and the result
+// region. The page's grid sets them side by side from the md breakpoint.
 
 'use client';
 
@@ -31,7 +35,6 @@ import { AVAILABLE_YEARS, DEFAULT_YEAR } from '@/lib/lamal/years';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { ComparisonPanel, type PanelState } from '@/lib/ui/react/Comparison/ComparisonPanel';
-import { IrrevocabilityBanner } from '@/lib/ui/react/Comparison/IrrevocabilityBanner';
 import styles from './comparateur.module.scss';
 
 interface PersonDraft {
@@ -272,9 +275,7 @@ export function ComparatorForm() {
         </button>
       </form>
 
-      <IrrevocabilityBanner />
-
-      <div aria-live="polite" data-result-region="true">
+      <div className={styles.result} aria-live="polite" data-result-region="true">
         {panel === null ? null : <ComparisonPanel state={panel} />}
       </div>
     </>
