@@ -62,7 +62,7 @@
 # the fix is a one-line commit to this ARG. That is exactly the property the
 # ruling asks for: the browser cannot move without a commit.
 ARG NODE_IMAGE=node:22-bookworm-slim
-ARG CHROMIUM_VERSION=156.0.8078.47-1~deb12u1
+ARG CHROMIUM_VERSION=156.0.8078.73-1~deb12u1
 
 # ---------------------------------------------------------------------------
 # deps - node_modules from the lockfile, and nothing else
@@ -221,11 +221,9 @@ RUN set -eux; \
       echo "      Versions the archive offers right now:" >&2; \
       apt-cache madison chromium >&2 || echo "      (apt-cache madison returned nothing)" >&2; \
       echo "" >&2; \
-      echo "      TO FIX, set BOTH of these to one of the versions above - they" >&2; \
-      echo "      are two sources of truth and the second one wins:" >&2; \
-      echo "        1. ARG CHROMIUM_VERSION in web/Dockerfile" >&2; \
-      echo "        2. the CHROMIUM_VERSION env var in Coolify (build-time)," >&2; \
-      echo "           which is passed as a build arg and OVERRIDES the file" >&2; \
+      echo "      TO FIX, set ARG CHROMIUM_VERSION in web/Dockerfile to the newest" >&2; \
+      echo "      bookworm-security version above and commit it. That ARG is the" >&2; \
+      echo "      one source of truth: no deployment overrides it (docs/deploy.md)." >&2; \
       echo "" >&2; \
       exit 1; \
     fi; \

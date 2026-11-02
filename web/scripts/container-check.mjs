@@ -476,8 +476,8 @@ console.log(
  *
  * SO THE TEST DRIVES THE FAILURE RATHER THAN THE SUCCESS. A build with an
  * impossible pin must fail - the browser still cannot move without a commit -
- * AND it must say what happened, what the archive actually offers, and which
- * two places to edit. Asserting only "the build fails" would pass against the
+ * AND it must say what happened, what the archive actually offers, and the
+ * one place to edit. Asserting only "the build fails" would pass against the
  * old behaviour, which is the whole defect.
  *
  * --target runner, so the deps and builder stages are not rebuilt: only the
@@ -556,7 +556,15 @@ if (SHOULD_BUILD) {
     ['names the pin that could not be installed', new RegExp(IMPOSSIBLE.replace(/\./g, '\\.'))],
     ['explains why a pinned build disappears', /bookworm-security/],
     ['lists a real version the archive offers', /chromium\s*\|\s*\d+\.\d+\.\d+/],
-    ['names BOTH places the version is set', /Coolify/],
+    // ONE PLACE, NOT TWO (R753). The Dockerfile ARG is the only source of
+    // truth since Coolify's override was deleted on 2026-10-14 (docs/deploy.md),
+    // so the diagnosis must name that ARG AND name no Coolify override: a
+    // message sending the operator to a variable that no longer exists is the
+    // undiagnosed failure in another form. One regex, so the count is unchanged.
+    [
+      'names the one place the version is set',
+      /^(?![\s\S]*Coolify)[\s\S]*ARG CHROMIUM_VERSION in web\/Dockerfile/,
+    ],
   ];
 
   for (const [what, want] of PIN_CHECKS) {
