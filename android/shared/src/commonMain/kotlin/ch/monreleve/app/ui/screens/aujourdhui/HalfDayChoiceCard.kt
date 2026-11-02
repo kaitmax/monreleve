@@ -102,6 +102,9 @@ internal fun HalfDayChoiceCard(
     val afternoonOpen = state.afternoon == null || editingAfternoon
     val reduceMotion = rememberReduceMotion()
     val modifierFocus = remember { FocusRequester() }
+    // AN-LAUNCH-SPEECH (R702, ChoiceCard.kt): the complete answer is a live region only when a tap HERE recorded a
+    // half. NOT saveable - two halves answered before this composition (a launch) are not announced.
+    var answeredHere by remember { mutableStateOf(false) }
 
     val attention = rememberHalfAttention(morningOpen, afternoonOpen, reduceMotion)
     val actions =
@@ -110,6 +113,7 @@ internal fun HalfDayChoiceCard(
                 // R434: the answered half settles. D16 is untouched - the callback below is still the only
                 // writer, and this only closes the half the tap answered.
                 if (slot == Slot.MORNING) editingMorning = false else editingAfternoon = false
+                answeredHere = true
                 onRecord(kind, slot, absence)
             },
             onCancel = { slot -> if (slot == Slot.MORNING) editingMorning = false else editingAfternoon = false },
@@ -146,6 +150,7 @@ internal fun HalfDayChoiceCard(
             // AN-ANSWER-ICON, and its « Modifier » reopens BOTH halves.
             RecordedAnswer(
                 parts = halfDayAnswerParts(state),
+                announce = answeredHere,
                 onModifier = {
                     editingMorning = true
                     editingAfternoon = true
