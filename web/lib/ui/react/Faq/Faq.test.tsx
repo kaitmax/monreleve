@@ -64,3 +64,26 @@ describe('the options FW-HOME-A2 added (R717)', () => {
     expect(section?.querySelectorAll(':scope > div > details')).toHaveLength(2);
   });
 });
+
+// FW-COMPARATEUR-SURFACE: an answer may end on ONE link, absent by default.
+// Both directions, because an option that is never rendered satisfies the
+// "absent by default" half perfectly (R196's shape).
+describe('the link FW-COMPARATEUR-SURFACE added', () => {
+  const LINKED: FaqEntry = { ...PLAIN, id: 'd', link: { text: 'LINK-TEXT', href: '/somewhere' } };
+
+  it('ends the answer paragraph on the link, after the plain-text answer', () => {
+    const { container } = render(<Faq heading="H" entries={[LINKED]} />);
+    const paragraph = container.querySelector('details p');
+    const anchor = paragraph?.querySelector('a');
+
+    expect(anchor?.getAttribute('href')).toBe('/somewhere');
+    expect(anchor?.textContent).toBe('LINK-TEXT');
+    expect(paragraph?.textContent).toBe('ANSWER-A LINK-TEXT');
+  });
+
+  it('renders no anchor for an entry without one', () => {
+    const { container } = render(<Faq heading="H" entries={[PLAIN, PAIRED]} />);
+
+    expect(container.querySelectorAll('details a')).toHaveLength(0);
+  });
+});

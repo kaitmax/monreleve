@@ -37,6 +37,12 @@
 //     answers as text (a FAQPage) reads what the cards say.
 //   `layout="split"` - the heading beside the questions from the md
 //     breakpoint, the home page's arrangement.
+//
+// FW-COMPARATEUR-SURFACE ADDS A FOURTH, absent by default the same way:
+//
+//   `link` on an entry - the answer paragraph ends on one link, after the
+//     plain-text answer. No style of its own: the base layer styles every
+//     anchor (R173).
 
 import type { FaqEntry } from '@/lib/fr/faq';
 import styles from './Faq.module.scss';
@@ -57,7 +63,15 @@ function Entry({ entry }: { readonly entry: FaqEntry }) {
     <details id={entry.id} className={styles.entry} open={entry.open === true ? true : undefined}>
       <summary className={styles.question}>{entry.question}</summary>
       {entry.pair === undefined ? (
-        <p className={styles.answer}>{entry.answer}</p>
+        <p className={styles.answer}>
+          {entry.answer}
+          {entry.link === undefined ? null : (
+            <>
+              {' '}
+              <a href={entry.link.href}>{entry.link.text}</a>
+            </>
+          )}
+        </p>
       ) : (
         <div className={styles.pair}>
           <div className={styles.before}>

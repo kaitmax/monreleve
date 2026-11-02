@@ -18,6 +18,7 @@
 //   3  the counter - the page's ONLY client island      (R711)
 //   4  the application, two phones                      (R716)
 //   5  the two thresholds, on brand                     (R715)
+//   5b the health-insurance choice, to the comparator   (FW-COMPARATEUR-SURFACE)
 //   6  the year in three cards
 //   7  the alert sign-up - the real AlertCapture        (R718)
 //   8  the questions                                    (R717)
@@ -38,7 +39,7 @@ import { calculateTelework } from '@/lib/calc-engine';
 import { heroExampleInput } from '@/lib/content/home';
 import { COUNTER_CANTON } from '@/lib/content/home-counter';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
-import { CALCULATOR_PATH, RESULT_PATH } from '@/lib/content/routes';
+import { CALCULATOR_PATH, COMPARATOR_PATH, RESULT_PATH } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { HOME_COPY } from '@/lib/fr/home';
@@ -257,6 +258,27 @@ export default function HomePage() {
         </Container>
       </section>
 
+      {/* ------------------------------ 5b. THE HEALTH-INSURANCE CHOICE
+          FW-COMPARATEUR-SURFACE: a SURFACE card, not a second brand band
+          (R715 allows the page one). Its heading, one sentence, one action
+          to the comparator - and no figure, which lives on the comparator
+          with its sources and dates. */}
+      <section className={styles.health} aria-labelledby="assurance-maladie-titre">
+        <Container width="public">
+          <div className={styles.healthCard}>
+            <h2 className={styles.sectionHeading} id="assurance-maladie-titre">
+              {C.health.heading}
+            </h2>
+            <p className={styles.body}>{C.health.body}</p>
+            <div className={styles.actions}>
+              <a className={styles.buttonPrimary} href={COMPARATOR_PATH}>
+                {C.health.cta}
+              </a>
+            </div>
+          </div>
+        </Container>
+      </section>
+
       {/* ------------------------------------- 6 AND 7. THE YEAR, THE ALERTS */}
       <section className={styles.year}>
         <Container width="public">
@@ -311,6 +333,12 @@ export default function HomePage() {
                 id: 'telephone',
                 question: C.questions.phone.question,
                 answer: C.questions.phone.answer(PRODUCT_STATE),
+              },
+              {
+                id: 'lamal-ou-cmu',
+                question: C.questions.health.question,
+                answer: C.questions.health.answer,
+                link: { text: C.questions.health.link, href: COMPARATOR_PATH },
               },
             ]}
           />
