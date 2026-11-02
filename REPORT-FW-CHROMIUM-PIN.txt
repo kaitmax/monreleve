@@ -1,0 +1,204 @@
+REPORT-FW-CHROMIUM-PIN
+======================
+
+Branch fw-chromium-pin, worktree C:/wt/fw-chromium-pin (lock written at start,
+removed at the end), cut from LOCAL main 14147fd. Change commit a68003a; this
+report is the commit on top of it.
+
+SUMMARY
+-------
+Debian dropped chromium 156.0.8078.47-1~deb12u1 from bookworm-security, so
+R249's guard stopped every `docker build`. The pin moves to
+156.0.8078.73-1~deb12u1 (same major, the newest bookworm-security build the
+archive listed at the time of the run). R249's refusal text no longer tells
+the operator to set a Coolify CHROMIUM_VERSION override that was deleted on
+2026-10-14; it names the Dockerfile ARG as the one source of truth, and the
+container-check assertion that demanded the word "Coolify" in that refusal
+now asserts the opposite (R753). gate:changed, test:visual and gate:clone are
+green; no baseline moved.
+
+One premise of the prompt did not hold: the suites the gate selects do NOT
+render the PDF through the image's Chromium (see SUITES RUN, item 4, and
+QUESTIONS).
+
+STATUS (R391)
+-------------
+COMPLETE for the web gate this task owns: gate:changed GREEN on the change
+(exit 0), test:visual GREEN (130 passed, no baseline moved), gate:clone
+PASSED on a68003a in this session (exit 0, verdict lines pasted below). No
+Android code changed, so no :app:gate applies.
+NOT CLAIMED: a PDF rendered by chromium 156.0.8078.73 inside the image -
+test:container:e2e was run and stopped before its PDF step (see item 4).
+
+RED
+---
+1. The archive today, `apt-cache madison chromium` in node:22-bookworm-slim,
+   2026-11-02 09:27:50 UTC:
+
+     chromium | 156.0.8078.73-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+     chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+
+2. `pnpm test:container:write` on the unchanged base 14147fd: exit 1.
+   Step-prefixed BuildKit output (the guard really ran, R249):
+
+     #11 10.31 E: Version '156.0.8078.47-1~deb12u1' for 'chromium' was not found
+     #11 10.31 R249: chromium 156.0.8078.47-1~deb12u1 is not installable from this archive.
+     #11 10.31       Versions the archive offers right now:
+     #11 11.10   chromium | 156.0.8078.73-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+     #11 11.10   chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+
+     Production write checks  0 passed (0)
+     1 FAILED:
+       - the suite ran to completion: Command failed: docker build --build-arg NEXT_PUBLIC_SITE_URL=https://monreleve.example -t monreleve:write .
+
+   The same refusal is recorded in FW-CALCS-A2's gate:clone
+   (C:/wt/fw-calcs-a2-before/handoff/clone1.log line 148:
+   "GATE:CLONE FAILED - pnpm test:container:write exited 1"). Read only; no
+   git was run in that worktree.
+
+3. RED for the changed check (R753), run against the base's own refusal
+   output above, step-prefixed lines only, exactly as container-check reads
+   them:
+     old check /Coolify/                         -> true  (old text passes it)
+     new check (ARG named AND no Coolify)        -> false (old text fails it)
+     new check on the new refusal line           -> true
+
+THE CHANGE
+----------
+web/Dockerfile (two edits, nothing else in the file):
+  - ARG CHROMIUM_VERSION=156.0.8078.47-1~deb12u1
+    -> ARG CHROMIUM_VERSION=156.0.8078.73-1~deb12u1
+    OLD 156.0.8078.47-1~deb12u1, NEW 156.0.8078.73-1~deb12u1. Same major
+    (156), so no STOP.
+  - R249's "TO FIX" lines: the five lines telling the operator to set BOTH
+    the ARG and "the CHROMIUM_VERSION env var in Coolify ... OVERRIDES the
+    file" become three lines: set ARG CHROMIUM_VERSION in web/Dockerfile to
+    the newest bookworm-security version above and commit it; that ARG is the
+    one source of truth, no deployment overrides it (docs/deploy.md).
+
+web/scripts/container-check.mjs (a consequence of the Dockerfile edit, not a
+new decision): its pin probe asserted ['names BOTH places the version is
+set', /Coolify/]. After the text fix that check could only fail, so
+test:container would go red on a correct message. Replaced in place, and the
+probe's header comment "which two places to edit" -> "the one place to edit".
+
+R753 (this session). THE PIN DIAGNOSIS NAMES ONE PLACE, AND THE CHECK
+ASSERTS BOTH HALVES. The Dockerfile ARG is the only source of truth for the
+Chromium version since Coolify's override was deleted on 2026-10-14, so R249's
+refusal names that ARG and names no Coolify override; a message sending the
+operator to a variable that no longer exists is the undiagnosed failure in
+another form. The check is one regex,
+/^(?![\s\S]*Coolify)[\s\S]*ARG CHROMIUM_VERSION in web\/Dockerfile/, so it
+asserts presence and absence together and the suite's check count stays 21.
+
+SUITES RUN
+----------
+1. pnpm gate:changed (exit 0). Printed selection:
+     gate selection (R132):
+       2 path(s) matched:
+         web/Dockerfile  ->  the container, and what decides whether it serves (R251)
+         web/scripts/container-check.mjs  ->  the container, and what decides whether it serves (R251)
+       suites: typecheck, lint, test, build, test:container
+   Results: typecheck ok, lint ok, test 202 files / 3485 passed, build ok,
+   test:container "Container checks  21 passed (21)", "GATE PASSED for the
+   paths changed." Relevant container lines:
+     ok    the binary is the pinned build (156.0.8078.73)
+     ok    the guard actually ran and printed
+     ok    names the pin that could not be installed
+     ok    explains why a pinned build disappears
+     ok    lists a real version the archive offers
+     ok    names the one place the version is set
+
+2. pnpm test:visual (not selected; run per the prompt), exit 0:
+   "visual suite: 130 passed". It photographed 14147fd plus the two
+   uncommitted paths that became a68003a (the harness says so, R184).
+   It runs Playwright's own browser in mcr.microsoft.com/playwright, not the
+   Debian package, so the pin cannot move a baseline by construction.
+
+3. pnpm gate:clone on a68003a, exit 0 (see PUSH PROOF). It ran
+   test:container:write, which built the image with the new pin and
+   performed the production write against it.
+
+4. pnpm test:container:e2e (FRONTALIER_PORT=3130), exit 1 - run because it
+   is the ONLY suite that renders the PDF through the image's Chromium
+   (tests/db/container-pdf.test.ts is skipIf(CONTAINER_BASE_URL undefined)
+   everywhere else). Result: the host-browser e2e phase went 334 passed,
+   5 failed, and the harness stops at the first failed phase, so the PDF
+   step never ran. NO RESULT for the PDF claim. The five failures are not
+   about the image's Chromium (Playwright drives the HOST browser here):
+     - e2e/home.spec.ts:197  expect(database?.ok).toBeNull(), received true.
+       Deterministic in a container: FRONTALIER_RUNTIME=1 marks the process
+       as serving, so R355's database check IS evaluated. The spec asserts
+       the dev-server state; this fails on every commit run this way.
+     - e2e/routing.spec.ts:170 x3  net::ERR_NETWORK_IO_SUSPENDED on
+       /releve-annuel, /tarifs, /sources (host network, transient).
+     - e2e/routing.spec.ts:242  page.goto timeout on
+       /calculateur-teletravail-frontalier (same window).
+   Not re-run: the home.spec failure is deterministic, so a re-run cannot
+   reach the PDF step either.
+
+   What renders through this Chromium, and what covered it here:
+     - the PDF (lib/export/pdf.ts via FRONTALIER_CHROMIUM_PATH) -
+       test:container:e2e's container-pdf.test.ts. NOT reached (above).
+     - test:container proves the image's binary IS 156.0.8078.73 and that
+       Chromium is installed with its fonts; test:container:write proves the
+       image built and serves the write path. Neither renders a document.
+     - test:db's export-pdf / verification-qr render tests use the HOST's
+       Playwright Chromium and skipped in gate:clone ("no server answered"),
+       as the harness names.
+
+BASELINES
+---------
+None moved. test:visual 130 passed; nothing regenerated.
+
+PUSH PROOF
+----------
+pnpm gate:clone on a68003a52113e214978b0bebda657f1139025565, exit 0,
+free RAM 1675 MB at start, no Gradle running, nothing else heavy:
+
+  swept     no stale clones (older than 4h) found
+  GATE:CLONE PASSED
+  commit  a68003a52113e214978b0bebda657f1139025565
+  clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-j8hgZ6 (removed)
+  ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+  claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+          a machine with no .env, no prior node_modules and no generated
+          file this run did not produce itself.
+  NOT RUN HERE: test:e2e, test:visual, test:runtime, lighthouse,
+  parity:check, test:container (each with its reason, as printed).
+
+DATABASE_URL was passed to gate:clone in the environment, read from the main
+checkout's web/.env (frontalier-postgres on 5436); no .env was written into
+the worktree. The report commit on top of a68003a changes only this file.
+The branch push carries 695c930 and 14147fd (the two docs commits from local
+main), as the prompt expects. Push target: the branch fw-chromium-pin
+only - pending when this report was committed; the hand-back states the
+result.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+- tests/db/container-pdf.test.ts's header still says the image is "pinned to
+  153.0.8010.52-1~deb12u1" - a transcribed version several bumps stale (R181).
+- docs/superpowers/specs/2026-09-29-home-page-design.md:516 still describes
+  Coolify's build-arg override of the Chromium version.
+- e2e/home.spec.ts:197 cannot pass against a container (R355's database
+  check is evaluated when FRONTALIER_RUNTIME=1), so test:container:e2e fails
+  on every commit and never reaches its auth round trip or its PDF step.
+- gate:clone printed "CI readiness: quiet - the repository is private and
+  CI_FULL is unset - jobs will skip." CLAUDE.md's R248 says CI_FULL is set
+  and the repository public. One of them is out of date; not resolved here.
+- An accidental `node scripts/gate-for-changes.mjs --help` started a real
+  gate run (the script has no --help); its orphan tsc was stopped by PID in
+  this worktree before the real run. Nothing else was affected.
+
+QUESTIONS
+---------
+1. Step 5's premise. For a Dockerfile change the gate selects test:container
+   (R251, the fast suite), which does not render a PDF; the only suite that
+   renders it through the image's Chromium is test:container:e2e, which
+   cannot currently reach that step (home.spec.ts:197). Should a Chromium
+   pin change select a suite that renders the PDF, and should the
+   home.spec / container mismatch be its own task first?
+2. Until then, is the PDF render under 156.0.8078.73 to be proven by hand
+   before the next production promotion, or accepted on the minor-point
+   bump?
