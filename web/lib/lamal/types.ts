@@ -126,6 +126,19 @@ export interface Comparison {
   readonly cheaper: Cheaper;
 }
 
+/**
+ * FW-CALCS-A2, R744: an affiliation that starts during the compared year.
+ * Absent (null) for the whole year, which is compare()'s own case.
+ */
+export interface CoveragePeriod {
+  /** ISO day the affiliation starts, inside the compared year. */
+  readonly startIso: string;
+  /** From the start to 31 December, both counted: the French prorata (D380-2 II). */
+  readonly days: number;
+  /** Whole months the Swiss side counts (R744's fallback: the start month is not). */
+  readonly months: number;
+}
+
 export type ComparatorError =
   | { readonly code: 'YEAR_UNAVAILABLE'; readonly year: number }
   | { readonly code: 'INCOME_INVALID' }

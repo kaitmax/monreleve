@@ -11,21 +11,26 @@
 // first render, not an event; an alert role on load is read out before the
 // page's own heading.
 
-import { CircleAlert } from 'lucide-react';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
-import styles from './Comparison.module.scss';
+import { Notice } from '@/lib/ui/react/Notice/Notice';
 
+// FW-CALCS-A2 (R729, R733): the shared error-style banner - a full error
+// border on the soft fill, a warning icon, the heading - with this banner's
+// own words and link, unchanged. Rendered by the page now, above the form
+// and the result (R642).
 export function IrrevocabilityBanner() {
   return (
-    <aside className={styles.banner} aria-labelledby="irrevocable-titre" data-banner="irrevocable">
-      <p className={styles.bannerHeading} id="irrevocable-titre">
-        <CircleAlert className={styles.bannerIcon} aria-hidden="true" />
-        {COPY.banner.heading}
-      </p>
-      <p className={styles.bannerBody}>{COPY.banner.body}</p>
-      <p className={styles.bannerBody}>
+    <Notice
+      element="aside"
+      heading={COPY.banner.heading}
+      headingId="irrevocable-titre"
+      aria-labelledby="irrevocable-titre"
+      data-banner="irrevocable"
+    >
+      <p>{COPY.banner.body}</p>
+      <p>
         <a href={COPY.banner.link.href}>{COPY.banner.link.text}</a>
       </p>
-    </aside>
+    </Notice>
   );
 }

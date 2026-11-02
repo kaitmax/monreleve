@@ -55,6 +55,13 @@ import { heroExampleInput } from '@/lib/content/home';
 import { HOME_COPY } from '@/lib/fr/home';
 import { ThresholdRail } from '@/lib/ui/react/ThresholdRail/ThresholdRail';
 import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
+// FW-CALCS-A2 (R733): the calculators' shared pieces, measured like the rest.
+import { Chip } from '@/lib/ui/react/Chip/Chip';
+import { Notice } from '@/lib/ui/react/Notice/Notice';
+import { ResultCard } from '@/lib/ui/react/ResultCard/ResultCard';
+import { SegmentedButtons } from '@/lib/ui/react/SegmentedButtons/SegmentedButtons';
+import { SegmentedChoice } from '@/lib/ui/react/SegmentedChoice/SegmentedChoice';
+import { Stepper } from '@/lib/ui/react/Stepper/Stepper';
 
 /**
  * PublicShell IS NOT RENDERED HERE, and it is the one exception.
@@ -132,6 +139,47 @@ export function IslandHarness() {
       >
         {(control) => <input {...control} inputMode="decimal" type="text" />}
       </FieldGroup>
+      <Stepper
+        decreaseLabel={ISLAND_HARNESS.tileLabel}
+        increaseLabel={ISLAND_HARNESS.tileOverLabel}
+        onDecrease={() => setShown((n) => n - 1)}
+        onIncrease={() => setShown((n) => n + 1)}
+      >
+        <input aria-label={ISLAND_HARNESS.fieldLabel} readOnly type="text" value={String(shown)} />
+      </Stepper>
+      <SegmentedChoice
+        legend={ISLAND_HARNESS.fieldLabel}
+        name="harness-choice"
+        onChange={() => setShown((n) => n + 1)}
+        options={[
+          { value: 'a', label: ISLAND_HARNESS.gridColumn },
+          { value: 'b', label: ISLAND_HARNESS.gridCell },
+        ]}
+        value={shown % 2 === 0 ? 'a' : 'b'}
+      />
+      <SegmentedButtons
+        id="harness-buttons"
+        legend={ISLAND_HARNESS.fieldLabel}
+        onChange={() => setShown((n) => n + 1)}
+        options={[
+          { value: 'a', label: ISLAND_HARNESS.gridColumn },
+          { value: 'b', label: ISLAND_HARNESS.gridCell },
+        ]}
+        value={shown % 2 === 0 ? 'a' : 'b'}
+      />
+      <Chip
+        checked={shown % 2 === 0}
+        label={ISLAND_HARNESS.gridCell}
+        name="harness-chip"
+        onChange={() => setShown((n) => n + 1)}
+        value="a"
+      />
+      <Notice heading={ISLAND_HARNESS.title}>
+        <p>{ISLAND_HARNESS.purpose}</p>
+      </Notice>
+      <ResultCard>
+        <p>{ISLAND_HARNESS.purpose}</p>
+      </ResultCard>
 
       <LegalNote />
 

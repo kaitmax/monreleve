@@ -53,6 +53,13 @@
   gap: var(--space-6);
 }
 
+// FW-CALCS-A2: the five weekday chips, wrapping as the calculator wraps them.
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .sample {
   margin: 0;
   padding: var(--space-4) 0;

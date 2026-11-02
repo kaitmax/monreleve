@@ -1,0 +1,92 @@
+// web/lib/ui/react/SegmentedChoice/SegmentedChoice.module.scss
+//
+// FW-CALCS-A2, R733. Segments in one bordered row, the selected one filled
+// with brand (calculateur-a2). Tokens only. Every segment is at least the
+// 44 px web touch target, and the row WRAPS rather than overflowing at 320 px
+// (R127): three decompte options do not fit one line on a phone.
+//
+// The radio is stretched over its segment at zero opacity, so the whole
+// segment is the target and the input stays the control. Its focus is drawn
+// on the segment, which is what the eye looks at - :has(:focus-visible), so a
+// mouse click does not leave a ring behind.
+
+.root {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.segments {
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+}
+
+.segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-touch-target-web);
+  padding: 0 var(--space-5);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+.segment:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
+}
+
+.segment:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+.segment:has(.input:checked) {
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.segment:has(.input:focus-visible) {
+  outline: var(--size-input-border-focus) solid var(--colour-brand);
+  outline-offset: var(--size-input-border-focus);
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+
+  // Above the label text, so a pointer (or a test driver) lands on the
+  // control itself rather than on the words painted beneath it.
+  z-index: 1;
+}
+
+.helper {
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}

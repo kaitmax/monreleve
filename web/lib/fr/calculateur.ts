@@ -26,6 +26,8 @@
 //
 // TODO-COPY: realistic French, not reviewed by counsel.
 
+import type { ProductState } from '@/lib/content/product-state';
+
 const NB = String.fromCharCode(0x00a0);
 
 /** A punctuation mark with the no-break space French sets before it. */
@@ -472,4 +474,34 @@ export const CALCULATEUR_COPY = {
     /** For an address that carried nothing: the plain way in. */
     open: 'Ouvrir le calculateur',
   },
+} as const;
+
+/**
+ * FW-CALCS-A2 (R726): the application card that closes the result column.
+ *
+ * ITS OWN EXPORT, NOT A KEY OF CALCULATEUR_COPY, and that is a budget
+ * decision. The island imports CALCULATEUR_COPY, so every string in that
+ * object ships in the calculator's first-load JavaScript - the route with the
+ * least headroom in the product. The card is rendered by the server page and
+ * handed to the island as an element, so these words stay on the server.
+ *
+ * TWO SENTENCES, BOTH NEW (the prompt asks for them verbatim in the report).
+ * The tense follows PRODUCT_STATE.trackerExists - the fact the home page's
+ * application body (HOME_COPY.mobile.body) follows for the same claim, a day
+ * declared and timestamped by the server: while nothing records a day the
+ * card speaks in the future (R172). Its link label follows appExists, by
+ * HOME_COPY.mobile.cta. Its claims stop at "declare" and
+ * "horodatee par le serveur" - never a proof, never a certificate - and the
+ * reader is the one who declares: the app never records a day by itself.
+ */
+export const CALCULATOR_APP_CARD = {
+  heading: 'Votre télétravail, jour par jour',
+  body: (state: ProductState): string =>
+    state.trackerExists
+      ? 'Vous déclarez chaque journée en un geste' +
+        n(';') +
+        ' l’application tient le compte, et chaque journée est horodatée par le serveur.'
+      : 'Vous déclarerez chaque journée en un geste' +
+        n(';') +
+        ' l’application tiendra le compte, et chaque journée sera horodatée par le serveur.',
 } as const;

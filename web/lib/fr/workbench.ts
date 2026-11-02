@@ -84,6 +84,21 @@ export const WORKBENCH = {
     title: 'Comparateur LAMal / CMU',
     banner: 'Bandeau d’irrévocabilité',
     refusal: 'Refus d’une année sans primes',
+    panel: 'Le résultat, un adulte, 2027',
+  },
+
+  // FW-CALCS-A2 (R733): the shared pieces of both calculators, in every state.
+  calcs: {
+    title: 'Calculateurs A2',
+    stepper: 'Stepper',
+    stepperError: 'Stepper - champ en erreur',
+    toggleFirst: 'SegmentedChoice - première option',
+    toggleSecond: 'SegmentedChoice - seconde option',
+    toggleThree: 'SegmentedChoice - trois options',
+    chips: 'Chip - cochée et non cochée',
+    buttons: 'SegmentedButtons - sans nom, seconde option',
+    cardSurface: 'ResultCard - surface',
+    cardBrand: 'ResultCard - marque (carte application)',
   },
 
   container: {

@@ -16,6 +16,16 @@
   line-height: var(--type-h1-line);
 }
 
+// R727: the result column, as the calculator stacks it - one card under
+// another, the result, the projection, the application card.
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--layout-article);
+  margin-bottom: var(--space-6);
+}
+
 .state {
   margin: 0 0 var(--space-4);
   max-width: var(--layout-article);

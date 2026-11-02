@@ -1,0 +1,34 @@
+// web/lib/ui/react/ResultCard/ResultCard.module.scss
+//
+// FW-CALCS-A2, R733. Tokens only. Radius xl, the large status card's.
+
+// The frame is _frame.scss's, shared with the calculator's island.
+@use "frame";
+
+.surface {
+  @include frame.surface;
+}
+
+.brand {
+  @include frame.surface;
+
+  border-color: var(--colour-brand);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+
+  p {
+    color: var(--colour-surface);
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--size-touch-target-web);
+    padding: 0 var(--space-5);
+    border-radius: var(--radius-md);
+    background: var(--colour-surface);
+    color: var(--colour-brand);
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+  }
+}

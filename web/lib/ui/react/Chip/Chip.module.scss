@@ -1,0 +1,47 @@
+// web/lib/ui/react/Chip/Chip.module.scss
+//
+// FW-CALCS-A2, R733. An outlined chip that fills with brand when checked.
+// Radius md, the design system's control radius (not the canvas's pills,
+// R709's reading carried by fw-home-a2). At least the 44 px web touch target.
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-touch-target-web);
+  padding: 0 var(--space-4);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+.chip:has(.input:checked) {
+  border-color: var(--colour-brand);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.chip:has(.input:focus-visible) {
+  outline: var(--size-input-border-focus) solid var(--colour-brand);
+  outline-offset: var(--size-input-border-focus);
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+
+  // Above the label text, so a pointer (or a test driver) lands on the
+  // control itself rather than on the words painted beneath it.
+  z-index: 1;
+}

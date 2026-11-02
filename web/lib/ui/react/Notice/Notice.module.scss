@@ -1,0 +1,47 @@
+// web/lib/ui/react/Notice/Notice.module.scss
+//
+// FW-CALCS-A2, R733. The error soft fill, a full border in the error colour,
+// radius lg, the glyph in the error colour beside text in text-primary (R57).
+// Tokens only.
+
+.root {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+  border: var(--size-card-border) solid var(--colour-error);
+  border-radius: var(--radius-lg);
+  background: var(--colour-error-soft);
+  color: var(--colour-text-primary);
+
+  a {
+    color: var(--colour-text-primary);
+    text-decoration: underline;
+  }
+}
+
+.glyph {
+  flex: none;
+  width: var(--icon-size-default);
+  height: var(--icon-size-default);
+  margin-top: var(--space-1);
+  color: var(--colour-error);
+}
+
+.body {
+  min-width: 0;
+
+  p {
+    margin: var(--space-2) 0 0;
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+  }
+}
+
+.body > .heading {
+  margin: 0;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-body-m-line);
+}

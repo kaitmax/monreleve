@@ -1,0 +1,76 @@
+// web/lib/ui/react/SegmentedButtons/SegmentedButtons.module.scss
+//
+// FW-CALCS-A2, R750. SegmentedChoice's paint, token for token (its .root,
+// .legend, .segments, .segment, selected and focus rules), for <button>
+// segments: a button brings its own frame, fill and font, so those are reset
+// here, and the selected state reads aria-pressed instead of a checked radio.
+// Kept in its own sheet so the calculator's chunk carries none of it (R736).
+
+.root {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.segments {
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-touch-target-web);
+  padding: 0 var(--space-5);
+  border: 0;
+  background: none;
+  color: var(--colour-text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-line);
+  cursor: pointer;
+}
+
+.segment:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
+}
+
+.segment:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+.segment[aria-pressed="true"] {
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+}
+
+.segment:focus-visible {
+  outline: var(--size-input-border-focus) solid var(--colour-brand);
+  outline-offset: var(--size-input-border-focus);
+}
+
+.helper {
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  line-height: var(--type-caption-line);
+}

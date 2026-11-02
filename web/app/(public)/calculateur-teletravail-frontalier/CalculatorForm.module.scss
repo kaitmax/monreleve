@@ -14,12 +14,66 @@
 // styling and does nothing, which is worse than no line at all. Only
 // properties FieldGroup leaves alone appear below.
 
+@use "../../../lib/ui/core/styles/breakpoints" as bp;
+@use "../../../lib/ui/react/ResultCard/frame";
+
+// ---------------------------------------------------------------------------
+// FW-CALCS-A2, R724: THE TWO COLUMNS. The page's grid (calculateur.module.scss
+// .layout) places them; these decide what each column does inside it. Below
+// the md breakpoint they are two blocks, the result after the form.
+// ---------------------------------------------------------------------------
+
+.formColumn,
+.resultColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+// STICKY ON A WIDE SCREEN, so the answer stays in view while the form
+// scrolls. align-self: start is what lets it stick: a grid item stretched to
+// the row's height has nowhere to move. The shell's header is not sticky, so
+// the offset is a plain space token.
+@media (width >= bp.$breakpoint-md) {
+  .resultColumn {
+    position: sticky;
+    top: var(--space-6);
+    align-self: start;
+  }
+}
+
+// The form card (calculateur-a2): white, hairline, radius lg, roomier on a
+// wide screen.
 .card {
-  margin: 0 0 var(--space-8);
+  min-width: 0;
+  margin: 0;
   padding: var(--space-6);
   border: var(--size-input-border) solid var(--colour-border-default);
   border-radius: var(--radius-lg);
   background: var(--colour-surface);
+
+  @media (width >= bp.$breakpoint-md) {
+    padding: var(--space-8);
+  }
+}
+
+// R725: the rate and the days side by side from the md breakpoint, as the
+// design pairs them; one above the other on a phone.
+.pair {
+  display: grid;
+  gap: var(--space-5);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+// R725: the five weekday chips. They wrap at 320 px rather than overflow.
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 // THE GAP BETWEEN FIELDS, and it was MISSING until the increment 5 baselines
@@ -38,7 +92,11 @@
 //
 // Direct children only. A descendant selector would also space the insides of
 // FieldGroup, which owns them.
-.card > * + * {
+// :not(:first-child) rather than * + *, FW-CALCS-A2: the same children, one
+// pseudo-class heavier, so a child that zeroes its own margin (.group, and
+// SegmentedChoice's fieldset) still gets the gap - the A2 baseline showed
+// the rhythm question touching the missions helper above it.
+.card > :not(:first-child) {
   margin-top: var(--space-5);
 }
 
@@ -47,9 +105,9 @@
 // block does not hold.
 .legend {
   padding: 0;
-  font-size: var(--type-body-l-size);
-  font-weight: var(--type-label-weight);
-  line-height: var(--type-body-l-line);
+  font-size: var(--type-h3-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-h3-line);
 }
 
 // A select sizes itself to its widest option otherwise, which makes the field
@@ -60,36 +118,11 @@
 
 // TABULAR FIGURES on a number the user watches change - UI discipline, and the
 // reason is that proportional digits shift the value sideways as it steps.
+// Inside the Stepper, which dresses it (lib/ui/react/Stepper); the exact
+// method's total field is the one place it stands alone.
 .number {
   width: 100%;
   font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-.stepper {
-  display: flex;
-  gap: var(--space-2);
-  align-items: stretch;
-}
-
-// THE TOUCH TARGET FROM ITS TOKEN. --size-touch-target-web is 44, the web
-// minimum in DESIGN-SYSTEM 1; the Android target is 48 and has its own name.
-// The height matches the input's 48 instead, so the row lines up - 44 x 48
-// clears the minimum in both directions, where a square 44 would leave the
-// buttons short of the field beside them.
-.step {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--size-touch-target-web);
-  min-width: var(--size-touch-target-web);
-  height: var(--size-input-height);
-  border: var(--size-input-border) solid var(--colour-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--colour-surface);
-  color: var(--colour-text-primary);
-  cursor: pointer;
 }
 
 // The home for a validation error belonging to no visible field. Same colour
@@ -144,25 +177,6 @@
   line-height: var(--type-caption-line);
 }
 
-.choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-}
-
-// The whole row is the target, not just the dot - the label wraps the input,
-// so a tap anywhere on the word selects it. min-height keeps that row at the
-// touch target even though the radio itself is 22 px.
-.choice {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: center;
-  min-height: var(--size-touch-target-web);
-  font-size: var(--type-body-size);
-  line-height: var(--type-body-line);
-  cursor: pointer;
-}
-
 // The mission fields, revealed by "Oui". Indented so the relationship to the
 // question above is visible without a second heading.
 .revealed {
@@ -185,7 +199,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--colour-text-primary);
+  color: var(--colour-brand);
   font-family: inherit;
   font-size: var(--type-body-size);
   font-weight: var(--type-label-weight);
@@ -202,6 +216,15 @@
 .chevronOpen {
   transform: rotate(180deg);
   transition: transform var(--motion-standard);
+}
+
+// R734: the rotation is decoration; a reader who asks for less motion gets
+// the open state without the turn.
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .chevronOpen {
+    transition: none;
+  }
 }
 
 .advanced {
@@ -238,14 +261,9 @@
   cursor: pointer;
 }
 
-// BELOW the form and never replacing it: SPEC 9.3 says users iterate, so the
-// numbers they are adjusting stay on screen while the answer changes.
+// The empty result region, in ResultCard's frame by its mixin (R733, R736).
 .resultCard {
-  margin: 0 0 var(--space-8);
-  padding: var(--space-6);
-  border: var(--size-input-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
+  @include frame.surface;
 }
 
 .resultHeading {

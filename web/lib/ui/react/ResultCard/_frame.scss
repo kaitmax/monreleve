@@ -1,0 +1,31 @@
+// web/lib/ui/react/ResultCard/_frame.scss
+//
+// FW-CALCS-A2, R733 and R736: the result card's frame, in ONE place, for the
+// two ways it is used.
+//
+// ResultCard (the component) includes it for every server-rendered card - the
+// application card, /resultat's projection, the comparator's cost cards. The
+// calculator's ISLAND includes it directly on its own two result regions
+// (ResultPanel, the empty result) instead of importing the component: the
+// calculator route had 0.6 KiB of first-load headroom (REPORT-FW-HOME-A2,
+// R723) and the component cost the island its module and its class map
+// (measured: the route at 125.1 KiB, over GATE A by 0.1, with it). One
+// definition of the look, no second copy of it - the frame is this mixin.
+//
+// Tokens only. Radius xl, the large status card's (DESIGN-SYSTEM section 1).
+
+@use "../../core/styles/breakpoints" as bp;
+
+@mixin surface {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+
+  @media (width >= bp.$breakpoint-md) {
+    padding: var(--space-7);
+  }
+}

@@ -7,6 +7,8 @@
 // like the calculator's page: the heading, the lead, the list of what the
 // comparison leaves out and the links are in the HTML with scripting off;
 // the island renders the form, the irrevocability banner and the result.
+// FW-CALCS-A2 (R748): "Le délai de trois mois" - its text and the four
+// events - is server HTML too; only its helper is a second, small island.
 //
 // STATIC, AND IT NEVER READS searchParams. Nothing the reader types reaches a
 // URL (R658), so there is nothing to read; and the calculator's page records
@@ -23,13 +25,16 @@ import type { Metadata } from 'next';
 import { webApplicationLd } from '@/lib/content/jsonld';
 import { COMPARATOR_PATH } from '@/lib/content/routes';
 import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
+import { splitLead } from '@/lib/content/lead';
 import { formatChf } from '@/lib/lamal/format';
 import { formatDate } from '@/lib/ui/core';
 import { AVAILABLE_YEARS, COMPARATOR_YEARS, EXCHANGE_RATE } from '@/lib/lamal/years';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
+import { IrrevocabilityBanner } from '@/lib/ui/react/Comparison/IrrevocabilityBanner';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { JsonLd } from '@/lib/ui/react/JsonLd/JsonLd';
 import { ComparatorForm } from './ComparatorForm';
+import { DeadlineHelper } from './DeadlineHelper';
 import styles from './comparateur.module.scss';
 
 export function generateMetadata(): Metadata {
@@ -56,36 +61,94 @@ export default function ComparateurPage() {
         })}
       />
 
-      <Container width="narrow">
-        <h1 className={styles.title}>{COPY.title}</h1>
-        <p className={styles.lead}>{COPY.intro}</p>
-        <noscript>
-          <p className={styles.note}>{COPY.noScript}</p>
-        </noscript>
+      {/*
+        FW-CALCS-A2, R729: comparateur-lamal-a2's arrangement - the page head,
+        the IRREVOCABILITY BANNER directly under it (above the form and the
+        result, R642), then two columns: the form card and the result.
+      */}
+      <Container width="public">
+        <header className={styles.head}>
+          <h1 className={styles.title}>{COPY.title}</h1>
+          <p className={styles.lead}>{COPY.intro}</p>
+          <noscript>
+            <p className={styles.note}>{COPY.noScript}</p>
+          </noscript>
+        </header>
 
-        <ComparatorForm />
+        <IrrevocabilityBanner />
 
-        <section className={styles.limits} aria-labelledby="ne-compare-pas" data-limits="true">
+        <div className={styles.layout}>
+          <ComparatorForm />
+        </div>
+      </Container>
+
+      {/*
+        FW-CALCS-A2, R748: "Le délai de trois mois", as the design draws it -
+        the period and the four events that open it (rows D1-D6, the banner's
+        own list), and the helper beside them. The text is the server's; the
+        helper is a small island that stores nothing (R750) and offers no
+        reminder (R749, parked).
+      */}
+      <section className={styles.deadline} aria-labelledby="delai-titre" data-deadline="true">
+        <Container width="public">
+          <div className={styles.deadlineLayout}>
+            <div>
+              <h2 className={styles.deadlineHeading} id="delai-titre">
+                {COPY.deadline.heading}
+              </h2>
+              <p className={styles.deadlineIntro}>{COPY.deadline.intro}</p>
+              <ul className={styles.eventList}>
+                {COPY.deadline.events.map((event) => (
+                  <li key={event}>{event}</li>
+                ))}
+              </ul>
+            </div>
+            <DeadlineHelper />
+          </div>
+        </Container>
+      </section>
+
+      {/*
+        R732: "CE QUE CE COMPARATIF NE COMPARE PAS", as the design sets it -
+        a white band, two columns of items under a hairline each, a bold lead
+        per item - with EVERY item in its full text (eight since FW-CALCS-A2's
+        addendum 2 took out the joint return and the incomplete year, which
+        the form now asks). The lead is SPLIT
+        from the item (lib/content/lead.ts), never retyped: lead, one space,
+        rest is the item, character for character.
+      */}
+      <section className={styles.band} aria-labelledby="ne-compare-pas" data-limits="true">
+        <Container width="public">
           <h2 className={styles.limitsHeading} id="ne-compare-pas">
             {COPY.limitsHeading}
           </h2>
           <ul className={styles.limitList}>
-            {COPY.limits(franchise, formatDate(EXCHANGE_RATE.date)).map((item) => (
-              <li className={styles.limit} key={item}>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </section>
+            {COPY.limits(franchise, formatDate(EXCHANGE_RATE.date)).map((item) => {
+              const { lead, rest } = splitLead(item);
 
-        <p className={styles.links}>
-          {COPY.guideLink.lead}
-          <a href={COPY.guideLink.href}>{COPY.guideLink.text}</a>
-        </p>
-        <p className={styles.links}>
-          <a href={COPY.sourcesLink.href}>{COPY.sourcesLink.text}</a>
-        </p>
-      </Container>
+              return (
+                <li className={styles.limit} key={item}>
+                  <strong className={styles.limitLead}>{lead}</strong>
+                  {rest === '' ? null : (
+                    <>
+                      {' '}
+                      <span className={styles.limitRest}>{rest}</span>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className={styles.links}>
+            {COPY.guideLink.lead}
+            <a href={COPY.guideLink.href}>{COPY.guideLink.text}</a>
+          </p>
+          <p className={styles.links}>
+            <a href={COPY.sourcesLink.href}>{COPY.sourcesLink.text}</a>
+          </p>
+        </Container>
+      </section>
     </main>
   );
 }

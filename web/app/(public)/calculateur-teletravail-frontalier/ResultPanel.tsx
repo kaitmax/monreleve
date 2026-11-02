@@ -140,6 +140,10 @@ export function ResultPanel({ result, thresholds }: ResultPanelProps) {
   const liveHref = ctaHrefIfLive(link.href);
 
   return (
+    // FW-CALCS-A2, R726: the A2 result card - ResultCard's frame, included
+    // as a mixin (ResultPanel.module.scss .panel; R736's budget, see
+    // lib/ui/react/ResultCard/_frame.scss). The seven slots, their order and
+    // every attribute below are unchanged.
     <section
       className={styles.panel}
       id="resultat"

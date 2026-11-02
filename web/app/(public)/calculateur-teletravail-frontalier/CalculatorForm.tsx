@@ -35,8 +35,8 @@
 
 'use client';
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Minus, Plus } from 'lucide-react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import {
   type Canton,
   type DenominatorMethod,
@@ -66,7 +66,10 @@ import { PARAM_NOTICE, SHARE_COPY } from '@/lib/fr/params';
 import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 import { CANTONS_BY_NAME } from '@/lib/fr/cantons';
 import { errorMessage } from '@/lib/fr/errors';
+import { Chip } from '@/lib/ui/react/Chip/Chip';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
+import { SegmentedChoice } from '@/lib/ui/react/SegmentedChoice/SegmentedChoice';
+import { Stepper } from '@/lib/ui/react/Stepper/Stepper';
 import { formatDays, formatPercent, remainingYearFraction, statusFor } from '@/lib/ui/core';
 import {
   accordionOpened,
@@ -348,61 +351,17 @@ export interface CalculatorFormProps {
    * being able to construct directly in a test without a browser URL.
    */
   readonly initial?: TeleworkInput | null;
+  /**
+   * FW-CALCS-A2 (R726): what closes the result column - the application card
+   * and the link to /sources. RENDERED BY THE SERVER PAGE and handed in as
+   * elements, so their words and PRODUCT_STATE never enter this island's
+   * bundle: the calculator route has the least first-load headroom in the
+   * product (REPORT-FW-HOME-A2, R723).
+   */
+  readonly aside?: ReactNode;
 }
 
-interface RadioGroupProps {
-  readonly name: string;
-  readonly legend: string;
-  readonly helper: string;
-  readonly options: ReadonlyArray<{ readonly value: string; readonly label: string }>;
-  readonly value: string;
-  readonly onChange: (value: string) => void;
-}
-
-/**
- * A radio group, as a fieldset with a legend.
- *
- * NOT FieldGroup, AND THAT IS DELIBERATE. FieldGroup wires exactly ONE
- * control: it renders `<label for={id}>` and hands the caller
- * aria-describedby and aria-invalid to spread onto the thing that id names. A
- * radio group has no single control to name, and `<label for>` pointing at a
- * fieldset is inert - a fieldset is not a labelable element, so the label
- * would look right and announce nothing. A legend IS the group's accessible
- * name, which is the whole reason fieldset exists.
- *
- * Recorded in the report as an interpretation of "every field wrapped in
- * FieldGroup": every field with one control is.
- */
-function RadioGroup({ name, legend, helper, options, value, onChange }: RadioGroupProps) {
-  const helperId = `${name}-helper`;
-
-  return (
-    <fieldset className={styles.group} aria-describedby={helperId}>
-      <legend className={styles.groupLegend}>{legend}</legend>
-      <p className={styles.groupHelper} id={helperId}>
-        {helper}
-      </p>
-      <div className={styles.choices}>
-        {options.map((option) => (
-          <label className={styles.choice} key={option.value}>
-            <input
-              type="radio"
-              name={name}
-              value={option.value}
-              checked={value === option.value}
-              onChange={() => {
-                onChange(option.value);
-              }}
-            />
-            <span>{option.label}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps) {
+export function CalculatorForm({ taxYear, initial = null, aside = null }: CalculatorFormProps) {
   // SEEDED ONCE, from the server render. useState's initial value is used on
   // the first render and ignored afterwards, which is exactly right here: the
   // URL is where the user STARTED, and from then on the form is the truth and
@@ -815,24 +774,24 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
       error={errorFor(config.field)}
     >
       {(control) => (
-        <div className={styles.stepper}>
-          <button
-            type="button"
-            className={styles.step}
-            aria-label={config.decrease}
-            onClick={() => {
-              stepNumeric(config.stateKey, -config.step, config.min, config.max);
-            }}
-          >
-            <Minus size={ICON} strokeWidth={STROKE} aria-hidden="true" />
-          </button>
+        // R725: THE A2 STEPPER, restyled rather than re-implemented. Stepper
+        // draws the frame and the two buttons; the field, its name, its
+        // arithmetic (stepNumeric's clamp) and its labels are unchanged.
+        <Stepper
+          decreaseLabel={config.decrease}
+          increaseLabel={config.increase}
+          onDecrease={() => {
+            stepNumeric(config.stateKey, -config.step, config.min, config.max);
+          }}
+          onIncrease={() => {
+            stepNumeric(config.stateKey, config.step, config.min, config.max);
+          }}
+        >
           {/*
             NO step, min OR max ATTRIBUTE. All three are inert on a text
             input, so rendering them would read as a bound the browser was
             enforcing while nothing was. The real bounds are the stepper's
-            clamp below and the engine's own validation, both tested.
-
-            config still carries them: the stepper arithmetic needs them.
+            clamp and the engine's own validation, both tested.
           */}
           <input
             {...control}
@@ -845,17 +804,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
               set(config.stateKey, event.target.value);
             }}
           />
-          <button
-            type="button"
-            className={styles.step}
-            aria-label={config.increase}
-            onClick={() => {
-              stepNumeric(config.stateKey, config.step, config.min, config.max);
-            }}
-          >
-            <Plus size={ICON} strokeWidth={STROKE} aria-hidden="true" />
-          </button>
-        </div>
+        </Stepper>
       )}
     </FieldGroup>
   );
@@ -982,6 +931,14 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
         searchParams here costs - <title> and canonical leave <head> on SPEC
         14's target-query page - and R351 moved the answer instead.
       */}
+      {/*
+        FW-CALCS-A2, R724: TWO COLUMNS, opened here because only the island
+        knows where its form ends and its result begins. The page's grid sets
+        them side by side from the md breakpoint; below it they stack, the
+        result after the form. DOM order is unchanged - link notice, share
+        row, provisional notice, result (R137, page-section-order.test.tsx).
+      */}
+      <div className={styles.formColumn}>
       <form method="get" action={RESULT_PATH} onSubmit={onSubmit}>
         <fieldset className={styles.card}>
           <legend className={styles.legend}>{COPY.legend}</legend>
@@ -1012,6 +969,8 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
             )}
           </FieldGroup>
 
+          {/* R725: the two steppers side by side on a wide screen. */}
+          <div className={styles.pair}>
           {numericField({
             id: 'taux-activite',
             name: 'taux',
@@ -1039,13 +998,14 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
             min: DAYS.min,
             max: null,
           })}
+          </div>
 
           {/*
             THE MISSION QUESTION, above the accordion and never inside it. SPEC
             9.3's one exception to progressive disclosure, because a user with
             missions who never opens the accordion gets a silently wrong answer.
           */}
-          <RadioGroup
+          <SegmentedChoice
             name="missions"
             legend={COPY.missions.question}
             helper={COPY.missions.helper(fiscalCeiling(taxYear))}
@@ -1127,34 +1087,33 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           */}
           <fieldset className={styles.group}>
             <legend className={styles.groupLegend}>{CALCULATEUR_COPY.projection.question}</legend>
+            {/* R725: the A2 chips - each still a checkbox named rythme. */}
+            <div className={styles.chips} aria-describedby={RHYTHM_HELPER_ID}>
+              {WEEKDAYS_IN_ORDER.map((weekday) => (
+                <Chip
+                  key={weekday}
+                  name="rythme"
+                  value={RHYTHM_DAY_CODES[weekday]}
+                  label={CALCULATEUR_COPY.projection.days[weekday]}
+                  checked={state.rhythm[weekday] === 'HOME'}
+                  onChange={(event) => {
+                    const { checked } = event.target;
+
+                    setState((current) => {
+                      const rhythm = { ...current.rhythm };
+
+                      if (checked) rhythm[weekday] = 'HOME';
+                      else delete rhythm[weekday];
+
+                      return { ...current, rhythm };
+                    });
+                  }}
+                />
+              ))}
+            </div>
             <p className={styles.groupHelper} id={RHYTHM_HELPER_ID}>
               {CALCULATEUR_COPY.projection.helper}
             </p>
-            <div className={styles.choices} aria-describedby={RHYTHM_HELPER_ID}>
-              {WEEKDAYS_IN_ORDER.map((weekday) => (
-                <label className={styles.choice} key={weekday}>
-                  <input
-                    type="checkbox"
-                    name="rythme"
-                    value={RHYTHM_DAY_CODES[weekday]}
-                    checked={state.rhythm[weekday] === 'HOME'}
-                    onChange={(event) => {
-                      const { checked } = event.target;
-
-                      setState((current) => {
-                        const rhythm = { ...current.rhythm };
-
-                        if (checked) rhythm[weekday] = 'HOME';
-                        else delete rhythm[weekday];
-
-                        return { ...current, rhythm };
-                      });
-                    }}
-                  />
-                  <span>{CALCULATEUR_COPY.projection.days[weekday]}</span>
-                </label>
-              ))}
-            </div>
           </fieldset>
 
           <button
@@ -1204,7 +1163,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           <div id={ADVANCED_SECTION_ID}>
             {!advancedOpen ? null : (
               <div className={styles.advanced}>
-                <RadioGroup
+                <SegmentedChoice
                   name="methode"
                   legend={COPY.method.label}
                   helper={COPY.method.helper(formatDays(rules.simplifiedBasisDays))}
@@ -1270,7 +1229,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
                   </FieldGroup>
                 )}
 
-                <RadioGroup
+                <SegmentedChoice
                   name="decompte"
                   legend={COPY.decompte.label}
                   helper={COPY.decompte.helper}
@@ -1460,6 +1419,13 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           {shareStatus}
         </p>
       </div>
+      </div>
+
+      {/*
+        THE RESULT COLUMN (R726). Sticky on a wide screen, so the answer
+        stays in view while the form scrolls; after the form on a phone.
+      */}
+      <div className={styles.resultColumn}>
 
       {provisional.length === 0 ? null : (
         <div className={styles.provisional} data-notice="provisional">
@@ -1492,6 +1458,7 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
       )}
 
       {input === null || result === null ? (
+        // ResultCard's frame by its mixin (.resultCard; R736's budget).
         <section className={styles.resultCard} aria-labelledby={RESULT_TITLE_ID}>
           <h2 className={styles.resultHeading} id={RESULT_TITLE_ID}>
             {RESULT.heading}
@@ -1541,6 +1508,9 @@ export function CalculatorForm({ taxYear, initial = null }: CalculatorFormProps)
           )}
         </>
       )}
+
+      {aside}
+      </div>
     </>
   );
 }

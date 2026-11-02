@@ -7,25 +7,23 @@
 // and its own heading - so a screenshot in greyscale, or a reader who cannot
 // distinguish the two fills, still meets a thing that announces what it is.
 
-.block {
-  margin: var(--space-8) 0 0;
-  padding: var(--space-5);
-  max-width: var(--layout-article);
-  border: var(--size-input-border) dashed var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
-}
+// The frame is ResultCard's (FW-CALCS-A2, R733).
 
 // THE WORD, not a colour. Uppercase and letter-spaced so it reads as a label
 // rather than as a sentence that happens to be short.
+// R340's first device, the word "Projection", as calculateur-a2 draws it: a
+// bordered pill above the heading. Still text, never colour.
 .label {
-  margin: 0 0 var(--space-1);
-  color: var(--colour-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--colour-text-primary);
   font-size: var(--type-caption-size);
-  font-weight: var(--type-label-weight);
+  font-weight: var(--weight-semibold);
   line-height: var(--type-caption-line);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
 }
 
 .heading {

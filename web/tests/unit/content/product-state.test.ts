@@ -42,6 +42,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PRODUCT_STATE, type ProductState } from '@/lib/content/product-state';
 import { HOME_COPY } from '@/lib/fr/home';
+import { CALCULATOR_APP_CARD } from '@/lib/fr/calculateur';
 import { A_PROPOS_COPY } from '@/lib/fr/a-propos';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RELEVE_COPY } from '@/lib/fr/releve-annuel';
@@ -315,6 +316,13 @@ const WIRING: ReadonlyArray<{
       { where: '/ excerpt caption', file: 'home.ts', render: (s) => HOME_COPY.excerpt.caption(s) },
       { where: '/ counter app action', file: 'home.ts', render: (s) => HOME_COPY.counter.app(s) },
       { where: '/ application body', file: 'home.ts', render: (s) => HOME_COPY.mobile.body(s) },
+      // FW-CALCS-A2 (R726): the application card under the calculator's
+      // result, the same claim as the home's application body.
+      {
+        where: '/calculateur-teletravail-frontalier application card',
+        file: 'calculateur.ts',
+        render: (s) => CALCULATOR_APP_CARD.body(s),
+      },
       {
         where: '/ year cards',
         file: 'home.ts',

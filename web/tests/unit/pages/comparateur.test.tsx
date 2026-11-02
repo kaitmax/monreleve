@@ -88,7 +88,15 @@ describe('the empty page', () => {
   it('defaults the year to the newest the data holds, and the frontalier to no accident cover', () => {
     render(<ComparateurPage />);
 
-    expect((screen.getByLabelText(COPY.form.year.label) as HTMLSelectElement).value).toBe(String(DEFAULT_YEAR));
+    // CA1 (ADVISOR RULING 1, 2026-11-03): the year is the designed toggle, so
+    // the default is read as the pressed segment of the year group - the
+    // positive assertion that replaces the select's .value read. Both years
+    // being selectable, and the heading following, is comparateur-rulings.test.tsx.
+    expect(
+      within(screen.getByRole('group', { name: COPY.form.year.label }))
+        .getByRole('button', { name: String(DEFAULT_YEAR) })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
     expect((screen.getByLabelText(COPY.form.persons.accident) as HTMLInputElement).checked).toBe(false);
   });
 });

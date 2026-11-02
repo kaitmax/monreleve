@@ -5,19 +5,21 @@
 // Tokens only. The panel is a card below the form and never replaces it -
 // SPEC 9.3: "Below the form, never replacing it - users iterate."
 
+@use "../../../lib/ui/react/ResultCard/frame";
+
+// The frame is ResultCard's, by its mixin (R733, R736).
 .panel {
-  margin: 0 0 var(--space-8);
-  padding: var(--space-6);
-  border: var(--size-input-border) solid var(--colour-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--colour-surface);
+  @include frame.surface;
 }
 
+// calculateur-a2 sets the card's name small and secondary above the figure:
+// the figure is what a reader came for.
 .heading {
   margin: 0 0 var(--space-4);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-line);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-line);
 }
 
 .badge {
@@ -36,6 +38,15 @@
   gap: var(--space-3);
   grid-template-columns: 1fr;
   margin-bottom: var(--space-6);
+}
+
+// R726: each tile in its own bordered box, as calculateur-a2 draws the two
+// remaining-day figures. MetricTile itself is unchanged - the home page
+// renders it too (REPORT-FW-HOME-A2) - so the box is drawn here, around it.
+.tiles > * {
+  padding: var(--space-3) var(--space-4);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-lg);
 }
 
 // THE ONE BREAKPOINT THERE IS. $breakpoint-md is the only breakpoint the

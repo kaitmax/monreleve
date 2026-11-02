@@ -43,6 +43,7 @@
 // one would give every page two.
 
 import { ChevronDown, Menu } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
 import {
   collapseLoneDisclosures,
@@ -89,7 +90,23 @@ const STROKE = 1.75;
  * live, so the test suite and the workbench render it directly - it is the
  * only way its keyboard behaviour and its caret stay proven meanwhile.
  */
-export function NavItem({ entry }: { readonly entry: NavEntry }) {
+/**
+ * FW-CALCS-A2: aria-current="page" on the link to the page being read, and on
+ * nothing else. The header is the shell's; this task marks the current page
+ * and adds no menu. An exact match only - a guide is not "the guides hub".
+ */
+function currentFor(href: string | undefined, pathname: string | null): 'page' | undefined {
+  return href !== undefined && pathname !== null && href === pathname ? 'page' : undefined;
+}
+
+export function NavItem({
+  entry,
+  pathname = null,
+}: {
+  readonly entry: NavEntry;
+  /** The current path, so the link to it is marked aria-current (FW-CALCS-A2). */
+  readonly pathname?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
 
@@ -101,7 +118,7 @@ export function NavItem({ entry }: { readonly entry: NavEntry }) {
   if (entry.children === undefined) {
     return (
       <li className={styles.navItem}>
-        <a className={styles.navLink} href={entry.href}>
+        <a className={styles.navLink} href={entry.href} aria-current={currentFor(entry.href, pathname)}>
           {entry.label}
         </a>
       </li>
@@ -135,7 +152,7 @@ export function NavItem({ entry }: { readonly entry: NavEntry }) {
         <ul className={styles.submenu}>
           {entry.children.map((child) => (
             <li key={child.href}>
-              <a className={styles.navLink} href={child.href}>
+              <a className={styles.navLink} href={child.href} aria-current={currentFor(child.href, pathname)}>
                 {child.label}
               </a>
             </li>
@@ -204,11 +221,17 @@ const NAV: readonly NavEntry[] = collapseLoneDisclosures(visibleNav(SHELL_NAV));
  * The desktop nav's list, exported for the workbench's disclosure specimen so
  * the specimen is styled by this file rather than by a copy of it.
  */
-export function NavMenu({ entries }: { readonly entries: readonly NavEntry[] }) {
+export function NavMenu({
+  entries,
+  pathname = null,
+}: {
+  readonly entries: readonly NavEntry[];
+  readonly pathname?: string | null;
+}) {
   return (
     <ul className={styles.navList}>
       {entries.map((entry) => (
-        <NavItem key={entry.label} entry={entry} />
+        <NavItem key={entry.label} entry={entry} pathname={pathname} />
       ))}
     </ul>
   );
@@ -232,6 +255,7 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
   // exists only for Escape, which is a progressive enhancement - with no
   // script the disclosure still opens, closes and reports itself correctly.
   const menu = useRef<HTMLDetailsElement>(null);
+  const pathname = usePathname();
 
   const closeMenu = useCallback(() => {
     const element = menu.current;
@@ -303,14 +327,22 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
                   entry.children !== undefined
                     ? entry.children.map((child) => (
                         <li key={child.href}>
-                          <a className={styles.mobileLink} href={child.href}>
+                          <a
+                            className={styles.mobileLink}
+                            href={child.href}
+                            aria-current={currentFor(child.href, pathname)}
+                          >
                             {child.label}
                           </a>
                         </li>
                       ))
                     : [
                         <li key={entry.href}>
-                          <a className={styles.mobileLink} href={entry.href}>
+                          <a
+                            className={styles.mobileLink}
+                            href={entry.href}
+                            aria-current={currentFor(entry.href, pathname)}
+                          >
                             {entry.label}
                           </a>
                         </li>,
@@ -341,7 +373,7 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
           </a>
 
           <nav className={styles.nav} aria-label={SHELL_COPY.navLabel}>
-            <NavMenu entries={NAV} />
+            <NavMenu entries={NAV} pathname={pathname} />
           </nav>
 
           {/* OUTSIDE the panel below, on every viewport - and rendered ONLY

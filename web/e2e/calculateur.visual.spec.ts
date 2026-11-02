@@ -27,7 +27,7 @@
 import { expect, test } from '@playwright/test';
 import { expectElementBaseline, expectPageBaseline } from './baseline';
 import { CALCULATEUR_COPY } from '../lib/fr/calculateur';
-import { CALCULATOR_PATH } from '../lib/content/routes';
+import { CALCULATOR_PATH, RESULT_PATH } from '../lib/content/routes';
 import { ALERTES_COPY } from '../lib/fr/alertes';
 import { PARAM_NOTICE } from '../lib/fr/params';
 import { PROVISIONAL_COPY } from '../lib/fr/provisional';
@@ -211,6 +211,23 @@ const STATES: readonly VisualState[] = [
     search: '?canton=GE&tt=84&taux=abc&amp;mfr=24&utm_source=facebook',
     reach: async () => undefined,
   },
+  // FW-CALCS-A2 (R735): the A2 states the page did not have a picture of.
+  {
+    // The missions question answered "Oui": the two fields revealed.
+    id: 'missions-ouvertes',
+    reach: async (page) => {
+      await page.selectOption('#canton', 'GE');
+      await page.fill('#jours-teletravail', '40');
+      await page.getByRole('radio', { name: CALCULATEUR_COPY.form.missions.yes }).check();
+    },
+  },
+  {
+    // A rhythm chosen: two chips checked, and the line that says where the
+    // projection is drawn (R343 - on /resultat, by the server).
+    id: 'projection',
+    search: '?canton=GE&tt=40&rythme=ma&rythme=je',
+    reach: async () => undefined,
+  },
 ];
 
 /**
@@ -247,7 +264,32 @@ const MUST_SHOW: Readonly<Record<string, string>> = {
   // an ordinary calculator under a name claiming a status.
   'capture-succes': ALERTES_COPY.submitted,
   'capture-erreur': ALERTES_COPY.errors.emailInvalid,
+
+  // FW-CALCS-A2 (R735).
+  'missions-ouvertes': CALCULATEUR_COPY.form.missions.france.label,
+  projection: CALCULATEUR_COPY.projection.onTheResult,
 };
+
+/**
+ * FW-CALCS-A2 (R727, R735): /resultat, the answer without JavaScript, in its
+ * two main states. NO RHYTHM in the result state: the projection counts the
+ * working days left from today, so a baseline carrying one would change every
+ * day without anything having changed (the projection is pictured on the
+ * calculator side by the 'projection' state, and its card by the workbench's
+ * ResultCard specimen).
+ */
+const RESULTAT_STATES = [
+  {
+    id: 'resultat',
+    search: '?canton=GE&tt=84&mfr=24&decompte=dj',
+    mustShow: RESULT_COPY.links['mission-exposure'].text,
+  },
+  {
+    id: 'invalide',
+    search: '?canton=TI&tt=50.5&decompte=j',
+    mustShow: CALCULATEUR_COPY.resultat.invalid,
+  },
+] as const;
 
 for (const { width, label } of [
   { width: 1440, label: 'desktop' },
@@ -311,6 +353,17 @@ for (const { width, label } of [
         await expectPageBaseline(page, `calculateur-${state.id}-${label}.png`, {
           animations: 'disabled',
           stylePath: 'e2e/visual-select.css',
+        });
+      });
+    }
+
+    for (const state of RESULTAT_STATES) {
+      test(`resultat-${state.id}`, async ({ page }) => {
+        await page.goto(`${RESULT_PATH}${state.search}`);
+        await page.evaluate(() => document.fonts.ready);
+        await expect(page.locator('main')).toContainText(state.mustShow);
+        await expectPageBaseline(page, `resultat-${state.id}-${label}.png`, {
+          animations: 'disabled',
         });
       });
     }

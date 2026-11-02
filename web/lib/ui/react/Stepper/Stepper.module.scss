@@ -1,0 +1,79 @@
+// web/lib/ui/react/Stepper/Stepper.module.scss
+//
+// FW-CALCS-A2, R733. One bordered control: the field between its two buttons,
+// as calculateur-a2 draws it. Tokens only; radius md, the input's (R8).
+//
+// THE FIELD'S OWN BORDER IS REMOVED HERE, and the selectors are heavier than
+// FieldGroup's on purpose: FieldGroup dresses `.root input` (0,1,1) and its
+// focus and invalid states (0,2,1); these are one attribute heavier, so the
+// field sits flat inside the stepper whatever order the two sheets load in.
+// The STATES move to the frame: focus-within draws the focus border, and an
+// invalid field (FieldGroup's data-invalid) draws the error border - so
+// neither is lost, and neither is colour alone (FieldGroup's message and icon
+// still render under the field).
+//
+// NO overflow: hidden. It would clip the buttons' focus ring; the buttons
+// round their own outer corners instead.
+
+@use "../../core/styles/fonts";
+
+.root {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--colour-surface);
+}
+
+.root:focus-within {
+  border-width: var(--size-input-border-focus);
+  border-color: var(--colour-brand);
+}
+
+.root:has(input[data-invalid]) {
+  border-width: var(--size-input-border-focus);
+  border-color: var(--colour-error);
+}
+
+.root input[type],
+.root input[type]:focus-visible,
+.root input[type][data-invalid] {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--size-input-height);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+
+  @include fonts.tabular-figures;
+}
+
+// 44 wide, the web touch target; 48 high, the field's height, so the row
+// lines up (DESIGN-SYSTEM section 1).
+.step {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-touch-target-web);
+  min-height: var(--size-input-height);
+  padding: 0;
+  border: 0;
+  background: var(--colour-canvas);
+  color: var(--colour-text-primary);
+  cursor: pointer;
+}
+
+.step:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
+}
+
+.step:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}

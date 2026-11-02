@@ -93,6 +93,38 @@ for (const specimen of SPECIMENS) {
   });
 }
 
+/**
+ * FW-CALCS-A2 (R733): the calculators' shared pieces, every state, on their
+ * own workbench page (app/dev/composants-a2) - appended to /dev/composants
+ * they moved five baselines of untouched components by sub-pixel
+ * antialiasing (R207; REPORT-FW-CALCS-A2). Same baseline names as the rest.
+ */
+const A2_SPECIMENS = [
+  'calcs-stepper',
+  'calcs-stepper-error',
+  'calcs-toggle-first',
+  'calcs-toggle-second',
+  'calcs-toggle-three',
+  'calcs-buttons',
+  'calcs-chips',
+  'calcs-card-surface',
+  'calcs-card-brand',
+  'comparison-panel',
+] as const;
+
+test.describe('/dev/composants-a2', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/dev/composants-a2');
+    await page.evaluate(() => document.fonts.ready);
+  });
+
+  for (const specimen of A2_SPECIMENS) {
+    test(specimen, async ({ page }) => {
+      await expectElementBaseline(page.getByTestId(specimen), `composants-${specimen}.png`);
+    });
+  }
+});
+
 test('the four badge states are visually distinct, not four identical chips', async ({ page }) => {
   // The failure the baselines cannot catch: an undefined custom property
   // renders BLACK rather than as nothing, and identically everywhere. Four

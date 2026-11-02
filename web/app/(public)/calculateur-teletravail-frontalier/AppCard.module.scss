@@ -1,0 +1,17 @@
+// web/app/(public)/calculateur-teletravail-frontalier/AppCard.module.scss
+//
+// FW-CALCS-A2, R726. The colours are ResultCard's brand tone (white on brand,
+// 11,40:1); only the rhythm of the two lines is set here. Tokens only.
+
+.heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--type-body-m-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-body-m-line);
+}
+
+.body {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
