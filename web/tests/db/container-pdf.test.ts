@@ -12,8 +12,8 @@
 //
 //   here      Playwright's managed Chromium, downloaded by
 //             `playwright install chromium`
-//   the image Debian's `chromium` package, pinned to 153.0.8010.52-1~deb12u1
-//             and verified at build time
+//   the image Debian's `chromium` package, pinned by ARG CHROMIUM_VERSION
+//             in web/Dockerfile and verified at build time
 //
 // A DIFFERENT CHROMIUM IS A DIFFERENT RENDERER, AND IF THEY DIFFER THAT IS
 // THE FINDING. Byte equality is NOT expected and is not asserted: two

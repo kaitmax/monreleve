@@ -513,6 +513,6 @@ These were found during verification and are outside FW33 and FW34. Each goes in
 
 ## 11. Open items outside this design
 
-- `web/Dockerfile`'s `CHROMIUM_VERSION` pins 153, which Debian no longer serves. Coolify builds with a build-arg override of `154.0.8037.57-1~deb12u1`; bump the file in its own commit.
+- `web/Dockerfile`'s `CHROMIUM_VERSION` pins 153, which Debian no longer serves. Coolify builds with a build-arg override of `154.0.8037.57-1~deb12u1`; bump the file in its own commit. *(Closed: the Coolify override was deleted on 2026-10-14 (`docs/deploy.md`), and `ARG CHROMIUM_VERSION` in `web/Dockerfile` is the only pin. FW-CHROMIUM-PIN moved it on 2026-11-03.)*
 - The Coolify API token used for deployment is to be rotated by the user, and the Coolify dashboard is still HTTP only.
 - PARK31-6: `User.name` is settable by no route, so the PDF returns 422 `titulaire_missing`.
