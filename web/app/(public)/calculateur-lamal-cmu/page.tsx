@@ -7,6 +7,8 @@
 // like the calculator's page: the heading, the lead, the list of what the
 // comparison leaves out and the links are in the HTML with scripting off;
 // the island renders the form, the irrevocability banner and the result.
+// FW-CALCS-A2 (R748): "Le délai de trois mois" - its text and the four
+// events - is server HTML too; only its helper is a second, small island.
 //
 // STATIC, AND IT NEVER READS searchParams. Nothing the reader types reaches a
 // URL (R658), so there is nothing to read; and the calculator's page records
@@ -32,6 +34,7 @@ import { IrrevocabilityBanner } from '@/lib/ui/react/Comparison/IrrevocabilityBa
 import { Container } from '@/lib/ui/react/Container/Container';
 import { JsonLd } from '@/lib/ui/react/JsonLd/JsonLd';
 import { ComparatorForm } from './ComparatorForm';
+import { DeadlineHelper } from './DeadlineHelper';
 import styles from './comparateur.module.scss';
 
 export function generateMetadata(): Metadata {
@@ -80,9 +83,37 @@ export default function ComparateurPage() {
       </Container>
 
       {/*
+        FW-CALCS-A2, R748: "Le délai de trois mois", as the design draws it -
+        the period and the four events that open it (rows D1-D6, the banner's
+        own list), and the helper beside them. The text is the server's; the
+        helper is a small island that stores nothing (R750) and offers no
+        reminder (R749, parked).
+      */}
+      <section className={styles.deadline} aria-labelledby="delai-titre" data-deadline="true">
+        <Container width="public">
+          <div className={styles.deadlineLayout}>
+            <div>
+              <h2 className={styles.deadlineHeading} id="delai-titre">
+                {COPY.deadline.heading}
+              </h2>
+              <p className={styles.deadlineIntro}>{COPY.deadline.intro}</p>
+              <ul className={styles.eventList}>
+                {COPY.deadline.events.map((event) => (
+                  <li key={event}>{event}</li>
+                ))}
+              </ul>
+            </div>
+            <DeadlineHelper />
+          </div>
+        </Container>
+      </section>
+
+      {/*
         R732: "CE QUE CE COMPARATIF NE COMPARE PAS", as the design sets it -
         a white band, two columns of items under a hairline each, a bold lead
-        per item - with ALL TEN items in their full text. The lead is SPLIT
+        per item - with EVERY item in its full text (eight since FW-CALCS-A2's
+        addendum 2 took out the joint return and the incomplete year, which
+        the form now asks). The lead is SPLIT
         from the item (lib/content/lead.ts), never retyped: lead, one space,
         rest is the item, character for character.
       */}

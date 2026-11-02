@@ -236,6 +236,126 @@
   cursor: pointer;
 }
 
+// ---- FW-CALCS-A2, addendum 2: the joint return and the start date -----------
+
+// R743: the two income fields of a joint return, one under the other.
+.joint > * + * {
+  margin-top: var(--space-4);
+}
+
+.dateInput {
+  max-width: var(--layout-narrow);
+}
+
+// ---- R748: the three-month period and its helper ----------------------------
+
+// On the canvas, like the form's row: no fill of its own, so nothing here
+// is a container the contrast audit would resolve a text rule to (R121).
+.deadline {
+  padding-block: var(--space-16);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.deadlineLayout {
+  display: grid;
+  gap: var(--space-8);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+  }
+}
+
+.deadlineHeading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.deadlineIntro {
+  margin: 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.eventList {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-5);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.deadlineHelperHeading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h3-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-h3-line);
+}
+
+.deadlineFields {
+  display: grid;
+  gap: var(--space-4);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// The step's number in a brand disc: white on brand (11,40:1), and the
+// number is also the list's own order - the colour carries nothing alone.
+.stepNumber {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--colour-brand);
+  color: var(--colour-surface);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-caption-line);
+}
+
+// R748: the warning, set apart by a warning icon and its weight, the words
+// in text-primary (R57) - the sentence carries it, never a colour. No left
+// accent: --size-notice-accent is counted to its eight notices (R150).
+.deadlineWarning {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: var(--space-6) 0 0;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-caption-line);
+}
+
+.deadlineGlyph {
+  flex: 0 0 auto;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
 // ---- what the comparison leaves out (R732) ---------------------------------
 
 .band {

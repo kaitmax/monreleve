@@ -96,6 +96,7 @@ export const WORKBENCH = {
     toggleSecond: 'SegmentedChoice - seconde option',
     toggleThree: 'SegmentedChoice - trois options',
     chips: 'Chip - cochée et non cochée',
+    buttons: 'SegmentedButtons - sans nom, seconde option',
     cardSurface: 'ResultCard - surface',
     cardBrand: 'ResultCard - marque (carte application)',
   },

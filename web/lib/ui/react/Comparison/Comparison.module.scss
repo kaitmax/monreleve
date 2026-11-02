@@ -141,3 +141,118 @@
   font-size: var(--type-caption-size);
   line-height: var(--type-caption-line);
 }
+
+// ---- FW-CALCS-A2, addendum 2 -------------------------------------------------
+
+// The care card's figure, on its own line (R746).
+.amountLine {
+  margin: var(--space-1) 0 0;
+}
+
+// R745: the insurers' chart. One horizontal track: a hairline axis, a dot per
+// insurer total, the French contribution as a vertical line. Positions come
+// from the data, inline; everything else is a token. The dots are a SHAPE
+// and the French mark a LINE with its own label, so colour is never the only
+// signal. No container here paints a fill: the card (ResultCard) does, and
+// the text rules below resolve to the page surfaces in the contrast audit.
+.plot {
+  margin: var(--space-4) 0 0;
+}
+
+// Inset by half a dot each side, so a total at 0 or at the scale's end is
+// drawn whole inside the card.
+// A flex row, so the absolutely placed marks take their static position on
+// its centre line - vertical centring with no offset to state.
+.track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--space-8);
+  margin-inline: var(--space-2);
+}
+
+.axis {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: var(--size-rule);
+  background: var(--colour-border-strong);
+}
+
+// The design draws 16 px dots; the token family that names a dot (R62) tops
+// out at --size-dot-lg, and a new token is an Ask-first item, so the dot is
+// that size - smaller, and named for what it is.
+.dot {
+  position: absolute;
+  width: var(--size-dot-lg);
+  height: var(--size-dot-lg);
+  border-radius: 50%;
+  background: var(--colour-switzerland);
+  opacity: 0.85;
+  translate: -50% 0;
+}
+
+// A tick on the scale: --size-tick, the token that names one.
+.frenchMark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--size-tick);
+  background: var(--colour-france);
+  translate: -50% 0;
+}
+
+// overflow: clip, FOUND BY R128 at 390 px: the label's LAYOUT box sits at
+// the line's position and runs past the card by its own width before the
+// translate pulls it back, and that layout overflow widened the page by 29 px
+// when the French line was near the scale's end (the "superieur" states).
+// The label is drawn inside the row, so clipping hides only the overflow.
+.markRow {
+  margin: var(--space-1) var(--space-2) 0;
+  overflow: clip;
+}
+
+.markLabel {
+  display: inline-block;
+  color: var(--colour-text-primary);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-caption-line);
+  white-space: nowrap;
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  margin: var(--space-1) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  font-variant-numeric: tabular-nums;
+}
+
+// R747: the franc slider. The native range input, in the brand colour; its
+// label above it, its two ends and middle below.
+.rangeLabel {
+  display: block;
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line);
+}
+
+.range {
+  width: 100%;
+  min-height: var(--size-touch-target-web);
+  margin: 0;
+  accent-color: var(--colour-brand);
+}
+
+.rangeEnds {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}

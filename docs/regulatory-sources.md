@@ -602,6 +602,10 @@ relevé per employer) and the **residence-change** PARK item.
 > a page cannot be re-read from a file. Each check is listed under its row.
 > Nothing the files say contradicts the report.
 >
+> **L15-L17 ARE FW-CALCS-A2's (02.11.2026)**, and their quotations come from
+> the second collection, `docs/sources/primes-lamal/sources-2026-11.md`
+> (sections S1-S3), not from the October report - each section says so.
+>
 > **THIS CLEARS PARK-4 AND PARK-24** under the operator's ruling recorded in
 > CLAUDE.md as R664–R673 (the addendum's G1–G10): *premium data licensed and
 > dated; French contribution primary-verified.*
@@ -616,12 +620,15 @@ relevé per employer) and the **residence-change** PARK item.
 | L6 | *Accident cover* | Suspended on request for a person fully covered under the LAA; a part-time worker employed **at least eight hours a week** by one employer is covered for non-occupational accidents | LAMal art. 8 al. 1; OLAA art. 13 al. 1 | ☑ 27.10.2026 |
 | L7 | *The French contribution* | `8 % × (A − 0,25 × PASS)` for a calendar year | CSS art. D380-2 I | ☑ 27.10.2026 |
 | L8 | *The income it is levied on* | A = the income defined at art. 1417 IV CGI, for the **last calendar year for which it is known** (in practice the year before last) | CSS art. L380-3-1 IV; CGI art. 1417 IV; URSSAF | ☑ 27.10.2026 |
-| L9 | *Prorata* | A period shorter than a year is prorated by days. **Not computed** by the comparator, which compares a full year | CSS art. D380-2 II; URSSAF | ☑ 27.10.2026 |
+| L9 | *Prorata* | A period shorter than a year is prorated by days: × days ÷ 365. **Computed since FW-CALCS-A2** (R744) for an affiliation from a date, days from the start to 31 December both counted | CSS art. D380-2 II; URSSAF | ☑ 27.10.2026 |
 | L10 | *Rounding* | The base and the contribution are rounded **to the nearest euro** | URSSAF | ☑ 27.10.2026 |
 | L11 | *Who it covers* | One declaration per frontalier; the frontalier's **ayants droit** (conjoint, concubin, pacsé, enfant) can be attached at no separate contribution | URSSAF; CLEISS (row D8) | ☑ 27.10.2026 |
 | L12 | *PASS 2026* | **48 060 €** | URSSAF | ☑ 27.10.2026 |
 | L13 | *PASS 2027* | **48 900 €, ANNOUNCED** — *« Un arrêté sera publié d'ici la fin de l'année. »* | URSSAF | ☑ 27.10.2026 (announcement) |
 | L14 | *The exchange rate* | ECB euro reference rate, **27 October 2026: 1 EUR = 0,9239 CHF**, published for information purposes | ECB | ☑ 27.10.2026 |
+| L15 | *Swiss cost-sharing caps* | Franchise **300 CHF** a calendar year (none for a child); quote-part **10 %** of the costs above it, capped at **700 CHF** a year for an adult and **350 CHF** for a child; several children with the same insurer pay together at most an adult's franchise and quote-part; applies to insured persons residing in the EU and insured in Switzerland. The hospital contribution (al. 5) comes on top and has no annual cap | LAMal art. 64 al. 2, 4, 5; OAMal art. 103 al. 1, 2, 7; priminfo; OFSP | ☑ 02.11.2026 |
+| L16 | *A partial first month* | General rule: the basic premium is divisible and computed in days - **for a birth, a move to or from Switzerland, a death only**. **NOT ESTABLISHED for a frontalier**: no text found names that case. The comparator counts whole months from the month after the start (R744's fallback) and says so | priminfo FAQ; OFSP FAQ and PDF; LAMal art. 5; OAMal art. 7 al. 4, 90, 92a | ☐ NOT ESTABLISHED, 02.11.2026 |
+| L17 | *How the three months are counted* | **NOT FOUND**: every source gives the period (three months) and the events that open it, none says from which day to which day. The helper shows an indicative end date with *environ* and a warning | ameli; CLEISS; URSSAF; OFSP; ALCP annexe II; OAMal art. 7 al. 4 | ☐ NOT FOUND, 02.11.2026 (Légifrance blocked) |
 
 ### L1 — the Swiss premium data. VERIFIED from the files.
 
@@ -845,12 +852,41 @@ fiscal, veuillez en mentionner la moitié. »* The RFR printed on a joint avis
 is the household's, so a couple entering it overstates A. The page says so in
 its list of what it does not compare.
 
+**SINCE FW-CALCS-A2 (R743) THE FORM ASKS IT**, and the item left the list:
+*Votre déclaration d'impôt : Individuelle / Commune*. *Commune* asks *Vos
+revenus personnels de l'avant-dernière année* and *Les revenus perçus en commun
+dans le foyer*, and A = personal + half of common, shown under the fields as
+*« L'Urssaf retient vos revenus personnels et la moitié des revenus perçus en
+commun. Ici : … €. »* - the 6b sentence above, which is this row's source. An
+empty common field counts 0; the half of an odd amount is rounded down (L10).
+PARK-30's first question - whether URSSAF's rubrics add up to the 1417 IV
+amount - is unchanged.
+
 ### L9 — prorata. CSS art. D380-2 II.
 
 > II.-[…] Lorsque la période entre ces deux dates est inférieure à une année, le montant de la cotisation est calculé au prorata de la durée de cette période.
 
 (URSSAF 6a gives the same as *« × nombre de jours ÷ 365 »*.) **Not computed**
 (ruling R669): the comparator compares a full year, and says so.
+
+**COMPUTED SINCE FW-CALCS-A2 (R744, the operator's addendum 2).** The form
+asks *Votre affiliation en <année> : Toute l'année / À partir d'une date*. From
+a date, the contribution follows URSSAF 6a's formula and order [§6c of
+`sources-2026-10.md`, read 27.10.2026]:
+
+> Si vous êtes affilié en cours d'année, la formule suivante est utilisée : Cotisation = (assiette retenue - abattement de 25 % du plafond de la Sécurité sociale) × 8 % × nombre de jours ÷ 365.
+> Le montant de la base de calcul et la cotisation sont arrondis à l’euro le plus proche.
+
+Applied as `round(base × 8 % × days ÷ 365)`, the base already rounded (L10),
+one rounding at the end; days from the start date to 31 December **both
+counted** - 1 March 2027 = 306 days, pinned by
+`tests/unit/lamal/scenario.test.ts`. The French card states the line
+(*« Au prorata : × N jours ÷ 365, comme le prévoit l'article D380-2 pour une
+affiliation en cours d'année. »*, `LAMAL_COPY.result.french.prorata`). The 365
+is URSSAF's divisor (`PRORATA_YEAR_DAYS`); a start on 1 January of a leap
+year would count 366 days over 365, which no year the comparator holds
+reaches today (2026, 2027) - a question for the 2028 refresh.
+Whole-year comparisons are unchanged: they take compare()'s own figure.
 
 ### L10 — rounding. URSSAF 6a.
 
@@ -861,6 +897,15 @@ round(8 % × base) to the euro. With A in whole euros and the PASS a multiple
 of four, the base is always whole; and 8 % of a whole number of euros is
 never exactly half a euro (2 × base / 25 cannot end in ,50), so the rounding
 never meets a tie and *« le plus proche »* needs no tie rule.
+
+**FW-CALCS-A2 (R743) brought the tie back, once.** A joint return's A is
+personal income + half of the income received in common (L8, URSSAF 6b);
+with both in whole euros, an odd common amount makes A end in ,50 and the
+base meet exactly the tie *« le plus proche »* does not settle. The site
+rounds that half **down** - the reader's side, never their disfavour
+(`jointIncomeEur`). It is the site's reading, listed for the expert
+reviewer with PARK-30. The prorata (L9) never meets a tie: 8 × days ×
+base ÷ 36 500 would need 36 500 × an odd number to be divisible by 16.
 
 ### L11 — who the contribution covers. URSSAF 6a, 6d; CLEISS.
 
@@ -904,6 +949,108 @@ accurately and the ECB must be cited as the source. »* and *« If the
 information is modified by the user […] this must be stated explicitly. »*
 The site stores the rate unmodified with its date (ruling R672) and shows
 both beside every converted figure, with the CHF amounts kept visible.
+
+**THE FRANC SLIDER (FW-CALCS-A2, R747).** *« Et si le franc varie ? »* moves a
+HYPOTHESIS from -10 % to +10 % around this rate: reference ÷ (1 + shift), to
+the ten-thousandth (+10 % -> 0,9239 ÷ 1,1 = 0,8399), and every Swiss euro
+figure on the page is converted at that hypothesis. The stored rate is never
+modified and nothing is fetched. Because the ECB's terms require a
+modification to be stated, the page says it in two places: the Swiss card
+reads *« Hypothèse du curseur : 1 € = … CHF (taux de référence de la BCE du
+27.10.2026 : 0,9239 CHF). »*, and the slider's card *« … Le curseur est une
+hypothèse, pas un cours. »* At 0 the rate IS this row's rate and every figure
+is the reference figure (R751, pinned by `e2e/calcs-figures.spec.ts`).
+
+### L15 — Swiss cost-sharing caps. LAMal art. 64; OAMal art. 103. VERIFIED 02.11.2026.
+
+From `docs/sources/primes-lamal/sources-2026-11.md` (S1, collected 02.11.2026;
+SHA-256 902b3830f77c908254c56532e1f79d991f9acb413cc4fd019b6cabf4ed77e75a, not yet
+in `CHECKSUMS.txt`). LAMal, consolidation in force 01.07.2026, art. 64 [S1.1]:
+
+>   a. un montant fixe par année (franchise); et
+>
+>   b. 10 % des coûts qui dépassent la franchise (quote-part).
+>
+> 4 Pour les enfants, aucune franchise n’est exigée et le montant maximum de la quote-part est réduit de moitié. Plusieurs enfants d’une même famille, assurés par le même assureur, payent ensemble au maximum le montant de la franchise et de la quote-part dus par un adulte.
+>
+> 5 En cas d’hospitalisation, les assurés versent, en outre, une contribution aux frais de séjour, échelonnée en fonction des charges de famille. Le Conseil fédéral fixe le montant de cette contribution.
+
+OAMal, consolidation in force 22.10.2026 (its applicability ends 31.12.2026;
+no later consolidation was listed, and the amounts date from 2004 - fn 438,
+439), art. 103 [S1.2]:
+
+> 1 La franchise prévue à l’art. 64, al. 2, let. a, LAMal s’élève à 300 francs par année civile.[fn 438]
+>
+> 2 Le montant maximal annuel de la quote-part au sens de l’art. 64, al. 2, let. b, LAMal s’élève à 700 francs pour les adultes et à 350 francs pour les enfants.[fn 439]
+>
+> 7 Les al. 1 à 4 sont applicables par analogie aux assurés résidant dans un État membre de l’Union européenne, en Islande, en Norvège ou au Royaume-Uni et qui sont assurés en Suisse.[fn 442]
+
+priminfo.admin.ch, FAQ [S1.3], on where the child rules stop:
+
+> La franchise ordinaire s'élève à 300 francs par année civile et la quote-part maximale à 700 francs par année pour les adultes. Un assuré qui a opté pour une franchise de 300 francs paiera donc au maximum 1000 francs par année civile. Les enfants jusqu'à 18 ans révolus ne paient pas de franchise et ils versent une quote-part de 350 francs au maximum. L'assuré peut cependant augmenter sa franchise.
+
+**What the page does with it (R746).** The card *« Une année avec beaucoup de
+soins »* shows the most the household pays on top of its premiums in a
+calendar year: per adult or young adult (the child rules stop at 18, L5),
+the franchise the premium data carries (300 CHF, al. 1) + the quote-part cap
+(700 CHF); per child, the quote-part cap alone (350 CHF); the children
+together at most an adult's 1 000 CHF (art. 64 al. 4, second sentence - the
+Swiss totals already assume one insurer for the household). Al. 7 is why it
+applies to a frontalier residing in France and insured in Switzerland. The
+figures are `COST_SHARING` in `web/lib/lamal/cost-sharing.ts`, never typed in
+copy. **It is never added to either side** of the comparison.
+
+**What it does not count, and says so:** the hospital contribution of al. 5,
+15 CHF a day *« sans limite de temps »* [S1.4]. **Not used, and listed for the
+reviewer:** OAMal art. 103 al. 5, a flat-rate franchise and quote-part an
+insurer MAY levy when cover is planned for less than a calendar year - which
+is the case of an affiliation from a date (L9, L16); the card states the
+annual caps.
+
+**The card's one sentence with no row:** *« sans mutuelle, le reste à charge
+français n'a pas de plafond annuel comparable »* is the operator's wording
+(R746, "in the design's words"); no source in this file states it. Raised in
+the FW-CALCS-A2 report's QUESTIONS.
+
+### L16 — a partial first month. NOT ESTABLISHED for a frontalier.
+
+The general rule, priminfo FAQ [S2.1] (the OFSP page S2.2 and its PDF S2.3
+say the same):
+
+> Non. La prime de l’assurance-maladie de base est divisible. Cela signifie que les assureurs doivent calculer les primes en jours en cas de prise de domicile en Suisse ou de départ à l'étranger.
+
+Its scope, as the collection records it [S2.1]: birth, arrival in or departure
+from Switzerland, death - *« None of the three questions names a cross-border
+worker (frontalier). »* The frontalier's own start of cover is OAMal art. 7
+al. 4 [S2.4] - from the validity of the permit when insured in time - and
+neither it nor LAMal art. 5, OAMal art. 90 or 92a says how a part-month is
+charged (NOT FOUND, item 4).
+
+**So the comparator does not apply the day rule to a frontalier** (the
+orchestrator's note on addendum 2: S2 not established for this page). R744's
+fallback applies literally: whole months **from the month after** the start
+month - the start month is never counted, even when the start is the 1st -
+and the Swiss card says *« Mois de début non compté : règle non vérifiée. »*
+Known consequences, in the report: a start on 1 January counts 11 months;
+a start in December counts none. The question goes to the operator.
+
+### L17 — how the three months are counted. NOT FOUND.
+
+Every source gives the period and the events, none the counting [S3.1-S3.6;
+NOT FOUND item 1]. CLEISS FAQ [S3.3]:
+
+> • Si vous êtes travailleur frontalier ou travailleuse frontalière : vous disposez de 3 mois à compter de la prise d'activité professionnelle en Suisse ou du transfert de résidence en France pour exercer l'option entre les systèmes d'assurance maladie suisse et français.
+
+Légifrance was blocked by a bot check (NOT FOUND item 2), so nothing from the
+Code de la sécurité sociale is quoted. **What the page does (R748):** the
+helper *« Votre délai »* takes the event (the four of rows D1-D6, as the banner
+words them) and its date, and shows an end computed ONE stated way - the
+event's date plus three calendar months, clamped to the last day of the
+target month (`optionPeriodEnd`, `web/lib/lamal/deadline.ts`) - **with
+*environ*** and the warning *« Date indicative : la façon exacte de compter
+les trois mois n'est pas vérifiée ici. Confirmez-la auprès de votre caisse
+d'assurance maladie avant de vous y fier. »* (the design file's sentence),
+which stays whatever S3 later says. The reminder e-mail is not built (R749).
 
 ### Source D, and the URSSAF line under "NOT rowed", after this pass
 

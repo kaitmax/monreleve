@@ -105,6 +105,7 @@ const A2_SPECIMENS = [
   'calcs-toggle-first',
   'calcs-toggle-second',
   'calcs-toggle-three',
+  'calcs-buttons',
   'calcs-chips',
   'calcs-card-surface',
   'calcs-card-brand',

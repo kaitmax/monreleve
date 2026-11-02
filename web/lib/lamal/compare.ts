@@ -10,7 +10,8 @@
 //   base and contribution rounded to the nearest euro   URSSAF 6a
 //   negative -> 0, flagged, never presented as a rule   PARK-28
 //   one contribution, whatever the household            URSSAF 6d
-//   no prorata: a full year is compared                 D380-2 II, not computed
+//   a whole year here; a start date is prorated by      D380-2 II, URSSAF 6a
+//   days in lib/lamal/scenario.ts (FW-CALCS-A2, R744)
 // With A in whole euros and the PASS a multiple of four the base is whole,
 // and 8 % of a whole number of euros is never exactly half a euro, so the
 // rounding never meets a tie.
@@ -29,15 +30,21 @@
 
 import type {
   AgeClass,
+  Cheaper,
   ComparatorInput,
   ComparatorResult,
   ComparatorYear,
+  ExchangeRate,
   FrenchContribution,
   InsurerPremiums,
   PersonResult,
   SwissSpread,
 } from './types';
+import { convertAt } from './convert';
 import { EXCHANGE_RATE, comparatorYear } from './years';
+
+/** L3: the premium is monthly; a whole year is twelve of them. */
+export const MONTHS_PER_YEAR = 12;
 
 /** The oldest plausible year of birth relative to the premium year. */
 const MAX_AGE = 130;
@@ -64,12 +71,8 @@ export function median(values: readonly number[]): number {
   return (sorted[middle - 1]! + sorted[middle]!) / 2;
 }
 
-/** CHF centimes to whole euros at the stored ECB rate. */
-function toEur(centimes: number): number {
-  return Math.round((centimes * 100) / EXCHANGE_RATE.chfPerEurTenThousandths);
-}
-
-function french(year: ComparatorYear, incomeEur: number): FrenchContribution {
+/** Exported for lib/lamal/scenario.ts (FW-CALCS-A2); unchanged. */
+export function french(year: ComparatorYear, incomeEur: number): FrenchContribution {
   const allowanceEur = Math.round((year.passEur * year.allowancePercentOfPass) / 100);
   const formulaBase = Math.round(incomeEur - allowanceEur);
   const floored = formulaBase < 0;
@@ -83,16 +86,46 @@ function french(year: ComparatorYear, incomeEur: number): FrenchContribution {
   };
 }
 
-function householdTotal(insurer: InsurerPremiums, persons: readonly PersonResult[]): number {
+function householdTotal(
+  insurer: InsurerPremiums,
+  persons: readonly PersonResult[],
+  months: number = MONTHS_PER_YEAR,
+): number {
   return persons.reduce((sum, person) => {
     const premiums = insurer[person.ageClass];
 
-    return sum + 12 * (person.withAccident ? premiums.withAccident : premiums.withoutAccident);
+    return sum + months * (person.withAccident ? premiums.withAccident : premiums.withoutAccident);
   }, 0);
 }
 
+/**
+ * FW-CALCS-A2, R745: every insurer's total for the household, ascending -
+ * one figure per insurer in the dataset, never named. A whole year unless a
+ * number of months is given (R744). swiss() below reads its spread from this
+ * same list, so the chart's dots and the three figures cannot disagree.
+ */
+export function insurerTotalsCentimes(
+  year: ComparatorYear,
+  persons: readonly PersonResult[],
+  months: number = MONTHS_PER_YEAR,
+): number[] {
+  return year.premiums.insurers.map((insurer) => householdTotal(insurer, persons, months)).sort((a, b) => a - b);
+}
+
 function swiss(year: ComparatorYear, persons: readonly PersonResult[]): SwissSpread {
-  const totals = year.premiums.insurers.map((insurer) => householdTotal(insurer, persons)).sort((a, b) => a - b);
+  return spreadOf(insurerTotalsCentimes(year, persons), EXCHANGE_RATE);
+}
+
+/**
+ * The lowest, median and highest of a sorted list of totals, converted at a
+ * rate. Exported for lib/lamal/scenario.ts (FW-CALCS-A2): a partial year and
+ * the franc slider build their spread with this same function.
+ */
+export function spreadOf(totals: readonly number[], rate: ExchangeRate): SwissSpread {
+  // CHF centimes to whole euros. FW-CALCS-A2: the arithmetic is convertAt
+  // (lib/lamal/convert.ts), the function compare() used inline before, so the
+  // franc slider converts with the SAME function - identical at 0.
+  const at = (centimes: number): number => convertAt(centimes, rate);
   const lowestCentimes = totals[0]!;
   const highestCentimes = totals[totals.length - 1]!;
   const medianCentimes = Math.round(median(totals));
@@ -101,11 +134,21 @@ function swiss(year: ComparatorYear, persons: readonly PersonResult[]): SwissSpr
     lowestCentimes,
     medianCentimes,
     highestCentimes,
-    lowestEur: toEur(lowestCentimes),
-    medianEur: toEur(medianCentimes),
-    highestEur: toEur(highestCentimes),
+    lowestEur: at(lowestCentimes),
+    medianEur: at(medianCentimes),
+    highestEur: at(highestCentimes),
     insurerCount: totals.length,
   };
+}
+
+/**
+ * Which side is cheaper across the whole spread. Exported for
+ * lib/lamal/scenario.ts (FW-CALCS-A2); the rule is unchanged.
+ */
+export function cheaperOf(contribution: number, swissSide: SwissSpread): Cheaper {
+  return contribution < swissSide.lowestEur ? 'france'
+    : contribution > swissSide.highestEur ? 'switzerland'
+      : 'depends';
 }
 
 export function compare(input: ComparatorInput): ComparatorResult {
@@ -133,11 +176,7 @@ export function compare(input: ComparatorInput): ComparatorResult {
 
   const swissSide = swiss(year, persons);
   const frenchSide = french(year, input.incomeEur);
-  const contribution = frenchSide.contributionEur;
-  const cheaper =
-    contribution < swissSide.lowestEur ? 'france'
-      : contribution > swissSide.highestEur ? 'switzerland'
-        : 'depends';
+  const cheaper = cheaperOf(frenchSide.contributionEur, swissSide);
 
   return {
     ok: true,
@@ -152,3 +191,4 @@ export function compare(input: ComparatorInput): ComparatorResult {
     },
   };
 }
+

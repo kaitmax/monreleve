@@ -21,7 +21,9 @@ const ITEMS = LAMAL_COPY.limits(
 
 describe('splitLead', () => {
   it('reassembles every item of the comparator’s list exactly', () => {
-    expect(ITEMS.length).toBe(10);
+    // Eight since FW-CALCS-A2's addendum 2: the joint return (R743) and the
+    // incomplete year (R744) left the list - the form asks both now.
+    expect(ITEMS.length).toBe(8);
 
     for (const item of ITEMS) {
       const { lead, rest } = splitLead(item);

@@ -59,6 +59,7 @@ import { ZoneBadge } from '@/lib/ui/react/ZoneBadge/ZoneBadge';
 import { Chip } from '@/lib/ui/react/Chip/Chip';
 import { Notice } from '@/lib/ui/react/Notice/Notice';
 import { ResultCard } from '@/lib/ui/react/ResultCard/ResultCard';
+import { SegmentedButtons } from '@/lib/ui/react/SegmentedButtons/SegmentedButtons';
 import { SegmentedChoice } from '@/lib/ui/react/SegmentedChoice/SegmentedChoice';
 import { Stepper } from '@/lib/ui/react/Stepper/Stepper';
 
@@ -149,6 +150,16 @@ export function IslandHarness() {
       <SegmentedChoice
         legend={ISLAND_HARNESS.fieldLabel}
         name="harness-choice"
+        onChange={() => setShown((n) => n + 1)}
+        options={[
+          { value: 'a', label: ISLAND_HARNESS.gridColumn },
+          { value: 'b', label: ISLAND_HARNESS.gridCell },
+        ]}
+        value={shown % 2 === 0 ? 'a' : 'b'}
+      />
+      <SegmentedButtons
+        id="harness-buttons"
+        legend={ISLAND_HARNESS.fieldLabel}
         onChange={() => setShown((n) => n + 1)}
         options={[
           { value: 'a', label: ISLAND_HARNESS.gridColumn },

@@ -18,6 +18,7 @@ import { WORKBENCH } from '@/lib/fr/workbench';
 import { Chip } from '@/lib/ui/react/Chip/Chip';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { ResultCard } from '@/lib/ui/react/ResultCard/ResultCard';
+import { SegmentedButtons } from '@/lib/ui/react/SegmentedButtons/SegmentedButtons';
 import { SegmentedChoice } from '@/lib/ui/react/SegmentedChoice/SegmentedChoice';
 import { Stepper } from '@/lib/ui/react/Stepper/Stepper';
 import styles from './page.module.scss';
@@ -100,6 +101,7 @@ function ToggleSpecimen({
 /** fiscal: the year's ceiling, formatted by the server page from the RuleSet (R147). */
 export function CalcsSpecimens({ fiscal }: { readonly fiscal: string }) {
   const [decompte, setDecompte] = useState('dj');
+  const [buttons, setButtons] = useState<string>(FORM.missions.yes);
   const [days, setDays] = useState<Readonly<Record<string, boolean>>>({ TUESDAY: true, THURSDAY: true });
 
   return (
@@ -128,6 +130,18 @@ export function CalcsSpecimens({ fiscal }: { readonly fiscal: string }) {
           ]}
           value={decompte}
           onChange={setDecompte}
+        />
+      </Figure>
+      <Figure id="calcs-buttons" caption={C.buttons}>
+        <SegmentedButtons
+          id="wb-buttons"
+          legend={FORM.missions.question}
+          options={[
+            { value: FORM.missions.no, label: FORM.missions.no },
+            { value: FORM.missions.yes, label: FORM.missions.yes },
+          ]}
+          value={buttons}
+          onChange={setButtons}
         />
       </Figure>
       <Figure id="calcs-chips" caption={C.chips}>
