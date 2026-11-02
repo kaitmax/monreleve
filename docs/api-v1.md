@@ -38,6 +38,11 @@ POST /api/v1/auth/sign-out      Authorization: Bearer  -> 200
 POST /api/v1/auth/revoke-all    Authorization: Bearer  -> 200
 ```
 
+A client signs out with whatever access token it holds, which after an idle
+period has often expired. So sign-out takes the same 401 path as every other
+call: refresh once, retry once, and if the refresh is refused the session is
+already dead and the client only wipes locally (AN-SIGNOUT-REFRESH, R706).
+
 The callback and `/api/v1/auth/code` are **two ways through one request**: the same
 email carries a link and a six-digit code, tied to the same single-use sign-in
 request and expiring together. Using either one consumes both. The code exists

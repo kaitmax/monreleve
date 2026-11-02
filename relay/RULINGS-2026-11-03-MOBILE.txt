@@ -1,0 +1,49 @@
+ORCHESTRATION RULINGS - MOBILE - 2026-11-03
+ASCII by transport (R168). The machine clock reads 02.11; the run's records
+say 03.11 (both stated, not reconciled).
+
+THE OPERATOR'S WORD (AskUserQuestion, after the web run ended)
+- "SWITCH TO MOBILE NOW ENOUGH FOR THE WEB VERSION NOW".
+- Which mobile task first: "AN-SIGNOUT-REFRESH (Recommended)".
+- Mobile merges: "Advisor rules, I'm not waited for" - as in the web run;
+  the stop rules of the 2026-11-03 orchestration prompt still bind
+  (deletion, spending money, security, permission refusals).
+
+ADVISOR RULING 6 (AN-SIGNOUT-REFRESH, branch 92ed729 on 22b16bb)
+- Measured: :shared touched (3 files); `git diff 22b16bb origin/main --
+  android` empty; merge-tree clean; local == origin at 92ed729; no lock;
+  iOS run 41215486071 (31.10, on 92ed729) failed with ZERO steps - the
+  billing refusal; the repository is private.
+- R573: the iOS run is the gate. The operator's queue (2026-10-28) records
+  the decision to fund macOS minutes for these runs; one dispatch is within
+  it. Billing could not be read (needs the "user" scope; not widened), so
+  ONE dispatch is the probe. Zero steps + failure = NO RESULT -> stop and
+  tell: the branch cannot merge until the minutes are funded or the
+  repository is public, both the operator's decisions. No retry.
+- "Green on the merge result": satisfied by identity - main has not
+  touched android/ since 22b16bb, so the merge's android/ tree equals the
+  branch tip's.
+- R391 / Q1: `git diff 61e5be2 origin/an-signout-refresh -- android` is
+  empty, so the green :app:gate on 61e5be2 (BUILD SUCCESSFUL 19m21s,
+  1392/152) covers the tip and the merge by identity. Not re-run below the
+  RAM line; the branch report's STATUS stays as written.
+- Q2 (D5): KEEP. R706: a refused refresh -> "the local wipe proceeds
+  exactly as today"; SessionEnds.kt: onEnded fires on "the three forced
+  clears, never the voluntary wipe". Noted for the operator.
+- Q2b: leave the control's local session (a hand revocation is an
+  unaudited write).
+- Q3: not a merge blocker; one sentence in docs/api-v1.md and SPEC 10 as a
+  separate gated docs commit on main after the merge.
+- Record, do not act: C:/wt/an-signout-refresh/.an-signout-refresh-evidence/
+  is untracked and not the orchestrator's (R334); the report's PUSH PROOF
+  says "NOT PUSHED" but origin has 92ed729 (pushed after it was written).
+
+OUTCOME (AN-SIGNOUT-REFRESH)
+- iOS run 41482088835 on 92ed729: SUCCESS, 20 steps (the macOS minutes were
+  funded - the run was not refused).
+- Merged as 2476709 (--no-ff; android/ == branch tip); gate:clone PASSED on
+  exactly 2476709; main pushed 818ef8e..2476709. production untouched (52caca8).
+- Q3: one sentence in docs/api-v1.md 1.1 and SPEC 10 (this commit).
+- C:/wt/an-signout-refresh is NOT removed: its untracked
+  .an-signout-refresh-evidence/ makes `status --porcelain` non-empty, and
+  R392 forbids removing such a worktree whoever owns it. Reported.
