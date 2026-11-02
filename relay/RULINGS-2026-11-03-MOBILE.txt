@@ -47,3 +47,41 @@ OUTCOME (AN-SIGNOUT-REFRESH)
 - C:/wt/an-signout-refresh is NOT removed: its untracked
   .an-signout-refresh-evidence/ makes `status --porcelain` non-empty, and
   R392 forbids removing such a worktree whoever owns it. Reported.
+
+ADVISOR RULING 7 (AN-LAUNCH-SPEECH, branch a9aaed4 on da259f3)
+- Measured: main HAS moved on android/ since the branch base (4 files, 348+,
+  the sign-out fix), so neither the branch's green :app:gate (dcaa06e) nor
+  any iOS run on the branch carries to the merge result. merge-tree clean.
+- Order: merge --no-ff into local main -> M; push M to a branch of the
+  orchestrator's own (merge-an-launch-speech), never the session's ref or
+  main; ONE iOS run (R573) on that ref, in the cloud; meanwhile the full
+  :app:gate --rerun-tasks on M locally (counts read from the log; a kill is
+  NO RESULT, re-run once; two kills -> stop and tell: the RAM is decided by
+  tizicorp's WSL, the operator's); then gate:clone alone on M; then rescan
+  relay/ for R700-R704, push M to main, delete merge-an-launch-speech.
+  A genuine failure on M: reset the orchestrator's own unpushed merge and
+  send the branch back.
+- Q1: superseded - the minutes are funded (run 41482088835 started).
+- Q2: KEEP the tap announcement. ChoiceCard.kt:57 documents the polite live
+  region announcing when the options close; HalfDayChoiceInstrumentedTest
+  (R434) asserts it. Matching base after a tap would remove tested behaviour
+  on one trial. Noted for the operator.
+- Q3: UNNUMBERED-1 (the H1 attention line at launch) is its own task; on the
+  operator's list. Not this merge.
+- Q4: leave. an-talkback.pilot@monreleve.test is not in the dev database
+  (count 0 on frontalier@5436) and cannot be in production (a .test address
+  receives no link). The sign-out fix does not revoke old sessions either.
+- Record, do not act: C:/wt/an-launch-speech/.an-launch-speech-evidence/ is
+  untracked and not the orchestrator's (R334); the worktree stays.
+
+OUTCOME (AN-LAUNCH-SPEECH)
+- Merged as 0214bf7 (--no-ff); pushed to merge-an-launch-speech for the iOS
+  run only, then that ref was deleted.
+- iOS run 41487976030 on 0214bf7: SUCCESS, 20 steps.
+- Full :app:gate --rerun-tasks on 0214bf7: the first attempt was REFUSED by
+  R393 (an unstaged edit of this file - the orchestrator's own; set aside
+  so the tree equalled 0214bf7), the second: BUILD SUCCESSFUL in 12m 5s,
+  260 actionable tasks: 260 executed, test floor OK 1392; JUnit :app 1392
+  tests 0 failures 0 errors, :shared 152 0 0. 1.54 GB free at start.
+- gate:clone PASSED on exactly 0214bf7. main pushed 8cce789..0214bf7.
+  production untouched (52caca8).
