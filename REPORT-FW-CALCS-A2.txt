@@ -439,3 +439,221 @@ PUSH PROOF
 gate:clone on this commit runs after the commit exists, so its verdict
 cannot be in it. It is recorded in the next commit, which carries only this
 section, or in the handback.
+
+
+================================================================================
+ADDENDUM 2 - SIX FEATURES ON THE DROIT D'OPTION PAGE (R743-R752)
+================================================================================
+Everything above this line was written for the first three commits and is
+kept as written. This section covers ADDENDUM 2 (relay/FW-CALCS-A2.txt from
+line 180) and the ORCHESTRATOR NOTE that governs it (line 308).
+
+BASE    The branch was rebased onto local main 14147fd (695c930: the S1-S3
+        sources report; 14147fd: the operator's updated comparator artboard),
+        lock and porcelain checked first. Commits since:
+          7f2db06  step 1 (rebased 250921c)
+          fc7b73e  step 2 (rebased cb28c33)
+          c6c172c  step 3 (rebased 235a3f0)
+          baabc88  addendum 2 - the six features
+          (next)   this section and PARK-CA9..CA12
+
+--------------------------------------------------------------------------------
+STATUS (R391), ADDENDUM 2
+--------------------------------------------------------------------------------
+Increments green under gate:changed (baabc88). FULL GATE NOT RUN on this
+commit: gate:clone runs on it once, alone, to confirm every step before
+test:container:write - which fails on any commit until the Chromium pin is
+fixed (R249, a separate task). Its result is not claimed here.
+
+  baabc88  gate:changed EXIT 0 (03.11 08:25, 2.36 GB free) - typecheck 0,
+           lint 0, test 3606 passed, build 0, test:visual 168 passed,
+           test:e2e 367 passed (R737/R751's calcs-figures.spec.ts among
+           them, UNCHANGED - the defaults' figures did not move),
+           test:late 10 passed.
+
+--------------------------------------------------------------------------------
+RULINGS AND THE SOURCE GATE
+--------------------------------------------------------------------------------
+R743-R752 kept: outside the relay prompt they appear nowhere (scan of
+relay/, every REPORT, parking.md, CLAUDE.md, the worktrees' reports).
+Source gate (docs/sources/primes-lamal/sources-2026-11.md, per the note):
+  S1 FOUND     - R746's care card ships (row L15).
+  S2 NOT ESTABLISHED for a frontalier (general rule found: days, for a
+               birth, a move to or from Switzerland, a death) - R744's
+               fallback ships (row L16, PARK-CA9).
+  S3 NOT FOUND - R748's date shows "environ" and its warning (row L17,
+               PARK-CA11).
+  R749         - the reminder e-mail is not built (PARK-CA10, FW-DELAI-RAPPEL).
+
+--------------------------------------------------------------------------------
+WHAT SHIPPED (R743-R748, R750)
+--------------------------------------------------------------------------------
+R743  "Votre declaration d'impot : Individuelle / Commune"; Commune shows the
+      personal and the common income and "Ici : X EUR" = personal + half of
+      common (an empty common field counts 0; an odd half rounds DOWN, row
+      L10). The "Une declaration d'impot commune" limit leaves the list.
+R744  "Votre affiliation en <annee> : Toute l'annee / A partir d'une date",
+      the date restricted to the year. French: base x 8 % x days / 365,
+      rounded once at the end on the already-rounded base, days from the
+      start to 31 December inclusive (1 March 2027 = 306, pinned); the
+      French card's prorata line cites D380-2. Swiss: whole months from the
+      month AFTER the start, with "Mois de debut non compte : regle non
+      verifiee". Heading "Estimation pour <annee>, du <date> au 31
+      decembre"; "pour N mois" (Swiss) and "pour N jours" (French - its
+      count differs from the Swiss months under the fallback). The "Une
+      annee incomplete" limit leaves the list.
+R745  "Les 13 assureurs suisses face a la cotisation francaise": a dot per
+      household total, the French contribution a labelled line, both scale
+      ends labelled, the counting sentence; the 13 is read from the
+      dataset; one role="img" whose label carries the same facts.
+R746  "Une annee avec beaucoup de soins": the most the household pays on top
+      of the premiums (adults and young adults: franchise + capped share;
+      children: capped share; several children with one insurer: together
+      at most an adult's maximum), CHF and EUR, never added to either side,
+      saying why in the design's words.
+R747  "Et si le franc varie ?": a slider -10 % .. +10 % around the ECB rate,
+      the resulting rate shown, every euro figure following; at 0 exactly
+      the reference result (test), at +10 % rate = reference / 1.1 (test,
+      rounded to the ten-thousandth as the page displays it); the Swiss
+      card names the hypothesis and quotes the ECB rate beside it.
+R748  "Le delai de trois mois": the four events (the banner's own words,
+      now built from one list - byte-identical, checked against HEAD), the
+      event's date, the three steps; end = event + 3 calendar months,
+      clamped to the month's last day (30 November -> end of February;
+      leap years; never later than the computed end - tests), "environ" and
+      the warning.
+R750  No new control carries a name. The two toggles are SegmentedButtons
+      (lib/ui/react/SegmentedButtons: <button type="button" aria-pressed>),
+      SegmentedChoice's nameless twin - its own component and stylesheet
+      because, as a mode of SegmentedChoice, the shared module became a split
+      chunk and put the calculator over GATE A (125.1 KiB). A planted
+      name="plant" on the slider failed the new R750 test (R180, reverted).
+The limits list keeps 8 items (comparateur.test.tsx's ">= 8" holds,
+unedited); "Ce qui reste a votre charge", "Le choix d'un assureur" and "Le
+cours du franc" reworded as in the design, each keeping its lead.
+
+--------------------------------------------------------------------------------
+R752 - EVERY NEW SENTENCE AND ITS ROW (accented in web/lib/fr/lamal.ts)
+--------------------------------------------------------------------------------
+L8 (URSSAF 6b)   the declaration toggle, the two income labels, "L'Urssaf
+                 retient vos revenus personnels et la moitie des revenus
+                 percus en commun.", "Ici : X EUR."
+L9 + L16         the affiliation toggle and date label, "Cotisation francaise
+                 au prorata des jours ; primes suisses pour les mois entiers
+                 qui suivent le mois de debut.", its error, the dated
+                 heading, "pour N mois" / "pour N jours"; the intro's "ou a
+                 partir d'une date d'affiliation".
+L16              "Mois de debut non compte : regle non verifiee. Seuls les
+                 mois entiers qui suivent la date de debut sont comptes ici."
+L9               "Au prorata : x N jours / 365, comme le prevoit l'article
+                 D380-2 pour une affiliation en cours d'annee."
+L3               the basis line, its month count now an argument (12 for a
+                 whole year - text unchanged).
+L14              the slider card's heading, intro, label, ends, rate line,
+                 "Total suisse le plus bas : X ; le plus haut : Y.", "Taux de
+                 reference de la BCE du <date> : 1 EUR = r. Le curseur est une
+                 hypothese, pas un cours."; the Swiss card's "Hypothese du
+                 curseur : ..." line.
+L1               the chart's heading, intro ("Chaque point est le total de
+                 votre foyer chez un assureur, en euros. Aucun n'est nomme."),
+                 "France : X EUR", the three counting sentences, the role="img"
+                 label.
+L15              the care card: heading, intro, "Au maximum, en plus des
+                 primes", "soit X EUR par an pour votre foyer", the per-person
+                 rule, the children's joint cap, the hospital contribution
+                 note, "Source : LAMal, article 64 ; OAMal, article 103."
+R746 (design)    "Montre a part, jamais ajoute a la comparaison : sans
+                 mutuelle, le reste a charge francais n'a pas de plafond
+                 annuel comparable." - the operator's wording R746 asks for;
+                 no regulatory row states it.
+D1-D6            the deadline section's heading, its lead, the four events,
+                 the select, "Votre delai" / "L'evenement" / "Sa date", the
+                 three steps.
+L17              "Date indicative : la facon exacte de compter les trois mois
+                 n'est pas verifiee ici. Confirmez-la aupres de votre caisse
+                 d'assurance maladie avant de vous y fier." (the design file's
+                 accented sentence)
+The three reworded limits: L15 (reste a charge), L1 (assureur), L14
+(franc).
+
+--------------------------------------------------------------------------------
+SHIPPED WITHOUT ITS FACT (R752)
+--------------------------------------------------------------------------------
+- S2: the Swiss side's partial-year count is R744's fallback, said on the
+  card (PARK-CA9). Edges, literal and visible: a start on the 1st is not
+  counted (1 January -> 11 months); a December start gives 0 months, every
+  Swiss total 0 EUR, and the case sentence says the French contribution is
+  above them all.
+- S3: the deadline's end is indicative, "environ" + the warning (PARK-CA11).
+- R749: no reminder e-mail (PARK-CA10).
+
+--------------------------------------------------------------------------------
+DEVIATIONS FROM THE UPDATED DESIGN
+--------------------------------------------------------------------------------
+1. Dots 8 px (--size-dot-lg): no 16 px dot token; a token is ask-first.
+2. The French line uses --size-tick; the deadline warning carries an icon,
+   not a left accent (the var-references census pins notice-accent uses).
+3. "pour N jours" on the French side (see R744).
+4. The insurer limit drops "treize" (limits() has no count) and "n'en
+   recommande aucun" (R673; the page's "recommand" test).
+5. The care intro is narrowed to franchise and quote-part; the hospital
+   contribution "peut s'y ajouter" (S1.4 exempts some people).
+6. Step 1 of the deadline names the selected event.
+7. The design's "Sources : ... (lu le ...)" line is not added; neither are new
+   /sources entries (their count is pinned by an existing test).
+
+--------------------------------------------------------------------------------
+R751 - BASELINES, NAMED BEFORE RECORDING (R207): 33 of 33, nothing else
+--------------------------------------------------------------------------------
+comparateur-<id>-desktop|mobile.png
+  regenerated  vide rempli inferieur superieur adulte-seul plancher erreur
+  new          commune annee-partielle points-inferieur points-entre
+               points-superieur soins franc-deplace delai-sans-s3
+composants-comparison-panel.png      (the panel now draws chart and cards)
+composants-calcs-buttons.png         (new: SegmentedButtons)
+composants-calcs-chips.png           (this branch's own specimen, moved down
+                                     by calcs-buttons above it)
+R128 STOPPED THE FIRST RECORDING: comparateur-superieur-mobile and
+points-superieur-mobile were 419 px wide at 390 - the chart's French label
+widened the page near the scale's end. Fixed (overflow: clip on the label's
+row), recorded again: 168 passed, the 33 named files and no other.
+Every calculator baseline passed untouched.
+
+--------------------------------------------------------------------------------
+R736 - BUDGETS AFTER THE ADDENDUM (`pnpm size` after a plain build)
+--------------------------------------------------------------------------------
+  /calculateur-lamal-cmu                       122.5 KiB  A 2.5 spare (was 117.1)
+  /calculateur-teletravail-frontalier          124.9 KiB  A 0.1 spare (unchanged)
+  /calculateur-teletravail-frontalier/resultat 109.8 KiB
+  /                                            114.0 KiB
+Lighthouse was not re-run for the addendum.
+
+--------------------------------------------------------------------------------
+PARKED (ADDENDUM 2)
+--------------------------------------------------------------------------------
+PARK-CA9   a partial year's Swiss side uses R744's fallback (S2)
+PARK-CA10  FW-DELAI-RAPPEL, the deadline reminder e-mail (R749)
+PARK-CA11  the three-month period's exact count is not sourced (S3)
+PARK-CA12  edge cases: leap years (366/365), OAMal 103 al. 5 not applied,
+           the children's joint cap assumes one insurer, a tie can read
+           "inferieure a 0 des 13", an odd common half rounds down
+
+--------------------------------------------------------------------------------
+QUESTIONS (ADDENDUM 2) - Q1 to Q4 above stay open
+--------------------------------------------------------------------------------
+Q5. S2 FOR A FRONTALIER: how is a Swiss premium counted for a partial first
+    month when the insured is a frontalier? Until it is sourced the page
+    counts whole months from the month after the start (PARK-CA9) - is that
+    the rule to keep, and what should a December start show?
+Q6. PARK-CA10 to CA12, for the operator and the expert reviewer.
+
+--------------------------------------------------------------------------------
+PUSH PROOF (ADDENDUM 2)
+--------------------------------------------------------------------------------
+NOT PUSHED - pending the Chromium pin. gate:clone fails at
+test:container:write on any commit while web/Dockerfile pins a Chromium
+Debian no longer serves (R249; measured on 235a3f0,
+which the rebase made c6c172c:
+every step before it passed). This commit's own gate:clone runs after it
+exists; its result is in the handback, not here. The branch is pushed only
+once gate:clone passes on its tip, after the pin is fixed on main.

@@ -5423,3 +5423,62 @@ NOT TAKEN: Raising the timeout, splitting the sweep or skipping it under
 coverage - each a change to a test this task does not own.
 
 STATE:      OPEN - pre-existing; for the owner of R711's sweep.
+
+## PARK-CA9 - a partial year's Swiss side uses R744's fallback  [FW-CALCS-A2, 2026-11-03]
+
+QUESTION:  How is a Swiss premium counted for a partial first month of cover,
+for a FRONTALIER? sources-2026-11.md (S2) finds the general rule only - the
+basic premium is computed in days for a birth, a move to or from Switzerland
+or a death - and no text naming the frontalier case. The orchestrator ruled S2
+NOT ESTABLISHED for this page.
+
+TAKEN:     R744's fallback, literally: whole months FROM THE MONTH AFTER the
+start date, with "Mois de debut non compte : regle non verifiee" on the Swiss
+card (row L16). The start month is never counted, even for a start on the 1st
+(1 January -> 11 months). A start in December gives 0 months: every Swiss
+total is 0 EUR and the case sentence says the French contribution is above
+the highest Swiss total - literal to R744, and absurd on the page.
+
+NOT TAKEN: Prorating the Swiss premium by days (the general rule) - not
+established for a frontalier.
+
+STATE:      OPEN - the operator's question (QUESTIONS, Q5).
+
+## PARK-CA10 - FW-DELAI-RAPPEL, the deadline reminder e-mail  [FW-CALCS-A2, 2026-11-03]
+
+QUESTION:  R749: a reminder before the end of the three-month option period
+means storing an address and a date and sending later - a backend feature
+with its own privacy rules (deletion after sending, the privacy notice, the
+alert infrastructure).
+
+TAKEN:     Not built. The deadline helper ships without it.
+
+STATE:      OPEN - its own task, FW-DELAI-RAPPEL.
+
+## PARK-CA11 - the three-month period's exact count is not sourced  [FW-CALCS-A2, 2026-11-03]
+
+QUESTION:  S3 - from which day to which day the option period runs - was NOT
+FOUND (sources-2026-11.md; legifrance blocked during collection).
+
+TAKEN:     R748's fallback: the end is the event plus three calendar months,
+clamped to the month's last day (30 November -> 28/29 February), shown with
+"environ" and the warning to confirm with the fund (row L17). The warning
+stays whatever the source later says.
+
+STATE:      OPEN - collect S3, then drop "environ".
+
+## PARK-CA12 - edge cases of the A2 comparator's new figures  [FW-CALCS-A2, 2026-11-03]
+
+QUESTION:  Points the implementation decided and the sources do not settle:
+  - leap years: a 1 January start in 2028 counts 366 days over 365 (D380-2 II
+    states 365);
+  - OAMal art. 103 al. 5 (a flat-rate franchise for cover shorter than a
+    calendar year) is not applied to a partial year's care card;
+  - the children's joint cap assumes one insurer for the household;
+  - a tie between the French contribution and a Swiss total can read
+    "inferieure a 0 des 13";
+  - the joint return halves an odd common amount DOWN (row L10 states why).
+
+TAKEN:     As listed, each visible in the code and its tests.
+
+STATE:      OPEN - for the expert reviewer (Checkpoint E) and the operator.
