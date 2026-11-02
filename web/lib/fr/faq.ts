@@ -51,6 +51,13 @@ export interface FaqEntry {
   readonly open?: boolean;
   /** An Avant / Après answer, drawn as two cards in place of the paragraph. */
   readonly pair?: { readonly before: FaqPairSide; readonly after: FaqPairSide };
+  /**
+   * ONE link the answer paragraph ends on (FW-COMPARATEUR-SURFACE: the home
+   * page's comparator question). NOT part of `answer`, which stays the plain
+   * text a FAQPage reads; the link is where the answer sends the reader, not
+   * something it says. Drawn only with the paragraph, never with a pair.
+   */
+  readonly link?: { readonly text: string; readonly href: string };
 }
 
 /**

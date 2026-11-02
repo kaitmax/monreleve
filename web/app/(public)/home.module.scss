@@ -267,6 +267,33 @@
   line-height: var(--type-caption-line);
 }
 
+// ------------------------------------------- 5b. the health-insurance choice
+//
+// FW-COMPARATEUR-SURFACE. A SURFACE CARD on the canvas, not a second brand
+// band (R715 allows the page one): the card idiom of section 6 - surface fill,
+// default border, radius lg - with the counter card's inner rhythm. The
+// section carries no bottom padding, so it reads as the head of the canvas run
+// that continues into the year's cards rather than as a band of its own.
+
+.health {
+  padding-top: var(--space-20);
+  background: var(--colour-canvas);
+}
+
+.healthCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+
+  @media (width >= bp.$breakpoint-md) {
+    padding: var(--space-10);
+  }
+}
+
 // ------------------------------------------------- 6 and 7. year and alerts
 
 .year {

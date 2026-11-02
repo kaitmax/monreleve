@@ -13,7 +13,7 @@ import { calculateTelework } from '@/lib/calc-engine';
 import { COUNTER_BASIS, COUNTER_TELEWORK, counterFigures } from '@/lib/content/home-counter';
 import { heroExampleInput } from '@/lib/content/home';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
-import { CALCULATOR_PATH, PUBLIC_ROUTES, RESULT_PATH } from '@/lib/content/routes';
+import { CALCULATOR_PATH, COMPARATOR_PATH, PUBLIC_ROUTES, RESULT_PATH } from '@/lib/content/routes';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { HOME_COPY } from '@/lib/fr/home';
 import { SHELL_COPY } from '@/lib/fr/shell';
@@ -45,7 +45,9 @@ describe('the sections, in the approved order (R709)', () => {
     expect(h2[0]).toBe(C.counter.heading);
     expect(h2[1]).toBe(C.mobile.heading);
     expect(h2[2]).toBe(C.thresholds.heading);
-    expect(h2[3]).toBe(C.year.heading);
+    // FW-COMPARATEUR-SURFACE: the health-insurance choice, after the band.
+    expect(h2[3]).toBe(C.health.heading);
+    expect(h2[4]).toBe(C.year.heading);
     expect(h2[h2.length - 1]).toBe(C.questions.heading);
   });
 
@@ -164,7 +166,77 @@ describe('every link goes somewhere that answers (R713)', () => {
     // calculator, and the application page - nothing else.
     const actions = [...container.querySelectorAll('main a[href]')].map((a) => a.getAttribute('href'));
 
-    expect([...new Set(actions)].sort()).toEqual(['#calcul', SHELL_COPY.ctaHref, CALCULATOR_PATH].sort());
+    expect([...new Set(actions)].sort()).toEqual(
+      ['#calcul', SHELL_COPY.ctaHref, CALCULATOR_PATH, COMPARATOR_PATH].sort(),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FW-COMPARATEUR-SURFACE: the comparator is findable from the home page.
+// ---------------------------------------------------------------------------
+
+/**
+ * What the health section must never carry: a digit (a premium, a rate, a
+ * year's figure), a currency, a percent, or a verdict. The figures live on the
+ * comparator with their sources and dates.
+ */
+const FIGURE_OR_VERDICT = /\d|%|€|\bCHF\b|\bEUR\b|moins cher/iu;
+
+describe('the health-insurance section (FW-COMPARATEUR-SURFACE)', () => {
+  const section = (): HTMLElement => screen.getByRole('region', { name: C.health.heading });
+
+  it('sits after the two-thresholds band: its heading, ONE sentence, one action', () => {
+    render(<HomePage />);
+
+    const region = section();
+
+    expect(within(region).getByText(seen(C.health.body))).toBeTruthy();
+    expect(region.querySelectorAll('p')).toHaveLength(1);
+    // One sentence: one full stop, at the end.
+    expect(C.health.body.match(/\./gu)).toHaveLength(1);
+    expect(C.health.body.endsWith('.')).toBe(true);
+
+    const actions = [...region.querySelectorAll('a[href]')];
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]?.getAttribute('href')).toBe(COMPARATOR_PATH);
+    expect(actions[0]?.textContent).toBe(C.health.cta);
+  });
+
+  it('carries no figure and no verdict - and the same scan finds the band’s', () => {
+    const { container } = render(<HomePage />);
+
+    expect(FIGURE_OR_VERDICT.test(section().textContent ?? '')).toBe(false);
+
+    // POSITIVE CONTROL: the identical scan, on the same render, fires on the
+    // thresholds band, which shows both ceilings. An absence assertion is
+    // only worth something once the scan is shown to see (R169).
+    const band = [...container.querySelectorAll('section')].find(
+      (node) => node.querySelector('h2')?.textContent === C.thresholds.heading,
+    );
+
+    expect(FIGURE_OR_VERDICT.test(band?.textContent ?? '')).toBe(true);
+    expect(FIGURE_OR_VERDICT.test('Le système le moins cher')).toBe(true);
+  });
+});
+
+describe('the comparator question (FW-COMPARATEUR-SURFACE)', () => {
+  it('asks it, answers in two sentences, and ends on a link to the comparator', () => {
+    const { container } = render(<HomePage />);
+    const entry = [...container.querySelectorAll('[data-faq] details')].find(
+      (node) => node.querySelector('summary')?.textContent === C.questions.health.question,
+    );
+
+    expect(entry).toBeDefined();
+    expect(C.questions.health.answer.match(/\./gu)).toHaveLength(2);
+
+    const paragraph = entry?.querySelector('p');
+    const anchor = paragraph?.querySelector('a');
+
+    expect(paragraph?.textContent?.startsWith(C.questions.health.answer)).toBe(true);
+    expect(anchor?.getAttribute('href')).toBe(COMPARATOR_PATH);
+    expect(anchor?.textContent).toBe(C.questions.health.link);
   });
 });
 
@@ -173,7 +245,7 @@ describe('the questions (R717) and the alert sign-up (R718)', () => {
     const { container } = render(<HomePage />);
     const details = [...container.querySelectorAll('[data-faq] details')];
 
-    expect(details).toHaveLength(4);
+    expect(details).toHaveLength(5);
     expect(details[0]?.hasAttribute('open')).toBe(true);
     expect(details.slice(1).every((node) => !node.hasAttribute('open'))).toBe(true);
     expect(within(details[0] as HTMLElement).getByText(C.questions.change.afterBody)).toBeTruthy();

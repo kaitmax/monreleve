@@ -262,6 +262,31 @@ export const HOME_COPY = {
   },
 
   // -------------------------------------------------------------------------
+  // SECTION 5b - THE HEALTH-INSURANCE CHOICE (FW-COMPARATEUR-SURFACE). A
+  // surface card after the band, so the comparator is findable from the home
+  // page. NO FIGURE, by the operator's instruction: no premium, no rate, no
+  // "moins cher" - those live on the comparator beside their sources and
+  // dates, and tests/unit/pages/home.test.tsx scans the rendered card for a
+  // digit, a currency, a percent or a verdict.
+  //
+  // THE ONE SENTENCE MAPS TO ROWS, each in docs/regulatory-sources.md:
+  //   "ne se fait qu'une fois et ne se reprend pas"   D3 (once, irrevocable)
+  //   "un délai de trois mois"                        D1 (the window)
+  //   "qui ne part pas toujours de l'embauche"        D2 (four events open it)
+  // "Le droit d'option" is the instrument's name, as the guide gives it. The
+  // last clause is the pillar's own warning, because the commonest mistake on
+  // this subject is to count the three months from the hiring date.
+  // -------------------------------------------------------------------------
+  health: {
+    heading: 'Assurance maladie' + n(':') + ' suisse ou française' + n('?'),
+    body:
+      'Ce choix, le droit d’option, ne se fait qu’une fois et ne se reprend pas' +
+      n(':') +
+      ' il s’exerce dans un délai de trois mois, qui ne part pas toujours de l’embauche.',
+    cta: 'Comparer les deux systèmes',
+  },
+
+  // -------------------------------------------------------------------------
   // SECTION 6 - THE YEAR, IN THREE CARDS.
   // -------------------------------------------------------------------------
   year: {
@@ -326,6 +351,23 @@ export const HOME_COPY = {
       answer: (state: ProductState): string =>
         (state.appExists ? 'Android aujourd’hui.' : 'Bientôt sur Android.') +
         ' L’iPhone est en préparation. Le calculateur fonctionne dans tout navigateur.',
+    },
+
+    // FW-COMPARATEUR-SURFACE. Two sentences and a link. The first restates
+    // the section above in question form - D1 (three months) and D3 (once,
+    // irrevocable); the second says what the comparator does in the words the
+    // droit d'option guide already uses for it (its FAQ, rows L1-L11), and
+    // names no figure and no verdict. The link is NOT part of `answer`, which
+    // stays the plain text anything reading answers as text would read.
+    health: {
+      question: 'LAMal ou assurance maladie française' + n('?'),
+      answer:
+        'C’est le droit d’option' +
+        n(':') +
+        ' un choix entre les deux systèmes, qui ne se fait qu’une fois, dans un délai de trois mois. ' +
+        'Le comparateur LAMal / CMU estime ce que chacun coûterait à votre foyer sur une année, ' +
+        'et dit ce qu’il ne compare pas.',
+      link: 'Ouvrir le comparateur',
     },
   },
 } as const;
