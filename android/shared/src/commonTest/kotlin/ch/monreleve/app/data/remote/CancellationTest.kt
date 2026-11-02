@@ -6,7 +6,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -143,10 +142,11 @@ class CancellationTest {
                 api.exchangeCode("a@b.ch", "000000") is CodeExchangeResult.Failed,
                 "a TransportException must still become Failed(Network)",
             )
-            assertEquals(
-                false,
-                api.signOut("token"),
-                "signOut reports false on a transport failure, as it always has",
+            // AN-SIGNOUT-REFRESH (R706): signOut returns the bearer calls' AuthedResult now (it was a Boolean, false
+            // here); a transport failure is still reported as a failure, in that shape.
+            assertTrue(
+                api.signOut("token") is AuthedResult.Failed,
+                "signOut reports Failed on a transport failure, as the other bearer calls do",
             )
         }
 
