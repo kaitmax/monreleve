@@ -133,7 +133,8 @@ function InsurerChart({ value, months }: { value: Comparison; months: number }) 
   );
   const at = (eur: number): string => `${((eur / scaleMax) * 100).toFixed(2)}%`;
   const sentence = COPY.result.chart.sentence(above, below, count);
-  const caseName = above === count ? 'all' : below === count ? 'none' : 'some';
+  // CA12: a tie is not-below, so nothing strictly above reads as 'none'.
+  const caseName = above === count ? 'all' : above === 0 ? 'none' : 'some';
 
   return (
     <ResultCard element="article" aria-labelledby="assureurs-titre" data-chart="insurers">
@@ -219,7 +220,7 @@ function CareCard({ value }: { value: Comparison }) {
 }
 
 /** R747: the franc slider - a hypothesis, never a rate. */
-function FrancCard({ value, franc }: { value: Comparison; franc: FrancControl }) {
+function FrancCard({ value, franc, totals }: { value: Comparison; franc: FrancControl; totals: boolean }) {
   const shift = franc.shiftPercent;
   const state =
     shift === 0
@@ -261,9 +262,11 @@ function FrancCard({ value, franc }: { value: Comparison; franc: FrancControl })
         {COPY.result.franc.rateLead}
         <strong>{formatRate(value.rate.chfPerEurTenThousandths)}</strong>
       </p>
-      <p className={styles.note}>
-        {COPY.result.franc.totals(formatEur(value.swiss.lowestEur), formatEur(value.swiss.highestEur))}
-      </p>
+      {totals ? (
+        <p className={styles.note}>
+          {COPY.result.franc.totals(formatEur(value.swiss.lowestEur), formatEur(value.swiss.highestEur))}
+        </p>
+      ) : null}
       <p className={styles.source} id={noteId}>
         {COPY.result.franc.reference(formatRate(EXCHANGE_RATE.chfPerEurTenThousandths), formatDate(EXCHANGE_RATE.date))}
       </p>
@@ -284,6 +287,10 @@ function ComparisonBody({
   const allowance = formatWholePercent(year.allowancePercentOfPass);
   const franchise = year.premiums.franchiseChf;
   const months = period?.months ?? MONTHS_PER_YEAR;
+  // Q5 (ADVISOR RULING 1, 2026-11-03): zero whole months under R744's
+  // fallback means NO Swiss total - never "0 EUR" - and nothing that compares
+  // against one (the chart, the case sentence, the slider's totals line).
+  const noSwiss = period !== null && period.months === 0;
   const swissPer = period === null ? COPY.result.perYear : COPY.result.forMonths(period.months);
   const frenchPer = period === null ? COPY.result.perYear : COPY.result.forDays(period.days);
 
@@ -296,28 +303,38 @@ function ComparisonBody({
             {COPY.result.swiss.heading}
           </h3>
 
-          <dl className={styles.figures}>
-            <Figure label={COPY.result.swiss.lowest} centimes={swiss.lowestCentimes} eur={swiss.lowestEur} per={swissPer} />
-            <Figure label={COPY.result.swiss.median} centimes={swiss.medianCentimes} eur={swiss.medianEur} per={swissPer} />
-            <Figure label={COPY.result.swiss.highest} centimes={swiss.highestCentimes} eur={swiss.highestEur} per={swissPer} />
-          </dl>
+          {noSwiss ? (
+            <p className={styles.note} data-too-short="true">
+              {COPY.result.swiss.tooShort}
+            </p>
+          ) : (
+            <>
+              <dl className={styles.figures}>
+                <Figure label={COPY.result.swiss.lowest} centimes={swiss.lowestCentimes} eur={swiss.lowestEur} per={swissPer} />
+                <Figure label={COPY.result.swiss.median} centimes={swiss.medianCentimes} eur={swiss.medianEur} per={swissPer} />
+                <Figure label={COPY.result.swiss.highest} centimes={swiss.highestCentimes} eur={swiss.highestEur} per={swissPer} />
+              </dl>
 
-          <p className={styles.note}>
-            {COPY.result.swiss.basis(
-              months,
-              swiss.insurerCount,
-              formatChf(franchise.adult * 100),
-              formatChf(franchise.child * 100),
-            )}
-          </p>
+              <p className={styles.note}>
+                {COPY.result.swiss.basis(
+                  months,
+                  swiss.insurerCount,
+                  formatChf(franchise.adult * 100),
+                  formatChf(franchise.child * 100),
+                )}
+              </p>
+            </>
+          )}
           {period === null ? null : (
             <p className={styles.note} data-start-month="true">
               {COPY.result.swiss.startMonth}
             </p>
           )}
-          <p className={styles.note} data-conversion="true">
-            {rateSentence(value)}
-          </p>
+          {noSwiss ? null : (
+            <p className={styles.note} data-conversion="true">
+              {rateSentence(value)}
+            </p>
+          )}
         </ResultCard>
 
         <ResultCard element="article" data-side="france" aria-labelledby="cote-france">
@@ -363,16 +380,18 @@ function ComparisonBody({
         </ResultCard>
       </div>
 
-      <InsurerChart value={value} months={months} />
+      {noSwiss ? null : <InsurerChart value={value} months={months} />}
 
       <div className={styles.columns}>
         <CareCard value={value} />
-        {franc === undefined ? null : <FrancCard value={value} franc={franc} />}
+        {franc === undefined ? null : <FrancCard value={value} franc={franc} totals={!noSwiss} />}
       </div>
 
-      <p className={styles.caseSentence} data-case-sentence={cheaper}>
-        {CASE_SENTENCE[cheaper]}
-      </p>
+      {noSwiss ? null : (
+        <p className={styles.caseSentence} data-case-sentence={cheaper}>
+          {CASE_SENTENCE[cheaper]}
+        </p>
+      )}
 
       {/*
         R731: the OFSP attribution (R664's mandatory credit, under the Swiss

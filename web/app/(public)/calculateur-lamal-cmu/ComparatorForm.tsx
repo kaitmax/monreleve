@@ -265,22 +265,22 @@ export function ComparatorForm() {
           {COPY.form.heading}
         </h2>
 
-        <FieldGroup id={ID.year} label={COPY.form.year.label} helper={COPY.form.year.helper}>
-          {(control) => (
-            <select
-              {...control}
-              className={styles.select}
-              value={year}
-              onChange={(event) => setYear(Number(event.target.value))}
-            >
-              {AVAILABLE_YEARS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          )}
-        </FieldGroup>
+        {/*
+          CA1 (ADVISOR RULING 1, 2026-11-03): the year as the designed
+          two-option toggle - nameless buttons (R750), every year the data
+          holds, newest first as the artboard sets them. Still REAL: the
+          choice is the comparison's year (R730).
+        */}
+        <SegmentedButtons
+          id={ID.year}
+          legend={COPY.form.year.label}
+          helper={COPY.form.year.helper}
+          options={[...AVAILABLE_YEARS]
+            .sort((a, b) => b - a)
+            .map((option) => ({ value: String(option), label: String(option) }))}
+          value={String(year)}
+          onChange={(value) => setYear(Number(value))}
+        />
 
         <SegmentedButtons
           id={ID.declaration}

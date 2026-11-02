@@ -348,6 +348,16 @@ export const LAMAL_COPY = {
         ' règle non vérifiée. Seuls les mois entiers qui suivent la date de ' +
         'début sont comptés ici.',
       /**
+       * Q5 (the operator, ADVISOR RULING 1, 2026-11-03): when R744's
+       * fallback leaves ZERO whole months - a start in December - the Swiss
+       * side shows no total at all, never « 0 € », and says why (row L16).
+       */
+      tooShort:
+        'Période trop courte pour une estimation' +
+        n(':') +
+        ' la règle appliquée ici, non vérifiée, ne compte que les mois ' +
+        'entiers qui suivent le mois de début, et il n’en reste aucun cette année.',
+      /**
        * R664 (G1): the attribution the terms make mandatory - author, title,
        * link. The title is the link; the author and the title are read from
        * PREMIUM_DATASET below, which /sources renders too.
@@ -403,13 +413,15 @@ export const LAMAL_COPY = {
       /**
        * The one counting sentence for a count (lib/lamal/scenario.ts's
        * countAgainst): all above, none above - every total below - or how
-       * many. A tie is neither above nor below, so with ties and nothing
-       * above it reads « inférieure à 0 des … », which is true.
+       * many. CA12 (ADVISOR RULING 1, 2026-11-03): a tie counts as
+       * NOT-BELOW, so with nothing strictly above the French contribution
+       * the page reads the « supérieure aux … » sentence - never
+       * « inférieure à 0 des … ». `below` is kept for the callers' shape.
        */
-      sentence: (above: number, below: number, count: number): string =>
+      sentence: (above: number, _below: number, count: number): string =>
         above === count
           ? `La cotisation française est inférieure aux ${count} totaux suisses.`
-          : below === count
+          : above === 0
             ? `La cotisation française est supérieure aux ${count} totaux suisses.`
             : `La cotisation française est inférieure à ${above} des ${count} totaux suisses.`,
       /** The chart's one label (role="img"): the same facts as the picture, in a sentence. */

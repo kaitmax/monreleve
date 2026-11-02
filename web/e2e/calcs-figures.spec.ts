@@ -206,7 +206,11 @@ async function compareHousehold(
   await page.goto(COMPARATOR_PATH);
 
   if (household.year !== undefined) {
-    await page.getByLabel(LAMAL_COPY.form.year.label).selectOption(household.year);
+    // CA1: the year is a toggle now; how it is chosen changed, no literal did.
+    await page
+      .getByRole('group', { name: LAMAL_COPY.form.year.label })
+      .getByRole('button', { name: household.year })
+      .click();
   }
 
   await page.locator('#revenu-fiscal').fill(household.income);
