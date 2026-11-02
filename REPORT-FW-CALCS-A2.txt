@@ -669,9 +669,10 @@ after the Chromium pin was fixed on main.
 STATUS (R391), THE PUSHED TIP
 --------------------------------------------------------------------------------
 Increments green under gate:changed (addfb50: typecheck, lint, test 3618,
-build, test:e2e 367, test:visual 168, test:late 10). FULL GATE NOT RUN on
-this commit when it was written: gate:clone runs on it ALONE next, and its
-verdict lines and exit code are pasted in the commit that follows.
+build, test:e2e 367, test:visual 168, test:late 10). gate:clone PASSED
+(exit 0) on 0fd360d, alone - pasted in PUSH PROOF below. The pushed tip is
+the commit after it, which adds only that PUSH PROOF text; its own
+gate:clone verdict is reported in the handback, not claimed here.
 
 --------------------------------------------------------------------------------
 THE RULING, VERBATIM (relay/RULINGS-2026-11-03.txt, ADVISOR RULING 1, "Step 3")
@@ -814,4 +815,22 @@ calculator's 0.0 KiB headroom (CA7).
 --------------------------------------------------------------------------------
 PUSH PROOF
 --------------------------------------------------------------------------------
-Pending: this commit's gate:clone verdict is pasted in the next commit.
+gate:clone, ALONE, on 0fd360d (03.11 14:33, 2.15 GB free, no Gradle),
+FRONTALIER_PORT=3400 - exit code 0 (EXIT=0). Its verdict lines:
+
+  GATE:CLONE PASSED
+
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  0fd360d4411d0208226a92a761d67801a166e291
+    clone   %TEMP%\monreleve-clone-ZI6UBn (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+
+Not run in the clone, as it states: test:e2e, test:visual, test:runtime,
+Lighthouse, parity:check, test:container - test:e2e and test:visual ran in
+addfb50's gate:changed (367 and 168 passed), Lighthouse above.
+This commit adds only this PUSH PROOF text to 0fd360d. Its own gate:clone
+runs alone before the push; that result is in the handback.
