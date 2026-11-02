@@ -1,0 +1,289 @@
+REPORT-FW-COMPARATEUR-SURFACE
+=============================
+
+Branch fw-comparateur-surface, worktree C:/wt/fw-comparateur-surface (lock
+written at start, removed at the end), cut from LOCAL main 65c6914 (origin/main
+d110050 plus the gated docs commit, which travels with this branch). Change
+commit 3b1e122; this report is the commit on top of it.
+
+SUMMARY
+-------
+The operator's ask was "update the web view to show the comparateur". Most of
+it was already on main from FW-COMPARATEUR: the header menu, the footer, the
+/sources page, the sitemap and the guides all link the comparator, and each was
+confirmed in the rendered page (ALREADY PRESENT). Two things were new, and this
+branch builds only those two:
+
+  b. HOME: a surface card after the two-thresholds band - heading, ONE sentence
+     on the droit d'option (rows D1, D2, D3), one primary action to
+     /calculateur-lamal-cmu. No figure, no currency, no verdict; a test scans
+     the rendered card for them, and the same scan is shown to fire on the
+     band (positive control).
+  c. FAQ: a fifth question in "Vos questions", two sentences and a link to
+     the comparator. FaqEntry gains an optional `link` (absent by default,
+     asserted both ways) because an answer was a plain string with no link
+     slot.
+
+Two baselines regenerated, exactly the two named before the run:
+page-accueil-desktop.png and page-accueil-mobile.png. Every other baseline is
+untouched (130 passed on the comparison run).
+
+STATUS (R391)
+-------------
+COMPLETE. gate:clone PASSED on 3b1e122 in this session (exit 0), and 3b1e122
+is the pushed tip of the change (PUSH PROOF). Web only; no Android code
+changed, so no :app:gate applies.
+  gate:changed  GREEN on 3b1e122's tree (exit 0), FRONTALIER_PORT=3500,
+                test:db against a scratch database
+  pnpm gate     GREEN once (exit 0), coverage mode, 3490 tests; HomeCounter's
+                sweep did NOT time out this run
+  test:visual   130 passed after the regeneration
+  Lighthouse    100/100/100/100, median of 3, on / and the calculator
+
+RED (test-first)
+----------------
+Written before the code, run against the unchanged page and component:
+  7 failed | 15 passed (22)
+  - Faq: "ends the answer paragraph on the link" - expected undefined to be
+    '/somewhere' (no link slot existed)
+  - home: section order - Cannot read properties of undefined (reading
+    'heading') (HOME_COPY.health did not exist)
+  - home: the actions set - expected ['#calcul','/application', ...(1)] to
+    equal [...(2)] (no comparator link on /)
+  - home: health section, one sentence, one action; no figure + control
+  - home: the comparator question
+  - home: five FAQ entries - got 4
+The "renders no anchor for an entry without one" test passed on its first run,
+as an absence test must; its partner above is the one that failed.
+
+ALREADY PRESENT (confirmed on the rendered page, `pnpm dev` on 3500)
+--------------------------------------------------------------------
+a. HEADER. web/lib/fr/shell.ts:126 declares LAMAL_COMPARATOR, label
+   "Comparateur LAMal / CMU"; shell.ts:134 puts it in the "Calculateurs"
+   disclosure beside TELEWORK_CALCULATOR ("Calculateur de teletravail" -
+   accented original at shell.ts:122). Desktop: the disclosure button opens a
+   menu whose second link is the comparator, visible. Phone (390): the burger
+   (details/summary, the existing pattern) lists it, visible. No new menu
+   component and no restructuring (R754). Proposed label: keep
+   "Comparateur LAMal / CMU", which is what ships.
+b. HOME. Nothing on main; built here.
+c. FAQ. Nothing on main; built here. The home page emits NO FAQPage
+   structured data (only the calculator and the guide pages call
+   lib/content/jsonld.ts), so there was none for the question to join, and
+   adding one is out of scope (R756).
+d. GUIDES. droit-option-lamal-cmu.mdx:134 (En bref) and :247 ("Ce que ce
+   guide ne chiffre pas") link the comparator in prose, and its FAQ answer
+   (frontmatter line 25) names it - FW-COMPARATEUR's R659 (prompt R643). The
+   only other guide that mentions the droit d'option is the pillar,
+   teletravail-frontalier-40-pourcent.mdx:228-229, which links both the guide
+   and the comparator. A grep over content/guides for the droit d'option
+   (curly apostrophe matched), LAMal, CMU and "assurance maladie" finds these
+   two files and no other. Nothing added (R757).
+e. FOOTER AND /sources. The footer's "Outils" column references the same
+   LAMAL_COMPARATOR object (shell.ts:201): rendered at both widths. /sources:
+   the mandatory OFSP attribution (G1) is sources.ts:388-391, rendered as
+   "... publie sur opendata.swiss sous la condition << Utilisation libre.
+   Obligation d'indiquer la source. >>, lu le 27.10.2026." with the dataset
+   link; the ECB row (G9) is sources.ts:226 "Taux de reference de l'euro en
+   francs suisses", rendered with 0,9239 CHF, source BCE (ecb.europa.eu) and
+   27.10.2026; sources.ts:383 links the comparator.
+f. SITEMAP AND LINKS. lib/content/routes.ts:153 lists COMPARATOR_PATH as
+   `live`; /sitemap.xml served <loc>.../calculateur-lamal-cmu</loc>.
+   e2e/routing.spec.ts:291 walks every header and footer link (the comparator
+   is among them) and e2e/home.spec.ts:266 walks every link on / (now
+   including the card and the FAQ link). Not an orphan: header, footer,
+   home (twice), /sources, two guides.
+
+WHAT CHANGED (3b1e122)
+----------------------
+web/app/(public)/page.tsx           section 5b (the card) after the band; the
+                                    fifth FAQ entry, id lamal-ou-cmu, with
+                                    link -> COMPARATOR_PATH (from routes.ts,
+                                    never retyped)
+web/app/(public)/home.module.scss   .health / .healthCard: section 6's card
+                                    idiom (surface fill, default border,
+                                    radius lg) with the counter card's inner
+                                    padding; tokens only, no new token
+web/lib/fr/home.ts                  HOME_COPY.health, HOME_COPY.questions.health
+web/lib/fr/faq.ts                   FaqEntry.link?: { text, href }
+web/lib/ui/react/Faq/Faq.tsx        renders the link at the end of the answer
+                                    paragraph; never with a pair; no style of
+                                    its own (R173's base layer styles it)
+web/lib/ui/react/Faq/Faq.test.tsx   the link delivered; absent by default
+web/tests/unit/pages/home.test.tsx  section order; the card (one sentence, one
+                                    action, href); no figure/currency/verdict
+                                    with the band as positive control; the
+                                    question (two sentences, link); five
+                                    entries; the page's action set
+two baselines                       see BASELINES
+
+NEW COPY
+--------
+Pure ASCII here by transport (R168); the accented originals are in
+web/lib/fr/home.ts at the lines given. ":" and "?" carry the U+00A0 n() sets.
+
+home.ts:281  health.heading
+  "Assurance maladie : suisse ou francaise ?"
+home.ts:283  health.body   (rows D3 "once, irrevocable"; D1 "three months";
+                            D2 "four events open it", so not only hiring)
+  "Ce choix, le droit d'option, ne se fait qu'une fois et ne se reprend pas :
+   il s'exerce dans un delai de trois mois, qui ne part pas toujours de
+   l'embauche."
+home.ts:286  health.cta
+  "Comparer les deux systemes"
+home.ts:363  questions.health.question
+  "LAMal ou assurance maladie francaise ?"
+home.ts:365  questions.health.answer   (sentence 1: D1, D3; sentence 2: the
+                                        comparator as the droit d'option
+                                        guide's own FAQ describes it, L1-L11)
+  "C'est le droit d'option : un choix entre les deux systemes, qui ne se fait
+   qu'une fois, dans un delai de trois mois. Le comparateur LAMal / CMU estime
+   ce que chacun couterait a votre foyer sur une annee, et dit ce qu'il ne
+   compare pas."
+home.ts:370  questions.health.link
+  "Ouvrir le comparateur"
+
+No figure anywhere in it: "trois mois" is in words, as the guide writes it,
+and typed-numbers / product-claims guards pass. The comparator sentence uses
+none of product-claims' "publie / propose / offre ... comparateur" verbs
+(comparatorExists is true either way).
+
+BASELINES
+---------
+Named before the regeneration ran ("EXPECTED REGENERATION:
+page-accueil-desktop.png page-accueil-mobile.png"); visual.mjs printed:
+
+  R135: 2 baseline(s) regenerated BY THIS RUN - list these in the report with
+  a reason:
+    tests/visual/baselines/page-accueil-desktop.png
+    tests/visual/baselines/page-accueil-mobile.png
+
+Reason: the new card after the band, and a fifth closed question under "Vos
+questions". The desktop image was opened and read: the card sits between the
+brand band and "Le compteur, toute l'annee...", white on the canvas, one
+heading, one sentence, one button; the FAQ shows five questions, the first
+open. Isolation: the script's own container, 130 passed, no orphan.
+Equal to the expectation: nothing else was written.
+Header open/closed (composants-shell-*) and the guide's call to action:
+unchanged, because neither changed (a and d were already present); the
+comparison run passed them as they were. 1440 and 390 per R127 (the prompt's
+375 is corrected by the orchestrator's note).
+
+BUDGETS (GATE A <= 125.0 KiB, GATE B delta <= 25.0 KiB), from `pnpm gate`
+--------------------------------------------------------------------------
+  /                       113.9 KiB total, delta 13.3, A 11.1 spare
+  /calculateur-lamal-cmu  116.8 KiB total, delta 16.2, A 8.2 spare
+The change is server-rendered markup only (no client module touched), and
+gate:clone's own size step re-measures in a clean clone (PUSH PROOF).
+
+LIGHTHOUSE
+----------
+scripts/lighthouse.mjs, unchanged except ROUTES, run from a temporary copy
+(removed after the run) because its list does not include the calculator:
+['/', '/calculateur-teletravail-frontalier'], 3 runs each, median asserted,
+floor 100. R169/R177 checks passed first ("http://localhost:3500 is
+monreleve, 5 stylesheet(s), 62807 bytes, --colour-brand present").
+  /                                   perf 1  a11y 1  bp 1  seo 1   (x3)
+  /calculateur-teletravail-frontalier perf 1  a11y 1  bp 1  seo 1   (x3)
+  "Checking assertions against 2 URL(s), 6 total run(s)" - exit 0.
+
+jest-axe: tests/unit/pages/accessibility.test.tsx:73 renders HomePage
+('accueil') in the shell and asserts no violations; it passed with the card
+and the fifth question in it. accessibility-faq.test.tsx covers the Faq
+component as before.
+
+WALKTHROUGH (R176, `pnpm dev` on 3500)
+--------------------------------------
+/api/health named monreleve. At 1440 and 390: the card renders after the band,
+no horizontal overflow (0 px); its button goes to /calculateur-lamal-cmu, whose
+h1 is "Comparateur LAMal / CMU". The FAQ question opens and its answer ends on
+"Ouvrir le comparateur", which goes to the same page. The header (desktop
+menu, phone burger) and the footer each show the comparator link, visible.
+/sources, both guides and /sitemap.xml checked as in ALREADY PRESENT. The dev
+server's tree was killed afterwards (two orphaned node processes named by this
+worktree's path, killed by PID; a listener query with 8 results was the
+positive control that 3500 was free).
+
+RULINGS (R754-R758; R753 is FW-CHROMIUM-PIN's, R760 skipped)
+-----------------------------------------------------------
+R754  (a) is present as built: the comparator sits in the Calculateurs
+      disclosure beside the telework calculator, at both widths. The nav is
+      not restructured to put it at the top level.
+R755  (b) is a surface card at the head of the canvas run that leads into
+      the year's cards (top padding only), so the page keeps ONE brand band.
+      Its action is a primary button, the page's existing class.
+R756  (c) FaqEntry.link is a new optional field, never part of `answer`, so
+      anything that reads answers as text reads the two sentences only. The
+      home page has no FAQPage; none is added.
+R757  (d) is satisfied by the inline links R659 added. GuideCta - FD13's
+      "one CTA, no variants", no props, to the telework calculator on every
+      guide - is NOT forked for the droit d'option guide (QUESTIONS 1).
+R758  Lighthouse on the calculator uses a temporary copy of the script with
+      a different ROUTES; the script itself is unchanged (QUESTIONS 3).
+
+PARKED
+------
+Nothing. No park letter claimed.
+
+DEVIATIONS
+----------
+1. The prompt's (h) asks for new baselines for "header open and closed" and
+   "the guide's call to action". Neither surface changed, so none was
+   recorded; both are covered unchanged by the existing baselines.
+2. Widths 1440 and 390, not 375 (R127, per the orchestrator's note).
+3. test:e2e first ran without a DATABASE_URL (the worktree has no .env): 3
+   alert-subscription tests failed on "#alerte-ok hidden", i.e. the POST had
+   no database. Re-run with DATABASE_URL pointing at a scratch database
+   (fw_cs_scratch on the frontalier-postgres container, created and migrated
+   by this session, dropped at the end): 353 passed. Not a defect of this
+   change; recorded because the first run was red.
+4. The new copy appears ASCII-transliterated in this report (R168); the
+   accented text is in lib/fr.
+
+QUESTIONS
+---------
+1. (d) Did "the droit-option guide's call to action points to the
+   comparator" mean the CLOSING card? Today every guide ends on GuideCta, to
+   the telework calculator, by FD13's "one CTA, no variants" and SPEC 9.5's
+   "every guide to a calculator". Pointing the droit d'option guide's card at
+   the comparator would need a variant (a prop or a per-guide target), which
+   is a design decision against FD13, so it was not taken here.
+2. The header shows the comparator inside the "Calculateurs" menu, not as a
+   top-level item beside it. If the operator wants it at the top level, that
+   is a nav change (and two header baselines).
+3. scripts/lighthouse.mjs measures /, /guides, the pillar and Geneve, never a
+   calculator. Should its ROUTES include the calculator (and the comparator)
+   permanently?
+
+PUSH PROOF
+----------
+gate:clone, this session, on the tip that was then pushed:
+
+  gate:clone - what is being checked
+    commit    3b1e1229d83d555acad9de47e5379843d06cfea8
+    branch    fw-comparateur-surface
+    tree      clean - HEAD is everything you have
+    swept     no stale clones (older than 4h) found
+  --- database: scratch database monreleve_gate_clone_3b1e1229 created ---
+  All gated routes pass both gates.          (its size step)
+  GATE:CLONE PASSED
+    ran     register-coverage, fixture-coverage, install, typecheck, lint,
+            test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage,
+            fixture-coverage, install, typecheck, lint, test, build, size,
+            db:deploy, test:db, test:container:write from a clean checkout
+  exit code 0
+
+  NOT RUN in the clone, by its own list: test:e2e, test:visual,
+  test:runtime, lighthouse, parity:check, test:container. Of these, test:e2e
+  (353 passed), test:visual (130 passed), lighthouse (above) and parity:check
+  (inside `pnpm gate`) were run locally in this session.
+
+  git push -u origin fw-comparateur-surface
+    * [new branch] fw-comparateur-surface -> fw-comparateur-surface
+  git ls-remote: 3b1e1229d83d555acad9de47e5379843d06cfea8
+                 refs/heads/fw-comparateur-surface
+
+This report is the commit on top of 3b1e122 (a text file at the repo root, no
+code); it is pushed to the same branch. The branch is NOT merged: pending the
+operator's (or the advisor's) reading of this report.
