@@ -1,0 +1,107 @@
+PDF PROOF - THE RELEVE UNDER CHROMIUM 156, ON THE CANDIDATE 52caca8
+Orchestration step 4, under ADVISOR RULINGS 1 and 4 (relay/RULINGS-2026-11-03.txt).
+Run 2026-11-02 (machine clock), by the orchestrator. ASCII by transport (R168).
+STATUS: PROMOTED SHA 52caca8cf6388cb596c9a074175756d16a867858. production was
+fast-forwarded 22b16bb..52caca8 at 15:44:08Z (machine clock; records of this
+run say 03.11, this machine reads 02.11 - both stated, neither reconciled);
+Coolify deployment ffz5nn67q0ua2gb37lzetoyz finished 15:48:18Z, the site 200
+on all 263 one-second samples during it. Committed after the promotion
+(ADVISOR RULING 1).
+
+THE NAMED-FONT CHECK IS SUPERSEDED (ADVISOR RULING 5): ruling 4 asked that
+pdffonts "list Inter". The site ships Inter as a variable woff2 and Skia
+embeds it as unnamed Type 3, so no name was ever going to appear. The
+evidence is: no Liberation font listed, the renderer's fontless refusal
+passed, page 1 read by eye.
+
+THE IMAGE
+- Source: `git archive 52caca8cf6388cb596c9a074175756d16a867858 web` (no
+  working tree, no .env: only .env.example is in the archive).
+- Built: `docker build --build-arg NEXT_PUBLIC_SITE_URL=https://monreleve.example
+  -t monreleve:52caca8 .` - EXIT=0.
+- Image Id: sha256:fc1f488a705452515246794224b8edaf6c710c0097cc0c2934f3aebfe441e38d
+- Chromium in the image (dpkg-query): 156.0.8078.73-1~deb12u1, equal to
+  ARG CHROMIUM_VERSION; the Dockerfile's R249 step verified it at build.
+- "Same image" as production means SAME RECIPE: Coolify builds its own image
+  from the same SHA and Dockerfile with its own NEXT_PUBLIC_SITE_URL; there is
+  no registry digest to compare.
+
+RUN A - PRODUCTION-IDENTICAL ENV (no MONRELEVE_VERIFICATION_ORIGIN)
+- Container monreleve-step4 on port 3600; scratch database step4_pdf_scratch
+  on frontalier-postgres:5436, migrated with `prisma migrate deploy`.
+- /api/health: {"service":"monreleve","instance":"step4-a-8f26dce6911a",
+  "status":"ok","reasons":[],"origin":"https://monreleve.example","runtime":true}
+- vitest (vitest.db.config.ts) tests/db/container-pdf.test.ts plus an
+  untracked scratch test that saved the PDF (created, then deleted):
+  "Test Files  2 passed (2) / Tests  3 passed (3)". container-pdf.test.ts's
+  two tests: the image renders a real PDF; the image and this machine's
+  Playwright Chromium paginate identically and are within 2x in size.
+- Account: fictitious (step4-pdf@example.com, "Camille Fixture", GE, five
+  HOME days in January 2026), deleted with the scratch database.
+- pdfinfo (poppler 22.12.0, debian:bookworm-slim): Creator HeadlessChrome/
+  156.0.0.0; Producer Skia/PDF m156; Pages 10; A4 (595.92 x 842.88 pts).
+- pdftotext: "Releve annuel de teletravail" (accented in the PDF), "Nom
+  Camille Fixture". NO verification block - BY DESIGN, R332:
+  MONRELEVE_VERIFICATION_ORIGIN is not among production's env names (measured
+  2026-11-03), so production Releves print no code and no QR, as 22b16bb
+  already does. A measured absence, controlled by run B.
+- pdffonts: 13 fonts, all Type 3, embedded, unicode-mapped, unnamed. NO
+  Liberation font is listed. The site's Inter is the VARIABLE woff2
+  (fonts.scss: format("woff2-variations")), which Skia embeds as Type 3, so
+  no name is expected; the renderer's own font probe (RendererFontlessError
+  in lib/export/pdf.ts) refuses a fallback face and the render succeeded.
+- Page 1: docs/proofs/pdf-52caca8-page1.png (72 dpi) - read by eye: the
+  header, the identity table, the four tiles, 2,08 %, the rail, in Inter.
+
+RUN B - POSITIVE CONTROL (MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.example,
+RFC 2606, never resolves)
+- Same image, same scratch database, instance step4-b-b6f9bc6e3ed2.
+- vitest: "Test Files  1 passed (1) / Tests  1 passed (1)".
+- pdfinfo: 10 pages, A4, HeadlessChrome/156. pdffonts: 14 Type 3, no
+  Liberation.
+- pdftotext, page 9-10: "Verification" (accented), "Adresse :
+  https://monreleve.example/verifier/aaa569923172e97db7799600517b9d6e",
+  "Code : aaa569923172e97db7799600517b9d6e".
+- pdfimages: one 384x384 image on page 10 at 348 ppi - the QR.
+- Page 10: docs/proofs/pdf-52caca8-verification-control.png (110 dpi): QR,
+  address, code, the three footer sentences.
+
+OBSERVED, NOT A REGRESSION (for the operator)
+- The last page shows the page background (grey) below the end of the white
+  sheet: print.module.scss gives the sheet min-height 297mm and the content
+  ends mid-page, so the body background shows beneath it. Both runs show it,
+  and both renderers paginate identically, so it is the stylesheet, not
+  Chromium 156. Cosmetic; a candidate park.
+
+CLEANUP
+- Scratch test removed (git status of web/tests/db: 0 lines); container
+  monreleve-step4 removed; database step4_pdf_scratch dropped; the archive in
+  the scratchpad. The image tag monreleve:52caca8 stays until after the
+  promotion, as the artefact this proof names.
+
+STEP 6 - AFTER-DEPLOY CHECKS ON https://monreleve.ch (15:48:56Z)
+Script prod-checks2.mjs (orchestrator scratchpad), read-only, positive
+new-design markers from 52caca8's lib/fr. Its markers were first proven to
+DISCRIMINATE: against production at 22b16bb they gave 15 passed, 6 failed
+(exactly the six new-design markers); against monreleve:52caca8 locally,
+21 passed, 0 failed. After the deploy, on production: 21 passed, 0 failed.
+- /api/ready 200: ready true, site-origin ok, database ok; /api/health names
+  monreleve, origin https://monreleve.ch.
+- / 200 with the comparator card heading, its button, the fifth FAQ question
+  and the nav entry; the calculator 200 and /resultat?canton=GE&tt=130 200,
+  each with the A2 application card; the comparator 200 with the year
+  toggle (group "Annee comparee" with two buttons).
+- The comparator computed for one adult born 1985, 42 000 EUR, 2027: lowest,
+  median and highest Swiss totals, the French contribution, ONE factual
+  sentence ("inferieure au total suisse le plus bas"), no badge, the ECB
+  rate with its date on screen (27.10.2026, 1 EUR = 0,9239 CHF), the OFSP
+  attribution.
+- The alert confirmation redirect: 303 -> /alertes/confirmation/invalide.
+- A RELEVE PDF GENERATED IN PRODUCTION: NEEDS THE OPERATOR. Blocked twice: no
+  agent-readable inbox (magic-link sign-in, mail via Resend), and PARK31-6
+  (User.name is settable by no route, so a fresh account gets 422
+  titulaire_missing; passing it needs a write to the production database,
+  which this run may not make). The substantive evidence is runs A and B
+  above, on the same recipe.
+- Rollback still available after the deploy: GET rollback-images lists
+  52caca8, 22b16bb and c7a587f (local).

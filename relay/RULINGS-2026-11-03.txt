@@ -1,0 +1,160 @@
+ORCHESTRATION RULINGS - 2026-11-03
+Under the operator's ORCHESTRATION PROMPT "from here to the new design live on
+monreleve.ch, without waiting for me": the advisor rules in the operator's
+place; each ruling is recorded here as taken. ASCII by transport (R168).
+
+ADVISOR RULING 1 (start of run)
+- Step 4's PDF proof runs on the FINAL candidate SHA (after every merge), on
+  that SHA's image; the proof report and page image are committed to main
+  AFTER the promotion, naming the promoted SHA, so main's head is not moved
+  past the proven SHA before the push.
+- Step 6's "PDF generated in production for a test account" needs a readable
+  inbox (magic-link sign-in, zero production users). If none exists, every
+  other step-6 check runs and that one is "needs the operator"; the step-4
+  proof on the identical image is the substantive evidence.
+- The rollback path ("restore the previous deployment") is proven BEFORE the
+  production push, read-only. If Coolify exposes no rollback the orchestrator
+  can perform, that is a stop-and-tell before promoting.
+- Step 1: merge --no-ff origin/fw-chromium-pin (36e6f0e); tree == tip;
+  gate:clone alone; push main. Then one docs commit: the two stale comments
+  and R248 brought in line with reality, keeping its history.
+- Step 2: FW-COMPARATEUR-SURFACE has no prompt. Find what it was meant to be
+  (the original orchestration text; the A2 home design; what / renders). If
+  the A2 home shows a comparator block fw-home-a2 did not build, write a tight
+  prompt for exactly that block. If the only thing meant was the header link,
+  SURFACE is closed by shell.ts.
+- Step 3, FW-CALCS-A2:
+  ADDENDUM 1 was never delivered; addendum 2's own sentence is the exception.
+  Q5: the operator's ruling - zero months leaves the Swiss side with NO total
+    and a sentence that the period is too short for an estimate under an
+    unverified rule; never "0 EUR". The French text is authored in lib/fr.
+    Tested on both sides of the boundary.
+  Q1 (six workbench baselines): accepted with the measured cause IF git diff
+    base..tip is empty for those components' source and styles AND the public
+    page baselines covering them are in the untouched set. Any diff:
+    investigate, not accept.
+  CA1: convert the year select to the designed toggle (SegmentedButtons);
+    rewrite comparateur.test.tsx:91 as a positive assertion on the toggle
+    (both years selectable, heading changes). Fallback only if the comparator
+    exceeds 125 KiB: keep the select, park.
+  CA2-CA5 accepted as built (pale blue: no token exists, tokens are
+    ask-first - noted for the operator).
+  CA6-CA8, CA10, CA11 accepted as parked.
+  CA12: the "inferieure a 0 des 13" case uses the existing "superieure aux
+    13" sentence; a tie counts as not-below; one test per boundary. The rest
+    of CA12 stays parked.
+  R736: Lighthouse after the addendum is required before the merge.
+- Step 4: run tests/db/container-pdf.test.ts alone against the candidate
+  image, plus positive checks (page count, verification code in the text,
+  fonts embedded, page 1 as PNG). home.spec.ts:197 is parked with "a pin
+  change selects the PDF suite"; not fixed in this run.
+- Step 5c: git diff production..candidate -- web/prisma/migrations, expected
+  empty.
+- Step 6: prod-checks.mjs updated for the new UI, with positive new-design
+  markers per page.
+
+ADVISOR RULING 2 (FW-COMPARATEUR-SURFACE, before its merge)
+- Before merging: confirm the new home sentence and FAQ answer against the
+  source rows. Checked: D1 "Three months", D2 "any of four events" (hence
+  "ne part pas toujours de l'embauche"), D3 "exercised once and is
+  irrevocable" - the sentence states D3 as the row states it. D4 (what
+  reopens it) is a separate row; the home card does not contradict it and
+  the droit-option guide carries it. Noted for the operator, not changed.
+- RAM >= 1.5 GB free before gate:clone, no Gradle.
+- Q1 (the droit-option guide's closing card): the operator's own
+  parenthetical names the existing inline link (R643) as the thing to check;
+  :134/:247 satisfy it. A card variant is a design decision against FD13
+  "one CTA, no variants". Leave the card; operator question in the summary.
+- Q2 (top-level header item): "beside Calculateur ... fits the existing menu
+  pattern; no new menu component" is met inside the Calculateurs menu. A
+  top-level item is a nav restructure (R754) and moves two header baselines.
+  Stays; operator question in the summary.
+- Q3 (permanent Lighthouse routes): out of scope, a gate-config change
+  (R247 class). Not done in this run; recorded for the operator. No park.
+- Merge: --no-ff; tree == tip; gate:clone alone on the merge commit; push
+  main (publishes 65c6914 too, covered by the merge commit's gate:clone).
+  Re-scan relay/ for R-numbers before the push.
+- Step 3 note: FW-CALCS-A2's rebase will meet page-accueil-{desktop,mobile}.png
+  and maybe lib/fr/home.ts. A binary baseline conflict is resolved by
+  regenerating on the rebased tree with the stated reason (R135/R207), never
+  by picking a side.
+
+ADVISOR RULING 3 (FW-CALCS-A2, before its merge; tip 1d9a313 on ad2473c)
+- Lighthouse: the gate is web/lighthouserc.json - preset "desktop",
+  numberOfRuns 3, median, minScore 1 on all four categories. The branch's
+  desktop runs are 100/100/100/100 on the calculator and the comparator, so
+  R736/R174 hold. Its mobile figures (performance 97 and 96, LCP 2398 and
+  2469 ms) are an informational extra outside the gate, recorded as such.
+- PublicShell.tsx (aria-current): IN SCOPE - relay/FW-CALCS-A2.txt lines 58
+  and 165 ("The header beyond aria-current" is the out-of-scope part).
+- Q1 investigation: the PublicShell diff was NOT empty, so it was
+  investigated, not accepted outright: the workbench markup at /dev/composants
+  is byte-identical on branch and base (4 839 bytes, cmp identical), and the
+  public baselines carrying the shell passed untouched (168). Accepted.
+- Size: the calculator ships at 125.0 KiB, 0.0 spare. It passes GATE A
+  ("<= 125"). Any later change touching that route trips the ask-first on
+  size budgets. CA7 parks it.
+- Operator questions: CA4 (a pale-blue token; tokens are ask-first) and CA7
+  (the calculator's headroom).
+- Merge: --no-ff; tree == tip; gate:clone alone on the merge commit; read
+  PASSED and the commit from the log; rescan relay/ for R724-R752 and R738;
+  push main. The merge commit is the step-4 candidate.
+
+ADVISOR RULING 4 (step 4, amending ruling 1's "verification code in the text")
+- main = 52caca8 (FW-CALCS-A2 merged; gate:clone PASSED on exactly it;
+  pushed). It is the candidate.
+- The verification block prints only when MONRELEVE_VERIFICATION_ORIGIN names
+  a permanent https origin (R332). Production's env does not carry it
+  (measured 2026-11-03), so production Releves print no code and no QR today,
+  as 22b16bb already does. Not a blocker.
+- The deploy-gating proof is the PRODUCTION-IDENTICAL run: the image started
+  without the verification origin; "no verification block - by design, R332"
+  is recorded as a measured absence.
+- Positive control: the SAME image started again with
+  MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.example (RFC 2606); its PDF
+  must carry "Code : <code>", ".../verifier/<code>" and the QR on page 1.
+- Do NOT set the env in Coolify: R332 reserves it to the operator's decision
+  on the permanent domain. Operator summary item.
+- Image from `git archive 52caca8 web`, tag monreleve:52caca8, build-arg
+  NEXT_PUBLIC_SITE_URL=https://monreleve.example; record its Id. "Same image"
+  means same recipe (Dockerfile, ARG CHROMIUM_VERSION verified at build) -
+  Coolify builds its own from the SHA; there is no registry digest.
+- vitest from the main checkout's web/ (at 52caca8), container-pdf.test.ts
+  plus an untracked scratch test that saves the PDF, created and deleted;
+  never pnpm test:db, never git add -A. Port 3600, scratch DB on 5436,
+  container monreleve-step4, per-run FRONTALIER_INSTANCE_ID.
+- pdfinfo/pdffonts/pdftotext/pdftoppm in one throwaway debian:bookworm-slim
+  container; pdffonts must list Inter and not Liberation.
+- The page PNG lives outside web/ (docs/), committed with the proof after
+  promotion.
+
+ADVISOR RULING 5 (step 5, before the production push)
+- a. 52caca8 is origin/main's head; gate:clone PASSED on exactly it.
+  b. Step 4's PDF proof ran on an image built from exactly it
+  (relay/PDF-PROOF-52caca8.txt). c. `git diff origin/production..52caca8 --
+  web/prisma/migrations web/prisma/schema.prisma` is empty. d. production
+  (22b16bb) is an ancestor of 52caca8: a true fast-forward. CONFIRMED.
+- The rollback path was to be MEASURED, not recalled: if Coolify's API for the
+  installed version has a rollback the orchestrator can drive, prove it
+  read-only and proceed; if not, stop and tell.
+  MEASURED: GET /version = 4.5.0. coollabsio/coolify v4.5.0 openapi.yaml has
+  GET /applications/{uuid}/rollback-images and POST /applications/{uuid}/
+  rollback {commit}. GET rollback-images (read-only) lists
+  22b16bba94579d9117297198070aa5d33006a08c (local, 2026-10-28 22:59:51 UTC)
+  and c7a587f. The rollback is self-driveable, to be used ONLY if a step-6
+  check fails, as the operator's prompt authorises. PROCEED.
+- MEASURED: the application has git_branch "production",
+  is_auto_deploy_enabled true, source GithubApp - a push to production
+  starts the build; the /deploy API is never called.
+- Correction: "pdffonts must list Inter" is superseded. The site ships Inter
+  as a variable woff2 and Skia embeds it as unnamed Type 3; the evidence is
+  no Liberation listed, the renderer's fontless refusal passed, page 1 read
+  by eye.
+- Step 6's production PDF check is blocked twice: no readable inbox
+  (magic-link mail via Resend), and PARK31-6 (User.name settable by no route,
+  so a fresh account gets 422 titulaire_missing; passing it needs a write to
+  the production database, which this prompt forbids). It is "needs the
+  operator"; step 4's proof on the identical recipe is the evidence.
+- The comparator household check runs with the repo's own Playwright Chromium
+  against https://monreleve.ch. prod-checks.mjs gets positive new-design
+  markers.
