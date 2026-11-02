@@ -657,3 +657,161 @@ which the rebase made c6c172c:
 every step before it passed). This commit's own gate:clone runs after it
 exists; its result is in the handback, not here. The branch is pushed only
 once gate:clone passes on its tip, after the pin is fixed on main.
+
+
+================================================================================
+RESUME 2026-11-03 - THE ADVISOR'S RULING, THE REBASE, THE PUSH
+================================================================================
+Everything above is kept as written. This section records what happened
+after the Chromium pin was fixed on main.
+
+--------------------------------------------------------------------------------
+STATUS (R391), THE PUSHED TIP
+--------------------------------------------------------------------------------
+Increments green under gate:changed (addfb50: typecheck, lint, test 3618,
+build, test:e2e 367, test:visual 168, test:late 10). FULL GATE NOT RUN on
+this commit when it was written: gate:clone runs on it ALONE next, and its
+verdict lines and exit code are pasted in the commit that follows.
+
+--------------------------------------------------------------------------------
+THE RULING, VERBATIM (relay/RULINGS-2026-11-03.txt, ADVISOR RULING 1, "Step 3")
+--------------------------------------------------------------------------------
+- Step 3, FW-CALCS-A2:
+  ADDENDUM 1 was never delivered; addendum 2's own sentence is the exception.
+  Q5: the operator's ruling - zero months leaves the Swiss side with NO total
+    and a sentence that the period is too short for an estimate under an
+    unverified rule; never "0 EUR". The French text is authored in lib/fr.
+    Tested on both sides of the boundary.
+  Q1 (six workbench baselines): accepted with the measured cause IF git diff
+    base..tip is empty for those components' source and styles AND the public
+    page baselines covering them are in the untouched set. Any diff:
+    investigate, not accept.
+  CA1: convert the year select to the designed toggle (SegmentedButtons);
+    rewrite comparateur.test.tsx:91 as a positive assertion on the toggle
+    (both years selectable, heading changes). Fallback only if the comparator
+    exceeds 125 KiB: keep the select, park.
+  CA2-CA5 accepted as built (pale blue: no token exists, tokens are
+    ask-first - noted for the operator).
+  CA6-CA8, CA10, CA11 accepted as parked.
+  CA12: the "inferieure a 0 des 13" case uses the existing "superieure aux
+    13" sentence; a tie counts as not-below; one test per boundary. The rest
+    of CA12 stays parked.
+  R736: Lighthouse after the addendum is required before the merge.
+
+--------------------------------------------------------------------------------
+THE REBASE
+--------------------------------------------------------------------------------
+Lock and `git status --porcelain` (empty) checked first. fw-calcs-a2
+(a32553b, on 14147fd) rebased onto origin/main ad2473c (d110050 the
+Chromium pin 156.0.8078.73-1~deb12u1; 65c6914 docs; ad2473c
+FW-COMPARATEUR-SURFACE, which regenerated page-accueil-desktop/-mobile.png).
+No conflict: this branch touches neither web/lib/fr/home.ts nor the two
+page-accueil baselines. 14147fd and 695c930 are in origin/main. The five
+commits became bcdacd6, 2622489, a4b358f, dd3fd99, a78dba8; then addfb50
+(the ruling) and this report's commit.
+The rebased tree's visual run (below) passed both page-accueil baselines
+as main recorded them: none regenerated here.
+
+--------------------------------------------------------------------------------
+Q5, CA1, CA12 - TEST-FIRST (tests/unit/pages/comparateur-rulings.test.tsx)
+--------------------------------------------------------------------------------
+RED, before any code: "Tests 3 failed | 4 passed (7)" -
+  Q5   "expected ...(3) to have a length of +0 but got 3" (the December
+       start still drew three Swiss dd);
+  CA12 "expected 'La cotisation francaise est inferieur...' to be 'La
+       cotisation francaise est superieur...'" (the tie at the highest
+       total read "inferieure a 0 des 13");
+  CA1  "Unable to find an accessible element with the role "group" and
+       name "Annee comparee"" (the year was a select).
+Then green: 7 of 7.
+Q5    A December start leaves zero whole months under R744's fallback: the
+      Swiss card shows no dl, no euro, only the new sentence (data-too-short),
+      and the chart, the case sentence and the slider's "Total suisse le
+      plus bas ..." line are not drawn - each compares against a Swiss total
+      that does not exist. The French side stands. A 30 November start
+      counts one month and draws everything (the other side of the
+      boundary). NEW COPY (lib/fr/lamal.ts result.swiss.tooShort, row L16),
+      transliterated: "Periode trop courte pour une estimation : la regle
+      appliquee ici, non verifiee, ne compte que les mois entiers qui
+      suivent le mois de debut, et il n'en reste aucun cette annee."
+CA1   The year is SegmentedButtons (nameless, R750), every year the data
+      holds, newest first; the choice is the comparison's year. The comparator
+      stays under GATE A (below), so the fallback was not needed.
+      tests/unit/pages/comparateur.test.tsx:91 rewritten AS RULED - a positive
+      assertion that the default year's segment is pressed; the new test
+      covers both years selectable and the heading following.
+      e2e/calcs-figures.spec.ts (R737's proof) now chooses 2026 by clicking
+      the toggle instead of selectOption - how the year is picked changed, no
+      literal did; it passes (test:e2e 367).
+CA12  chart.sentence: with nothing strictly above the French contribution the
+      sentence is the existing "superieure aux 13"; a tie counts as
+      not-below; the chart's case name follows the same rule. Four tests,
+      one per boundary: all above; a tie at the lowest (12 of 13); a tie at
+      the highest (superieure, never "a 0 des 13"); all below.
+
+--------------------------------------------------------------------------------
+Q1 - THE SIX WORKBENCH BASELINES, THE RULING'S TWO CHECKS
+--------------------------------------------------------------------------------
+Check 1, `git diff ad2473c..HEAD` on the components' source and styles:
+  HomeCounter, Faq, HeroPhone (and MetricTile, RateDisplay, ThresholdRail,
+  ZoneBadge they render): EMPTY.
+  PublicShell: NOT EMPTY - PublicShell.tsx (aria-current, usePathname) and
+  the new aria-current.test.tsx; PublicShell.module.scss: empty.
+  Per the ruling, the shell was INVESTIGATED, not accepted: the shell
+  rendered to static markup at the workbench's path (/dev/composants) on
+  this branch and on the BEFORE worktree (whose PublicShell and shell copy
+  equal ad2473c's - `git diff 33abf79 ad2473c` on both is empty) is
+  byte-identical, 4 839 bytes each (`cmp`: identical). The source diff
+  renders nothing on that page: aria-current appears only on the link to
+  the current path, and /dev/composants is no nav link. The shell
+  specimen's change is the same sub-pixel move as the five home specimens'.
+Check 2, the public page baselines covering them: page-accueil-desktop and
+  -mobile (home counter, FAQ, phones, shell) and every other page baseline
+  carrying the shell passed untouched in this tree's visual run (168
+  passed; none regenerated outside the named set).
+The six remain committed as recorded, for the operator; the investigation
+above is the measured cause.
+
+--------------------------------------------------------------------------------
+R735 - BASELINES FOR THE RULING, NAMED BEFORE RECORDING (R207)
+--------------------------------------------------------------------------------
+The 30 comparateur-<state>-desktop|mobile.png (vide rempli inferieur
+superieur adulte-seul plancher erreur commune annee-partielle
+points-inferieur points-entre points-superieur soins franc-deplace
+delai-sans-s3): the year is now a toggle in every one. 30 of 30 written,
+nothing else; 168 passed.
+
+--------------------------------------------------------------------------------
+R736 - BUDGETS AND LIGHTHOUSE AFTER THE ADDENDUM AND THE RULING
+--------------------------------------------------------------------------------
+First-load JS, plain `pnpm build` then `pnpm size`, on the rebased tree:
+  /calculateur-lamal-cmu                       122.7 KiB  A 2.3 spare (<= 125)
+  /calculateur-teletravail-frontalier          125.0 KiB  A 0.0 spare - PASSES
+                                               ("All gated routes pass both
+                                               gates"); it read 124.9 before
+                                               the rebase onto ad2473c, whose
+                                               shared chunks it carries now
+  /calculateur-teletravail-frontalier/resultat 109.8 KiB  A 15.2 spare
+PARK-CA7 stands, now at 0.0 KiB.
+Lighthouse 12.6.1, 3 runs, median, production build on port 3400 (R169's
+health check named monreleve first):
+  desktop calculator  100/100/100/100   LCP  588 ms  CLS 0
+  desktop comparator  100/100/100/100   LCP  553 ms  CLS 0
+  mobile  calculator   97/100/100/100   LCP 2398 ms  CLS 0
+  mobile  comparator   96/100/100/100   LCP 2469 ms  CLS 0
+The calculator's slow-4G LCP stays under 2.5 s.
+
+--------------------------------------------------------------------------------
+QUESTIONS, AFTER THE RULING
+--------------------------------------------------------------------------------
+Q1 answered by the ruling (the checks above); Q2 (CA1) done; Q3 (CA2-CA5)
+accepted - PALE BLUE: no token exists and tokens are ask-first, for the
+operator; Q4 (CA6-CA8) accepted as parked; Q5 ruled and done; Q6: CA10, CA11
+accepted as parked, CA12's tie done, the rest of CA12 parked.
+Open for the operator: whether to add a pale-blue token (CA4), and the
+calculator's 0.0 KiB headroom (CA7).
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+Pending: this commit's gate:clone verdict is pasted in the next commit.

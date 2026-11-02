@@ -5405,6 +5405,10 @@ NOT TAKEN: Dropping aria-current, or any control the design asks for.
 STATE:      OPEN - the next calculator change has 0.1 KiB. Worth a ruling on
 GATE A for this route, or a budget task (e.g. the page's class map).
 
+UPDATE 2026-11-03: after the rebase onto ad2473c (FW-COMPARATEUR-SURFACE's
+shared chunks) the calculator measures 125.0 KiB - it still passes GATE A,
+with 0.0 KiB spare. The comparator is 122.7 (2.3 spare).
+
 ## PARK-CA8 - HomeCounter's sweep times out under coverage on this machine  [FW-CALCS-A2, 2026-11-01]
 
 QUESTION:  lib/ui/react/HomeCounter/HomeCounter.test.tsx drives both sliders
