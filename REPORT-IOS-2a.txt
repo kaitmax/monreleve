@@ -428,6 +428,12 @@ Q2 - the brief says to leave the phone "signed out" AND "do not delete anything"
 ================================================================================
 PUSH PROOF
 ================================================================================
-@@PUSH@@
+Branch ios2a only (never main, never production):
+    git push origin ios2a  ->  ec58c67..ddfd1da  ios2a -> ios2a  (the report commit; the code
+    commits d9336bc, 55eac2d, 9b2aa43, ec58c67 were pushed before the iOS dispatch)
+    git ls-remote origin refs/heads/ios2a -> ddfd1da6ed89eb66b27da47b0fb61be6aadc6fa4
+    gh run list --workflow ios-shared.yml --branch ios2a -> 41720094372 on ec58c67
+      (workflow_dispatch) only - no run for the report commit.
+This push-proof follow-up is report-only and pushed the same way.
 
 END OF REPORT-IOS-2a
