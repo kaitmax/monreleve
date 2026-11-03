@@ -1,0 +1,123 @@
+AN-LAUNCH-ATTENTION SESSION PROMPT - Mon Releve
+OPENING THE APP ON A HALF-ANSWERED DAY SPEAKS THE ATTENTION LINE
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared, on the S9, against the LOCAL stack only. Written by
+the orchestrating session on 2026-11-03 from the operator's choice
+("Title announcement fix (Recommended)" - the orchestrator's label for
+UNNUMBERED-1; the defect is the half-day ATTENTION LINE, not the title)
+and ADVISOR RULING 7, Q3 ("UNNUMBERED-1 is its own task"), recorded in
+relay/RULINGS-2026-11-03-MOBILE.txt. The advisor rules in the operator's
+place for this task (the operator's word, same file).
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is
+REPORT-AN-LAUNCH-ATTENTION.txt, committed and pushed. Unclear? R156.
+R334, R349, R392: your OWN worktree at C:/wt/an-launch-attention, your
+lock in it (and in any second worktree you create for a base build).
+Stage BY NAME. READ before writing. R391 governs STATUS: the full
+:app:gate AND the iOS cloud run (R573) on the reported tip. ABSENCE
+NEEDS A POSITIVE CONTROL. Park as UNNUMBERED-n in the report. Push your
+BRANCH only - never main, never production.
+
+Rulings R761-R765; renumber if taken (R162). R760 is used by a handoff
+note; R754-R758 are FW-COMPARATEUR-SURFACE's.
+
+BASE: origin/main 3829f7d (AN-LAUNCH-SPEECH merged as 0214bf7; the full
+:app:gate green on 0214bf7, 1392/152; the iOS run 41487976030 green).
+
+THE MACHINE: start a heavy step (a Gradle gate, a release build) only
+with >= 1.5 GB free and after `./gradlew --stop`; one heavy step at a
+time. A killed run is NO RESULT, re-run once; two in a row -> stop and
+hand back. :app:gate refuses to start while any TRACKED file has
+unstaged edits (R393) - that refusal is NO RESULT, not a failure.
+Ports 3000, 3100 and 3200 belong to another project (tizicorp): never
+stop or touch its containers. Serve the local stack on a free host port
+and map the device to it with `adb reverse tcp:<device port>
+tcp:<host port>`. adb is at
+%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe.
+
+THE DEVICE RULES are AN-TALKBACK's, unchanged (relay/AN-TALKBACK.txt,
+"THE DEVICE, STANDING RULES"): local stack, an @monreleve.test account,
+R574, no magic-link URL printed, certificate STOP, real clock, record
+the installed APK and every setting before and show each restored
+after. connectedAndroidTest UNINSTALLS the app and its database: read
+what you need from the phone before running it. If the S9 is not
+attached (`adb devices` lists nothing), STOP before step 1 and hand back
+saying so - the phone is the operator's to connect.
+
+R273. Read REPORT-AN-LAUNCH-SPEECH.txt (on main): R700's launch-only
+    capture and counts, R702's fix (an answer present at launch is not
+    a live region), R703's seven-state reading, R704, and UNNUMBERED-1.
+    Its scripts and readings are in
+    C:/wt/an-launch-speech/.an-launch-speech-evidence/ - READ and COPY
+    from there, never modify or delete that directory (R334). Read
+    HalfDayChoiceCard.kt (rememberHalfAttention) and ChoiceCard.kt
+    (optionsWereOpen) in :shared commonMain.
+R1. origin/main is at or after 3829f7d and contains 0214bf7.
+
+HARD BOUNDARIES: no copy change; zero Paparazzi baselines re-recorded;
+the attention line is still announced when it APPEARS within a session
+(a tap that answers the morning) - that is the design, and it is the
+positive control for the fix; every navigated stop in every state stays
+as AN-LAUNCH-SPEECH measured it; R702's fix and the tap announcement it
+kept (ADVISOR RULING 7, Q2) are not changed.
+
+====================================================================
+THE RULINGS
+====================================================================
+R761. REPRODUCE FIRST. AN-LAUNCH-SPEECH's launch-only capture, re-run on
+    a day whose MORNING is answered and afternoon is not (state H1): at
+    least 11 launches on main's HEAD. The attention line ("Matin
+    enregistre. Apres-midi : a renseigner." - ASCII here by transport,
+    R168; the accented original is built at AujourdhuiCopy.kt:184 in :shared
+    commonMain fr/) must be
+    spoken at launch in the shape UNNUMBERED-1 reports. If it does not
+    reproduce, STOP and report.
+
+R762. THE SECOND SITE, MEASURED (R267). UNNUMBERED-1 names
+    DayChoiceCard's optionsWereOpen focus request as the same shape,
+    unmeasured. Measure it at launch in the state that exercises it,
+    11 launches. If it reproduces, it is in scope as the same defect;
+    if not, record the counts as the reason it is not.
+
+R763. THE FIX, TEST-FIRST. A test that fails on HEAD because the first
+    composition is read as a within-session transition (at the
+    semantics level: what is a live region, and what requests focus, on
+    first composition versus after a state change), shown RED with its
+    reason, then GREEN. The same test file asserts the POSITIVE half:
+    after a state change inside the session the attention line IS a
+    live region (or is announced). The fix lives in commonMain, so the
+    iOS build carries it; every :shared test stays green.
+
+R764. PROVEN ON THE PHONE. On the fixed build: the launch-only capture,
+    11 launches alternating with main's HEAD - the attention line is
+    not spoken at launch. Then a tap that answers the morning on a fresh
+    day: the line IS announced. Then all SEVEN states read on HEAD and
+    on the fixed build: navigated stops identical, line by line. Any
+    difference is a finding; STOP and ask.
+
+R765. FOR THE PILOT. Note whether the cause and fix apply on iOS
+    (VoiceOver), so IOS-1b-B checks it.
+
+====================================================================
+THE WORK
+====================================================================
+0. R273, R1; the phone attached and its state recorded.  1. R761.
+2. R762.  3. R763 RED, fix, GREEN. Commit.  4. R764.  5. Restore the
+phone, shown restored.  6. Full :app:gate --rerun-tasks on the tip
+(BUILD line and test counts pasted from the log) and ONE iOS run
+(`gh workflow run ios-shared.yml --ref an-launch-attention`; zero steps
+= NO RESULT, stop and say so). Push the branch.
+
+====================================================================
+REPORT - REPORT-AN-LAUNCH-ATTENTION.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / PHONE STATE BEFORE AND AFTER /
+R761 (counts) / R762 (counts; in scope or why not) / R763 (RED, GREEN,
+the positive half) / R764 (launch counts; the tap; per state, stop
+counts, identical or the difference) / R765 / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF AN-LAUNCH-ATTENTION PROMPT

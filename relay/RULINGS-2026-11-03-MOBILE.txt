@@ -85,3 +85,67 @@ OUTCOME (AN-LAUNCH-SPEECH)
   tests 0 failures 0 errors, :shared 152 0 0. 1.54 GB free at start.
 - gate:clone PASSED on exactly 0214bf7. main pushed 8cce789..0214bf7.
   production untouched (52caca8).
+
+ADVISOR RULING 8 (AN-LAUNCH-ATTENTION, branch f7c4803 on 3829f7d)
+- Measured: base = origin/main = 3829f7d, so main has NOT moved. The code
+  tip is 6e1ec87; b563066 and f7c4803 add only the report
+  (git diff 6e1ec87 f7c4803 -- android empty). The session's full
+  :app:gate --rerun-tasks (BUILD SUCCESSFUL in 9m 7s, 260 tasks,
+  GATE_EXIT=0, :app 1392 / :shared 152, 0 failures) and iOS run
+  41652399158 (SUCCESS, 20 steps) are on 6e1ec87 and carry to the merge
+  by identity, proven on the merge commit: whole tree equal to f7c4803,
+  android/ equal to 6e1ec87.
+- Merge: YES. Scope held: one commonMain file (HalfDayChoiceCard.kt), one
+  device test, the report; DayChoiceCard untouched; no copy change; zero
+  Paparazzi baselines re-recorded. RED shown with its reason (2 of 4 on
+  main), GREEN 57/57 on the S9, the positive half (a tap answering the
+  morning is announced) asserted in the same test file. STATUS is in
+  R391's shape and says "pending merge".
+- Q1: LEAVE DayChoiceCard. R762's own counts (0/11 spoken, no focused
+  node, its target not focusable in touch mode) are why it is out of
+  scope. Parked as the report's UNNUMBERED-1 with a named trigger:
+  re-measure W1 at the Compose 1.8 upgrade (IOS-1b-A); the fix shape (a
+  tap flag) is recorded. Widening now would act on a measured non-defect.
+- Q2: re-reading instead of STOPPING is ACCEPTED THIS ONCE, NOT AS A RULE.
+  Both differences carried a non-app event in the reading's own raw log
+  (an omcagent notification; ROTATE and an accessibility-volume key at
+  14:57). The re-reads were immediate, in the same state, on the same
+  builds, 58/58 IDENTICAL, and the disturbed pairs are kept. The rule
+  stays LITERAL - any difference: STOP - until the report's UNNUMBERED-3
+  is built (a reading harness that refuses a reading carrying a rotation
+  or volume event). "The session judged that an outside event explained
+  it" is the judgement version of a rule, and that is the version that
+  fails here.
+- The accessibility-volume setting the session deleted
+  (system volume_a11y_speaker) had APPEARED from a physical key press
+  during the session. Deleting it RESTORED the recorded before-state
+  under AN-TALKBACK's device rules. It is not an R334 deletion of
+  something the session did not create: the before-snapshot records the
+  key as ABSENT.
+- Noted: the device-level tap announcement is n=1. The instrumented test
+  carries the positive half at the semantics level, so the verdict stands.
+- The phone: the app was signed out before (welcome screen) and is signed
+  out after; the connectedAndroidTest wipe lost no account. The phone was
+  handled at 14:57 (a rotation and a volume key) - told to the operator.
+- Record, do not act: C:/wt/an-launch-attention/.an-launch-attention-evidence/
+  is untracked and not the orchestrator's (R334); the worktree stays (R392).
+
+OUTCOME (AN-LAUNCH-ATTENTION)
+- Merged as e7dddf2 (--no-ff). Identity proven on e7dddf2: whole tree
+  equal to f7c4803 (diff empty), android/ equal to 6e1ec87 (diff empty).
+  No iOS re-run and no :app:gate re-run: main had not moved.
+- gate:clone run 1 on e7dddf2: FAILED at test:container:write, "1 FAILED:
+  the suite ran to completion: fetch failed". The web tree is identical to
+  0214bf7's, which passed. Diagnosed rather than re-rolled: the suite run
+  alone on the same commit, with full output, passed 10/10 (R169, AC1,
+  AC3). The clone's log keeps only the tail, so which fetch failed is not
+  recorded - NOT REPRODUCED, cause unknown, environmental on the evidence.
+  If it recurs, capture the suite's full output inside the clone.
+- gate:clone run 2 on exactly e7dddf2: GATE:CLONE PASSED. Procedure lapse,
+  recorded: run 2 started with 0.68 GB free, under the 1.5 GB floor - the
+  memory read and the start were one command, so the floor was not
+  checked before starting. The pass stands; the next heavy step reads
+  memory first and starts in its own step.
+- relay/ rescanned for R761-R765: only AN-LAUNCH-ATTENTION.txt (this
+  task's own prompt). main pushed 3829f7d..e7dddf2. production untouched
+  (52caca8).
