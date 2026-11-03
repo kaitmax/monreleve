@@ -25,6 +25,11 @@ import java.security.MessageDigest
 // EntryEntity.accountTag defaults to it and EntryEntity now lives there. SAME PACKAGE, so every
 // existing import still resolves and nothing in :app changed. accountTagOf stays HERE: MessageDigest
 // is a JVM API that commonMain cannot see, and dragging a digest across was never the point (R372).
+//
+// IOS-2a R768: and it still does not cross - the BODY below is unchanged, git mv-ed from :app to :shared androidMain as
+// the Android `actual` of commonMain's `expect fun accountTagOf` (account/AccountTag.kt there). The sign-in controllers
+// that call it moved to commonMain, so the declaration had to be common; each platform keeps its own digest (iOS:
+// CommonCrypto, AccountTag.ios.kt), and SignInStatePinTest pins both to the same SHA-256 vector.
 
 private const val HEX_BYTE_MASK = 0xFF
 
@@ -34,7 +39,7 @@ private const val HEX_BYTE_MASK = 0xFF
  * blank address yields no tag (null) so the caller fails closed to UNOWNED rather than tagging a row
  * with the hash of the empty string.
  */
-fun accountTagOf(email: String): String? {
+actual fun accountTagOf(email: String): String? {
     val normalised = email.trim().lowercase()
     if (normalised.isEmpty()) return null
     val digest = MessageDigest.getInstance("SHA-256").digest(normalised.toByteArray(Charsets.UTF_8))

@@ -6,6 +6,7 @@ import ch.monreleve.app.data.remote.ApiFailure
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.CodeExchangeResult
 import ch.monreleve.app.data.remote.MagicLinkResult
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,9 @@ import kotlinx.coroutines.launch
 // On SIGNED it does exactly what CallbackController does on a valid link: store the pair, make this account
 // current (from the address the person typed - /api/v1/me omits it), clear the pending sign-in, land signed
 // in. Each refusal is its OWN phase so the screen can say how to recover (R198), never just "erreur".
+//
+// IOS-2a R768: MOVED TO :shared commonMain with its state, package unchanged, so every :app import resolves as before.
+// The restore seed's supertype is PlatformSerializable: java.io.Serializable on Android, the same bytes in the Bundle.
 
 enum class CodePhase {
     EDITING,
@@ -55,7 +59,7 @@ data class CodeState(
 data class CodeSnapshot(
     val code: String = "",
     val phase: CodePhase = CodePhase.EDITING,
-) : java.io.Serializable {
+) : PlatformSerializable {
     companion object {
         private const val serialVersionUID: Long = 1L
     }

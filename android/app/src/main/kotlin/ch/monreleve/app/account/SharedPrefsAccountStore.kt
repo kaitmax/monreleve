@@ -12,15 +12,10 @@ import android.content.Context
 // Cleared on sign-out (DeviceLocalStore, R295) alongside the record it scopes, and excluded from
 // backup (res/xml backup rules) like the token and pending stores - though the tag is already an
 // opaque SHA-256 digest, never the address.
-
-interface AccountStore {
-    /** The current account's opaque tag, or null when no account is active. Never UNOWNED. */
-    fun current(): String?
-
-    fun setCurrent(tag: String)
-
-    fun clear()
-}
+//
+// IOS-2a R768: the AccountStore CONTRACT moved to :shared commonMain (account/AccountStore.kt there), with the
+// sign-in controllers that set it. This file keeps the Android implementation and its keys, renamed after its class
+// (was account/AccountStore.kt; OnDeviceFormatGoldenTest reads the keys here).
 
 private const val ACCOUNT_PREFS = "monreleve.account"
 private const val KEY_TAG = "tag"

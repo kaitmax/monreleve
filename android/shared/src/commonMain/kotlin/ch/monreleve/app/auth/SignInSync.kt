@@ -25,6 +25,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 // waiting at the code screen, not a network budget: UrlConnectionTransport would otherwise hold them for its own
 // fifteen-plus-fifteen seconds. A send that fails or times out leaves its rows PENDING, where they already were, and
 // the next drain takes them. With nothing pending the drain is one local read and no request at all.
+//
+// IOS-2a R768: MOVED TO :shared commonMain, unedited otherwise, with the two controllers that call it.
 
 /** How long a sign-in waits for its held days to go up. R440's bound for the sign-out's send, for the same reasons. */
 internal const val SIGN_IN_SYNC_TIMEOUT_MS = 8_000L

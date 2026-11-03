@@ -133,8 +133,12 @@ class OnDeviceFormatGoldenTest {
 
     @Test
     fun `the account and pending stores still write the keys the phone holds`() {
-        val account = constantsIn("src/main/kotlin/ch/monreleve/app/account/AccountStore.kt")
-        val pending = constantsIn("src/main/kotlin/ch/monreleve/app/auth/PendingSignInStore.kt")
+        // IOS-2a R768: like the settings and dossier stores (KMP-3), the CONTRACTS went to :shared and the Android
+        // implementations stayed here under their own names. The subject is the implementation - an interface writes
+        // no keys - so the paths follow it; constantsIn() fails loudly on a path that is not there (it did, on the
+        // old names, before this edit).
+        val account = constantsIn("src/main/kotlin/ch/monreleve/app/account/SharedPrefsAccountStore.kt")
+        val pending = constantsIn("src/main/kotlin/ch/monreleve/app/auth/SharedPrefsPendingSignInStore.kt")
 
         assertTrue("the account prefs FILE name moved", account.contains("monreleve.account"))
         assertEquals(goldenKeysOf("monreleve.account"), account.filter { it != "monreleve.account" }.toSet())
