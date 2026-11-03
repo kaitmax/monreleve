@@ -77,15 +77,41 @@ private class HalfActions(
 )
 
 /**
+ * AN-LAUNCH-ATTENTION (R763): the same three taps, each first calling [mark] - so EVERY tap in the card (record,
+ * « Modifier », « Annuler ») counts as the person's doing, and nothing else does: the rows a launch brings arrive
+ * through the state, never through these.
+ */
+private fun HalfActions.marking(mark: () -> Unit): HalfActions =
+    HalfActions(
+        onRecord = { kind, slot, absence ->
+            mark()
+            onRecord(kind, slot, absence)
+        },
+        onCancel = { slot ->
+            mark()
+            onCancel(slot)
+        },
+        onModifier = { slot ->
+            mark()
+            onModifier(slot)
+        },
+    )
+
+/**
  * What the ONE still-open half gets when the other has just been answered (R434): brought into view,
  * accessibility focus, and the polite announcement naming both halves. Null for every other half, and null
  * while both are open - there is nothing to announce and nothing to move to.
+ *
+ * [live] (AN-LAUNCH-ATTENTION, R763): whether the heading is a live region. True only when a tap in this card
+ * made this shape; a card that LOADED with one half answered keeps the heading, its name and its focusability
+ * (the navigated stop reads the same) but is not a live region and does not take focus.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private class HalfAttention(
     val focus: FocusRequester,
     val bringIntoView: BringIntoViewRequester,
     val announcement: String,
+    val live: Boolean,
 )
 
 @Composable
@@ -105,8 +131,10 @@ internal fun HalfDayChoiceCard(
     // AN-LAUNCH-SPEECH (R702, ChoiceCard.kt): the complete answer is a live region only when a tap HERE recorded a
     // half. NOT saveable - two halves answered before this composition (a launch) are not announced.
     var answeredHere by remember { mutableStateOf(false) }
+    // R763: did any tap in this card happen in this composition? NOT saveable, like answeredHere (marking, below).
+    var tappedHere by remember { mutableStateOf(false) }
 
-    val attention = rememberHalfAttention(morningOpen, afternoonOpen, reduceMotion)
+    val attention = rememberHalfAttention(morningOpen, afternoonOpen, reduceMotion, tappedHere)
     val actions =
         HalfActions(
             onRecord = { kind, slot, absence ->
@@ -118,7 +146,7 @@ internal fun HalfDayChoiceCard(
             },
             onCancel = { slot -> if (slot == Slot.MORNING) editingMorning = false else editingAfternoon = false },
             onModifier = { slot -> if (slot == Slot.MORNING) editingMorning = true else editingAfternoon = true },
-        )
+        ).marking { tappedHere = true }
 
     ChoiceSurface(modifier) {
         AnimatedVisibility(
@@ -166,6 +194,15 @@ internal fun HalfDayChoiceCard(
  * WITHIN-SESSION transition into that state: a rebuild restores focus itself, and a card restored with one
  * half already answered must not steal focus from wherever the person was (the same reasoning
  * ChoiceCard's own `optionsWereOpen` flag carries, which is why neither is saveable).
+ *
+ * AN-LAUNCH-ATTENTION (R763): A LOAD IS NOT A TRANSITION. Opening the app on a day whose morning is answered
+ * composes the controller's first frame (no entries, both halves open), then the repository's rows - and the
+ * afternoon BECOMES the one still-open half without anyone touching anything. Read as a within-session transition,
+ * that load moved focus and made the heading a live region, so the screen reader spoke « Matin enregistré.
+ * Après-midi : à renseigner. » at every launch (AN-LAUNCH-SPEECH UNNUMBERED-1; R761: 11 of 11 on main; its H1
+ * reading heard it on 2458dbe too - this code's, not the Compose patch move's). [tappedHere] is what makes a
+ * transition one: a tap in this card. Without it the heading keeps its name and focusability (R764: every
+ * navigated stop unchanged) but is no live region, and nothing is brought into view or focused.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -173,6 +210,7 @@ private fun rememberHalfAttention(
     morningOpen: Boolean,
     afternoonOpen: Boolean,
     reduceMotion: Boolean,
+    tappedHere: Boolean,
 ): HalfAttention {
     val focus = remember { FocusRequester() }
     val bringIntoView = remember { BringIntoViewRequester() }
@@ -184,7 +222,7 @@ private fun rememberHalfAttention(
         }
     var previous by remember { mutableStateOf(lonely) }
     LaunchedEffect(lonely) {
-        if (lonely != null && previous == null) {
+        if (lonely != null && previous == null && tappedHere) {
             if (!reduceMotion) delay(Motion.standardMillis.toLong())
             runCatching { bringIntoView.bringIntoView() }
             runCatching { focus.requestFocus() }
@@ -197,7 +235,7 @@ private fun rememberHalfAttention(
         } else {
             AujourdhuiCopy.halfRecordedAnnouncement(AujourdhuiCopy.MORNING, AujourdhuiCopy.AFTERNOON)
         }
-    return HalfAttention(focus, bringIntoView, announcement)
+    return HalfAttention(focus, bringIntoView, announcement, live = tappedHere)
 }
 
 /**
@@ -270,7 +308,8 @@ private fun HalfHeading(
                 .focusRequester(attention.focus)
                 .focusable()
                 .semantics {
-                    liveRegion = LiveRegionMode.Polite
+                    // R763: only a tap's shape is news; the name is kept either way (it is a navigated stop).
+                    if (attention.live) liveRegion = LiveRegionMode.Polite
                     contentDescription = attention.announcement
                 },
     )
