@@ -1,0 +1,377 @@
+REPORT - AN-LAUNCH-ATTENTION
+Opening the app on a half-answered day no longer speaks the attention line.
+BRANCH   an-launch-attention, worktree C:/wt/an-launch-attention (R349), lock .session-lock.json
+         (untracked, gitignored).
+EVIDENCE C:/wt/an-launch-attention/.an-launch-attention-evidence/ (untracked, NOT committed):
+         every reading (reads/*.txt|.json|.raw.txt, two disturbed ones in reads/discarded/), the
+         drivers (copied from AN-LAUNCH-SPEECH's evidence and repointed; that directory was only
+         read), the two APKs, the RED and GREEN androidTest XML, red.log, green.log,
+         fastcheck.log, gate.log, phone settings before/after, dev.log, ram-waits.txt.
+RULINGS  R761-R765 as numbered in the prompt (free: `git grep` on origin/main and relay/ found
+         them only in relay/AN-LAUNCH-ATTENTION.txt).
+
+================================================================================
+SUMMARY / STATUS (R391)
+================================================================================
+STATUS: GREEN on the code tip 6e1ec87 - the full :app:gate --rerun-tasks and the iOS cloud run
+(R573) both ran on 6e1ec87 THIS session. The pushed tip is the next commit, which adds ONLY this
+report (`git diff 6e1ec87 <tip> -- android` empty); neither was re-run on that commit. Pending
+merge.
+FULL :app:gate --rerun-tasks on 6e1ec87, this session, ALONE (dev server stopped, port 3400
+free, no other Gradle build), after ./gradlew --stop, 2.41 GB free at start
+(ram-waits.txt: it waited from 1.27 GB):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1392 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 9m 7s
+    260 actionable tasks: 260 executed
+    real 9m8.307s ; GATE_EXIT=0
+  Test XML: :app 1392 tests 0 failures 0 errors (181 files), :shared 152 0 0 (28 files) -
+  main's 0214bf7 counts, unchanged (the new test is a device test). Compiler "w: " lines: 7
+  (AN-LAUNCH-SPEECH's count). Paparazzi verified, zero baselines re-recorded (no snapshot
+  file in `git status`).
+iOS run (R573): `gh workflow run ios-shared.yml --ref an-launch-attention` -> run
+  41652399158, headSha 6e1ec870323687ad371fd338c598025f8f60cd8d, status completed,
+  conclusion SUCCESS, 20 steps.
+gate:clone NOT OWED: no web/ change (web/.env and node_modules are gitignored copies).
+
+DONE:
+  R761 reproduced: main 3829f7d speaks the attention line at launch in H1, 11/11.
+  R762 measured: DayChoiceCard's optionsWereOpen focus request speaks nothing at launch in
+       W1 (whole day answered), 0/11, and no node holds input focus - NOT in scope.
+  R763 test-first fix in commonMain (HalfDayChoiceCard.kt): RED 2 of 4 on main (the two load
+       cases), GREEN 57/57 (the full connected suite) on the S9; the positive half asserted.
+  R764 on the phone: fixed build 0/11 at launch (main 11/11, alternating); a tap answering the
+       morning on a fresh day IS announced; all SEVEN states read on main and fixed - navigated
+       stops IDENTICAL in all seven (H2 and A4 after one re-read each, see DEVIATIONS 2-3).
+  R765 noted for IOS-1b-B.
+PHONE: restored and shown restored.
+
+================================================================================
+R273
+================================================================================
+Read REPORT-AN-LAUNCH-SPEECH.txt (origin/main): R700 (the launch-only capture: read.mjs with
+LAUNCH=7000 and 0 stops, Voice Assistant's VERBOSE "Speaking fragment" log, install -r per
+launch), R702 (an answer present at launch is not a live region - RecordedAnswer's
+`announce`, `answeredHere` not saveable), R703 (the seven states W0 H0 H1 H2 H2b M A4, read
+base vs fixed by readpair.sh/readM.sh, compared by cmp.mjs), R704, and UNNUMBERED-1 (the H1
+attention line at launch, on base AND fixed; DayChoiceCard's optionsWereOpen named as the
+same shape, unmeasured). relay/RULINGS-2026-11-03-MOBILE.txt: ADVISOR RULING 7 - Q2 KEEP the
+tap announcement, Q3 UNNUMBERED-1 is its own task (this one).
+Copied from C:/wt/an-launch-speech/.an-launch-speech-evidence/ (unmodified there): read.mjs,
+tb.mjs, cmp.mjs, hidkeys.mjs, hidprobe.mjs, launches.sh, swap.sh, tapctl.sh, readM.sh,
+readpair.sh, xcmp.mjs. In MY copies only: swap.sh points at this session's apk/; readpair.sh
+and readM.sh name this session's two builds (head/fixed) and turn the screen reader off with
+`settings delete` (AN-LAUNCH-SPEECH's `put null` wrote a literal row it later had to delete).
+New here: launches1.sh (launches.sh with one build), tapfresh.sh (one injected tap with the
+reader on), xcmp2.mjs (this session's HEAD reading vs AN-LAUNCH-SPEECH's fixed reading),
+getcode.mjs (the sign-in code from dev.log to a scratch file, never printed), onboard.sh;
+d.mjs copied from AN-SIGNOUT-REFRESH (masks every EditText in every dump - R574).
+Read HalfDayChoiceCard.kt (rememberHalfAttention, HalfHeading) and ChoiceCard.kt
+(DayChoiceCard's optionsWereOpen, RecordedAnswer) in :shared commonMain, and
+AujourdhuiController.firstFrame (today, the granularity, the name - no entries).
+
+================================================================================
+R1
+================================================================================
+origin/main = 3829f7d193ce88d7b318736a7890494844f44165; `git merge-base --is-ancestor
+0214bf7 origin/main` -> true. The branch was cut from it:
+`git worktree add -b an-launch-attention C:/wt/an-launch-attention origin/main`.
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (12:33 phone clock, 3 Nov; nothing changed yet; `adb devices` listed the S9):
+  SM-G960F, Android 10, serial 232bcd8c300c7ece, battery 71 %, USB powered.
+  ch.monreleve.app 0.1.0 installed, base.apk sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (= AN-LAUNCH-SPEECH's
+    restored APK), signer ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1;
+    pulled to before/installed-base.apk. The app was signed out (welcome screen).
+  secure enabled_accessibility_services ABSENT (get -> null), accessibility_enabled 0,
+    touch_exploration_enabled 0; dumpsys "enabled services: { }"; global
+    stay_on_while_plugged_in 0; global verifier_verify_adb_installs ABSENT; system
+    volume_ring_speaker 11, volume_a11y_speaker ABSENT; adb reverse empty.
+  snapshots before/settings-{secure,global,system}.txt (450/298/425 lines), packages.txt
+  (503), tmp-listing.txt (/data/local/tmp: .studio, dalvik-cache, detection.xml, s.xml,
+  settings.xml - none mine).
+DURING: stay_on_while_plugged_in 7; adb reverse tcp:3000 tcp:3400; the screen reader on only
+  inside each capture.
+AFTER (15:17-15:20 phone clock), read back:
+  - account signed out through Parametres -> Se deconnecter -> confirm: POST
+    /api/v1/auth/sign-out 200; welcome screen.
+  - `adb install -r before/installed-base.apk` -> Success; on-device sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034; launched: welcome
+    screen ("Mon Releve", "Vos jours de teletravail, prets pour votre declaration.").
+    firstInstallTime is now 2026-11-03 13:27:29: the R763 connected runs UNINSTALLED the app
+    (stated in the prompt), so its data directory is new - it held no account (signed out)
+    before, and holds none now.
+  - enabled_accessibility_services ABSENT (get null; dumpsys "enabled services: { }"),
+    accessibility_enabled 0, touch_exploration_enabled 0; stay_on_while_plugged_in 0;
+    verifier_verify_adb_installs ABSENT; adb reverse --remove-all -> list empty.
+  - RING / ACCESSIBILITY VOLUME: volume_a11y_speaker=9 had APPEARED (a physical volume key -
+    Voice Assistant spoke "Volume Accessibilite, 60 pourcent" at 14:57:56, 4 s after it spoke
+    "Affichage Paysage", inside the disturbed A4 reading - DEVIATION 3). `settings delete
+    system volume_a11y_speaker` -> ABSENT again; ring `media volume --stream 2 --get` -> 11.
+  - SETTINGS DIFF before vs after (keys whose value differs): secure NONE; global
+    backup_agent_timeout_parameters, text_classifier_constants; system
+    homescreenPreview_capturetime_land, screen_brightness, tips_regular_hour_timer_absolute_
+    count, tips_regular_hour_timer_renewal_count - the system's own (auto-brightness and
+    One UI timers; nothing in this session writes them).
+  - packages: identical (503). /data/local/tmp: listing identical.
+  - LOCAL DATABASE (frontalier@5436 through the dev server, not the phone): three new
+    @monreleve.test accounts, each signed out with a 200 - an-launch-attention.half@
+    (R761), an-launch-attention.whole@ (R762), an-launch-attention.pilot@ (R764). No
+    deletion was run. No test:db ran anywhere.
+  HOST: dev server stopped (TaskStop, then this worktree's two orphan node processes - the
+  `next dev` wrapper and start-server.js - killed; 0 remain); 127.0.0.1:3400 no answer;
+  control: 3100 (tizicorp, untouched) answered 200.
+
+================================================================================
+R761 - REPRODUCED (counts)
+================================================================================
+SETUP: `pnpm dev` from this worktree's web/ on PORT=3400 (its .env copied from
+C:/wt/an-launch-speech/web/, pointing at frontalier-postgres :5436; /api/health ->
+{"service":"monreleve",...}); ports 3000, 3100, 3200 left alone. Builds keep the baked port
+3000; the phone reaches the server through `adb reverse tcp:3000 tcp:3400`.
+MAIN'S HEAD BUILD: :app:assembleAudit -PfrontalierHost=127.0.0.1 on 3829f7d in this
+worktree, BUILD SUCCESSFUL in 4m 37s; APK sha256
+b34d90f55c54f16b628790f38f0b94e59559adf0db8aa49dbdf0c4bcf2d16612, signer ef336db5...e373d1
+(apksigner, before any install - equal to the installed app's).
+ACCOUNT: an-launch-attention.half@monreleve.test (POST magic-link 202, POST code 200; R574:
+the code went from dev.log to a scratch file by getcode.mjs and was typed by d.mjs typecode,
+which deletes the file; neither prints it; every capture during sign-in a masking
+uiautomator dump; no screenshot; no magic-link URL printed). Onboarding as AN-TALKBACK's:
+"Pilote TalkBack", Geneve, 100 %, simplified, HALF days, whole year, manual, "Pas
+maintenant" (PATCH /me 200). Morning answered "En Suisse" by an injected tap (POST
+/entries 200): state H1 - the afternoon open, its heading named "Matin enregistre.
+Apres-midi : a renseigner."
+RUN 12:50:52-12:56:04 (phone clock, 3 Nov), 11 launches of 3829f7d, the instrument as R700
+(install -r, Voice Assistant on, force-stop + relaunch, 7 s):
+  head 3829f7d  attention line at launch 11/11, every time as
+                "Matin enregistre. Apres-midi : a renseigner." {TYPE_WINDOW_CONTENT_CHANGED}
+                then "Mon Releve" {TYPE_WINDOWS_CHANGED} (launch 1 also the launcher first).
+  In the raw logs it is spoken a SECOND time in all 11, ~7 s later - the virtual keyboard's
+  detach relaunching the activity (AN-LAUNCH-SPEECH's UNNUMBERED-2): 22 utterances in 11.
+THE SHAPE UNNUMBERED-1 reports: the same sentence, the same event type, at launch.
+CAUSE, AS DISTINCT FROM R700: AN-LAUNCH-SPEECH's H1 reading heard this on 2458dbe (base,
+Compose 1.7.0) too, so it is not the Compose 1.7.6 patch move. It is this code: the
+controller's first frame has no entries (both halves open, `lonely` null); the rows arrive,
+the afternoon becomes the one open half, and rememberHalfAttention reads null -> AFTERNOON
+as the within-session transition R434 designed: the heading gains liveRegion = Polite and
+the effect brings it into view and requests focus.
+
+================================================================================
+R762 - THE SECOND SITE (counts; not in scope)
+================================================================================
+STATE W1 - whole-day mode, today answered: a second account (a whole-day row today beside
+half-day rows would make today "recorded in the other granularity"), an-launch-attention.
+whole@monreleve.test, signed in and onboarded as above with WHOLE days, "Domicile" tapped
+(POST /entries 200). At launch the controller's first frame shows the options
+(showOptions = true, so optionsWereOpen = true); the row arrives, showOptions -> false, and
+the effect requests focus on the answer's "Modifier" - the shape UNNUMBERED-1 named.
+RUN 12:59:44-13:04:55, 11 launches of 3829f7d, same instrument:
+  speech at launch: "Mon Releve" {WINDOWS_CHANGED} 11/11 (launch 1 the launcher first);
+  NOTHING from the card: 0/11. Raw logs: no utterance of "Modifier" or of the answer.
+INPUT FOCUS after a plain launch (uiautomator dump, 48 nodes): NO node reports
+  focused="true" - the request lands on a TextButton (clickable), which in touch mode is not
+  focusable, so `runCatching { requestFocus() }` does nothing. The half-day heading carries
+  `.focusable()`, which is why that one site moves.
+NAVIGATION (one reading, 6 stops): stop 1 is the answer "Domicile, Enregistre", then "Bonjour
+  Pilote"... - R643-F5's known reading order (the answer first), which AN-LAUNCH-SPEECH
+  recorded in H2, where no focus request exists at all. Not this request's doing.
+VERDICT: does not reproduce (0/11 spoken, no focus taken) - NOT in scope; DayChoiceCard
+unchanged. Recorded under PARKED as the condition under which it would come back.
+
+================================================================================
+R763 - THE FIX, TEST-FIRST (RED, GREEN, the positive half)
+================================================================================
+TEST android/app/src/androidTest/.../aujourdhui/LaunchAttentionInstrumentedTest.kt - the
+screen as the activity hosts it; the load reproduced as LaunchSpeechInstrumentedTest does
+(the first frame, then the state replaced from OUTSIDE the screen, no callback). Every
+assertion is made after `mainClock.advanceTimeBy(5 x Motion.standardMillis)` + waitForIdle,
+so "not focused" cannot be an effect that had not fired yet. Matcher: the node whose
+contentDescription is the attention line (from AujourdhuiCopy.halfRecordedAnnouncement - the
+one home, R206; no French typed in the test).
+  load cases (must hold on the fix, FAIL on main):
+    aMorningAnsweredBeforeTheScreenOpenedIsNotALiveRegion - presence first (the heading named
+      by the attention line exists), then 0 such nodes with LiveRegion = Polite;
+    aMorningAnsweredBeforeTheScreenOpenedDoesNotTakeFocus - the heading still carries a
+      Focused value (still focusable: the node keeps its shape), and is not focused.
+  THE POSITIVE HALF (must hold on main AND the fix):
+    theMorningATapAnswersMakesTheAttentionLinePoliteAndFocused - first frame, a tap on the
+      morning's "Domicile": the heading IS polite and IS focused;
+    aLoadedMorningReopenedThenCancelledComesBackAsATransition - loaded H1, "Modifier", then
+      "Annuler": the afternoon is the one open half again by the person's taps - polite and
+      focused, as on main.
+RED - main 3829f7d + the test only (uncommitted), on the S9:
+  ./gradlew :app:connectedDebugAndroidTest -PfrontalierHost=127.0.0.1
+    -Pandroid.testInstrumentationRunnerArguments.class=...LaunchAttentionInstrumentedTest
+  "Starting 4 tests on SM-G960F - 10"; tests="4" failures="2"; BUILD FAILED in 3m 32s; exit 1.
+    aMorningAnsweredBeforeTheScreenOpenedIsNotALiveRegion: "Did not expect any node but found
+      '1' node that satisfies: ((ContentDescription = 'Matin enregistre. Apres-midi : a
+      renseigner.' ...) && (LiveRegion = 'Polite'))"
+    aMorningAnsweredBeforeTheScreenOpenedDoesNotTakeFocus: "Failed to assert the following:
+      (Focused = 'false')" on the "Apres-midi" node.
+  The two positive cases PASSED on main - so the matcher finds a live region and a focused
+  node when there is one. (French above transliterated by transport, R168; the XML in red/
+  has the accents.)
+FIX (6e1ec87, :shared commonMain HalfDayChoiceCard.kt - one file, so iOS carries it):
+  - `tappedHere` (remember, NOT saveable, beside R702's `answeredHere`), set by ANY tap in
+    the card - record, "Modifier", "Annuler" - through `HalfActions.marking { ... }`, a
+    wrapper that calls the mark before each of the three callbacks. Rows the state brings
+    never pass through these.
+  - rememberHalfAttention(..., tappedHere): the effect brings into view and requests focus
+    only when `lonely != null && previous == null && tappedHere`; HalfAttention carries
+    `live = tappedHere`.
+  - HalfHeading: `if (attention.live) liveRegion = Polite`. contentDescription, focusable(),
+    focusRequester and bringIntoViewRequester are kept unconditionally - the navigated stop
+    (AN-LAUNCH-SPEECH's H1 stop 7, "Matin enregistre. Apres-midi : a renseigner.") reads the
+    same, and R764 shows it does.
+  Untouched: R702's RecordedAnswer/answeredHere, DayChoiceCard, AujourdhuiAuto, all copy.
+  A first version set the flag inline in each callback; detekt refused it (LongMethod 65 >
+  60 in HalfDayChoiceCard) - the wrapper is that refusal's answer; same behaviour.
+GREEN - the committed fix, the FULL connected suite on the S9:
+  ./gradlew :app:connectedDebugAndroidTest -PfrontalierHost=127.0.0.1
+  "Starting 57 tests on SM-G960F - 10"; tests="57" failures="0" errors="0" skipped="0";
+  BUILD SUCCESSFUL in 2m 23s; exit 0. 57 = AN-LAUNCH-SPEECH's 53 + these 4; among them
+  LaunchAttention 4/4, LaunchSpeech 6/6 (R702 unchanged, its tap controls included),
+  HalfDayChoice 7/7 (R434's post-tap polite announcement). green/*.xml.
+  (The same suite was also green, 57/57, on the inline first version.)
+  ./gradlew fastCheck: BUILD SUCCESSFUL in 2m 54s (ktlint, detekt).
+NOT IN :app:gate: a device test the JVM gate compiles but does not run (the gate's stated
+limit, as for HalfDayChoiceInstrumentedTest and LaunchSpeechInstrumentedTest). Paparazzi
+baselines re-recorded: ZERO (a semantics property and an effect; the gate's screenshot tests
+verify at 0.0 - below).
+
+================================================================================
+R764 - PROVEN ON THE PHONE
+================================================================================
+FIXED BUILD: :app:assembleAudit -PfrontalierHost=127.0.0.1 on 6e1ec87, BUILD SUCCESSFUL in
+3m; APK sha256 f4986d19a2f8ce882eb86dbb5507160ecaff42ac4ae42bd62c813ed53d5d3082, signer
+ef336db5...e373d1 (apksigner, before install).
+ACCOUNT: an-launch-attention.pilot@monreleve.test, new (magic-link 202, code 200, R574 as
+above), onboarded exactly as AN-TALKBACK's with WHOLE days (PATCH /me 200); later half days
+in Parametres (PATCH /me 200). Every state read on main then fixed, `install -r` over the
+same data (swap.sh; it answered Play Protect's "Envoyer l'appli..." dialog 4 times in the
+session - R761 2, R764's launch batch 2 - counted per install as PP=n; no setting changed).
+THE TAP ON A FRESH DAY (H0 -> H1, fixed build, tapfresh.sh: the reader on, ONE injected tap
+  on the morning's "En Suisse", 13:49:42):
+    "Matin enregistre. Apres-midi : a renseigner." {TYPE_WINDOW_CONTENT_CHANGED}
+  The line IS announced when it appears by a tap (POST /entries 200). n=1.
+LAUNCH CAPTURE (state H1 that tap made, 13:50:25-13:59:58, 22 launches, alternating, the
+  first build swapped each round - launches.sh unchanged):
+    fixed 6e1ec87  attention line at launch 0/11 ("Mon Releve" 10, launcher + title 1)
+    head  3829f7d  attention line at launch 11/11 {TYPE_WINDOW_CONTENT_CHANGED}
+  Raw logs incl. the keyboard relaunch: fixed 0 utterances in 0/11 logs; head 22 in 11/11.
+THE SEVEN STATES (navigated stops to the last tab, launch stop 0 apart; cmp.mjs line by
+line):
+  W0  whole-day, unanswered          head 48 / fixed 48   IDENTICAL
+  H0  half-day, unanswered           head 54 / fixed 54   IDENTICAL
+  H1  morning answered En Suisse     head 60 / fixed 60   IDENTICAL - stop 7 reads
+        "Matin enregistre. Apres-midi : a renseigner." on BOTH (the name kept)
+  H2  both halves (Suisse/Domicile)  head 58 / fixed 58   IDENTICAL on the re-read
+        (first reading: 1 differing stop - DEVIATION 2)
+  H2b scrolled to the end (5 swipes) head 42 / fixed 42   IDENTICAL; first focused stop on
+        both "Taux de teletravail declarable 0,20 %, imposition en Suisse., Mon Releve", as
+        AN-LAUNCH-SPEECH's
+  M   "Modifier" open (readM.sh)     head 67 / fixed 67   IDENTICAL
+  A4  Matin Absence-Conge, Apres-midi Domicile
+                                     head 58 / fixed 58   IDENTICAL on the re-read
+        (first reading: head 61 / fixed 58 - DEVIATION 3)
+  Launch stop 0: every state "Ecran d'accueil One UI | Mon Releve" on both builds, EXCEPT H1
+  on head: "Ecran d'accueil One UI | Matin enregistre. Apres-midi : a renseigner. | Mon
+  Releve" - the defect, gone on fixed.
+AGAINST AN-LAUNCH-SPEECH's 28 OCT READINGS (xcmp2.mjs, this session's head vs its fixed):
+  W0 48/48, H0 54/54, H1 60/60, H2 58/58, H2b 42/42, M 67/67, A4 58/58 - the stop COUNTS
+  equal in all seven; the differing stops are only the date line, "1 jour non renseigne ce
+  mois" (19 on the 28th) and the week strip's days/"Aujourd'hui" cell (H2b: the strip only)
+  - the day, not the build.
+W1 (R762's state) was not read in R764: R762 is not in scope, so nothing there changed.
+
+================================================================================
+R765 - FOR THE PILOT (IOS-1b-B)
+================================================================================
+CAUSE: NOT platform-specific. It is shared code reading a load as a transition: the first
+frame (no entries) then the rows makes the afternoon heading APPEAR as a polite live region
+and requests focus on it. Android's accessibility layer announced that on Compose 1.7.0
+(2458dbe) and 1.7.6 alike, so - unlike R700 - no library version was needed to trigger it.
+On iOS the same composables run through Compose Multiplatform 1.7.3's UIKit bridge; whether
+VoiceOver announces an appearing live region, and whether a Compose focus request moves the
+VoiceOver cursor, are IOS-1b-B's to hear. Because it does not depend on a library quirk,
+VoiceOver is MORE likely to share it than it was R700.
+FIX: in commonMain (HalfDayChoiceCard.kt), so the iOS build carries it. No iOS test was
+added: the pilot has no morning-only scenario (adding one is fixture scope), and the one
+iOS run's job is to prove that :shared builds and its existing tests stay green.
+CHECK ON VOICEOVER: (1) open the pilot on a day whose MORNING only is answered (needs such a
+scenario, or a morning tapped then the app relaunched) - nothing about "Apres-midi" should
+be spoken before the first swipe, and the cursor should not jump to it; (2) on a fresh
+half-day, tap a morning answer - "Matin enregistre. Apres-midi : a renseigner." should be
+announced; (3) swipe to the afternoon heading - it still reads that sentence.
+
+================================================================================
+PARKED (UNNUMBERED - never a heading in parking.md)
+================================================================================
+UNNUMBERED-1  DayChoiceCard's optionsWereOpen focus request (R762) still FIRES on a load
+              (first frame -> rows on a whole-day answered day); it is inert today because
+              its target, the answer's "Modifier" TextButton, is not focusable in touch mode
+              (0/11 spoken, no focused node). If the toolkit upgrade (IOS-1b-A
+              UNNUMBERED-8; Compose 1.8 makes clickables focusable in touch mode by default)
+              or a keyboard/D-pad user makes that button focusable, the load would move
+              focus to "Modifier" at launch. Re-measure W1 at that upgrade; the fix would
+              be this task's shape (a tap flag).
+UNNUMBERED-2  AN-LAUNCH-SPEECH's UNNUMBERED-2 (the keyboard config change relaunches
+              MainActivity) produced the second utterance per launch here too; unchanged.
+UNNUMBERED-3  The phone was physically handled during this session (a rotation to
+              landscape and an accessibility-volume key at 14:57, DEVIATION 3; AN-LAUNCH-
+              SPEECH saw an unexplained volume move too). A reading harness could record the
+              rotation and volume events and refuse the reading itself, instead of a person
+              spotting them in a diff.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R762 and R761 used two separate accounts (half / whole): a whole-day row today next to
+   the half-day morning would have made today "recorded in the other granularity" (a
+   notice, a different screen). R764 used a third, fresh account so W0 and H0 exist today.
+2. H2's first reading differed in ONE stop: at stop 43 ("Saisie tardive") the fixed
+   reading also carried "Service, Mise a jour..." {TYPE_NOTIFICATION_STATE_CHANGED} - a
+   system notification (dumpsys notification: com.samsung.android.app.omcagent "Mise a jour
+   configuration systeme") spoken during that stop. Not the app's tree. The pair was re-read
+   at once, same state, same builds: 58/58 IDENTICAL. The first reading is kept in
+   reads/discarded/ and logs/H2-pair.log.
+3. A4's first reading differed from stop 32 on: on HEAD, Voice Assistant spoke "Affichage
+   Paysage" {EVENT_TYPE_ROTATE} at 14:57:52 and "Volume Accessibilite, 60 pourcent" at
+   14:57:56 - the phone was rotated to landscape (auto-rotate is ON, as found) and a volume
+   key pressed; the rotation relaunched the activity and the reading restarted mid-screen
+   (61 stops). Nothing in this session rotates the phone or sends a volume key. Re-read at
+   once: 58/58 IDENTICAL, no rotation or volume event in either raw log. The disturbed
+   pair is kept in reads/discarded/ and logs/A4-pair-discarded.log.
+   I re-read rather than STOP on 2 and 3 because each difference carried its own
+   non-app event (a notification, a rotation) in the reading's own log, and the rule's
+   question - did the build change a navigated stop? - is answered by a clean re-read;
+   both are reported here so the reader can judge that.
+4. The R763 RED and GREEN connected runs uninstalled the app (as the prompt says); the phone
+   was signed in again with a new account for R764, and restored from the APK pulled before.
+5. The first HEAD build attempt failed in 26 s ("SDK location not found": the new
+   worktree had no local.properties); copied (gitignored) from C:/wt/an-launch-speech and
+   rebuilt. web/.env likewise copied (gitignored).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 R762 (PARKED UNNUMBERED-1): leave DayChoiceCard's inert load-time focus request as is,
+   or give it the same tap flag now, pre-emptively, before the toolkit upgrade makes it
+   live? I left it: it is not measured as a defect today and the prompt scoped it out.
+Q2 DEVIATIONS 2-3: two navigated-stop differences were each re-read once and came back
+   identical; the advisor/operator may prefer a STOP on any difference regardless of an
+   identified outside event - say so and the rule is applied literally next time.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch an-launch-attention only (never main, never production):
+    git push -u origin an-launch-attention  ->  * [new branch] an-launch-attention ->
+      an-launch-attention   (6e1ec87, before R764, so the iOS run could start on it)
+    git ls-remote origin refs/heads/an-launch-attention
+      -> 6e1ec870323687ad371fd338c598025f8f60cd8d (at the iOS dispatch)
+This report's commit is pushed after it; the tip sha is in the hand-back (a commit cannot
+name its own hash). relay/ re-scanned for R761-R765 just before that push. Pending merge.
