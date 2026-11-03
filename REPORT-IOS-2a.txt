@@ -1,0 +1,433 @@
+REPORT-IOS-2a - Mon Releve
+SIGN-IN BECOMES SHARED: THE ONBOARDING KIT, THE SIGN-IN STATE, THE FOUR SIGN-IN SCREENS
+STOPPED AT R773 (A PERMISSION REFUSAL) - EVERYTHING ELSE DONE
+
+TASK     relay/IOS-2a.txt (main checkout, untracked), rulings R766-R775 (free: the only file citing
+         them is the prompt itself).
+BASE     origin/main dabb9b6 (contains e7dddf2).
+BRANCH   ios2a, worktree C:/wt/ios2a (R349), lock .session-lock.json (gitignored), removed at the
+         end. Pushed: the branch only. PENDING MERGE - nothing here is on main.
+DEVICE   SM-G960F (Galaxy S9), serial 232bcd8c300c7ece.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+The onboarding kit, the sign-in state with its three controllers, and the four sign-in screens
+live in :shared commonMain. Android hosts them through the same calls as before; Android is
+pixel-identical (every Paparazzi baseline verifies at 0.0, NONE re-recorded); the release APK is
+the same size to the byte. iOS compiled all of it and ran it on the simulator in ONE dispatched
+run: 229 tests, 0 failures, including a Compose UI test that drives the shared sign-in screens
+over a fake transport (link requested, a wrong code refused, the right code signed in, a refused
+link).
+  R767  kit moved (git mv + glyph seam); eight Glyph constants; path comparison green.
+  R768  state + controllers moved; pin test written in kotlin.test FIRST, moved unedited to
+        commonTest; accountTagOf expect/actual; PlatformSerializable; iOS
+        KeychainPendingSignInStore added.
+  R769  the four screens moved unedited (git R100); ui/ fences RED once on a plant in the
+        shared signin home, green after.
+  R770  the link receipt stays native; the contract is SignInLink (written down, SignInLink.kt).
+  R771  baselines untouched; release APK 1,989,388 -> 1,989,388 B.
+  R772  run 41720094372: SUCCESS, 229 executed (+22 new).
+  R773  STOPPED: the full sign-in flow needs the phone signed OUT; signing out the operator's
+        demo account was REFUSED by the permission system. Only CallbackScreen (MALFORMED) was
+        compared on the S9: 0 px differ, stops IDENTICAL. QUESTION Q1.
+  R774, R775 written below.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE EXCEPT: R773 NOT RUN beyond CallbackScreen in its MALFORMED state (the sign-out of the
+operator's demo account was refused by the permission system - QUESTION Q1); R771's instrumented
+run on the S9 NOT RUN (connectedAndroidTest uninstalls the app and its data - the same class of
+action, not attempted after the refusal).
+FULL :app:gate --rerun-tasks on the code tip ec58c67, this session, after ./gradlew --stop
+(4.29 GB free, read in its own step):
+    > Task :app:checkTestFloor - test floor OK: 1392 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 41s
+    260 actionable tasks: 260 executed
+    real 11m43.036s ; GATE_EXIT=0
+  Test XML: :app 1392 tests 0 failures 0 errors (142 screenshot, 0 failures, at 0.0); :shared 168
+  0 0 (main 152 + SignInStatePinTest 12 + SignInLinkStateTest 4). Compiler "w: " lines: 7 (main's
+  count per IOS-1b-A); none is the daemon's "multiple sessions" notice.
+iOS run on the code tip: 41720094372 on ec58c67 - SUCCESS (below, R772).
+The report commit that follows ec58c67 changes REPORT-IOS-2a.txt only (paths-ignored by the
+workflow; nothing to build).
+gate:clone NOT RUN: no web/ change (web/.env and node_modules are gitignored and untracked).
+
+================================================================================
+R273 - READ
+================================================================================
+REPORT-IOS-1b-A (both parts: R602 controller-first, R603/ruling 14 icons kept as built, R604
+fences, R606 Compose UI tests on iOS, R608 pilot fixture, R609); relay/RULINGS-2026-10-26.txt
+ruling 14; relay/RULINGS-2026-11-03-MOBILE.txt (rulings 6-8); relay/AN-TALKBACK.txt's device
+rules; REPORT-AN-LAUNCH-SPEECH (the navigated-stop reading, read.mjs's launch/keyboard notes);
+REPORT-AN-LAUNCH-ATTENTION (phone handling, swap.sh); app/auth/*, ui/screens/signin/*,
+ui/screens/onboarding/OnboardingKit.kt, shared auth/*, KeychainTokenStore, and every fence that
+reads ui/ (FencesTest, CopyReachability, DayCellGridHasLegend, LogFence, NoBareThreshold,
+RateFloatFence) plus AccountCapture, OnDeviceFormatGolden, CommonMainFence.
+REPORT-AN-SIGNOUT-REFRESH: read only for R706's sign-out path, which this task does not touch
+(SessionHolder, SessionEnds and the sign-out code are unchanged).
+COPIED (never modified) from C:/wt/an-launch-attention/.an-launch-attention-evidence/: d.mjs,
+getcode.mjs, read.mjs, cmp.mjs, tb.mjs, hidkeys.mjs, readpair.sh, readM.sh, swap.sh, xcmp*.mjs,
+and two APKs (below). My copies of read.mjs (+PRE_WAIT, unused in the end) and swap.sh (its APK
+directory) are edited; the originals are untouched.
+
+================================================================================
+R1 - PRECONDITIONS
+================================================================================
+origin/main = dabb9b6; `git merge-base --is-ancestor e7dddf2 origin/main` -> true. HOLDS.
+`adb devices -l` -> 232bcd8c300c7ece device product:starltexx model:SM_G960F. HOLDS.
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (20:43Z, nothing changed): ch.monreleve.app 0.1.0, base.apk sha256
+  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (the long-standing as-found
+  APK), signer ef336db5977cf5cb...e373d1; stay_on_while_plugged_in 0; enabled_accessibility_
+  services null (absent); accessibility_enabled 0; touch_exploration_enabled 0;
+  volume_a11y_speaker absent; ring volume 11; accelerometer_rotation 1; adb reverse empty.
+  THE APP'S TASK: MainActivity with a Chrome Custom Tab on top, showing production
+  monreleve.ch (the web calculator) - the operator's demo.
+  THE ACCOUNT: essai.oumaima@monreleve.test, SIGNED IN (the shell: "Bonjour oumaima", today
+  answered "En Suisse - Enregistre"). Local server frontalier@5436: that user, 20 entries, 1
+  live DeviceSession (SELECT only).
+  Full snapshots: phone/before-settings-{secure,global,system}.txt (450/298/425 lines),
+  packages (504), /data/local/tmp listing (7).
+WHAT THIS SESSION DID TO THE PHONE THAT NOBODY ASKED FOR (stated, not hidden):
+  - one BACK press inside the Custom Tab, before I understood what was showing: it navigated
+    the tab's history (calculator -> A propos);
+  - the Custom Tab closed with its own "Fermer l'onglet" button (not restorable; it was a
+    production web page, no data);
+  - Play Protect's "Envoyer l'appli..." dialog answered "Ne pas envoyer" three times (one per
+    install of an unknown APK), no setting changed. During the second, the DISPLAY WAS IN
+    LANDSCAPE (dumpsys display mCurrentOrientation=1, 22:42 phone clock) - not caused by
+    anything this session sends; swap.sh's portrait-coordinate tap then fired 187 times off-screen
+    (PP=187 in cbpair.log) until I scrolled the dialog and tapped by its bounds. Back in portrait
+    by 22:43;
+  - main's audit build installed over the demo's data (install -r, data kept) - its launch
+    refreshed the session (POST /auth/refresh 200) and read entries and dossiers (GET 200s);
+  - one screenshot of the signed-in shell (masked, untracked evidence, never committed).
+DURING: adb reverse tcp:3000 tcp:3400; stay_on_while_plugged_in 7; Voice Assistant on only
+  inside each of the two readings.
+AFTER (23:0x phone clock), read back:
+  - `adb install -r` of the as-found APK over the same data -> Success; on-device sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034; launched: "Bonjour
+    oumaima", today "En Suisse - Enregistre" - STILL SIGNED IN AS essai.oumaima, as found. The
+    Room schema has not moved since 2026-10-20 (KMP-2b), so going back to that build is not a
+    downgrade.
+  - stay_on_while_plugged_in 0; adb reverse --remove-all -> empty; enabled_accessibility_services
+    absent (deleted after each reading, never `put null`); accessibility_enabled 0;
+    touch_exploration_enabled 0; volume_a11y_speaker absent; ring 11; accelerometer_rotation 1.
+  - SETTINGS DIFF before vs after: secure NONE, global NONE, system screen_brightness 103 -> 3
+    only (auto-brightness - the system's own). packages identical; /data/local/tmp identical.
+  - The custom tab is gone (above). Nothing was deleted: no sign-out, no uninstall, no clear.
+
+================================================================================
+R766 - RECORDED
+================================================================================
+The screens moved before IOS-1b-B, proven by Android's pixels and the simulator; the link
+RECEIPT did not move (R770). The onboarding screen and controller did NOT move (IOS-2b); its
+only edit is one call site (IconCircle takes a Glyph) - below.
+
+================================================================================
+R767 - THE KIT (commit d9336bc)
+================================================================================
+OnboardingKit.kt git mv-ed to :shared commonMain ui/screens/onboarding, package unchanged: all
+ten pieces (PrimaryButton, SecondaryButton, TertiaryButton, IconCircle, BackButton,
+StepProgress, InfoNote, LogoMark, BottomActions, GapHeight). Edits: painterResource(R.drawable.x)
+-> glyphPainter(Glyph.X) x3, IconCircle(iconRes: Int) -> IconCircle(glyph: Glyph).
+USERS OF THE KIT (all compile and render unchanged): signin (Welcome, RequestLink, Code),
+onboarding (OnboardingScreen, PretScreen, ChoiceCardText), comparison, prevision, rythme,
+simulation. Call sites edited: Welcome's three rows, Code's mail circle, Onboarding's reminder
+bell (R.drawable id -> Glyph) - and nothing else.
+GLYPHS (ruling 14's seam, the way IOS-1b-A added Aujourd'hui's): CHEVRON_LEFT, INFO, LOGO_MARK,
+MAIL, CALENDAR_CHECK, FILE_TEXT, LOCK, BELL. Android: the app's own drawable found by name (the
+same resource, the same pixels); iOS: the Compose resource generateGlyphResources already copies
+from the same file; glyph_keep.xml keeps the eight by name. iOS's `when` grew to 18 flat arms;
+detekt's CyclomaticComplexMethod suppressed on it with the reason (DEVIATION 3).
+PINS: the Paparazzi baselines of every user - signin 13, onboarding 16, comparison 3, prevision 7,
+rythme 4, simulation 7 - at 0.0, none re-recorded.
+PATH COMPARISON (R603's test): GlyphResourceGeneratorTest 2/2 - every Glyph's generated file
+carries the app XML's ordered pathData. ic_logo_mark is the brand mark, not a Lucide glyph (fills
+on a 192 viewport); the comparison is of pathData only, so it covers it the same way.
+GlyphDrawablesExistTest 2/2. iOS: the eight resolve and draw on the simulator (the sign-in UI
+test composes Welcome's three circles, the logo and the code screen's mail).
+
+================================================================================
+R768 - STATE AND CONTROLLERS (commits 55eac2d pin, 9b2aa43 move)
+================================================================================
+PINNED FIRST: SignInStatePinTest (kotlin.test + kotlinx-coroutines-test only, 12 tests) in :app's
+test scope against the code as it stood: green 12/12. IT BITES: RESEND_COOLDOWN_SECONDS planted
+60 -> 59 in :app's CodeController (verified by git diff) -> 1 failed; restored (git checkout,
+diff empty). Then `git mv` to :shared commonTest, UNEDITED (git: R100), green there.
+MOVED (git mv, package unchanged): SignInController.kt, CodeController.kt (CODE_LENGTH,
+RESEND_COOLDOWN_SECONDS), CallbackController.kt, SignInSync.kt.
+PLATFORM COLLABORATORS, EACH THROUGH A commonMain CONTRACT:
+  PendingSignInStore, AccountStore - interfaces to commonMain; the SharedPreferences
+    implementations stay in :app, in files renamed after their class (ktlint's filename rule;
+    KMP-3's shape). OnDeviceFormatGoldenTest's two subject PATHS follow them, assertions
+    unedited - run first on the old paths it FAILED ("its subject .../AccountStore.kt is not
+    there"), so the move could not pass silently.
+  KeystoreTokenStore - already behind :shared's TokenStore; untouched.
+  accountTagOf (MessageDigest) - "anything else found": expect in commonMain; Android actual =
+    the same body git mv-ed to :shared androidMain; iOS actual = CommonCrypto CC_SHA256 (platform,
+    no dependency; function-scoped ExperimentalForeignApi as KeychainTokenStore). The pin's
+    SHA-256 vector (node:crypto) passes on the JVM AND on the simulator (12/12 there).
+  SignInSnapshot / CodeSnapshot were java.io.Serializable - now `expect interface
+    PlatformSerializable`: Android `actual typealias` = java.io.Serializable (same supertype,
+    same serialVersionUID, same Bundle bytes); iOS an empty marker. SignInControllerTest's
+    constructions compile unedited.
+  iOS PendingSignInStore: ADDED - KeychainPendingSignInStore, one Keychain item from
+    KeychainTokenStore's own query dictionaries (never synchronised, ThisDeviceOnly,
+    AfterFirstUnlock), its own service name; not UserDefaults (backed up; an address is a
+    credential here). iosTest KeychainPendingSignInStoreTest 4/4 on the simulator.
+NO java.* / android.* in commonMain: CommonMainFenceTest green, compileCommonMainKotlinMetadata
+green, and the iOS compile on the Mac.
+SessionHolder and SessionEnds UNTOUCHED. The same requests in the same order (pinned: the
+address remembered before the request; SIGNED's save -> account -> clear -> sync order).
+Tests after the move, unedited: CallbackControllerTest 6, SignInControllerTest 8,
+ForcedSignOutTest 27, AccountScopeTest; commonTest SignInStatePinTest 12, SignInLinkStateTest 4.
+
+================================================================================
+R769 - THE FOUR SCREENS (commit ec58c67)
+================================================================================
+WelcomeScreen, RequestLinkScreen, CodeScreen, CallbackScreen, SignInActions, CodeActions:
+git mv to :shared commonMain ui/screens/signin, UNEDITED (all R100). MainActivity's SignInRoute /
+CodeRoute and CallbackActivity host them with the same calls - no line of either host changed in
+that commit.
+FENCES. No fence was specific to ui/screens/signin (grep of fences for screens/signin: none).
+Every ui/ fence already reads both ui/ roots, each pinned (:app AppBottomBar.kt, :shared
+AujourdhuiScreen.kt). RED ONCE on a plant in the shared signin home:
+  PlantedForR769.kt in shared/src/commonMain/.../ui/screens/signin, VERIFIED landed (ls, sha256
+  c2c36949..., git status "??" at that path) - FencesTest 11 run, 2 failed, exactly:
+    tokens-only       "..\shared\...\ui\screens\signin\PlantedForR769.kt: raw Color(0x...)
+                       literal outside design/Tokens.kt" and "...: raw .dp literal outside
+                       Spacing/Radius"
+    no-inline-string  "..\shared\...\ui\screens\signin\PlantedForR769.kt: string literal
+                       "Bonjour, plante" in ui//dev/ - French copy must come from fr/"
+  Deleted (ls: no such file; git status: nothing) -> FencesTest 11/11.
+
+================================================================================
+R770 - THE CONTRACT (for IOS-1b-B)
+================================================================================
+shared commonMain auth/SignInLink.kt, as written there:
+  CallbackController.handleLink(parsed: SignInLink?) - SignInLink(token, email) ONLY for a URI
+  that is exactly the frozen callback shape: scheme https and host monreleve.ch (compared
+  ignoring case), path exactly /api/v1/auth/callback, non-blank `token` and `email` query
+  parameters, each decoded as java.net.URLDecoder does (UTF-8 percent escapes AND '+' as a
+  space - an iOS receipt must decode the same way, or a "+" in an address breaks MISMATCH).
+  null for anything else -> MALFORMED, no request. The exchange always goes to the app's OWN
+  base URL, never one from the link. The address is passed as received; MISMATCH compares it
+  trimmed and lower-cased with the pending one.
+Android's receipt is unchanged: CallbackLink.kt untouched; the new CallbackLinkReceipt.kt is an
+extension with the OLD name and argument, CallbackController.handle(uriString), so
+CallbackActivity (one import) and CallbackControllerTest (unedited) call what they called.
+
+================================================================================
+R771 - ANDROID IS THE PROOF
+================================================================================
+BASELINES: `git diff --stat dabb9b6..ec58c67 -- android/app/src/test/snapshots` -> empty; every
+Paparazzi rule at maxPercentDifference 0.0 (R626 guard green); RE-RECORDED: 0.
+TESTS RUN: every check above ran :app:verifyPaparazziDebug and the unit suites; the gate below.
+The sign-in Compose UI tests ARE the Paparazzi suite (SignInScreensScreenshotTest 13/13 on the
+shared screens) - there is NO sign-in instrumented test in androidTest (the nearest is
+KeystoreTokenStoreInstrumentedTest) (PARKED). :app:compileDebugAndroidTestKotlin green.
+INSTRUMENTED RUN ON THE S9: NOT RUN - connectedAndroidTest uninstalls the app and its data, and
+the phone holds the operator's signed-in demo; after the sign-out refusal (R773) I did not
+attempt an action of the same class. QUESTION Q1.
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on):
+  main dabb9b6 (throwaway worktree C:/wt/ios2a-base, mine, removed)  1,989,388 B
+  tip  ec58c67                                                       1,989,388 B   (+0)
+  WHY: entries differ in 3 of 113 - classes.dex 1,562,969 -> 1,563,207 compressed (+238;
+  +448 uncompressed: the expect/actual, SignInLink, the receipt extension), baseline.prof -8,
+  baseline.profm +1 - absorbed by zip alignment. resources.arsc CRC IDENTICAL: the eight glyphs
+  newly kept by name were all R.drawable references in main's code, so main kept them already.
+
+================================================================================
+R772 - iOS (ONE RUN)
+================================================================================
+RUN 41720094372, workflow_dispatch on ios2a, head ec58c67, 21:15:15Z-21:27:08Z (~12 min),
+SUCCESS. STEPS (20, all success): Set up job; checkout; setup-java; setup-gradle; Restore the
+Kotlin/Native toolchain; Environment; Provision the Kotlin/Native toolchain; Boot the iPhone
+simulator; Start the wire-recording server; iOS - simulator tests and device compile
+(BUILD SUCCESSFUL in 6m 5s; :shared:iosSimulatorArm64Test + :shared:compileKotlinIosArm64);
+The wire recording; Save the toolchain; Results - refuse a run that executed no tests; Which
+simulator ran; Room's generated iOS code; upload-artifact; 3 post steps; Complete job.
+"iOS SIMULATOR TESTS EXECUTED: 229" (main 207; +22 new), six GENEVA lines.
+New on iOS, each 0 failures: SignInStatePinTest 12, SignInLinkStateTest 4 (commonTest - the moved
+state), KeychainPendingSignInStoreTest 4, SignInScreensIosTest 2.
+THE iOS UI TEST (pilot/SignInScreensIosTest): MainActivity's hosting reduced to its calls, the
+REAL controllers over the REAL AuthApi on an in-memory transport (.invalid domain; no server, no
+account, no real address): Welcome -> Commencer -> the address typed -> link requested ->
+code screen names the address -> a WRONG code refused (CodeCopy.ERROR_WRONG_CODE shown; nothing
+stored) -> the right code -> "Vous etes connecte" (pair saved, account tag = accountTagOf(the
+address), pending cleared, requests in order magic-link, code, code); and a refused link through
+the R770 contract shows INVALID_LINK with the way back. R574: the codes are the file's fixtures;
+nothing prints or captures.
+CI MINUTES: this one run, ~12 min wall. No earlier run was dispatched.
+
+================================================================================
+R773 - ON THE S9 (STOPPED)
+================================================================================
+STACK: `PORT=3400 pnpm dev` from this worktree's web/ (pnpm install --frozen-lockfile, .env copied,
+both gitignored); R169: /api/health -> {"service":"monreleve",...,"status":"ok"}; /api/ready 200;
+3000/3100/3200 untouched (no listeners); adb reverse tcp:3000 tcp:3400. NEVER production.
+BUILDS (-PfrontalierHost=127.0.0.1, audit), all signer ef336db5...e373d1 (apksigner):
+  main  f4986d19a2f8ce882eb86dbb5507160ecaff42ac4ae42bd62c813ed53d5d3082 - AN-LAUNCH-ATTENTION's
+        6e1ec87 audit APK, copied: `git diff 6e1ec87 dabb9b6 -- android` is empty (DEVIATION 1)
+  tip   470599cb0efbbb1338f950af4f896c1a536c349df5f6ab46426b1a7f2caefaf2 (built here, ec58c67)
+THE STOP: Welcome, the address screen and the code screen exist only while signed OUT. The phone
+was signed in to the operator's demo, essai.oumaima@monreleve.test. With main's build installed
+over its data, I tapped Parametres -> " Se deconnecter " to start the flow; the PERMISSION SYSTEM
+REFUSED the action ("Irreversible Local Destruction": a sign-out wipes the phone's local record).
+A permission refusal is a stop rule; I did not retry it or reach the same end another way (no
+`pm clear`, no uninstall, no connectedAndroidTest). The account is still signed in, data intact.
+WHAT WAS COMPARED (one moved screen, one state, both builds - the only one reachable while signed
+in): CallbackScreen MALFORMED, opened by `am start -n ch.monreleve.app/.CallbackActivity -a VIEW
+-d https://example.invalid/x` (not a sign-in link: no request, nothing written):
+  PIXELS  shot.mjs (UI tree read first, every EditText painted over BEFORE anything is written;
+          here there were none): rows 80-2075: 0 px differ.
+  STOPS   read.mjs from where the screen stands (no relaunch), Voice Assistant on only for the
+          reading: 3 navigated stops each, IDENTICAL line by line -
+            1 "Ce lien est incomplet ou incorrect. Demandez un nouveau lien depuis
+              l'application., Mon Releve"
+            2 "Revenir a la connexion, Touche" + "Appuyez sur Alt + ENTER pour activer."
+            3 "Revenir a la connexion, Touche, dernier element" + the same hint
+  OUTSIDE EVENTS: each raw log opens with "Affichage Portrait" (EVENT_TYPE_ROTATE), before the
+  first navigated stop, on BOTH builds - the speech of the orientation at the reader's start (18
+  of AN-LAUNCH-ATTENTION's 59 raw logs carry the same line). No difference resulted; nothing was
+  re-read. The landscape episode during the Play Protect dialog (above) was before either reading.
+NOT RUN: welcome, request a link, code, signed in, one wrong code, sign out - on either build
+(QUESTION Q1). No @monreleve.test account was created; no code or link was requested or printed.
+
+================================================================================
+R774 - FOR IOS-2b (MEASURED, NOT CHOSEN)
+================================================================================
+WHERE Material3's DatePicker IS USED - one site: ui/screens/onboarding/OnboardingScreen.kt
+lines 319-333, the period step's "activity start date" (shown while `showPicker`):
+  androidx.compose.material3.rememberDatePickerState()       (no arguments: no initial date,
+                                                               no year range, no SelectableDates)
+  androidx.compose.material3.DatePickerDialog(onDismissRequest, confirmButton = TertiaryButton(
+      OnboardingCopy.CONTINUE)) { androidx.compose.material3.DatePicker(state = pickerState) }
+  reads pickerState.selectedDateMillis (UTC-midnight millis) -> isoOf(millis).
+java.time, beside it:
+  onboarding/OnboardingDates.kt - Instant.ofEpochMilli(..).atZone(ZoneOffset.UTC).toLocalDate()
+    (isoOf), DateTimeFormatter "dd.MM.yyyy" (swissDate, readyPeriod), LocalDate.of/parse;
+  onboarding/OnboardingController.kt:242 - LocalDate.parse(activityStartDate) as validation.
+  (All three have kotlinx-datetime equivalents :shared already uses; no picker question there.)
+THE OPTIONS, each one's cost:
+  (a) A NATIVE PICKER (R600's native-pieces clause): the shared screen takes a
+      `pickDate(onPicked: (isoDay) -> Unit)` seam; Android passes today's Material3 dialog
+      (pixel-identical by construction - the same composable, moved to androidMain or :app);
+      iOS presents UIDatePicker (or SwiftUI DatePicker) from the host. Cost: one expect/actual or
+      a host callback, an iOS piece IOS-1b-B must write and prove, and two different looks by
+      design. Keeps Material3's calendar off iOS, so UNNUMBERED-6's break is irrelevant.
+  (b) A FOUNDATION-BUILT PICKER in commonMain: a month grid of clickable Boxes on tokens. Cost:
+      new UI + its accessibility (TalkBack/VoiceOver day labels, focus order), new copy for
+      month/day names, and Android's pixels CHANGE - every onboarding period baseline
+      re-recorded and the screen re-reviewed; a behaviour change by definition.
+  (c) RELINK Material3's: the canary (MaterialDatePickerCanaryTest) asserts Material3 1.7.3's
+      calendar model is unlinked on iOS against kotlinx-datetime 0.7.1. Relinking needs a
+      Material3 built against 0.7 - the CMP 1.10+/Material3 1.5 upgrade (UNNUMBERED-8: blocked on
+      Material3 1.5 STABLE and a Paparazzi that renders Compose UI 1.10 text) - or pinning
+      kotlinx-datetime back to 0.6.x, which undoes KMP-DT R553/R590. Either is a dependency/
+      version change (SPEC 20: stop and ask), and the upgrade re-examines all baselines.
+Not chosen (the prompt says so).
+
+================================================================================
+R775 - WHAT IOS-1b-B NOW NEEDS
+================================================================================
+ENTRY POINTS, sign-in (all commonMain, package ch.monreleve.app.*):
+  ui.screens.signin: WelcomeScreen(onStart), RequestLinkScreen(state, SignInActions,
+    sessionClosedHeldDays), CodeScreen(email, state, CodeActions), CallbackScreen(state,
+    onBackToSignIn) - inside design.FrontierTheme;
+  auth: SignInController(AuthApi, PendingSignInStore, scope, restored?),
+    CodeController(AuthApi, TokenStore, PendingSignInStore, AccountStore, email, scope,
+    syncNow, restored?), CallbackController(AuthApi, TokenStore, PendingSignInStore, scope,
+    AccountStore, syncNow) + handleLink(SignInLink?).
+  THERE IS NO SHARED SIGN-IN HOST: Android's step machine (Welcome -> EMAIL -> CODE, LINK_SENT ->
+  CODE, SIGNED -> RESOLVING via GET /me) is MainActivity's private SignInRoute/CodeRoute. iOS
+  must write its own, or a later task moves one to commonMain. iosTest SignInScreensIosTest's
+  SignInHost is the minimal shape (test code, not shipped).
+ENTRY POINT, Aujourd'hui: unchanged from REPORT-IOS-1b-A R609 -
+  aujourdhuiPilotViewController(scenario) (pilot, in-memory).
+THE R770 CONTRACT: above; the universal-link receipt must produce SignInLink or null with the
+  same validation and URLDecoder-equivalent decoding.
+iOS PIECES STILL MISSING:
+  - AccountStore for iOS: NONE in iosMain, and both CodeController and CallbackController take
+    one (PendingSignInStore IS now there: KeychainPendingSignInStore; TokenStore:
+    KeychainTokenStore).
+  - the universal-link receipt (associated domains, apple-app-site-association) feeding
+    handleLink.
+  - the transport's base URL: AuthApi(NsUrlSessionTransport(), baseUrl) - no iOS configuration
+    of it exists.
+  - `syncNow`: Android passes buildSyncEngine(context).sync(); iOS has no composed SyncEngine
+    yet - `{}` is a legal value but means held days are not sent at sign-in (R509).
+  - the iOS framework declaration (REPORT-IOS-1b-A R609 item 2) and the bundled Compose
+    resources - now 18 glyphs.
+iOS-SPECIFIC, FOUND HERE: PlatformSerializable is an empty marker on iOS - the restore seeds are
+  NOT persisted there; an iOS host restores sign-in state its own way (or not at all).
+  accountTagOf on iOS is CommonCrypto SHA-256, pinned to Android's by one vector. Material3
+  date pickers stay unlinked (R774).
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref    sha      result   wall
+  41720094372  ios2a  ec58c67  success  ~12m (21:15:15Z-21:27:08Z)
+One dispatch, no push-triggered run (ios2a does not match ios-*). Report-only commits trigger
+nothing (paths-ignore).
+
+================================================================================
+PARKED (UNNUMBERED - no series letter claimed)
+================================================================================
+UNNUMBERED-1  There is no sign-in instrumented test in androidTest; the sign-in screens' only UI
+              proof on Android is Paparazzi (pixels) plus a device reading. Trigger: the next task
+              that changes sign-in behaviour.
+UNNUMBERED-2  LogFenceTest reads :shared commonMain only; iosMain now holds credential code
+              (KeychainPendingSignInStore, AccountTag.ios.kt - beside KeychainTokenStore, which
+              was already there unscanned). None of them logs; nothing checks that.
+UNNUMBERED-3  NOTICED, NOT TOUCHED: shared account/UnownedAccount.kt's comment says
+              "accountTagOf did NOT move and must not" - true of the BODY (still MessageDigest,
+              now in androidMain), stale about the declaration (now common).
+UNNUMBERED-4  swap.sh (copied lineage) taps Play Protect's "Ne pas envoyer" at portrait
+              coordinates; in landscape it tapped off-screen 187 times. A tap by the button's
+              bounds would not.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. main's audit APK was not rebuilt: AN-LAUNCH-ATTENTION's 6e1ec87 build was copied, by tree
+   identity (`git diff 6e1ec87 dabb9b6 -- android` empty), signer verified.
+2. OnDeviceFormatGoldenTest (a JVM fence, not a Compose UI/instrumented/a11y test): its two
+   subject paths edited to follow the renamed :app files; shown RED on the old paths first.
+3. detekt CyclomaticComplexMethod suppressed on Glyph.ios.kt's lookup `when`;
+   PlatformSerializable's iOS file is named PlatformSerializable.kt (MatchingDeclarationName).
+4. accountTagOf's declaration moved to commonMain despite KMP-2b's R372 note; the JVM body did
+   not move off MessageDigest.
+5. CallbackController.handle(uriString) became handleLink(SignInLink?) + an :app extension
+   keeping the old name (R770's shape).
+6. R773 and R771's instrumented run stopped at a permission refusal (above).
+7. The phone's Custom Tab was navigated once and closed (PHONE STATE).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R773, R771) - the phone is signed in to the operator's demo essai.oumaima@monreleve.test
+   (local server: 20 entries, 1 live session; the phone's data intact). The full flow needs the
+   app signed out, and the sign-out was refused. Options, not chosen:
+   (a) the operator signs the demo out (or authorises the session to), then a short device
+       session runs R773's flow and the instrumented suite on main and on ios2a;
+   (b) the operator authorises connectedAndroidTest / a second test install path that does not
+       touch the demo (there is none today: one package id);
+   (c) accept R773 as CallbackScreen-only plus Paparazzi and the iOS UI test, and merge.
+Q2 - the brief says to leave the phone "signed out" AND "do not delete anything"; with the demo
+   signed in, those conflict. It was left signed in, as found.
+
+================================================================================
+PUSH PROOF
+================================================================================
+@@PUSH@@
+
+END OF REPORT-IOS-2a
