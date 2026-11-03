@@ -29,6 +29,17 @@ enum class Glyph {
     TRIANGLE_ALERT,
     CIRCLE_X,
     OCTAGON_ALERT,
+
+    // IOS-2a R767: the onboarding kit's glyphs (OnboardingKit.kt - the back chevron, the info note, the brand mark)
+    // and the ones its callers hand IconCircle (the code screen's mail, the welcome rows, the reminder's bell).
+    CHEVRON_LEFT,
+    INFO,
+    LOGO_MARK,
+    MAIL,
+    CALENDAR_CHECK,
+    FILE_TEXT,
+    LOCK,
+    BELL,
     ;
 
     /** The drawable's file name without extension - the one derivation every platform uses. */

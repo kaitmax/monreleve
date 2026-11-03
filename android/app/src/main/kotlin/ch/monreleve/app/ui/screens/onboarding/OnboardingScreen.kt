@@ -25,11 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import ch.monreleve.app.R
 import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.calc.Regime
 import ch.monreleve.app.calc.regimeFor
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
@@ -361,7 +361,7 @@ private fun ModeStep(
 @Composable
 private fun RappelStep() {
     IconCircle(
-        iconRes = R.drawable.ic_bell,
+        glyph = Glyph.BELL,
         contentDescription = OnboardingCopy.REMINDER_TITLE,
         diameter = Spacing.space64,
         iconSize = Spacing.space28,

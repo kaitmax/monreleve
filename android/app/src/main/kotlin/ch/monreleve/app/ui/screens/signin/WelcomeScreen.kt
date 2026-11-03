@@ -12,8 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import ch.monreleve.app.R
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.Fr
@@ -47,9 +47,9 @@ fun WelcomeScreen(
             Text(text = Fr.APP_NAME, style = FrontierType.h3, color = LightColors.brand)
             Text(text = WelcomeCopy.TITLE, style = FrontierType.h1, color = LightColors.textPrimary)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.space16)) {
-                Feature(R.drawable.ic_calendar_check, WelcomeCopy.FEATURE_RECORD_ICON, WelcomeCopy.FEATURE_RECORD)
-                Feature(R.drawable.ic_file_text, WelcomeCopy.FEATURE_RELEVE_ICON, WelcomeCopy.FEATURE_RELEVE)
-                Feature(R.drawable.ic_lock, WelcomeCopy.FEATURE_PRIVACY_ICON, WelcomeCopy.FEATURE_PRIVACY)
+                Feature(Glyph.CALENDAR_CHECK, WelcomeCopy.FEATURE_RECORD_ICON, WelcomeCopy.FEATURE_RECORD)
+                Feature(Glyph.FILE_TEXT, WelcomeCopy.FEATURE_RELEVE_ICON, WelcomeCopy.FEATURE_RELEVE)
+                Feature(Glyph.LOCK, WelcomeCopy.FEATURE_PRIVACY_ICON, WelcomeCopy.FEATURE_PRIVACY)
             }
             GapHeight(Spacing.space8)
         }
@@ -61,7 +61,7 @@ fun WelcomeScreen(
 
 @Composable
 private fun Feature(
-    iconRes: Int,
+    glyph: Glyph,
     iconDescription: String,
     text: String,
 ) {
@@ -70,7 +70,7 @@ private fun Feature(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.space12),
     ) {
-        IconCircle(iconRes = iconRes, contentDescription = iconDescription)
+        IconCircle(glyph = glyph, contentDescription = iconDescription)
         Text(text = text, style = FrontierType.bodyL, color = LightColors.textPrimary)
     }
 }
