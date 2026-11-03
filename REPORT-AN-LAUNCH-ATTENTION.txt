@@ -13,10 +13,9 @@ RULINGS  R761-R765 as numbered in the prompt (free: `git grep` on origin/main an
 ================================================================================
 SUMMARY / STATUS (R391)
 ================================================================================
-STATUS: GREEN on the code tip 6e1ec87 - the full :app:gate --rerun-tasks and the iOS cloud run
-(R573) both ran on 6e1ec87 THIS session. The pushed tip is the next commit, which adds ONLY this
-report (`git diff 6e1ec87 <tip> -- android` empty); neither was re-run on that commit. Pending
-merge.
+STATUS: FULL GATE NOT RUN on the report tip. The full :app:gate --rerun-tasks and the iOS run
+41652399158 are GREEN on 6e1ec87, the code tip, this session; the report commits add only this
+file (git diff 6e1ec87 HEAD -- android empty). Pending merge.
 FULL :app:gate --rerun-tasks on 6e1ec87, this session, ALONE (dev server stopped, port 3400
 free, no other Gradle build), after ./gradlew --stop, 2.41 GB free at start
 (ram-waits.txt: it waited from 1.27 GB):
@@ -310,6 +309,7 @@ announced; (3) swipe to the afternoon heading - it still reads that sentence.
 ================================================================================
 PARKED (UNNUMBERED - never a heading in parking.md)
 ================================================================================
+(This report's numbering; AN-LAUNCH-SPEECH's UNNUMBERED-1 is the defect R761-R764 fixed.)
 UNNUMBERED-1  DayChoiceCard's optionsWereOpen focus request (R762) still FIRES on a load
               (first frame -> rows on a whole-day answered day); it is inert today because
               its target, the answer's "Modifier" TextButton, is not focusable in touch mode
