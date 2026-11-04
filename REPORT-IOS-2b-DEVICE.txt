@@ -316,3 +316,10 @@ Branch ios2b-device only (never main, never production, never ios2b). This repor
 branch adds to origin/ios2b aa46567; its push is recorded in the follow-up commit.
 
 END OF REPORT-IOS-2b-DEVICE
+
+PUSH PROOF, FOLLOW-UP: the report commits 77fb5fe and b4652c2 (the gpio_keys correction) pushed -
+git push -u origin ios2b-device -> "* [new branch] ios2b-device -> ios2b-device"; git ls-remote origin
+refs/heads/ios2b-device -> b4652c2a88575e0ca2aabbaa07d49728c01256f7. Untouched: refs/heads/ios2b
+aa4656793cbba30cc1413827e8e8e4410e2a3551, refs/heads/main 50227144a237a3b9ff7abef04c0b64e2407e5beb.
+`git diff --stat 282426a b4652c2` -> REPORT-IOS-2b-DEVICE.txt (new) and REPORT-IOS-2b.txt (583) only.
+No ruling numbers were added by this report. Not pushed: main, production, ios2b.
