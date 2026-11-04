@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,18 +43,26 @@ import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.OnboardingState
 import ch.monreleve.app.onboarding.OnboardingStep
 import ch.monreleve.app.onboarding.RateChoice
-import ch.monreleve.app.onboarding.isoOf
 import ch.monreleve.app.onboarding.swissDate
 
 // AN-ONBOARD. The onboarding WIZARD (design/onboarding steps 1-7). Stateless: it reads an OnboardingState and
 // calls back (fence 5). Every string comes from OnboardingCopy/CantonCopy (R238 / no-literal fence). The
 // summary ("Tout est prêt") is PretScreen. Deviations from the mockups, built then noted: no granularity step;
 // the real-days method reveals a total field the mockup omits (the engine requires one).
+//
+// IOS-2b R776/R779: moved to :shared commonMain (package unchanged). THE DATE PICKER IS A NATIVE SEAM: the period
+// step still owns WHEN the picker shows (showPicker, as before) and composes `startDatePicker` there, but WHAT shows
+// is the host's. Android passes Material3's DatePickerDialog, unchanged, from :app (OnboardingStartDatePicker.kt) -
+// Material3 1.7.3's date pickers are unlinked on iOS (CommonMainFenceTest, MaterialDatePickerCanaryTest), so no
+// shared file may name them. iOS passes its own (IOS-1b-B). THE CONTRACT: the slot is composed while the picker is
+// asked for; it calls onPicked(an ISO day, yyyy-MM-dd) with the chosen day, and onDismiss() to close - after a pick,
+// or alone to cancel. There is deliberately no default: a picker that does nothing is not a picker.
 
 @Composable
 fun OnboardingScreen(
     state: OnboardingState,
     actions: OnboardingActions,
+    startDatePicker: @Composable (onPicked: (isoDay: String) -> Unit, onDismiss: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val submitting = state.phase == OnboardingPhase.SUBMITTING
@@ -84,7 +91,8 @@ fun OnboardingScreen(
                 OnboardingStep.TAUX -> TauxStep(state, actions.onRateChoiceChange, actions.onCustomRateChange)
                 OnboardingStep.METHODE -> MethodeStep(state, actions.onDenominatorChange, actions.onExactTotalChange)
                 OnboardingStep.GRANULARITY -> GranularityStep(state, actions.onGranularityChange)
-                OnboardingStep.PERIODE -> PeriodeStep(state, actions.onAllYearChange, actions.onActivityStartDateChange)
+                OnboardingStep.PERIODE ->
+                    PeriodeStep(state, actions.onAllYearChange, actions.onActivityStartDateChange, startDatePicker)
                 OnboardingStep.MODE -> ModeStep(state, actions.onChooseManual, actions.onChooseAuto)
                 OnboardingStep.RAPPEL -> RappelStep()
             }
@@ -273,12 +281,12 @@ private fun MethodeStep(
     InfoNote(text = OnboardingCopy.METHOD_INFO)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PeriodeStep(
     state: OnboardingState,
     onAllYearChange: (Boolean) -> Unit,
     onActivityStartDateChange: (String) -> Unit,
+    startDatePicker: @Composable (onPicked: (isoDay: String) -> Unit, onDismiss: () -> Unit) -> Unit,
 ) {
     var showPicker by rememberSaveable { mutableStateOf(false) }
     Text(text = OnboardingCopy.PERIOD_TITLE, style = FrontierType.h1, color = LightColors.textPrimary)
@@ -317,19 +325,7 @@ private fun PeriodeStep(
         }
     }
     if (showPicker) {
-        val pickerState = androidx.compose.material3.rememberDatePickerState()
-        androidx.compose.material3.DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TertiaryButton(
-                    label = OnboardingCopy.CONTINUE,
-                    onClick = {
-                        pickerState.selectedDateMillis?.let { onActivityStartDateChange(isoOf(it)) }
-                        showPicker = false
-                    },
-                )
-            },
-        ) { androidx.compose.material3.DatePicker(state = pickerState) }
+        startDatePicker(onActivityStartDateChange) { showPicker = false }
     }
 }
 
