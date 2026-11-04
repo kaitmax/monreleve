@@ -24,6 +24,12 @@ import kotlinx.coroutines.launch
 //   GENERIC      - any other refusal
 // The server collapses expired/used/unknown into INVALID_LINK by design, so the
 // client cannot split those three; that limit is stated in REPORT-AN4.txt.
+//
+// IOS-2a R768/R770: MOVED TO :shared commonMain with its state, package unchanged. THE LINK'S RECEIPT DID NOT MOVE
+// (R600, R766): parsing the incoming URI (CallbackLink, java.net) and the App Link intent stay in :app, which hands
+// this controller the token and address already validated - handleLink(SignInLink?) - through an extension that
+// keeps the old entry point, handle(uriString), unchanged for every Android caller. MALFORMED is now decided by
+// the platform's receipt (null); MISMATCH, the exchange and everything after it are decided here, as before.
 
 enum class CallbackPhase { WORKING, SIGNED, INVALID_LINK, MALFORMED, MISMATCH, NETWORK_ERROR, GENERIC_ERROR }
 
@@ -46,8 +52,13 @@ class CallbackController(
     private val mutableState = MutableStateFlow(CallbackState())
     val state: StateFlow<CallbackState> = mutableState.asStateFlow()
 
-    fun handle(uriString: String?) {
-        val parsed = CallbackLink.parse(uriString)
+    /**
+     * IOS-2a R770: the link a platform RECEIVED, already checked against the frozen shape by that platform's own
+     * receipt, or null when it was not a sign-in link at all (MALFORMED). Android's receipt is
+     * `CallbackController.handle(uriString)` in :app (CallbackLinkReceipt.kt, over CallbackLink.parse); an iOS
+     * universal-link receipt feeds this same call (SignInLink.kt states the contract).
+     */
+    fun handleLink(parsed: SignInLink?) {
         val remembered = pending.pending()?.trim()?.lowercase()
         val incoming = parsed?.email?.trim()?.lowercase()
         val phase =
@@ -63,7 +74,7 @@ class CallbackController(
         exchange(requireNotNull(parsed))
     }
 
-    private fun exchange(parsed: CallbackLink.Parsed) {
+    private fun exchange(parsed: SignInLink) {
         mutableState.update { it.copy(phase = CallbackPhase.WORKING) }
         scope.launch {
             val next =

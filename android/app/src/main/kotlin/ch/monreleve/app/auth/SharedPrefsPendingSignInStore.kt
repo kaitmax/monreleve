@@ -14,14 +14,10 @@ import android.content.Context
 // in-memory) so it survives the process death between requesting the link and the
 // App Link re-opening the app. Excluded from backup alongside the token store -
 // an email is a credential in this product's threat model (the log fence lists it).
-
-interface PendingSignInStore {
-    fun remember(email: String)
-
-    fun pending(): String?
-
-    fun clear()
-}
+//
+// IOS-2a R768: the PendingSignInStore CONTRACT moved to :shared commonMain (auth/PendingSignInStore.kt there), with
+// the controllers that read it. This file keeps the Android implementation and its keys, renamed after its class
+// (was auth/PendingSignInStore.kt; OnDeviceFormatGoldenTest reads the keys here).
 
 private const val PENDING_PREFS = "monreleve.pending"
 private const val PENDING_EMAIL = "email"

@@ -23,14 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.monreleve.app.R
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
+import ch.monreleve.app.design.glyphPainter
 
 // AN-ONBOARD. The shared vocabulary for the welcome, sign-in and onboarding screens, built from the
 // approved mockups (design/onboarding/*.dc.html) on tokens only. No string literal lives here (fence 4):
@@ -43,6 +43,13 @@ import ch.monreleve.app.design.Spacing
 //   not a raw value.
 // - The icon-circle background and the selected-card fill (#EAF0F7 in the mockups) use LightColors.brandSoft
 //   (R337, closes PARKAN-42): the named brand tint, DERIVED from the one brand token in design/Tokens.kt.
+//
+// IOS-2a R767. MOVED TO :shared commonMain, PACKAGE UNCHANGED, so every caller's import resolves as before. It is
+// the vocabulary of the sign-in screens AND of comparison, prevision, rythme, simulation and onboarding, so it moved
+// first, on its own. Its glyphs go through ruling 14's seam (design/Glyph.kt): Android still draws the app's own
+// drawable, found by name - the same resource, so the same pixels - and iOS draws the Compose resource generated
+// from the same file. IconCircle therefore names its glyph by the enum, not by an R.drawable Int: :shared cannot
+// see :app's R.
 
 /** The large primary action (56 dp, pill, brand fill) the mockups use for "Continuer" / "Commencer". */
 @Composable
@@ -102,7 +109,7 @@ fun TertiaryButton(
 /** A round brand-tinted circle holding a glyph, as the mockups draw their feature and header icons. */
 @Composable
 fun IconCircle(
-    iconRes: Int,
+    glyph: Glyph,
     contentDescription: String,
     modifier: Modifier = Modifier,
     diameter: androidx.compose.ui.unit.Dp = Spacing.space48,
@@ -113,7 +120,7 @@ fun IconCircle(
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            painter = painterResource(iconRes),
+            painter = glyphPainter(glyph),
             contentDescription = contentDescription,
             tint = LightColors.brand,
             modifier = Modifier.size(iconSize),
@@ -130,7 +137,7 @@ fun BackButton(
 ) {
     IconButton(onClick = onBack, modifier = modifier.size(Spacing.space48)) {
         Icon(
-            painter = painterResource(R.drawable.ic_chevron_left),
+            painter = glyphPainter(Glyph.CHEVRON_LEFT),
             contentDescription = contentDescription,
             tint = LightColors.brand,
             modifier = Modifier.size(Spacing.space24),
@@ -173,7 +180,7 @@ fun InfoNote(
 ) {
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.space8)) {
         Icon(
-            painter = painterResource(R.drawable.ic_info),
+            painter = glyphPainter(Glyph.INFO),
             contentDescription = null,
             tint = LightColors.textSecondary,
             modifier = Modifier.size(Spacing.space20).clearAndSetSemantics {},
@@ -190,7 +197,7 @@ fun LogoMark(
     diameter: androidx.compose.ui.unit.Dp = Spacing.space48,
 ) {
     Icon(
-        painter = painterResource(R.drawable.ic_logo_mark),
+        painter = glyphPainter(Glyph.LOGO_MARK),
         contentDescription = contentDescription,
         tint = Color.Unspecified,
         modifier = modifier.size(diameter),

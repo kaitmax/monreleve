@@ -24,11 +24,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import ch.monreleve.app.R
 import ch.monreleve.app.auth.CODE_LENGTH
 import ch.monreleve.app.auth.CodePhase
 import ch.monreleve.app.auth.CodeState
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Spacing
 import ch.monreleve.app.fr.AujourdhuiCopy
@@ -67,7 +67,7 @@ fun CodeScreen(
             verticalArrangement = Arrangement.spacedBy(Spacing.space20),
         ) {
             IconCircle(
-                iconRes = R.drawable.ic_mail,
+                glyph = Glyph.MAIL,
                 contentDescription = CodeCopy.TITLE,
                 diameter = Spacing.space64,
                 iconSize = Spacing.space28,

@@ -3,6 +3,7 @@ package ch.monreleve.app.auth
 import ch.monreleve.app.data.remote.ApiFailure
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.MagicLinkResult
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,9 @@ import kotlinx.coroutines.launch
 // The phase set is deliberately small and semantic: the enumeration guarantee
 // (docs/api-v1.md 1.5) means Sent is the one outcome for a 202 whatever the truth,
 // so there is no "unknown address" phase to leak one.
+//
+// IOS-2a R768: MOVED TO :shared commonMain with its state, package unchanged, so every :app import resolves as before.
+// The restore seed's supertype is PlatformSerializable: java.io.Serializable on Android, the same bytes in the Bundle.
 
 enum class SignInPhase { EDITING, SUBMITTING, LINK_SENT, RATE_LIMITED, NETWORK_ERROR, GENERIC_ERROR }
 
@@ -36,7 +40,7 @@ data class SignInState(
 data class SignInSnapshot(
     val email: String = "",
     val phase: SignInPhase = SignInPhase.EDITING,
-) : java.io.Serializable {
+) : PlatformSerializable {
     companion object {
         private const val serialVersionUID: Long = 1L
     }
