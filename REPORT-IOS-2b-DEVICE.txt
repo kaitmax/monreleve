@@ -182,7 +182,10 @@ HARNESS - each change proven before anything was measured (R180, R782)
 Copies in .ios2b-device-evidence/ (gitignored); each edited file's IOS-2b original kept beside it as
 *.ios2b.orig.*. Nothing in C:/wt/ios2b was modified (sha256 of the copied scripts equal to IOS-2b's).
 1. swap.sh: F (the APK) and OUT (its temp file) pointed at C:/wt/ios2b/.ios2b-evidence/ - repointed to
-   this session's folder (R334). Proof: four installs wrote nothing there.
+   this session's folder (R334). Proof, read after the session: three swap.sh installs (tip, main, the
+   as-found restore; Gradle installed the debug APKs itself); `find C:/wt/ios2b/.ios2b-evidence -newer
+   <this session's lock, written 16:25:15>` EMPTY and `git -C C:/wt/ios2b status --porcelain` EMPTY.
+   (CORRECTED: the first text said "four installs", unverified at the time.)
 2. read.mjs, THE LOOP GUARD (UNNUMBERED-3): it ended a reading when one focus text had been heard more
    than 8 times IN ALL - the canton list repeats "Non selectionne, Bouton radio" 27 times. Now it ends a
    reading only when one focus text is heard 4 times IN A ROW (a stuck reader repeats back to back; a
@@ -323,3 +326,5 @@ refs/heads/ios2b-device -> b4652c2a88575e0ca2aabbaa07d49728c01256f7. Untouched: 
 aa4656793cbba30cc1413827e8e8e4410e2a3551, refs/heads/main 50227144a237a3b9ff7abef04c0b64e2407e5beb.
 `git diff --stat 282426a b4652c2` -> REPORT-IOS-2b-DEVICE.txt (new) and REPORT-IOS-2b.txt (583) only.
 No ruling numbers were added by this report. Not pushed: main, production, ios2b.
+Then e972876 (this PUSH PROOF) pushed: b4652c2..e972876; and the R334 sentence corrected in the commit
+after it (its SHA is the branch tip the handback reports from git ls-remote).
