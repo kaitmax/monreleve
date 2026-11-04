@@ -305,4 +305,6 @@ account and its server-held settings remain in the local frontalier database (no
 ================================================================================
 PUSH PROOF
 ================================================================================
-(below)
+Report commit 5bdb3ce pushed: git push -u origin ios2a-device -> "* [new branch] ios2a-device ->
+ios2a-device"; git ls-remote origin ios2a-device -> 5bdb3ce40412ee1f3baf9c17b2782f367f04f791.
+This PUSH PROOF is the commit after it (report-only). Not pushed: main, production, ios2a.
