@@ -142,6 +142,8 @@ class OnboardingController(
     private val taxYear: Int,
     private val scope: CoroutineScope,
     restored: OnboardingSnapshot? = null,
+    // IOS-2b R778: the PATCH /me body is made by a function handed in, so the controller holds no codec.
+    private val patchBody: (Settings) -> String = Settings::mePatchBody,
 ) {
     private val mutableState =
         MutableStateFlow(
@@ -246,7 +248,7 @@ class OnboardingController(
         val settings = buildSettings(current) ?: return
         mutableState.update { it.copy(phase = OnboardingPhase.SUBMITTING, error = null) }
         scope.launch {
-            when (saver.saveSettings(settings.mePatchBody())) {
+            when (saver.saveSettings(patchBody(settings))) {
                 is PostOutcome.Ok -> {
                     store.save(settings)
                     mutableState.update { it.copy(phase = OnboardingPhase.READY) }
