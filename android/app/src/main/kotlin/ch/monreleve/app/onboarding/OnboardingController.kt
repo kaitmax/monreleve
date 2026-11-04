@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 // AN-ONBOARD. The onboarding WIZARD (design/onboarding steps 1-7 + "Tout est prêt"), replacing AN5b's single
 // scrolling form. It holds ONE state across the steps and Back preserves everything (R310). Lives OUTSIDE ui/
@@ -239,7 +238,7 @@ class OnboardingController(
         when {
             s.allYear -> null
             s.activityStartDate.isBlank() -> OnboardingError.START_DATE_INVALID
-            runCatching { LocalDate.parse(s.activityStartDate.trim()) }.isFailure -> OnboardingError.START_DATE_INVALID
+            !isIsoDay(s.activityStartDate.trim()) -> OnboardingError.START_DATE_INVALID
             else -> null
         }
 

@@ -14,6 +14,9 @@ private val SWISS = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 internal fun swissDate(iso: String): String =
     if (iso.isBlank()) "" else runCatching { LocalDate.parse(iso).format(SWISS) }.getOrDefault(iso)
 
+/** The period step's start-date check (IOS-2b R777): a strict ISO day. The controller trims before asking. */
+internal fun isIsoDay(value: String): Boolean = runCatching { LocalDate.parse(value) }.isSuccess
+
 /** A Material 3 DatePicker's UTC-midnight millis as an ISO day string (R28: stored as the ISO day it always was). */
 internal fun isoOf(millis: Long): String = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
 
