@@ -26,7 +26,7 @@ SUMMARY
   RUN. NO STATE HAS TWO BUILDS; NOTHING WAS COMPARED; NO CLAIM OF IDENTITY IS MADE.
 - The phone was being physically acted on during this session: a USB detach (16:33-16:38:41, no reboot),
   three volume-up key events at 16:44:10 (during two harness-proof captures, which caught the system
-  volume panel), and the gpio_keys press at 16:55:12. QUESTION Q1.
+  volume panel), and the gpio_keys presses at 16:55:08-13 (two keys). QUESTION Q1.
 - Instrumented run on the S9 against the tip's code: 57 tests, 0 failures, 0 errors (XML). No class
   drives the onboarding screens; exactly which classes touch onboarding types is listed below.
 - Phone restored: as-found APK reinstalled (on-device sha256 d417d021...), app SIGNED OUT on the welcome
@@ -82,7 +82,7 @@ AFTER (17:07:47 phone clock 18:07:47), read back:
     accelerometer_rotation 1; ring 15; accessibility_shortcut_dialog_shown 1.
   - SETTINGS DIFF before vs after (phone/after-settings-*.txt): secure NONE; global NONE; system 3 lines:
       TIME_DIFFERENCE 2295 -> 1779, auto_brightness_transition_time 1920 -> 1797   the system's own
-      volume_a11y_speaker 10 -> 9   CHANGED BY THE OUTSIDE EVENT (the gpio_keys press at 16:55:12,
+      volume_a11y_speaker 10 -> 9   CHANGED BY THE OUTSIDE EVENT (the gpio_keys presses at 16:55:08-13,
                                     turned by the screen reader into ADJUST_LOWER on the accessibility
                                     stream) - not this session's input, so NOT restored.
   - packages identical (504); /data/local/tmp identical.
@@ -130,7 +130,7 @@ WHAT RAN, MAIN'S BUILD ONLY (5022714; tag "main"):
                                                                                                         event 16:44:10
                                                                                                         before and after)
   canton   1       "Canton de votre employeur"  60     stop-pattern   (as nom)                       YES - stop 33
-                   216                                                                               (16:55:12 gpio_keys)
+                   216                                                                               (16:55:08 gpio_keys)
   The canton reading is now COMPLETE: 26 cantons, 27 "Non selectionne, Bouton radio" lines, then the
   two notes, "Continuer, Touche", "Continuer, Touche, dernier element" (stop 60). IOS-2b's was cut at
   stop 21 by the old guard (UNNUMBERED-3).
@@ -162,9 +162,12 @@ THE OUTSIDE EVENTS (not this session's input) - QUESTION Q1
    new guard reads the audio log rather than the window focus. The audio log also shows a ~1.3 s held
    volume-up at 15:12:53 (phone 16:12:53), before this session started. Ring volume was already 15, so
    these left no settings trace.
-3. 16:55:12.818 UTC (phone 17:55:12.818): InputReader "Input event(6): value=1", value=0 at 17:55:13.022 phone - device 6 is
-   gpio_keys (dumpsys input), the phone's physical side keys; the only two device-6 lines in a log
-   holding 240 lines from the harness's own virtual keyboard (device 257). At 13.082 Samsung Voice
+3. 16:55:08-16:55:13 UTC: four InputReader lines from device 6 = gpio_keys (dumpsys input), the
+   phone's physical side keys, phone clock: "Input event(6): value=1" at 17:55:08.290, value=1 at
+   12.818, value=0 at 13.022, value=0 at 13.074 - one key held about 4.8 s and a second pressed with it,
+   both released by 13.074. (CORRECTED before the push: the first text of this report said "the only two
+   device-6 lines"; the log holds four.) They are the only device-6 lines in a log holding 240 lines
+   from the harness's own virtual keyboard (device 257). At 13.082 Samsung Voice
    Assistant (which filters keys while on) called adjustStreamVolume(stream=10 accessibility, dir=-1)
    and spoke "Volume Accessibilite, 60 pourcent" into the canton reading. Its 60 matched key combos were
    all keycombo_shortcut_navigate_next (the harness's Alt+Right). volume_a11y_speaker 10 -> 9.
@@ -286,7 +289,7 @@ DEVIATIONS
 QUESTIONS
 ================================================================================
 Q1 (R783) - Something pressed the S9's physical side keys while it was meant to be untouched: three
-   volume-up events at 16:44:10 (and a ~1.3 s hold at 15:12:53), a gpio_keys press at 16:55:12 that the
+   volume-up events at 16:44:10 (and a ~1.3 s hold at 15:12:53), two gpio_keys keys held together at 16:55:08-13, which the
    screen reader turned into an accessibility-volume step inside a reading, and the USB link dropped for
    five minutes at 16:33. IOS-2b's stop was the same family (a volume key, then both keys held). Is the
    phone resting on its volume rocker, or in a case or stand that presses it, or is a person handling it?
