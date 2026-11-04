@@ -1,0 +1,93 @@
+IOS-2a-DEVICE SESSION PROMPT - Mon Releve
+THE S9 HALF OF IOS-2a: R773 (the whole sign-in flow, main vs branch)
+AND R771's instrumented run. No code change.
+Written by the orchestrating session on 2026-11-04 after REPORT-IOS-2a
+(branch ios2a, tip 4a9400d, code tip ec58c67) stopped at R773: the
+permission system refused the sign-out of the operator's demo account
+(Q1). The operator chose Q1 option (a). On 2026-11-04, at the
+operator's request, the orchestrator signed the demo account out on the
+S9 through the app's own "Se deconnecter" dialog; the phone now shows
+the welcome screen, with the as-found APK (sha256 d417d021...) still
+installed. The demo account's days live on the LOCAL dev database, not
+on the phone; nothing of the operator's is on the device any more.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2a-DEVICE.txt,
+committed and pushed. R334, R349, R392: your OWN worktree at
+C:/wt/ios2a-device, NEW branch ios2a-device cut from origin/ios2a
+(4a9400d), your lock in it. C:/wt/ios2a belongs to the previous session
+(untracked evidence): READ and COPY from C:/wt/ios2a/.ios2a-evidence/,
+never modify or remove anything there. Stage BY NAME. Push your branch
+ONLY - never main, never production, never ios2a itself.
+
+NO CODE CHANGE. The branch's code is ec58c67, gated green there
+(:app:gate 1392/168, iOS run 41720094372). If this session finds a
+reason to change code, it STOPS and reports - it does not change it.
+No :app:gate and no iOS run are required unless code changes (it may
+not); say so in STATUS in R391's shape, naming ec58c67 as where the
+full gate ran and showing `git diff --stat ec58c67 HEAD` is report-only.
+
+THE MACHINE: one heavy step at a time, >= 1.5 GB free read in its own
+step, `./gradlew --stop` first. Ports 3000, 3100, 3200 are tizicorp's:
+never touch. Serve the local stack on a free host port (3400 was used)
+and map with `adb reverse tcp:3000 tcp:<port>`. Never run test:db
+against the shared `frontalier` database. adb:
+%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe; in Git Bash set
+MSYS_NO_PATHCONV=1 or /sdcard paths are rewritten.
+
+THE PHONE: Samsung's "protection contre les appuis accidentels" screen
+appears when the top sensor is covered; dismiss by dragging the lock
+icon (about 540,1505 up to 540,700). The keyguard has no secure lock.
+
+====================================================================
+THE APKS (use these; do not rebuild unless one fails to install)
+====================================================================
+C:/wt/ios2a/.ios2a-evidence/apk/
+  as-found-installed-base.apk   d417d021...  (restore this at the end)
+  main-dabb9b6-audit.apk        f4986d19...
+  tip-ec58c67-audit.apk         470599cb...
+Verify each sha256 before use and record it.
+The previous session's scripts (getcode.mjs, shot.mjs, cmp.mjs,
+read.mjs, readpair.sh, swap.sh, tb.mjs, hidkeys.mjs) are there too;
+copy them into your own evidence folder.
+
+====================================================================
+THE WORK
+====================================================================
+0. Record the phone: installed APK sha256 and signer, signed-out welcome
+   screen, every setting the AN-TALKBACK device rules list. If it is NOT
+   on the welcome screen signed out, STOP and report.
+1. R773, unchanged from relay/IOS-2a.txt: on main's audit build and on
+   the tip's - welcome, request a link, code, signed in, one wrong code,
+   sign out - with your OWN throwaway @monreleve.test address (never
+   essai.oumaima@..., never a real address). Each screen: pixels
+   compared (code field masked BEFORE capture, R574; no code and no
+   magic-link URL printed anywhere) and TalkBack navigated stops
+   IDENTICAL line by line. Any difference is a finding: STOP and ask.
+   A reading disturbed by an outside event is reported and that state
+   stopped on, never silently re-read (Ruling 8 Q2).
+   The sign-out in this flow is of YOUR throwaway account, which the
+   operator has authorised for this check. If the permission system
+   refuses any step anyway: do NOT look for another way round it; put
+   the exact command in the report and stop.
+2. R771: RUN the sign-in instrumented tests (the ones IOS-2a moved or
+   that cover sign-in) on the S9 against the tip, assertions unedited;
+   paste counts from the XML. connectedAndroidTest uninstalls the app:
+   that is expected and authorised now that nothing of the operator's is
+   on the phone. Same refusal rule as above.
+3. Restore: the as-found APK reinstalled (sha256 shown), app SIGNED OUT
+   on the welcome screen, adb reverse removed, every recorded setting
+   shown restored, dev server stopped and its port shown free, Gradle
+   stopped, your lock removed.
+
+====================================================================
+REPORT - REPORT-IOS-2a-DEVICE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / PHONE STATE BEFORE AND AFTER / APKS (sha256)
+/ R773 (per screen, both builds: pixels and stops, identical or the
+difference) / R771 (tests run, counts) / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF IOS-2a-DEVICE PROMPT

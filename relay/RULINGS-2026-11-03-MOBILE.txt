@@ -149,3 +149,68 @@ OUTCOME (AN-LAUNCH-ATTENTION)
 - relay/ rescanned for R761-R765: only AN-LAUNCH-ATTENTION.txt (this
   task's own prompt). main pushed 3829f7d..e7dddf2. production untouched
   (52caca8).
+
+ADVISOR RULING 9 (IOS-2a, branch ios2a 4a9400d, and IOS-2a-DEVICE,
+branch ios2a-device cfd7b4c, both on dabb9b6)
+- R766 is the operator's word (2026-11-03): "move the other screens into
+  shared code one at a time, the way IOS-1b-A did ... Sign-in plus
+  onboarding would be the natural first pair". R600 amended as written
+  in relay/IOS-2a.txt; told to the operator, no objection raised.
+- Measured: base = origin/main = dabb9b6, so main has NOT moved. Code tip
+  ec58c67; ec58c67..cfd7b4c is REPORT-IOS-2a.txt and
+  REPORT-IOS-2a-DEVICE.txt only. IOS-2a's full :app:gate --rerun-tasks
+  (BUILD SUCCESSFUL in 11m 41s, 260 tasks, GATE_EXIT=0, :app 1392 /
+  :shared 168, 0 failures, 142 screenshot tests at 0.0, none
+  re-recorded) and iOS run 41720094372 (SUCCESS, 20 steps, 229 simulator
+  tests incl. SignInScreensIosTest 2) are on ec58c67 and carry to the
+  merge by identity.
+- Merge: YES, of ios2a-device (which contains ios2a).
+- IOS-2a Q1 (the demo account's sign-out was refused by the permission
+  system): the operator chose (a). On 2026-11-04, at the operator's
+  request ("singn out for me"), the orchestrator signed
+  essai.oumaima@monreleve.test out on the S9 through the app's own
+  dialog, whose text says it clears only this device's copy; the days
+  stay on the local dev database. "Supprimer mon compte" was not touched.
+- IOS-2a Q2 (the brief said both "signed out" and "nothing deleted"):
+  a defect in the brief, not the session's. Device-rules wording for
+  every later prompt: A SIGNED-IN ACCOUNT YOU DID NOT CREATE IS REPORTED,
+  NEVER SIGNED OUT; "LEAVE IT SIGNED OUT" MEANS YOUR OWN ACCOUNT.
+- IOS-2a-DEVICE Q1 (sign-out dialog, 99,175 px): ACCEPTED as harness.
+  The card (rows 640-1460) is 0 px; every differing pixel is behind the
+  scrim, on Parametres, which did not move. The proof is positive, not
+  an explanation: the list sat 9 px apart ("Compte" y=868 main, y=877
+  tip), and the tip image shifted up 9 px matches rows 80-625 exactly.
+- IOS-2a-DEVICE Q2 (welcome stop 0): ACCEPTED as an outside event. The
+  extra utterance, "Ecran d'accueil One UI", is the launcher's own
+  string, which the app cannot emit; stops 1-11 identical.
+- Both acceptances are recorded under Ruling 8 Q2's literal rule, which
+  stands: the sessions STOPPED and asked, and this ruling answers. The
+  reading harness (UNNUMBERED-3) gains two requirements: a deterministic
+  scroll position before any capture, and the app asserted in the
+  foreground (no relaunch gap) before stop 0 is read.
+- R771, said exactly: the S9 instrumented run is 57/57, but only
+  KeystoreTokenStoreInstrumentedTest (3) is near sign-in; no androidTest
+  drives the moved screens, before or after. The screen proof is
+  Paparazzi at zero, the JVM Compose tests and SignInScreensIosTest.
+- Told to the operator: IOS-2a, on their phone, pressed BACK once in
+  their Chrome Custom Tab history, closed that tab (production
+  monreleve.ch, not restorable), and answered three Play Protect dialogs
+  "Ne pas envoyer". The orchestrator's earlier line "the phone is as you
+  left it" was inaccurate on that point.
+- For IOS-2b: there is no iOS AccountStore though both moved controllers
+  take one; there is no shared sign-in host (Android's is private to
+  MainActivity); R774's three DatePicker options are the operator's or
+  advisor's to choose, not the session's.
+- Record, do not act: C:/wt/ios2a and C:/wt/ios2a-device hold untracked
+  evidence (R334); both worktrees stay (R392). The throwaway account
+  ios2a-device.r773@monreleve.test remains in the local database.
+
+OUTCOME (IOS-2a)
+- Merged as adefe22 (--no-ff, of ios2a-device cfd7b4c). Identity proven
+  on adefe22: whole tree equal to cfd7b4c's, android/ equal to ec58c67's
+  (both diffs empty). No iOS re-run and no :app:gate re-run: main had not
+  moved.
+- Free memory read in its own step first (4.99 GB). gate:clone alone on
+  exactly adefe22: GATE:CLONE PASSED, first run.
+- relay/ rescanned for R766-R775: only IOS-2a.txt, IOS-2a-DEVICE.txt and
+  this file. main pushed dabb9b6..adefe22. production untouched (52caca8).

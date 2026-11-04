@@ -1,0 +1,220 @@
+IOS-2a SESSION PROMPT - Mon Releve
+SIGN-IN BECOMES SHARED: THE ONBOARDING KIT, THE SIGN-IN STATE, THE FOUR
+SIGN-IN SCREENS (no Apple account needed)
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared. Uses the iOS cloud workflow (one dispatched run)
+and the S9. Written by the orchestrating session on 2026-11-03 from the
+operator's instruction of the same day (R766 below). The advisor rules
+in the operator's place for this task (relay/RULINGS-2026-11-03-MOBILE.txt).
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2a.txt,
+committed and pushed. Unclear? R156: conservative, reversible, a PARK
+entry (UNNUMBERED-n in the report), continue. Ends early: R156's
+boundary; a red gate you cannot fix; a path reaching a real person; a
+degraded context. R334, R349, R392: your OWN worktree at C:/wt/ios2a,
+branch ios2a, your lock in it. Stage BY NAME. READ before writing. R391
+governs STATUS: the FULL :app:gate --rerun-tasks AND one iOS cloud run
+(R573) on the reported tip. R393's guard is live. ABSENCE NEEDS A
+POSITIVE CONTROL. Any opt-in follows R590. Push your BRANCH only -
+never main, never production.
+
+THE BRANCH NAME IS DELIBERATE. .github/workflows/ios-shared.yml runs on
+every push to an `ios-*` branch, and each run is paid macOS time. This
+branch is `ios2a`, which that pattern does not match: push as often as
+you like, and dispatch the iOS run yourself, ONCE on the tip
+(`gh workflow run ios-shared.yml --ref ios2a`), plus at most one
+earlier run if a commonMain compile question cannot wait. Zero steps =
+NO RESULT: stop and say so (funding is the operator's).
+
+Rulings R766-R775; renumber if taken (R162). R761-R765 are
+AN-LAUNCH-ATTENTION's.
+
+BASE: origin/main at or after dabb9b6 (AN-LAUNCH-ATTENTION merged as
+e7dddf2; :app:gate green 1392/152 and the iOS run 41652399158 green on
+its code).
+
+THE MACHINE: start a heavy step (a Gradle gate, a release build) only
+with >= 1.5 GB free, read in its OWN step, and after `./gradlew --stop`;
+one heavy step at a time. A killed run is NO RESULT, re-run once; two
+in a row -> stop and hand back. Ports 3000, 3100 and 3200 belong to
+another project (tizicorp; its containers may be down after a reboot -
+the rule stands): never stop or touch them. Serve the local stack on a
+free host port and map the device with `adb reverse tcp:3000
+tcp:<host port>`. adb is at
+%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe. Never run test:db
+against the shared `frontalier` database.
+
+THE DEVICE RULES are AN-TALKBACK's, unchanged (relay/AN-TALKBACK.txt,
+"THE DEVICE, STANDING RULES"): local stack, an @monreleve.test account,
+R574 (the code field is masked BEFORE any capture; no code and no
+magic-link URL printed), certificate STOP, real clock, record the
+installed APK and every setting before and show each restored after.
+The phone may be signed in to a demo account the operator used
+(essai.oumaima@monreleve.test): record it, do not delete anything, and
+leave the phone as every session does - the as-found APK reinstalled,
+signed out. connectedAndroidTest UNINSTALLS the app and its database.
+If the S9 is not attached, do everything else and report R773 as NOT
+RUN - never as passed.
+
+====================================================================
+THE OPERATOR'S DECISION, recorded here as R766
+====================================================================
+R766. R600 AMENDED (2026-11-03, the operator's words: "move the other
+    screens into shared code one at a time, the way IOS-1b-A did. Each
+    move is checked by Android's pixel-identical screenshots plus the
+    iOS simulator run in the cloud ... Sign-in plus onboarding would be
+    the natural first pair"). R600 said the other screens move only
+    after the iPhone pilot passes R615; the Apple account does not exist
+    yet, so screens now move BEFORE IOS-1b-B, proven by Android's
+    pixels and the simulator. R615's criteria still apply to every
+    moved screen when Part B runs. R600's other half STANDS: native
+    Apple pieces stay native - SIGN-IN LINKS INCLUDED. The screens move;
+    the link RECEIPT does not (R770).
+    ORDER: this task (the kit and sign-in), then IOS-2b (onboarding),
+    written after this report - not this session.
+
+R273. Read REPORT-IOS-1b-A (R602 controller-first; R603 and ruling 14
+    in relay/RULINGS-2026-10-26.txt: icons KEPT AS BUILT - Android
+    draws by name, iOS from Compose resources generated from the same
+    files, no drawable moved; R604 the fences; R606 Compose UI tests DO
+    run on iOS; R608 the pilot fixture; R609), REPORT-AN-TALKBACK and
+    REPORT-AN-LAUNCH-SPEECH (the navigated-stop reading), REPORT-AN-
+    SIGNOUT-REFRESH (R706), app/auth/*, ui/screens/signin/*,
+    ui/screens/onboarding/OnboardingKit.kt, shared auth/* and every
+    fence that reads ui/. Their evidence directories are READ and
+    COPIED from, never modified (R334): C:/wt/an-launch-attention/
+    .an-launch-attention-evidence/ holds getcode.mjs and the reading
+    scripts.
+R1. PRECONDITIONS, or stop before the first change: origin/main contains
+    e7dddf2; the S9 listed (or R773 NOT RUN, above).
+
+HARD BOUNDARIES:
+  - ANDROID IS PIXEL-IDENTICAL: all Paparazzi baselines verify at zero
+    (R626) with NONE re-recorded - the sign-in screens AND every screen
+    that uses the kit (comparison, prevision, rythme, simulation,
+    onboarding);
+  - Compose UI, instrumented and accessibility tests pass with their
+    ASSERTIONS UNEDITED (imports may change; say which);
+  - no behaviour change: the same requests in the same order, the same
+    errors and copy, R574's masking, R706's sign-out path, the account
+    tag; SessionHolder and SessionEnds untouched unless a moved
+    controller needs them - then say so;
+  - no wire, server, schema or engine change; no copy change;
+  - no drawable moved (ruling 14); no navigation library;
+  - ANY dependency added to :shared, or any version change, STOPS and
+    asks with the trade-off (SPEC 20; R601's lesson);
+  - the onboarding SCREEN does not move (IOS-2b); no iOS app, Xcode
+    project, signing or TestFlight (IOS-1b-B).
+
+====================================================================
+THE RULINGS
+====================================================================
+R767. THE KIT MOVES FIRST, ON ITS OWN. ui/screens/onboarding/
+    OnboardingKit.kt (BackButton, BottomActions, IconCircle, LogoMark,
+    PrimaryButton, SecondaryButton, GapHeight) is used by the sign-in
+    screens AND by comparison, prevision, rythme and simulation. It
+    moves to :shared commonMain the KMP-3 way: what pins it today is
+    pinned first, then `git mv` unedited where possible (R457's
+    kotlin-test permission covers :app's test scope). Its icons go
+    through ruling 14's seam (Glyph), each one added the way IOS-1b-A
+    added Aujourd'hui's, with R603's path-string comparison. Paparazzi
+    at zero across every user of the kit. Its own commit.
+
+R768. THE SIGN-IN STATE MOVES SECOND, BEFORE ANY SIGN-IN UI. SignIn-,
+    Code- and Callback- State and Phase, CODE_LENGTH, and the three
+    controllers move to commonMain, tests pinned on the current code
+    first. Every collaborator that needs an Android Context
+    (PendingSignInStore, KeystoreTokenStore, anything else found) is
+    reached through a commonMain interface; the Android implementation
+    stays in :app. shared iosMain already has KeychainTokenStore; it
+    has no PendingSignInStore - add one if it is small and needs no
+    dependency, else record why it is deferred. No java.* or android.*
+    in commonMain (the fences say so). Its own commit.
+
+R769. THE FOUR SCREENS MOVE. Welcome, RequestLink, Code and Callback
+    composables move to commonMain; Android hosts them through the same
+    calls as before. Every fence that read ui/screens/signin reads the
+    new home (FenceRoot); the no-inline-string, tokens-only and any
+    signin-specific fence each shown RED once on a planted violation in
+    the shared screens - each plant VERIFIED landed where intended
+    before its result is read (R180), and deleted after. Its own commit.
+
+R770. LINK RECEIPT STAYS NATIVE (R600, R766). CallbackLink.kt
+    (java.net.URI / URLDecoder) and the App Link intent receipt stay in
+    :app. What the shared CallbackScreen/controller takes from the
+    platform is a named, platform-free contract (for example the token
+    and email already parsed). Write that contract down for IOS-1b-B,
+    whose universal-link receipt will feed it.
+
+R771. ANDROID IS THE PROOF. Paparazzi verify at zero, none re-recorded;
+    every sign-in Compose UI and instrumented test green with assertions
+    unedited (run them - IOS-1b-A compiled its instrumented tests but
+    did not RUN them; this session runs the sign-in ones on the S9); the
+    release APK size before and after, in bytes, with the reason for any
+    change.
+
+R772. iOS COMPILES AND DRIVES THE SCREENS. The one dispatched run builds
+    the shared sign-in screens for the simulator and runs commonTest
+    for the moved state; plus a Compose UI test on iOS of the sign-in
+    screens over a FAKE transport (extend R608's fixture or add a
+    sibling): request a link, enter a code, signed-in reached, and one
+    refusal. No server, no account, no real address; R574 - no code in
+    any log line or capture.
+
+R773. ON THE S9, AGAINST THE LOCAL STACK (audit build,
+    -PfrontalierHost=127.0.0.1, adb reverse, never production): the
+    whole flow on main's build and on the branch's - welcome, request a
+    link, code, signed in; one wrong code; sign out - each screen
+    compared with main's (screenshots with the code field masked, R574)
+    and its TalkBack navigated stops IDENTICAL line by line (AN-LAUNCH-
+    SPEECH's reading). Any difference is a finding: STOP and ask. A
+    reading disturbed by an outside event (a notification, a rotation,
+    a volume key) is NOT re-read silently: report it and stop on that
+    state (ADVISOR RULING 8, Q2 - the rule is literal).
+
+R774. FOR IOS-2b, WRITTEN DOWN, NOT DONE. OnboardingController uses
+    java.time; OnboardingDates and OnboardingScreen use a Material3
+    DatePicker, which R624 UNLINKED and fenced on iOS. Measure and
+    report: which DatePicker APIs, where, and the options (a native
+    picker per R600's native-pieces clause, a foundation-built picker,
+    or relinking Material3's) with each one's cost. Do not choose.
+
+R775. WHAT IOS-1b-B NOW NEEDS. The report ends with: the entry points an
+    iOS app must call to host sign-in and Aujourd'hui, the R770
+    contract, the iOS pieces still missing (PendingSignInStore if
+    deferred, the universal-link receipt, the transport's base URL),
+    and anything iOS-specific found.
+
+====================================================================
+THE WORK
+====================================================================
+0. R273, R1; the phone attached and its state recorded.  1. R767 kit.
+Commit.  2. R768 state and controllers. Commit.  3. R769 screens, R770
+contract. Commit.  4. R771 Android proof.  5. R772 (the one iOS run, on
+the tip once the code is final).  6. R773 on the S9; restore the phone,
+shown restored.  7. R774, R775. FULL :app:gate --rerun-tasks on the tip
+(BUILD line and test counts pasted from the log). Push the branch.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+The onboarding screen and controller (IOS-2b). Every other screen.
+Navigation libraries. Any iOS app, Xcode project, signing, TestFlight.
+Moving drawables to Compose resources (parked, ruling 14). Dark mode.
+Any behaviour or copy change.
+
+====================================================================
+REPORT - REPORT-IOS-2a.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / PHONE STATE BEFORE AND AFTER /
+R766 / R767 (users of the kit; path comparison) / R768 / R769 (each
+fence red then green, plant verified) / R770 (the contract) / R771
+(baselines untouched, tests run, size) / R772 (run id, steps, the iOS
+UI test) / R773 (per screen: pixels and stops, identical or the
+difference) / R774 / R775 / CI MINUTES / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF IOS-2a PROMPT
