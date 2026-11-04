@@ -1,0 +1,308 @@
+REPORT-IOS-2a-DEVICE - Mon Releve
+THE S9 HALF OF IOS-2a: R773 (THE WHOLE SIGN-IN FLOW, MAIN VS BRANCH) AND R771'S INSTRUMENTED RUN
+R773 RUN END TO END ON BOTH BUILDS - TWO DIFFERENCES FOUND, BOTH OUTSIDE THE MOVED SCREENS'
+CONTENT, STOPPED ON AND ASKED (Q1, Q2). R771 RUN: 57/57.
+
+TASK     relay/IOS-2a-DEVICE.txt (main checkout, untracked); R773/R771 as worded in relay/IOS-2a.txt;
+         device rules relay/AN-TALKBACK.txt.
+BASE     origin/ios2a 4a9400d (code tip ec58c67).
+BRANCH   ios2a-device, worktree C:/wt/ios2a-device (R349), lock .session-lock.json (gitignored),
+         removed at the end. Pushed: ios2a-device only. PENDING MERGE - nothing here is on main or
+         on ios2a.
+DEVICE   SM-G960F (Galaxy S9, Android 10), serial 232bcd8c300c7ece.
+EVIDENCE C:/wt/ios2a-device/.ios2a-device-evidence/ (untracked, never committed: it holds dev.log,
+         which carries the sign-in links and codes).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+R773: the whole flow - welcome, request a link (empty and address typed), the code screen at
+rest, ONE wrong code, the right code -> signed in (the shell), Parametres' sign-out dialog,
+signed out (welcome) - ran end to end on main's audit build (dabb9b6) and on the tip's
+(ec58c67), with my own throwaway ios2a-device.r773@monreleve.test, against the local stack.
+Eight states per build:
+  - NAVIGATED STOPS: IDENTICAL line by line in all eight states (cmp.mjs, stops 1..last).
+  - PIXELS: 0 px differ in seven states. The sign-out DIALOG state differs by 99 175 px - all
+    of them in the background behind the scrim (Parametres, a screen IOS-2a did not move),
+    which my harness scrolled 9 px differently on the two runs; the dialog card itself is 0 px.
+    QUESTION Q1.
+  - STOP 0 of the welcome reading (what is spoken at launch, before any navigation): main's
+    reading has one extra utterance, "Ecran d'accueil One UI" - the LAUNCHER, announced in the
+    gap between read.mjs's force-stop and its relaunch. An outside event inside a reading:
+    reported, stopped on, not re-read (Ruling 8 Q2). QUESTION Q2.
+  Both are differences under the rule's literal reading, so R773 is reported as STOPPED ON TWO
+  DIFFERENCES, not as identical.
+R771: :app:connectedDebugAndroidTest on the tip's code, on the S9: 57 tests, 0 failures, 0 errors,
+0 skipped (13 classes), assertions unedited. The phone was then restored: as-found APK d417d021...
+reinstalled, signed out on the welcome screen, every recorded setting back.
+No code changed.
+
+================================================================================
+STATUS (R391)
+================================================================================
+NO CODE CHANGE. FULL GATE NOT RUN on 4a9400d+report in this session, and none was owed: the brief
+requires a gate only if code changes. The full :app:gate --rerun-tasks ran on the code tip ec58c67
+in IOS-2a (1392 :app / 168 :shared tests, BUILD SUCCESSFUL, GATE_EXIT=0; iOS run 41720094372
+SUCCESS). What this branch adds is report-only:
+    `git diff --stat ec58c67 HEAD` (before this report's commit):
+     REPORT-IOS-2a.txt | 439 +++++   1 file changed, 439 insertions(+)
+    and this commit adds REPORT-IOS-2a-DEVICE.txt only.
+The only Gradle builds here were :app:assembleDebug :app:assembleDebugAndroidTest (BUILD SUCCESSFUL
+in 2m 4s) and :app:connectedDebugAndroidTest (BUILD SUCCESSFUL in 1m 14s, exit 0), both on the
+checked-out ec58c67 code. gate:clone NOT RUN: no web/ change.
+R773: RUN ON BOTH BUILDS; STOPPED ON TWO DIFFERENCES (Q1, Q2). R771: RUN, 57/57.
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (2026-11-04 08:52 phone clock, nothing changed):
+  ch.monreleve.app 0.1.0 (versionCode 1), base.apk sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (the as-found APK),
+    signer (apksigner on the same file) ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1;
+    lastUpdateTime 2026-11-03 22:57:15.
+  SIGNED OUT, WELCOME SCREEN (UI dump after waking: "Mon Releve", the three promises,
+    "Commencer"). Screen was dozing; woken with KEYCODE_WAKEUP + dismiss-keyguard.
+  enabled_accessibility_services null (absent); accessibility_enabled 0;
+  touch_exploration_enabled 0; stay_on_while_plugged_in 0; volume_a11y_speaker null;
+  volume_ring_speaker 11; accelerometer_rotation 1; auto_time 1; auto_time_zone 1;
+  adb reverse empty; orientation portrait.
+  Snapshots: phone/before-settings-{secure,global,system}.txt (450/298/425 lines),
+  before-packages.txt (504), before-tmp.txt.
+  Screen readers installed: com.samsung.accessibility only (no Google TalkBack) - the same
+  service the earlier readings used.
+DURING: adb reverse tcp:3000 tcp:3400; stay_on_while_plugged_in 7; Samsung Voice Assistant
+  (com.samsung.accessibility/com.samsung.android.app.talkback.TalkBackService) ON only inside
+  each reading and DELETED after each (never `put null`), asserted absent by the script.
+  Samsung's "protection contre les appuis accidentels" screen appeared once, during the prep
+  pass (not during a measured state), dismissed by the lock-icon drag.
+AFTER (10:19 phone clock), read back:
+  - connectedAndroidTest uninstalled the app (pm path empty, read before reinstalling); the
+    as-found APK reinstalled -> Success; on-device sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034; launched: the WELCOME
+    screen, signed out.
+  - adb reverse --remove-all -> empty; stay_on 0; enabled_accessibility_services null;
+    accessibility_enabled 0; touch_exploration_enabled 0; volume_a11y_speaker null; ring 11;
+    accelerometer_rotation 1; auto_time 1; auto_time_zone 1.
+  - SETTINGS DIFF before vs after: secure NONE, global NONE, system 3 lines, all the system's
+    own: tips_regular_hour_timer_{absolute,renewal}_count 2909 -> 2911, and
+    homescreenPreview_capturetime_land 1793720574417 -> 1793783939414 (= 2026-11-04 09:18:59Z,
+    inside the connectedAndroidTest run whose XML is stamped 09:18:39Z, 33.8 s: the launcher
+    took its own landscape preview then). Every orientation check during the R773 states read
+    portrait (mCurrentOrientation=0).
+  - packages identical (504); /data/local/tmp identical.
+  - The phone's clock stayed real (auto_time 1 throughout).
+
+================================================================================
+APKS (sha256, all signer ef336db5...e373d1 by apksigner)
+================================================================================
+Copied (read only) from C:/wt/ios2a/.ios2a-evidence/apk/ into my evidence folder; nothing in
+C:/wt/ios2a was modified.
+  as-found-installed-base.apk  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+  main-dabb9b6-audit.apk       f4986d19a2f8ce882eb86dbb5507160ecaff42ac4ae42bd62c813ed53d5d3082
+  tip-ec58c67-audit.apk        470599cb0efbbb1338f950af4f896c1a536c349df5f6ab46426b1a7f2caefaf2
+  R771, built here from ec58c67's code: app-debug.apk and app-debug-androidTest.apk, both
+  signer ef336db5...e373d1 (checked before the run) - no certificate STOP.
+Each install's on-device hash was read after it (swap.sh): main f4986d19..., tip 470599cb...,
+restore d417d021....
+
+================================================================================
+R773 - ON THE S9, AGAINST THE LOCAL STACK
+================================================================================
+STACK: this worktree's web/ (pnpm install --frozen-lockfile, .env copied, both gitignored),
+`PORT=3400 pnpm dev`; R169: /api/health -> {"service":"monreleve",...,"status":"ok"};
+/api/ready 200; database frontalier-postgres on 5436 (docker: Up, healthy). Ports 3000/3100/3200
+not touched (tizicorp's containers were Exited). adb reverse tcp:3000 tcp:3400. NEVER production.
+ACCOUNT: ios2a-device.r773@monreleve.test - new (a SELECT on "User" showed no such address
+before), mine, throwaway. Never essai.oumaima, never a real address.
+SERVER CALLS, whole session (dev.log, statuses only): magic-link 202 x4; code 200 x4, 400 x3
+(the one wrong code per run); GET /me 200 x4; PATCH /me 200 x1 (prep onboarding); sign-out 200 x4.
+Code attempts on the address today: 7 of the 10/day limit.
+
+THE PREP PASS (unmeasured, on main's build): a fresh account's sign-in lands on onboarding, and
+"Se deconnecter" exists only in Parametres, in the shell. So, before either measured run: signed
+in once, completed the 8-step onboarding (Geneve, 100 %, simplifiee, journees entieres, annee
+entiere, manuel, no reminder) -> PATCH /me 200 -> the shell -> Parametres -> Se deconnecter.
+After it, BOTH measured runs met the same server state (account with settings, no days), so
+"signed in" lands on the shell (Aujourd'hui) identically on both.
+
+THE PROCEDURE (flow.sh, identical for both builds; main 09:27-09:49, tip 09:49-10:12 phone clock):
+  install -r the build over the signed-out app; force-stop; launch. Per state: checks (portrait,
+  MainActivity focused, an expected text on screen, the soft keyboard hidden); a capture with
+  every EditText painted over BEFORE anything is written (shot.mjs, refusing to write unless the
+  EditText count equals the expected one - R574); then Voice Assistant on, the reading
+  (read.mjs: a virtual HID keyboard pressing Alt+Right; what was SPOKEN, from the reader's own
+  SpeechControllerImpl log), service deleted, then a re-check the state still stands.
+  Code screens: captured and read only after the 60 s resend countdown has run out ("Renvoyer un
+  code" at rest; the keyboard attach recreates the activity and restarts the countdown, hence
+  PRE_WAIT 65 s) - on both builds alike.
+  The wrong code is the fixed 000000 (refused: code 400). Then the boxes cleared (MOVE_END+DEL,
+  verified empty by a masked dump), the right code read by getcode.mjs from dev.log into a temp
+  file, typed digit by digit and the file deleted - never printed (R574).
+  The Parametres list was scrolled to its end, then two slow drags back, to bring
+  "Se deconnecter" on screen.
+
+RESULTS (stops = navigated stops 1..the "dernier element" stop; pixels = rows 80-2075, the
+status bar excluded; masked = EditTexts painted before writing):
+  STATE            MASKED  STOPS main/tip  STOPS        PIXELS
+  1 welcome          0       11 / 11       IDENTICAL    0 px
+  2a request link    1        8 / 8        IDENTICAL    0 px
+  2b address typed   1        8 / 8        IDENTICAL    0 px
+  3 code (at rest)   6       17 / 17       IDENTICAL    0 px
+  4 wrong code       6       18 / 18       IDENTICAL    0 px
+  5 signed in        0       47 / 47       IDENTICAL    0 px   (the shell, Aujourd'hui)
+  6 sign-out dialog  0        4 / 4        IDENTICAL    99 175 px DIFFER - Q1
+  7 signed out       0       10 / 10       IDENTICAL    0 px   (welcome)
+  Masked rectangles identical between builds in every state.
+  Before the first navigated stop (what the reader says when it starts): the same spoken text on
+  both builds in states 2a-7 ("Affichage Portrait" then "Mon Releve", or "Boite de dialogue" for
+  6). In state 1, stop 0 differs - Q2.
+
+THE READINGS, SHORT (transliterated to ASCII here; the files hold the spoken text verbatim):
+  1  "Logo Mon Releve, Image, Mon Releve" / "Mon Releve" / "Vos jours de teletravail, ..." /
+     three image + text pairs / "Commencer, Touche" + "Appuyez sur Alt + ENTER pour activer."
+     / "Commencer, Touche, dernier element".
+  2a "Retour, Touche, Mon Releve" / logo / "Se connecter a Mon Releve" / "Pas de mot de passe
+     ..." / "Adresse e-mail" / "Zone d'edition, prenom.nom@exemple.ch" / "Recevoir mon lien de
+     connexion, Touche" / the CGU sentence in fragments with "2 liens" / the same, "dernier
+     element".  2b: the same, the field speaking the throwaway address.
+  3  "Modifier, Touche, Mon Releve" / image / "Verifiez votre messagerie" / "Nous avons envoye
+     un lien et un code a ios2a-device.r773@monreleve.test" / "Modifier" / "Code a 6 chiffres" /
+     "Chiffre 1 sur 6, Zone d'edition" ... "Chiffre 6 sur 6" / "Le lien et le code ne
+     fonctionnent qu'une seule fois." / "Valider le code, Touche, Desactive" / "Ouvrir ma
+     messagerie, Touche" / "Rien recu ?" / "Renvoyer un code" / "..., dernier element".
+  4  as 3, except the six boxes speak "0, Zone d'edition" (the fixed wrong code), the error
+     "Ce code n'est pas valable. Verifiez les six chiffres et reessayez, ou utilisez le lien de
+     connexion contenu dans le meme e-mail." after the one-use line, and "Valider le code,
+     Touche" (enabled).
+  5  "Bonjour Ios, Mon Releve" / ... 47 stops of the shell.
+  6  "Se deconnecter ?, Boite de dialogue" / the body / "Rester connecte, Touche" /
+     "Se deconnecter, Touche" / "..., dernier element".
+  7  as 1, read from where it stands.
+
+Q1 IN DETAIL - THE DIALOG STATE'S PIXELS:
+  Rows 640-1460 (the dialog card): 0 px differ. All 99 175 differing px lie outside the card,
+  in rows 80-1835 (runs [80-86],[99-143],...,[1829-1835]).
+  The UI dumps taken just before tapping "Se deconnecter" place the Parametres rows 9 px apart:
+  "Compte" y=868 / "Se deconnecter" y=1023 on main, 877 / 1032 on the tip. Comparing main's row
+  y with the tip's row y+9 outside the card: rows 80-625 match EXACTLY; what still differs is
+  only at the card's rounded edges (626-639, 1461-1510) and at the bottom edge of the scrolling
+  viewport (1753-1776, 1827-1835). Looked at both PNGs: the same Parametres content behind the
+  scrim, the tip's 9 px lower; the card, its text and buttons the same.
+  CAUSE: my harness - the two `input swipe 540 600 540 1400 2000` drags back from the list's end
+  do not land on the same pixel run to run. Parametres is not one of the screens IOS-2a moved.
+  The navigated stops of the dialog are IDENTICAL (4/4).
+
+Q2 IN DETAIL - WELCOME, STOP 0 (the launch announcement):
+  main: "Ecran d'accueil One UI" {TYPE_WINDOW_STATE_CHANGED} then "Mon Releve" {TYPE_WINDOWS_CHANGED}
+  tip : "Mon Releve" {TYPE_WINDOWS_CHANGED}
+  Raw log (main): 09:27:42.263 "Ecran d'accueil One UI" - 09:27:43.451 "Mon Releve"; (tip):
+  09:50:22.190 "Mon Releve". read.mjs's LAUNCH mode force-stops the app and relaunches it with
+  monkey; on main's reading the One UI home screen was on screen long enough in between to be
+  announced, on the tip's it was not. The utterance is the launcher's, not the app's; stops
+  1-11 that follow are identical. Not re-read (Ruling 8 Q2).
+
+STATE 6's sign-out of the throwaway account went through without any permission refusal, in the
+prep pass and in both measured runs (sign-out 200 x4 including run 1's cleanup, below).
+
+================================================================================
+R771 - THE SIGN-IN INSTRUMENTED TESTS, RUN ON THE S9
+================================================================================
+WHAT EXISTS: IOS-2a moved NO androidTest class (git diff dabb9b6 ec58c67 --
+android/app/src/androidTest is EMPTY - every assertion is unedited) and NO androidTest class
+drives the sign-in screens; the sign-in screens' Compose tests are the Paparazzi suite
+(SignInScreensScreenshotTest, verified at 0.0 in IOS-2a). The one sign-in-adjacent instrumented
+class is auth.KeystoreTokenStoreInstrumentedTest (the token store sign-in writes to). :shared has
+no android instrumented source set. So the whole :app instrumented suite was run, not a subset.
+RUN (from C:/wt/ios2a-device/android, after ./gradlew --stop; 4.04 GB free read in its own step;
+stay_on 7; phone awake):
+  ./gradlew :app:connectedDebugAndroidTest -PfrontalierHost=127.0.0.1
+  "Starting 57 tests on SM-G960F - 10"
+  BUILD SUCCESSFUL in 1m 14s      CONNECTED_EXIT=0
+  results XML: tests="57" failures="0" errors="0" skipped="0" time="33.808"
+  timestamp="2026-11-04T09:18:39" (= this run); <failure> elements: 0
+  (TEST-SM-G960F - 10-_app-.xml, sha256
+   b4ca0da2e48cfcb4be516de4436d4c32ef05e26e916c24aa0632841601250ff3; copy in evidence)
+  57 = the @Test count across the 13 androidTest files, counted before the run.
+PER CLASS (pass/total, from the XML):
+  CanaryInstrumentedTest                                   1/1
+  StatePreservationInstrumentedTest                        2/2
+  auth.KeystoreTokenStoreInstrumentedTest                  3/3   <- the sign-in-adjacent class
+  data.local.MonReleveMigrationTest                        9/9
+  data.sync.YearDownloadRoomTransactionInstrumentedTest    2/2
+  ui.screens.RateOneStringInstrumentedTest                 2/2
+  ui.screens.aujourdhui.AnswerIconInstrumentedTest         8/8
+  ui.screens.aujourdhui.AnswerStatusInstrumentedTest       4/4
+  ui.screens.aujourdhui.HalfDayChoiceInstrumentedTest      7/7
+  ui.screens.aujourdhui.LaunchAttentionInstrumentedTest    4/4
+  ui.screens.aujourdhui.LaunchSpeechInstrumentedTest       6/6
+  ui.screens.calendrier.CalendarSheetSaveInstrumentedTest  3/3
+  ui.screens.calendrier.ProvenanceShownInstrumentedTest    6/6
+COMPARED: AN-TALKBACK ran 47 on 33c3578; the +10 are LaunchSpeech (6) and LaunchAttention (4),
+added since. The run uninstalled the app, as expected; reinstalled as above.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. THE PREP PASS (above): one unmeasured sign-in + onboarding + sign-out on main's build, so
+   "signed in" is the same screen on both measured runs. Without it the first build would land
+   on onboarding and the second on the shell - a difference of state, not of code.
+2. RUN 1 OF MAIN WAS ABORTED AND REDONE IN FULL. Two harness defects, both mine:
+   (a) read.mjs's default end pattern "^Retour, Touche" (meant for the navigation bar) matched
+       the request screen's own back button, "Retour, Touche, Mon Releve", so both request
+       readings ended at stop 1;
+   (b) the Parametres scroll (six swipes to the end) left "Se deconnecter" off screen, and the
+       script aborted on its own check.
+   Fixed in flow.sh (end pattern "dernier element|Applis recentes|Applications recentes|Barre de
+   navigation", ASCII dots for the accents; to-the-end then two slow drags back). Run 1 then
+   signed out by hand (unmeasured) and its files were moved, kept, to run1-aborted/. Main was
+   then run again from the start, and the tip once, with the same script. No state of run 2 or
+   of the tip was re-read.
+3. read.mjs's loop guard raised 4 -> 8 (it ends a reading when one focus text repeats more than
+   N times; the six code boxes after a wrong code each speak "0, Zone d'edition", so run 1's
+   wrong-code reading stopped at box 5). Edited at ~09:27 (phone clock) during run 2 of main, at about
+   the moment its welcome reading began (first utterance 09:27:39) and before every later one;
+   welcome has no repeated stop, and the guard can only change where a reading ends, and no other state repeats a stop more than four times. Both builds' readings
+   used 8 for every state that has repeats.
+4. The wrong code is the fixed 000000, and the reader spoke its six "0" boxes; it is not a
+   sign-in code. The real codes were never printed, captured or spoken (typed into the boxes
+   only; the right code's state is not read - the screen leaves at once).
+5. shot.mjs gained one refusal: it writes nothing unless the EditText count found equals the one
+   expected for the state (R574: a dump that misses a field must not produce an unmasked file).
+   Never triggered.
+6. dev.log holds the sign-in links and codes; it stays in the untracked evidence folder and was
+   only ever read through filters (statuses) and getcode.mjs.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R773, state 6, the sign-out dialog) - the dialog card is 0 px and its 4 stops are identical;
+   99 175 px differ behind the scrim, the unmoved Parametres list scrolled 9 px differently by my
+   harness's drags (proof above). Options:
+   (a) accept as harness-caused, the moved content identical;
+   (b) re-run state 6 on both builds with a deterministic scroll (e.g. to the end of the list and
+       the dialog opened from there by its node). Cost: a sign-in per build = 2 more code attempts
+       on the throwaway address (7 of 10 used today; the limit resets on a rolling 24 h window).
+Q2 (R773, state 1, stop 0) - main's launch announcement carries the One UI launcher's
+   "Ecran d'accueil One UI" before "Mon Releve"; the tip's has "Mon Releve" only. It comes from
+   the force-stop/relaunch gap in read.mjs's LAUNCH mode, not from the app; stops 1-11 identical.
+   Options: (a) accept as an outside event; (b) re-read welcome's stop 0 on both builds (no sign-in
+   needed, no code attempt) with a gap-free launch (e.g. `am start -S` or a longer settle before
+   the first utterance is counted).
+Nothing else is open. No product defect was found.
+
+================================================================================
+CLEANUP
+================================================================================
+Dev server stopped: TaskStop killed the shell only; the orphaned next dev tree (PID 21776 and
+child 588, both C:/wt/ios2a-device/web) killed with taskkill /T (R179: a tree this session
+spawned); no node process under C:/wt/ios2a-device left. Port 3400: /api/health answered 200
+before, curl exit 7 (connection refused) after. (netstat lists no listener on 3400 even while it
+was serving - not evidence on this machine.) ./gradlew --stop -> "1 Daemon stopped". adb reverse
+empty. Lock .session-lock.json removed after the push. C:/wt/ios2a untouched. The throwaway
+account and its server-held settings remain in the local frontalier database (nothing deleted).
+
+================================================================================
+PUSH PROOF
+================================================================================
+(below)
