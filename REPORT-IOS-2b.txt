@@ -571,3 +571,13 @@ git ls-remote origin refs/heads/ios2b -> 282426a063252081c03530f3596fa63998be666
 commit after 282426a and changes REPORT-IOS-2b.txt only; its push is recorded in the follow-up commit.
 
 END OF REPORT-IOS-2b
+
+PUSH PROOF, FOLLOW-UP: the report commit 768e97a pushed - git push origin ios2b -> "282426a..768e97a
+ios2b -> ios2b"; git ls-remote origin refs/heads/ios2b -> 768e97a1333a00f1eee926210689d1a16d43c0bc;
+`git diff --stat 282426a 768e97a` -> REPORT-IOS-2b.txt only (573 insertions). gh run list --workflow
+ios-shared.yml --branch ios2b -> 41823078576 on 282426a (workflow_dispatch) only. R776-R785 re-grepped
+before the push: only relay/IOS-2b.txt and this report. Not pushed: main, production.
+CLEANUP: dev server tree (PIDs 20536, 24176 under C:/wt/ios2b/web) killed with taskkill /T; no node
+process under C:/wt/ios2b/web remains; curl 3400 exit 7. ./gradlew --stop after the gate. adb reverse
+empty. Lock .session-lock.json removed after this push. Evidence stays in C:/wt/ios2b/.ios2b-evidence/
+(ignored). The throwaway ios2b.tip@monreleve.test remains in the local database and signed in on the S9.
