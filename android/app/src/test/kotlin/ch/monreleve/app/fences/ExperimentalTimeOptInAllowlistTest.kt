@@ -82,6 +82,8 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
             "app/src/main/kotlin/ch/monreleve/app/detection/JavaTimeCheckWindows.kt" to 2,
+            // IOS-2c R788: the controller pin's one build helper hands the controller a fixed kotlin.time.Clock.
+            "app/src/test/kotlin/ch/monreleve/app/calendar/CalendarControllerPinTest.kt" to 1,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
             // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
