@@ -21,6 +21,7 @@ import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.toChoice
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -147,11 +148,15 @@ data class CalendarSnapshot(
  * stores it in the saved-instance-state Bundle, which survives a config change AND a background kill (C2).
  * Null means "not selecting"; a present snapshot means selection mode is on, with these days and this anchor.
  * The confirmation's two conditional lines are NOT stored - they are re-derived from the days on restore (R181).
+ *
+ * IOS-2c R788: the supertype is PlatformSerializable - on Android an actual typealias of java.io.Serializable, so the
+ * same class with the same computed serialVersionUID (measured equal before and after the move) and the same Bundle
+ * bytes; on iOS an empty marker (an iOS host restores the selection its own way, or not at all).
  */
 data class SelectionSnapshot(
     val days: List<String>,
     val anchor: String?,
-) : java.io.Serializable
+) : PlatformSerializable
 
 // AN-STATE: the restore seed is a seventh constructor parameter, over detekt's list threshold. These ARE the
 // controller's dependencies plus the one restorable seed; bundling them into a holder would only move the list
