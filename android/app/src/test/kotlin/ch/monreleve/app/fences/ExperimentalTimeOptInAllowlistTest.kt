@@ -73,14 +73,11 @@ class ExperimentalTimeOptInAllowlistTest {
         mapOf(
             // IOS-1b-A R602d: the controller moved to :shared on kotlin.time; :app keeps the java.time factory.
             "app/src/main/kotlin/ch/monreleve/app/aujourdhui/JavaTimeAujourdhui.kt" to 1,
-            "app/src/main/kotlin/ch/monreleve/app/calendar/BulkConfirmation.kt" to 1,
-            "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarController.kt" to 1,
-            // IOS-2c R787: the date lines extracted unchanged (wouldBeLateOn's Instant), and :app's java.time overload
-            // of bulkConfirmation (the converter moved out of BulkConfirmation.kt, whose own opt-in now covers its
-            // kotlin.time parameter). The pin's three are its function-scoped helpers - its tests take strings.
-            "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarDates.kt" to 1,
-            "app/src/main/kotlin/ch/monreleve/app/calendar/JavaTimeCalendar.kt" to 1,
-            "app/src/test/kotlin/ch/monreleve/app/calendar/CalendarDatesPinTest.kt" to 3,
+            // IOS-2c R787: the controller's clock is the kotlin.time.Clock seam (1 -> 4: the property and the three
+            // members that read it - today, the sheet's late prediction, the bulk confirmation); :app's
+            // JavaTimeCalendar.kt holds the java.time factory and the java.time.Instant overload (one each).
+            "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarController.kt" to 4,
+            "app/src/main/kotlin/ch/monreleve/app/calendar/JavaTimeCalendar.kt" to 2,
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
@@ -89,6 +86,9 @@ class ExperimentalTimeOptInAllowlistTest {
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
             // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
             "shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 5,
+            // IOS-2c R787: moved from :app with their opt-ins (wouldBeLateOn's and bulkConfirmation's Instant).
+            "shared/src/commonMain/kotlin/ch/monreleve/app/calendar/BulkConfirmation.kt" to 1,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/calendar/CalendarDates.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/calendar/CalendarModel.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/local/CalendarDay.kt" to 2,
             "shared/src/commonMain/kotlin/ch/monreleve/app/data/repo/EntryRepository.kt" to 2,
@@ -100,6 +100,8 @@ class ExperimentalTimeOptInAllowlistTest {
             // IOS-1b-A R608: the pilot fixture hands the controller its clock; the pilot screen reads the system clock.
             "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/PilotFixture.kt" to 1,
+            // IOS-2c R787: the pin, moved unedited - its three are function-scoped helpers; its tests take strings.
+            "shared/src/commonTest/kotlin/ch/monreleve/app/calendar/CalendarDatesPinTest.kt" to 3,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/local/CalendarDayProbe.kt" to 3,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/repo/GranularityRuleTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/sync/ServerInstantParseGoldenTest.kt" to 2,

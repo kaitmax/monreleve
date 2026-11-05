@@ -27,9 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Clock
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.toKotlinInstant
 
 // AN10. The calendar screen's controller (SPEC 11.3). It lives OUTSIDE ui/ (fence 5): it holds the
 // repository, the settings and the clock, and it OWNS the translation between the stored rows and the
@@ -168,6 +167,9 @@ class CalendarController(
     // until the app was restarted (REPORT-KMP-4 NOTICED 1). Every use below asks the store at that moment.
     private val settingsStore: SettingsStore,
     private val taxYear: Int,
+    // IOS-2c R787: the clock seam is kotlin.time.Clock (an instant source; the Paris day is computed from it, not from
+    // a device zone). :app's java.time callers reach this through JavaTimeCalendar.kt's factory, named like the class.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     private val scope: CoroutineScope,
     // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
@@ -177,6 +179,7 @@ class CalendarController(
     // via pendingEditingDay, reopens the edit sheet on the day it was open on - once the rows have loaded.
     restored: CalendarSnapshot? = null,
 ) : DayWriter {
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private val today: String = todayInParis(clock)
     private var entries: List<EntryEntity> = emptyList()
 
@@ -292,13 +295,14 @@ class CalendarController(
      * already stored and the clock (the late count follows R286). Nothing is written yet - confirmBulk does that.
      * Absent carries its reason, chosen once for all the days.
      */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     fun chooseBulk(
         kind: RecordedKind,
         absence: AbsenceChoice?,
     ) {
         val sel = mutableState.value.selection
         if (!sel.active || sel.days.isEmpty()) return
-        val confirmation = bulkConfirmation(sel.days, entries, kind, absence, clock.instant())
+        val confirmation = bulkConfirmation(sel.days, entries, kind, absence, clock.now())
         mutableState.update { it.copy(bulkConfirmation = confirmation) }
     }
 
@@ -399,7 +403,7 @@ class CalendarController(
         closeSheet()
     }
 
-    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private fun editableDay(isoDate: String): EditableDay {
         val rows = entries.filter { it.dayDate == isoDate }
         val held = rows.map { it.portion }
@@ -417,7 +421,7 @@ class CalendarController(
             // The prediction (R216): would recording this backdated day now cross the threshold? True of
             // the day's age, whether or not a row exists yet - so the warning shows before the first save.
             // IOS-2c R787: CalendarDates.wouldBeLateOn - this line extracted unchanged, shared with bulkConfirmation.
-            wouldBeLate = wouldBeLateOn(isoDate, clock.instant().toKotlinInstant()),
+            wouldBeLate = wouldBeLateOn(isoDate, clock.now()),
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
     }
