@@ -27,9 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.toKotlinLocalDate
 import java.time.Clock
-import java.time.LocalDate
 import kotlin.time.ExperimentalTime
 import kotlin.time.toKotlinInstant
 
@@ -214,14 +212,11 @@ class CalendarController(
         return month.coerceIn(firstNavMonth(loaded, taxYear), LAST_MONTH)
     }
 
+    // IOS-2c R787: the date work is CalendarDates.openingMonth, extracted from here unchanged.
+
     /** Open on the current month, clamped into the navigable range (a partial year starts mid-year). */
-    private fun initialMonth(): Int {
-        val loaded = settingsStore.load() ?: return LocalDate.parse(today).monthValue
-        val first = firstNavMonth(loaded, taxYear)
-        val parsed = LocalDate.parse(today)
-        val current = if (parsed.year == taxYear) parsed.monthValue else first
-        return current.coerceIn(first, LAST_MONTH)
-    }
+    private fun initialMonth(): Int =
+        openingMonth(today, taxYear, settingsStore.load()?.let { firstNavMonth(it, taxYear) })
 
     fun goPreviousMonth() {
         if (mutableState.value.monthView?.canGoPrev == true) {
@@ -421,11 +416,8 @@ class CalendarController(
             alreadyLate = slots.any { it.late },
             // The prediction (R216): would recording this backdated day now cross the threshold? True of
             // the day's age, whether or not a row exists yet - so the warning shows before the first save.
-            wouldBeLate =
-                LatenessForecast.wouldBeLate(
-                    LocalDate.parse(isoDate).toKotlinLocalDate(),
-                    clock.instant().toKotlinInstant(),
-                ),
+            // IOS-2c R787: CalendarDates.wouldBeLateOn - this line extracted unchanged, shared with bulkConfirmation.
+            wouldBeLate = wouldBeLateOn(isoDate, clock.instant().toKotlinInstant()),
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
     }

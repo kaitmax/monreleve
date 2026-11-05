@@ -75,6 +75,12 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/aujourdhui/JavaTimeAujourdhui.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/calendar/BulkConfirmation.kt" to 1,
             "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarController.kt" to 1,
+            // IOS-2c R787: the date lines extracted unchanged (wouldBeLateOn's Instant), and :app's java.time overload
+            // of bulkConfirmation (the converter moved out of BulkConfirmation.kt, whose own opt-in now covers its
+            // kotlin.time parameter). The pin's three are its function-scoped helpers - its tests take strings.
+            "app/src/main/kotlin/ch/monreleve/app/calendar/CalendarDates.kt" to 1,
+            "app/src/main/kotlin/ch/monreleve/app/calendar/JavaTimeCalendar.kt" to 1,
+            "app/src/test/kotlin/ch/monreleve/app/calendar/CalendarDatesPinTest.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/local/JavaTimeCalendarDay.kt" to 3,
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
