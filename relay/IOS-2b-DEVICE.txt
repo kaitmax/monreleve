@@ -1,0 +1,77 @@
+IOS-2b-DEVICE SESSION PROMPT - Mon Releve
+THE S9 HALF OF IOS-2b: R783 (every onboarding step, main vs branch)
+AND ITS INSTRUMENTED RUN. No code change.
+Written by the orchestrating session on 2026-11-04 after REPORT-IOS-2b
+(branch ios2b, tip aa46567, code tip 282426a) STOPPED on a foreign
+dialog: the operator was handling the phone (both volume keys held,
+"Utiliser le raccourci d'accessibilite ?"). The operator confirmed it was
+them (Q2). When the orchestrator looked, the dialog was already gone; the
+app showed onboarding step 1 ("Votre nom") for the session's throwaway
+ios2b.tip@monreleve.test on the as-found APK; accessibility_enabled 0,
+enabled_accessibility_services null. The operator's own changes - ring
+volume 11->15, volume_a11y_speaker absent->10,
+accessibility_shortcut_dialog_shown 0->1 - are THEIRS: record them as the
+new before-state, never "restore" them.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+Everything in relay/IOS-2b.txt's "HOW THIS SESSION RUNS", "THE DEVICE
+RULES", R782 and R783 applies unchanged, except as written here.
+R241: the only thing that ends this session is REPORT-IOS-2b-DEVICE.txt,
+committed and pushed. Your OWN worktree at C:/wt/ios2b-device, NEW branch
+ios2b-device cut from origin/ios2b (aa46567), your lock in it.
+C:/wt/ios2b belongs to the previous session: READ and COPY from
+C:/wt/ios2b/.ios2b-evidence/ (flow-ob.sh v3, read.mjs, shot.mjs and the
+R782 harness, the APKs), never modify or remove anything there. Push
+ios2b-device ONLY - never main, never production, never ios2b.
+
+NO CODE CHANGE. The code is 282426a, gated green there (:app:gate
+1392/181, iOS run 41823078576). If you find a reason to change code,
+STOP and report. STATUS in R391's shape, naming 282426a as where the full
+gate ran and showing `git diff --stat 282426a HEAD` report-only.
+
+THE ACCOUNT ON THE PHONE: ios2b.tip@monreleve.test was created by the
+IOS-2b session, a sibling session of this task: you may sign it out
+through the app's own dialog. Any OTHER account signed in: Ruling 9 -
+report it and stop.
+
+THE APKS: main's audit build at 5022714 and the tip's at 282426a. Reuse
+IOS-2b's if they are in its evidence folder (verify sha256 and record);
+otherwise build them (-PfrontalierHost=127.0.0.1). Restore the as-found
+APK (sha256 d417d021...) at the end.
+
+====================================================================
+THE WORK
+====================================================================
+0. Record the phone (APK sha256 and signer, screen, every setting the
+   AN-TALKBACK rules list). If a foreign dialog is up or another account
+   is signed in, STOP and report.
+1. R783 IN FULL, from the start, on BOTH builds: a NEW throwaway address
+   per build (e.g. ios2b-dev.main@ / ios2b-dev.tip@monreleve.test), sign
+   in once (masked, not compared), then every onboarding step through to
+   the shell, the date dialog opened and one day picked included. Each
+   state: pixels and TalkBack navigated stops IDENTICAL line by line,
+   through R782's harness (anchor-y and foreground refusals live). Any
+   difference: STOP and ask. A disturbed reading: report it, stop on that
+   state, never re-read silently (Ruling 8 Q2). The canton reading hit
+   read.mjs's loop guard at 21 stops in IOS-2b: raise the guard only if
+   you show why, and say so - a truncated reading compared to a
+   truncated reading is NOT "identical".
+2. The instrumented run on the S9 against the tip (connectedAndroidTest;
+   it uninstalls the app - authorised), counts from the XML, and exactly
+   which classes touch onboarding.
+3. Restore: as-found APK reinstalled (sha256 shown), app SIGNED OUT on
+   the welcome screen, adb reverse removed, your settings shown restored,
+   dev server stopped and its port shown free, Gradle stopped, lock
+   removed.
+
+====================================================================
+REPORT - REPORT-IOS-2b-DEVICE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / PHONE STATE BEFORE AND AFTER / APKS (sha256)
+/ R783 (per state, both builds: pixels and stops, identical or the
+difference) / INSTRUMENTED (tests run, counts) / DEVIATIONS / QUESTIONS
+/ PUSH PROOF
+
+END OF IOS-2b-DEVICE PROMPT

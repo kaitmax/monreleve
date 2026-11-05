@@ -214,3 +214,58 @@ OUTCOME (IOS-2a)
   exactly adefe22: GATE:CLONE PASSED, first run.
 - relay/ rescanned for R766-R775: only IOS-2a.txt, IOS-2a-DEVICE.txt and
   this file. main pushed dabb9b6..adefe22. production untouched (52caca8).
+
+RULING 10 - THE OPERATOR'S (IOS-2b, branch ios2b aa46567, and
+IOS-2b-DEVICE, branch ios2b-device 79fef27, both on 5022714)
+- R776 (the date picker is a native seam, option (a) of REPORT-IOS-2a
+  R774) was the advisor's decision under the operator's "Advisor rules";
+  told to the operator, no objection raised.
+- Measured: base = origin/main = 5022714, so main has NOT moved. Code tip
+  282426a; 282426a..79fef27 is REPORT-IOS-2b.txt and
+  REPORT-IOS-2b-DEVICE.txt only. IOS-2b's full :app:gate --rerun-tasks
+  (BUILD SUCCESSFUL in 9m 14s, 260 tasks, GATE_EXIT=0, :app 1392 /
+  :shared 181, 0 failures, 142 screenshot tests at 0.0, none
+  re-recorded) and iOS run 41823078576 (SUCCESS, 20 steps, 243 simulator
+  tests incl. OnboardingScreensIosTest driving all eight steps through a
+  fake picker; MaterialDatePickerCanaryTest unchanged) are on 282426a and
+  carry to the merge by identity.
+- R783 (the per-step S9 comparison) is NOT RUN. It stopped twice, both
+  times on physical side-key presses during a reading (IOS-2b: both
+  volume keys held, the accessibility-shortcut dialog; IOS-2b-DEVICE:
+  two keys held at 16:55 UTC, volume-up x3 at 16:44, a USB drop at
+  16:33). The operator confirmed the first was them. Asked what to do
+  after the second, the operator chose, in their words' option: "Merge
+  without the phone check". No state was ever compared on two builds.
+- So the onboarding proof is: Paparazzi at zero (no baseline shows the
+  date dialog OPEN - that composable moved unedited to :app, which is
+  what stands in for its pixels), the JVM tests, the iOS UI test, and
+  the S9 instrumented run 57/57 (no androidTest drives onboarding;
+  StatePreservationInstrumentedTest's SettingsSaver import is the only
+  one the move touched).
+- Accepted, outside IOS-2b's brief: .gitignore gains /.*-evidence/,
+  because a device session's evidence holds the dev server's log, which
+  carries sign-in codes (R574). It is reviewed here, not just carried.
+- Noted: OnboardingController now takes its PATCH encoder as a required
+  parameter (org.json stays in :app; an iOS encoder is IOS-1b-B's).
+- The harness improvements IOS-2b-DEVICE made (loop guard on 4 identical
+  stops, end-reason refusal, outside-event scan, capture refused over a
+  volume event) are in C:/wt/ios2b-device/.ios2b-device-evidence/,
+  uncommitted; they belong to UNNUMBERED-3 when it is built.
+- The phone: as-found APK, signed out, on the welcome screen. The
+  operator's own changes stand (ring 15, shortcut dialog shown 1);
+  volume_a11y_speaker 10 -> 9 came from the second key press and was not
+  restored. Throwaway accounts ios2b.tip@ and ios2b-dev.main@ remain in
+  the local database, signed out.
+- Record, do not act: C:/wt/ios2b and C:/wt/ios2b-device hold evidence
+  (R334); both worktrees stay (R392).
+
+OUTCOME (IOS-2b)
+- Merged as b0d14fa (--no-ff, of ios2b-device 79fef27). Identity proven
+  on b0d14fa: whole tree equal to 79fef27's; android/ and .gitignore
+  equal to 282426a's (both diffs empty). No iOS re-run and no :app:gate
+  re-run: main had not moved.
+- Free memory read in its own step first (1.74 GB, over the floor; no
+  Gradle daemon running). gate:clone alone on exactly b0d14fa:
+  GATE:CLONE PASSED, first run.
+- relay/ rescanned for R776-R785: only IOS-2b.txt, IOS-2b-DEVICE.txt and
+  this file. main pushed 5022714..b0d14fa. production untouched (52caca8).

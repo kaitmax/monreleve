@@ -1,0 +1,257 @@
+IOS-2b SESSION PROMPT - Mon Releve
+ONBOARDING BECOMES SHARED: THE CONTROLLER, ITS DATES, THE SCREEN, AND A
+DATE-PICKER SEAM (no Apple account needed)
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared. Uses the iOS cloud workflow (one dispatched run)
+and the S9. Written by the orchestrating session on 2026-11-04, after
+IOS-2a merged as adefe22 (Ruling 9 in relay/RULINGS-2026-11-03-MOBILE.txt).
+The advisor rules in the operator's place (the operator's words: "Advisor
+rules, I'm not waited for").
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2b.txt,
+committed and pushed. Unclear? R156: conservative, reversible, a PARK
+entry (UNNUMBERED-n in the report), continue. Ends early: R156's
+boundary; a red gate you cannot fix; a path reaching a real person; a
+degraded context. R334, R349, R392: your OWN worktree at C:/wt/ios2b,
+branch ios2b, your lock in it. Stage BY NAME. READ before writing. R391
+governs STATUS: the FULL :app:gate --rerun-tasks AND one iOS cloud run
+(R573) on the reported CODE tip, with `git diff --stat <code tip> HEAD`
+shown report-only. R393's guard is live. ABSENCE NEEDS A POSITIVE
+CONTROL. Push your BRANCH only - never main, never production.
+
+THE BRANCH NAME IS DELIBERATE: `ios2b` does not match the workflow's
+`ios-*` push trigger. Dispatch the iOS run yourself, ONCE on the code tip
+(`gh workflow run ios-shared.yml --ref ios2b`), plus at most one earlier
+run if a commonMain compile question cannot wait. Zero steps = NO
+RESULT: stop and say so (funding is the operator's).
+
+RULING NUMBERS: R776-R785 below. Before committing any, run
+`grep -rE '\bR7(7[6-9]|8[0-5])\b' relay/ REPORT-*.txt CLAUDE.md docs`
+and renumber if any is taken (R162). R766-R775 are IOS-2a's.
+
+BASE: origin/main at or after 5022714 (IOS-2a merged as adefe22; :app:gate
+1392/168 and iOS run 41720094372 green on its code ec58c67).
+
+THE MACHINE: start a heavy step only with >= 1.5 GB free, read in its OWN
+step, after `./gradlew --stop`; one heavy step at a time. A killed run is
+NO RESULT, re-run once; two in a row -> stop and hand back. Ports 3000,
+3100 and 3200 belong to another project (tizicorp): never stop or touch
+them. Serve the local stack on a free host port (3400 was used) and map
+the device with `adb reverse tcp:3000 tcp:<host port>`. adb is at
+%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe; in Git Bash set
+MSYS_NO_PATHCONV=1 or /sdcard paths are rewritten. Never run test:db
+against the shared `frontalier` database.
+
+====================================================================
+THE DEVICE RULES (AN-TALKBACK's, plus Ruling 9's corrections)
+====================================================================
+- AN-TALKBACK's "THE DEVICE, STANDING RULES" (relay/AN-TALKBACK.txt):
+  local stack, @monreleve.test throwaway accounts, R574 (every code field
+  masked BEFORE any capture; no code and no magic-link URL printed), real
+  clock, record the installed APK and every setting before and show each
+  restored after. connectedAndroidTest UNINSTALLS the app and its data.
+- RULING 9: A SIGNED-IN ACCOUNT YOU DID NOT CREATE IS REPORTED, NEVER
+  SIGNED OUT; "LEAVE IT SIGNED OUT" MEANS YOUR OWN ACCOUNT. If the app is
+  signed in to an account that is not yours when you start, record it and
+  STOP before the device step.
+- NEVER navigate, close or answer anything outside the app - another
+  app's screen, a browser tab, a Play Protect or system dialog. Record a
+  foreign dialog verbatim in the report; if it blocks the flow, stop and
+  ask. (IOS-2a closed the operator's Chrome tab and answered three Play
+  Protect dialogs; that is what this rule forbids.)
+- Samsung's "protection contre les appuis accidentels" screen appears when
+  the top sensor is covered; dismiss by dragging its lock icon (about
+  540,1505 up to 540,700). That one is allowed: it is the phone's own
+  touch guard, not a decision.
+- If the permission system refuses any step: do NOT look for another way
+  round it; put the exact command in the report and stop.
+- THE CODE BUDGET: web/lib/auth/magic-link.ts allows
+  MAX_CODE_ATTEMPTS_PER_DAY = 10 code attempts PER ADDRESS over a rolling
+  24 h window (CODE_ATTEMPT_WINDOW_MS). Use a NEW throwaway address per
+  build, so each starts at 0. A refused code request mid-flow is NO
+  RESULT for that state, never a difference.
+- If the S9 is not attached, do everything else and report R783 as NOT
+  RUN - never as passed.
+
+====================================================================
+THE ADVISOR'S DECISION ON THE DATE PICKER, recorded here as R776
+====================================================================
+R776. THE PICKER IS A NATIVE SEAM (REPORT-IOS-2a R774, option (a)).
+    Why: the operator's instruction is that each move is "checked by
+    Android's pixel-identical screenshots". Option (b), a foundation-built
+    picker, changes Android's pixels by definition. Option (c), relinking
+    Material3's, is a dependency/version change (SPEC 20) and is blocked
+    on UNNUMBERED-8. Option (a) keeps Android's bytes and keeps R600's
+    native-pieces half, which R766 preserved.
+    SHAPE: a HOST CALLBACK passed into the shared screen, in the manner of
+    SignInActions - e.g. `pickDate: (onPicked: (isoDay: String) -> Unit)
+    -> Unit` or a composable slot - NOT an expect/actual with an iOS
+    actual. Verify first that the callback lets the iOS Compose UI test
+    supply a FAKE picker with no iosMain code at all; if it does, use it.
+    No iOS stub that "does nothing" is written: the real iOS picker
+    (UIDatePicker or SwiftUI) belongs to IOS-1b-B.
+    ANDROID'S DIALOG: the existing block in OnboardingScreen.kt (lines
+    319-333: rememberDatePickerState, DatePickerDialog with
+    TertiaryButton(OnboardingCopy.CONTINUE), DatePicker) moves UNEDITED to
+    wherever needs no dependency change - :shared androidMain or :app -
+    and the report says which and why. Paparazzi at 0.0 across every
+    onboarding baseline is the proof it is the same composable.
+
+R273. Read REPORT-IOS-2a.txt and REPORT-IOS-2a-DEVICE.txt (R767-R775;
+    R774's measurements; R775's list), Ruling 9, REPORT-IOS-1b-A (R602
+    controller-first, ruling 14 icons, R604 fences, R606, R608), the
+    onboarding files (app/onboarding/*, app/ui/screens/onboarding/*,
+    shared onboarding/*, fr/OnboardingCopy.kt), CommonMainFenceTest.kt
+    (its DatePicker entries, lines ~54 and ~139) and
+    MaterialDatePickerCanaryTest.kt. Evidence directories of other
+    sessions are READ and COPIED from, never modified (R334).
+R1. PRECONDITIONS, or stop before the first change: origin/main contains
+    adefe22; the S9 listed (or R783 NOT RUN).
+
+HARD BOUNDARIES:
+  - ANDROID IS PIXEL-IDENTICAL: all Paparazzi baselines verify at zero
+    (R626) with NONE re-recorded - every onboarding baseline (canton,
+    granularite*, methode*, mode*, nom*, periode*, pret*, rappel, taux*)
+    and every other screen;
+  - Compose UI, instrumented and accessibility tests pass with their
+    ASSERTIONS UNEDITED (imports may change; say which);
+  - no behaviour change: the same steps in the same order, the same
+    requests, errors and copy, the same dates for the same inputs;
+  - no wire, server, schema or engine change; no copy change;
+  - no drawable moved (ruling 14); no navigation library;
+  - ANY dependency added to :shared, or any version change, STOPS and asks
+    (SPEC 20). kotlinx-datetime is ALREADY a :shared dependency: using it
+    in commonMain is NOT a stop;
+  - MaterialDatePickerCanaryTest passes UNCHANGED: it is the positive
+    proof the Material3 picker stays unlinked on iOS;
+  - Parametres (ParametresDateField.kt also uses the Material3 picker)
+    does NOT move; no iOS app, Xcode project, signing or TestFlight.
+
+====================================================================
+THE RULINGS
+====================================================================
+R777. THE DATES MOVE FIRST, PINNED. OnboardingDates.kt (isoOf from
+    UTC-midnight millis via java.time, "dd.MM.yyyy" for swissDate and
+    readyPeriod, LocalDate.of/parse) and OnboardingController.kt:242
+    (LocalDate.parse as validation) go to kotlinx-datetime. FIRST a
+    vector test on the CURRENT java.time code, in :app's test scope
+    (R457), shown GREEN, shown RED on a verified plant (R180), covering
+    at least: 29 Feb 2024, 31 Dec, 1 Jan, a millis value at exactly UTC
+    midnight, one a millisecond before it, one a millisecond after, and
+    every invalid string the controller rejects today. Then the swap, then
+    the same test `git mv`'d to commonTest UNEDITED and green. "The same
+    dates" means identical strings for identical inputs, and it is only
+    known because this test asserts it. Its own commit.
+
+R778. THE CONTROLLER MOVES SECOND, BEFORE ANY ONBOARDING UI.
+    OnboardingController, Completeness and whatever state they hold move
+    to commonMain, OnboardingControllerTest pinned and moved unedited the
+    R768 way. Every collaborator that needs an Android Context goes
+    behind a commonMain interface, with the Android implementation left in
+    :app. If one needs an iOS implementation, add it only if it is small
+    and needs no dependency; otherwise record why it is deferred. No
+    java.* or android.* in commonMain. Its own commit.
+
+R779. THE SCREEN MOVES BEHIND THE SEAM (R776). OnboardingScreen,
+    OnboardingActions, ChoiceCardText and PretScreen move to commonMain;
+    Android hosts them through the same calls as before, passing its
+    Material3 dialog through the seam. Every fence that read
+    ui/screens/onboarding reads the new home. Shown RED once each on a
+    VERIFIED plant in the moved screens, then deleted (R180): the
+    no-inline-string fence, the tokens-only fence, AND
+    CommonMainFenceTest's DatePicker entry (plant
+    `import androidx.compose.material3.DatePicker` in the moved screen).
+    Its own commit.
+
+R780. ANDROID IS THE PROOF. Paparazzi at zero, none re-recorded (`git
+    diff --stat <base>..<tip> -- android/app/src/test/snapshots` empty);
+    every onboarding Compose UI and instrumented test green with its
+    assertions unedited; the release APK size before and after in bytes,
+    with the reason for any change.
+
+R781. iOS COMPILES AND DRIVES ONBOARDING. The one dispatched run builds
+    the shared onboarding for the simulator, runs commonTest for the moved
+    dates and controller (the R777 vectors included), and runs a Compose
+    UI test on iOS driving onboarding over fakes through EVERY step,
+    including the period step through a FAKE picker supplied by the test
+    via the R776 seam, to the end. No server, no account, no real address.
+
+R782. THE READING HARNESS, FIXED BEFORE THE DEVICE STEP (Ruling 9).
+    Copy read.mjs, shot.mjs and their helpers from
+    C:/wt/ios2a-device/.ios2a-device-evidence/ into your own evidence
+    folder and add, each proven (R180), before measuring anything:
+    (1) a deterministic scroll position: before any capture of a
+    scrollable screen, the harness reads the UI dump and asserts a named
+    anchor is at the same y on both builds, or refuses to capture;
+    (2) the app asserted in the foreground (mCurrentFocus names
+    ch.monreleve.app) immediately before stop 0 is read, with no
+    force-stop/relaunch gap, or the reading is refused.
+
+R783. ON THE S9, AGAINST THE LOCAL STACK (audit builds,
+    -PfrontalierHost=127.0.0.1, adb reverse, never production). For EACH
+    build (main's at the base and the tip's), a NEW throwaway
+    @monreleve.test address: sign in once to reach onboarding (R574
+    masking on the code screen; this is NOT compared again - IOS-2a did
+    that), then every onboarding step through to the shell, INCLUDING the
+    period step's date dialog opened and one date picked. Each step
+    compared with main's: screenshots and TalkBack navigated stops
+    IDENTICAL line by line (R782's harness). The date dialog is the same
+    Material3 composable on both builds, so it is IN the comparison. Any
+    difference is a finding: STOP and ask. A reading disturbed by an
+    outside event is reported and that state stopped on, never re-read
+    silently (Ruling 8 Q2). At the end, sign your own account out; the
+    phone is left with the as-found APK reinstalled, signed out, every
+    setting shown restored.
+    Then RUN the onboarding-related instrumented tests on the S9 against
+    the tip (connectedAndroidTest; it uninstalls the app - authorised, as
+    the phone holds nothing of the operator's), counts pasted from the
+    XML, and say exactly which classes touch onboarding.
+
+R784. WHAT IOS-1b-B NOW NEEDS (update of REPORT-IOS-2a R775): the
+    onboarding entry points; the onboarding host (Android's lives in
+    MainActivity, like sign-in's - say whether a shared host now exists);
+    the R776 seam's contract for the native iOS picker; and everything
+    still missing (AccountStore, the universal-link receipt, the base URL,
+    syncNow, the framework declaration).
+
+R785. WHAT IS LEFT. List the screens still in :app (comparison,
+    prevision, rythme, simulation, parametres, calendrier, releve, and
+    any other), for each one any blocker found (another Material3 picker,
+    java.*, a platform API), and the order you would suggest. Do not
+    choose.
+
+====================================================================
+THE WORK
+====================================================================
+0. R273, R1; the phone attached and its state recorded.  1. R777 dates.
+Commit.  2. R778 controller. Commit.  3. R776 seam and R779 screen.
+Commit.  4. R780 Android proof.  5. R781 (the one iOS run, on the code
+tip once the code is final).  6. R782 harness, then R783 on the S9;
+restore the phone, shown restored.  7. R784, R785. FULL :app:gate
+--rerun-tasks on the code tip (BUILD line and test counts pasted from the
+log). Push the branch.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+Parametres and every other screen. Any iOS picker implementation. A shared
+navigation host. Navigation libraries. Any iOS app, Xcode project,
+signing, TestFlight. Moving drawables. Dark mode. Any behaviour or copy
+change.
+
+====================================================================
+REPORT - REPORT-IOS-2b.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / PHONE STATE BEFORE AND AFTER /
+R776 (seam shape chosen, where Android's dialog lives) / R777 (vectors,
+RED then GREEN, plant verified) / R778 / R779 (each fence red then green,
+plant verified) / R780 (baselines untouched, tests run, size) / R781 (run
+id, steps, the iOS UI test) / R782 (each harness fix proven) / R783 (per
+step, both builds: pixels and stops, identical or the difference;
+instrumented counts) / R784 / R785 / CI MINUTES / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF IOS-2b PROMPT
