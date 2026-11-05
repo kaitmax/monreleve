@@ -1,0 +1,583 @@
+REPORT-IOS-2b - Mon Releve
+ONBOARDING BECOMES SHARED: THE CONTROLLER, ITS DATES, THE SCREEN, AND A DATE-PICKER SEAM
+CODE DONE AND PROVEN ON ANDROID AND iOS - R783 STOPPED ON A FOREIGN SYSTEM DIALOG (a person had the phone)
+
+TASK     relay/IOS-2b.txt (main checkout, untracked), rulings R776-R785 (free: before the first commit
+         `grep -rE '\bR7(7[6-9]|8[0-5])\b' relay/ REPORT-*.txt CLAUDE.md docs` in the worktree found
+         nothing, and in the main checkout's relay/ only IOS-2b.txt itself; re-run before the push, below).
+BASE     origin/main 5022714 (contains adefe22).
+BRANCH   ios2b, worktree C:/wt/ios2b (R349), lock .session-lock.json (gitignored), removed at the end.
+         Pushed: ios2b only. PENDING MERGE - nothing here is on main.
+CODE TIP 282426a. DEVICE SM-G960F (Galaxy S9), serial 232bcd8c300c7ece.
+EVIDENCE C:/wt/ios2b/.ios2b-evidence/ (untracked AND now ignored by rule - see R777's first commit; it
+         holds dev.log, which carries a sign-in link and code).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+The onboarding dates, controller, plan, wizard and summary screen live in :shared commonMain; Android
+hosts them through the same calls as before and stays pixel-identical (every Paparazzi baseline at 0.0,
+NONE re-recorded; release APK the same size to the byte). The period step's date picker is a native
+seam (R776): a composable slot; Android passes its unchanged Material3 dialog from :app; iOS ran the whole
+wizard on the simulator with a FAKE picker supplied by the test, with no iosMain code. One iOS run:
+41823078576, SUCCESS, 243 tests executed (+14).
+  R777  dates pinned on java.time (red on a plant), ported to kotlinx-datetime, the pin moved unedited.
+  R778  controller + plan pinned (red on a plant), moved; the org.json PATCH /me encoder stays in :app
+        and is handed in (patchBody) by an :app factory named like the class.
+  R776/R779  the four screen files moved; the slot; fences red once each on a verified plant.
+  R780  baselines untouched; tests green with assertions unedited; APK 1,989,388 -> 1,989,388 B.
+  R781  run 41823078576: OnboardingScreensIosTest drives all eight steps + Pret over fakes.
+  R782  the reading harness gained both refusals, each proven on a plant with a positive control.
+  R783  STOPPED. The tip build: 10 states captured and read; the 10th reading (periode-date) was
+        disturbed from stop 4 by a volume key and then an Android system dialog ("Utiliser le raccourci
+        d'accessibilite ?") that this session may not answer. Main's run NOT RUN; nothing compared.
+        The instrumented run NOT RUN. QUESTIONS Q1, Q2.
+  R784, R785 written below.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE EXCEPT: R783 STOPPED ON A FOREIGN DIALOG (tip build: 9 states captured and read clean, the 10th
+captured and its reading disturbed from stop 4; main's build NOT RUN, so NO state was compared); R783's
+instrumented run on the S9 NOT RUN.
+FULL :app:gate --rerun-tasks on the code tip 282426a, this session, after ./gradlew --stop ("1 Daemon
+stopped"; 4.06 GB free, read in its own step), with the tree clean (git status --porcelain empty):
+    > Task :app:checkTestFloor - test floor OK: 1392 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 9m 14s
+    260 actionable tasks: 260 executed
+    real 9m15.377s ; GATE_EXIT=0
+  Test XML (every file stamped by this run): :app 1392 tests 0 failures 0 errors (142 screenshot, 0
+  failures, at 0.0); :shared 181 0 0 (main 168 + OnboardingDatesPinTest 4 + OnboardingControllerPinTest 9).
+  Compiler "w: " lines: 7 (main's count); none is new.
+iOS run on the code tip: 41823078576 on 282426a - SUCCESS (R781).
+`git diff --stat 282426a HEAD` (report-only, shown at push time): REPORT-IOS-2b.txt only.
+gate:clone NOT RUN: no web/ change (web/.env and node_modules are gitignored and untracked).
+
+================================================================================
+R273 - READ
+================================================================================
+REPORT-IOS-2a.txt and REPORT-IOS-2a-DEVICE.txt (R767-R775, R774's measurements, R775's list, the
+device procedure); relay/RULINGS-2026-11-03-MOBILE.txt Ruling 9; REPORT-IOS-1b-A (R602 controller-first
+incl. R602d's factory-named-like-the-class, R604 fences, R606, R608); app/onboarding/* (OnboardingDates,
+OnboardingController, Completeness), app/ui/screens/onboarding/* (OnboardingScreen, OnboardingActions,
+ChoiceCardText, PretScreen), shared onboarding/Choices.kt, shared ui/screens/onboarding/OnboardingKit.kt,
+fr/OnboardingCopy.kt; CommonMainFenceTest (its DatePicker rule and classifier lines);
+MaterialDatePickerCanaryTest; FencesTest's SUBJECT_ROOTS; CopyReachabilityTest's onboarding entries;
+MeWire.kt (PARK-D3); MainActivity's OnboardingRoute; OnboardingControllerTest and
+OnboardingScreenScreenshotTest; SignInScreensIosTest (the model for R781); JavaTimeAujourdhui.kt.
+COPIED (never modified) from C:/wt/ios2a-device/.ios2a-device-evidence/: read.mjs, shot.mjs, cmp.mjs,
+tb.mjs, hidkeys.mjs, getcode.mjs, d.mjs, swap.sh, flow.sh, readpair.sh, cbpair.sh, and two APKs (below).
+My copies are edited (R782, swap.sh, d.mjs, a new flow-ob.sh); the originals are untouched.
+
+================================================================================
+R1 - PRECONDITIONS
+================================================================================
+`git merge-base --is-ancestor adefe22 origin/main` -> true; origin/main = 5022714. HOLDS.
+`adb devices -l` -> 232bcd8c300c7ece device product:starltexx model:SM_G960F. HOLDS.
+Ruling 9: the app was SIGNED OUT on the welcome screen at the start (UI dump below) - no account to
+report.
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (10:57Z / 11:57 phone clock, nothing changed): ch.monreleve.app 0.1.0 (versionCode 1), base.apk
+  sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (the as-found APK),
+  lastUpdateTime 2026-11-04 10:19:15. Screen asleep on the keyguard; woken (KEYCODE_WAKEUP +
+  dismiss-keyguard) and read: MainActivity focused, the WELCOME screen ("Mon Releve", the three
+  promises, "Commencer") - SIGNED OUT. enabled_accessibility_services null; accessibility_enabled 0;
+  touch_exploration_enabled 0; stay_on_while_plugged_in 0; auto_time 1; auto_time_zone 1;
+  volume_a11y_speaker null; volume_ring_speaker 11; accelerometer_rotation 1; adb reverse empty.
+  Snapshots phone/before-settings-{secure,global,system}.txt (450/298/425 lines), before-packages.txt
+  (504), before-tmp.txt.
+DURING (mine): adb reverse tcp:3000 tcp:3400; stay_on_while_plugged_in 7; Samsung Voice Assistant ON
+  only inside each reading and DELETED after each (asserted null by the flow); four installs (below).
+THE OUTSIDE EVENTS (not mine - a person had the phone; QUESTION Q2):
+  12:04:28 (log clock = phone clock - 1 h) the display was LANDSCAPE (dumpsys display
+    mCurrentOrientation=1, mRotation=ROTATION_90) between two states (after taux's reading, before
+    methode's capture); my flow's check aborted; it read portrait again by 12:04:46.
+  13:25:42 phone clock, during the periode-date reading: stop 4 carries "Volume Accessibilite, 65
+    pourcent" (a volume key), then the reader announced "Alerte Utiliser le raccourci d'accessibilite ?".
+  THE FOREIGN DIALOG, verbatim (transliterated to ASCII; the dump holds the accents): window "android"
+    focused; "Utiliser le raccourci d'accessibilite ?" / "Quand le raccourci est active, appuyez sur les
+    deux boutons de volume pendant trois secondes pour lancer une fonctionnalite d'accessibilite.
+    Fonctionnalite d'accessibilite utilisee actuellement : Voice Assistant. Vous pouvez changer de
+    fonctionnalite dans Parametres > Accessibilite." / buttons "Desactiver le raccourci", "Utiliser le
+    raccourci". This is Android's first-use dialog for the volume-keys accessibility shortcut (both
+    volume keys held three seconds). NOT ANSWERED, NOT DISMISSED, nothing tapped. It blocks the app, so
+    the device step STOPPED here (Ruling 9's rule).
+AFTER (12:29 log clock), read back:
+  - `adb install -r` of the as-found APK (an install, not UI; no dialog) -> Success; on-device sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034; lastUpdateTime 13:29:18.
+  - NOT SIGNED OUT: my throwaway ios2b.tip@monreleve.test remains signed in on the device (the token
+    pair survives `install -r`), at the onboarding period step, with NO PATCH /me sent. Signing out
+    needs the app's own Parametres dialog, behind the foreign dialog. No pm clear, no uninstall.
+  - stay_on_while_plugged_in 0; adb reverse --remove-all -> empty; enabled_accessibility_services null;
+    accessibility_enabled 0. The screen then dozed (focus StatusBar/keyguard); the foreign dialog was
+    not looked for again.
+  - SETTINGS DIFF before vs after (phone/after-settings-*.txt):
+      secure  accessibility_shortcut_dialog_shown 0 -> 1        CHANGED BY THE OUTSIDE EVENT, not restored
+      system  volume_a11y_speaker (absent) -> 10                  CHANGED BY THE OUTSIDE EVENT, not restored
+      system  volume_ring_speaker 11 -> 15                        CHANGED BY THE OUTSIDE EVENT, not restored
+      system  auto_brightness_transition_time 0 -> 1920; tips_regular_hour_timer_{absolute,renewal}_count
+              2912 -> 2914; global text_classifier_constants null -> (a value) - the system's own.
+    Those three were changed by whoever held the phone; resetting them would be acting on their event
+    (R334), so they are listed, not restored. packages identical (504); /data/local/tmp identical.
+  - auto_time 1 throughout (the clock real).
+
+================================================================================
+APKS (sha256; all signer ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1, apksigner)
+================================================================================
+  as-found-installed-base.apk  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034  copied
+  main-5022714-audit.apk       470599cb0efbbb1338f950af4f896c1a536c349df5f6ab46426b1a7f2caefaf2  copied
+       (IOS-2a's tip-ec58c67-audit.apk: `git diff --stat ec58c67 5022714 -- android` is EMPTY, so it IS
+       main's audit build by tree identity - DEVIATION 1). Never installed: main's run did not happen.
+  tip-282426a-audit.apk        2b968fe0f4d4127e11a404b953a35220b13e78a6036bd7f524c53fe2aceab4e3  built
+       here (:app:assembleAudit -PfrontalierHost=127.0.0.1, BUILD SUCCESSFUL in 2m 42s).
+Installs on the phone: tip (Success, on-device 2b968fe0f4d4127e, NO Play Protect dialog appeared), and
+the as-found restore (Success, d417d0210819aab1). swap.sh was REWRITTEN never to answer Play Protect
+(it records the dialog's text and exits 9); it never fired.
+
+================================================================================
+R776 - THE SEAM (decided by the advisor; built here)
+================================================================================
+SHAPE CHOSEN: a COMPOSABLE SLOT on the shared screen, not a plain callback and not expect/actual:
+    OnboardingScreen(state, actions,
+        startDatePicker: @Composable (onPicked: (isoDay: String) -> Unit, onDismiss: () -> Unit) -> Unit,
+        modifier = Modifier)
+  The period step keeps owning WHEN the picker shows (its rememberSaveable showPicker, as before) and
+  composes the slot exactly where the Material3 block sat: `if (showPicker) startDatePicker(
+  onActivityStartDateChange) { showPicker = false }`. NO DEFAULT (a picker that does nothing is the stub
+  R776 forbids). Why a slot rather than `pickDate(onPicked)`: Android's dialog needs
+  rememberDatePickerState inside a composition; a non-composable callback would have moved the dialog's
+  state up into MainActivity (more edits, a different composition). Why a screen parameter rather than an
+  OnboardingActions member: OnboardingScreenScreenshotTest constructs OnboardingActions by name - a new
+  required member would have edited that test.
+VERIFIED FIRST, as R776 asked: the slot lets the iOS Compose UI test supply a FAKE picker with no iosMain
+  code at all - pilot/OnboardingScreensIosTest fills it with two TextButtons (cancel / pick 2026-03-02);
+  it ran green on the simulator (R781). git diff 5022714..HEAD -- android/shared/src/iosMain: EMPTY.
+THE CONTRACT for IOS-1b-B's native picker (also written in OnboardingScreen.kt's header): the slot is
+  composed while the picker is asked for; it calls onPicked(an ISO day, yyyy-MM-dd) with the chosen day,
+  then onDismiss() to close - or onDismiss() alone to cancel. Android passes no initial date, no year
+  range and no SelectableDates (rememberDatePickerState() with no arguments).
+WHERE ANDROID'S DIALOG LIVES: :app, app/src/main/kotlin/ch/monreleve/app/ui/screens/onboarding/
+  OnboardingStartDatePicker.kt. WHY :app: neither home needs a dependency change (Material3 is on :app's
+  classpath already - ParametresDateField uses the same picker), and in :app's ui/ it stays under the
+  ui/ fences (no inline string, tokens only), which read :app ui/ and :shared commonMain ui/ but NOT
+  :shared androidMain. The block (rememberDatePickerState, DatePickerDialog with TertiaryButton(
+  OnboardingCopy.CONTINUE), DatePicker) moved UNEDITED except its two `showPicker = false`, now the
+  slot's onDismiss(). The same file holds an :app overload OnboardingScreen(state, actions, modifier)
+  that passes it - so MainActivity's OnboardingRoute and OnboardingScreenScreenshotTest call exactly
+  what they called (R602d's factory-named-like-the-class shape, one layer up). isoOf became public
+  (R777) because this :app file calls it.
+WHAT PROVES IT IS THE SAME COMPOSABLE: Paparazzi at 0.0 proves the eight step screens and Pret - but NO
+  onboarding baseline shows the picker OPEN (periodePartial has it closed), so Paparazzi says nothing
+  about the dialog's pixels. The dialog is proven on the S9 (R783: opened, read, a day picked, both
+  builds).
+================================================================================
+R777 - THE DATES MOVED FIRST, PINNED (commits 376a587 pin, 730bde9 move)
+================================================================================
+FIRST, ON java.time, in :app's test scope (R457): OnboardingDatesPinTest (kotlin.test only - no Kotest,
+no org.json, no java.*), four groups, each collecting every mismatch before failing:
+  isoOf      21 vectors: 29 Feb 2024 at exactly UTC midnight (1709164800000), its last millisecond and the
+             next one; 31 Dec 2024 and 1 Jan 2025 and the millisecond either side of the boundary; 1 Jul 2026
+             at exactly UTC midnight, -1 ms (-> 2026-06-30), +1 ms; the epoch, -1 ms (1969-12-31), +1 ms,
+             minus one day, minus one day -1 ms; 1900-01-01, 2100-12-31 (Material3's default range ends);
+             +10000-01-01, 9999-12-31, 0000-01-01, -0001-12-31.
+  swissDate  16 vectors: blank, whitespace, the same days, 9999/+10000/year 0/year -1 (java.time's
+             "dd.MM.yyyy" prints YEAR OF ERA - 0000-01-01 -> 01.01.0001 - and a '+' past four digits),
+             and unparseable values shown as-is (" 2024-01-05 " untrimmed, 2024-02-30, 2023-02-29,
+             05.01.2024, abc).
+  readyPeriod 9 vectors (null/blank -> READY_PERIOD_ALL from OnboardingCopy, mid-year, leap day, an
+             unparseable start, tax years 10000 and 0).
+  isIsoDay   the controller's check - 10 accepted, 27 refused: "", " ", " 2024-01-05 " (the controller trims
+             BEFORE asking), 2024-02-30, 2023-02-29, months 13/00, days 00/32, 2024-1-5, 2024-01-5,
+             2024-1-05, 24-01-05, 2024/01/05, 05.01.2024, 20240105, 2024-01-05T00:00, 2024-01-05Z, 2024-01,
+             2024, abc, +2024-01-05, 10000-01-01, 02024-01-05, "2024-01-05 ", 2024-W01-1, 2024-005.
+  To reach the controller's line 242 the check was EXTRACTED first, unchanged (java.time
+  LocalDate.parse), into OnboardingDates.isIsoDay; the controller calls `!isIsoDay(x.trim())`.
+GREEN on java.time: 4 tests, 0 failures (every expectation, including the year-of-era and signed-year
+  ones, matched java.time on the first run - the java.time run was the oracle).
+RED on a VERIFIED plant (R180): SWISS "dd.MM.yyyy" -> "dd.MM.uuuu" (git diff showed exactly that line;
+  sha256 recorded before) -> 4 tests, 2 failed: "<0000-01-01> expected <01.01.0001> but was <01.01.0000>,
+  <-0001-12-31> expected <31.12.0002> but was <31.12.-0001>" and "<(2026-07-01, 0)> expected
+  <01.07.2026 - 31.12.0001> but was <... 31.12.0000>". Restored; sha256 -c OK.
+THE SWAP: OnboardingDates.kt git mv'd to :shared commonMain (package unchanged), on kotlinx-datetime
+  (already a :shared api dependency - no new dependency): isoOf = LocalDate.fromEpochDays(floorDiv(millis,
+  86 400 000)) - no Instant, so no new ExperimentalTime site (R590's allowlist untouched); swissDate and
+  readyPeriod reproduce ofPattern("dd.MM.yyyy") by hand (year of era, '+' past 9999); isIsoDay =
+  LocalDate.parse. The functions are PUBLIC where they were internal: :app called them across the move
+  (and :app's date dialog still calls isoOf). The no-break space in readyRate was checked byte for byte
+  (non-ASCII census of the file identical before and after).
+THE SAME TEST, git mv'd to :shared commonTest UNEDITED (sha256 identical before and after the move):
+  4/4 on the port, on the JVM; and 4/4 on the iOS simulator (R781).
+
+================================================================================
+R778 - THE CONTROLLER MOVED SECOND (commits 0a83eaa pin, 0a52537 move)
+================================================================================
+THE ONE PLATFORM COLLABORATOR FOUND: the PATCH /me body. The controller called Settings.mePatchBody(),
+  which is org.json and deliberately stays in :app (MeWire.kt, PARK-D3). An expect/actual with an org.json
+  actual in :shared androidMain was REJECTED on evidence: :shared's JVM tests run commonTest against
+  android.jar, whose org.json is stubbed to throw (libs.versions.toml's own AN2 note), so the moved pin
+  would crash at the save; adding org.json to :shared's tests is a :shared dependency (SPEC 20: stop).
+SHAPE: the controller takes the encoder as a parameter, `patchBody: (Settings) -> String`.
+  Step 1, in :app, behaviour-neutral: patchBody added LAST with default Settings::mePatchBody;
+    OnboardingControllerTest (Kotest, asserts the org.json body) 11/11 UNEDITED.
+  Step 2, the pin, written against that code: OnboardingControllerPinTest (kotlin.test +
+    kotlinx-coroutines-test), 9 tests. It hands in `"patch:" + settings` (Settings is a data class: the
+    same toString on every platform) and asserts the saver received exactly that and the store holds
+    exactly that Settings - the WHOLE saved object. Covers: the eight steps in order (a list of the
+    steps seen), the name trimmed, a second full flow (VD, 75 custom, EXACT 220 trimmed, HALF_DAY,
+    " 2026-07-01 " trimmed, AUTO_DETECT + consent); each PostOutcome -> its phase, the store written only
+    on Ok; every per-step refusal (NAME/CANTON/RATE x5/EXACT_TOTAL_MISSING/_INVALID/START_DATE) and that
+    an edit clears the error; EVERY start date R777's check refuses, through the controller's own trim,
+    plus four accepted (incl. tab/newline padding); the engine's save-time refusals with nothing sent
+    (rates 0/101/-5, exact total 0, a start after the tax year) - and, pinned as today's behaviour, a
+    start BEFORE the tax year is SAVED (the engine's remaining fraction is 1); Back; a restored step not in
+    its plan; an empty plan; a one-step plan; onboardingPlanFor over four MeViews.
+    GREEN 9/9 in :app. RED on a verified plant: `name = current.name.trim()` -> `current.name` (git diff
+    shown, sha256 before) -> 9 run, 1 failed (theFullFlow...: "patch:Settings(... name=Camille Martin ...)"
+    expected, the untrimmed name received). Restored, sha256 -c OK.
+  Step 3, the move: OnboardingController.kt and Completeness.kt git mv'd to :shared commonMain (R100 for
+    Completeness). Edits in the controller: the org.json import gone; patchBody loses its default
+    (required, named - legal after the defaulted `restored`); OnboardingSnapshot's supertype
+    java.io.Serializable -> PlatformSerializable (Android's actual typealias IS java.io.Serializable, the
+    companion serialVersionUID 2L kept: the same Bundle bytes - IOS-2a's SignInSnapshot shape).
+    SettingsSaver and SessionSettingsSaver moved with the file (SessionManager was already shared).
+  :app keeps onboarding/OrgJsonOnboarding.kt: `fun OnboardingController(saver, store, taxYear, scope,
+    restored = null)` handing in Settings::mePatchBody - R602d's JavaTimeAujourdhui shape, same
+    @Suppress pair. MainActivity, OnboardingControllerTest, ForcedSignOutTest, SignOutRefreshTest: UNEDITED.
+    The same function reference -> the same bytes on Android's wire.
+  The pin git mv'd to :shared commonTest UNEDITED (sha256 identical): 9/9 there; 9/9 on the iOS simulator.
+iOS IMPLEMENTATION OF THE ENCODER: DEFERRED (R778's permission to defer): see R784.
+NO java.* / android.* IN commonMain: CommonMainFenceTest green; compileCommonMainKotlinMetadata green;
+  the iOS compile on the Mac (R781).
+
+================================================================================
+R779 - THE SCREENS MOVED BEHIND THE SEAM (commit 282426a)
+================================================================================
+git mv to :shared commonMain ui/screens/onboarding (package unchanged): OnboardingActions.kt,
+  ChoiceCardText.kt, PretScreen.kt UNEDITED (R100); OnboardingScreen.kt edited only for the seam (the
+  slot parameter, PeriodeStep's call to it, the @OptIn(ExperimentalMaterial3Api) and isoOf import gone,
+  a header paragraph). :app keeps OnboardingStartDatePicker.kt (R776).
+FENCES. FencesTest's `ui` subject already reads both roots (:app ui/, pinned AppBottomBar.kt; :shared
+  commonMain ui/, pinned AujourdhuiScreen.kt), so the new home was read with no widening. No fence named
+  ui/screens/onboarding by path (grep of the fences: only CopyReachability's comments mention
+  OnboardingDates). RED ONCE, on a VERIFIED plant IN THE MOVED SCREEN (diff of the file against a copy
+  shown: +import androidx.compose.material3.DatePicker, +import ...unit.dp, + a raw Color(0xFF00FF00), a
+  raw 7.dp, a const "Bonjour, plante"):
+    FencesTest 11 run, 2 failed, exactly:
+      uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens  "..\shared\...\ui\screens\onboarding\
+        OnboardingScreen.kt: raw Color(0x...) literal outside design/Tokens.kt" and "...: raw .dp literal
+        outside Spacing/Radius"
+      uiAndDevFilesCarryNoStringLiteral  "...OnboardingScreen.kt: string literal "Bonjour, plante" ..."
+    CommonMainFenceTest 3 run, 1 failed: commonMainImportsNoPlatformApis "OnboardingScreen.kt:17: import
+      androidx.compose.material3.DatePicker".
+  The plant removed by restoring the copy: sha256 equal to the pre-plant file; grep PLANT/DatePicker: 0.
+  Then green (the gate below).
+NOTICED (UNNUMBERED-2 below): CommonMainFenceTest reads IMPORTS only. The moved block called Material3's
+  picker by fully-qualified name (`androidx.compose.material3.rememberDatePickerState()`, no import) - had
+  it moved into commonMain unedited, the fence would NOT have fired; the metadata compile would have passed
+  (CMP's Material3 has the picker in common) and iOS would have failed at run time only.
+================================================================================
+R780 - ANDROID IS THE PROOF
+================================================================================
+BASELINES: `git diff --stat 5022714..282426a -- android/app/src/test/snapshots` -> EMPTY. Every Paparazzi
+  rule at maxPercentDifference 0.0 (PaparazziZeroToleranceTest green). RE-RECORDED: 0.
+  :app:verifyPaparazziDebug after R779: 1392 tests, 0 failures; 142 screenshot tests, 0 failures, at 0.0
+  - OnboardingScreenScreenshotTest 16/16 (canton, granularite, granulariteLarge, methode, methodeExact,
+  mode, modeAuto, nom, nomLarge, periode, periodePartial, pretDefault, pretLarge, rappel, taux, tauxOther)
+  on the SHARED screens, through the :app overload.
+TESTS, ASSERTIONS UNEDITED: no test file under android/app/src/test or android/app/src/androidTest was
+  edited by this task (`git diff --stat 5022714..282426a -- android/app/src/test android/app/src/androidTest`
+  shows only the two pins' adds-then-moves, which net to nothing in :app). No import changed either: the
+  package names did not move. OnboardingControllerTest 11/11 (org.json body), OnboardingScreenScreenshotTest
+  16/16, StartupDeciderTest, ForcedSignOutTest, SignOutRefreshTest, CopyReachabilityTest, FencesTest,
+  OnDeviceFormatGoldenTest - all green in the gate below. There is NO onboarding Compose UI test in
+  androidTest and no onboarding accessibility test; the onboarding screens' UI proof on Android is
+  Paparazzi (closed states) plus the S9 (R783, the dialog included).
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on, no -P):
+  base 5022714 (built in this worktree before any change)   1,989,388 B
+  tip  282426a                                              1,989,388 B   (+0)
+  WHY: 3 of 113 entries differ - classes.dex 3,273,944 -> 3,275,764 uncompressed (+1,820), 1,563,207 ->
+  1,564,183 compressed (+976: the slot lambda, the factory, the overload, kotlinx in place of java.time);
+  assets/dexopt/baseline.prof +12, baseline.profm +3. The archive size is unchanged to the byte (zip
+  alignment absorbed it, as in IOS-2a). resources.arsc CRC identical.
+
+================================================================================
+R781 - iOS: ONE RUN (41823078576)
+================================================================================
+workflow_dispatch on ios2b, head 282426a, 11:42:17Z-11:50:19Z (~8 min), SUCCESS. STEPS (20, all
+success): Set up job; checkout; setup-java; setup-gradle; Restore the Kotlin/Native toolchain;
+Environment (diagnostic); Provision the Kotlin/Native toolchain; Boot the iPhone simulator; Start the
+wire-recording server; iOS - simulator tests and device compile; The wire recording; Save the
+Kotlin/Native toolchain; Results - refuse a run that executed no tests; Which simulator ran (positive
+signal); Room's generated iOS code (listing); upload-artifact; 3 post steps; Complete job.
+"iOS SIMULATOR TESTS EXECUTED: 243" (main 229; +14). New on iOS, each 0 failures:
+  onboarding.OnboardingDatesPinTest 4 (the R777 vectors), onboarding.OnboardingControllerPinTest 9
+  (R778), pilot.OnboardingScreensIosTest 1.
+MaterialDatePickerCanaryTest 1/1, UNCHANGED, and still printing "IOS-1b-A canary: still broken as
+  expected - kotlin.internal.IrLinkageError: ... 'kotlinx.datetime/Instant.Companion'" - the positive
+  proof Material3's picker stays unlinked on iOS, which is why the picker is a seam.
+THE iOS UI TEST (pilot/OnboardingScreensIosTest): MainActivity's OnboardingRoute reduced to its calls -
+  the REAL shared OnboardingController over an in-memory SettingsSaver (PostOutcome.Ok) and SettingsStore,
+  encoder `"patch:" + settings`; no server, no account, no address. It drives: NOM (name typed) ->
+  CANTON (Geneve tapped) -> TAUX (80 %) -> METHODE -> GRANULARITY -> PERIODE: part of the year; the
+  start-date field tapped; the FAKE picker (two TextButtons the test put in the R776 slot) appears only
+  now; CANCEL -> the picker gone, nothing picked, Continuer -> ERROR_START_DATE_INVALID shown; the field
+  again -> PICK (2026-03-02) -> the field shows swissDate(PICKED), the picker gone -> MODE (manual) ->
+  RAPPEL ("Pas maintenant") -> READY: the saver received exactly ["patch:" + the expected Settings], the
+  store holds it, PretScreen shows readyPeriod(PICKED, 2026) -> Continuer -> done. Strings from fr/,
+  expected values from the shared formatters (R181). No iosMain line (the seam needs none).
+CI MINUTES: this one run, ~8 min wall. No earlier run was dispatched.
+
+================================================================================
+R782 - THE READING HARNESS, FIXED BEFORE THE DEVICE STEP
+================================================================================
+(1) A DETERMINISTIC SCROLL POSITION (shot.mjs). With ANCHOR=<text>, the same UI dump that finds the
+  EditTexts finds the first node whose text or content-desc contains ANCHOR and records its top y in the
+  capture's JSON; with ANCHOR_REF=<earlier capture>, the anchor text and y must be EQUAL or nothing is
+  captured (exit 5); an anchor not on screen is refused too. PROVEN on the welcome screen, before
+  anything was measured:
+    reference     "r782-anchor-ref: ... anchor "Commencer" y=1918"                         (exit 0)
+    POSITIVE      same reference -> "r782-anchor-same: ... anchor "Commencer" y=1918"      (exit 0)
+    PLANT         the reference moved 9 px (ANCHOR_PLANT_DY=9) -> "REFUSED (R782): anchor "Commencer"
+                  at y=1918, r782-anchor-ref had it at y=1927 - nothing captured"         (exit 5;
+                  ls: no r782-anchor-plant files)
+    PLANT         an absent anchor -> "REFUSED (R782): anchor "Pas sur cet ecran" not on screen -
+                  nothing captured" (exit 5)
+    and a different anchor text against the same reference -> REFUSED (exit 5): the text is compared,
+    not only the y.
+(2) THE APP ASSERTED IN THE FOREGROUND, NO RELAUNCH GAP (read.mjs). LAUNCH mode (force-stop + monkey
+  relaunch: the gap where the One UI launcher spoke in IOS-2a-DEVICE Q2) is REFUSED. Stop 0 is what is
+  spoken from where the screen stands - from the reader's start to the first key - and `dumpsys window`
+  mCurrentFocus must name ch.monreleve.app immediately before that span opens AND immediately before it
+  closes, or nothing is written (exit 4). cmp.mjs now COMPARES stop 0 rather than only showing it.
+  PROVEN:
+    PLANT  FOCUS_PKG=ch.monreleve.nope -> "REFUSED (R782): before stop 0: mCurrentFocus=Window{e7c9a3e u0
+           ch.monreleve.app/ch.monreleve.app.MainActivity} does not name ch.monreleve.nope - no reading
+           written" (exit 4; ls reads/: no r782 file)
+    PLANT  LAUNCH=7000 -> "REFUSED (R782): LAUNCH mode force-stops and relaunches - read from where the
+           screen stands" (exit 4)
+    POSITIVE every one of the tip's ten readings: each JSON's stop 0 carries both focus reads (before and
+           at the end of stop 0), both naming ch.monreleve.app/ch.monreleve.app.MainActivity.
+A THIRD GUARD added during the run (v3): a reading whose raw log carries "Affichage Paysage" is refused
+  as an outside event. It did not fire (the landscape episode fell between two states).
+
+================================================================================
+R783 - ON THE S9, AGAINST THE LOCAL STACK (STOPPED)
+================================================================================
+STACK: this worktree's web/ (pnpm install --frozen-lockfile, .env copied - both gitignored),
+  `PORT=3400 pnpm dev`; R169: /api/health -> {"service":"monreleve",...,"status":"ok"}; database
+  frontalier-postgres on 5436 (Up, healthy). 3000/3100/3200 not touched. adb reverse tcp:3000 tcp:3400.
+  NEVER production. Server calls, whole session (dev.log, statuses only): POST magic-link 202 x1,
+  POST code 200 x1, GET /me 200 x1. No PATCH /me (onboarding never reached its save).
+ACCOUNT: ios2b.tip@monreleve.test - new (a SELECT on "User" for 'ios2b%' returned 0 before), mine,
+  throwaway; 1 code attempt of the 10/day. ios2b.main@... was never used (main NOT RUN).
+THE PROCEDURE (flow-ob.sh, written to run identically on both builds): install; launch; sign in (welcome
+  -> the address -> the code read from dev.log by getcode.mjs into a temp file, typed, deleted - never
+  printed; the code screen NOT captured, R574, and not compared - IOS-2a did that); then per state:
+  checks (portrait, MainActivity focused, a marker on screen, the IME hidden), a masked capture (every
+  EditText painted before writing, the expected count asserted) with an R782 anchor, Voice Assistant on,
+  the standing reading (R782), the service deleted, an after-check.
+WHAT RAN, THE TIP BUILD ONLY (282426a; reference for a follow-up: ANCHOR_REF = tip-<state>):
+  STATE                  MASKED  ANCHOR (top y)           STOPS  STOP 0 (standing)            OUTSIDE
+  nom                    1       "Votre nom" 216          10     Affichage Portrait | Mon Releve   none
+  canton                 1       "Canton de votre..." 216 21 *   Affichage Portrait | Mon Releve   none
+  taux                   0       "Votre taux d" 216       11     Affichage Portrait | Mon Releve   none
+  methode                0       "thode de d" 216         11     Affichage Portrait | Mon Releve   none
+  granularite            0       "Comment comptez" 216    11     Affichage Portrait | Mon Releve   none
+  periode                0       "Avez-vous travaill" 216 9      Affichage Portrait | Mon Releve   none
+  periode-partiel        0       "Date de d" 1278         10     Affichage Portrait | Mon Releve   none
+  periode-dialog (open)  0       "lectionner une date"270 45     Affichage Portrait | Selection
+                                                                 actuelle : Aucun                  none
+  periode-dialog-picked  0       same, 270                45     ... Selection actuelle : lundi 2
+                                                                 novembre 2026                     none
+  periode-date           0       "Date de d" 1278         10     Affichage Portrait | Mon Releve   YES
+  (* the canton reading ends at the loop guard - UNNUMBERED-3.) "Affichage Portrait" at the reader's
+  start is the reader's own (EVENT_TYPE_ROTATE subtype 1, present in every reading, as in IOS-2a-DEVICE);
+  the raw logs of the first nine carry nothing else of the kind (grep: no Paysage, Volume or raccourci).
+THE DIALOG, READ ON THE TIP: the same Material3 composable, now in :app - "Selectionner une date, Boite
+  de dialogue" / "Selection actuelle : Aucun" / "Passer au mode de saisie Texte" / "novembre 2026, Passer
+  a la selection d'une annee" / previous / next month / the seven day names / the 30 days ("Aujourd'hui,
+  mercredi 4 novembre 2026") / "Continuer, Touche, dernier element". After "lundi 2 novembre 2026" was
+  tapped, exactly three lines changed: stop 0's and stop 2's "Selection actuelle : lundi 2 novembre 2026",
+  and stop 15 "Verifie, lundi 2 novembre 2026". Back on the step, the field showed "02.11.2026" (the
+  kotlinx swissDate of the picked UTC-midnight millis through isoOf - the R777 port, on a device).
+THE STOP: periode-date's reading, stops 1-3 clean; stop 4 "Non verifie, Oui, depuis le 1er janvier, ..."
+  + "Volume Accessibilite, 65 pourcent"; stop 5 + "Alerte Utiliser le raccourci d'accessibilite ?";
+  stops 6-10 read the foreign dialog to its "dernier element". The after-check then found window
+  "android" focused and aborted. The state is STOPPED ON and was not re-read (Ruling 8 Q2); the dialog
+  was not answered (Ruling 9). Everything after it - periode-date clean, mode, rappel, pret, the shell,
+  the sign-out - did NOT RUN on the tip; NOTHING RAN on main.
+COMPARISON: NONE. No state has two builds; no claim of identity is made.
+THE TWO ABORTS BEFORE THE STOP, both harness, both resumed from the exact state with no phone action
+  between abort and resume (only UI dumps):
+  - canton-after (12:01:53): the after-check looked for the title; the reading had scrolled the list
+    (accessibility focus scrolls), so the title had left the screen. v2 reads the step label ("Etape N sur
+    8", outside the scroll), and taps Geneve where the reading left the list rather than typing into a
+    field that had scrolled away. Resumed at A2 (12:02:47).
+  - methode (12:04:28): the landscape outside event, above, before the capture - no state was read in
+    landscape. Resumed at A3 (12:05:45) once portrait held for four reads.
+  A follow-up must run the SAME v3 script on both builds from the start (this tip run's sequence of
+  phone actions equals v3's, but its log is in three parts).
+INSTRUMENTED RUN: NOT RUN. connectedAndroidTest under a foreign system dialog would run Compose UI tests
+  with the focus elsewhere (NO RESULT), and its two new APK hashes could raise a Play Protect dialog this
+  session may not answer. WHICH CLASSES TOUCH ONBOARDING, said exactly: NONE drives OnboardingScreen or
+  PretScreen, before or after; git diff 5022714..282426a -- android/app/src/androidTest is EMPTY. The only
+  androidTest that names an onboarding-package type is StatePreservationInstrumentedTest (2 tests), which
+  builds a fake SettingsSaver for the SHELL's Parametres, not for onboarding. (IOS-2a-DEVICE's run of the
+  same 13 classes on unchanged androidTest code: 57/57.)
+
+================================================================================
+R784 - WHAT IOS-1b-B NOW NEEDS (update of REPORT-IOS-2a R775)
+================================================================================
+ONBOARDING ENTRY POINTS (all commonMain, package names unchanged):
+  ui.screens.onboarding: OnboardingScreen(state, actions, startDatePicker, modifier) - the 8-step wizard;
+    PretScreen(settings, taxYear, onContinue) - "Tout est pret"; OnboardingActions (15 callbacks); all
+    inside design.FrontierTheme.
+  onboarding: OnboardingController(saver, store, taxYear, scope, restored = null, patchBody = <encoder>)
+    - patchBody is REQUIRED and named; SessionSettingsSaver(session) is the SettingsSaver over
+    SessionManager.authenticatedPatch("/api/v1/me"); onboardingPlanFor(MeView?) / freshOnboardingSnapshot()
+    decide full / partial / complete; OnboardingSnapshot is the restore seed; the date helpers (isoOf,
+    swissDate, isIsoDay, readyRate/Method/Period).
+THE HOST: THERE IS NO SHARED ONBOARDING HOST. Android's is MainActivity's private OnboardingRoute (with
+  ResolvingRoute before it), like sign-in's. It owns what the screen cannot: the location disclosure and
+  FINE/BACKGROUND permissions behind onChooseAuto (R315/R316), POST_NOTIFICATIONS and
+  SharedPrefsEveningNotificationStore behind onReminderYes (R323), rememberSaveable of the snapshot, and
+  the READY -> PretScreen -> shell hand-off. iosTest's OnboardingHost (pilot/OnboardingScreensIosTest) is
+  the minimal shape - test code, not shipped; its onChooseAuto does nothing.
+THE R776 SEAM'S CONTRACT FOR THE NATIVE iOS PICKER: above (R776) and in OnboardingScreen.kt's header.
+  One trap, measured from the Android side: Material3 hands back UTC-MIDNIGHT millis of the chosen
+  calendar day, which isoOf turns into the day. A UIDatePicker/SwiftUI DatePicker hands back a Date at a
+  LOCAL time - the iOS slot must take the year/month/day components in the picker's own calendar and
+  time zone and pass "yyyy-MM-dd"; feeding that Date's millis to isoOf would shift the day east of UTC.
+  The controller trims and checks it (isIsoDay); an unparseable day is refused at the step.
+STILL MISSING ON iOS (R775's list, re-read here):
+  - AccountStore for iOS: still none in iosMain (CodeController and CallbackController take one).
+  - the universal-link receipt feeding CallbackController.handleLink (the R770 contract).
+  - the transport's base URL (AuthApi / SessionManager configuration).
+  - syncNow (no composed iOS SyncEngine).
+  - the iOS framework declaration and the bundled Compose resources (still 18 glyphs; onboarding added
+    none - BELL and INFO were already in the eighteen).
+  NEW WITH THIS TASK:
+  - the PATCH /me ENCODER for iOS (OnboardingController's patchBody): deferred, not written. MeWire.kt's
+    header states the contract (two fields sent as JSON null, three omitted when absent) and why one
+    kotlinx Json configuration cannot express it; iOS writes the three /me functions (mePatchBody,
+    parseMeSettings, parseMeView) as one unit (R455). Writing the encoder alone here would have been a
+    second text of one fact that only the server could check (R206).
+  - the /me READ for iOS: StartupDecider (onboardingPlanFor's caller) is in :app and parses with
+    org.json's parseMeView.
+  - the evening-reminder and location-disclosure halves of the route (platform permissions).
+  - restore across process death: OnboardingSnapshot's PlatformSerializable is an empty marker on iOS,
+    so nothing persists it there; an iOS host restores onboarding its own way or not at all.
+  PRESENT ON iOS ALREADY: SettingsStore (UserDefaultsSettingsStore), TokenStore (KeychainTokenStore),
+  PendingSignInStore (KeychainPendingSignInStore).
+
+================================================================================
+R785 - WHAT IS LEFT IN :app (measured by grep of each screen's own files; not chosen)
+================================================================================
+  SCREEN       FILES  BLOCKERS FOUND
+  calendrier   9      the screen's files: none (no java.*, no android.*, no picker, no R.drawable). Its
+                      controller (calendar/CalendarController.kt) holds java.time LocalDate/Instant/Clock
+                      - R602b/c's CheckWindows/CalendarModel shape (a kotlinx port + a java.time factory).
+  comparison   2      painterResource(R.drawable.ic_chevron_left) - CHEVRON_LEFT is already one of
+                      the eighteen Glyphs, so a call-site edit (ruling 14's seam). No java.*.
+  disclosure   1      none in the screen. Its HOST is the location-permission flow (platform).
+  parametres   12     THE SECOND MATERIAL3 DATE PICKER (ParametresDateField.kt: DatePicker,
+                      DatePickerDialog, rememberDatePickerState(initialSelectedDateMillis = ...) + java.time
+                      Instant/LocalDate/ZoneOffset) - the same seam as R776 would serve it, with an initial
+                      date this time; ParametresController: org.json JSONObject (the /me wire, PARK-D3),
+                      java.time.LocalDate; LegalLink: android.content.ActivityNotFoundException (opening a
+                      browser - platform).
+  prevision    2      painterResource(R.drawable.ic_bell / ic_info) (glyphs: BELL and INFO are in the
+                      eighteen); forecast/ controllers: java.time DayOfWeek/Clock/LocalDate.
+  releve       4      none in the screen; ReleveController imports nothing platform. Its host owns the
+                      share/export (platform) and the dossier fetch.
+  rythme       1      painterResource(R.drawable.ic_info); java.time.DayOfWeek in the screen.
+  simulation   2      java.time.DayOfWeek in SimulationScreen; forecast/ controllers as prevision.
+SUGGESTED ORDER (a suggestion, not a choice): releve and calendrier first (their screens are already
+  platform-free; the calendar controller is the R602b/c port again); then comparison, prevision,
+  simulation, rythme (glyph call sites + the forecast controllers' java.time -> kotlinx, one pinned
+  move for the four); parametres LAST - it carries the second Material3 picker (the R776 seam again, now
+  with an initial date), the /me wire codec (PARK-D3) and a platform link opener.
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref    sha      result   wall
+  41823078576  ios2b  282426a  success  ~8m (11:42:17Z-11:50:19Z)
+One dispatch, no push-triggered run (ios2b does not match ios-*). Report-only commits trigger nothing.
+
+================================================================================
+PARKED (UNNUMBERED - no series letter claimed)
+================================================================================
+UNNUMBERED-1  The iOS /me codec (mePatchBody encoder, parseMeView, parseMeSettings) does not exist;
+              OnboardingController requires an encoder (R784). Trigger: IOS-1b-B.
+UNNUMBERED-2  CommonMainFenceTest reads IMPORTS only. A fully-qualified call
+              (`androidx.compose.material3.rememberDatePickerState()` with no import - the exact shape of
+              the block this task moved out) passes it, passes compileCommonMainKotlinMetadata (CMP's
+              Material3 has the picker in common), and fails only at run time on iOS. The rule could
+              scan for the qualified name too. Trigger: the next task that moves a screen holding FQN
+              Material3 calls (Parametres).
+UNNUMBERED-3  read.mjs's loop guard (a focus text repeating more than 8 times ends the reading) cuts the
+              canton reading at the ninth "Non selectionne, Bouton radio": 21 stops of ~60. Same on both
+              builds by construction, but it reads a third of the list. A follow-up could key the guard on
+              (text, position) or raise it for that state - before either build is read.
+UNNUMBERED-4  NOTICED, NOT TOUCHED: swissDate/readyRate/readyMethod/readyPeriod/isIsoDay are public
+              since R777 (needed then by :app); after R779 only isoOf is called from :app, so the rest
+              could return to internal.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. main's audit APK was copied, not rebuilt (tree identity, signer verified) - and then never used.
+2. R777 and R778 are two commits each (pin, then move), as R768/R602 were, so git records each pin's
+   move as a rename with no content change.
+3. R778: the pin was written against the controller AFTER one behaviour-neutral parameter was added
+   (patchBody, defaulted to org.json's mePatchBody); OnboardingControllerTest unedited and green proves
+   the addition changed nothing. Without it no pin could move unedited (the org.json actual crashes
+   :shared's JVM tests).
+4. R777: OnboardingController's line 242 check was extracted into OnboardingDates.isIsoDay, unchanged,
+   before the pin, so the pin could reach it.
+5. The seam is a screen PARAMETER, not an OnboardingActions member (R776 said "in the manner of
+   SignInActions"): a new required member would have edited OnboardingScreenScreenshotTest's fixture.
+6. R783: the tip was run first (to meet a Play Protect dialog, if any, before anything was measured), in
+   three log parts after two harness aborts; then STOPPED. See R783.
+7. R783: the phone was left signed in to my throwaway account (the sign-out is behind the foreign
+   dialog) - contrary to the brief's end state; the as-found APK IS reinstalled.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R783) - the S9 shows Android's "Utiliser le raccourci d'accessibilite ?" dialog, raised by both
+   volume keys held while my reading ran. Either button changes a phone setting (the volume-keys
+   shortcut on or off), so it is the operator's to answer, not this session's. Then: does a device
+   follow-up session (IOS-2a-DEVICE's shape) run R783 on BOTH builds with flow-ob.sh v3 from the start -
+   main and tip, a new throwaway address each - plus the instrumented run and the sign-out of
+   ios2b.tip@monreleve.test? The tip's readings here can be its reference only if the follow-up reruns
+   the tip too (they are in three parts).
+Q2 (R783) - who had the phone between 12:04 and 12:26 (log clock; 13:04-13:26 phone clock)? The display
+   turned to landscape once, a volume key was pressed (ring volume 11 -> 15, accessibility volume set to
+   10), and both volume keys were held. None of it was this session's input (the virtual keyboard sends
+   Alt+Right only).
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2b only (never main, never production). The code commits 376a587, 730bde9, 0a83eaa, 0a52537,
+282426a were pushed before the iOS dispatch (git push -u origin ios2b -> "* [new branch] ios2b -> ios2b";
+git ls-remote origin refs/heads/ios2b -> 282426a063252081c03530f3596fa63998be666c). This report is the
+commit after 282426a and changes REPORT-IOS-2b.txt only; its push is recorded in the follow-up commit.
+
+END OF REPORT-IOS-2b
+
+PUSH PROOF, FOLLOW-UP: the report commit 768e97a pushed - git push origin ios2b -> "282426a..768e97a
+ios2b -> ios2b"; git ls-remote origin refs/heads/ios2b -> 768e97a1333a00f1eee926210689d1a16d43c0bc;
+`git diff --stat 282426a 768e97a` -> REPORT-IOS-2b.txt only (573 insertions). gh run list --workflow
+ios-shared.yml --branch ios2b -> 41823078576 on 282426a (workflow_dispatch) only. R776-R785 re-grepped
+before the push: only relay/IOS-2b.txt and this report. Not pushed: main, production.
+CLEANUP: dev server tree (PIDs 20536, 24176 under C:/wt/ios2b/web) killed with taskkill /T; no node
+process under C:/wt/ios2b/web remains; curl 3400 exit 7. ./gradlew --stop after the gate. adb reverse
+empty. Lock .session-lock.json removed after this push. Evidence stays in C:/wt/ios2b/.ios2b-evidence/
+(ignored). The throwaway ios2b.tip@monreleve.test remains in the local database and signed in on the S9.

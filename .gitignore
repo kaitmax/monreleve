@@ -79,3 +79,9 @@ web/dist-parity/
 
 # Kotlin 2.x's incremental build cache. Build output, never committed.
 /android/.kotlin/
+
+# IOS-2b: a device session's evidence folder at the repository root (/.<task>-evidence/).
+# It holds the local dev server's log, which carries sign-in links and codes (R574), so
+# it is ignored by rule rather than kept out by staging-by-name alone. Anchored at the
+# root and suffix-matched, the /android/.*-shots/ shape one directory up.
+/.*-evidence/

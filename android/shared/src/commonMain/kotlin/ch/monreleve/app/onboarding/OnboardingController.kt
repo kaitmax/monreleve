@@ -9,15 +9,14 @@ import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
-import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 // AN-ONBOARD. The onboarding WIZARD (design/onboarding steps 1-7 + "Tout est prêt"), replacing AN5b's single
 // scrolling form. It holds ONE state across the steps and Back preserves everything (R310). Lives OUTSIDE ui/
@@ -32,6 +31,12 @@ import java.time.LocalDate
 // wizard runs an ordered SUBSET of the steps - a complete account goes straight to Aujourd'hui, a partial one is
 // asked only the fields it is missing (state.steps), prefilled from /me. Step 4 (Méthode) still reveals a total
 // field the static mockup omits, because the engine requires one for the real-days method.
+//
+// IOS-2b R778: moved to :shared commonMain (package unchanged), pinned first by OnboardingControllerPinTest. What
+// needed the platform went behind a seam: the PATCH /me body is made by `patchBody`, handed in - org.json's
+// Settings.mePatchBody stays in :app (MeWire.kt, PARK-D3), supplied by :app's factory of the same name
+// (OrgJsonOnboarding.kt), so every Android call site is unedited; iOS hands in its own (IOS-1b-B). The restore seed's
+// supertype is PlatformSerializable: java.io.Serializable on Android, the same serialVersionUID, the same Bundle bytes.
 
 enum class ModeChoice { MANUAL, AUTO_DETECT }
 
@@ -116,7 +121,7 @@ data class OnboardingSnapshot(
     // /me prefill (StartupDecider -> OnboardingRoute) restore the same subset flow with the same values.
     val granularity: GranularityChoice = GranularityChoice.DAY,
     val steps: List<OnboardingStep> = DEFAULT_STEPS,
-) : java.io.Serializable {
+) : PlatformSerializable {
     companion object {
         // Bumped from 1L: the shape gained granularity + steps (AN-ONBOARD-2). rememberSaveable state is
         // process-scoped, so this never deserialises a cross-version bundle; the bump records the change.
@@ -143,6 +148,9 @@ class OnboardingController(
     private val taxYear: Int,
     private val scope: CoroutineScope,
     restored: OnboardingSnapshot? = null,
+    // IOS-2b R778: the PATCH /me body is made by a function handed in, so the controller holds no codec. No default:
+    // a call that does not name one is :app's factory, which hands in org.json's mePatchBody.
+    private val patchBody: (Settings) -> String,
 ) {
     private val mutableState =
         MutableStateFlow(
@@ -239,7 +247,7 @@ class OnboardingController(
         when {
             s.allYear -> null
             s.activityStartDate.isBlank() -> OnboardingError.START_DATE_INVALID
-            runCatching { LocalDate.parse(s.activityStartDate.trim()) }.isFailure -> OnboardingError.START_DATE_INVALID
+            !isIsoDay(s.activityStartDate.trim()) -> OnboardingError.START_DATE_INVALID
             else -> null
         }
 
@@ -247,7 +255,7 @@ class OnboardingController(
         val settings = buildSettings(current) ?: return
         mutableState.update { it.copy(phase = OnboardingPhase.SUBMITTING, error = null) }
         scope.launch {
-            when (saver.saveSettings(settings.mePatchBody())) {
+            when (saver.saveSettings(patchBody(settings))) {
                 is PostOutcome.Ok -> {
                     store.save(settings)
                     mutableState.update { it.copy(phase = OnboardingPhase.READY) }

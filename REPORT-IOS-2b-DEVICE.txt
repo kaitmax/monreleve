@@ -1,0 +1,330 @@
+REPORT-IOS-2b-DEVICE - Mon Releve
+THE S9 HALF OF IOS-2b: R783 (every onboarding step, main vs branch) AND ITS INSTRUMENTED RUN
+R783 STOPPED ON AN OUTSIDE EVENT (a physical side key pressed during main's canton reading) - NOTHING
+COMPARED. INSTRUMENTED RUN: 57/57.
+
+Session: IOS-2b-DEVICE, 2026-11-04 (all times UTC unless "phone clock" = UTC+1). Worktree
+C:/wt/ios2b-device, branch ios2b-device cut from origin/ios2b aa46567, lock .session-lock.json.
+No code change.
+
+================================================================================
+SUMMARY
+================================================================================
+- The reading harness was copied from C:/wt/ios2b/.ios2b-evidence/ (read and copied only; nothing there
+  modified) and fixed before anything was measured: swap.sh repointed to this session's folder; the
+  loop guard made consecutive-only (UNNUMBERED-3 of REPORT-IOS-2b) with the reason a reading ended
+  recorded; cmp.mjs refuses a pair unless both readings ended on the stop pattern; the outside-event
+  refusal widened (Volume / raccourci / Alerte / Paysage); and a NEW capture guard refusing any capture
+  that overlaps a hardware volume event. Every one proven (below).
+- ios2b.tip@monreleve.test (the IOS-2b session's throwaway, the brief's sibling account) was signed out
+  through the app's own dialog, on the tip audit build against the local stack.
+- R783: main's build (5022714) started with a NEW address ios2b-dev.main@monreleve.test. State "nom":
+  captured and read clean. State "canton": captured clean; its reading - now complete, all 26 cantons to
+  "Continuer, Touche, dernier element" at stop 60 - was DISTURBED at stop 33 by a PHYSICAL side-key press
+  (input device 6 = gpio_keys), which the screen reader turned into "Volume Accessibilite, 60 pourcent".
+  Per the brief (Ruling 8 Q2) the run STOPPED on that state; it was not re-read. The tip build was NOT
+  RUN. NO STATE HAS TWO BUILDS; NOTHING WAS COMPARED; NO CLAIM OF IDENTITY IS MADE.
+- The phone was being physically acted on during this session: a USB detach (16:33-16:38:41, no reboot),
+  three volume-up key events at 16:44:10 (during two harness-proof captures, which caught the system
+  volume panel), and the gpio_keys presses at 16:55:08-13 (two keys). QUESTION Q1.
+- Instrumented run on the S9 against the tip's code: 57 tests, 0 failures, 0 errors (XML). No class
+  drives the onboarding screens; exactly which classes touch onboarding types is listed below.
+- Phone restored: as-found APK reinstalled (on-device sha256 d417d021...), app SIGNED OUT on the welcome
+  screen, adb reverse empty, every setting shown restored except one changed by the outside event.
+
+================================================================================
+STATUS (R391)
+================================================================================
+NO CODE CHANGE IN THIS SESSION. R783 STOPPED ON AN OUTSIDE EVENT (main build: 1 state captured and read
+clean, the 2nd captured clean and its reading disturbed at stop 33; tip build NOT RUN; NO state
+compared). INSTRUMENTED RUN: RUN, 57/57.
+The FULL gate for this code did NOT run in this session; it ran in IOS-2b on the code tip 282426a
+(REPORT-IOS-2b STATUS, quoted): ":app:checkTestFloor - test floor OK: 1392 unit tests observed",
+"BUILD SUCCESSFUL in 9m 14s", "260 actionable tasks: 260 executed", GATE_EXIT=0; :app 1392 tests 0
+failures (142 screenshot at 0.0); :shared 181 0 0. iOS run 41823078576 on 282426a: success.
+`git diff --stat 282426a HEAD` (report-only), at the report commit:
+    REPORT-IOS-2b-DEVICE.txt | (this file)
+    REPORT-IOS-2b.txt        | 583 +++
+No gate was owed by this session (no code, no web/ change; web/.env and node_modules are gitignored and
+untracked). The only Gradle builds here: :app:assembleDebug :app:assembleDebugAndroidTest
+-PfrontalierHost=127.0.0.1 (BUILD SUCCESSFUL in 2m 38s) and :app:connectedDebugAndroidTest (below).
+
+================================================================================
+PHONE STATE BEFORE AND AFTER
+================================================================================
+BEFORE (16:26:32 UTC / 17:26:34 phone clock; nothing changed yet): S9 232bcd8c300c7ece attached.
+  ch.monreleve.app 0.1.0 (versionCode 1), base.apk sha256
+  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (the as-found APK), signer
+  ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1; lastUpdateTime 13:29:18 (IOS-2b's
+  restore). Screen: dozing, lock screen (no PIN); the app's focused task was MainActivity, which showed
+  onboarding step 1 "Votre nom" for ios2b.tip@monreleve.test once the keyguard was dismissed
+  (`wm dismiss-keyguard`, the phone's own guard). NO foreign dialog. NO other account.
+  secure: accessibility_enabled 0, enabled_accessibility_services null, touch_exploration_enabled 0,
+    accessibility_shortcut_dialog_shown 1 (the operator's, recorded as the new before-state).
+  global: stay_on_while_plugged_in 0, auto_time 1, auto_time_zone 1, package_verifier_enable 1,
+    package_verifier_user_consent 1, verifier_verify_adb_installs null, upload_apk_enable 1.
+  system: volume_ring_speaker 15 and volume_a11y_speaker 10 (both the operator's - recorded, never
+    "restored"), accelerometer_rotation 1, screen_off_timeout 30000.
+  adb reverse: empty. Packages 504 (ch.monreleve.app and ch.monreleve.probe among them).
+  Snapshots: phone/before-settings-{secure,global,system}.txt (450/298/426 lines), before-packages.txt,
+  before-tmp.txt. Against IOS-2b's after-snapshots: secure identical; global 1 line
+  (text_classifier_constants, the system's); system 2 lines (tips_regular_hour_timer_* counters).
+DURING (mine): adb reverse tcp:3000 tcp:3400; stay_on_while_plugged_in 7; Samsung Voice Assistant
+  (com.samsung.accessibility/com.samsung.android.app.talkback.TalkBackService) ON only inside each
+  reading and DELETED after it (asserted null by the script).
+AFTER (17:07:47 phone clock 18:07:47), read back:
+  - connectedAndroidTest uninstalled the app (pm path EMPTY, read before reinstalling); the as-found APK
+    reinstalled -> Success; on-device sha256
+    d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (lastUpdateTime 18:07:04 phone);
+    launched: MainActivity focused, the WELCOME screen ("Mon Releve", "Commencer") - SIGNED OUT.
+  - adb reverse --remove-all -> empty; stay_on_while_plugged_in 0; accessibility_enabled 0;
+    enabled_accessibility_services null; touch_exploration_enabled 0; auto_time 1; auto_time_zone 1;
+    accelerometer_rotation 1; ring 15; accessibility_shortcut_dialog_shown 1.
+  - SETTINGS DIFF before vs after (phone/after-settings-*.txt): secure NONE; global NONE; system 3 lines:
+      TIME_DIFFERENCE 2295 -> 1779, auto_brightness_transition_time 1920 -> 1797   the system's own
+      volume_a11y_speaker 10 -> 9   CHANGED BY THE OUTSIDE EVENT (the gpio_keys presses at 16:55:08-13,
+                                    turned by the screen reader into ADJUST_LOWER on the accessibility
+                                    stream) - not this session's input, so NOT restored.
+  - packages identical (504); /data/local/tmp identical.
+  - The phone's clock stayed real (auto_time 1 throughout; checked again after a quoting slip, below).
+
+================================================================================
+APKS (sha256; signer from apksigner)
+================================================================================
+Copied (read only) from C:/wt/ios2b/.ios2b-evidence/apk/ - source and copy hashes equal:
+  as-found-installed-base.apk  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+  main-5022714-audit.apk       470599cb0efbbb1338f950af4f896c1a536c349df5f6ab46426b1a7f2caefaf2
+  tip-282426a-audit.apk        2b968fe0f4d4127e11a404b953a35220b13e78a6036bd7f524c53fe2aceab4e3
+  all three: signer ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1.
+Built here (instrumented run, from aa46567 = 282426a's android tree, -PfrontalierHost=127.0.0.1):
+  app-debug.apk (a4a866b9c5d78948...), app-debug-androidTest.apk (bb9168621ab3e3fa...), both signer
+  ef336db5...e373d1 - no certificate STOP.
+Installs on the phone (each read back on-device by swap.sh): tip 2b968fe0f4d4127e (16:39, to reach
+ios2b.tip's sign-out); main 470599cb0efbbb13 (16:48:59, R783); the as-found restore d417d0210819aab1.
+NO Play Protect dialog appeared at any install (swap.sh would have recorded it and exited 9; it did not
+fire), nor during the instrumented run (54 focus polls, 0 PlayProtect).
+
+================================================================================
+R783 - ON THE S9, AGAINST THE LOCAL STACK (STOPPED)
+================================================================================
+STACK: this worktree's web/ (pnpm install --frozen-lockfile; .env copied - both gitignored),
+  `PORT=3400 pnpm dev`; R169: /api/health -> {"service":"monreleve",...,"status":"ok"}; database
+  frontalier-postgres on 5436 (Up, healthy). Port 3400 shown free first by an HTTP probe (rc 7, same as
+  the never-used control 3999). 3000/3100/3200 not touched. adb reverse tcp:3000 tcp:3400. NEVER
+  production. Server calls, whole session (dev.log, statuses only, in order): ios2b.tip - GET /me 401,
+  GET entries 401 (its 5-hour-old access token), POST refresh 200, GET /me 200, entries 200 x2, PATCH /me
+  200, dossier 200 x2, POST sign-out 200; ios2b-dev.main - POST magic-link 202, POST code 200, GET /me
+  200, entries 200 x2, PATCH /me 200, dossier 200 x2, POST sign-out 200.
+ACCOUNTS: ios2b-dev.main@monreleve.test - new (a SELECT on "User" for 'ios2b%' returned only
+  ios2b.tip@ before; that row is the query's positive control), mine, throwaway; 1 code attempt of the
+  10/day; the code read from dev.log by getcode.mjs into a temp file, typed, deleted - never printed;
+  the code screen NOT captured (R574) and not compared. ios2b-dev.tip@ was never used (tip NOT RUN).
+PROCEDURE: flow-ob.sh v3 (IOS-2b's), with this session's edits (HARNESS below), part A on main's
+  build from the start: install; launch; sign in; then per state: checks (portrait, MainActivity
+  focused, a marker on screen, IME hidden), the last hardware volume event logged, a masked capture with
+  an R782 anchor and the volume guard, Voice Assistant on, the standing reading (R782 focus asserted),
+  the service deleted, the outside-event and end-of-reading checks, an after-check.
+WHAT RAN, MAIN'S BUILD ONLY (5022714; tag "main"):
+  STATE    MASKED  ANCHOR (top y)               STOPS  ENDED BY       STOP 0 (standing)              OUTSIDE
+  nom      1       "Votre nom" 216              10     stop-pattern   Affichage Portrait | Mon Releve none (last volume
+                                                                                                        event 16:44:10
+                                                                                                        before and after)
+  canton   1       "Canton de votre employeur"  60     stop-pattern   (as nom)                       YES - stop 33
+                   216                                                                               (16:55:08 gpio_keys)
+  The canton reading is now COMPLETE: 26 cantons, 27 "Non selectionne, Bouton radio" lines, then the
+  two notes, "Continuer, Touche", "Continuer, Touche, dernier element" (stop 60). IOS-2b's was cut at
+  stop 21 by the old guard (UNNUMBERED-3).
+THE STOP: main-canton stop 33 reads "Obwald" / "Appuyez sur Alt + ENTER pour activer." / "Volume
+  Accessibilite, 60 pourcent". flow-ob.sh's widened outside-event check aborted the run at 16:58:21
+  (exit 1, the screen left on the canton list). The state is STOPPED ON and was NOT re-read (Ruling 8
+  Q2); no third address and no tip run were started (the evidence below makes a fresh run NO RESULT in
+  advance: the "quiet window" check before main started passed, and the press still came 7 minutes in).
+  Everything after - canton clean, taux, methode, granularite, periode, periode-partiel, the date dialog
+  opened, a day picked, periode-date, mode, rappel, pret, the shell - did NOT RUN on either build.
+COMPARISON: NONE. No state has two builds; no claim of identity is made.
+SIGN-OUT OF MY ACCOUNT: ios2b-dev.main's onboarding was completed UNMEASURED (Geneve, the defaults,
+  "Oui, depuis le 1er janvier", Manuellement, "Pas maintenant"), then Parametres -> "Se deconnecter" ->
+  the app's dialog -> "Se deconnecter": POST /api/v1/auth/sign-out 200, the welcome screen. Done before
+  the instrumented run, so the server session was revoked rather than left alive behind an uninstall.
+
+================================================================================
+THE OUTSIDE EVENTS (not this session's input) - QUESTION Q1
+================================================================================
+1. USB DETACH: between `settings get global package_verifier_enable` (answered) and the next adb call
+   (16:33:3x) the device left adb; Windows listed its interfaces (USB\VID_04E8&PID_6860\232BCD8C300C7ECE,
+   "Galaxy S9 de khalid") as Present=False. It came back at 16:38:41 (adb wait-for-device). No reboot
+   (uptime 18 days). My first stay_on write and adb reverse had not landed; both were redone and read back.
+2. 16:44:10 (phone 17:44:10.084 / .146 / .328): three adjustSuggestedStreamVolume(ADJUST_RAISE) from
+   android/android uid:1000 (the hardware key path; dumpsys audio, phone/audio-1.txt). They landed during
+   the first two R782 welcome captures (r782-anchor-ref / -same), which differ by 11 567 px in rows 16-131
+   - the system volume panel sliding (crops shots/crop-ref-top.png, crop-same-top.png). The panel does
+   NOT take the focus, so every focus check passed through it; only the pixels showed it, which is why the
+   new guard reads the audio log rather than the window focus. The audio log also shows a ~1.3 s held
+   volume-up at 15:12:53 (phone 16:12:53), before this session started. Ring volume was already 15, so
+   these left no settings trace.
+3. 16:55:08-16:55:13 UTC: four InputReader lines from device 6 = gpio_keys (dumpsys input), the
+   phone's physical side keys, phone clock: "Input event(6): value=1" at 17:55:08.290, value=1 at
+   12.818, value=0 at 13.022, value=0 at 13.074 - one key held about 4.8 s and a second pressed with it,
+   both released by 13.074. (CORRECTED before the push: the first text of this report said "the only two
+   device-6 lines"; the log holds four.) They are the only device-6 lines in a log holding 240 lines
+   from the harness's own virtual keyboard (device 257). At 13.082 Samsung Voice
+   Assistant (which filters keys while on) called adjustStreamVolume(stream=10 accessibility, dir=-1)
+   and spoke "Volume Accessibilite, 60 pourcent" into the canton reading. Its 60 matched key combos were
+   all keycombo_shortcut_navigate_next (the harness's Alt+Right). volume_a11y_speaker 10 -> 9.
+   (phone/logcat-after-canton.txt, phone/audio-2.txt, reads/main-canton.raw.txt)
+I do not say who or what pressed the keys. During the instrumented run (logcat cleared before it) there
+was no device-6 line and no new volume event (the audio log's last event stayed 16:55:13); the 16:55
+press shows the same log does record such a press.
+
+================================================================================
+HARNESS - each change proven before anything was measured (R180, R782)
+================================================================================
+Copies in .ios2b-device-evidence/ (gitignored); each edited file's IOS-2b original kept beside it as
+*.ios2b.orig.*. Nothing in C:/wt/ios2b was modified (sha256 of the copied scripts equal to IOS-2b's).
+1. swap.sh: F (the APK) and OUT (its temp file) pointed at C:/wt/ios2b/.ios2b-evidence/ - repointed to
+   this session's folder (R334). Proof, read after the session: three swap.sh installs (tip, main, the
+   as-found restore; Gradle installed the debug APKs itself); `find C:/wt/ios2b/.ios2b-evidence -newer
+   <this session's lock, written 16:25:15>` EMPTY and `git -C C:/wt/ios2b status --porcelain` EMPTY.
+   (CORRECTED: the first text said "four installs", unverified at the time.)
+2. read.mjs, THE LOOP GUARD (UNNUMBERED-3): it ended a reading when one focus text had been heard more
+   than 8 times IN ALL - the canton list repeats "Non selectionne, Bouton radio" 27 times. Now it ends a
+   reading only when one focus text is heard 4 times IN A ROW (a stuck reader repeats back to back; a
+   list alternates); MAX still bounds every reading. The reason a reading ended (stop-pattern /
+   loop-guard / max / silent) is printed and written to reads/<name>.end.txt. Proven:
+     self-test (`node read.mjs --guard-selftest`, a canton-shaped sequence of 57 stops):
+       "old guard fires at stop 21; new guard fires at -1"  - the old figure reproduces IOS-2b's measured
+       cut exactly (21 stops), so the simulation models the device;
+       "stuck reader (C x4 in a row): new guard fires at stop 6"; "three in a row only: -1".
+     on the device: main-canton ended "ENDED BY: stop-pattern" at stop 60, all 26 cantons read.
+3. cmp.mjs: refuses a pair (exit 6, "NOT COMPARABLE") unless BOTH readings ended on the stop pattern - a
+   truncated reading is never compared to a truncated reading. (Never reached: nothing was compared.)
+4. flow-ob.sh: ADDR ios2b-dev.<tag>@ (a new address per build); the outside-event check now refuses
+   Volume|raccourci|Alerte|Affichage Paysage in any spoken fragment (was: Paysage only); a reading that
+   did not end on the stop pattern aborts; the last hardware volume event is logged before and after each
+   state. Proven on IOS-2b's own raw logs (read only): 7 hits in tip-periode-date.raw.txt (the disturbed
+   one), 0 in each of the nine clean ones. And it FIRED LIVE (R178): it is what stopped main-canton.
+5. shot.mjs, NEW - NO CAPTURE OVERLAPS A HARDWARE VOLUME EVENT: the last adjust*/setStreamVolume line of
+   dumpsys audio is read before the UI dump and after the screencap; a new event, or a last event younger
+   than 10 s (the panel's lifetime), refuses the capture (exit 7, nothing written). Proven:
+     PLANT AUDIO_PLANT=new   -> "REFUSED (volume): a hardware volume event arrived during the capture:
+                               ... (planted) - nothing captured" (exit 7)
+     PLANT AUDIO_PLANT=young -> "REFUSED (volume): the last hardware volume event is 2 s old (< 10 s, the
+                               panel may be up) ..." (exit 7); `ls shots | grep r782v` -> none
+     POSITIVE two welcome captures a second apart: ages 248.672 s and 251.672 s; "r782v-ctl-a vs
+                               r782v-ctl-b: rows 80-2075: 0 px differ" - this phone's pixel noise floor
+                               on a still screen is 0, shown, not assumed.
+   A slip found and fixed in the proving: the first version passed the phone-side `date` format as two
+   adb arguments, so the clock read failed (age "Infinity") and toybox `date` received a stray argument.
+   Checked at once: phone 16:48:03 UTC against the host's 16:48:01, auto_time 1 - the clock was not
+   touched (an unprivileged shell cannot set it). The format is now one quoted shell word, and an
+   unreadable clock refuses the capture.
+6. R782's two refusals, RE-PROVEN on these copies (welcome screen, before measuring):
+     anchor: ref "Commencer" y=1918 (exit 0); same ref -> y=1918 (exit 0); ANCHOR_PLANT_DY=9 -> "REFUSED
+       (R782): anchor "Commencer" at y=1918, r782-anchor-ref had it at y=1927 - nothing captured" (exit 5);
+       absent anchor -> REFUSED (exit 5); another anchor text against the same ref -> REFUSED (exit 5).
+     focus: FOCUS_PKG=ch.monreleve.nope -> "REFUSED (R782): before stop 0: mCurrentFocus=Window{174c562 u0
+       ch.monreleve.app/ch.monreleve.app.MainActivity} does not name ch.monreleve.nope - no reading
+       written" (exit 4); LAUNCH=7000 -> REFUSED (exit 4); `ls reads | grep r782` -> none.
+     POSITIVE: main-nom's and main-canton's stop 0 each carry both focus reads naming
+       ch.monreleve.app/ch.monreleve.app.MainActivity.
+
+================================================================================
+INSTRUMENTED - :app's connected tests on the S9, the tip's code
+================================================================================
+WHICH CLASSES TOUCH ONBOARDING (grepped on this tree, = 282426a's android/app/src/androidTest;
+`git diff --stat 5022714 282426a -- android/app/src/androidTest` is EMPTY - every assertion unedited):
+  NONE drives OnboardingScreen or PretScreen. Seven import an onboarding-package TYPE:
+  - StatePreservationInstrumentedTest (2 tests): imports ch.monreleve.app.onboarding.SettingsSaver - the
+    interface lives in OnboardingController.kt, which IOS-2b MOVED to :shared commonMain (R778); the test
+    builds a fake saver for the shell's Parametres, not for onboarding. The one class whose import path
+    the branch moved under it.
+  - AnswerIconInstrumentedTest (8), AnswerStatusInstrumentedTest (4), HalfDayChoiceInstrumentedTest (7),
+    LaunchAttentionInstrumentedTest (4), LaunchSpeechInstrumentedTest (6), ProvenanceShownInstrumentedTest
+    (6): import onboarding.GranularityChoice (shared Choices.kt, moved in IOS-1b-A; untouched by IOS-2b).
+  :shared has no android instrumented source set, so the whole :app suite was run: 57 @Test methods in
+  13 files, counted before the run.
+RUN (from C:/wt/ios2b-device/android, after ./gradlew --stop "1 Daemon stopped"; 3.83 GB free read in its
+own step; stay_on 7; phone awake; logcat cleared; a focus poller every 2 s):
+  ./gradlew :app:connectedDebugAndroidTest -PfrontalierHost=127.0.0.1
+  "Starting 57 tests on SM-G960F - 10"
+  BUILD SUCCESSFUL in 1m 52s      CONNECTED_EXIT=0
+  results XML: tests="57" failures="0" errors="0" skipped="0" time="39.937"
+  timestamp="2026-11-04T17:06:16" (= this run); <failure> elements: 0
+  (TEST-SM-G960F - 10-_app-.xml, sha256
+   94f40cd44733cf9f2bbbec9b895be17b90d8305341df29b01f8ca558f8313ee0; copy in evidence)
+  Read BEFORE the XML: device-6 (gpio_keys) lines during the run 0; no new volume event; focus polls 54 -
+  MainActivity 27, androidx.activity.ComponentActivity 10, the launcher 12, null 5 (between test
+  activities and during the installs), PlayProtect 0.
+PER CLASS (pass/total, from the XML):
+  CanaryInstrumentedTest                                   1/1
+  StatePreservationInstrumentedTest                        2/2   <- imports onboarding.SettingsSaver
+  auth.KeystoreTokenStoreInstrumentedTest                  3/3
+  data.local.MonReleveMigrationTest                        9/9
+  data.sync.YearDownloadRoomTransactionInstrumentedTest    2/2
+  ui.screens.RateOneStringInstrumentedTest                 2/2
+  ui.screens.aujourdhui.AnswerIconInstrumentedTest         8/8   <- imports onboarding.GranularityChoice
+  ui.screens.aujourdhui.AnswerStatusInstrumentedTest       4/4   <- idem
+  ui.screens.aujourdhui.HalfDayChoiceInstrumentedTest      7/7   <- idem
+  ui.screens.aujourdhui.LaunchAttentionInstrumentedTest    4/4   <- idem
+  ui.screens.aujourdhui.LaunchSpeechInstrumentedTest       6/6   <- idem
+  ui.screens.calendrier.CalendarSheetSaveInstrumentedTest  3/3
+  ui.screens.calendrier.ProvenanceShownInstrumentedTest    6/6   <- idem
+COMPARED: IOS-2a-DEVICE ran the same 13 classes, 57/57, on ec58c67. The run uninstalled the app, as
+expected; reinstalled as above.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. ios2b.tip's onboarding was COMPLETED (unmeasured, PATCH /me 200 on that throwaway) to reach the app's
+   sign-out dialog - onboarding has no sign-out. It was done on the tip AUDIT build (127.0.0.1), not the
+   as-found APK, whose host is unknown: launching that signed in could have sent a request somewhere
+   other than the local stack. The same for my own ios2b-dev.main after the stop.
+2. The harness was changed beyond R782's two guards: the loop guard, the end-of-reading record, cmp's
+   refusal, the widened outside-event check, and the volume capture guard - each proven above; all of it
+   is evidence tooling, never committed.
+3. The instrumented run happened AFTER R783 had stopped (the brief's step 2 after step 1): it is
+   independent of R783, the app was in front with no foreign dialog, and it is the one measurement the
+   outside events did not reach (0 device-6 lines across it).
+4. The first R782 welcome pair (r782-anchor-ref / -same) is kept as captured: it is the record of the
+   16:44:10 event, not a control. The control is the r782v-ctl pair.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R783) - Something pressed the S9's physical side keys while it was meant to be untouched: three
+   volume-up events at 16:44:10 (and a ~1.3 s hold at 15:12:53), two gpio_keys keys held together at 16:55:08-13, which the
+   screen reader turned into an accessibility-volume step inside a reading, and the USB link dropped for
+   five minutes at 16:33. IOS-2b's stop was the same family (a volume key, then both keys held). Is the
+   phone resting on its volume rocker, or in a case or stand that presses it, or is a person handling it?
+Q2 (R783) - Does the operator want the full R783 re-run (both builds, from the start, this harness,
+   NEW addresses - e.g. ios2b-dev2.main@ / .tip@ - so each starts at 0 of its 10 code attempts) once the
+   phone is placed where nothing reaches its keys? The harness now refuses a capture overlapping a
+   volume event and a reading carrying one, so a recurrence will stop the run again rather than produce
+   a false difference; it cannot prevent one.
+
+================================================================================
+CLEANUP
+================================================================================
+Dev server tree (cmd 23080 -> next 20952 -> 4336, all under C:/wt/ios2b-device/web) killed with taskkill
+/T /F; no node process under ios2b-device remains; http://127.0.0.1:3400 -> rc 7 (refused), the same as
+the never-used control 3999. ./gradlew --stop -> "1 Daemon stopped". adb reverse empty. Evidence stays in
+C:/wt/ios2b-device/.ios2b-device-evidence/ (gitignored). The throwaways ios2b.tip@ and ios2b-dev.main@
+remain in the local database, both SIGNED OUT (server sessions revoked by the app's sign-out). The lock
+.session-lock.json is removed after the push.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2b-device only (never main, never production, never ios2b). This report is the only file the
+branch adds to origin/ios2b aa46567; its push is recorded in the follow-up commit.
+
+END OF REPORT-IOS-2b-DEVICE
+
+PUSH PROOF, FOLLOW-UP: the report commits 77fb5fe and b4652c2 (the gpio_keys correction) pushed -
+git push -u origin ios2b-device -> "* [new branch] ios2b-device -> ios2b-device"; git ls-remote origin
+refs/heads/ios2b-device -> b4652c2a88575e0ca2aabbaa07d49728c01256f7. Untouched: refs/heads/ios2b
+aa4656793cbba30cc1413827e8e8e4410e2a3551, refs/heads/main 50227144a237a3b9ff7abef04c0b64e2407e5beb.
+`git diff --stat 282426a b4652c2` -> REPORT-IOS-2b-DEVICE.txt (new) and REPORT-IOS-2b.txt (583) only.
+No ruling numbers were added by this report. Not pushed: main, production, ios2b.
+Then e972876 (this PUSH PROOF) pushed: b4652c2..e972876; and the R334 sentence corrected in the commit
+after it (its SHA is the branch tip the handback reports from git ls-remote).
