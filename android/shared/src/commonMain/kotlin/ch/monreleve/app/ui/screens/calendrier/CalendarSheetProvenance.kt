@@ -18,12 +18,15 @@ import ch.monreleve.app.fr.text.formatDateTime
 // AN-GRANULARITY (R519). The day sheet's provenance block - who recorded the day and when - split from
 // CalendarEditSheet.kt to keep that file within detekt's per-file function budget (the ReleveSections /
 // PrevisionRail split idiom). The sheet renders ProvenanceBlock; provenanceLines is what it prints, line by line.
+//
+// IOS-2c R790: provenanceSlots and provenanceLines are PUBLIC since the move to :shared - :app's tests
+// (RecordedGranularityTest, ProvenanceWordsTest) read them across the module boundary, unedited (R777's shape).
 
 /**
  * The slots whose provenance the sheet states: those the server has recorded (a firstRecordedAt exists). Since R490
  * every slot is its own portion's row (a day held whole is one FULL slot), so no row is ever stated twice.
  */
-internal fun provenanceSlots(day: EditableDay): List<EditableSlot> = day.slots.filter { it.firstRecordedAt != null }
+fun provenanceSlots(day: EditableDay): List<EditableSlot> = day.slots.filter { it.firstRecordedAt != null }
 
 /**
  * The provenance block's lines, in order - exactly what ProvenanceBlock renders, one Text per line (R225: the words
@@ -35,7 +38,7 @@ internal fun provenanceSlots(day: EditableDay): List<EditableSlot> = day.slots.f
  * misnamed every day detection had recorded once AN-PULL brought them down. When the portions agree the word is
  * stated once, as before; when the halves were recorded differently each half states its own, under its name.
  */
-internal fun provenanceLines(day: EditableDay): List<String> {
+fun provenanceLines(day: EditableDay): List<String> {
     val recorded = provenanceSlots(day)
     if (recorded.isEmpty()) return emptyList()
     val agree = recorded.map { it.provenance }.distinct().size == 1
