@@ -1,0 +1,615 @@
+REPORT-IOS-2c-PROBE - Mon Releve
+WHERE DOES THE CALENDAR SHEET'S SAVE HANG ON iOS? ONE DIAGNOSTIC RUN (42202057374): NOTHING HUNG.
+STEP4c'S SAVE TAP RETURNED, NOTHING WAS WRITTEN AND THE SHEET CLOSED; ITS WAIT FAILED ON A CONDITION THAT
+STAYED FALSE - AND IN CMP 1.7.3 waitUntil NEVER THROWS, SO abbed46'S SAME WAIT COULD NOT HAVE ENDED (R800)
+
+TASK     relay/IOS-2c-PROBE.txt (main checkout, untracked), rulings R800-R805. Before the first commit
+         `grep -rE '\bR80[0-5]\b' relay/ REPORT-*.txt CLAUDE.md docs`: nothing in the worktree; in the main
+         checkout only relay/IOS-2c-PROBE.txt itself (re-run before the push, PUSH PROOF).
+BASE     origin/ios2c-device 6815297 (R1: it contains abbed46 - `git merge-base --is-ancestor abbed46
+         origin/ios2c-device` true); origin/main 55258ed; production 52caca8 (not touched).
+BRANCH   ios2c-probe, worktree C:/wt/ios2c-probe (R349), cut from origin/ios2c-device; its upstream to
+         ios2c-device was UNSET at creation so no bare push could reach ios2c-device. Lock .session-lock.json
+         (gitignored), removed at the end. Pushed: ios2c-probe only. PENDING MERGE - nothing here is on main.
+CODE TIP 64d93891d9c05a4674722889cf091c792ac6cead (64d9389) - iosTest only, one file.
+RUN      42202057374 (workflow_dispatch, ref ios2c-probe, head 64d9389) - the one run of the budget.
+EVIDENCE C:/wt/ios2c-probe/.ios2c-probe-evidence/ (ignored by /.*-evidence/): the gate log, the full run log,
+         the run's artifact (47 JUnit XML + HTML report), the lint and compile-check logs, the extracted blocks.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334). No phone. No port. No product code, :app, workflow,
+dependency or version change.
+
+================================================================================
+SUMMARY
+================================================================================
+R800  Read in the resolved 1.7.3 artefacts. Three facts the probe was built on: (1) SkikoComposeUiTest.waitUntil
+      BUILDS its timeout message and never throws it, so a condition that stays false is polled for ever - the
+      prompt's "known" item 2 does not hold in 1.7.3 (DEVIATION 1); (2) every semantics fetch waits for idle
+      (getRoots), performScrollTo is itself an unbounded fetch loop, performClick waits only BEFORE it injects;
+      (3) waitForIdle waits, unbounded, on pending snapshot changes, apply notifications, scene invalidations
+      (frame-clock awaiters, recomposer work), pending measure/layout and idling resources.
+R801  step4 SPLIT inside CalendrierReleveScreensIosTest: step4a (the scrim's own click action), step4b
+      (controller.closeSheet() from runOnIdle), step4c (abbed46's step4, its steps unchanged); each with a 60 s
+      watchdog and R802's dump; every wait bounded by its own condition (DEVIATION 3). step1-step3 byte-identical.
+R802/R803  Run 42202057374 compiled and linked the probe on the Mac, ran 268 tests, 1 failed - step4c:
+      4a PASSED (the scrim dismissed the sheet, nothing written); 4b PASSED (the abrupt removal completed);
+      4c: its taps on day 10, En Suisse and Enregistrer all RETURNED, En Suisse was selected, then
+      `!shows(question) && recorded.size == 1` stayed FALSE for 10 002 ms - question gone, recorded = [],
+      syncs 0, editing == null. R802(5) FLAT (recompositions 1 -> 1, snapshot applies 62 -> 62) while the idle
+      checks and the clock rose and both public idle terms read false: an idle scene, polled by waitUntil's own
+      loop. The watchdog never fired. Read off the open sheet: the Save had NO area inside the 1024 x 768 window
+      (boundsInWindow = Rect.Zero) and the sheet was PARTIALLY expanded (its handle offered Expand).
+      The row: by outcome the third (a, b pass, c does not complete); its gloss is not supported by the dump.
+      Every class was reached this time (268 of 268; the canary printed "still broken as expected").
+R804  hide()-then-remove: the run found no removal problem for it to address (4a and 4b both completed). CMP
+      upgrade: nothing product-side misfired; the one CMP defect read is in the test harness. Test-only change:
+      the route the facts bear on, open. iOS without the sheet: the operator's; the run shows no product hang.
+R805  FULL :app:gate --rerun-tasks GREEN on 64d9389; Paparazzi 0 re-recorded; nothing outside iosTest changed.
+
+================================================================================
+STATUS (R391)
+================================================================================
+THE DIAGNOSTIC RAN AND ANSWERED. THE iOS RUN 42202057374 ON THE CODE TIP 64d9389 IS RED, AS EXPECTED: step4c
+FAILED ITS BOUNDED WAIT - a diagnostic result, NOT a pass and never reported as green.
+FULL :app:gate --rerun-tasks on the code tip 64d9389, this session, after ./gradlew --stop ("1 Daemon stopped";
+2.89 GB free, read in its own step), the tree clean (git status --porcelain empty, HEAD 64d9389):
+    > Task :app:checkTestFloor - test floor OK: 1392 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 14m 12s
+    260 actionable tasks: 260 executed
+    real 14m14.673s ; GATE_EXIT=0
+  Test XML (all 216 files stamped by this run, none older): :app 1392 tests 0 failures 0 errors 0 skipped
+  (142 Paparazzi screenshot tests, 0 failures); :shared 200 0 0 0. ExperimentalTimeOptInAllowlistTest 3/3
+  (timestamp 2026-11-06T10:18:09, this run). Compiler "w: " lines: 7 (main's count).
+`git diff --stat 64d9389 HEAD` (report-only, shown at push time): see PUSH PROOF.
+gate:clone NOT RUN: no web/ change.
+
+================================================================================
+R800 - READ BEFORE PROBING (the source lines)
+================================================================================
+SOURCES. The artefacts the iOS test resolves (libs.versions.toml compose-multiplatform = "1.7.3";
+cmp-ui-test = org.jetbrains.compose.ui:ui-test), read from the Gradle cache - tag = version 1.7.3 - sources
+jars hashed:
+  ui-test-uikitsimarm64-1.7.3-sources.jar     sha256 f0d6386752f5c751eb9ea487ab18b60ee4551d82254c0d33aba34a63d80ad937
+  ui-uikitsimarm64-1.7.3-sources.jar          sha256 294576c3c77edc937dc102e76bd9d3680db3106fc9bfc655a8bd102118c4bf13
+  material3-uikitsimarm64-1.7.3-sources.jar   sha256 922b8636ff110cdd62199ecb45272c858cd745903eab4f746711dfc4e10d813f
+  runtime-1.7.3-sources.jar                   sha256 8575de4ab9296a2f32e0e0edf949ce53fae5eb60cc1e0008b8ac1ca743062d10
+  ui-text-uikitsimarm64-1.7.3-sources.jar     sha256 f0e93d66f4d06f6c45269260ad2b697a57025f721d8c5ce9fd968359a88e5791
+Paths are inside those jars. "CUT" = skikoMain/androidx/compose/ui/test/ComposeUiTest.skikoMain.kt.
+
+(1) WHICH CALLS WAIT FOR IDLE
+  EVERY SEMANTICS READ. CUT 373-376 (SkikoTestOwner):
+      override fun getRoots(atLeastOneRootExpected: Boolean): Set<RootForTest> {
+          waitForIdle()
+          return composeRootRegistry.getComposeRoots()
+      }
+    reached from commonMain TestOwner.kt 81-86 (TestContext.getAllSemanticsNodes: "val roots =
+    testOwner.getRoots(atLeastOneRootRequired)"), i.e. from SemanticsNodeInteractionCollection.fetchSemanticsNodes
+    (SemanticsNodeInteraction.kt 249-258), SemanticsNodeInteraction.fetchSemanticsNode / fetchSemanticsNodes
+    (83-85, 56-70), assertExists (124-127, fetchOneOrThrow) and assertDoesNotExist (94-...). So
+    onAllNodes(...).fetchSemanticsNodes() WAITS, every assertion helper that fetches WAITS (and this test's own
+    shows()), while onAllNodes(...) and onFirst() alone are lazy and do not.
+  performClick: Actions.kt 52-55 "return this.invokeGlobalAssertions().performClickImpl()" (no global assertion
+    is registered); uikitMain Actions.uikitMain.kt 20-24 "return performTouchInput { click() }"; Actions.kt
+    389-402 performTouchInput: "val node = fetchSemanticsNode("Failed to inject touch input.")" [WAITS], then
+    "touch(block)" and "dispose()". dispose (MultiModalInjectionScope.kt 136-146) -> flush; SkikoInputDispatcher
+    .flush (InputDispatcher.skiko.kt 252-259) advances mainClock to each event's time (245-250 ->
+    mainClock.advanceTimeBy -> AbstractMainTestClock.kt 62-73: testScheduler.advanceTimeBy + runCurrent + render)
+    and sends it. NO waitForIdle after the click.
+  performScrollTo: Actions.kt 72-79
+      do {
+          val shouldContinueScroll =
+              fetchSemanticsNode("Action performScrollTo() failed.")
+                  .scrollToNode(testContext.testOwner)
+      } while (shouldContinueScroll)
+    a fetch [WAITS] per iteration, and the loop has no bound.
+  performSemanticsAction: Actions.kt 583-597 - fetchSemanticsNode [WAITS], then runOnUiThread { the action }.
+  runOnIdle: CUT 281-287 - "waitForIdle(); return action().also { waitForIdle() }".
+  setContent: CUT 322-335 - "if (isOnUiThread()) { scene.setContent(content = composable) } else {
+    runOnUiThread {...}; waitForIdle() }". On iOS the test thread IS the UI thread (nativeMain
+    Synchronization.nativeMain.kt 53: "isOnUiThread(): Boolean = NSRunLoop.currentRunLoop ===
+    NSRunLoop.mainRunLoop"), so setContent does NOT wait.
+  waitUntil: CUT 289-304
+      val startTime = currentNanoTime()
+      val timeoutNanos = timeoutMillis * NanoSecondsPerMilliSecond
+      while (!condition()) {
+          renderNextFrame()
+          if (currentNanoTime() - startTime > timeoutNanos) {
+              buildWaitUntilTimeoutMessage(timeoutMillis, conditionDescription)
+          }
+      }
+    It waits for idle only through its condition's own fetches, has no trailing waitForIdle - and NEVER THROWS:
+    commonMain ComposeUiTest.kt 279-290
+      internal fun buildWaitUntilTimeoutMessage(
+          timeoutMillis: Long,
+          conditionDescription: String?
+      ): String = buildString { ... append("still not satisfied after $timeoutMillis ms") }
+    builds a String and returns it; nothing throws it, though the interface documents "@throws
+    androidx.compose.ui.test.ComposeTimeoutException If the condition is not satisfied after [timeoutMillis]"
+    (ComposeUiTest.kt 166-167). IN CMP 1.7.3 ON iOS A CONDITION THAT STAYS FALSE IS POLLED FOR EVER.
+  runOnUiThread: Synchronization.nativeMain.kt 35-47 - on the main thread "action()" directly; from any other
+    thread "runBlocking { suspendCoroutine { NSRunLoop.mainRunLoop.performBlock {...};
+    NSRunLoop.mainRunLoop.runMode(...) } }" - a watchdog thread that fetched would block on the stuck main loop.
+
+(2) WHAT waitForIdle WAITS ON. CUT 251-262, 236-249, 229-234:
+      override fun waitForIdle() {
+          // TODO: consider adding a timeout to avoid an infinite loop?
+          do {
+              uncaughtExceptionHandler.throwUncaught()
+              renderNextFrame()
+              uncaughtExceptionHandler.throwUncaught()
+              if (!areAllResourcesIdle()) {
+                  sleep(IDLING_RESOURCES_CHECK_INTERVAL_MS)
+              }
+          } while (!isIdle())
+      }
+      private fun isIdle(): Boolean {
+          var i = 0
+          while (i < 100 && shouldPumpTime()) {
+              mainClock.advanceTimeByFrame()
+              ++i
+          }
+          val hasPendingMeasureOrLayout = composeRootRegistry.getComposeRoots().any {
+              it.hasPendingMeasureOrLayout
+          }
+          return !shouldPumpTime() && !hasPendingMeasureOrLayout && areAllResourcesIdle()
+      }
+      private fun shouldPumpTime(): Boolean {
+          return mainClock.autoAdvance &&
+              (Snapshot.current.hasPendingChanges()
+                  || Snapshot.isApplyObserverNotificationPending
+                  || scene.hasInvalidations())
+      }
+    scene.hasInvalidations() (ui BaseComposeScene.skiko.kt 130) = "hasPendingDraws || recomposer.hasPendingWork";
+    hasPendingDraws (100-103) = "frameClock.hasAwaiters || snapshotInvalidationTracker.hasInvalidations" - a
+    running animation is a frame-clock awaiter. renderNextFrame (CUT 214-219) renders, then advances the clock
+    one 16 ms frame.
+    SO IT WAITS ON: pending global snapshot changes; an apply-observer notification in progress; scene
+    invalidations (pending draws, frame-clock awaiters, recomposer pending work); pending measure/layout on any
+    compose root; registered idling resources. Coroutine dispatcher tasks are not checked as such - the test
+    scheduler is only advanced, frame by frame; the frame clock only as hasAwaiters. The loop has no bound.
+    PUBLIC of these (R802 (6)): Snapshot.current.hasPendingChanges() (runtime Snapshot.kt 118) and
+    Snapshot.isApplyObserverNotificationPending (Snapshot.kt 310, no opt-in annotation), mainClock.autoAdvance and
+    currentTime. NOT public: SkikoComposeUiTest.scene (CUT 175-176, @InternalComposeUiApi) and
+    hasPendingMeasureOrLayout (PlatformRootForTest, @InternalComposeUiApi, ui PlatformRootForTest.skiko.kt 39-51)
+    - neither was read.
+
+(3) MATERIAL3 1.7.3's ModalBottomSheet SCRIM. commonMain ModalBottomSheet.kt 408-429:
+      val closeSheet = getString(Strings.CloseSheet)
+      val dismissSheet =
+          if (visible) {
+              Modifier.pointerInput(onDismissRequest) { detectTapGestures { onDismissRequest() } }
+                  .semantics(mergeDescendants = true) {
+                      traversalIndex = 1f
+                      contentDescription = closeSheet
+                      onClick {
+                          onDismissRequest()
+                          true
+                      }
+                  }
+          } else {
+              Modifier
+          }
+    with onDismissRequest = animateToDismiss (170-174), which is (135-145):
+      if (sheetState.anchoredDraggableState.confirmValueChange(Hidden)) {
+          scope
+              .launch { sheetState.hide() }
+              .invokeOnCompletion {
+                  if (!sheetState.isVisible) {
+                      onDismissRequest()
+                  }
+              }
+      }
+    THE STRING: skikoMain internal/Strings.skiko.kt "actual val CloseSheet = Strings(2)"; getString reads
+    Locale.current and walks language_REGION -> language -> "" (localeTagChain / findTranslation);
+    l10n/En.kt:27 'Strings.CloseSheet to "Close sheet"', l10n/Fr.kt:27 'Strings.CloseSheet to "Fermer la
+    feuille"'. On darwin Locale.current is the first of NSLocale.preferredLanguages (ui-text
+    NativePlatformLocale.darwin.kt 37-38). The run's simulator resolved locale=en-US (the probe's own facts line).
+  ALSO READ, to place the marks and the facts (source facts, not a verdict):
+    - On skiko the sheet's container is a Dialog: ModalBottomSheet.skiko.kt 56-70 "Dialog(onDismissRequest = ...,
+      properties = DialogProperties(dismissOnBackPress = ..., usePlatformDefaultWidth = false, usePlatformInsets
+      = false, scrimColor = Color.Transparent))" - dismissOnClickOutside keeps its default, true (ui
+      Dialog.skiko.kt 74). Its outside-pointer listener (Dialog.skiko.kt 162-174) calls onDismissRequest on a
+      Release; the ModalBottomSheetDialog's onDismissRequest (ModalBottomSheet.kt 156-165) partially expands an
+      Expanded sheet that has a partial state, and otherwise "scope.launch { sheetState.hide()
+      }.invokeOnCompletion { onDismissRequest() }".
+    - The scene sends a press outside a focused layer's bounds to that layer's outside listener and to nothing
+      else (ui CanvasLayersComposeScene.skiko.kt 285-306), a release likewise (308-326), with isInBounds =
+      "boundsInWindow.contains(position.round())" (581). A test click takes the same route: every owner shares
+      the scene's inputHandler (121, 473) and the test root's sendPointerEvent calls it (RootNodeOwner.skiko.kt
+      579-599).
+    - The sheet opens PARTIALLY expanded when it is taller than half the window: anchors (ModalBottomSheet.kt
+      236-247) "if (sheetSize.height > (fullHeight / 2) && !sheetState.skipPartiallyExpanded) { PartiallyExpanded
+      at fullHeight / 2f }"; show() (SheetDefaults.kt 181-188) targets PartiallyExpanded when that anchor
+      exists; CalendrierScreen passes rememberModalBottomSheetState() (skipPartiallyExpanded = false). The drag
+      handle's semantics (ModalBottomSheet.kt 310-337) carry "expand" only while currentValue ==
+      PartiallyExpanded and "collapse" when Expanded with a partial state - the probe reads the value off them.
+    - runComposeUiTest's scene is 1024 x 768 at Density(1f) (CUT 57-60 and 134-145).
+    - WHERE A CLICK AIMS: click() defaults to the center of the node's visible size (InjectionScope.kt 146), and
+      MultiModalInjectionScope.kt 99-117 takes it from "semanticsNode.boundsInRoot" (clipped by its ancestors,
+      not by the window) and maps it with "position + boundsInRoot.topLeft".
+    - WHAT Rect.Zero MEANS: SemanticsNode.boundsInWindow (SemanticsNode.kt 167-169) is
+      LayoutCoordinates.boundsInWindow() (ui LayoutCoordinates.kt): boundsInRoot() coerced into
+      0..root.width x 0..root.height, and "if (boundsLeft == boundsRight || boundsTop == boundsBottom) { return
+      Rect.Zero }" - i.e. no part of the node inside its root.
+
+================================================================================
+R801 - THE DIAGNOSTIC TEST, AS WRITTEN (commit 64d9389; iosTest only)
+================================================================================
+WHERE: step4 SPLIT inside pilot/CalendrierReleveScreensIosTest.kt - no new class, no new file. step4a, step4b,
+  step4c are declared in that order after step3; their names make declaration and alphabetical order agree
+  (case-sensitive or not). step1-step3: byte-identical to abbed46 (their 92 lines extracted from both versions
+  and diffed: identical). Their helpers are unchanged except watched() and mark(): watched gained two
+  defaulted parameters (seconds, dump) that step1-step3 do not pass, and a tag (step1-step3 still print
+  "R793 MARK" / "R793 WATCHDOG" and keep R793's 120 s).
+ORDER AND REACHABILITY: the class does NOT run before every other pilot class - it is the second pilot file, as
+  in abbed46 (the runner order, measured by 42142576248's arithmetic: commonTest first, then iosTest files in path
+  order; a global name order would have left 21 tests unreached, 245 completed, and the run completed 260).
+  Running first could not keep the canary reachable: a variant that reached its watchdog (exitProcess) would
+  end every later class. WHAT WOULD NOT HAVE BEEN REACHED, only on a watchdog: the four pilot classes after this
+  file - LaunchSpeechIosTest 2, MaterialDatePickerCanaryTest 1, OnboardingScreensIosTest 1, SignInScreensIosTest
+  2 - and this class's later variants. A false condition no longer ends the process (the bounded wait below).
+  IN THE RUN: no watchdog fired; all 268 tests ran, the canary among them.
+THE THREE VARIANTS (each "watched(name, 60 s, ::sheetDump)", inside "probed { }" = runComposeUiTest with a
+  snapshot-apply counter attached for the variant):
+  common opening, openDayTenProbed = abbed46's step4 up to the open sheet: arm the probe; register IdleProbe;
+    setContent { SheetProbeHost }; bounded wait "the month shown"; shows(SHEET_QUESTION) false; tap day 10
+    (missingDay(10)); bounded wait "the sheet's question shown"; read the sheet facts.
+  step4a (4a-scrim): bounded wait for exactly one node matching hasClickAction() and (hasContentDescription(
+    "Close sheet") or hasContentDescription("Fermer la feuille")) - the two values R800 (3) read; then
+    performSemanticsAction(SemanticsActions.OnClick) on it: the scrim's OWN click action (DEVIATION 4: not a
+    performClick, which taps the node's center); bounded wait "the sheet gone, nothing written"
+    (!shows(SHEET_QUESTION) && recorded.size == 0); asserts nothing recorded, 0 syncs.
+  step4b (4b-closeSheet): runOnIdle { controller.closeSheet() } with a mark inside the action (R800: runOnIdle =
+    waitForIdle, the action, waitForIdle; on iOS the action runs on the main thread, which is the test thread);
+    the same bounded wait and asserts.
+  step4c (4c-save): abbed46's step4 from the open sheet, its steps unchanged: shows(SHEET_NOTE_LABEL) asserted;
+    tap En Suisse (tapFirst's calls: onAllNodes(...).onFirst(), performScrollTo with its AssertionError catch,
+    performClick); [added read: En Suisse selected? and the Save's bounds now]; mark "SUISSE chosen; saving";
+    tap Enregistrer; bounded wait "the sheet SAVED and closed" = abbed46's own condition (!shows(SHEET_QUESTION)
+    && recorded.size == 1); asserts [RecordCommand("2026-06-10", CH, FULL)] and 1 sync.
+MARKS: a MARK (tag R801) on both sides of every call that can wait for idle - setContent, each semantics fetch,
+  performScrollTo, performClick, performSemanticsAction, runOnIdle (and inside its action), every waitUntil - and
+  "body done" before runComposeUiTest closes its scene, "finished" after.
+THE BOUNDED WAIT (DEVIATION 3): waitUntil(timeoutMillis = TIMEOUT) as abbed46 called it (TIMEOUT 10 000 ms
+  unchanged), its condition counting each evaluation, marking what it sees at half the bound and, past 10 000 ms
+  of wall time (kotlin.time.TimeSource.Monotonic, stable since 1.9), printing R802's dump and throwing an
+  AssertionError - so a condition that stays false is a FAILED variant with its facts, and the next one runs.
+R802 INSTRUMENTATION, all passive:
+  SheetProbeHost - CalendrierHost's controller (the same calendarController(...), its one ExperimentalTime opt-in
+    reused, the file's allowlisted count still 1) and its 12 actions, plus "SideEffect { recompositions++ }"
+    (R802 (5)) and the controller handle (R802 (4)).
+  IdleProbe - an IdlingResource that is ALWAYS idle (so waitForIdle decides exactly as with none registered);
+    waitForIdle asks it on the main thread at every iteration, so it counts the iterations and samples there
+    the public terms: Snapshot.current.hasPendingChanges(), Snapshot.isApplyObserverNotificationPending,
+    mainClock.autoAdvance and currentTime (R802 (6)).
+  Snapshot.registerApplyObserver - counts snapshot applies (state written anywhere, the sheet's own included),
+    disposed after the variant. The host's SideEffect sees only host recompositions; this sees the rest.
+  THE DUMP (sheetDump) - HALF (30 s, the counters) and FIRE (60 s, before exitProcess(3)) from the watchdog's GCD
+    block, or WAIT-EXPIRED from a bounded wait. PLAIN MEMORY ONLY: from another thread runOnUiThread posts to the
+    stuck main run loop and blocks (R800 (1)), so the dump never fetches; the riskiest read (Snapshot from the
+    watchdog's thread) is printed last. No code, token or address (R574): fixture commands, counts, booleans.
+  THE SHEET FACTS (read on the main thread once the sheet is open, one fetch per value): Locale.current; every
+    root's boundsInWindow; the Save's and En Suisse's boundsInWindow; how many nodes carry SemanticsActions
+    .Expand / .Collapse (the handle, R800 (3)).
+R802's OPTIONAL THREAD-STACK CAPTURE: NOT DONE. It needs a workflow edit and the watchdog pausing before it exits;
+  a pause adds a failure mode (a capture that hangs, a watchdog that never exits into a 50-minute job timeout)
+  to the only instrument of a one-run budget.
+COMPILE CHECK ON WINDOWS: NO RESULT. `./gradlew :shared:compileTestKotlinIosSimulatorArm64` -> "The following
+  Kotlin/Native targets cannot be built on this machine and are disabled: iosArm64, iosSimulatorArm64";
+  ":shared:compileTestKotlinIosSimulatorArm64 SKIPPED" (onlyIf false); BUILD SUCCESSFUL in 5s, nothing
+  compiled. iosTest has no metadata compilation. Instead: every new symbol was found in the 1.7.3 sources with
+  its package (getOrNull is an EXTENSION in androidx.compose.ui.semantics, imported as such); ktlint
+  (runKtlintCheckOverIosTestSourceSet, ktlintIosTestSourceSetCheck) and detekt (which reads src/iosTest/kotlin)
+  GREEN on the first run (BUILD SUCCESSFUL in 2m 58s). The Mac's compile in the run is the proof:
+  "> Task :shared:compileTestKotlinIosSimulatorArm64" at 10:26:15Z, "> Task :shared:linkDebugTestIosSimulatorArm64"
+  at 10:26:21Z, no "e:" line.
+
+================================================================================
+R802 / R803 - THE RUN, THE MARKS, THE DUMP, THE ROW
+================================================================================
+RUN 42202057374 - https://github.com/kaitmax/monreleve/actions/runs/42202057374 - workflow_dispatch, ref
+  ios2c-probe, head 64d93891d9c05a4674722889cf091c792ac6cead. Dispatched 10:21:31Z; created 10:21:34Z; job
+  10:21:37Z -> 10:29:12Z; conclusion FAILURE (the one failed test below). Runner image macos-15-arm64
+  20261028.0489; Xcode 26.0.1 (17A400); the test process ran on "iPhone 17 Pro (<udid>) (Booted)", runtime
+  "-- iOS 26.2 --" (step 14; the UDID is left out). The konan cache MISSED ("Cache not found for input keys:
+  konan-macOS-ARM64-1778...c4cb"), so step 7 provisioned the toolchain (10:21:56-10:23:43) and step 12 saved it.
+STEPS (every step's result, from the API):
+  1 Set up job - success
+  2 Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 - success
+  3 Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 - success
+  4 Run gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 - success
+  5 Restore the Kotlin/Native toolchain - success
+  6 Environment (diagnostic) - success
+  7 Provision the Kotlin/Native toolchain - success
+  8 Boot the iPhone simulator - success
+  9 Start the wire-recording server - success
+  10 iOS - simulator tests and device compile - failure
+  11 The wire recording (what the simulator really sent) - success
+  12 Save the Kotlin/Native toolchain - success
+  13 Results - refuse a run that executed no tests - success
+  14 Which simulator ran (positive signal) - success
+  15 Room's generated iOS code (listing) - success
+  16 Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 - success
+  30 Post Run gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 - success
+  31 Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 - success
+  32 Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 - success
+  33 Complete job - success
+STEP 10's VERDICT, verbatim: "> Task :shared:compileTestKotlinIosSimulatorArm64", "> Task
+  :shared:linkDebugTestIosSimulatorArm64", "> Task :shared:iosSimulatorArm64Test",
+  "ch.monreleve.app.pilot.CalendrierReleveScreensIosTest.step4cADayOpensTheModalBottomSheetAndItsSaveWritesTheDay
+  [iosSimulatorArm64] FAILED", "268 tests completed, 1 failed", "> Task :shared:iosSimulatorArm64Test FAILED",
+  "> Task :shared:compileKotlinIosArm64" (the device compile ran too), "There were failing tests", "BUILD FAILED
+  in 3m 58s". No "Test running process exited unexpectedly"; no IrLinkageError outside the canary's own line.
+STEP 13 (JUnit XML present - 47 files in the artifact): "iOS SIMULATOR TESTS EXECUTED: 268"; the pilot classes:
+  ch.monreleve.app.pilot.AujourdhuiPilotIosTest tests=7 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.CalendrierReleveScreensIosTest tests=6 failures=1 errors=0 skipped=0
+  ch.monreleve.app.pilot.LaunchSpeechIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.MaterialDatePickerCanaryTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.OnboardingScreensIosTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.PilotFixtureTest tests=3 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.SignInScreensIosTest tests=2 failures=0 errors=0 skipped=0
+  iOS SIMULATOR TESTS EXECUTED: 268
+  The canary: "IOS-1b-A canary: still broken as expected - kotlin.internal.IrLinkageError: Can not get instance
+  of singleton 'Companion': No class found for symbol 'kotlinx.datetime/..." (unchanged from IOS-2b's run).
+  268 = 42142576248's expected 266 - step4 + step4a, step4b, step4c.
+THE CLASS'S XML: tests="6" failures="1" errors="0"; step1 0.116 s, step2 0.175 s, step3 0.165 s, step4a 0.114 s,
+  step4b 0.098 s, step4c 10.901 s with
+  <failure message="kotlin.AssertionError: the sheet SAVED and closed: still false after 10002ms -
+  sheetQuestionShown=false recorded=0 editingNull=true" type="kotlin.AssertionError">, thrown from waitBounded
+  (CalendrierReleveScreensIosTest.kt:682).
+EVERY MARK AND DUMP LINE, in order, as GitHub timestamped them (Gradle relays a test's output in bursts, so
+  times within one test are not intervals; duplicates of the same line that Gradle reprints were dropped). No
+  WATCHDOG line exists: the watchdog never fired.
+  10:28:02.5  R793 MARK releve: started
+  10:28:02.5  R793 MARK releve: the network failure shown; retry
+  10:28:02.7  R793 MARK releve: the fixture dossier shown
+  10:28:02.7  R793 MARK releve: the PDF export event received
+  10:28:02.7  R793 MARK releve: finished
+  10:28:02.7  R793 MARK checkbox: started
+  10:28:02.7  R793 MARK checkbox: the month shown as a list
+  10:28:03.0  R793 MARK checkbox: the Checkboxes composed
+  10:28:03.0  R793 MARK checkbox: a Checkbox tapped: one day selected
+  10:28:03.0  R793 MARK checkbox: finished
+  10:28:03.0  R793 MARK dialog: started
+  10:28:03.0  R793 MARK dialog: the month shown
+  10:28:03.0  R793 MARK dialog: three days selected; DOMICILE chosen
+  10:28:03.0  R793 MARK dialog: the AlertDialog OPEN
+  10:28:03.1  R793 MARK dialog: the AlertDialog CONFIRMED and closed
+  10:28:03.1  R793 MARK dialog: finished
+  10:28:03.1  R801 MARK 4a-scrim: started
+  10:28:03.1  R801 MARK 4a-scrim: setContent - calling (it waits for idle)
+  10:28:03.1  R801 MARK 4a-scrim: setContent - returned
+  10:28:03.1  R801 MARK 4a-scrim: wait (the month shown): waitUntil - calling, bounded at 10000ms
+  10:28:03.1  R801 MARK 4a-scrim: wait (the month shown): waitUntil - returned
+  10:28:03.1  R801 MARK 4a-scrim: the month shown
+  10:28:03.1  R801 MARK 4a-scrim: fetch: shows SHEET_QUESTION - calling
+  10:28:03.1  R801 MARK 4a-scrim: fetch: shows SHEET_QUESTION - returned false
+  10:28:03.1  R801 MARK 4a-scrim: tap day 10: performScrollTo - calling
+  10:28:03.1  R801 MARK 4a-scrim: tap day 10: performScrollTo - returned
+  10:28:03.1  R801 MARK 4a-scrim: tap day 10: performClick - calling
+  10:28:03.1  R801 MARK 4a-scrim: tap day 10: performClick - returned
+  10:28:03.1  R801 MARK 4a-scrim: wait (the sheet's question shown): waitUntil - calling, bounded at 10000ms
+  10:28:03.1  R801 MARK 4a-scrim: wait (the sheet's question shown): waitUntil - returned
+  10:28:03.1  R801 MARK 4a-scrim: the ModalBottomSheet OPEN
+  10:28:03.1  R801 MARK 4a-scrim: facts: reading (a fetch per value) - calling
+  10:28:03.1  R801 MARK 4a-scrim: facts: locale=en-US roots=[Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0), Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0)] save=[Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)] suisse=[Rect.fromLTRB(212.0, 526.0, 812.0, 574.0)] handleExpand=1 handleCollapse=0
+  10:28:03.1  R801 MARK 4a-scrim: wait (exactly one scrim): waitUntil - calling, bounded at 10000ms
+  10:28:03.1  R801 MARK 4a-scrim: wait (exactly one scrim): waitUntil - returned
+  10:28:03.1  R801 MARK 4a-scrim: scrim OnClick - calling (Material3's own: an animated hide(), then onDismissRequest)
+  10:28:03.1  R801 MARK 4a-scrim: scrim OnClick - returned
+  10:28:03.1  R801 MARK 4a-scrim: wait (the sheet gone, nothing written): waitUntil - calling, bounded at 10000ms
+  10:28:03.1  R801 MARK 4a-scrim: wait (the sheet gone, nothing written): waitUntil - returned
+  10:28:03.1  R801 MARK 4a-scrim: body done - runComposeUiTest closes the scene next
+  10:28:03.1  R801 MARK 4a-scrim: finished
+  10:28:03.1  R801 MARK 4b-closeSheet: started
+  10:28:03.1  R801 MARK 4b-closeSheet: setContent - calling (it waits for idle)
+  10:28:03.1  R801 MARK 4b-closeSheet: setContent - returned
+  10:28:03.1  R801 MARK 4b-closeSheet: wait (the month shown): waitUntil - calling, bounded at 10000ms
+  10:28:03.1  R801 MARK 4b-closeSheet: wait (the month shown): waitUntil - returned
+  10:28:03.1  R801 MARK 4b-closeSheet: the month shown
+  10:28:03.1  R801 MARK 4b-closeSheet: fetch: shows SHEET_QUESTION - calling
+  10:28:03.1  R801 MARK 4b-closeSheet: fetch: shows SHEET_QUESTION - returned false
+  10:28:03.1  R801 MARK 4b-closeSheet: tap day 10: performScrollTo - calling
+  10:28:03.1  R801 MARK 4b-closeSheet: tap day 10: performScrollTo - returned
+  10:28:03.1  R801 MARK 4b-closeSheet: tap day 10: performClick - calling
+  10:28:03.1  R801 MARK 4b-closeSheet: tap day 10: performClick - returned
+  10:28:03.1  R801 MARK 4b-closeSheet: wait (the sheet's question shown): waitUntil - calling, bounded at 10000ms
+  10:28:03.3  R801 MARK 4b-closeSheet: wait (the sheet's question shown): waitUntil - returned
+  10:28:03.3  R801 MARK 4b-closeSheet: the ModalBottomSheet OPEN
+  10:28:03.3  R801 MARK 4b-closeSheet: facts: reading (a fetch per value) - calling
+  10:28:03.3  R801 MARK 4b-closeSheet: facts: locale=en-US roots=[Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0), Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0)] save=[Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)] suisse=[Rect.fromLTRB(212.0, 526.0, 812.0, 574.0)] handleExpand=1 handleCollapse=0
+  10:28:03.3  R801 MARK 4b-closeSheet: runOnIdle(closeSheet) - calling (waitForIdle, the action, waitForIdle)
+  10:28:03.3  R801 MARK 4b-closeSheet: runOnIdle: its first waitForIdle returned; controller.closeSheet() - calling
+  10:28:03.3  R801 MARK 4b-closeSheet: controller.closeSheet() - returned; runOnIdle's second waitForIdle next
+  10:28:03.3  R801 MARK 4b-closeSheet: runOnIdle(closeSheet) - returned
+  10:28:03.3  R801 MARK 4b-closeSheet: wait (the sheet gone, nothing written): waitUntil - calling, bounded at 10000ms
+  10:28:03.3  R801 MARK 4b-closeSheet: wait (the sheet gone, nothing written): waitUntil - returned
+  10:28:03.3  R801 MARK 4b-closeSheet: body done - runComposeUiTest closes the scene next
+  10:28:03.3  R801 MARK 4b-closeSheet: finished
+  10:28:03.3  R801 MARK 4c-save: started
+  10:28:03.3  R801 MARK 4c-save: setContent - calling (it waits for idle)
+  10:28:03.3  R801 MARK 4c-save: setContent - returned
+  10:28:03.3  R801 MARK 4c-save: wait (the month shown): waitUntil - calling, bounded at 10000ms
+  10:28:03.3  R801 MARK 4c-save: wait (the month shown): waitUntil - returned
+  10:28:03.3  R801 MARK 4c-save: the month shown
+  10:28:03.3  R801 MARK 4c-save: fetch: shows SHEET_QUESTION - calling
+  10:28:03.3  R801 MARK 4c-save: fetch: shows SHEET_QUESTION - returned false
+  10:28:03.3  R801 MARK 4c-save: tap day 10: performScrollTo - calling
+  10:28:03.3  R801 MARK 4c-save: tap day 10: performScrollTo - returned
+  10:28:03.3  R801 MARK 4c-save: tap day 10: performClick - calling
+  10:28:03.3  R801 MARK 4c-save: tap day 10: performClick - returned
+  10:28:03.3  R801 MARK 4c-save: wait (the sheet's question shown): waitUntil - calling, bounded at 10000ms
+  10:28:03.3  R801 MARK 4c-save: wait (the sheet's question shown): waitUntil - returned
+  10:28:03.3  R801 MARK 4c-save: the ModalBottomSheet OPEN
+  10:28:03.3  R801 MARK 4c-save: facts: reading (a fetch per value) - calling
+  10:28:03.3  R801 MARK 4c-save: facts: locale=en-US roots=[Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0), Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0)] save=[Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)] suisse=[Rect.fromLTRB(212.0, 526.0, 812.0, 574.0)] handleExpand=1 handleCollapse=0
+  10:28:03.3  R801 MARK 4c-save: fetch: shows SHEET_NOTE_LABEL - calling
+  10:28:03.3  R801 MARK 4c-save: fetch: shows SHEET_NOTE_LABEL - returned true
+  10:28:03.3  R801 MARK 4c-save: tap SUISSE: performScrollTo - calling
+  10:28:03.3  R801 MARK 4c-save: tap SUISSE: performScrollTo - returned
+  10:28:03.3  R801 MARK 4c-save: tap SUISSE: performClick - calling
+  10:28:03.3  R801 MARK 4c-save: tap SUISSE: performClick - returned
+  10:28:03.3  R801 MARK 4c-save: fetch: En Suisse selected, and the Save's bounds now - calling
+  10:28:03.3  R801 MARK 4c-save: fetch: returned - selected=1 saveNow=[Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)]
+  10:28:03.3  R801 MARK 4c-save: SUISSE chosen; saving
+  10:28:03.3  R801 MARK 4c-save: tap SAVE: performScrollTo - calling
+  10:28:03.3  R801 MARK 4c-save: tap SAVE: performScrollTo - returned
+  10:28:03.3  R801 MARK 4c-save: tap SAVE: performClick - calling
+  10:28:03.3  R801 MARK 4c-save: tap SAVE: performClick - returned
+  10:28:03.3  R801 MARK 4c-save: wait (the sheet SAVED and closed): waitUntil - calling, bounded at 10000ms
+  10:28:08.4  R801 MARK 4c-save: wait (the sheet SAVED and closed): still false at 5000ms - recompositions=1 snapshotApplies=62 idleChecks=9880 conditionPolls=4924 mainClock.currentTime=158512ms - sheetQuestionShown=false recorded=0 editingNull=true
+  10:28:13.4  R801 MARK 4c-save: wait (the sheet SAVED and closed): still false at 10002ms, the bound - R802's dump, then the variant fails
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (1) the taps that returned: [day 10, SUISSE, SAVE]
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (2) repository.recorded: []
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (3) syncs.count: 0
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (4) controller.state.value.editing == null: true (null = no controller)
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (5) at half: recompositions=1 snapshotApplies=62 idleChecks=9880 conditionPolls=4924 mainClock.currentTime=158512ms; now: recompositions=1 snapshotApplies=62 idleChecks=20108 conditionPolls=10038 mainClock.currentTime=322160ms
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (6) the idle check's public terms, last read on the main thread by IdleProbe: hasPendingChanges=false isApplyObserverNotificationPending=false autoAdvance=true
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save the last condition evaluated: sheetQuestionShown=false recorded=0 editingNull=true
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save the sheet facts: locale=en-US roots=[Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0), Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0)] save=[Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)] suisse=[Rect.fromLTRB(212.0, 526.0, 812.0, 574.0)] handleExpand=1 handleCollapse=0 | after En Suisse: selected=1 saveNow=[Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)]
+  10:28:13.4  R802 WAIT-EXPIRED 4c-save (6) read now, from this thread: hasPendingChanges=false applyNotificationPending=false
+
+R802, ITEM BY ITEM (step4c - the only variant that did not finish; WAIT-EXPIRED at 10 002 ms):
+  (1) the taps that returned: [day 10, SUISSE, SAVE] - the Save's performScrollTo AND performClick returned.
+  (2) repository.recorded: []        (3) syncs.count: 0        (4) controller.state.value.editing == null: true
+  (5) recompositions: 1 at half, 1 at the bound - FLAT. Snapshot applies: 62 at half, 62 at the bound - FLAT.
+      Rising: the IdleProbe's waitForIdle iterations 9 880 -> 20 108, the condition's evaluations 4 924 -> 10 038,
+      mainClock.currentTime 158 512 ms -> 322 160 ms (virtual time; waitUntil's loop renders a frame per poll).
+      "Half" is half the BOUND (5 000 ms): step4c ended at its bound, 10.9 s into the test, so the watchdog's own
+      HALF (30 s) and FIRE (60 s) never came - no "R802 HALF" and no WATCHDOG line exists in the log.
+  (6) the public idle terms, last read on the main thread by IdleProbe: hasPendingChanges=false
+      isApplyObserverNotificationPending=false autoAdvance=true; read again by the dump itself (which, at
+      WAIT-EXPIRED, runs on the main thread inside the condition): false, false.
+      Not public, not read: scene.hasInvalidations(), the roots' hasPendingMeasureOrLayout.
+  The last condition evaluated: sheetQuestionShown=false recorded=0 editingNull=true.
+  The sheet facts (read once the sheet was open, in all three variants identically): locale=en-US; both roots
+  Rect.fromLTRB(0.0, 0.0, 1024.0, 768.0); En Suisse Rect.fromLTRB(212.0, 526.0, 812.0, 574.0); THE SAVE
+  Rect.fromLTRB(0.0, 0.0, 0.0, 0.0) = Rect.Zero, before AND after En Suisse was chosen; handleExpand=1
+  handleCollapse=0. After the En Suisse tap: selected=1.
+THE ROW (R803), BY OUTCOME: a PASSED, b PASSED, c did NOT complete -> the third row ("a, b pass, c hangs").
+  BY MECHANISM, the dump's facts against that row:
+  - c did NOT hang. The watchdog never fired; c's own bounded condition expired after 10 038 evaluations in
+    10 002 ms. R802 (5): FLAT - recompositions and snapshot applies did not move, both public idle terms read
+    false: an idle scene. The only loop running was waitUntil's own polling (R800 (1)).
+  - The row's gloss ("a click inside the layer plus removal in the same frame - pointer input on a disposed
+    layer") is NOT supported by the dump: En Suisse was selected (selected=1), and a Save onClick hands the
+    controller that draft - CalendarController.save (commonMain CalendarController.kt 389-409) writes each
+    changed slot on scope.launch, then closeSheet() - yet after 10 s of wall time in which waitUntil pumped
+    frames (the scene's clock reached 322 160 ms of virtual time) recorded=[] and syncs=0, while the sheet closed
+    (editing == null, the question gone). On these facts the Save's onClick did not run, and the sheet was
+    closed by another path.
+  - What the probe did NOT record: where the injected touch landed. It read the Save's boundsInWindow
+    (Rect.Zero: no part inside the 1024 x 768 root, R800 (3)), not its boundsInRoot, and click() aims at the
+    center of boundsInRoot (R800 (3)). Two paths in the read source are CONSISTENT with the facts - NOT
+    RECORDED, NOT CHOSEN: (i) a press and release outside the dialog layer's bounds -> the Dialog's outside
+    listener on the Release -> ModalBottomSheetDialog's onDismissRequest -> (not Expanded) hide(), then
+    onDismissRequest -> controller.closeSheet; (ii) an empty clipped boundsInRoot -> a click at the root's (0,0)
+    -> the scrim's detectTapGestures -> animateToDismiss -> closeSheet. Either closes the sheet and writes nothing.
+  - abbed46 (INFERENCE, marked as one): its step4 took the same steps over the same 1024 x 768 scene and waited
+    on the same condition with waitUntil, which in 1.7.3 never throws (R800 (1)). That is CONSISTENT with
+    42142576248's last mark "SUISSE chosen; saving" and its 120 s watchdog - abbed46 had no mark after the Save
+    tap nor inside the wait, so the run itself cannot show it.
+  - Also a fact against the prompt's premise: the sheet was not EXPANDED but PARTIALLY expanded - its handle
+    offered Expand (handleExpand=1, handleCollapse=0; ModalBottomSheet.kt 310-337), as the anchors predict for a
+    sheet taller than half of 768 (R800 (3)).
+
+================================================================================
+R804 - THE ROUTES (for the orchestrator's ruling; no fix chosen, nothing changed)
+================================================================================
+hide() then remove in the shared CalendrierScreen: the run found no removal problem for it to address - 4a
+  (Material3's animated hide, then removal) and 4b (the abrupt removal the product does) both COMPLETED on iOS
+  in 0.114 s and 0.098 s. On these facts the route answers nothing the run found.
+The parked CMP upgrade (SPEC 20 ask-first; IOS-1b-A UNNUMBERED-8): nothing product-side misfired. The one CMP
+  defect read is in the TEST HARNESS (waitUntil never throws); whether a later CMP throws from waitUntil was NOT
+  read and is not claimed. Not needed for what was found; it stays parked on its own merits.
+A test-only change (acceptable ONLY if the test still saves through the product's real Save path and asserts
+  the same three facts): THE ROUTE THE FACTS BEAR ON - the test's tap did not reach the Save's onClick, and the
+  Save had no area inside the test's window while the sheet was partially expanded. OPEN, and its condition is
+  not yet met anywhere: no test on either platform has saved through the sheet CONTAINER's Save (on Android,
+  CalendarSheetSaveInstrumentedTest drives the content only - REPORT-IOS-2c-DEVICE). Which change, if any, is
+  the orchestrator's.
+iOS without the sheet until fixed (the operator's decision): the run shows no product hang - the sheet opens,
+  takes taps, and closes by both paths on iOS. What it does not show: a save through the sheet's Save on iOS.
+CLOSED BY THE RESULT, as a remedy for the reported hang: hide()-then-remove (no removal fault found) and the CMP
+  upgrade as a requirement (no product fault found). STILL OPEN: the test-only change and the operator's call.
+
+================================================================================
+R805 - ANDROID STAYS PROVEN
+================================================================================
+Paparazzi: `git diff --stat 6815297..HEAD -- android/app/src/test/snapshots` -> EMPTY. RE-RECORDED: 0.
+  142 screenshot tests, 0 failures, in the gate.
+The full :app:gate on the dispatched tip 64d9389: GREEN (STATUS). `git diff --stat 6815297..HEAD -- .
+  ':!android/shared/src/iosTest'` -> EMPTY: nothing outside iosTest changed (commonMain, :app, the workflow, the
+  version catalog: as at abbed46, R804).
+Fences that read iosTest: ExperimentalTimeOptInAllowlistTest, the only one (every other fence root is under
+  commonMain); it names this file BY PATH with a count of 1 - unchanged (grep -c 'OptIn(ExperimentalTime::class)'
+  on the file: 1; the new code mentions no ExperimentalTime). It ran GREEN in the gate, 3/3. ktlint and detekt
+  also read iosTest and ran green (lint run and gate). NO PLANT: no new test class and no new file were added
+  (the variants split step4 in an already-read file; the new private helper classes live in that file), which
+  is R805's "otherwise" case.
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref          sha      result    job wall                      billed
+  42202057374  ios2c-probe  64d9389  failure   10:21:37Z-10:29:12Z (7m35s)   8 min (rounded up)
+ONE dispatch (`gh workflow run ios-shared.yml --ref ios2c-probe`); zero push-triggered runs (the branch does not
+match ios-*; `gh run list --branch ios2c-probe` -> 1 run, before and after the report pushes). The konan cache
+missed on this branch (caches are branch-scoped) and was saved by step 12.
+
+================================================================================
+PARKED (UNNUMBERED - no series letter claimed)
+================================================================================
+UNNUMBERED-1  EVERY waitUntil IN iosTest IS UNBOUNDED UNDER CMP 1.7.3 (R800 (1)). step1-step3, and the other pilot
+              classes, call waitUntil with a TIMEOUT that cannot fire, and only this file has a watchdog: a false
+              condition anywhere else would run to the job's 50-minute timeout. NOTICED, NOT TOUCHING (R801 kept
+              step1-step3 as they are). Trigger: the next iosTest task, or the CMP upgrade.
+UNNUMBERED-2  THE PROBE'S INSTRUMENTATION STAYS IN THE FILE (step4a-4c, SheetProbe, IdleProbe, SheetProbeHost, the
+              bounded wait) until the orchestrator rules on R804's routes; step4c will keep failing on iOS until
+              then. Its removal or its narrowing is part of that ruling, not this task.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. THE PROMPT'S "KNOWN" ITEM 2 DOES NOT HOLD IN 1.7.3 ("A condition that never becomes true throws
+   ComposeTimeoutException at 10 s ... so the hang is inside a wait that honours NO timeout"). R800 (1) quotes
+   waitUntil building its message and never throwing it. Recorded under R156, not re-proved beyond the run.
+2. THE SHEET WAS NOT "EXPANDED": its handle offered Expand (handleExpand=1, handleCollapse=0), i.e.
+   PartiallyExpanded (R800 (3)); the prompt's "an EXPANDED Material3 ModalBottomSheet" does not describe the run.
+3. THE WAITS ARE BOUNDED BY THEIR OWN CONDITION (R156: conservative, reversible): without it, a false condition
+   would have looked like an idle-wait and spent the one run at its first variant. step4c's condition and
+   TIMEOUT are abbed46's; only the throw at the bound is added. Only a wait with no callback (inside waitForIdle)
+   was left to the watchdog, which never fired.
+4. step4a TAPS THE SCRIM THROUGH ITS SEMANTICS ACTION (performSemanticsAction(SemanticsActions.OnClick)), not
+   performClick: the scrim covers the whole 1024 x 768 window and performClick taps a node's center, which can
+   lie under the sheet. The action is Material3's own path (onClick { onDismissRequest() } = animateToDismiss).
+5. A STEP4 SPLIT, NOT A NEW CLASS, and the class does not run before every other pilot class (R801's "otherwise":
+   what would not have been reached, and why, is in R801; in the run nothing was unreached).
+6. step4c ADDS READS BETWEEN abbed46's STEPS: the sheet facts after the sheet opened (six fetches and
+   Locale.current) and "En Suisse selected? and the Save's bounds" before the Save tap (two fetches). Each fetch
+   waits for idle, as the next step's own fetch would; no step was added, removed or reordered.
+7. watched() and mark() CHANGED for the probe (two defaulted parameters, a tag). step1-step3 pass neither and print
+   exactly what they printed in 42142576248 (the run's R793 lines above).
+8. THE WINDOWS COMPILE CHECK IS NO RESULT (R801 section); the Mac compiled it in the run.
+9. R802's OPTIONAL THREAD-STACK CAPTURE NOT DONE (R801 section, with the reason).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R803/R804) - The probe recorded the Save's boundsInWindow (Rect.Zero), not its boundsInRoot or
+   positionInRoot, so WHERE the injected tap landed is inferred, not recorded (two source-consistent paths, R803).
+   Is that point wanted before a ruling - one more run recording boundsInRoot and the press position - or do the
+   recorded facts suffice? A second run is not this session's to dispatch.
+Q2 (UNNUMBERED-1) - Every other iosTest waitUntil is unbounded under 1.7.3. Should a bounded wait (or a
+   watchdog) reach the other pilot classes, and in which task?
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2c-probe only (never main, production, ios2c or ios2c-device). The code commit, before the dispatch:
+  git push -u origin ios2c-probe -> "* [new branch]      ios2c-probe -> ios2c-probe"
+  git ls-remote origin refs/heads/ios2c-probe -> 64d93891d9c05a4674722889cf091c792ac6cead = HEAD (MATCH)
+  gh run list --branch ios2c-probe (before the dispatch) -> 0 runs; after it -> 1 (42202057374).
+This report is the commit after 64d9389 and changes REPORT-IOS-2c-PROBE.txt only; its push is recorded in the
+follow-up commit.
+
+END OF REPORT-IOS-2c-PROBE
