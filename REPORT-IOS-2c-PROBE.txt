@@ -553,7 +553,8 @@ CI MINUTES
   run          ref          sha      result    job wall                      billed
   42202057374  ios2c-probe  64d9389  failure   10:21:37Z-10:29:12Z (7m35s)   8 min (rounded up)
 ONE dispatch (`gh workflow run ios-shared.yml --ref ios2c-probe`); zero push-triggered runs (the branch does not
-match ios-*; `gh run list --branch ios2c-probe` -> 1 run, before and after the report pushes). The konan cache
+match ios-*; `gh run list --branch ios2c-probe` -> 1 run after the dispatch and after the report push; the
+follow-up's own count is in its paragraph below). The konan cache
 missed on this branch (caches are branch-scoped) and was saved by step 12.
 
 ================================================================================
@@ -613,3 +614,16 @@ This report is the commit after 64d9389 and changes REPORT-IOS-2c-PROBE.txt only
 follow-up commit.
 
 END OF REPORT-IOS-2c-PROBE
+
+PUSH PROOF, FOLLOW-UP: the report commit b2bab3f pushed - git push origin ios2c-probe -> "64d9389..b2bab3f
+ios2c-probe -> ios2c-probe"; git ls-remote origin refs/heads/ios2c-probe ->
+b2bab3f50a25b6d3994983feba0627f8e74c45c7 = HEAD (MATCH); `git diff --stat 64d9389 b2bab3f` ->
+" REPORT-IOS-2c-PROBE.txt | 615 ++++..." / " 1 file changed, 615 insertions(+)" (the STATUS pointer resolves here);
+`gh run list --branch ios2c-probe` -> 1 (42202057374) after that push. Re-fetched before it: origin/main 55258ed,
+production 52caca8, ios2c-device 6815297 - unchanged. This follow-up also corrects the CI MINUTES sentence, which
+had counted a push not yet made. Not pushed: main, production, ios2c, ios2c-device.
+CLEANUP: ./gradlew --stop after the gate ("1 Daemon stopped"); no server started, no port touched, no phone, adb
+not used. The lock .session-lock.json is present at this commit and is removed as the session's last step, after
+the push of this follow-up. Evidence stays in C:/wt/ios2c-probe/.ios2c-probe-evidence/ (ignored). The worktree
+C:/wt/ios2c-probe stays (R392); C:/wt/ios2c, C:/wt/ios2c-device and C:/wt/ios2b were only read (their
+evidence logs and lock-file presence), never written.
