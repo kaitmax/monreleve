@@ -51,10 +51,20 @@ import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.calendrier.LIST_FONT_SCALE_THRESHOLD
 import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import platform.darwin.DISPATCH_TIME_NOW
+import platform.darwin.NSEC_PER_SEC
+import platform.darwin.QOS_CLASS_DEFAULT
+import platform.darwin.dispatch_after
+import platform.darwin.dispatch_get_global_queue
+import platform.darwin.dispatch_time
+import platform.posix.fflush
+import platform.posix.stdout
+import kotlin.system.exitProcess
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -244,6 +254,61 @@ private fun ReleveHost(
     }
 }
 
+/**
+ * IOS-2c R793, AFTER RUN 42135274188 HUNG. That run compiled and linked this file for the simulator, then stopped
+ * producing output inside this class for 26 minutes until it was cancelled - with no way to say which step. So every
+ * step now prints a MARK, and each test arms a WATCHDOG: a GCD block on a global queue (it fires even if the main
+ * thread is blocked) that, if the test has not finished within WATCHDOG_SECONDS, prints the test and the last step
+ * reached and ends the process. A hang is then a named finding in minutes, not a silent 50-minute timeout.
+ */
+private object Progress {
+    var test = ""
+    var step = ""
+    var generation = 0
+    var done = false
+}
+
+private const val WATCHDOG_SECONDS = 120L
+private const val WATCHDOG_EXIT = 3
+
+@OptIn(ExperimentalForeignApi::class) // the posix stdout flush - function-scoped, as KeychainTokenStore's interop is.
+private fun mark(step: String) {
+    Progress.step = step
+    println("R793 MARK ${Progress.test}: $step")
+    fflush(stdout)
+}
+
+@OptIn(ExperimentalForeignApi::class) // GCD and posix, function-scoped (KeychainTokenStore's precedent).
+private fun watched(
+    test: String,
+    body: () -> Unit,
+) {
+    Progress.generation += 1
+    val generation = Progress.generation
+    Progress.test = test
+    Progress.done = false
+    mark("started")
+    dispatch_after(
+        dispatch_time(DISPATCH_TIME_NOW, WATCHDOG_SECONDS * NSEC_PER_SEC.toLong()),
+        dispatch_get_global_queue(QOS_CLASS_DEFAULT.toLong(), 0u),
+    ) {
+        if (Progress.generation == generation && !Progress.done) {
+            println("R793 WATCHDOG: $test HUNG after ${WATCHDOG_SECONDS}s - last step reached: ${Progress.step}")
+            fflush(stdout)
+            exitProcess(WATCHDOG_EXIT)
+        }
+    }
+    try {
+        body()
+        mark("finished")
+    } finally {
+        Progress.done = true
+    }
+}
+
+// The tests are named step1..step4 so that declaration order and alphabetical order agree (whichever the runner
+// uses), from the least to the most at risk: the Releve (Buttons only), the large-text list (Checkbox), the bulk
+// AlertDialog, the ModalBottomSheet.
 @OptIn(ExperimentalTestApi::class)
 class CalendrierReleveScreensIosTest {
     private fun SemanticsNodeInteractionsProvider.shows(text: String): Boolean =
@@ -256,7 +321,7 @@ class CalendrierReleveScreensIosTest {
         try {
             node.performScrollTo()
         } catch (expectedOutsideAScroll: AssertionError) {
-            // a dialog's or a sheet's button is not in the screen's scroll; nothing to scroll
+            // a button in a dialog or a sheet is not in the screen's scroll; nothing to scroll
         }
         node.performClick()
     }
@@ -269,91 +334,121 @@ class CalendrierReleveScreensIosTest {
             )
 
     @Test
-    fun aDayOpensTheSheetASaveWritesItAndTheBulkDialogConfirmsAWrite() =
-        runComposeUiTest {
-            val repository = RecordingRepository()
-            val syncs = Syncs()
-            setContent { CalendrierHost(repository, syncs) }
-            waitUntil(timeoutMillis = TIMEOUT) { shows(formatMonthYear(TAX_YEAR, 6)) }
-
-            // THE ModalBottomSheet: a day tapped opens it; SUISSE chosen; SHEET_SAVE writes and closes it.
-            assertTrue(!shows(CalendarCopy.SHEET_QUESTION), "no sheet before a day is tapped")
-            tapFirst(missingDay(10))
-            waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.SHEET_QUESTION) }
-            assertTrue(shows(CalendarCopy.SHEET_NOTE_LABEL), "the sheet's OutlinedTextField is composed")
-            tap(AujourdhuiCopy.SUISSE)
-            tap(CalendarCopy.SHEET_SAVE)
-            waitUntil(timeoutMillis = TIMEOUT) { !shows(CalendarCopy.SHEET_QUESTION) && repository.recorded.size == 1 }
-            assertEquals(listOf(RecordCommand("2026-06-10", EntryKind.CH, Portion.FULL)), repository.recorded)
-            assertEquals(1, syncs.count)
-
-            // THE AlertDialog: three days selected (an anchor, then the range), DOMICILE chosen, confirmed.
-            tap(CalendarCopy.SELECT_MULTIPLE)
-            tapFirst(missingDay(1))
-            waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.selectedCount(1)) }
-            tapFirst(missingDay(3))
-            waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.selectedCount(3)) }
-            tap(AujourdhuiCopy.DOMICILE)
-            waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.CONFIRM_HEADING) }
-            assertTrue(
-                shows(CalendarCopy.bulkLateNotice(3, LatenessForecast.BACKFILL_DAYS)),
-                "the dialog states the late days",
-            )
-            tap(CalendarCopy.SHEET_SAVE)
-            waitUntil(timeoutMillis = TIMEOUT) { !shows(CalendarCopy.CONFIRM_HEADING) && repository.recorded.size == 4 }
-            val bulk =
-                listOf("2026-06-01", "2026-06-02", "2026-06-03").map { RecordCommand(it, EntryKind.HOME, Portion.FULL) }
-            assertEquals(listOf(RecordCommand("2026-06-10", EntryKind.CH, Portion.FULL)) + bulk, repository.recorded)
-            assertEquals(2, syncs.count)
-            assertTrue(repository.recorded.none { it.absenceReason != null || it.note != null }, "nothing else written")
-        }
-
-    @Test
-    fun atLargeTextTheListsCheckboxSelectsADay() =
-        runComposeUiTest {
-            val repository = RecordingRepository()
-            setContent {
-                val density = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(density.density, LARGE_TEXT)) {
-                    CalendrierHost(repository, Syncs())
-                }
-            }
-            assertTrue(LARGE_TEXT >= LIST_FONT_SCALE_THRESHOLD, "the list is what large text shows")
-            waitUntil(timeoutMillis = TIMEOUT) { shows(formatMonthYear(TAX_YEAR, 6)) }
-            assertTrue(onAllNodes(isToggleable()).fetchSemanticsNodes().isEmpty(), "no Checkbox before selecting")
-            tap(CalendarCopy.SELECT_MULTIPLE)
-            waitUntil(timeoutMillis = TIMEOUT) { onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty() }
-            tapFirst(isToggleable())
-            waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.selectedCount(1)) }
-            assertTrue(repository.recorded.isEmpty(), "selecting writes nothing")
-        }
-
-    @Test
-    fun theReleveShowsAFixtureDossierAfterARetryAndItsExportButtonExports() =
-        runComposeUiTest {
-            val document = parseDossier(FIXTURE_DOSSIER)
-            val fetches = mutableListOf<Int>()
-            val exports = mutableListOf<String>()
-            val events = mutableListOf<ExportEvent>()
-            var first = true
-            setContent {
-                ReleveHost(fetches, exports, events) { year ->
-                    when {
-                        year != TAX_YEAR -> DossierResult.Unreadable
-                        first -> DossierResult.NetworkError.also { first = false }
-                        else -> DossierResult.Loaded(document)
+    fun step1TheReleveShowsAFixtureDossierAfterARetryAndItsExportButtonExports() =
+        watched("releve") {
+            runComposeUiTest {
+                val document = parseDossier(FIXTURE_DOSSIER)
+                val fetches = mutableListOf<Int>()
+                val exports = mutableListOf<String>()
+                val events = mutableListOf<ExportEvent>()
+                var first = true
+                setContent {
+                    ReleveHost(fetches, exports, events) { year ->
+                        when {
+                            year != TAX_YEAR -> DossierResult.Unreadable
+                            first -> DossierResult.NetworkError.also { first = false }
+                            else -> DossierResult.Loaded(document)
+                        }
                     }
                 }
+                waitUntil(timeoutMillis = TIMEOUT) { shows(ReleveCopy.ERROR_NETWORK) }
+                mark("the network failure shown; retry")
+                tap(SignInCopy.RETRY)
+                waitUntil(timeoutMillis = TIMEOUT) { shows(document.titulaire) }
+                mark("the fixture dossier shown")
+                assertTrue(shows(ReleveCopy.TITLE), "the document's title")
+                assertEquals(listOf(TAX_YEAR, TAX_YEAR - 1, TAX_YEAR), fetches)
+                tap(ReleveCopy.EXPORT_PDF)
+                waitUntil(timeoutMillis = TIMEOUT) { events.isNotEmpty() }
+                mark("the PDF export event received")
+                assertEquals(listOf("/api/v1/export/pdf?year=$TAX_YEAR"), exports)
+                val ready = ExportEvent.Ready(byteArrayOf(1, 2, 3), "releve-$TAX_YEAR.pdf", "application/pdf")
+                assertEquals(listOf<ExportEvent>(ready), events)
             }
-            waitUntil(timeoutMillis = TIMEOUT) { shows(ReleveCopy.ERROR_NETWORK) }
-            tap(SignInCopy.RETRY)
-            waitUntil(timeoutMillis = TIMEOUT) { shows(document.titulaire) }
-            assertTrue(shows(ReleveCopy.TITLE), "the document's title")
-            assertEquals(listOf(TAX_YEAR, TAX_YEAR - 1, TAX_YEAR), fetches)
-            tap(ReleveCopy.EXPORT_PDF)
-            waitUntil(timeoutMillis = TIMEOUT) { events.isNotEmpty() }
-            assertEquals(listOf("/api/v1/export/pdf?year=$TAX_YEAR"), exports)
-            val ready = ExportEvent.Ready(byteArrayOf(1, 2, 3), "releve-$TAX_YEAR.pdf", "application/pdf")
-            assertEquals(listOf<ExportEvent>(ready), events)
+        }
+
+    @Test
+    fun step2AtLargeTextTheListsCheckboxSelectsADay() =
+        watched("checkbox") {
+            runComposeUiTest {
+                val repository = RecordingRepository()
+                setContent {
+                    val density = LocalDensity.current
+                    CompositionLocalProvider(LocalDensity provides Density(density.density, LARGE_TEXT)) {
+                        CalendrierHost(repository, Syncs())
+                    }
+                }
+                assertTrue(LARGE_TEXT >= LIST_FONT_SCALE_THRESHOLD, "the list is what large text shows")
+                waitUntil(timeoutMillis = TIMEOUT) { shows(formatMonthYear(TAX_YEAR, 6)) }
+                mark("the month shown as a list")
+                assertTrue(onAllNodes(isToggleable()).fetchSemanticsNodes().isEmpty(), "no Checkbox before selecting")
+                tap(CalendarCopy.SELECT_MULTIPLE)
+                waitUntil(timeoutMillis = TIMEOUT) { onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty() }
+                mark("the Checkboxes composed")
+                tapFirst(isToggleable())
+                waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.selectedCount(1)) }
+                mark("a Checkbox tapped: one day selected")
+                assertTrue(repository.recorded.isEmpty(), "selecting writes nothing")
+            }
+        }
+
+    @Test
+    fun step3TheBulkAlertDialogOpensAndItsConfirmationWritesEachDay() =
+        watched("dialog") {
+            runComposeUiTest {
+                val repository = RecordingRepository()
+                val syncs = Syncs()
+                setContent { CalendrierHost(repository, syncs) }
+                waitUntil(timeoutMillis = TIMEOUT) { shows(formatMonthYear(TAX_YEAR, 6)) }
+                mark("the month shown")
+                tap(CalendarCopy.SELECT_MULTIPLE)
+                tapFirst(missingDay(1))
+                waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.selectedCount(1)) }
+                tapFirst(missingDay(3))
+                waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.selectedCount(3)) }
+                mark("three days selected; DOMICILE chosen")
+                tap(AujourdhuiCopy.DOMICILE)
+                waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.CONFIRM_HEADING) }
+                mark("the AlertDialog OPEN")
+                assertTrue(
+                    shows(CalendarCopy.bulkLateNotice(3, LatenessForecast.BACKFILL_DAYS)),
+                    "the dialog states the late days",
+                )
+                tap(CalendarCopy.SHEET_SAVE)
+                waitUntil(timeoutMillis = TIMEOUT) {
+                    !shows(CalendarCopy.CONFIRM_HEADING) && repository.recorded.size == 3
+                }
+                mark("the AlertDialog CONFIRMED and closed")
+                val days = listOf("2026-06-01", "2026-06-02", "2026-06-03")
+                val bulk = days.map { RecordCommand(it, EntryKind.HOME, Portion.FULL) }
+                assertEquals(bulk, repository.recorded)
+                assertEquals(1, syncs.count)
+            }
+        }
+
+    @Test
+    fun step4ADayOpensTheModalBottomSheetAndItsSaveWritesTheDay() =
+        watched("sheet") {
+            runComposeUiTest {
+                val repository = RecordingRepository()
+                val syncs = Syncs()
+                setContent { CalendrierHost(repository, syncs) }
+                waitUntil(timeoutMillis = TIMEOUT) { shows(formatMonthYear(TAX_YEAR, 6)) }
+                mark("the month shown")
+                assertTrue(!shows(CalendarCopy.SHEET_QUESTION), "no sheet before a day is tapped")
+                tapFirst(missingDay(10))
+                waitUntil(timeoutMillis = TIMEOUT) { shows(CalendarCopy.SHEET_QUESTION) }
+                mark("the ModalBottomSheet OPEN")
+                assertTrue(shows(CalendarCopy.SHEET_NOTE_LABEL), "the sheet's OutlinedTextField is composed")
+                tap(AujourdhuiCopy.SUISSE)
+                mark("SUISSE chosen; saving")
+                tap(CalendarCopy.SHEET_SAVE)
+                waitUntil(timeoutMillis = TIMEOUT) {
+                    !shows(CalendarCopy.SHEET_QUESTION) && repository.recorded.size == 1
+                }
+                mark("the ModalBottomSheet SAVED and closed")
+                assertEquals(listOf(RecordCommand("2026-06-10", EntryKind.CH, Portion.FULL)), repository.recorded)
+                assertEquals(1, syncs.count)
+            }
         }
 }
