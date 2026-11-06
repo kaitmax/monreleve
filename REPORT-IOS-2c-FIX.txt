@@ -434,3 +434,15 @@ This report is the commit after 9433c4e and changes REPORT-IOS-2c-FIX.txt only; 
 below.
 
 END OF REPORT-IOS-2c-FIX
+
+PUSH PROOF, FOLLOW-UP: the report commit ac4f34b pushed - git push origin ios2c-fix -> "9433c4e..ac4f34b
+ios2c-fix -> ios2c-fix"; git ls-remote origin refs/heads/ios2c-fix -> ac4f34b062c91273bb612168bc3693e4543ca8cc = HEAD
+(MATCH); `git diff --stat 9433c4e ac4f34b` -> " REPORT-IOS-2c-FIX.txt | 436 ++++..." / " 1 file changed, 436
+insertions(+)" (the STATUS pointer resolves here); `gh run list --branch ios2c-fix` -> 1 run (42292101917) after that
+push. Before it, R806-R811 re-grepped: the worktree holds them only in this report; the main checkout only in
+relay/IOS-2c-FIX.txt, and no newer relay prompt had landed. Re-fetched: origin/main 55258ed, production 52caca8,
+ios2c-probe 7b0df23 - unchanged. Not pushed: main, production, ios2c-probe, ios2c, ios2c-device.
+CLEANUP: ./gradlew --stop after the last Gradle use; no server started, no port touched, no phone, adb not used.
+The lock .session-lock.json is present at this commit and is removed as the session's last step, after the push of
+this follow-up. Evidence stays in C:/wt/ios2c-fix/.ios2c-fix-evidence/ (ignored). The worktree C:/wt/ios2c-fix stays
+(R392); C:/wt/ios2c-probe was only read (its report) - never written; no other C:/wt/* was touched.
