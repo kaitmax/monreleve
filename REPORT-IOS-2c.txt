@@ -1,0 +1,524 @@
+REPORT-IOS-2c - Mon Releve
+RELEVE AND CALENDRIER BECOME SHARED: THEIR CONTROLLERS AND THEIR SCREENS
+CODE MOVED, ANDROID GREEN AND PIXEL-IDENTICAL; iOS: THE SHEET HANGS AT ITS SAVE (A FINDING);
+THE S9 INSTRUMENTED RUN NOT RUN (THE PERMISSION SYSTEM REFUSED ITS PRECONDITION READ)
+
+TASK     relay/IOS-2c.txt (main checkout, untracked), rulings R786-R795 (free: before the first commit
+         `grep -rE '\bR7(8[6-9]|9[0-5])\b' relay/ REPORT-*.txt CLAUDE.md docs` in the worktree found nothing, and
+         in the main checkout only relay/IOS-2c.txt itself; re-run before the push, below).
+BASE     origin/main 55258ed (contains b0d14fa).
+BRANCH   ios2c, worktree C:/wt/ios2c (R349), lock .session-lock.json (gitignored), removed at the end.
+         Pushed: ios2c only. PENDING MERGE - nothing here is on main.
+CODE TIP abbed46 (abbed4654a1f75fed65e30b60408529886e9e722). DEVICE SM-G960F (Galaxy S9), serial 232bcd8c300c7ece.
+EVIDENCE C:/wt/ios2c/.ios2c-evidence/ (untracked, ignored by /.*-evidence/): gradle logs, both iOS run logs and
+         the first run's artifact, plant copies and hashes, the as-found APK pulled from the phone, the tip's
+         release APK.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+The Releve and the Calendrier now live in :shared commonMain - their controllers (CalendarController,
+BulkConfirmation, ReleveController, ReleveView), the calendar's date lines (CalendarDates.kt, on kotlinx-datetime)
+and their thirteen screen files. Android hosts them through the same calls as before and stays pixel-identical
+(every Paparazzi baseline at 0.0, NONE re-recorded; the release APK the same size to the byte). No dependency was
+added: the Material icons already reach commonMain and iOS through cmp material3 (R791, measured).
+  R787  the date lines extracted unchanged, pinned on java.time (red on a plant), ported, the pin moved unedited.
+  R788  both controllers pinned in kotlin.test (red on plants), moved; the pins moved unedited. No Android
+        Context collaborator exists; the clock is a kotlin.time seam with a java.time factory left in :app.
+  R789  the four Releve files moved unedited.
+  R790  the nine Calendrier files moved; eight unedited, two internals made public.
+  R791  (1) icons: YES, no dependency change, proven by compiling. (2) sheet/dialog/checkbox:
+        the AlertDialog OPENED and CONFIRMED, the
+        Checkbox composed and TAPPED, the ModalBottomSheet OPENED (its OutlinedTextField composed, an option inside
+        it tapped) - and the sheet's Save tap NEVER RETURNED on the simulator (R793's finding). No IrLinkageError.
+  R792  fences red once each on a verified plant in both moved screens, then green.
+  R793  THREE runs (DEVIATION 4). The last, 42142576248 on abbed46, FAILED: the Releve, the large-text
+        Checkbox and the bulk AlertDialog tests passed on the simulator; the ModalBottomSheet test opened the sheet
+        and then hung at its Save - named by the test's own watchdog after 120 s. Not a linkage error.
+  R794  baselines untouched; :app 1392 tests 0 failures, assertions unedited; APK 1,989,388 -> 1,989,388 B.
+  R786  the instrumented run NOT RUN: the permission system refused the precondition read (signed out on the
+        welcome screen); per the brief, the command is quoted below and the device was touched no further.
+  R795  written below.
+
+================================================================================
+STATUS (R391)
+================================================================================
+NOT COMPLETE. R793's iOS run on the code tip FAILED (a finding, below); R786's instrumented run NOT RUN.
+FULL :app:gate --rerun-tasks on the code tip abbed46, this session, after ./gradlew --stop ("1 Daemon stopped";
+3.91 GB free, read in its own step), with the tree clean (git status --porcelain empty):
+    > Task :app:checkTestFloor - test floor OK: 1392 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 9m 40s
+    260 actionable tasks: 260 executed
+    real 9m42.510s ; GATE_EXIT=0
+  Test XML (every file stamped by this run): :app 1392 tests 0 failures 0 errors (142 screenshot, 0 failures, at
+  0.0); :shared 200 0 0 (main 181 + CalendarDatesPinTest 4 + CalendarControllerPinTest 8 +
+  ReleveControllerPinTest 7). Compiler "w: " lines: 7 (main's count); none is new.
+  (The same gate also ran green on 0216025 - BUILD SUCCESSFUL in 11m 57s, 260 executed, GATE_EXIT=0 - before the
+  one-line iosTest fix that made abbed46; abbed46 differs from it in iosTest only.)
+iOS run on the code tip: 42142576248 on abbed46 - FAILURE. Step 10 failed with "Test running process exited
+  unexpectedly" after "R793 WATCHDOG: sheet HUNG after 120s - last step reached: SUISSE chosen; saving"; "260
+  tests completed, 1 failed"; step 13 then reported NO RESULT (no JUnit XML - the process had ended). See R793.
+Instrumented run on the S9: NOT RUN (R786).
+`git diff --stat abbed46 HEAD` (report-only, shown at push time): see PUSH PROOF.
+gate:clone NOT RUN: no web/ change (web/.env and node_modules are gitignored and untracked).
+
+================================================================================
+R273 - READ
+================================================================================
+REPORT-IOS-2b.txt (R776-R785, R784's list, R785's table, R777/R778's pin-then-move); REPORT-IOS-1b-A.txt
+(R602b/c/d - CheckWindows, CalendarModel and AujourdhuiController moved onto kotlinx/kotlin.time with java.time
+factories in :app; R603 / ruling 14's Glyph seam; R604's fences; R606's iOS UI tests); REPORT-IOS-2a.txt R768
+(the pin-then-move shape: a NEW kotlin.test pin moves, the Kotest specs stay in :app and cross the boundary);
+relay/RULINGS-2026-11-03-MOBILE.txt Rulings 9 and 10. The files: app/calendar/* (CalendarController,
+BulkConfirmation), app/releve/* (ReleveController, ReleveView), app/ui/screens/releve/* (4),
+app/ui/screens/calendrier/* (9); shared CalendarModel.kt, SharedWithAujourdhui.kt, dossier/*, data/local
+JavaTimeCalendarDay.kt (todayInParis), LatenessForecast; MainActivity's CALENDRIER and RELEVE branches, MainGraph,
+ShellState (SelectionSnapshot in rememberSaveable). Every fence that names a path or reads ui/: FencesTest,
+CopyReachabilityTest, DayCellGridHasLegendTest, LogFenceTest, NoBareThresholdTest, RateFloatFenceTest,
+SettingsCaptureFenceTest, ExperimentalTimeOptInAllowlistTest, CommonMainFenceTest; the existing tests named by
+R788, CalendrierScreenScreenshotTest, ReleveScreenScreenshotTest, ProvenanceWordsTest, RecordedGranularityTest,
+CalendarSheetSaveInstrumentedTest, ProvenanceShownInstrumentedTest; OnboardingScreensIosTest and
+AujourdhuiPilotIosTest (the models for R793); .github/workflows/ios-shared.yml.
+THE FILES, VERIFIED: the orchestrator's list is exact. No java.* / android.* in the screens or in ReleveController
+/ ReleveView; CalendarController held java.time Clock + LocalDate, BulkConfirmation java.time Instant + LocalDate;
+CalendrierScreen imports the two AutoMirrored KeyboardArrow icons and Material3 ModalBottomSheet. Every other
+ch.monreleve import of the 17 files already resolved in :shared commonMain (scripted check: only the moved
+files' own types were missing).
+
+================================================================================
+R1 - PRECONDITION
+================================================================================
+`git merge-base --is-ancestor b0d14fa origin/main` -> true; origin/main = 55258ed. HOLDS.
+
+================================================================================
+R786 - THE INSTRUMENTED RUN: NOT RUN (the permission system refused the precondition read)
+================================================================================
+PHONE, BEFORE (read 00:23:22 UTC = 01:23:24 phone clock; reads only): attached (adb devices: device);
+  ch.monreleve.app installed, base.apk sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+  (the as-found APK; firstInstall/lastUpdate 2026-11-04 18:07:04); mWakefulness=Dozing, display OFF, focus
+  StatusBar over MainActivity; enabled_accessibility_services null, accessibility_enabled 0,
+  stay_on_while_plugged_in 0, auto_time 1, adb reverse empty. Earlier (22:22 UTC) the same base.apk was pulled to
+  the evidence directory and hashed on both sides: d417d021...081034 (the reinstall copy, never needed).
+WHAT I SENT TO THE PHONE: `input keyevent KEYCODE_WAKEUP` and `wm dismiss-keyguard` (focus then read
+  ch.monreleve.app/MainActivity), then ONE `uiautomator dump /data/local/tmp/ios2c-before.xml`: it executed on the
+  device, but its pull failed on a host-path error, and the same command line's `adb shell rm` deleted the device
+  file - its content never reached this machine and was never read.
+THE REFUSAL. The corrected read was REFUSED by the permission system ("Permission for this action was denied by
+  the Claude Code auto mode classifier. Reason: [PII Data Handling]"). Not routed around. The exact command:
+    export MSYS_NO_PATHCONV=1; ADB="/c/Users/KAMXKAM/AppData/Local/Android/Sdk/platform-tools/adb.exe -s 232bcd8c300c7ece"; E=C:/wt/ios2c/.ios2c-evidence/phone; $ADB shell uiautomator dump /data/local/tmp/ios2c-before.xml >/dev/null; $ADB pull /data/local/tmp/ios2c-before.xml $E/before-ui.xml >/dev/null; $ADB shell rm /data/local/tmp/ios2c-before.xml; grep -o 'text="[^"]*"' $E/before-ui.xml | grep -v 'text=""' | head -20; grep -c EditText $E/before-ui.xml; grep -o 'package="[^"]*"' $E/before-ui.xml | sort | uniq -c
+  So "signed out on the welcome screen" was NOT verified, and Ruling 9 forbids running over an account I did not
+  create; the run was therefore NOT RUN - never passed. connectedAndroidTest was not invoked; nothing was
+  installed, uninstalled, reversed or answered.
+PHONE, AFTER: as read before, untouched since the two inputs above; the screen was left to time out by itself
+  (stay_on_while_plugged_in 0); no KEYCODE_SLEEP was sent. The as-found APK is still the installed one (nothing
+  replaced it).
+WHAT THE RUN WOULD HAVE COVERED, said exactly: CalendarSheetSaveInstrumentedTest and
+  ProvenanceShownInstrumentedTest drive the calendar's sheet on a device; both are UNEDITED by this task
+  (git diff 55258ed..HEAD -- android/app/src/androidTest: EMPTY) and COMPILE against the shared screens
+  (:app:compileDebugAndroidTestKotlin green after R790; the gate's assembleDebugAndroidTest too).
+
+================================================================================
+R787 - THE CALENDAR'S DATES MOVED FIRST, PINNED (commits 64cb8c1 pin, dd9c5ec swap)
+================================================================================
+WHAT HELD java.time: CalendarController - `todayInParis(clock)` (already a shared function, reached through
+  :app's java.time overload), `LocalDate.parse(today).monthValue/.year` (the opening month), and
+  `LocalDate.parse(isoDate).toKotlinLocalDate()` + `clock.instant().toKotlinInstant()` (the sheet's late
+  prediction); bulkConfirmation - `now.toKotlinInstant()` and the same parse per chosen day.
+STEP 1, behaviour-neutral (R777's isIsoDay shape): the two parse sites EXTRACTED UNCHANGED into
+  calendar/CalendarDates.kt - wouldBeLateOn(isoDay, now: kotlin.time.Instant) and openingMonth(today, taxYear,
+  firstMonth: Int?) - still java.time; bulkConfirmation takes a kotlin.time Instant and asks wouldBeLateOn per
+  day (one home for the question the sheet also asks); :app's JavaTimeCalendar.kt keeps the java.time.Instant
+  overload (the library's toKotlinInstant - exactly the conversion the old first line made), so
+  BulkConfirmationTest is unedited.
+THE PIN, ON java.time, in :app's test scope: CalendarDatesPinTest (kotlin.test only; literals; every mismatch
+  collected before failing), four groups:
+  todayInParis  22 instants -> the Paris day: spring forward 2026-03-29 (22:59:59.999Z/23:00Z the day before,
+                00:59:59.999Z and 01:00Z either side of the change, 21:59:59.999Z/22:00Z its end), fall back
+                2026-10-25 (its start, both 02:30s, its 25th hour's end), the month ends 31 May (CEST) and
+                31 January (CET), 29 Feb 2024 (its start and end), 31 Dec 2026 -> 1 Jan 2027. Paris and Zurich
+                change at the same instant under the EU rule, so each vector is named in both wall clocks.
+  openingMonth  18 vectors (month ends, DST days, a period start clamping up, another year -> the first
+                navigable month, no settings -> today's month unclamped) + 9 composed from instants
+                (the controller's own composition: instant -> Paris day -> opening month).
+  wouldBeLateOn 24 vectors at the exact millisecond either side of UTC midnight + 7 days: 29 Feb 2024 and the
+                week before it, 31 Dec and 25 Dec across the year end, 31 May, 28 Feb 2026, both DST days and
+                the days a week before them (01:00 CET, 01:59:59.999 CET, 03:00 CEST; 02:00 CEST, both 02:30s),
+                today and tomorrow.
+  bulkConfirmation 8 vectors - the confirming instant turned into a late count (the "any Instant the bulk
+                confirmation turns into a day" of the ruling): the year end at 00:00Z and +1 ms, spring forward
+                at 01:00 CET and 03:00 CEST, the second 02:30 of fall back, 29 Feb 2024 at noon and a week later,
+                a month end - each asserting the WHOLE BulkConfirmation (sorted days, already-recorded count,
+                late count, BACKFILL_DAYS read from LatenessForecast, never typed).
+  GREEN on java.time: 4 tests, 0 failures (BulkConfirmationTest 5/5, CalendarControllerTest 10/10,
+  CalendarBulkWriteTest 3/3, CalendarSaveWritesWhatChangedTest 9/9, CalendarSelectionTest 9/9 beside it).
+  RED on a VERIFIED plant (R180): CalendarDates.kt sha256 68a562a9... recorded and the file copied; the plant
+  `LocalDate.parse(isoDay).minusDays(1)` in wouldBeLateOn (diff: exactly that line) -> 4 run, 2 failed:
+  "wouldBeLateOn: 10 mismatch(es) <2024-02-29 at 2024-03-07T00:00:00Z> expected <false> but was <true> ..."
+  and "bulkConfirmation: 5 mismatch(es) ... lateCount=1 ... but was ... lateCount=2 ...". The other two groups
+  do not ask the late question and stayed green. Restored; sha256 -c OK; grep minusDays: 0.
+  (detekt then refused the bulk test's length; its vectors moved to a class property, unchanged, and the pin
+  ran green again before the commit.)
+THE SWAP: CalendarDates.kt and BulkConfirmation.kt git mv'd to :shared commonMain (package unchanged).
+  CalendarDates: java LocalDate.parse -> kotlinx LocalDate.parse, monthValue -> month.number, toKotlinLocalDate
+  gone; BulkConfirmation.kt moved UNEDITED (R100 - step 1 had already made it platform-free).
+  THE CLOCK SEAM (R602d's shape): CalendarController takes a kotlin.time.Clock; `today` = the shared
+  todayInParis(clock), the late prediction and the bulk confirmation read clock.now(). :app's JavaTimeCalendar.kt
+  holds `fun CalendarController(repository, settingsStore, taxYear, clock: java.time.Clock, scope, requestSync =
+  {}, restored = null)` - a factory named like the class, the same parameters in the same order - handing
+  clock.toKotlinClock() over (the java clock's zone is not used: the calendar's day is always the Paris day, as
+  before). MainGraph, the five Kotest specs, RecordedGranularityTest, SettingsFollowedWithoutRestartTest,
+  ProvenanceWordsTest and CalendarSheetSaveInstrumentedTest compile and call it UNEDITED.
+THE SAME PIN, git mv'd to :shared commonTest UNEDITED (sha256 e3bda0d9... before and after): 4/4 on the port
+  (JVM); on iOS: "260 tests completed, 1 failed" in run 42142576248 and no per-test XML (the
+  process ended at the R793 watchdog), so its iOS pass is INFERRED from the count, not shown - see R793.
+
+================================================================================
+R788 - THE CONTROLLERS MOVED SECOND (commits e954ac1 pin, b99ba90 move - one pin commit and one move commit
+for both controllers)
+================================================================================
+COLLABORATORS: NONE needs an Android Context. ReleveController's are the fetch and export lambdas, the
+  EntryRepository, ruleSetFor, pendingEntriesForYear, DossierResult, BytesOutcome - all already shared; the
+  share/export and the dossier fetch stay in :app's host behind those lambdas (MainGraph builds them, MainActivity
+  hands ExportEvent.Ready to the share sheet), unchanged. CalendarController's are the EntryRepository, the
+  SettingsStore and the clock (R787's seam). So no interface and no iOS implementation was needed or written.
+THE PINS, written in :app's test scope against the controllers as they stood (kotlin.test +
+  kotlinx-coroutines-test, controllers in backgroundScope driven by runCurrent - PilotFixtureTest's shape):
+  CalendarControllerPinTest 8, over a repository that RECORDS every command in order: the opening month and
+    today's cell from the clock (a month end, spring forward, the second 02:30, the year end -> January, nothing
+    today, all recordable, no previous month); a partial year opening at its start, bounds both ways; the
+    sheet's refusal of the future, its prefill (kind, note, firstRecordedAt), its late prediction and
+    BACKFILL_DAYS; a save writing only the changed half then ONE sync, the same values again writing nothing,
+    an absence carrying its reason; the selection (anchor, range, toggle off, future refused, long-press seed);
+    the bulk confirmation (whole object), cancel, then one write per day in order and one sync; the restore
+    seed (month, sheet, clamped month, selection); a setting changed elsewhere followed at the next sheet.
+  ReleveControllerPinTest 7, over a fetch and an export that LOG what they were asked: the document carried
+    verbatim (assertSame) with the year's rules from ruleSetFor, fetches [2026, 2025], the pending count falling
+    with no refetch; every fetch outcome's state and a retry; the past year offered, refused switches fetching
+    nothing, the switch's fetch, state and export path; eight export outcomes -> eight events and paths in
+    order (299 Ready, 300 Failed - the HTTP_OK_MAX edge); a stale copy shown updating, then replaced, and each
+    failed refresh's end state; opening the tab refreshing only a stale year; a restored year fetched first.
+  GREEN 8/8 and 7/7 (after one harness fix before any commit: advanceUntilIdle does not run backgroundScope work
+  - every test failed with Loading/no state - so runCurrent, as PilotFixtureTest's comment says).
+  RED on VERIFIED plants (both files copied and hashed first; diffs shown): CalendarController `note =
+  note.normalisedNote()` -> `note = note`, and ReleveController HTTP_OK_MAX 299 -> 300 -> 15 run, 2 failed,
+  exactly aSaveWritesOnlyWhatChangedThenOneSync ("... note=null ... but was ... note=, ...") and
+  eachExportOutcomeBecomesItsEvent. Restored; sha256 -c OK on both.
+THE MOVE: CalendarController.kt, ReleveController.kt, ReleveView.kt git mv'd to :shared commonMain (package
+  unchanged; the two Releve files R100). One edit in CalendarController: SelectionSnapshot's supertype
+  java.io.Serializable -> PlatformSerializable (Android's actual typealias IS java.io.Serializable; iOS an empty
+  marker). It carries no explicit serialVersionUID, so the computed one was MEASURED by a throwaway JVM probe
+  (deleted): -2776883805359591830 before the move (from :app's classes) and -2776883805359591830 after (from
+  :shared's) - the same Bundle bytes.
+  The pins git mv'd to :shared commonTest UNEDITED (sha256 4c4dbbdb... and 004d8c4f... equal before/after):
+  8/8 and 7/7 on the JVM; on iOS: INFERRED, not shown, as R787's (R793).
+  The existing tests - CalendarControllerTest 10, CalendarBulkWriteTest 3, CalendarSaveWritesWhatChangedTest 9,
+  CalendarSelectionTest 9, BulkConfirmationTest 5, ReleveControllerTest 14, ReleveFreshTest 10, ReleveViewTest 3 -
+  stay in :app (Kotest, java.time, org.json cannot run in commonTest), UNEDITED, green across the boundary.
+NO java.* / android.* IN commonMain: CommonMainFenceTest green; compileCommonMainKotlinMetadata green; and the
+  iOS compile on the Mac (run 42135274188 compiled and linked every moved file).
+FENCES FOLLOWED: ExperimentalTimeOptInAllowlistTest's paths; SettingsCaptureFenceTest's :app root was pinned BY
+  CalendarController.kt - re-pinned on ParametresController.kt (the moved file is now scanned under the :shared
+  root, pinned by SettingsStore.kt).
+
+================================================================================
+R789 - THE RELEVE SCREEN MOVED (commit 463728d)
+================================================================================
+ReleveActions, ReleveHeader, ReleveScreen, ReleveSections git mv'd to :shared commonMain ui/screens/releve,
+UNEDITED (all R100). No internal of theirs is read from :app (FencesTest names SectionCard in a comment only).
+The host - MainActivity's RELEVE branch (onOpened/onClosed, ReleveActions bound to the controller, the comparison
+overlay) and the export events handed to the platform share sheet - is unchanged and stays in :app.
+RateFloatFenceTest's PATH entry follows ReleveSections.kt (the file must exist and name the rate).
+:app:verifyPaparazziDebug: ReleveScreenScreenshotTest 11/11 at 0.0.
+
+================================================================================
+R790 - THE CALENDRIER SCREEN MOVED (commit dae15fd, after R791 was measured)
+================================================================================
+The nine files git mv'd to :shared commonMain ui/screens/calendrier (beside SharedWithAujourdhui.kt): eight
+UNEDITED (R100). CalendarSheetProvenance.kt: provenanceSlots and provenanceLines internal -> public, because
+RecordedGranularityTest and ProvenanceWordsTest (:app, unedited) read them across the boundary (R777's shape);
+a header line says why. MainActivity's CALENDRIER branch calls CalendrierScreen(state, CalendarActions(...))
+exactly as before. NOTICED and checked (IOS-2b's UNNUMBERED-2): no moved file calls a platform or Material3
+date API by fully-qualified name (grep of `androidx.<pkg>.<Name>(` outside imports in the 17 moved files: 0).
+:app:verifyPaparazziDebug: CalendrierScreenScreenshotTest 14/14 at 0.0; :app:compileDebugAndroidTestKotlin green.
+
+================================================================================
+R791 - THE MATERIAL ICONS AND THE BOTTOM SHEET, MEASURED BEFORE MOVING
+================================================================================
+(1) ICONS - YES, NO DEPENDENCY CHANGE, PROVEN BY COMPILING. A throwaway commonMain file (deleted after) importing
+  Icons.AutoMirrored.Filled.KeyboardArrowLeft and ...Right and building a List<ImageVector> of them:
+  :shared:compileCommonMainKotlinMetadata and :shared:compileDebugKotlinAndroid -> BUILD SUCCESSFUL.
+  `:shared:dependencies --configuration iosSimulatorArm64CompileKlibraries`:
+    +--- org.jetbrains.compose.material3:material3:1.7.3
+    |    \--- org.jetbrains.compose.material3:material3-uikitsimarm64:1.7.3
+    |         +--- org.jetbrains.compose.material:material-icons-core:1.7.3
+    |         |    \--- org.jetbrains.compose.material:material-icons-core-uikitsimarm64:1.7.3
+  - material-icons-core reaches iOS transitively under :shared's existing cmp material3. And on the Mac,
+  run 42135274188 COMPILED AND LINKED the moved CalendrierScreen with both icons into the simulator test binary
+  (and :shared:compileKotlinIosArm64). The imports stay unedited; the R791 STOP did not fire.
+(2) ModalBottomSheet, AlertDialog, Checkbox, OutlinedTextField: COMPILED AND LINKED for iosSimulatorArm64 (run
+  42135274188). RUN ON iOS: run 42142576248 (abbed46), the iOS UI test's own MARKs, in order:
+    releve:   started / the network failure shown; retry / the fixture dossier shown / the PDF export event
+              received / finished
+    checkbox: started / the month shown as a list / the Checkboxes composed / a Checkbox tapped: one day
+              selected / finished                                                    -> Checkbox: RUNS on iOS
+    dialog:   started / the month shown / three days selected; DOMICILE chosen / the AlertDialog OPEN / the
+              AlertDialog CONFIRMED and closed / finished                            -> AlertDialog: RUNS on iOS
+    sheet:    started / the month shown / the ModalBottomSheet OPEN / SUISSE chosen; saving
+              "R793 WATCHDOG: sheet HUNG after 120s - last step reached: SUISSE chosen; saving"
+  -> ModalBottomSheet: it LINKS and OPENS on iOS (the assertion that its OutlinedTextField's label is composed
+  passed - the next MARK follows it - and a tap on an option inside it returned); the tap on its Save button never
+  returned. No IrLinkageError (grep of both runs' logs: 0). This is R624's lesson met a third way: neither a
+  compile failure nor a link failure, a run-time hang, found only because the test OPENED and USED the sheet.
+
+================================================================================
+R792 - FENCES (in commit dae15fd)
+================================================================================
+Every fence that reads ui/ already reads :shared commonMain ui/ (pinned AujourdhuiScreen.kt): FencesTest,
+CopyReachabilityTest, DayCellGridHasLegendTest, LogFenceTest, NoBareThresholdTest - no widening was needed; no
+fence named ui/screens/releve or ui/screens/calendrier by path. RED ONCE on a VERIFIED plant IN BOTH MOVED SCREENS
+(CalendrierScreen.kt and ReleveScreen.kt copied and hashed; diffs shown: + import androidx.compose.material3
+.DatePicker, + import ...unit.dp, + a raw Color(0xFF00FF00), a raw 7.dp, a const "Bonjour, plante"):
+  FencesTest 11 run, 2 failed:
+    uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens - four lines: "..\shared\...\ui\screens\
+      calendrier\CalendrierScreen.kt: raw Color(0x...) literal outside design/Tokens.kt", "...: raw .dp literal
+      outside Spacing/Radius", and the same two for ...\ui\screens\releve\ReleveScreen.kt
+    uiAndDevFilesCarryNoStringLiteral - "...CalendrierScreen.kt: string literal "Bonjour, plante" in ui//dev/ -
+      French copy must come from fr/" and the same for ReleveScreen.kt
+  CommonMainFenceTest 3 run, 1 failed: commonMainImportsNoPlatformApis - "src\commonMain\...\calendrier\
+    CalendrierScreen.kt:31: import androidx.compose.material3.DatePicker" and "...\releve\ReleveScreen.kt:20: ...".
+  Restored from the copies; sha256 -c OK on both; grep PLANT/plante: 0. Then green (the gate below).
+
+================================================================================
+R793 - iOS COMPILES AND DRIVES THEM
+================================================================================
+THE TEST: iosTest pilot/CalendrierReleveScreensIosTest - each screen hosted as MainActivity hosts it
+(CalendrierHost: the shared CalendarController over an in-memory repository that records every command, a fixed
+kotlin.time Clock at 2026-06-15T10:00Z, InMemorySettingsStore; ReleveHost: the shared ReleveController over a
+scripted fetch and export, its ExportEvent collected where Android hands it to the share sheet). No server, no
+account, no address. Strings from fr/, expected values from the shared formatters (DayCellCopy's announcement
+finds the day cells; formatMonthYear, selectedCount, bulkLateNotice), never retyped (R181). Four tests, named
+step1..step4 so declaration and alphabetical order agree, least to most at risk; every step prints a MARK and
+each test arms a 120 s GCD watchdog (a block on a global queue - it fires while the main thread is blocked).
+  step1 Releve: a network failure shown, Reessayer, the fixture dossier (the server's wire shape through the
+        shared parseDossier) shown, fetches [2026, 2025, 2026], the PDF export tapped -> path
+        /api/v1/export/pdf?year=2026 and ExportEvent.Ready(bytes, releve-2026.pdf, application/pdf).
+  step2 large text (fontScale 2 >= LIST_FONT_SCALE_THRESHOLD): the list, no Checkbox before selecting,
+        Selectionner plusieurs jours, Checkboxes composed, one tapped -> "1 jour selectionne", nothing written.
+  step3 the bulk AlertDialog: select, day 1 then day 3 (anchor + range), Domicile -> the dialog OPEN with its late
+        notice for 3 days -> Enregistrer -> closed, exactly three FULL HOME commands 06-01..06-03, one sync.
+  step4 the ModalBottomSheet: day 10 tapped -> the sheet OPEN (its question and note field) -> En Suisse ->
+        Enregistrer -> expected: closed, one FULL CH command for 06-10, one sync.
+THE RUNS (DEVIATION 4 - the ruling that allowed them is recorded there):
+  42135274188 on f561d65 (the first version: one test opening the sheet then the dialog, no marks): steps 1-9
+    success; step 10 COMPILED AND LINKED the simulator test binary (every moved file, both Material icons, the
+    sheet, dialog, checkbox and text field) and :shared:compileKotlinIosArm64, started the tests at 00:20:37Z,
+    printed GenevaConformanceTest's and AujourdhuiPilotIosTest's output by 00:20:40Z, then NOTHING for 26
+    minutes. Cancelled by me at 00:46:28Z (wall 00:13:40-00:47:12). No test named. The arithmetic of the next
+    run places the hang in this class.
+  42140955492 on 0216025 (marks + watchdog, four tests): FAILED TO COMPILE, my error - two "e:" lines, both
+    "CalendrierReleveScreensIosTest.kt:61:24 / 293:35 Unresolved reference 'QOS_CLASS_DEFAULT'" (wall
+    01:01:22-01:08:14). Every other interop symbol resolved.
+  42142576248 on abbed46 (the queue identifier 0 instead; nothing else changed): STEPS: 1 Set up job, 2 checkout,
+    3 setup-java, 4 setup-gradle, 5 Restore the Kotlin/Native toolchain, 6 Environment, 7 Provision the toolchain,
+    8 Boot the iPhone simulator, 9 Start the wire-recording server - success; 10 iOS - simulator tests and device
+    compile - FAILURE; 11 The wire recording - success; 12 Save the Kotlin/Native toolchain - skipped; 13 Results
+    - refuse a run that executed no tests - FAILURE ("NO RESULT: no JUnit XML ..."); 14 Which simulator ran -
+    success; 15 Room's generated iOS code - success; 16 upload-artifact - success; post steps; Complete job -
+    success. Wall 01:15:16-01:21:49.
+  Step 10's verdict, verbatim: ":shared:iosSimulatorArm64Test FAILED", "CalendrierReleveScreensIosTest
+    .step4ADayOpensTheModalBottomSheetAndItsSaveWritesTheDay[iosSimulatorArm64] FAILED", "Test running process
+    exited unexpectedly", "260 tests completed, 1 failed". The marks of R791 above: steps 1-3 finished; step 4's
+    last mark "SUISSE chosen; saving" at 01:19:22Z, the watchdog at 01:21:22Z.
+WHAT RAN, SAID EXACTLY. Gradle counted 260 tests completed, 1 failed (step4). No JUnit XML exists, so no test
+  but the four of this class is NAMED by the run. The count is consistent with every test ordered before this
+  class having run and passed: 243 (IOS-2b) + 19 commonTest pins + 4 here = 266 expected; the six not reached are
+  exactly the tests of the four pilot classes after this one (LaunchSpeechIosTest 2, MaterialDatePickerCanaryTest
+  1, OnboardingScreensIosTest 1, SignInScreensIosTest 2), and the canary's usual "still broken as expected" line
+  is absent from the log. So the R787/R788 pins' iOS pass is an INFERENCE from that arithmetic, not a result;
+  MaterialDatePickerCanaryTest was NOT RUN on iOS this time (unchanged; it ran in IOS-2b's 41823078576).
+THE FINDING (the brief: "a finding, not a flake"): the shared Calendrier's Material3 ModalBottomSheet links,
+  composes and accepts taps on iOS, and a tap on its Save - which records the day and makes the controller close
+  the sheet by removing it from composition (editing = null) - did not return within 120 s in the simulator's
+  Compose UI test. What is NOT known: whether a real iOS host would hang too, or only the test's idling around
+  a sheet removed while open (the same removal closes it on Android, where CalendarSheetSaveInstrumentedTest
+  covers it). It is reported, not worked around: no further run was spent (the third was the last allowed).
+
+================================================================================
+R794 - ANDROID IS THE PROOF
+================================================================================
+BASELINES: `git diff --stat 55258ed..HEAD -- android/app/src/test/snapshots` -> EMPTY. RE-RECORDED: 0. Every
+  Paparazzi rule at maxPercentDifference 0.0 (PaparazziZeroToleranceTest green). The 25 releve/calendrier
+  baselines verified at 0.0 on the shared screens: ReleveScreenScreenshotTest 11/11, CalendrierScreenScreenshotTest
+  14/14 (after R789, after R790, and in the gate).
+TESTS, ASSERTIONS UNEDITED: `git diff --stat -M 55258ed..HEAD -- android/app/src/test android/app/src/androidTest`
+  shows ONLY three fence files, each a path or pin following a moved file (ExperimentalTimeOptInAllowlistTest
+  +17/-4 lines of paths and counts, RateFloatFenceTest's PATH line, SettingsCaptureFenceTest's :app pin) - no test
+  of behaviour, no screenshot test, no androidTest edited, and NO import changed (the packages did not move).
+  The pins' adds-then-moves net to nothing in :app.
+  Green in :app (gate below): CalendarControllerTest 10, CalendarBulkWriteTest 3, CalendarSaveWritesWhatChangedTest
+  9, CalendarSelectionTest 9, BulkConfirmationTest 5, CalendarModelTest 11, CalendarModelCalendarPinTest 4,
+  ReleveControllerTest 14, ReleveFreshTest 10, ReleveViewTest 3, ProvenanceWordsTest 10, MonthSummaryTilesTest 2,
+  RecordedGranularityTest 18, SettingsFollowedWithoutRestartTest 5, MainGraphWiringTest 2, every fence.
+  There is no Compose UI or accessibility test in :app's JVM tests for these screens beyond Paparazzi; the two
+  instrumented ones are R786's (NOT RUN, compiled unedited).
+MaterialDatePickerCanaryTest: UNCHANGED (git diff 55258ed..HEAD -- that file: EMPTY); its iOS result:
+  NOT REACHED in the last run (it sorts after this task's class; the
+  process had ended); its last result is IOS-2b's 41823078576 ("still broken as expected").
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on, no -P):
+  base 55258ed  1,989,388 B - NOT REBUILT HERE (DEVIATION 3): `git diff --stat 282426a 55258ed -- android` is
+                EMPTY, and IOS-2b measured 282426a's release APK at 1,989,388 B.
+  tip  f561d65  1,989,388 B (+0) - built in this worktree, sha256 e1cf60f7ba4236f1...
+  The archive size is unchanged to the byte. An older C:/wt/ios2b/android/.../app-release-unsigned.apk (also
+  1,989,388 B, sha256 596d56ae..., built 2026-11-04 12:39) was found and NOT used as the base: its commit is unknown
+  and its classes.dex (3,275,712 B) matches neither of IOS-2b's recorded figures. Entry comparison against it is
+  therefore not evidence and is not claimed.
+
+================================================================================
+R795 - WHAT IOS-1b-B AND THE NEXT MOVE NEED (update of REPORT-IOS-2b R784 and R785)
+================================================================================
+SHARED ENTRY POINTS (all commonMain, package names unchanged), now including:
+  ui.screens.releve: ReleveScreen(state: ReleveState, actions: ReleveActions, modifier) - Loading / Failed (retry)
+    / Loaded (the document, the year selector when two years have days, the exports, the comparison link);
+    ReleveActions(onRetry, onExportPdf, onExportCsv, onSelectYear = {}, onCompareEmployer = {}).
+  releve: ReleveController(fetch: suspend (Int) -> DossierResult, exportBytes: suspend (String) -> BytesOutcome,
+    repository, taxYear, scope, restoredSelectedYear = null, staleCopy = { null }); state, selectedYear,
+    exportEvents (one-shot ExportEvent.Ready(bytes, filename, mimeType) / RequiresConnectivity / Failed);
+    onOpened/onClosed/load/selectYear/export.
+  ui.screens.calendrier: CalendrierScreen(state: CalendarState, actions: CalendarActions, modifier) - the month
+    grid (a list at fontScale >= 1.5), the ModalBottomSheet edit sheet, the selection panel, the bulk AlertDialog;
+    CalendarActions (12 callbacks).
+  calendar: CalendarController(repository, settingsStore, taxYear, clock: kotlin.time.Clock, scope,
+    requestSync = {}, restored: CalendarSnapshot? = null); CalendarSnapshot / SelectionSnapshot (the restore
+    seed; SelectionSnapshot is PlatformSerializable - an empty marker on iOS, so nothing persists it there);
+    bulkConfirmation(..., now: kotlin.time.Instant); CalendarDates' wouldBeLateOn / openingMonth.
+THEIR HOSTS: THERE IS NO SHARED HOST for either. Android's are MainActivity's CALENDRIER and RELEVE branches of
+  the shell (ShellState holds the calendar's rememberSaveable month / sheet day / selection; MainGraph builds both
+  controllers with the java.time clock, the DossierApi fetch and stale copy, SessionManager's exportBytes and the
+  WorkManager requestSync; MainActivity hands ExportEvent.Ready to the platform share sheet and opens the
+  comparison overlay). iosTest's CalendrierHost / ReleveHost (pilot/CalendrierReleveScreensIosTest) are the
+  minimal shapes - test code, not shipped.
+STILL MISSING ON iOS (R784's list, re-read):
+  - AccountStore for iOS; the universal-link receipt (R770); the transport's base URL (AuthApi / SessionManager
+    configuration); syncNow / a composed iOS SyncEngine (the calendar's requestSync has nothing to call);
+    the iOS framework declaration and bundled Compose resources (the calendar and the releve add NO glyph - the
+    two arrows are Material vectors, not resources); the iOS /me codec (OnboardingController's patchBody,
+    StartupDecider's parseMeView - UNNUMBERED-1 of IOS-2b); onboarding's evening-reminder and location halves;
+    onboarding restore across process death.
+  NEW WITH THIS TASK:
+  - THE DOSSIER SHARE/EXPORT ON iOS: ReleveController emits ExportEvent.Ready(bytes, filename, mimeType); an iOS
+    host must hand those bytes to a UIActivityViewController (or a document picker) - nothing in iosMain does.
+  - THE DOSSIER FETCH ON iOS: ReleveController takes `fetch` and `staleCopy`; Android's are DossierApi (its own
+    cache, the stale marker R559 sets at sync). An iOS DossierApi composition (over the shared transport and an
+    iOS DossierCache) is not built.
+  - exportBytes on iOS: SessionManager.authenticatedBytes over the iOS transport - present in shared code, not
+    composed.
+  - THE CALENDAR'S RESTORE on iOS: CalendarSnapshot/SelectionSnapshot are not persisted there (PlatformSerializable
+    is a marker); an iOS host restores the calendar its own way or not at all.
+  - THE CALENDAR SHEET'S SAVE ON iOS (R793): the ModalBottomSheet opened and took taps, and its Save tap
+    never returned in the simulator's Compose test. Until it is understood (product or test harness), an iOS
+    host should not ship the calendar's edit sheet; the bulk dialog and the large-text list did run.
+R785 - WHAT IS LEFT IN :app (re-measured by grep of each screen's own files; not chosen):
+  SCREEN       FILES  BLOCKERS FOUND
+  comparison   2      painterResource(R.drawable.ic_chevron_left) - CHEVRON_LEFT is one of the Glyphs, a call-site
+                      edit (ruling 14's seam). No java.*.
+  disclosure   1      none in the screen; its HOST is the location-permission flow (platform).
+  parametres   12     the second Material3 date picker (ParametresDateField: DatePicker, DatePickerDialog,
+                      rememberDatePickerState(initialSelectedDateMillis) + java.time Instant/LocalDate/ZoneOffset) -
+                      R776's seam again, with an initial date; ParametresController: org.json (the /me wire,
+                      PARK-D3) and java.time.LocalDate; LegalLink: android.content.ActivityNotFoundException.
+  prevision    2      painterResource(R.drawable.ic_bell / ic_info) (BELL and INFO are Glyphs); forecast/
+                      controllers: java.time DayOfWeek/Clock/LocalDate.
+  rythme       1      painterResource(R.drawable.ic_info); java.time.DayOfWeek in the screen.
+  simulation   2      java.time.DayOfWeek in SimulationScreen; forecast/ controllers as prevision.
+  releve, calendrier - MOVED by this task.
+  BLOCKER FOUND HERE for the next moves: the same Material3 ModalBottomSheet is used by Parametres
+                      (ui/screens/parametres/ParametresScreen.kt, ParametresFields.kt) - R793's sheet finding will
+                      meet it there too; nothing else new.
+  SUGGESTED ORDER (a suggestion, not a choice): unchanged from IOS-2b - comparison, prevision, simulation, rythme
+  (glyph call sites + the forecast controllers' java.time -> kotlinx, one pinned move); parametres last.
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref    sha      result      wall                      note
+  42135274188  ios2c  f561d65  cancelled   00:13:40Z-00:47:12Z (~34m)  compiled+linked; hung in this class
+  42140955492  ios2c  0216025  failure     01:01:22Z-01:08:14Z (~7m)   my compile error (QOS_CLASS_DEFAULT)
+  42142576248  ios2c  abbed46  failure     01:15:16Z-01:21:49Z (~7m)   the sheet's Save hung (watchdog)
+Three dispatches (the brief allowed one plus one earlier - DEVIATION 4), no push-triggered run (ios2c does not
+match ios-*). About 48 macOS minutes wall; billed rounded up per run 34+7+7. Report-only commits trigger nothing.
+
+================================================================================
+PARKED (UNNUMBERED - no series letter claimed)
+================================================================================
+UNNUMBERED-1  THE EXPERIMENTAL-TIME ALLOWLIST GREW, and per R590's own message a new site is an argument for the
+              operator: CalendarController 1 -> 4 (the kotlin.time.Clock seam property and its three readers -
+              AujourdhuiController's R602d shape, which went 1 -> 5); JavaTimeCalendar.kt 2 (the factory and the
+              Instant overload); CalendarDates.kt 1, BulkConfirmation.kt 1 (unchanged count, moved);
+              CalendarDatesPinTest 3, CalendarControllerPinTest 1 (function-scoped helpers), and the iOS test 1.
+              All function-, property- or parameter-scoped; PARK-Z3 deletes them all at Kotlin 2.3.
+UNNUMBERED-2  CommonMainFenceTest reads imports only (IOS-2b's UNNUMBERED-2); for THESE 17 files a grep for
+              fully-qualified `androidx.<pkg>.<Name>(` calls found none. The rule is still import-only.
+UNNUMBERED-3  NOTICED, NOT TOUCHED: SettingsCaptureFenceTest's header still says "Every controller is in :app
+              today" (KMP-3's R446 wording); since IOS-1b-A and this task, three controllers are in :shared.
+UNNUMBERED-4  THE iOS SHEET HANG (R793). The ModalBottomSheet's Save tap did not return in the simulator test. Trigger:
+              the next iOS task that hosts the calendar, or the parked CMP upgrade (IOS-1b-A UNNUMBERED-8) - a
+              probe test that hides the sheet through its SheetState before removing it would separate a test
+              idling problem from a product one. Not attempted here: no run was left.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R787's pin covers dates the controller computes, so its first step EXTRACTED the two java.time lines unchanged
+   into CalendarDates.kt and made bulkConfirmation take a kotlin.time Instant (with a java.time overload in :app)
+   BEFORE pinning - R777's isIsoDay precedent and R778's DEVIATION 3 (a behaviour-neutral signature step). Without
+   it no pin could move to commonTest unedited.
+2. R787 moved CalendarDates.kt and BulkConfirmation.kt to :shared in its own commit (so its pin could move to
+   commonTest there, as the ruling asks); CalendarController stayed in :app until R788, already on the kotlin.time
+   seam. R788 therefore moved CalendarController, ReleveController and ReleveView; BulkConfirmation had moved.
+3. R794's base APK was NOT rebuilt: android/ is identical between IOS-2b's 282426a and 55258ed (diff empty), and
+   IOS-2b measured that tree at 1,989,388 B.
+4. R793/R573: THREE iOS dispatches, not one (+ at most one earlier). Run 1 hung inside this task's class with no
+   step named; it was cancelled after ~33 minutes to stop spending minutes, and - having answered a question only
+   the Mac can (the moved screens and both icons compile and LINK for iOS) - recorded as the "earlier run". The
+   advisor, ruling in the operator's place, allowed one more on a corrected tip, to be made diagnosable and bounded
+   first (marks, a watchdog, the tests reordered). That run (2) died on MY compile error and executed no test; the
+   advisor then allowed a last one, "regardless of outcome", with a one-line fix and nothing else. Run 3 is the
+   result reported.
+5. R786: the precondition check was a single uiautomator dump, as IOS-2b and IOS-2b-DEVICE made theirs; R786 says
+   "no screen reading". The one dump that executed never left the phone (deleted by its own command line), and
+   the corrected one was refused. Nothing was compared.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R793) - the shared calendar sheet's Save hangs in the iOS simulator's Compose UI test (the sheet opens and
+   takes taps). Is the next step a probe that separates the product from the test harness (e.g. close the sheet
+   through its SheetState before the controller removes it, in a test only), folded into IOS-1b-B or the CMP
+   upgrade - or should IOS-1b-B ship the Calendrier without the edit sheet on iOS until it is answered?
+Q2 (R786) - the instrumented run needs its precondition read (the S9 signed out on the welcome screen), which the
+   permission system refused as PII handling. Should a later session ask the operator to confirm the phone's state
+   by eye instead, or should the operator allow that one uiautomator read? CalendarSheetSaveInstrumentedTest and
+   ProvenanceShownInstrumentedTest are unedited and compile; they have not run on this tip.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2c only (never main, never production). The code commits were pushed before each dispatch:
+  git push -u origin ios2c -> "* [new branch] ios2c -> ios2c"; ls-remote -> f561d6589200ed209f6612226c89bad09421c19f
+  git push origin ios2c -> "f561d65..0216025"; ls-remote -> 0216025c647f1e5733ec87466f6ffd2b34626f97
+  git push origin ios2c -> "0216025..abbed46" (the code tip abbed4654a1f75fed65e30b60408529886e9e722)
+R786-R795 re-grepped before this push: only relay/IOS-2c.txt (main checkout) and this report. origin/main still
+55258ed (re-fetched). This report is the commit after abbed46 and changes REPORT-IOS-2c.txt only; its push is
+recorded in the follow-up commit.
+
+END OF REPORT-IOS-2c
+
+PUSH PROOF, FOLLOW-UP: the report commit a954404 pushed - git push origin ios2c -> "abbed46..a954404 ios2c ->
+ios2c"; git ls-remote origin refs/heads/ios2c -> a954404f4745a120e518ea6334204322b0d0ccad; `git diff --stat abbed46
+a954404` -> REPORT-IOS-2c.txt only (515 insertions). gh run list --workflow ios-shared.yml --branch ios2c ->
+42135274188 (f561d65, cancelled), 42140955492 (0216025, failure), 42142576248 (abbed46, failure), all
+workflow_dispatch. Not pushed: main, production.
+CLEANUP: ./gradlew --stop after the last gate ("1 Daemon stopped"); no dev server was started; adb reverse was
+never set (empty); the phone was not touched after the two inputs in R786. Lock .session-lock.json removed after
+this push. Evidence stays in C:/wt/ios2c/.ios2c-evidence/ (ignored). The worktree C:/wt/ios2c stays (R392).

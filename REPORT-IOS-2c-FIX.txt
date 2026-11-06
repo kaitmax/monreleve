@@ -1,0 +1,448 @@
+REPORT-IOS-2c-FIX - Mon Releve
+THE CALENDAR SHEET'S SAVE, DRIVEN ON iOS THE WAY A USER REACHES IT: ONE RUN (42292101917), GREEN.
+AS FOUND, THE SAVE'S TAP POINT WAS (512, 860) - 92 px BELOW THE 768-HIGH WINDOW; THE HANDLE'S EXPAND BROUGHT IT TO
+(512, 656), INSIDE; THE SAVE THEN WROTE RecordCommand("2026-06-10", CH, FULL) WITH ONE SYNC, AND THE SHEET CLOSED.
+
+TASK     relay/IOS-2c-FIX.txt (main checkout, untracked), rulings R806-R811. Before the first commit
+         `grep -rE '\bR8(0[6-9]|1[01])\b' relay/ REPORT-*.txt CLAUDE.md docs`: nothing in the worktree; in the main
+         checkout only relay/IOS-2c-FIX.txt itself; nothing on any origin branch (git grep over every remote head).
+         Re-run before the report push: PUSH PROOF.
+BASE     origin/ios2c-probe 7b0df23 (R1: `git rev-parse origin/ios2c-probe` = 7b0df23101f5...); origin/main 55258ed;
+         production 52caca8 (not touched).
+BRANCH   ios2c-fix, worktree C:/wt/ios2c-fix (R349), cut from origin/ios2c-probe; its upstream to ios2c-probe UNSET at
+         creation, so no bare push could reach ios2c-probe. Lock .session-lock.json (gitignored), removed at the end.
+         Pushed: ios2c-fix only. PENDING MERGE - nothing here is on main.
+CODE TIP 9433c4ebc89cde7a5d077c21f6fc9a69892bcc9d (9433c4e). Two code commits: 4ab897a (iosTest: R806, R807, R809)
+         and 9433c4e (:app test scope: R808). Nothing else changed (R805-style proof in R809 below).
+RUN      42292101917 (workflow_dispatch, ref ios2c-fix, headSha 9433c4e - asserted before reading anything else) - the
+         one run of the budget.
+EVIDENCE C:/wt/ios2c-fix/.ios2c-fix-evidence/ (ignored by /.*-evidence/): the gate log, the fence RED and GREEN logs,
+         the cross-compile log, the lint log, the step1-3 diff, the run's full log and jobs JSON, the run's artifact
+         (48 JUnit XML files, the HTML report, the wire recording's files), step4-marks.txt.
+INTERRUPTED  The first process exited mid-task (before any commit) and was resumed about 9.5 hours later; on resume
+         the worktree, lock and uncommitted work were checked and were exactly as left (DEVIATION 8).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334). No phone. No port. No product code, :app main code, workflow,
+dependency or version change.
+
+================================================================================
+SUMMARY
+================================================================================
+R806  step4c opens day 10's sheet, RECORDS the Save as found (Rect.Zero in the window, tap point y=860 > 768: the
+      probe's Q1, answered), performs the drag handle's Expand action (its label checked against Material3 1.7.3's
+      own l10n, En.kt:73 / Fr.kt:73), records the Save again (inside: tap point y=656), chooses En Suisse, ASSERTS
+      the tap point lies inside the Save's non-empty boundsInWindow, taps, and saves - on iOS, green.
+R807  waitBounded (iosTest pilot/BoundedWait.kt): the condition expires past its bound with an AssertionError naming
+      the condition and the bound. Every wait in CalendrierReleveScreensIosTest goes through it. Its positive control
+      (BoundedWaitIosTest, 2 tests) ran in the same run: the always-false side FAILED at its 200 ms bound as it must.
+R808  IosTestRawWaitUntilFenceTest (:app fences): raw waitUntil-family calls in iosTest only in the helper's own body
+      (1) and on an exact allowlist - OnboardingScreensIosTest 16, SignInScreensIosTest 6 (re-measured). RED on a
+      verified two-sided plant, reverted, GREEN.
+R809  4a kept as a plain behaviour test (green); 4b dropped; R802's instrumentation stripped; marks and the 120 s
+      watchdog kept. step1-step3: only their 11 waits changed.
+R810  Run 42292101917 GREEN: 269 tests (= 268 - 4b + the control's 2), 0 failures, every pilot class reached, the
+      canary "still broken as expected", no WATCHDOG line.
+R811  R795's last item updated (below); three items PARKED, none chosen.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. GREEN: the FULL :app:gate --rerun-tasks ran on the code tip 9433c4e in this session, and the one iOS run on
+that same SHA is green.
+FULL :app:gate --rerun-tasks on 9433c4e, after ./gradlew --stop ("1 Daemon stopped"; 1.79 GB free, read in its own
+step), the tracked tree clean (git status --porcelain: nothing tracked; HEAD 9433c4e), started 20:38:35Z:
+    > Task :app:checkTestFloor - test floor OK: 1394 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 11m 32s
+    260 actionable tasks: 260 executed
+    real 11m34.307s ; GATE_EXIT=0
+  Test XML (all 217 files stamped by this run, none older than its start): :app 1394 tests 0 failures 0 errors
+  0 skipped (= the probe's 1392 + this fence's 2; 142 Paparazzi screenshot tests + PaparazziZeroToleranceTest's 2,
+  0 failures); :shared 200 0 0 0. IosTestRawWaitUntilFenceTest 2/2 (20:46:42); ExperimentalTimeOptInAllowlistTest
+  3/3 (20:46:39). Compiler "w: " lines: 7 (main's count).
+iOS RUN 42292101917 on 9433c4e: conclusion success, 269 tests, 0 failures (R810).
+`git diff --stat 9433c4e HEAD` (report-only): see PUSH PROOF.
+gate:clone NOT RUN: no web/ change.
+
+================================================================================
+R806 - STEP4C SAVES THROUGH THE PRODUCT'S REAL SAVE, REACHED AS A USER REACHES IT
+================================================================================
+THE PATH CHOSEN: THE DRAG HANDLE'S EXPAND ACTION, not a swipeUp. Why:
+  - Deterministic. performSemanticsAction(SemanticsActions.Expand) runs Material3's own lambda (material3 1.7.3
+    commonMain ModalBottomSheet.kt 319-325: "expand(expandActionLabel) { if (anchoredDraggableState
+    .confirmValueChange(Expanded)) { scope.launch { sheetState.expand() } } ... }"), the action VoiceOver offers a
+    user on the handle.
+  - A swipe's outcome rests on injected velocity and the anchored draggable's thresholds, and its start point is a
+    geometry guess near the window's bottom edge - where a press outside the dialog's layer goes to the Dialog's
+    outside listener and DISMISSES (R803's path (i)). One variable at a time.
+  - The node is identified, not guessed: a bounded wait for exactly one node offering Expand, then its label asserted
+    equal to Material3's own string for it, Strings.BottomSheetExpandDescription (ModalBottomSheet.kt 306), from the
+    library's l10n source - En.kt:73 (the "en" map: "Expand bottom sheet") or Fr.kt:73 (the "fr" map), the maps the
+    probe's scrim constants came from (line 27 of each). Both literals were COPIED by a script out of
+    material3-uikitsimarm64-1.7.3-sources.jar (sha256 922b8636ff110cdd62199ecb45272c858cd745903eab4f746711dfc4e10d813f,
+    the probe's jar), which refused unless each source line was that key and each placeholder occurred exactly once
+    (R211): never retyped. The run resolved locale en-US and found "Expand bottom sheet".
+THE STEPS (step4cADayOpensTheModalBottomSheetAndItsSaveWritesTheDay, test "4c-save"):
+  open: setContent(CalendrierHost) -> bounded "the month shown" -> no sheet yet -> tap day 10 (performScrollTo,
+    performClick) -> bounded "the sheet's question shown" -> the sheet's OutlinedTextField composed;
+  RECORD "as found": the Save's boundsInRoot, positionInRoot, tap point (= centre of boundsInRoot, where performClick
+    injects - R800 (3)), boundsInWindow; and the labels of what offers Expand / Collapse;
+  EXPAND: bounded "exactly one node offering Expand" -> its label checked -> performSemanticsAction(Expand) -> bounded
+    "the sheet expanded: its handle offers Collapse, no longer Expand";
+  RECORD "after expansion" (the same values);
+  En Suisse: tap (performScrollTo, performClick) -> bounded "En Suisse selected";
+  THE GUARD, then the Save (tapInsideTheWindow): performScrollTo -> the node's boundsInRoot and boundsInWindow read
+    and marked -> ASSERT boundsInWindow is non-empty AND contains the centre of boundsInRoot -> performClick. A Save
+    outside the window fails HERE, saying where the tap would land: abbed46's failure cannot repeat silently. The
+    centre of boundsInRoot, not of boundsInWindow: a node half off the window has a non-empty boundsInWindow whose
+    own centre is inside while the injected tap is not.
+  then bounded "the sheet saved and closed: one command written, one sync" (question gone AND recorded.size == 1 AND
+    syncs.count == 1), then assertEquals([RecordCommand("2026-06-10", EntryKind.CH, Portion.FULL)], recorded) and
+    assertEquals(1, syncs.count).
+THE BOUNDS, RECORDED IN THE RUN (root coordinates; both roots are the 1024 x 768 window at (0,0), as the probe read):
+  AS FOUND        boundsInRoot=Rect.fromLTRB(212.0, 832.0, 812.0, 888.0) positionInRoot=Offset(212.0, 832.0)
+                  tapPoint=Offset(512.0, 860.0) boundsInWindow=Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)
+                  | the handle offers Expand=[Expand bottom sheet] Collapse=[]
+  AFTER EXPANSION boundsInRoot=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0) positionInRoot=Offset(212.0, 628.0)
+                  tapPoint=Offset(512.0, 656.0) boundsInWindow=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0)
+                  | the handle offers Expand=[] Collapse=[Collapse bottom sheet]
+  AT THE TAP      boundsInRoot=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0) tapPoint=Offset(512.0, 656.0)
+                  boundsInWindow=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0) -> "the tap point is inside the window"
+  So the probe's Q1, for this opening: a tap on the Save of the partially expanded sheet aims at (512, 860), 92 px
+  below the window's bottom edge; boundsInWindow is Rect.Zero, as the probe read. Expanding moved the Save up by
+  204 px, wholly inside the window (boundsInWindow == boundsInRoot).
+
+================================================================================
+R807 - THE BOUNDED WAIT AND ITS POSITIVE CONTROL
+================================================================================
+THE HELPER: android/shared/src/iosTest/kotlin/ch/monreleve/app/pilot/BoundedWait.kt
+  @ExperimentalTestApi internal fun ComposeUiTest.waitBounded(what: String, boundMillis: Long, condition: () -> Boolean)
+  - the probe's pattern, without its instrumentation: a TimeSource.Monotonic mark before the library's wait; inside
+    its condition, the first evaluation still false PAST the bound throws
+      AssertionError("bounded wait \"<what>\": still false after <n>ms, past its bound of <boundMillis>ms")
+    - naming the condition and the bound; the test fails and the next one runs.
+  - boundMillis has no default: each caller states its bound (R345). This file passes TIMEOUT (10 000 ms, unchanged).
+  - the library's own timeout is handed 2 x the bound: inert in 1.7.3 (R800), and should a later CMP honour it, the
+    bound that fires is still this one, with this message. Never Long.MAX_VALUE (the skiko loop multiplies it into
+    nanoseconds; an overflow would make a throwing CMP fire at once).
+  - marked @ExperimentalTestApi (propagated): the library's own convention for its ComposeUiTest extensions
+    (ui-test 1.7.3 commonMain ComposeUiTest.kt 208-254).
+  - what it does NOT bound, stated in the file: a fetch inside a condition waits for idle with no callback
+    (R800 (1)); a scene that never idles is the watchdog's.
+EVERY WAIT IN CalendrierReleveScreensIosTest GOES THROUGH IT: step1-step3's 11 (the call only, R809) and every wait
+  in step4a/step4c (through waitMarked = waitBounded at TIMEOUT with a MARK on both sides). Raw waits left in the
+  file: 0 (the fence's count).
+THE POSITIVE CONTROL, in the same run: android/shared/src/iosTest/kotlin/ch/monreleve/app/pilot/BoundedWaitIosTest.kt
+  - aConditionThatStaysFalseFailsPastItsBoundNamingTheConditionAndTheBound: setContent {}; assertFailsWith
+    <AssertionError> { waitBounded("an always-false condition", 200 ms) { polls++; false } }; the message contains
+    "an always-false condition" AND "bound of 200ms"; polls > 1. RUN: passed, time="0.211" s - the bound fired at
+    about its 200 ms. A helper that never failed would have failed THIS test.
+  - aConditionThatBecomesTrueReturnsWithoutFailing: setContent {}; waitBounded("true on the third poll", 10 000 ms)
+    { ++polls >= 3 } returns with polls == 3. RUN: passed, time="0.001" s. Its bound is generous on purpose.
+  Both call setContent first: the probe only ever ran the library's wait on a scene given content.
+
+================================================================================
+R808 - THE FENCE
+================================================================================
+android/app/src/test/kotlin/ch/monreleve/app/fences/IosTestRawWaitUntilFenceTest.kt (:app test scope, JVM), in
+ExperimentalTimeOptInAllowlistTest's shape:
+  - root ../shared/src/iosTest/kotlin asserted found and PINNED on BoundedWait.kt (R460, FenceRoot.assertFound);
+  - code lines only (that fence's code(): whole-line comments skipped, trailing " //" comments cut);
+  - pattern \bwaitUntil\w*\s*\( - the bare call AND the library's waitUntilNodeCount / AtLeastOneExists /
+    ExactlyOneExists / DoesNotExist, which route through the same never-throwing loop (DEVIATION 1);
+  - test 1: the found map {file -> count > 0} EQUALS the allowlist exactly - a new file, a higher count or a LOWER
+    count fails, so the list only shrinks by being edited; with a positive control (found non-empty);
+  - test 2: the helper file's single hit lies INSIDE waitBounded's body (from "fun ComposeUiTest.waitBounded(" to
+    the next lone "}" in column 0).
+THE ALLOWLIST, RE-MEASURED on 4ab897a (code lines, the fence's pattern):
+  shared/src/iosTest/kotlin/ch/monreleve/app/pilot/BoundedWait.kt               1  (the helper's own body)
+  shared/src/iosTest/kotlin/ch/monreleve/app/pilot/OnboardingScreensIosTest.kt  16 (= R808's measurement)
+  shared/src/iosTest/kotlin/ch/monreleve/app/pilot/SignInScreensIosTest.kt      6  (= R808's measurement)
+  CalendrierReleveScreensIosTest: 0 (it was 12 on 7b0df23: 11 in step1-step3 + the probe helper's body).
+THE PLANT (R180), two-sided, one RED run, by a script that refused unless each anchor occurred exactly once:
+  A  a raw `waitUntil(timeoutMillis = TIMEOUT) { true }` inserted into CalendrierReleveScreensIosTest after step1's
+     first wait (a file NOT on the list);
+  B  SignInScreensIosTest's first raw wait commented out (an allowlisted count going DOWN, 6 -> 5).
+  VERIFIED BEFORE THE RUN: the fence's own count on each file - CalendrierReleve 1, SignIn 5 - and `git diff -U1`
+  showing both edits at the intended lines.
+  RED (`./gradlew :app:testDebugUnitTest --tests ch.monreleve.app.fences.IosTestRawWaitUntilFenceTest`, BUILD FAILED
+  in 5m 8s, "2 tests completed, 1 failed"):
+    aRawWaitAppearsOnlyInTheHelperAndTheAllowlistedFilesAtTheirExactCounts FAILED - "java.lang.AssertionError: a raw
+    waitUntil-family call in android/shared/src/iosTest outside its allowlist, or a count that moved (IOS-2c-FIX
+    R808). ... expected:<{...BoundedWait.kt=1, ...OnboardingScreensIosTest.kt=16, ...SignInScreensIosTest.kt=6}> but
+    was:<{...BoundedWait.kt=1, ...CalendrierReleveScreensIosTest.kt=1, ...OnboardingScreensIosTest.kt=16,
+    ...SignInScreensIosTest.kt=5}>" - exactly the two planted differences, nothing else; test 2 passed.
+  REVERTED by the script's exact inverse; `git diff --stat` of both files EMPTY; then GREEN: the fence 2/2,
+  ExperimentalTimeOptInAllowlistTest 3/3, :app:ktlintTestSourceSetCheck and :app:detekt (BUILD SUCCESSFUL in 1m 6s).
+  Committed as 9433c4e after the revert; the gate ran it again, 2/2.
+THE GATE RE-RUNS IT ON AN iosTest EDIT: ../shared/src is already a declared input of :app's testDebugUnitTest
+  (IOS-1a R592, app/build.gradle.kts), so no build-script change was needed - and the plant re-ran it.
+
+================================================================================
+R809 - WHAT STAYED, WHAT WENT
+================================================================================
+KEPT  step4aTheScrimDismissesTheOpenSheetAndNothingIsWritten ("4a-scrim"), as a plain behaviour test: open day 10's
+      sheet, bounded "exactly one scrim", the scrim's own OnClick semantics action (Material3's path: animated hide(),
+      then onDismissRequest -> closeSheet - the probe's mechanism, kept, DEVIATION 4 of the probe), bounded "the sheet
+      gone, nothing written", nothing recorded, 0 syncs. RUN: passed, 0.127 s.
+DROPPED step4b (controller.closeSheet() from runOnIdle - not a user path). Its name is not reused: the class runs
+      step1, step2, step3, step4a, step4c (DEVIATION 3).
+STRIPPED R802's instrumentation: SheetProbe (taps, counters, facts), IdleProbe (the IdlingResource), sheetDump and
+      say, SheetProbeHost (the SideEffect recomposition counter and the controller handle), probed (the snapshot
+      apply observer), the HALF/FIRE/WAIT-EXPIRED dump moments, the R801 tag, the 60 s watchdog parameters; the
+      test-klib compiled on Windows holds none of SheetProbe, IdleProbe or step4bCloseSheet.
+KEPT  THE MARKS AND THE WATCHDOG. watched() and mark() are back to abbed46's R793 form, byte for byte (120 s, "R793
+      MARK" / "R793 WATCHDOG"). step4a/step4c mark both sides of every call that can wait without a bound (setContent,
+      the fetches, performScrollTo, performClick, the semantics actions, every bounded wait). No WATCHDOG fired.
+step1-step3: their bodies from 7b0df23 and from 9433c4e extracted and diffed (.ios2c-fix-evidence/steps123.diff):
+      the ONLY changed lines are their 11 waits, waitUntil(timeoutMillis = TIMEOUT) { c } -> waitBounded("<what>",
+      TIMEOUT) { c }, the conditions identical (one wrapped onto two lines for the 120-column limit). Every step and
+      assertion as before; they ran green (0.059 s, 0.135 s, 0.178 s).
+HARD BOUNDARIES, measured on 9433c4e:
+  `git diff --stat 7b0df23..HEAD -- android/app/src/test/snapshots` -> EMPTY. Paparazzi RE-RECORDED: 0.
+  `git diff --stat 7b0df23..HEAD -- . ':!android/shared/src/iosTest' ':!android/app/src/test'` -> EMPTY: commonMain,
+    :app main code, the workflow, every dependency and version unchanged.
+  Every changed file: the fence (98+), BoundedWait.kt (53+), BoundedWaitIosTest.kt (52+), CalendrierReleveScreensIosTest.kt
+    (+162/-346).
+  No new @OptIn(ExperimentalTime) site: the only added lines naming it are two comments in the fence that name the
+    other fence; ExperimentalTimeOptInAllowlistTest 3/3 with CalendrierReleveScreensIosTest still at 1.
+  The test window is as it was: 1024 x 768, runComposeUiTest's default; no phone-shaped window.
+CHECKS ON WINDOWS BEFORE THE RUN:
+  :shared:ktlintIosTestSourceSetCheck and :shared:detekt - BUILD SUCCESSFUL in 34s, both executed (not from cache).
+  A REAL COMPILE OF iosTest (the probe's was NO RESULT): `./gradlew :shared:compileTestKotlinIosSimulatorArm64
+  -Pkotlin.native.enableKlibsCrossCompilation=true --offline` - a COMMAND-LINE override of android/gradle.properties'
+  R575 line, no file changed (DEVIATION 2). The Windows Kotlin/Native 2.2.21 distribution already in ~/.konan
+  carries ios_simulator_arm64 platform klibs; kspKotlinIosSimulatorArm64 SKIPPED (R575), compileKotlinIosSimulatorArm64
+  and compileTestKotlinIosSimulatorArm64 EXECUTED, BUILD SUCCESSFUL in 3m 32s, no "e:" line, no "w:" line in iosTest.
+  Positive signal: the test klib written at 20:28:37 holds BoundedWaitIosTest, waitBounded, tapInsideTheWindow and
+  step4c's name, and none of step4bCloseSheet, SheetProbe, IdleProbe. It proves the FRONTEND compile only: not
+  linked, not run - that was the Mac's, and the Mac compiled and linked it in the run.
+
+================================================================================
+R810 - THE RUN AND WHAT IT PROVES
+================================================================================
+RUN 42292101917 - https://github.com/kaitmax/monreleve/actions/runs/42292101917 - workflow_dispatch, ref ios2c-fix,
+  headSha 9433c4ebc89cde7a5d077c21f6fc9a69892bcc9d (asserted). Dispatched 20:53:05Z; created 20:53:09Z; job
+  20:53:12Z -> 21:02:30Z; conclusion SUCCESS. The test process ran on "iPhone 17 Pro (<udid>) (Booted)", runtime
+  "-- iOS 26.2 --" (step 14; the UDID is left out). The konan cache MISSED ("Cache not found for input keys:
+  konan-macOS-ARM64-177842746c5c" - caches are branch-scoped), so step 7 provisioned the toolchain and step 12 saved it.
+STEPS (every step's result, from the API):
+  1 Set up job - success                                   20:53:12..20:53:15
+  2 Run actions/checkout@3d3c42e5... - success            20:53:15..20:53:19
+  3 Run actions/setup-java@de7274f0... - success          20:53:19..20:53:22
+  4 Run gradle/actions/setup-gradle@3f5f9ada... - success 20:53:22..20:53:23
+  5 Restore the Kotlin/Native toolchain - success         20:53:23..20:53:24
+  6 Environment (diagnostic) - success                    20:53:24..20:53:31
+  7 Provision the Kotlin/Native toolchain - success       20:53:31..20:55:22
+  8 Boot the iPhone simulator - success                   20:55:22..20:56:06
+  9 Start the wire-recording server - success             20:56:06..20:56:08
+  10 iOS - simulator tests and device compile - success   20:56:08..21:01:27
+  11 The wire recording (what the simulator really sent) - success
+  12 Save the Kotlin/Native toolchain - success
+  13 Results - refuse a run that executed no tests - success
+  14 Which simulator ran (positive signal) - success
+  15 Room's generated iOS code (listing) - success
+  16 Run actions/upload-artifact@cf430e03... - success
+  30 Post Run gradle/actions/setup-gradle - success; 31 Post Run actions/setup-java - success;
+  32 Post Run actions/checkout - success; 33 Complete job - success
+STEP 10, verbatim: "> Task :shared:compileTestKotlinIosSimulatorArm64" (20:58:26Z), "> Task
+  :shared:linkDebugTestIosSimulatorArm64" (20:58:35Z), "> Task :shared:iosSimulatorArm64Test", "> Task
+  :shared:compileKotlinIosArm64" (the device compile), "BUILD SUCCESSFUL in 5m 16s". No "FAILED", no "Test running
+  process exited unexpectedly", no IrLinkageError outside the canary's own line.
+STEP 13: "iOS SIMULATOR TESTS EXECUTED: 269" - expected 268 (run 42202057374) - 1 (step4b) + 2 (BoundedWaitIosTest).
+  Every class failures=0 errors=0 skipped=0; the pilot classes, every one reached:
+  ch.monreleve.app.pilot.AujourdhuiPilotIosTest tests=7 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.BoundedWaitIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.CalendrierReleveScreensIosTest tests=5 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.LaunchSpeechIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.MaterialDatePickerCanaryTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.OnboardingScreensIosTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.PilotFixtureTest tests=3 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.SignInScreensIosTest tests=2 failures=0 errors=0 skipped=0
+  The artifact's 48 JUnit XML files (one per class) agree: tests=269 failures=0 errors=0.
+  The canary: "IOS-1b-A canary: still broken as expected - kotlin.internal.IrLinkageError: Can not get instance of
+  singleton 'Companion': No class found for symbol 'kotlinx.datetime/Instant.C..." (unchanged).
+  WATCHDOG lines in the log: 0.
+THE CLASS'S XML: tests="5" failures="0" errors="0"; step1 0.059 s, step2 0.135 s, step3 0.178 s, step4a 0.127 s,
+  step4c 0.176 s.
+THE STEP4 MARKS, in order, as GitHub timestamped them (Gradle relays a test's output in bursts, so times within one
+  test are not intervals; reprinted duplicates dropped; .ios2c-fix-evidence/step4-marks.txt):
+  21:01:13.0  R793 MARK 4a-scrim: started
+  21:01:13.0  R793 MARK 4a-scrim: setContent - calling
+  21:01:13.0  R793 MARK 4a-scrim: setContent - returned
+  21:01:13.0  R793 MARK 4a-scrim: wait (the month shown) - calling, bounded at 10000ms
+  21:01:13.0  R793 MARK 4a-scrim: wait (the month shown) - returned
+  21:01:13.0  R793 MARK 4a-scrim: fetch: no sheet before a day is tapped - calling
+  21:01:13.0  R793 MARK 4a-scrim: fetch: no sheet before a day is tapped - returned
+  21:01:13.0  R793 MARK 4a-scrim: tap day 10: performScrollTo - calling
+  21:01:13.0  R793 MARK 4a-scrim: tap day 10: performScrollTo - returned
+  21:01:13.0  R793 MARK 4a-scrim: tap day 10: performClick - calling
+  21:01:13.0  R793 MARK 4a-scrim: tap day 10: performClick - returned
+  21:01:13.0  R793 MARK 4a-scrim: wait (the sheet's question shown) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4a-scrim: wait (the sheet's question shown) - returned
+  21:01:13.1  R793 MARK 4a-scrim: the ModalBottomSheet OPEN (locale en-US)
+  21:01:13.1  R793 MARK 4a-scrim: wait (exactly one scrim) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4a-scrim: wait (exactly one scrim) - returned
+  21:01:13.1  R793 MARK 4a-scrim: scrim OnClick - calling (Material3's own: an animated hide(), then onDismissRequest)
+  21:01:13.1  R793 MARK 4a-scrim: scrim OnClick - returned
+  21:01:13.1  R793 MARK 4a-scrim: wait (the sheet gone, nothing written) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4a-scrim: wait (the sheet gone, nothing written) - returned
+  21:01:13.1  R793 MARK 4a-scrim: finished
+  21:01:13.1  R793 MARK 4c-save: started
+  21:01:13.1  R793 MARK 4c-save: setContent - calling
+  21:01:13.1  R793 MARK 4c-save: setContent - returned
+  21:01:13.1  R793 MARK 4c-save: wait (the month shown) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4c-save: wait (the month shown) - returned
+  21:01:13.1  R793 MARK 4c-save: fetch: no sheet before a day is tapped - calling
+  21:01:13.1  R793 MARK 4c-save: fetch: no sheet before a day is tapped - returned
+  21:01:13.1  R793 MARK 4c-save: tap day 10: performScrollTo - calling
+  21:01:13.1  R793 MARK 4c-save: tap day 10: performScrollTo - returned
+  21:01:13.1  R793 MARK 4c-save: tap day 10: performClick - calling
+  21:01:13.1  R793 MARK 4c-save: tap day 10: performClick - returned
+  21:01:13.1  R793 MARK 4c-save: wait (the sheet's question shown) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4c-save: wait (the sheet's question shown) - returned
+  21:01:13.1  R793 MARK 4c-save: the ModalBottomSheet OPEN (locale en-US)
+  21:01:13.1  R793 MARK 4c-save: fetch: the sheet's OutlinedTextField - calling
+  21:01:13.1  R793 MARK 4c-save: fetch: the sheet's OutlinedTextField - returned
+  21:01:13.1  R793 MARK 4c-save: the Save's bounds as found - reading
+  21:01:13.1  R793 MARK 4c-save: the Save's bounds as found: boundsInRoot=Rect.fromLTRB(212.0, 832.0, 812.0, 888.0)
+              positionInRoot=Offset(212.0, 832.0) tapPoint=Offset(512.0, 860.0) boundsInWindow=Rect.fromLTRB(0.0, 0.0,
+              0.0, 0.0) | the handle offers Expand=[Expand bottom sheet] Collapse=[]
+  21:01:13.1  R793 MARK 4c-save: wait (exactly one node offering Expand) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4c-save: wait (exactly one node offering Expand) - returned
+  21:01:13.1  R793 MARK 4c-save: the handle's Expand (Expand bottom sheet) - calling
+  21:01:13.1  R793 MARK 4c-save: the handle's Expand - returned
+  21:01:13.1  R793 MARK 4c-save: wait (the sheet expanded: its handle offers Collapse, no longer Expand) - calling,
+              bounded at 10000ms
+  21:01:13.1  R793 MARK 4c-save: wait (the sheet expanded: its handle offers Collapse, no longer Expand) - returned
+  21:01:13.1  R793 MARK 4c-save: the Save's bounds after expansion - reading
+  21:01:13.1  R793 MARK 4c-save: the Save's bounds after expansion: boundsInRoot=Rect.fromLTRB(212.0, 628.0, 812.0,
+              684.0) positionInRoot=Offset(212.0, 628.0) tapPoint=Offset(512.0, 656.0) boundsInWindow=Rect.fromLTRB(
+              212.0, 628.0, 812.0, 684.0) | the handle offers Expand=[] Collapse=[Collapse bottom sheet]
+  21:01:13.1  R793 MARK 4c-save: tap SUISSE: performScrollTo - calling
+  21:01:13.1  R793 MARK 4c-save: tap SUISSE: performScrollTo - returned
+  21:01:13.1  R793 MARK 4c-save: tap SUISSE: performClick - calling
+  21:01:13.1  R793 MARK 4c-save: tap SUISSE: performClick - returned
+  21:01:13.1  R793 MARK 4c-save: wait (En Suisse selected) - calling, bounded at 10000ms
+  21:01:13.1  R793 MARK 4c-save: wait (En Suisse selected) - returned
+  21:01:13.1  R793 MARK 4c-save: SUISSE chosen; saving
+  21:01:13.1  R793 MARK 4c-save: tap SAVE: performScrollTo - calling
+  21:01:13.2  R793 MARK 4c-save: tap SAVE: performScrollTo - returned
+  21:01:13.2  R793 MARK 4c-save: tap SAVE: its bounds - reading
+  21:01:13.2  R793 MARK 4c-save: tap SAVE: boundsInRoot=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0) tapPoint=Offset(512.0,
+              656.0) boundsInWindow=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0)
+  21:01:13.2  R793 MARK 4c-save: tap SAVE: the tap point is inside the window; performClick - calling
+  21:01:13.2  R793 MARK 4c-save: tap SAVE: performClick - returned
+  21:01:13.2  R793 MARK 4c-save: wait (the sheet saved and closed: one command written, one sync) - calling, bounded at
+              10000ms
+  21:01:13.2  R793 MARK 4c-save: wait (the sheet saved and closed: one command written, one sync) - returned
+  21:01:13.2  R793 MARK 4c-save: the ModalBottomSheet SAVED and closed
+  21:01:13.2  R793 MARK 4c-save: finished
+  (wrapped lines are one log line each.)
+WHAT THE RUN PROVES, AND NO MORE:
+  - THE RESULT. On the iOS simulator, through the shared CalendrierScreen's ModalBottomSheet CONTAINER and the shared
+    CalendarController, a tap that lands on the Save writes exactly RecordCommand("2026-06-10", CH, FULL), requests
+    exactly one sync, and closes the sheet - asserted, green. No test on either platform had saved through the
+    container's Save before (REPORT-IOS-2c-PROBE R804).
+  - THE PROBE'S INFERENCE BECOMES A RESULT FOR ITS PREMISES. Recorded in this run, on the same opening as abbed46's
+    step4 (same host, same day, same 1024 x 768 window): the partially expanded sheet's Save has no area in the
+    window and its tap point is (512, 860), outside it. Recorded in the probe's run: a tap there writes nothing, the
+    sheet closes by another path, and the save condition stays false (10 002 ms). Read in the 1.7.3 source (R800):
+    the library's wait never throws. And here: the same Save, once inside the window, saves. Together: abbed46's
+    step4 waited, with no bound, on a condition its own tap could never make true - a false condition polled for
+    ever, not a product hang. What remains INFERRED, and only this: that run 42142576248 itself took that path - it
+    recorded nothing after "SUISSE chosen; saving", so no run can show it after the fact.
+  - NOT shown: whether a user on a phone-sized screen meets the sheet with its Save visible or must drag it up (R811
+    (b)); a swipe; the Android container (R811 (c)).
+
+================================================================================
+R811 - WHAT IS LEFT, WRITTEN DOWN
+================================================================================
+R795's LISTS (REPORT-IOS-2c), changed by this task in ONE item, its last ("THE CALENDAR SHEET'S SAVE ON iOS (R793):
+  ... its Save tap never returned in the simulator's Compose test. Until it is understood (product or test harness),
+  an iOS host should not ship the calendar's edit sheet"). It now reads: UNDERSTOOD, AND IT WAS THE TEST HARNESS.
+  The sheet's Save saves on iOS once the tap reaches it (run 42292101917, step4c); the earlier "never returned" was
+  the library's never-throwing wait on a condition an off-window tap could not make true (R800, R810 above). Whether
+  an iOS host ships the edit sheet is no longer blocked by a known fault; item (b) below is the open question about
+  how a user reaches the Save, and it is the operator's to weigh, not this task's to decide. Every other item of
+  R795's lists (AccountStore for iOS, the universal-link receipt, the transport's base URL, syncNow / a composed iOS
+  SyncEngine, the framework declaration and resources, the iOS /me codec, onboarding's halves and restore, the
+  dossier share/export, fetch and exportBytes on iOS, the calendar's restore) is unchanged by this task.
+PARKED (UNNUMBERED - no series letter claimed), none chosen here:
+  (a) THE OTHER PILOT FILES' WAITS. OnboardingScreensIosTest (16) and SignInScreensIosTest (6) still call the
+      library's wait directly - unbounded in CMP 1.7.3. They are on R808's allowlist at their exact counts, so the
+      number can only fall. Converting them couples sign-in and onboarding timing to a merge with no second run; it
+      is a later task's. (This closes the probe's UNNUMBERED-1 for CalendrierReleveScreensIosTest only, and its
+      UNNUMBERED-2 - the probe's instrumentation is gone.)
+  (b) "ON A PHONE-SIZED SCREEN, DOES THE SHEET OPEN WITH SAVE VISIBLE, OR DOES THE USER DRAG UP?" No test on either
+      platform asks it. This run used the 1024 x 768 test window, unchanged, where the Save opens 92 px below the
+      edge. Not a regression; it belongs to IOS-1b-B's R615 check.
+  (c) AN androidTest COMPOSING THE SHEET CONTAINER ON THE S9 (REPORT-IOS-2c-DEVICE's Q2): Android's
+      CalendarSheetSaveInstrumentedTest drives the sheet's content, not the ModalBottomSheet container. iOS now has
+      a container-level save; Android does not.
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref        sha      result    job wall                      billed
+  42292101917  ios2c-fix  9433c4e  success   20:53:12Z-21:02:30Z (9m18s)   10 min (rounded up)
+ONE dispatch (`gh workflow run ios-shared.yml --ref ios2c-fix`); zero push-triggered runs (the branch does not match
+ios-*): `gh run list --branch ios2c-fix` -> 0 runs before the dispatch, 1 (42292101917) after it and after the code
+push; the count after the report push is in PUSH PROOF. The konan cache missed on this new branch and was saved.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. THE FENCE COUNTS THE waitUntil FAMILY, NOT ONLY "waitUntil(" (R808's words). The library's waitUntilNodeCount,
+   waitUntilAtLeastOneExists, waitUntilExactlyOneExists and waitUntilDoesNotExist call the same never-throwing wait
+   (ui-test 1.7.3 commonMain ComposeUiTest.kt 205-290); allowing them would let an unbounded wait back in under
+   another name. None is used in iosTest, so the counts are exactly R808's. Stricter, reversible (one regex).
+2. THE WINDOWS COMPILE CHECK USED A COMMAND-LINE -P OVERRIDE of R575's kotlin.native.enableKlibsCrossCompilation=false.
+   No file changed; it is a local check, not a build change, and it proves the frontend compile only (R809 section).
+   R575 itself stands: the gate still does not compile the iOS klibs.
+3. NO 4b, AND THE SAVE TEST KEEPS THE PROBE'S NAME step4cADayOpensTheModalBottomSheetAndItsSaveWritesTheDay - its
+   claim is unchanged, and the JUnit identity that failed in 42202057374 is the one that passes here; "4b" is not
+   reused for something else.
+4. THE GUARD IS STRICTER THAN "non-empty boundsInWindow": it also requires the tap point (centre of boundsInRoot)
+   inside it - the property that decides where the tap lands.
+5. step4c ADDS BOUNDED WAITS AND ONE CHECK BEYOND R806'S LIST: "exactly one node offering Expand", the Expand label
+   check, "the sheet expanded" and "En Suisse selected"; and its final bounded condition includes syncs.count == 1
+   (R806's "(bounded): ... exactly one sync"; abbed46's condition had the question and the command only).
+6. THE WATCHDOG IS 120 s FOR 4a AND 4c (abbed46's R793 value), not the probe's 60 s: R809 keeps "the watchdog", and
+   watched() is restored to its R793 form exactly.
+7. 4a's "SCRIM TAP" IS THE SCRIM'S OWN OnClick SEMANTICS ACTION (the probe's mechanism, its deviation 4), kept
+   unchanged: R809 keeps 4a; changing how it closes would add a variable to a one-run budget.
+8. THE SESSION WAS INTERRUPTED: the first process exited before any commit and the work resumed about 9.5 hours later
+   (2026-11-06 ~20:19Z). On resume: HEAD 7b0df23, the lock present, the three iosTest files exactly as left; nothing
+   pushed, no run. The scratchpad directory changed with the new process; files are in the new one.
+
+================================================================================
+QUESTIONS
+================================================================================
+None that block. R811's three PARKED items are the operator's to schedule; none is chosen here. R795's last item now
+reads "understood: the test harness" (R811) - whether that unblocks shipping the edit sheet on iOS, given (b), is the
+operator's call.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2c-fix only (never main, production, ios2c-probe, ios2c, ios2c-device). The code tip, after the gate's
+verdict was read in its own step and before the dispatch:
+  git push -u origin ios2c-fix -> "* [new branch]      ios2c-fix -> ios2c-fix"
+  git ls-remote origin refs/heads/ios2c-fix -> 9433c4ebc89cde7a5d077c21f6fc9a69892bcc9d = HEAD (MATCH)
+  gh run list --branch ios2c-fix (after the push, before the dispatch) -> 0 runs; after the dispatch -> 1
+  (42292101917, headSha 9433c4e).
+This report is the commit after 9433c4e and changes REPORT-IOS-2c-FIX.txt only; its push is recorded in the follow-up
+below.
+
+END OF REPORT-IOS-2c-FIX
+
+PUSH PROOF, FOLLOW-UP: the report commit ac4f34b pushed - git push origin ios2c-fix -> "9433c4e..ac4f34b
+ios2c-fix -> ios2c-fix"; git ls-remote origin refs/heads/ios2c-fix -> ac4f34b062c91273bb612168bc3693e4543ca8cc = HEAD
+(MATCH); `git diff --stat 9433c4e ac4f34b` -> " REPORT-IOS-2c-FIX.txt | 436 ++++..." / " 1 file changed, 436
+insertions(+)" (the STATUS pointer resolves here); `gh run list --branch ios2c-fix` -> 1 run (42292101917) after that
+push. Before it, R806-R811 re-grepped: the worktree holds them only in this report; the main checkout only in
+relay/IOS-2c-FIX.txt, and no newer relay prompt had landed. Re-fetched: origin/main 55258ed, production 52caca8,
+ios2c-probe 7b0df23 - unchanged. Not pushed: main, production, ios2c-probe, ios2c, ios2c-device.
+CLEANUP: ./gradlew --stop after the last Gradle use; no server started, no port touched, no phone, adb not used.
+The lock .session-lock.json is present at this commit and is removed as the session's last step, after the push of
+this follow-up. Evidence stays in C:/wt/ios2c-fix/.ios2c-fix-evidence/ (ignored). The worktree C:/wt/ios2c-fix stays
+(R392); C:/wt/ios2c-probe was only read (its report) - never written; no other C:/wt/* was touched.

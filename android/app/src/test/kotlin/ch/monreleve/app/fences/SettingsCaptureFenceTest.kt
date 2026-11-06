@@ -31,7 +31,9 @@ private const val FENCE = "settings capture fence"
 
 private val settingsCaptureRoots =
     listOf(
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "CalendarController.kt"),
+        // IOS-2c R788: CalendarController moved to :shared commonMain (scanned below, under SettingsStore.kt's
+        // root), so :app's root is pinned by a controller that stays - ParametresController, the settings' writer.
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "ParametresController.kt"),
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app"), pin = "SettingsStore.kt"),
         FenceRoot(File("src/debug/kotlin/ch/monreleve/app"), pin = "SessionInjection.kt"),
     )

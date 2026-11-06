@@ -4,11 +4,8 @@ import ch.monreleve.app.aujourdhui.AbsenceChoice
 import ch.monreleve.app.aujourdhui.RecordedKind
 import ch.monreleve.app.data.local.EntryEntity
 import ch.monreleve.app.dossier.LatenessForecast
-import kotlinx.datetime.toKotlinLocalDate
-import java.time.Instant
-import java.time.LocalDate
 import kotlin.time.ExperimentalTime
-import kotlin.time.toKotlinInstant
+import kotlin.time.Instant
 
 // AN-CAL2 (section 2, D16). The ONE confirmation shown before a bulk write. Pure: it takes the chosen days,
 // the rows already stored, the choice and the current instant, and computes the confirmation's two CONDITIONAL
@@ -26,7 +23,10 @@ data class BulkConfirmation(
     val lateThresholdDays: Int,
 )
 
-@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
+// IOS-2c R787: `now` is a kotlin.time Instant here; :app's java.time.Instant overload (JavaTimeCalendar.kt) converts
+// it with the library's own toKotlinInstant and calls this. Each chosen day's lateness is CalendarDates.wouldBeLateOn,
+// the same question the single-day sheet asks - one home for the calendar's date work (R206).
+@OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time.Instant - on the allowlist.
 fun bulkConfirmation(
     selectedDays: Set<String>,
     entries: List<EntryEntity>,
@@ -36,13 +36,12 @@ fun bulkConfirmation(
 ): BulkConfirmation {
     val days = selectedDays.sorted()
     val recordedDays = entries.map { it.dayDate }.toSet()
-    val nowInstant = now.toKotlinInstant()
     return BulkConfirmation(
         days = days,
         kind = kind,
         absence = absence,
         alreadyRecordedCount = days.count { it in recordedDays },
-        lateCount = days.count { LatenessForecast.wouldBeLate(LocalDate.parse(it).toKotlinLocalDate(), nowInstant) },
+        lateCount = days.count { wouldBeLateOn(it, now) },
         lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
     )
 }

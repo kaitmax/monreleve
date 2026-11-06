@@ -1,0 +1,322 @@
+REPORT-IOS-2c-DEVICE - Mon Releve
+THE S9 HALF OF IOS-2c: R786's INSTRUMENTED RUN ON abbed46's CODE
+RUN: 9/9 (CalendarSheetSaveInstrumentedTest 3/3, ProvenanceShownInstrumentedTest 6/6), 0 FAILURES, NO HANG.
+RESTORE: THE AS-FOUND APK IS REINSTALLED (sha256 verified on the phone); THE PLAY PROTECT WINDOW ITS INSTALL
+RAISED IS STILL ON THE PHONE - NOT ANSWERED, NOT DISMISSED (Q1).
+
+TASK     relay/IOS-2c-DEVICE.txt (main checkout, untracked). No ruling number used (none was needed).
+BASE     origin/ios2c cc4933b; code tip abbed46 (abbed4654a1f75fed65e30b60408529886e9e722).
+BRANCH   ios2c-device, worktree C:/wt/ios2c-device (R349), lock .session-lock.json (gitignored, written
+         08:09:53Z), removed after the push. Its upstream was unset at creation, so no bare push can reach ios2c.
+         Pushed: ios2c-device only. PENDING MERGE - nothing here is on main or on ios2c.
+DEVICE   SM-G960F (Galaxy S9, Android 10), serial 232bcd8c300c7ece.
+EVIDENCE C:/wt/ios2c-device/.ios2c-device-evidence/ (ignored by /.*-evidence/, never committed): the run's
+         Gradle log, phone log, focus log, summary and XML copy; the build log; the phone snapshots; the harness.
+TIMES    UTC unless marked "phone" (phone clock = UTC+1).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- CalendarSheetSaveInstrumentedTest and ProvenanceShownInstrumentedTest ran on the S9 against abbed46's code:
+  9 tests, 0 failures, 0 errors, 0 skipped (XML, this run's timestamp). The longest test took 2.52 s; nothing came
+  near the 5-minute bound. The filter applied ("Starting 9 tests", not the suite's 57).
+- Neither class needs a server: no local stack, no adb reverse, no -PfrontalierHost (THE RUN says why).
+- Step 2 (main 55258ed): NOT RUN - not needed; (1) was a clean pass.
+- R793: the moved save path runs on Android at runtime - the shared sheet content, the shared CalendarController's
+  save, the repository write, one sync, the content leaving composition. Neither class composes the Material3
+  ModalBottomSheet the iOS test hung inside, so the iOS question narrows to that container (a product behaviour on
+  iOS, or the simulator test's harness) and is NOT answered by this run.
+- RESTORE: connectedAndroidTest uninstalled the app (authorised). The as-found APK's reinstall raised a Play
+  Protect window (com.android.vending/...PlayProtectDialogsActivity), which this session did not answer, dismiss
+  or cover. The install completed without it at 08:58:46 (the phone's log is quoted below); on-device sha256
+  d417d021...081034. The window is still the phone's focused app, behind the lock screen. The app was not launched.
+- Nothing else changed on the phone: settings and package lists equal to the before-snapshots except three
+  counters the system moves by itself.
+
+================================================================================
+STATUS (R391)
+================================================================================
+NO CODE CHANGE IN THIS SESSION; NO iOS RUN. R786's INSTRUMENTED RUN: RUN on abbed46's code - 9/9, 0 failures,
+0 errors (XML). Step 2 (main): NOT NEEDED. RESTORE: the as-found APK reinstalled and verified; the Play Protect
+window that install raised is left on the phone, not answered (the brief's rule) - Q1.
+The FULL gate for this code did NOT run in this session. It ran in IOS-2c on the code tip abbed46 (REPORT-IOS-2c
+STATUS, quoted): "> Task :app:checkTestFloor - test floor OK: 1392 unit tests observed (>= 10)", "BUILD
+SUCCESSFUL in 9m 40s", "260 actionable tasks: 260 executed", GATE_EXIT=0; :app 1392 tests 0 failures 0 errors
+(142 screenshot, at 0.0); :shared 200 0 0.
+`git diff --stat abbed46 HEAD` (report-only) - shown at push time in PUSH PROOF.
+The only Gradle invocations here: :app:assembleDebug :app:assembleDebugAndroidTest (BUILD SUCCESSFUL in 4m 24s)
+and the filtered :app:connectedDebugAndroidTest (BUILD SUCCESSFUL in 2m 3s), both below; --stop after each.
+gate:clone NOT RUN: no web/ change (web/ was not touched; no web/.env was copied).
+
+================================================================================
+PHONE BEFORE AND AFTER
+================================================================================
+THE PRECONDITION is the operator's word, recorded verbatim in the brief (~08:08Z): "I looked: signed out". No
+screen was read in this session: no uiautomator dump, no screenshot, no screen recording.
+BEFORE (08:12:22 / phone 09:12:24; reads only): attached (`adb devices -l`: device, product starltexx, model
+  SM_G960F, transport_id 2). mCurrentFocus=StatusBar, mFocusedApp ch.monreleve.app/.MainActivity;
+  mWakefulness=Dozing, Display OFF - the lock screen over the app, the state REPORT-IOS-2c recorded.
+  ch.monreleve.app 0.1.0 (versionCode 1), one base.apk, on-device sha256
+  d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 (the as-found APK), firstInstallTime =
+  lastUpdateTime 2026-11-04 18:07:04 (phone). adb reverse: empty.
+  Settings (08:14:06): stay_on_while_plugged_in 0, screen_off_timeout 30000, package_verifier_enable 1,
+  package_verifier_user_consent 1, verifier_verify_adb_installs null, auto_time 1, auto_time_zone 1,
+  accessibility_enabled 0, enabled_accessibility_services null, touch_exploration_enabled 0, window / transition /
+  animator scales 1 / 1 / 1. Snapshots: settings secure/global/system 450/298/426 lines; packages 504
+  (ch.monreleve.app and ch.monreleve.probe among them).
+THE AS-FOUND APK: copied from C:/wt/ios2c/.ios2c-evidence/as-found-installed-base.apk (read and copied only);
+  source and copy sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034 - equal to the
+  installed one; signer ef336db5977cf5cbfdef24305082fec0a5c01b9d118b5a567ec0174445e373d1 (CN=Android Debug).
+WHAT I SENT TO THE PHONE, IN ORDER:
+  08:24:08 (phone 09:24:08) ONE log line: `log -t TestRunner 'started: plantedHang(ch.monreleve.proof.Plant)'`
+    - the HANG bound's proof (HARNESS). A log line; nothing else.
+  08:46:58 stay_on_while_plugged_in 0 -> 7 (read back 7); `input keyevent KEYCODE_WAKEUP`; `wm dismiss-keyguard`.
+    Read in its own step at 08:47:10: mCurrentFocus ch.monreleve.app/ch.monreleve.app.MainActivity,
+    mWakefulness=Awake, Display ON, keyguard showing=false.
+  08:47:21-08:49:28 the connected run (THE RUN). It installed the debug APK over the as-found one, and the test
+    APK, ran the 9 tests, and uninstalled both - so the as-found app's local data is gone (authorised by the
+    brief: "connectedAndroidTest uninstalls the app").
+  08:50:47 the reinstall, verbatim:
+      adb -s 232bcd8c300c7ece install C:\wt\ios2c-device\.ios2c-device-evidence\as-found-installed-base.apk
+  08:57:44 stay_on_while_plugged_in 7 -> 0 (read back 0).
+THE REINSTALL AND THE PLAY PROTECT WINDOW:
+  08:50:37 `pm path ch.monreleve.app` and `pm path ch.monreleve.app.test`: both EMPTY (the run's uninstall).
+  08:50:47 the install started; it did not return.
+  08:52:58 mCurrentFocus = com.android.vending/com.google.android.finsky.protectdialogs.activity.
+    PlayProtectDialogsActivity; `pm path ch.monreleve.app` EMPTY. NOT answered, NOT dismissed, NOT covered (no
+    app was launched over it); its content was not read; no further install was attempted by any route.
+  The phone's log (logcat, a non-screen read), quoted, phone clock:
+    09:50:49.839 Finsky  VerifyApps: Install-time verification requested for package ch.monreleve.app,
+                 PackageManager id = 425, ...
+    09:50:50.047 Finsky  VerifyApps: [ADV] Policy enforced for ch.monreleve.app (id=425). Verdict:
+                 VERIFICATION_ALLOW
+    09:50:50.620 Finsky  VerifyApps: Verification package=ch.monreleve.app, id=425, response=0,
+                 upload_requested=true, enable_ecm=false
+    09:50:50.623 Finsky  VerifyApps: Verification package=ch.monreleve.app, id=425, upload_requested=true,
+                 upload_consent=0
+    09:50:54.381 PackageManager [VERIFY] extendVerificationTimeout(425, ALLOW, 3600000), uid=10107
+    09:57:46.079 PowerManagerService Going to sleep due to timeout (uid 1000)...   (about 2 s after my
+                 stay_on 0 write)
+    09:58:46.533 ActivityManager Stopping service due to app idle: u0a107 -7m56s691ms com.android.vending/
+                 com.google.android.finsky.verifier.impl.service.impl.PackageVerificationService
+    09:58:46.541 Finsky  VerifyApps: Install-time verification complete: id=425, package_name=ch.monreleve.app
+    09:58:46.553 Finsky  VerifyApps: Returning package verification result id=425, result=ALLOW
+    09:58:46.555 PackageManager [VERIFY] verifyPendingInstall(425, ALLOW), uid=10107
+    09:58:46.748 PackageManager [VERIFY] packageVerificationCompletion: completed id=425
+  The host command then printed "Performing Streamed Install" / "Success" (exit 0); the focus read right after
+  (08:58:46) was StatusBar. So the install completed with the window UNANSWERED: the log puts the verification's
+  end 60 s after the screen went off, at the system's idle stop of Play Protect's verification service. That
+  timing is all the log shows; I do not claim more about why. No outside input reached the phone in that window
+  (phone-log lines matching gpio / "Input event(" / adjust*Volume from 09:50:40 on: 0).
+  During THE RUN, AGP's two installs raised no such window (61 focus polls, 0 com.android.vending). Play Protect
+  verified them too, and the log shows the difference without explaining it: ids 423 (ch.monreleve.app, the
+  debug APK) and 424 (ch.monreleve.app.test) "upload_requested=false", complete in 10 s and 7 s; id 425 (the
+  as-found APK) "upload_requested=true".
+AFTER (final reads 09:00:05-09:01:16):
+  - ch.monreleve.app INSTALLED: on-device sha256 d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034
+    (the as-found APK), 0.1.0 / versionCode 1, firstInstallTime = lastUpdateTime 2026-11-06 09:58:46 (phone) - a
+    fresh install, never launched since, so SIGNED OUT BY CONSTRUCTION (the screen was not read).
+  - Focus: mCurrentFocus StatusBar; mFocusedApp com.android.vending/com.google.android.finsky.protectdialogs.
+    activity.PlayProtectDialogsActivity - the Play Protect window is still there, behind the lock screen;
+    mWakefulness=Dozing, Display OFF. The app was NOT launched (it would have covered that window), so the phone
+    will not show the Mon Releve welcome screen on waking.
+  - stay_on_while_plugged_in 0 (read back); adb reverse: empty (never set); accessibility untouched.
+  - SNAPSHOT DIFF, before vs final (phone/final-*.txt): settings secure NONE; global 1 line,
+    network_watchlist_last_report_time (the system's); system 2 lines, tips_regular_hour_timer_absolute_count and
+    _renewal_count 2957 -> 2958 (the system's). Packages: identical (504).
+  - The screen was left to time out by itself; no KEYCODE_SLEEP was sent.
+
+================================================================================
+THE RUN
+================================================================================
+CLASSES (android/app/src/androidTest, UNEDITED: `git diff --stat 55258ed abbed46 -- android/app/src/androidTest`
+EMPTY), counted before the run:
+  ui.screens.calendrier.CalendarSheetSaveInstrumentedTest   3 @Test
+  ui.screens.calendrier.ProvenanceShownInstrumentedTest     6 @Test        9 in all
+NO SERVER, SAID WHICH: both host a plain ComponentActivity through createComposeRule() - never MainActivity.
+  CalendarSheetSaveInstrumentedTest drives the shared CalendarController over its own in-memory, live EntryDao
+  and a fixed java.time clock; ProvenanceShownInstrumentedTest renders state it builds itself. Nothing in either
+  reads the transport. So no local stack, no adb reverse and no -PfrontalierHost: the debug APK carried its
+  default API_BASE_URL "http://10.0.2.2:3000" (generated BuildConfig, read), which neither class reads.
+BUILD (C:/wt/ios2c-device/android; HEAD cc4933b, whose android/ is abbed46's - `git diff --stat abbed46 cc4933b`
+  is REPORT-IOS-2c.txt only). The machine was below the 1.5 GB floor at 08:21:01 (0.62 GB: a tizicorp Playwright
+  e2e run and vmmemWSL ~6 GB); the build waited until 1.53 GB free, read in its own step at 08:41:29, no Gradle
+  daemon running ("No Gradle daemons are running." at 08:14).
+    ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
+    BUILD SUCCESSFUL in 4m 24s; 92 actionable tasks: 92 executed; BUILD_EXIT=0
+    app-debug.apk             12,134,342 B  sha256 f2f71e253b67481d46fccdbe266267327ea1f2641812787d7759ee9018b175e6
+    app-debug-androidTest.apk  1,102,232 B  sha256 578aaa7493e395ceb2f8f572d86194cf4b8521fd048f20fefe85ee9bc7b2ce6c
+    both signer ef336db5...e373d1, the as-found's - no certificate conflict.
+RUN (after ./gradlew --stop "1 Daemon stopped"; 3.48 GB free read in its own step at 08:46:42; the phone awake,
+  focus MainActivity; the run held by run-watch.mjs, HARNESS):
+    gradlew.bat :app:connectedDebugAndroidTest
+      -Pandroid.testInstrumentationRunnerArguments.class=ch.monreleve.app.ui.screens.calendrier.
+       CalendarSheetSaveInstrumentedTest,ch.monreleve.app.ui.screens.calendrier.ProvenanceShownInstrumentedTest
+      --console=plain
+    (one argument; the class list is a single comma-joined value, wrapped here for width)
+    "Starting 9 tests on SM-G960F - 10" / "Finished 9 tests on SM-G960F - 10"
+    BUILD SUCCESSFUL in 2m 3s; 93 actionable tasks: 2 executed, 91 up-to-date; Gradle exit 0; watcher exit 0
+    phone log, pid 22527: "TestRunner: run started: 9 tests" 09:49:10.775 ... "TestRunner: run finished: 9 tests,
+    0 failed, 0 ignored" 09:49:19.079 (8.3 s of tests).
+RESULTS XML (android/app/build/outputs/androidTest-results/connected/debug/TEST-SM-G960F - 10-_app-.xml,
+  sha256 8317995a6471bb7a7af9fb3f22701a0eb34eb5d47f9d2adae61d4f111e6a0eea, copy in evidence as
+  run1-TEST-results.xml): tests="9" failures="0" errors="0" skipped="0" time="11.587"
+  timestamp="2026-11-06T08:49:20" (= this run); <failure>/<error> elements: 0.
+PER TEST (in run order; XML time; every one PASS):
+  CalendarSheetSaveInstrumentedTest                                                  3/3
+    changingTheMorningAndChangingItBackBeforeSavingWritesNothing                       2.265 s  PASS
+    aRealChangeMadeInTheSheetIsWrittenForThatHalfAlone                                 0.684 s  PASS
+    aTapOnDomicileUnderMatinIsAChoiceTheTreeShowsAndNothingIsWrittenUntilEnregistrer   0.762 s  PASS
+  ProvenanceShownInstrumentedTest                                                    6/6
+    theListNamesADetectionCorrectedDayAsCorrected                                      0.91 s   PASS
+    theSheetNamesADetectionConfirmedDayAsDetected                                      0.862 s  PASS
+    theSheetNamesADetectionCorrectedDayAsCorrected                                     0.67 s   PASS
+    theListNamesADetectionConfirmedDayAsDetected                                       0.51 s   PASS
+    theSheetStillNamesAManualDayManual                                                 0.614 s  PASS
+    theListStillNamesAManualDayManual                                                  0.608 s  PASS
+HANG: NONE. Each of the 9 "started:" lines had its "finished:" in the phone log; the longest pair was 2.52 s (the
+  first test, warm-up included). No retry was made or needed.
+DURING THE RUN (read before the XML): 61 focus polls - ch.monreleve.app/ch.monreleve.app.MainActivity 45 (until
+  AGP's install replaced the app), the launcher 12, ch.monreleve.app/androidx.activity.ComponentActivity 3,
+  null 1; com.android.vending 0. Of the 21,458 phone-log lines captured, those matching gpio / "Input event(" /
+  adjust*Volume: 0 - no outside input reached the run. The phone's log buffer was not cleared.
+
+STEP 2 - main (55258ed): NOT RUN, NOT NEEDED. (1) was a clean pass - 9/9, no hang, no NO RESULT - and the brief
+  runs main only when (1) shows anything else.
+
+================================================================================
+WHAT IT SAYS ABOUT R793
+================================================================================
+WHAT THE TWO CLASSES COMPOSE: CalendarSheetSaveInstrumentedTest hosts the shared CalendarEditSheetContent itself
+  (`state.editing?.let { day -> CalendarEditSheetContent(day = day, onSave = { edits ->
+  controller.save(day.isoDate, edits) }, onCancel = controller::closeSheet) }`), over the shared
+  CalendarController (moved by R788), built through :app's java.time factory (R787's seam), on the real
+  LocalEntryRepository and a live in-memory DAO. ProvenanceShownInstrumentedTest renders CalendarEditSheetContent
+  and CalendarList. NEITHER composes CalendrierScreen, so NEITHER composes the Material3 ModalBottomSheet that
+  CalendrierScreen wraps the content in (shared ui/screens/calendrier/CalendrierScreen.kt lines 103-113).
+WHAT PASSED ON ANDROID, ON abbed46's MOVED CODE: a tap on an option in the sheet is a choice the tree shows and
+  that writes nothing; Enregistrer then writes exactly the changed half (the morning HOME; the afternoon CH) and
+  asks for ONE sync; a change undone before saving writes nothing and asks for none. In each saving test the
+  controller cleared `editing` and the content left composition: the Save click and the waitForIdle after it
+  returned, and the assertions after them ran and passed. So the moved save path - content -> controller.save ->
+  repository -> sync -> editing = null -> the content removed - runs on Android at runtime.
+WHAT IT DOES NOT SAY: anything about the ModalBottomSheet - its opening, the taps inside it, or its removal from
+  composition while open - on either platform. The iOS hang (run 42142576248) sat at the Save tap INSIDE that
+  container. So this result narrows R793 away from the shared controller, the repository and the sheet's content
+  (the same commit's code ran here) and leaves the container itself - a product behaviour of the sheet on iOS, or
+  the simulator Compose test's idling around a sheet removed while open - NOT separated. It does not show that the
+  hang is iOS-side or harness-side; it shows that the parts it ran do not hang on Android.
+
+================================================================================
+HARNESS - evidence tooling in .ios2c-device-evidence/, never committed; both bounds proven before the run (R180)
+================================================================================
+run-watch.mjs starts the run as `cmd.exe /d /c <worktree>\android\gradlew.bat ...` and holds cmd.exe's PID (R179:
+  `taskkill /T /F` takes the tree); captures `logcat -v threadtime -T 1` (from the newest line - the buffer is
+  NOT cleared); pairs TestRunner "started:" / "finished:" lines; polls the focused window every 2 s.
+  HANG    a "started:" with no "finished:" after 300 s -> the test process's last 200 log lines to <tag>-hang.txt,
+          the Gradle tree killed, `am force-stop ch.monreleve.app` (our package only), exit 3.
+  FOREIGN a focused window other than ch.monreleve.app/*, the launcher, null or StatusBar -> its name recorded,
+          the Gradle tree killed HOST-SIDE ONLY, the phone untouched, exit 4.
+  CAP     30 minutes -> NO RESULT, exit 5.
+PROVEN at 08:24, with `ping -n 120 127.0.0.1` in place of Gradle (nothing built, installed or run on the phone):
+  HANG (HANG_MS=4000, FORCE_STOP=0, the planted log line above) -> "VERDICT HANG -
+    plantedHang(ch.monreleve.proof.Plant)"; the hang file carried exactly that line of pid 19741; taskkill ended
+    cmd 19144 and its child ping 26136 (tasklist: no PING.EXE left); exit 3.
+  FOREIGN (StatusBar disallowed; the phone dozing, focus StatusBar) -> "VERDICT FOREIGN WINDOW - StatusBar
+    (focused app ch.monreleve.app/.MainActivity); not answered, not dismissed" on the first poll; taskkill ended
+    cmd 27240 and ping 29180; exit 4.
+  POSITIVE: the real run - 9 started, 9 finished and paired, "VERDICT GRADLE EXITED 0", exit 0.
+Checked before relying on it: cmd.exe hands a comma-joined -P value to a .bat's %* intact (an echo .bat printed
+  "...class=ch.a.B,ch.a.C --console=plain"), and gradlew.bat forwards %* to the wrapper unchanged. (On this
+  machine NoDefaultCurrentDirectoryInExePath=1, so a .bat must be named by path - the watcher does.)
+xml-read.mjs prints the XML's suite attributes and every testcase's outcome (the table above).
+waitram.ps1 read free memory every 15 s until 1.5 GB twice in a row (08:21-08:40:57).
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. stay_on_while_plugged_in WRITTEN 7 for the run (read 0 before) and restored to 0 (read back) - not in the
+   brief's list. Every earlier device run did the same, and REPORT-AN-CALENDAR's deviation 3 is why: a
+   screen-off connected run is NO RESULT ("No compose hierarchies found").
+2. `input keyevent KEYCODE_WAKEUP` and `wm dismiss-keyguard` - the phone's own lock screen, read as focus StatusBar
+   over MainActivity while Dozing. I read that as the lock screen, not as the "system dialog" of the brief's
+   rule; after the two inputs the focus read the app. They are the same two inputs REPORT-IOS-2c sent.
+3. ONE LOG LINE was written to the phone's log (the planted TestRunner line) to prove the HANG bound.
+4. git was run from the main checkout before this worktree existed: `git fetch origin`, the setup line's `git
+   worktree add -b ios2c-device C:/wt/ios2c-device origin/ios2c`, and reads (worktree list, branch, log). That
+   checkout holds a .session-lock.json (session "frontier-work-7e [resumed]", "updated": "2026-10-21") saying "Do
+   not commit, reset or push main from another session"; nothing was committed, reset or pushed there. Every
+   later git command ran in C:/wt/ios2c-device.
+5. THE RESTORE MET A FOREIGN WINDOW and stopped on the brief's rule: the Play Protect window was not answered,
+   dismissed or covered, the install was not retried, the app was not launched. The install then completed by
+   itself (the log above). My one later action on the phone was reverting my own stay_on write, after which the
+   screen timed out; the log places the verification's end 60 s after that.
+6. The build waited 20 minutes for the 1.5 GB floor; nothing heavy ran below it.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- REPORT-IOS-2c, R793 (its "THE FINDING" paragraph) says the removal of the sheet "closes it on Android, where
+  CalendarSheetSaveInstrumentedTest covers it". The test covers the CONTENT's removal from its own host, not the
+  ModalBottomSheet's (WHAT IT SAYS ABOUT R793).
+- The main checkout's .session-lock.json (2026-10-21) describes a state main has since left (two local merges,
+  production at 878ec93); it reads as stale. Not touched.
+- On this S9, AGP's installs raised no Play Protect window and `adb install` of the as-found APK did (Finsky:
+  "upload_requested=true" for it, "=false" for the two debug APKs). IOS-2b-DEVICE's restore installed the same
+  APK with `adb install -r` after the same kind of run and recorded no such window.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (the phone) - The Play Protect window (com.android.vending/...PlayProtectDialogsActivity) is still on the S9,
+   behind the lock screen, unanswered; the brief forbids me to answer or dismiss it. The as-found APK is
+   installed regardless (sha256 d417d021...081034, a fresh install at 08:58:46, signed out by construction), but
+   the phone will show that window, not the Mon Releve welcome screen, when woken. Is it the operator's to
+   answer or close - and should the next device session launch the app only after that?
+Q2 (R793) - This run leaves the ModalBottomSheet container unseparated. A device test that composes
+   CalendrierScreen itself - the sheet open, an option chosen, Enregistrer, the sheet gone - would put the
+   container on Android's runtime record beside iOS's. It is a code change (androidTest), so not here: wanted as
+   part of UNNUMBERED-4's probe?
+
+================================================================================
+CLEANUP
+================================================================================
+- Gradle: ./gradlew --stop after the build ("1 Daemon stopped") and after the run ("1 Daemon stopped"); no
+  java.exe left (Win32_Process, 09:00).
+- No dev server was started; ports 3000/3100/3200 were not touched by this session.
+- adb: reverse never set (`adb reverse --list` empty); the install client returned by itself (exit 0); the only
+  adb.exe left is the pre-existing server (PID 21848). No ping.exe left from the proofs.
+- C:/wt/ios2c: read and copied from only (the as-found APK). `find C:/wt/ios2c/.ios2c-evidence -newer
+  <this session's lock>` and the same over C:/wt/ios2c to depth 2: EMPTY. No git command was run in it.
+- Not copied: web/.env (no server needed). Copied: android/local.properties (sdk.dir; gitignored, untracked).
+- The shared scratchpad: I created one file there (echo.bat, the argument check's first attempt) and removed it;
+  nothing else in it was written or removed. The check was then redone inside this session's evidence folder.
+- Evidence stays in C:/wt/ios2c-device/.ios2c-device-evidence/ (ignored). The worktree stays (R392). The lock
+  .session-lock.json is removed after the push.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2c-device only (never main, never production, never ios2c). This report is the only file the branch
+adds to origin/ios2c cc4933b; its push is recorded in the follow-up commit.
+
+END OF REPORT-IOS-2c-DEVICE
+
+PUSH PROOF, FOLLOW-UP: the report commit e9256c2 pushed - git push -u origin ios2c-device -> "* [new branch]
+ios2c-device -> ios2c-device"; git ls-remote origin -> refs/heads/ios2c-device
+e9256c212cdf7285a87469b14a3b887b584ed545. Untouched: refs/heads/ios2c cc4933bc23a7348447f33ae1e988f0be11631a9b,
+refs/heads/main 55258ed695e3de6eee5f591f4d9d14cccf6c642f, refs/heads/production
+52caca8cf6388cb596c9a074175756d16a867858.
+`git diff --stat abbed46 e9256c2` -> REPORT-IOS-2c-DEVICE.txt | 302 (new), REPORT-IOS-2c.txt | 524 - 2 files
+changed, 826 insertions(+): report-only.
+NO CI RUN: `gh run list --branch ios2c-device` -> nothing. Its control, `gh run list --workflow ios-shared.yml
+--branch ios2c --limit 3` -> 42142576248 (failure), 42140955492 (failure), 42135274188 (cancelled), all
+workflow_dispatch - the listing works and names the IOS-2c runs. ios-shared.yml's push trigger is branches
+'ios-*' with paths-ignore 'REPORT-*.txt'; ios2c-device matches neither the branch pattern nor a non-REPORT path.
+THE PHONE, final read 09:04:36Z (non-screen): adb get-state device; mCurrentFocus StatusBar, mFocusedApp
+com.android.vending/com.google.android.finsky.protectdialogs.activity.PlayProtectDialogsActivity (t2138);
+`pm path ch.monreleve.app` -> one base.apk, on-device sha256
+d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034; mWakefulness=Dozing, Display OFF;
+stay_on_while_plugged_in 0; adb reverse empty.
+Not pushed: main, production, ios2c. The lock .session-lock.json is removed after this push.

@@ -62,6 +62,8 @@ private val PATH =
         // the screens
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/AujourdhuiScreen.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/MovingRate.kt",
+        // IOS-2c R789: the Releve screen moved to :shared commonMain (path follows the file).
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/releve/ReleveSections.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/ForecastController.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/ForecastState.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionScreen.kt",
@@ -69,7 +71,6 @@ private val PATH =
         "src/main/kotlin/ch/monreleve/app/forecast/SimulationController.kt",
         "src/main/kotlin/ch/monreleve/app/forecast/SimulationState.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/simulation/SimulationCard.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/releve/ReleveSections.kt",
         "src/main/kotlin/ch/monreleve/app/parametres/DeviceRate.kt",
         "src/main/kotlin/ch/monreleve/app/parametres/ParametresController.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresRateChange.kt",

@@ -21,17 +21,15 @@ import ch.monreleve.app.dossier.LatenessForecast
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.toChoice
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.toKotlinLocalDate
-import java.time.Clock
-import java.time.LocalDate
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.toKotlinInstant
 
 // AN10. The calendar screen's controller (SPEC 11.3). It lives OUTSIDE ui/ (fence 5): it holds the
 // repository, the settings and the clock, and it OWNS the translation between the stored rows and the
@@ -150,11 +148,15 @@ data class CalendarSnapshot(
  * stores it in the saved-instance-state Bundle, which survives a config change AND a background kill (C2).
  * Null means "not selecting"; a present snapshot means selection mode is on, with these days and this anchor.
  * The confirmation's two conditional lines are NOT stored - they are re-derived from the days on restore (R181).
+ *
+ * IOS-2c R788: the supertype is PlatformSerializable - on Android an actual typealias of java.io.Serializable, so the
+ * same class with the same computed serialVersionUID (measured equal before and after the move) and the same Bundle
+ * bytes; on iOS an empty marker (an iOS host restores the selection its own way, or not at all).
  */
 data class SelectionSnapshot(
     val days: List<String>,
     val anchor: String?,
-) : java.io.Serializable
+) : PlatformSerializable
 
 // AN-STATE: the restore seed is a seventh constructor parameter, over detekt's list threshold. These ARE the
 // controller's dependencies plus the one restorable seed; bundling them into a holder would only move the list
@@ -170,6 +172,9 @@ class CalendarController(
     // until the app was restarted (REPORT-KMP-4 NOTICED 1). Every use below asks the store at that moment.
     private val settingsStore: SettingsStore,
     private val taxYear: Int,
+    // IOS-2c R787: the clock seam is kotlin.time.Clock (an instant source; the Paris day is computed from it, not from
+    // a device zone). :app's java.time callers reach this through JavaTimeCalendar.kt's factory, named like the class.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     private val scope: CoroutineScope,
     // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
@@ -179,6 +184,7 @@ class CalendarController(
     // via pendingEditingDay, reopens the edit sheet on the day it was open on - once the rows have loaded.
     restored: CalendarSnapshot? = null,
 ) : DayWriter {
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private val today: String = todayInParis(clock)
     private var entries: List<EntryEntity> = emptyList()
 
@@ -214,14 +220,11 @@ class CalendarController(
         return month.coerceIn(firstNavMonth(loaded, taxYear), LAST_MONTH)
     }
 
+    // IOS-2c R787: the date work is CalendarDates.openingMonth, extracted from here unchanged.
+
     /** Open on the current month, clamped into the navigable range (a partial year starts mid-year). */
-    private fun initialMonth(): Int {
-        val loaded = settingsStore.load() ?: return LocalDate.parse(today).monthValue
-        val first = firstNavMonth(loaded, taxYear)
-        val parsed = LocalDate.parse(today)
-        val current = if (parsed.year == taxYear) parsed.monthValue else first
-        return current.coerceIn(first, LAST_MONTH)
-    }
+    private fun initialMonth(): Int =
+        openingMonth(today, taxYear, settingsStore.load()?.let { firstNavMonth(it, taxYear) })
 
     fun goPreviousMonth() {
         if (mutableState.value.monthView?.canGoPrev == true) {
@@ -297,13 +300,14 @@ class CalendarController(
      * already stored and the clock (the late count follows R286). Nothing is written yet - confirmBulk does that.
      * Absent carries its reason, chosen once for all the days.
      */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     fun chooseBulk(
         kind: RecordedKind,
         absence: AbsenceChoice?,
     ) {
         val sel = mutableState.value.selection
         if (!sel.active || sel.days.isEmpty()) return
-        val confirmation = bulkConfirmation(sel.days, entries, kind, absence, clock.instant())
+        val confirmation = bulkConfirmation(sel.days, entries, kind, absence, clock.now())
         mutableState.update { it.copy(bulkConfirmation = confirmation) }
     }
 
@@ -404,7 +408,7 @@ class CalendarController(
         closeSheet()
     }
 
-    @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private fun editableDay(isoDate: String): EditableDay {
         val rows = entries.filter { it.dayDate == isoDate }
         val held = rows.map { it.portion }
@@ -421,11 +425,8 @@ class CalendarController(
             alreadyLate = slots.any { it.late },
             // The prediction (R216): would recording this backdated day now cross the threshold? True of
             // the day's age, whether or not a row exists yet - so the warning shows before the first save.
-            wouldBeLate =
-                LatenessForecast.wouldBeLate(
-                    LocalDate.parse(isoDate).toKotlinLocalDate(),
-                    clock.instant().toKotlinInstant(),
-                ),
+            // IOS-2c R787: CalendarDates.wouldBeLateOn - this line extracted unchanged, shared with bulkConfirmation.
+            wouldBeLate = wouldBeLateOn(isoDate, clock.now()),
             lateThresholdDays = LatenessForecast.BACKFILL_DAYS,
         )
     }
