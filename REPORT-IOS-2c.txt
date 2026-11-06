@@ -513,3 +513,12 @@ R786-R795 re-grepped before this push: only relay/IOS-2c.txt (main checkout) and
 recorded in the follow-up commit.
 
 END OF REPORT-IOS-2c
+
+PUSH PROOF, FOLLOW-UP: the report commit a954404 pushed - git push origin ios2c -> "abbed46..a954404 ios2c ->
+ios2c"; git ls-remote origin refs/heads/ios2c -> a954404f4745a120e518ea6334204322b0d0ccad; `git diff --stat abbed46
+a954404` -> REPORT-IOS-2c.txt only (515 insertions). gh run list --workflow ios-shared.yml --branch ios2c ->
+42135274188 (f561d65, cancelled), 42140955492 (0216025, failure), 42142576248 (abbed46, failure), all
+workflow_dispatch. Not pushed: main, production.
+CLEANUP: ./gradlew --stop after the last gate ("1 Daemon stopped"); no dev server was started; adb reverse was
+never set (empty); the phone was not touched after the two inputs in R786. Lock .session-lock.json removed after
+this push. Evidence stays in C:/wt/ios2c/.ios2c-evidence/ (ignored). The worktree C:/wt/ios2c stays (R392).
