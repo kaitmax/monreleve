@@ -58,7 +58,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import platform.darwin.DISPATCH_TIME_NOW
 import platform.darwin.NSEC_PER_SEC
-import platform.darwin.QOS_CLASS_DEFAULT
 import platform.darwin.dispatch_after
 import platform.darwin.dispatch_get_global_queue
 import platform.darwin.dispatch_time
@@ -290,7 +289,8 @@ private fun watched(
     mark("started")
     dispatch_after(
         dispatch_time(DISPATCH_TIME_NOW, WATCHDOG_SECONDS * NSEC_PER_SEC.toLong()),
-        dispatch_get_global_queue(QOS_CLASS_DEFAULT.toLong(), 0u),
+        // 0 = the default-priority global queue (Apple's documented dispatch_get_global_queue(0, 0)).
+        dispatch_get_global_queue(0L, 0u),
     ) {
         if (Progress.generation == generation && !Progress.done) {
             println("R793 WATCHDOG: $test HUNG after ${WATCHDOG_SECONDS}s - last step reached: ${Progress.step}")
