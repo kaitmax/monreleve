@@ -290,6 +290,8 @@ CLEANUP
 - C:/wt/ios2c: read and copied from only (the as-found APK). `find C:/wt/ios2c/.ios2c-evidence -newer
   <this session's lock>` and the same over C:/wt/ios2c to depth 2: EMPTY. No git command was run in it.
 - Not copied: web/.env (no server needed). Copied: android/local.properties (sdk.dir; gitignored, untracked).
+- The shared scratchpad: I created one file there (echo.bat, the argument check's first attempt) and removed it;
+  nothing else in it was written or removed. The check was then redone inside this session's evidence folder.
 - Evidence stays in C:/wt/ios2c-device/.ios2c-device-evidence/ (ignored). The worktree stays (R392). The lock
   .session-lock.json is removed after the push.
 
@@ -300,3 +302,21 @@ Branch ios2c-device only (never main, never production, never ios2c). This repor
 adds to origin/ios2c cc4933b; its push is recorded in the follow-up commit.
 
 END OF REPORT-IOS-2c-DEVICE
+
+PUSH PROOF, FOLLOW-UP: the report commit e9256c2 pushed - git push -u origin ios2c-device -> "* [new branch]
+ios2c-device -> ios2c-device"; git ls-remote origin -> refs/heads/ios2c-device
+e9256c212cdf7285a87469b14a3b887b584ed545. Untouched: refs/heads/ios2c cc4933bc23a7348447f33ae1e988f0be11631a9b,
+refs/heads/main 55258ed695e3de6eee5f591f4d9d14cccf6c642f, refs/heads/production
+52caca8cf6388cb596c9a074175756d16a867858.
+`git diff --stat abbed46 e9256c2` -> REPORT-IOS-2c-DEVICE.txt | 302 (new), REPORT-IOS-2c.txt | 524 - 2 files
+changed, 826 insertions(+): report-only.
+NO CI RUN: `gh run list --branch ios2c-device` -> nothing. Its control, `gh run list --workflow ios-shared.yml
+--branch ios2c --limit 3` -> 42142576248 (failure), 42140955492 (failure), 42135274188 (cancelled), all
+workflow_dispatch - the listing works and names the IOS-2c runs. ios-shared.yml's push trigger is branches
+'ios-*' with paths-ignore 'REPORT-*.txt'; ios2c-device matches neither the branch pattern nor a non-REPORT path.
+THE PHONE, final read 09:04:36Z (non-screen): adb get-state device; mCurrentFocus StatusBar, mFocusedApp
+com.android.vending/com.google.android.finsky.protectdialogs.activity.PlayProtectDialogsActivity (t2138);
+`pm path ch.monreleve.app` -> one base.apk, on-device sha256
+d417d0210819aab14aebfaf7089a25c5dc143403d2348b1be34ed6182a081034; mWakefulness=Dozing, Display OFF;
+stay_on_while_plugged_in 0; adb reverse empty.
+Not pushed: main, production, ios2c. The lock .session-lock.json is removed after this push.
