@@ -2,7 +2,6 @@ package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.EntryEntity
-import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
@@ -19,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toKotlinDayOfWeek
 import java.time.Clock
 import java.time.DayOfWeek
 
@@ -37,8 +35,7 @@ import java.time.DayOfWeek
 //
 // R28: the clock is the one seam for "today"; the dossier layer stays clock-free (today is a parameter).
 
-private val WEEKDAYS =
-    listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+// IOS-2d R813: the weekday list, availableWeekdays and the extra-weekday change moved unchanged to ForecastDays.kt.
 private const val MIN_RATE = 1
 private const val MAX_RATE = 100
 
@@ -158,7 +155,7 @@ class SimulationController(
         when (scenario) {
             SimScenario.EXTRA_WEEKDAY -> {
                 val day = inputs.extraWeekday ?: available.firstOrNull()
-                if (day != null) SimChange.ExtraWeekday(day.toKotlinDayOfWeek()) else SimChange.ExtraMonthDays(0)
+                extraWeekdayChange(day)
             }
             SimScenario.EXTRA_MONTH_DAYS ->
                 SimChange.ExtraMonthDays(inputs.extraMonthDays.toIntOrNull()?.coerceAtLeast(0) ?: 0)
@@ -172,12 +169,6 @@ class SimulationController(
                     inputs.missionsThird.toIntOrNull()?.coerceAtLeast(0) ?: 0,
                 )
         }
-}
-
-/** The weekdays that are not already a home day - the only ones "one more day at home" can add. */
-private fun availableWeekdays(rhythm: WeeklyRhythm): List<DayOfWeek> {
-    val kinds = rhythm.toEntryKindMap()
-    return WEEKDAYS.filter { kinds[it.toKotlinDayOfWeek()] != EntryKind.HOME }
 }
 
 /** Seed the effective weekday (first available) and the rate (the current one) so no field starts empty. */

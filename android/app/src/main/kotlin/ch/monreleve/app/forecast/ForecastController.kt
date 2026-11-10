@@ -128,39 +128,7 @@ class ForecastController(
     }
 }
 
-private fun RhythmChoice.toKind(): RhythmKind =
-    when (this) {
-        RhythmChoice.SUISSE -> RhythmKind.SUISSE
-        RhythmChoice.DOMICILE -> RhythmKind.DOMICILE
-    }
-
-private fun RhythmKind.toChoice(): RhythmChoice =
-    when (this) {
-        RhythmKind.SUISSE -> RhythmChoice.SUISSE
-        RhythmKind.DOMICILE -> RhythmChoice.DOMICILE
-    }
-
-private fun WeeklyRhythm.withDay(
-    day: DayOfWeek,
-    kind: RhythmKind,
-): WeeklyRhythm =
-    when (day) {
-        DayOfWeek.MONDAY -> copy(monday = kind)
-        DayOfWeek.TUESDAY -> copy(tuesday = kind)
-        DayOfWeek.WEDNESDAY -> copy(wednesday = kind)
-        DayOfWeek.THURSDAY -> copy(thursday = kind)
-        DayOfWeek.FRIDAY -> copy(friday = kind)
-        else -> this
-    }
-
-private fun WeeklyRhythm.toChoiceMap(): Map<DayOfWeek, RhythmChoice> =
-    buildMap {
-        monday?.let { put(DayOfWeek.MONDAY, it.toChoice()) }
-        tuesday?.let { put(DayOfWeek.TUESDAY, it.toChoice()) }
-        wednesday?.let { put(DayOfWeek.WEDNESDAY, it.toChoice()) }
-        thursday?.let { put(DayOfWeek.THURSDAY, it.toChoice()) }
-        friday?.let { put(DayOfWeek.FRIDAY, it.toChoice()) }
-    }
+// IOS-2d R813: withDay and toChoiceMap moved unchanged to ForecastDays.kt, the RhythmChoice mapping to RhythmChoice.kt.
 
 private fun WeeklyRhythm.domicileIndices(): List<Int> {
     val days = listOf(monday, tuesday, wednesday, thursday, friday)

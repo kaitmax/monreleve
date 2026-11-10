@@ -12,10 +12,7 @@ import java.time.DayOfWeek
 // THE SCREEN SPEAKS UI VOCABULARY ONLY. RhythmChoice (not data.local.RhythmKind) is what the Rythme screen
 // toggles and what onSetDay carries - the same discipline AujourdhuiScreen keeps with RecordedKind, so the
 // ui/ repository-only fence (no data.local) holds and the wire enum never reaches a composable. The
-// controller maps RhythmChoice to RhythmKind.
-
-/** A weekday's rhythm, in the screen's vocabulary. Absent from [ForecastState.rhythmDays] = not set. */
-enum class RhythmChoice { SUISSE, DOMICILE }
+// controller maps RhythmChoice to RhythmKind. IOS-2d R813: both live in RhythmChoice.kt.
 
 data class ForecastState(
     /** Monday..Friday, each SUISSE/DOMICILE or absent (not set). Empty the first time (nothing preselected). */

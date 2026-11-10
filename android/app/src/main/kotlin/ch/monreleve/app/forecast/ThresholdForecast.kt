@@ -8,8 +8,7 @@ import ch.monreleve.app.dossier.forecastResults
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.ThresholdCrossing
 import ch.monreleve.app.settings.toAggregatableUser
-import kotlinx.datetime.toKotlinLocalDate
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 // AN-ALERT (R340, R281, R28). The forecast's threshold CROSSING, computed in memory from the EXISTING engine -
 // never UI arithmetic (FW12). projectedThresholdCrossing runs the SAME shared aggregation + engine path the
@@ -59,7 +58,7 @@ fun projectedThresholdCrossing(
             settings.toAggregatableUser(),
             recorded,
             rhythm.toEntryKindMap(),
-            today.toKotlinLocalDate(),
+            today,
             taxYear,
         ) ?: return null
     val rules = ruleSetFor(taxYear)
