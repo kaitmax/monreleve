@@ -1,0 +1,215 @@
+IOS-2c SESSION PROMPT - Mon Releve
+RELEVE AND CALENDRIER BECOME SHARED: THEIR CONTROLLERS AND THEIR SCREENS
+(no Apple account, no S9 comparison)
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared. Uses the iOS cloud workflow (one dispatched run).
+Written by the orchestrating session on 2026-11-05, after IOS-2b merged as
+b0d14fa (Ruling 10 in relay/RULINGS-2026-11-03-MOBILE.txt). The advisor
+rules in the operator's place (the operator's words: "Advisor rules, I'm
+not waited for").
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2c.txt,
+committed and pushed. Unclear? R156: conservative, reversible, a PARK
+entry (UNNUMBERED-n in the report), continue. Ends early: R156's
+boundary; a red gate you cannot fix; a path reaching a real person; a
+degraded context. R334, R349, R392: your OWN worktree at C:/wt/ios2c,
+branch ios2c, your lock in it. Stage BY NAME. READ before writing. R391
+governs STATUS: the FULL :app:gate --rerun-tasks AND one iOS cloud run
+(R573) on the reported CODE tip, with `git diff --stat <code tip> HEAD`
+shown report-only. R393's guard is live. ABSENCE NEEDS A POSITIVE
+CONTROL. Push your BRANCH only - never main, never production.
+
+THE BRANCH NAME IS DELIBERATE: `ios2c` does not match the workflow's
+`ios-*` push trigger. Dispatch the iOS run yourself, ONCE on the code tip
+(`gh workflow run ios-shared.yml --ref ios2c`), plus at most one earlier
+run if a commonMain compile question cannot wait. Zero steps = NO
+RESULT: stop and say so (funding is the operator's).
+
+RULING NUMBERS: R786-R795 below. Before committing any, run
+`grep -rE '\bR7(8[6-9]|9[0-5])\b' relay/ REPORT-*.txt CLAUDE.md docs`
+and renumber if any is taken (R162).
+
+BASE: origin/main at or after 55258ed (IOS-2b merged as b0d14fa; :app:gate
+1392/181 and iOS run 41823078576 green on its code 282426a).
+
+THE MACHINE: start a heavy step only with >= 1.5 GB free, read in its OWN
+step, after `./gradlew --stop`; one heavy step at a time. A killed run is
+NO RESULT, re-run once; two in a row -> stop and hand back. Ports 3000,
+3100 and 3200 belong to another project (tizicorp): never touch them.
+Never run test:db against the shared `frontalier` database.
+
+====================================================================
+THE OPERATOR'S DECISION ON THE DEVICE, recorded here as R786
+====================================================================
+R786. NO S9 COMPARISON IN THIS TASK. The per-step phone comparison was
+    stopped twice in IOS-2b by physical key presses; the operator chose to
+    merge onboarding without it (Ruling 10) and then, offered "plan the
+    next one without the phone ... rely on the screenshot tests and the
+    iOS simulator", answered "continue". So: NO screen reading, NO
+    screenshot comparison on the device.
+    THE INSTRUMENTED TESTS STILL RUN, because they are the only proof
+    that exercises the calendar sheet on a real device:
+    CalendarSheetSaveInstrumentedTest and ProvenanceShownInstrumentedTest
+    (and the whole connectedDebugAndroidTest if that is simpler), against
+    the tip, -PfrontalierHost=127.0.0.1, counts from the XML. Before: the
+    S9 must show the as-found APK (sha256 d417d021...) SIGNED OUT on the
+    welcome screen - if another account is signed in, report it and skip
+    the run (Ruling 9). connectedAndroidTest uninstalls the app:
+    authorised; reinstall the as-found APK after and show its sha256.
+    NEVER answer or dismiss anything outside the app (a system or Play
+    Protect dialog): record it and skip the run. If the S9 is not
+    attached, report the run as NOT RUN - never as passed. If the
+    permission system refuses anything: do not route around it; put the
+    exact command in the report and stop.
+
+R273. Read REPORT-IOS-2b.txt (R785's measurements of what is left;
+    R777/R778's pin-then-move), REPORT-IOS-1b-A (R602b/c: CheckWindows and
+    CalendarModel moved to kotlinx-datetime with a java.time factory left
+    in :app; ruling 14 icons; R604 fences; R606), Ruling 9 and 10, the
+    files below, and every fence that reads ui/.
+R1. PRECONDITION, or stop before the first change: origin/main contains
+    b0d14fa.
+
+THE FILES (measured by the orchestrator; verify):
+  releve:     app/releve/ReleveController.kt, ReleveView.kt;
+              app/ui/screens/releve/ReleveActions.kt, ReleveHeader.kt,
+              ReleveScreen.kt, ReleveSections.kt.
+              No java.*, no android.* found in these files. The HOST
+              (share/export of the dossier, its fetch) is platform and
+              STAYS in :app.
+  calendrier: app/calendar/CalendarController.kt (java.time Clock,
+              LocalDate), BulkConfirmation.kt (java.time Instant,
+              LocalDate); app/ui/screens/calendrier/BulkConfirmationDialog,
+              CalendarActions, CalendarEditSheet, CalendarList,
+              CalendarSheetProvenance, CalendrierScreen, CompleteCard,
+              SelectionActionPanel, SummaryTile.
+              CalendrierScreen imports
+              androidx.compose.material.icons...KeyboardArrowLeft/Right
+              (Material icons; see R791) and Material3 ModalBottomSheet.
+  Already shared: calendar/CalendarModel.kt,
+              ui/screens/calendrier/SharedWithAujourdhui.kt, dossier/*.
+
+HARD BOUNDARIES:
+  - ANDROID IS PIXEL-IDENTICAL: all Paparazzi baselines verify at zero
+    (R626) with NONE re-recorded (`git diff --stat <base>..<tip> --
+    android/app/src/test/snapshots` empty) - the 25 releve/calendrier
+    baselines and every other;
+  - Compose UI, instrumented and accessibility tests pass with their
+    ASSERTIONS UNEDITED (imports may change; say which);
+  - no behaviour change: the same requests in the same order, the same
+    errors, copy, dates, saves and sheet behaviour;
+  - no wire, server, schema or engine change; no copy change;
+  - no drawable moved (ruling 14); no navigation library;
+  - ANY dependency added to :shared, or any version change, STOPS and asks
+    with the trade-off (SPEC 20). kotlinx-datetime and cmp.material3 are
+    already :shared dependencies;
+  - MaterialDatePickerCanaryTest passes UNCHANGED;
+  - every other screen stays (comparison, prevision, simulation, rythme,
+    parametres, disclosure); no iOS app, Xcode project, signing or
+    TestFlight.
+
+====================================================================
+THE RULINGS
+====================================================================
+R787. THE CALENDAR'S DATES MOVE FIRST, PINNED (R777's shape).
+    CalendarController's and BulkConfirmation's java.time go to
+    kotlinx-datetime; the Clock becomes a commonMain seam with the
+    java.time factory left in :app (R602b/c's shape). FIRST vector tests
+    on the CURRENT code in :app's test scope, GREEN, then RED on a
+    VERIFIED plant (R180): month boundaries, 29 Feb 2024, 31 Dec -> 1 Jan,
+    a DST change day in Europe/Paris and Europe/Zurich, and any Instant
+    the bulk confirmation turns into a day. Then the swap, then the same
+    tests moved to commonTest UNEDITED and green. Its own commit.
+
+R788. THE CONTROLLERS MOVE SECOND, BEFORE ANY UI. CalendarController,
+    BulkConfirmation, ReleveController and ReleveView move to commonMain,
+    their existing tests (CalendarControllerTest, CalendarBulkWriteTest,
+    CalendarSaveWritesWhatChangedTest, CalendarSelectionTest,
+    BulkConfirmationTest, ReleveControllerTest, ReleveFreshTest,
+    ReleveViewTest) pinned and moved unedited the R768 way. Every
+    collaborator that needs an Android Context goes behind a commonMain
+    interface, Android implementation left in :app; an iOS implementation
+    only if small and dependency-free, otherwise deferred with the
+    reason. No java.* or android.* in commonMain. Its own commit (or one
+    per controller - say which).
+
+R789. RELEVE'S SCREEN MOVES. ReleveActions, ReleveHeader, ReleveScreen,
+    ReleveSections to commonMain. The share/export and dossier fetch stay
+    in :app's host, reached through ReleveActions as today. Its own
+    commit.
+
+R790. CALENDRIER'S SCREEN MOVES. The nine ui/screens/calendrier files to
+    commonMain, after R791 is settled. Its own commit.
+
+R791. THE MATERIAL ICONS AND THE BOTTOM SHEET - MEASURE BEFORE MOVING.
+    (1) Can commonMain import Icons.AutoMirrored.Filled.KeyboardArrowLeft
+    and ...Right with NO dependency change (i.e. does :shared's existing
+    cmp.material3 already bring material-icons-core to commonMain and to
+    iOS)? Prove it by compiling, not by reading a POM. If YES, keep them
+    unedited. If NO: STOP and ask, with the options and their costs - for
+    example adding the icons artefact (a SPEC 20 dependency), or the
+    ruling-14 Glyph seam (only acceptable if Paparazzi stays at 0.0, which
+    a different vector rarely does). Do not choose.
+    (2) Material3 ModalBottomSheet, AlertDialog, Checkbox and
+    OutlinedTextField in commonMain: confirm each links on iOS in the one
+    iOS run (R624's lesson: the DatePicker compiled and then threw
+    IrLinkageError at runtime - so the iOS UI test in R793 must OPEN the
+    sheet and the dialog, not only compose the screen).
+
+R792. FENCES. Every fence that read ui/screens/releve and
+    ui/screens/calendrier reads the new home (FenceRoot). The
+    no-inline-string fence, the tokens-only fence and CommonMainFenceTest
+    each shown RED once on a VERIFIED plant in the moved screens (R180),
+    then deleted.
+
+R793. iOS COMPILES AND DRIVES THEM. The one dispatched run builds the
+    shared screens for the simulator, runs commonTest for the moved
+    controllers and the R787 vectors, and runs Compose UI tests on iOS
+    over fakes: Releve shown with a fixture dossier; Calendrier shown,
+    a day opened in the edit sheet, a change saved, the bulk confirmation
+    dialog opened and confirmed. No server, no account, no real address.
+    Name any linkage error in full; it is a finding, not a flake.
+
+R794. ANDROID IS THE PROOF. Paparazzi at zero, none re-recorded; every
+    releve/calendrier JVM and Compose UI test green with assertions
+    unedited; R786's instrumented run; the release APK size before and
+    after in bytes, with the reason for any change.
+
+R795. WHAT IOS-1b-B AND THE NEXT MOVE NEED. Update REPORT-IOS-2b's R784
+    list (entry points now including Releve and Calendrier; their hosts;
+    every iOS piece still missing - the dossier share/export on iOS among
+    them) and R785's list of what is left, with any blocker found here.
+    Do not choose.
+
+====================================================================
+THE WORK
+====================================================================
+0. R273, R1.  1. R787 dates. Commit.  2. R788 controllers. Commit(s).
+3. R789 Releve screen. Commit.  4. R791 measured; then R790 Calendrier
+screen, R792 fences. Commit.  5. R794 Android proof.  6. R793 (the one
+iOS run, on the code tip once the code is final).  7. R786's instrumented
+run on the S9.  8. R795. FULL :app:gate --rerun-tasks on the code tip
+(BUILD line and test counts pasted from the log). Push the branch.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+Every other screen. Any iOS share sheet or native piece. A shared
+navigation host. Navigation libraries. Any iOS app, Xcode project,
+signing, TestFlight. Moving drawables. Dark mode. Any behaviour or copy
+change. Any S9 screen reading or screenshot.
+
+====================================================================
+REPORT - REPORT-IOS-2c.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / R786 (instrumented run, phone
+before and after) / R787 (vectors, RED then GREEN, plant verified) / R788
+/ R789 / R790 / R791 (icons: measured; sheet and dialogs: linked on iOS)
+/ R792 (each fence red then green, plant verified) / R793 (run id, steps,
+the iOS UI tests) / R794 (baselines untouched, tests run, size) / R795 /
+CI MINUTES / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF IOS-2c PROMPT

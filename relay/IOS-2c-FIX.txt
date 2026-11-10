@@ -1,0 +1,139 @@
+IOS-2c-FIX SESSION PROMPT - Mon Releve
+THE CALENDAR SHEET'S SAVE, DRIVEN ON iOS THE WAY A USER REACHES IT
+(test-only; one iOS run that must be GREEN; no phone)
+Written by the orchestrating session on 2026-11-06 after REPORT-IOS-2c-PROBE
+(branch ios2c-probe, tip 7b0df23, code tip 64d9389; run 42202057374). The
+advisor rules in the operator's place.
+
+====================================================================
+WHAT THE PROBE ESTABLISHED (the premise of this task)
+====================================================================
+- NO PRODUCT HANG. In CMP 1.7.3 on iOS, SkikoComposeUiTest.waitUntil
+  NEVER THROWS (REPORT-IOS-2c-PROBE R800: ComposeUiTest.skikoMain.kt
+  289-304 builds the timeout message and drops it). A condition that stays
+  false is polled for ever. The orchestrator's PROBE brief said the
+  opposite ("known" item 2); that was the orchestrator's error, corrected
+  by the session.
+- The test's 1024 x 768 window shows the sheet PARTIALLY expanded (its
+  drag handle offers Expand), and the Save had NO area inside the window
+  (boundsInWindow = Rect.Zero). The tap did not reach the Save's onClick:
+  nothing was written, and the sheet closed by a dismiss path. abbed46's
+  "hang" is therefore inferred to be that false condition polled for
+  ever - this task's run turns that inference into a result or not.
+- Closed as remedies by 4a and 4b completing on iOS: hide()-then-remove
+  and the CMP upgrade. Open: this test-only change.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2c-FIX.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/ios2c-fix, NEW branch ios2c-fix cut from origin/ios2c-probe
+(7b0df23), your lock in it. You may run `git fetch` and `git worktree add`
+from the main checkout (its lock says so); nothing else there. Every other
+C:/wt/* is an earlier session's: READ and COPY only. Stage BY NAME. Push
+ios2c-fix ONLY. The branch name does not match `ios-*`.
+
+THE RUN BUDGET IS EXACTLY ONE dispatched iOS run on the code tip
+(`gh workflow run ios-shared.yml --ref ios2c-fix`). It must be GREEN: 0
+failures, every pilot class reached, the canary printing "still broken as
+expected". Red, lost, or zero steps -> STOP and hand back. A second run is
+NOT yours or your own advisor's to authorise.
+
+R391: the FULL :app:gate --rerun-tasks on the dispatched code tip, BUILD
+line and counts pasted (the fences read iosTest; the new fence is in
+:app). `git diff --stat <code tip> HEAD` report-only.
+
+THE MACHINE: heavy steps only with >= 1.5 GB free, read in its own step,
+after `./gradlew --stop`; one at a time. Ports 3000, 3100, 3200 are
+tizicorp's. No phone.
+
+RULING NUMBERS: R806-R811. Before committing any, run
+`grep -rE '\bR8(0[6-9]|1[01])\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+
+HARD BOUNDARIES: iosTest and :app's test scope only. commonMain, :app's
+main code, the workflow, every dependency and version: unchanged.
+Paparazzi 0 re-recorded (`git diff --stat 7b0df23..HEAD --
+android/app/src/test/snapshots` empty). No new @OptIn(ExperimentalTime)
+site (ExperimentalTimeOptInAllowlistTest pins this file at 1). No change
+to step1-step3's steps or assertions. The test window stays as it is
+(no phone-shaped window in this run - one variable at a time).
+
+====================================================================
+THE RULINGS
+====================================================================
+R806. STEP4 SAVES THROUGH THE PRODUCT'S REAL SAVE, REACHED AS A USER
+    REACHES IT. Open day 10's sheet; RECORD the Save's boundsInRoot and
+    boundsInWindow as found (the probe's Q1, answered in this run). Bring
+    the Save into the window the way a user would: the drag handle's
+    Expand custom accessibility action (deterministic; its label read
+    from the l10n source the probe located, never retyped) or a swipeUp
+    on the sheet - pick one and say why. Then ASSERT the Save is inside
+    the window (non-empty boundsInWindow, or assertIsDisplayed) BEFORE
+    tapping it - the guard that makes abbed46's failure impossible to
+    repeat silently. Choose En Suisse, tap Save, then (bounded, R807):
+    the sheet gone, exactly one command RecordCommand("2026-06-10",
+    EntryKind.CH, Portion.FULL), exactly one sync. Record the bounds
+    again after expansion.
+
+R807. A BOUNDED WAIT FOR THIS FILE. Lift the probe's pattern (the
+    condition itself expires at its bound, then the test fails with a
+    message naming the condition and the bound) into one helper in
+    iosTest. Every wait in CalendrierReleveScreensIosTest goes through
+    it. Its POSITIVE CONTROL runs in the same iOS run: a test that the
+    helper fails (assertFailsWith) on an always-false condition at a
+    short bound - a helper that never fails would pass every other test.
+
+R808. THE FENCE. A JVM test in :app's fences forbidding a raw
+    `waitUntil(` call under android/shared/src/iosTest except the
+    helper's own body, with the other pilot files on an ALLOWLIST
+    asserted at their exact counts (measured on 7b0df23:
+    OnboardingScreensIosTest 16, SignInScreensIosTest 6 - re-measure and
+    state). The ExperimentalTimeOptInAllowlistTest shape: a new file or a
+    higher count fails; a lower count fails too, so the list only shrinks
+    by being edited. RED once on a VERIFIED plant (R180), then deleted.
+    Do NOT convert the other pilot files in this task: bounding them
+    couples sign-in and onboarding timing to this merge, with no second
+    run. Their conversion is a later task's (PARKED).
+
+R809. WHAT STAYS, WHAT GOES. KEEP 4a (a scrim tap closes the sheet and
+    writes nothing - a real product promise; the app never records a day
+    by itself) as a plain behaviour test. DROP 4b (a programmatic close
+    is not a user path). STRIP the R802 instrumentation (recomposition
+    and snapshot counters, the idle probe, the dumps). KEEP the marks and
+    the watchdog as the backstop: performScrollTo's loop is unbounded
+    (R800), and nothing else bounds it.
+
+R810. THE RUN AND WHAT IT PROVES. One run on the code tip, GREEN, its
+    run id, every step's result, the test count, the step4 marks and the
+    recorded bounds pasted. If step4 saves on iOS, the report states it
+    as the RESULT that turns the probe's inference (abbed46's hang = a
+    false condition polled for ever) into a fact; it never states it more
+    strongly than the run shows.
+
+R811. WHAT IS LEFT, WRITTEN DOWN. R795's lists (REPORT-IOS-2c) updated
+    only if this task changes them, and PARKED: (a) the other pilot
+    files' waits; (b) "on a phone-sized screen, does the sheet open with
+    Save visible, or does the user drag up?" - no test on either platform
+    asks it; it is not a regression and belongs to IOS-1b-B's R615 check;
+    (c) an androidTest composing the sheet CONTAINER on the S9 (the
+    device report's Q2). Do not choose.
+
+====================================================================
+THE WORK
+====================================================================
+0. R1: origin/ios2c-probe is 7b0df23. Worktree, lock.  1. R807 helper and
+R809 clean-up; R806 step4. Commit.  2. R808 fence, red on a verified
+plant, then green. Commit.  3. FULL :app:gate --rerun-tasks on the code
+tip. Push.  4. The one iOS run (R810).  5. R811. Report.
+
+====================================================================
+REPORT - REPORT-IOS-2c-FIX.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R806 (bounds before and after, the path
+chosen) / R807 (helper, its positive control) / R808 (fence, plant
+verified, allowlist counts) / R809 / R810 (run id, steps, counts, marks)
+/ R811 / CI MINUTES / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF IOS-2c-FIX PROMPT

@@ -1,0 +1,178 @@
+IOS-2c-PROBE SESSION PROMPT - Mon Releve
+WHERE DOES THE CALENDAR SHEET'S SAVE HANG ON iOS? (one diagnostic iOS run;
+no fix, no product change, no phone)
+Written by the orchestrating session on 2026-11-06 after REPORT-IOS-2c
+(NOT COMPLETE: iOS run 42142576248 on abbed46 failed - step4's Save in the
+shared ModalBottomSheet did not return within the 120 s watchdog) and
+REPORT-IOS-2c-DEVICE (R786: CalendarSheetSaveInstrumentedTest and
+ProvenanceShownInstrumentedTest 9/9 on the S9 against abbed46). The
+advisor rules in the operator's place.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2c-PROBE.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry in the report, continue. R334, R349, R392: your OWN
+worktree at C:/wt/ios2c-probe, NEW branch ios2c-probe cut from
+origin/ios2c-device (6815297 - it carries IOS-2c's code tip abbed46 and
+both reports, so the eventual single merge carries everything), your lock
+in it. You may run `git fetch` and `git worktree add` from the main
+checkout (its lock says so); nothing else there. C:/wt/ios2c and
+C:/wt/ios2c-device belong to earlier sessions: READ and COPY only. Stage
+BY NAME. Push ios2c-probe ONLY - never main, never production, never
+ios2c or ios2c-device. The branch name does not match `ios-*`: pushes
+trigger nothing.
+
+THE RUN BUDGET IS EXACTLY ONE dispatched iOS run
+(`gh workflow run ios-shared.yml --ref ios2c-probe`). It is NOT yours or
+your advisor's to raise: IOS-2c spent three where it was allowed two, on
+its own advisor's say-so. If the one run is lost (a compile error, zero
+steps, a runner failure), STOP and hand back - a second run comes back to
+the orchestrator. Zero steps = NO RESULT (funding is the operator's).
+
+R391: the FULL :app:gate --rerun-tasks on the code tip you dispatch, with
+its BUILD line and test counts pasted - the fences read iosTest (REPORT-
+IOS-2c UNNUMBERED-1: the experimental opt-in allowlist counts the iOS
+test), so an iosTest-only change is not exempt. Show
+`git diff --stat <code tip> HEAD` report-only. The iOS run is EXPECTED to
+end red (variant c hangs by design); STATUS says so in R391's shape - it
+is a diagnostic, never reported as green.
+
+THE MACHINE: heavy steps only with >= 1.5 GB free, read in its own step,
+after `./gradlew --stop`; one at a time. Ports 3000, 3100, 3200 are
+tizicorp's. No phone in this task.
+
+RULING NUMBERS: R800-R805 below (R796-R799 were reserved by
+relay/IOS-2c-DEVICE.txt and are unused). Before committing any, run
+`grep -rE '\bR80[0-5]\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+
+====================================================================
+WHAT IS ALREADY KNOWN (do not re-prove)
+====================================================================
+- abbed46's step4 (android/shared/src/iosTest/.../pilot/
+  CalendrierReleveScreensIosTest.kt) opens the sheet (day 10), composes
+  its OutlinedTextField, taps En Suisse (last mark: "SUISSE chosen;
+  saving"), taps Enregistrer, then waitUntil(10 s) {sheet gone && one
+  command recorded}.
+- A condition that never becomes true throws ComposeTimeoutException at
+  10 s. The watchdog fired at 120 s. So the hang is inside a wait that
+  honours NO timeout - an idle-wait (performClick's, waitUntil's own
+  trailing one, or one inside a semantics fetch) - not a false condition.
+- CalendarController.save() launches the write on `scope` and calls
+  closeSheet() synchronously. step3 (the bulk AlertDialog) wrote three
+  days and synced once through the SAME scope and passed, so the write
+  path is not the suspect. What is new in step4: an EXPANDED Material3
+  ModalBottomSheet removed from composition (editing = null) in the same
+  frame as a click inside its own layer, without hide().
+- On Android (S9, R786) the moved sheet CONTENT and the controller's save
+  run at runtime: 9/9. No test on main or on the branch composes the
+  ModalBottomSheet CONTAINER on a device (REPORT-IOS-2c said the
+  instrumented test "covers" its removal; REPORT-IOS-2c-DEVICE corrected
+  that: it covers the content's removal only).
+
+====================================================================
+THE RULINGS
+====================================================================
+R800. READ BEFORE PROBING. From CMP 1.7.3's iOS ComposeUiTest source (the
+    resolved artefact in the Gradle cache, or the tagged source on
+    GitHub), list which of performClick / performTouchInput, waitUntil,
+    onAllNodes...fetchSemanticsNodes and assertion helpers call
+    waitForIdle, and what waitForIdle's loop waits on (pending snapshot
+    changes, scene invalidations, pending measure/layout, coroutine
+    dispatcher tasks, the frame clock). Quote the lines with their file
+    and tag. Also find Material3 1.7.3's ModalBottomSheet scrim: its
+    click action and the localised "close sheet" content description the
+    test can match (read it from the source or from fr strings the
+    library resolves - never retype a guess). This is what makes the
+    marks below land on both sides of every idle-wait.
+
+R801. THE DIAGNOSTIC TEST - THREE VARIANTS, ONE RUN, ORDERED SO THE FIRST
+    HANG STILL LEAVES AN ANSWER. The watchdog kills the process, so only
+    variants that run before the first hang report. In a NEW iosTest
+    class (or step4 split - say which), each variant with its own
+    watchdog (lower it to 60 s per variant) and marks on BOTH sides of
+    every call that can idle-wait:
+      (a) open the sheet, then tap the SCRIM (Material3's own path:
+          animated hide(), then onDismissRequest -> controller.closeSheet).
+          Expect: sheet gone, nothing written.
+      (b) open the sheet, then call controller.closeSheet() directly
+          (from runOnIdle or the equivalent the R800 reading shows is
+          safe): ABRUPT removal of an expanded sheet, NO click inside its
+          layer. Expect: sheet gone, nothing written.
+      (c) abbed46's step4 unchanged in its steps (En Suisse, Enregistrer),
+          LAST, with the dump of R802.
+    The variants run in that order; the class runs BEFORE every other
+    pilot class only if that keeps the canary and the earlier classes
+    reachable - otherwise say what will not be reached and why. abbed46's
+    step1-step3 stay as they are.
+
+R802. THE WATCHDOG'S DUMP, before exitProcess, for whichever variant
+    hangs: (1) a flag set on the line after each tap returns; (2)
+    repository.recorded; (3) syncs.count; (4) controller.state.value
+    .editing == null; (5) a recomposition counter (a SideEffect in the
+    test host) sampled at half the watchdog time AND at the fire - rising
+    means the scene is perpetually invalidated (an animation or
+    recomposition loop that would burn frames in a real app too), flat
+    means the idle check is stuck on something static (harness-side);
+    (6) if the R800 reading shows a cheap public way to read what
+    waitForIdle is waiting on (pending snapshot changes, invalidations,
+    measure/layout), print it. A thread-stack capture (sample / lldb from
+    a workflow step) is OPTIONAL, strictly additive, and needs a workflow
+    edit and the watchdog to pause before exiting: do it only if you
+    judge it safe for every other branch's runs; otherwise skip it and
+    say why. Never print a code, token or address (R574).
+
+R803. WHAT THE RESULT MEANS - REPORT FACTS, NOT A VERDICT. The report
+    states which row the run produced and quotes the marks and the dump:
+      a hangs           -> disposing the sheet's layer hangs the test
+                           even after Material3's own animated hide
+                           (CMP / harness side);
+      a passes, b hangs -> abrupt removal of a visible sheet is the
+                           trigger - product-relevant, because the
+                           product does exactly that;
+      a, b pass, c hangs -> a click inside the layer plus removal in the
+                           same frame (pointer input on a disposed layer);
+      all pass          -> the hang did not reproduce: say what differs
+                           from abbed46's step4, line by line.
+    Combine with R802(5): rising vs flat. Do NOT choose a fix.
+
+R804. NO FIX AND NO PRODUCT CHANGE. commonMain, :app, the workflow (except
+    R802's optional additive step), every dependency and version: as at
+    abbed46. The live routes the orchestrator will rule between after
+    this report, for the report's own discussion only: hide() then
+    remove in the shared CalendrierScreen (a behaviour change on Android:
+    the sheet would slide away rather than vanish - a ruling); the parked
+    CMP upgrade (SPEC 20 ask-first; IOS-1b-A UNNUMBERED-8); a test-only
+    change (acceptable ONLY if the test still saves through the product's
+    real Save path and asserts the same three facts); iOS without the
+    sheet until fixed (the operator's decision). Say which routes the
+    result closes.
+
+R805. ANDROID STAYS PROVEN. Paparazzi 0 re-recorded
+    (`git diff --stat 6815297..HEAD -- android/app/src/test/snapshots`
+    empty), the full :app:gate green on the dispatched tip, every fence
+    that reads iosTest red once on a VERIFIED plant only if you add a
+    class those fences have not seen before (R180) - otherwise say
+    which fences read it and that they ran green.
+
+====================================================================
+THE WORK
+====================================================================
+0. R1: origin/ios2c-device is 6815297 and contains abbed46. Worktree,
+   lock.  1. R800 read, quoted.  2. R801/R802 test written; :shared's
+   iOS test sources compile-checked as far as Windows can (the metadata
+   compile; the Mac is the real check - which is why R800's reading
+   matters).  3. FULL :app:gate --rerun-tasks on the code tip. Commit,
+   push.  4. The one iOS run on that tip; its run id, every step's
+   result, every MARK and dump line pasted.  5. R803's row. Report.
+
+====================================================================
+REPORT - REPORT-IOS-2c-PROBE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R800 (the source lines) / R801 (the variants as
+written) / R802-R803 (run id, steps, marks, dump, the row) / R804 (routes
+closed or still open) / R805 / CI MINUTES / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF IOS-2c-PROBE PROMPT

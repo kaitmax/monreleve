@@ -269,3 +269,118 @@ OUTCOME (IOS-2b)
   GATE:CLONE PASSED, first run.
 - relay/ rescanned for R776-R785: only IOS-2b.txt, IOS-2b-DEVICE.txt and
   this file. main pushed 5022714..b0d14fa. production untouched (52caca8).
+
+RULING 11 - THE ADVISOR'S, in the operator's place (IOS-2c, branch ios2c
+cc4933b; IOS-2c-DEVICE, ios2c-device 6815297; IOS-2c-PROBE, ios2c-probe
+7b0df23; IOS-2c-FIX, ios2c-fix d1017d8; all on 55258ed)
+- IOS-2c ended NOT COMPLETE: iOS run 42142576248 on abbed46 failed in
+  step4 (the calendar sheet's Save, 120 s watchdog), and R786's S9 run
+  was NOT RUN because the permission system refused the precondition
+  screen read ([PII Data Handling]); the session did not route around it.
+  Not merged: R573 needs a green iOS run on the commit that becomes main.
+- R786's precondition was then the operator's word, given by eye: "I
+  looked: signed out". IOS-2c-DEVICE ran CalendarSheetSaveInstrumentedTest
+  and ProvenanceShownInstrumentedTest on the S9 against abbed46: 9/9, no
+  hang (XML read by the orchestrator). The app, shared commonMain,
+  androidMain and iosMain sources of abbed46 and of the merged code tip
+  9433c4e are identical (git diff empty), so that run stands for the
+  merged code.
+- CORRECTION carried from REPORT-IOS-2c-DEVICE: those two classes compose
+  the sheet CONTENT, never the Material3 ModalBottomSheet CONTAINER. No
+  test on main or the branch composes the container on a device.
+  REPORT-IOS-2c said the instrumented test "covers" its removal; it does
+  not.
+- IOS-2c-PROBE (one run, 42202057374, red by design) found NO PRODUCT
+  HANG. In CMP 1.7.3 on iOS SkikoComposeUiTest.waitUntil never throws
+  (ComposeUiTest.skikoMain.kt 289-304), so a false condition is polled
+  for ever. In the test's 1024 x 768 window the sheet opens PARTIALLY
+  expanded with Save entirely off-window; the tap dismissed the sheet and
+  wrote nothing. The PROBE brief stated the opposite of the waitUntil
+  fact ("known" item 2); that error was the ORCHESTRATOR'S, corrected by
+  the session. Closed as remedies by 4a and 4b completing on iOS:
+  hide()-then-remove and the CMP upgrade.
+- IOS-2c-FIX (test-only; one run, 42292101917, GREEN on 9433c4e): step4c
+  expands the sheet through its handle's Expand action, asserts the tap
+  point is inside the window, saves exactly RecordCommand("2026-06-10",
+  CH, FULL) with one sync. abbed46's hang = that false condition polled
+  for ever is now a result for the code; that run 42142576248 itself took
+  that path remains an inference (it recorded nothing after its last
+  mark). Every wait in CalendrierReleveScreensIosTest is bounded
+  (waitBounded, positive control BoundedWaitIosTest); the fence
+  IosTestRawWaitUntilFenceTest allowlists Onboarding 16 and SignIn 6.
+- Accepted as recorded, FIX DEVIATION 2: a compile-only Windows check
+  overrode R575's enableKlibsCrossCompilation=false on the command line
+  (no file changed). It is compile evidence only; no later session may
+  cite it as a link or run result. The Mac run is the proof.
+- COST, stated once for the operator: IOS-2c dispatched three runs where
+  its brief allowed two (about 48 billed macOS minutes; runs 2 and 3 were
+  sanctioned by that session's own advisor, not by the orchestrator or
+  the operator), the probe about 8, the fix about 10: about 66 minutes
+  for this screen pair against about 10 for a one-run task. Every brief
+  since says the run budget is the orchestrator's alone.
+- The phone: each reinstall of the as-found APK by adb raises Google Play
+  Protect's sideload-scan window. It is the operator's to answer or
+  close, every time; sessions never touch it. It is expected, not a
+  defect. As-found APK d417d021...081034 installed, signed out by
+  construction (fresh install), not launched.
+- The main checkout's .session-lock.json was this orchestrator session's
+  own and described 2026-10-21; it was rewritten to the current state,
+  and now says a launched session may run git fetch and git worktree add
+  from there when its brief says so (IOS-2c-DEVICE had recorded that as a
+  deviation).
+- PARKED, none chosen: (a) the raw waits in OnboardingScreensIosTest and
+  SignInScreensIosTest, held by the fence's allowlist until a later task
+  converts them; (b) whether a phone-sized screen opens the sheet with
+  Save visible or needs a drag up - no test on either platform asks it,
+  not a regression, IOS-1b-B's R615 check; (c) an androidTest composing
+  the sheet container on the S9. Whether the edit sheet ships on iOS is
+  the operator's call, not ruled here.
+- Record, do not act: C:/wt/ios2c, ios2c-device, ios2c-probe and
+  ios2c-fix hold ignored evidence (R334); all four stay (R392).
+
+OUTCOME (IOS-2c)
+- Merged as 7afda5e (--no-ff, of ios2c-fix d1017d8). Identity proven on
+  7afda5e: whole tree equal to d1017d8's (diff empty); main had not moved
+  (base 55258ed), so R573's run 42292101917 on 9433c4e and the full
+  :app:gate on 9433c4e carry to the merge by identity. No iOS re-run.
+- gate:clone alone on exactly 7afda5e was RED FOUR TIMES before it
+  passed, every time a TIMEOUT, never an assertion:
+    run 1  pnpm test     HomeCounter.test.tsx, the R711 slider sweep,
+                         300 000 ms
+    run 2  pnpm test:db  privacy-claims.test.ts, CLAIM 1, beforeEach
+                         10 000 ms
+    run 3  pnpm test     HomeCounter.test.tsx, the same sweep, 300 000 ms
+    run 4  pnpm test:db  reminder-job.test.ts, "holds when two runs
+                         overlap", 10 000 ms (run at the operator's "Run
+                         it now anyway")
+  Free memory was 0.4-1.8 GB across them, with Docker's WSL VM at 5.8-6.8
+  GB holding six PostgreSQL containers and tizicorp-app. web/ is
+  unchanged since 55258ed, which passed.
+- 2026-11-07 and 2026-11-08: NOT RUN. Measured, not assumed: tizicorp-app
+  held 31-132 % CPU over five samples and host CPU read 37-100 %, so the
+  timeouts were contention, not memory alone. The orchestrator's own
+  2.5 GB line (set while memory was the suspect) was amended openly in the
+  lock, never silently; run 5 was then refused anyway because free memory
+  fell to 1.32 GB, under the project's 1.5 GB floor, when the tizicorp
+  containers came back up.
+- 2026-11-10, the operator: "run this now and close any other container
+  that consume memory". The orchestrator ran `docker stop` - stop only,
+  no rm, no volume touched - on tizicorp-app-1, tizicorp-postgres-1,
+  counterworthy-postgres, mustapha-postgres and zagora-postgres-1;
+  frontalier-postgres kept (gate:clone's scratch database lives there).
+  They stay stopped; `docker start` on those five names restores them,
+  and that is the operator's to do.
+- Run 5, free memory 1.71 GB read in its own step after `gradlew --stop`,
+  CPU 10-32 %: GATE:CLONE PASSED on 7afda5e (register-coverage,
+  fixture-coverage, install, typecheck, lint, test, build, size,
+  db:deploy, test:db, test:container:write). No timeout was raised and no
+  test was changed to get there; the four red runs stand in this record.
+- relay/ rescanned for R786-R811: only IOS-2c.txt, IOS-2c-DEVICE.txt,
+  IOS-2c-PROBE.txt, IOS-2c-FIX.txt, their four reports and this file.
+  main pushed 55258ed..7afda5e. production untouched (52caca8).
+- NOTICED BUT NOT TOUCHING: (1) the HomeCounter R711 sweep takes about
+  206 s on its own against a 300 s timeout - two thirds of its bound on a
+  quiet machine, which is why contention tips it over; (2) test:db's
+  10 s test and hook timeouts against Docker PostgreSQL tip over the same
+  way. Neither is fixed by loosening; a faster sweep without less coverage
+  is a candidate web task, not taken.

@@ -1,0 +1,81 @@
+IOS-2c-DEVICE SESSION PROMPT - Mon Releve
+THE S9 HALF OF IOS-2c: R786's INSTRUMENTED RUN. No code change, no iOS run.
+Written by the orchestrating session on 2026-11-06 after REPORT-IOS-2c
+(branch ios2c, tip cc4933b, code tip abbed46) ended NOT COMPLETE: the iOS
+run 42142576248 failed on the calendar sheet's Save (R793, UNNUMBERED-4),
+and R786's run was NOT RUN because the permission system refused the
+precondition screen read (Q2).
+
+WHY THIS RUN COMES FIRST: the shared sheet's Save path has not yet run at
+runtime on EITHER platform. Paparazzi does not tap and the JVM tests do not
+compose the sheet. CalendarSheetSaveInstrumentedTest on the S9 against
+abbed46 tells the two cases apart for zero macOS minutes: it passes -> the
+iOS hang is iOS- or harness-side; it hangs or fails -> the move broke the
+save path. Either answer is the RESULT; neither is to be fixed here.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2c-DEVICE.txt,
+committed and pushed. R334, R349, R392: your OWN worktree at
+C:/wt/ios2c-device, NEW branch ios2c-device cut from origin/ios2c
+(cc4933b), your lock in it. C:/wt/ios2c belongs to the previous session:
+READ and COPY from C:/wt/ios2c/.ios2c-evidence/ (the as-found APK is
+as-found-installed-base.apk there - verify its sha256 before use), never
+modify or remove anything there. Stage BY NAME. Push ios2c-device ONLY -
+never main, never production, never ios2c.
+
+NO CODE CHANGE, NO iOS RUN. If you find a reason to change code or to
+dispatch an iOS run, STOP and report: run budgets come back to the
+orchestrator, not to any advisor of this session. STATUS in R391's shape,
+naming abbed46 as where the full :app:gate ran (green, 1392/200) and
+showing `git diff --stat abbed46 HEAD` report-only. No new rulings are
+expected; if one is needed use R796-R799 after
+`grep -rE '\bR79[6-9]\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+
+THE MACHINE: heavy steps only with >= 1.5 GB free, read in its own step,
+after `./gradlew --stop`. Ports 3000, 3100, 3200 are tizicorp's: never
+touch. adb: %LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe, S9 id
+232bcd8c300c7ece; in Git Bash set MSYS_NO_PATHCONV=1.
+
+====================================================================
+THE PRECONDITION - THE OPERATOR'S WORD, recorded verbatim
+====================================================================
+On 2026-11-06 (~08:08Z) the operator, asked whether the S9 shows the Mon
+Releve welcome screen signed out, answered: "I looked: signed out". That
+is the precondition Ruling 9 needs. NO SCREEN READING in this session (no
+uiautomator dump, no screenshot). Non-screen reads are fine and are
+recorded: installed APK sha256, `dumpsys window` focus, adb devices.
+If the focused window is NOT ch.monreleve.app (a system or Play Protect
+dialog, another app), NEVER answer or dismiss it: record the window name
+and stop. If the S9 is not attached: NOT RUN, never passed.
+
+====================================================================
+THE WORK
+====================================================================
+0. Record the phone (non-screen reads above).
+1. Run CalendarSheetSaveInstrumentedTest and ProvenanceShownInstrumentedTest
+   on the S9 against abbed46's code (connectedDebugAndroidTest filtered to
+   the two classes; add -PfrontalierHost=127.0.0.1 and a local stack only
+   if they need a server - say which). connectedAndroidTest uninstalls the
+   app: authorised. Counts and each test's result from the XML. Bound the
+   run: a test that does not finish in 5 minutes is a HANG - record it as
+   such, with the last logcat lines from the test process, and stop the
+   run; do not retry it more than once.
+2. If both pass, run the same two classes on main (55258ed) only if (1)
+   showed anything other than a clean pass - otherwise main's run is not
+   needed. Say which.
+3. Restore: the as-found APK reinstalled (sha256 shown d417d021...081034),
+   adb reverse removed, any dev server stopped and its port shown free,
+   Gradle stopped, lock removed. A freshly installed app is signed out by
+   construction; say so rather than reading the screen.
+
+====================================================================
+REPORT - REPORT-IOS-2c-DEVICE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / PHONE BEFORE AND AFTER / THE RUN (classes,
+counts, per-test result, duration; HANG evidence if any) / WHAT IT SAYS
+ABOUT R793 (product vs iOS/harness, said no more strongly than the result
+supports) / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF IOS-2c-DEVICE PROMPT
