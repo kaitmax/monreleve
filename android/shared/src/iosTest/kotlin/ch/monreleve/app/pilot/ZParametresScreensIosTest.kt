@@ -522,7 +522,9 @@ class ZParametresScreensIosTest {
                 expandTheSheet("the date sheet")
                 assertTrue(!shows(FAKE_PICKER_PICK), "the picker slot is not composed until it is asked for")
                 tapInsideTheWindow("the date sheet's pick button", pickButton())
-                waitMarked("the fake picker shown with no initial day") { shows(FAKE_PICKER_PICK) }
+                waitMarked("the fake picker shown, its initial value recorded") {
+                    shows(FAKE_PICKER_PICK) && held.pickerInitials.size == 1
+                }
                 assertEquals(listOf<String?>(null), held.pickerInitials, "an empty field hands the slot null")
                 tapInsideTheWindow("the fake's pick", hasText(FAKE_PICKER_PICK) and hasClickAction())
                 waitMarked("the pick landed in the field") {
@@ -539,7 +541,9 @@ class ZParametresScreensIosTest {
                 waitMarked("the date sheet open again") { count(pickButton()) == 1 }
                 expandTheSheet("the date sheet, again")
                 tapInsideTheWindow("the pick button again", pickButton())
-                waitMarked("the fake picker shown with the saved day") { shows(FAKE_PICKER_INITIAL + PICKED_DAY) }
+                waitMarked("the fake picker shown with the saved day, recorded") {
+                    shows(FAKE_PICKER_INITIAL + PICKED_DAY) && held.pickerInitials.size == 2
+                }
                 assertEquals(listOf<String?>(null, PICKED_DAY), held.pickerInitials, "handed the current day")
                 tapInsideTheWindow("the fake's cancel", hasText(FAKE_PICKER_CANCEL) and hasClickAction())
                 waitMarked("the fake picker closed, the day unchanged") {
