@@ -1,0 +1,433 @@
+REPORT-FW-CHROMIUM-PIN-2
+========================
+
+Queue step C1b (Queue Ruling 2), run under Queue Ruling 3 for its memory
+precondition. Branch fw-chromium-pin-2, worktree C:/wt/fw-chromium-pin-2
+(lock written at start, gitignored), cut from origin/main
+bf2b77b64023755fde2425b13ce60166768eb164. Code commit
+8559d89cec2426e4678738140e85d7fc8d5657a1, pushed; this report is the commit
+on top of it. Evidence: C:/wt/fw-chromium-pin-2/.pin2-evidence/ (gitignored),
+one log and one 10 s sampler file per heavy step.
+
+SUMMARY
+-------
+Debian no longer offers chromium 156.0.8078.73-1~deb12u1. The pin moves to
+156.0.8078.79-1~deb12u1, the newest build in bookworm-security at
+2026-11-11 18:06 UTC, same major. One line of web/Dockerfile changed.
+
+- gate:changed is green. Its test:container installed the new Chromium
+  from the archive, not from cache ("#12 DONE 132.0s").
+- gate:clone PASSED on 8559d89.
+- The image's Chromium 156.0.8078.79 rendered the annual dossier: 9 pages,
+  162 997 bytes, 9 passed in the fallback run (R854).
+- test:visual: 168 passed, no baseline moved.
+- Start-to-first-healthy: 2.31 s, 2.29 s and 2.33 s.
+
+test:container:e2e stopped before its PDF step again, at
+e2e/home.spec.ts:197 (352 passed, 1 failed). The fallback the prompt names
+then ran.
+
+Host memory never reached the prompt's 1.5 GB floor in 85 minutes of
+waiting. Queue Ruling 3 replaced that floor with commit free >= 5 000 MB
+before each heavy step, plus a 10 s sampler that kills the step below
+2 000 MB. The minimums each run reached are under MEMORY.
+
+STATUS (R391)
+-------------
+COMPLETE for the web gate this task owns. gate:clone PASSED on 8559d89, the
+code tip, in this session: exit 0, verdict lines below. That commit is the
+pushed tip of the change (PUSH PROOF).
+
+The report commit on top changes only REPORT-FW-CHROMIUM-PIN-2.txt. It ran
+under gate:changed (base chain) and register-coverage, NOT under gate:clone,
+following FW-READY-GATE's precedent and the prompt's step order (report
+after gate:clone).
+
+No Android code changed, so no :app:gate applies.
+
+gate:clone on 8559d89, pasted from .pin2-evidence/gate-clone-1.log:
+
+  GATE:CLONE PASSED
+
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  8559d89cec2426e4678738140e85d7fc8d5657a1
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-LYZESU (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+  STEP_EXIT=0 ABORTED=False
+
+The "ran" line equals FW-READY-GATE's last green on ef88fa3 step for step.
+gate:clone keeps only each step's last 14 lines, and vitest's stderr follows
+its stdout, so the unit-test COUNT is not in that log. The step did pass its
+own check (/Test Files\s+\d+ passed/ against the stripped output, exit 0).
+The count 3 622 comes from gate:changed on the identical tree (below), which
+is also the last green's count.
+
+test:db named its two skips as in every earlier run: [export-pdf] and
+[verification-qr] "the render tests did not run - no server answered".
+
+The hold's caveat ("Chromium layer from cache; a cold build fails R249") no
+longer describes this commit. The .79 layer was built from the archive by
+gate:changed at about 18:10 UTC; later builds, the clone's included, may
+have taken it from cache. A cold build of 8559d89 installs a version the
+archive offers today.
+
+R852 - RED FIRST, FROM TODAY'S ARCHIVE
+--------------------------------------
+1. `apt-cache madison chromium` in node:22-bookworm-slim
+   (sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9),
+   2026-11-11T18:06:22Z, apt-get update exit=0:
+
+     chromium | 156.0.8078.79-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+     chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+
+2. R249's refusal on BASE_SHA bf2b77b, on a clean tree, at
+   2026-11-11T18:06:42Z:
+
+     docker build --progress=plain --target runner --no-cache-filter runner \
+       --build-arg NEXT_PUBLIC_SITE_URL=https://container-check.example .
+
+   BUILD_EXIT=1. The deps and builder stages were CACHED. The runner's
+   chromium step (#14) ran, because --no-cache-filter reads past the cache
+   without deleting it. Its step-prefixed lines:
+
+     #14 6.958 E: Version '156.0.8078.73-1~deb12u1' for 'chromium' was not found
+     #14 6.960 R249: chromium 156.0.8078.73-1~deb12u1 is not installable from this archive.
+     #14 6.960       WHY THIS HAPPENS ON A COMMIT THAT TOUCHED NOTHING. Debian keeps
+     #14 6.960       only the NEWEST point release in bookworm-security, so the day a
+     #14 6.960       new Chromium ships the pinned one leaves the mirror and every
+     #14 6.960       build begins failing - including deploys of commits that built
+     #14 6.960       yesterday. Nothing in this repository changed.
+     #14 6.960       Versions the archive offers right now:
+     #14 7.557   chromium | 156.0.8078.79-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+     #14 7.557   chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+     #14 7.560       TO FIX, set ARG CHROMIUM_VERSION in web/Dockerfile to the newest
+     #14 7.560       bookworm-security version above and commit it. That ARG is the
+     #14 7.560       one source of truth: no deployment overrides it (docs/deploy.md).
+
+R853 - THE PIN
+--------------
+web/Dockerfile:65, the one line, in commit 8559d89:
+  - ARG CHROMIUM_VERSION=156.0.8078.73-1~deb12u1
+  + ARG CHROMIUM_VERSION=156.0.8078.79-1~deb12u1
+
+The major is the same (156), so this is not a STOP. Before the edit,
+`git grep 8078 -- web docs` found only this line and the comment at
+Dockerfile:255 (see NOTICED). No test transcribes the version:
+container-check reads it from the running image.
+
+gate:changed exited 0. It started at 2026-11-11T18:07:28Z with 3 118 MB
+free physical, under the old floor, before Queue Ruling 3, so no sampler ran:
+
+  gate selection (R132):
+    1 path(s) matched:
+      web/Dockerfile  ->  the container, and what decides whether it serves (R251)
+    suites: typecheck, lint, test, build, test:container
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3622 passed
+      build: exit 0 (no count to check)
+      test:container: 22 passed
+  GATE PASSED for the paths changed.
+
+test:container's own lines:
+  #12 [runner  3/12] RUN ... "chromium=156.0.8078.79-1~deb12u1" ...
+  #12 DONE 132.0s                     (executed, not CACHED)
+  pinned at build : 156.0.8078.79-1~deb12u1
+  live --version  : Chromium 156.0.8078.79 built on Debian GNU/Linux 12 (bookworm)
+  ok    the binary is the pinned build (156.0.8078.79)
+  ok    curl present (R845)
+  probing the pin guard: all five checks ok
+  Container checks  22 passed (22)
+
+R854 - THE PDF, RENDERED BY THE IMAGE'S CHROMIUM
+------------------------------------------------
+1. `pnpm test:container:e2e` with FRONTALIER_PORT=3137 and
+   CONTAINER_IMAGE=monreleve:pin2-e2e, 2026-11-11T20:09:00Z, exit 1
+   (.pin2-evidence/container-e2e-2.log):
+
+     /api/health names: monreleve (status ok)
+     --- pnpm test:e2e against the container: 27 spec files ---
+     Running 353 tests using 4 workers
+       1) [chromium] > e2e\home.spec.ts:168:1 > /api/ready is 200 and ready when the process is not marked as serving
+          Error: expect(received).toBeNull()   Received: true
+          > 197 |   expect(database?.ok).toBeNull();
+       1 failed
+       352 passed (1.2m)
+     CONTAINER E2E FAILED: pnpm test:e2e exited 1 against the container
+
+   This is the same deterministic stop as REPORT-FW-CHROMIUM-PIN.txt
+   item 4. The harness never reaches its auth round trip or its PDF step.
+   home.spec.ts was not edited.
+
+2. The fallback: the two vitest files the harness would have run, against
+   a container of the NEW image (sha256:0ed5d9e9a90b..., built by step 1),
+   with the environment from the harness's "THE AUTH ROUND TRIP" block.
+   Started 2026-11-11T20:11:24Z, script .pin2-evidence/r854-fallback.sh,
+   log r854-fallback-1.log. Commands, with secrets elided:
+
+     DATABASE_URL=postgresql://frontalier:***@localhost:5436/monreleve_pin2_scratch?schema=public \
+       node node_modules/prisma/build/index.js migrate deploy
+     docker run -d --name monreleve-pin2-pdf --add-host host.docker.internal:host-gateway \
+       -p 3137:3000 -e DATABASE_URL=postgresql://frontalier:***@host.docker.internal:5436/monreleve_pin2_scratch?schema=public \
+       -e AUTH_SECRET=*** -e NEXT_PUBLIC_SITE_URL=https://monreleve.example \
+       -e FRONTALIER_INSTANCE_ID=pin2-pdf-807a324839e4059e monreleve:pin2-e2e
+     env -u FRONTALIER_CHROMIUM_PATH DATABASE_URL=<the scratch url above> \
+       CONTAINER_BASE_URL=http://127.0.0.1:3137 FRONTALIER_INSTANCE_ID=pin2-pdf-807a324839e4059e \
+       AUTH_SECRET=*** NO_COLOR=1 \
+       node node_modules/vitest/vitest.mjs run --config vitest.db.config.ts --reporter=verbose \
+         tests/db/container-auth.test.ts tests/db/container-pdf.test.ts
+
+   AUTH_SECRET was the harness's own non-deployment value, the same on both
+   sides.
+
+   The renderer inside that container (docker exec):
+     pin file: 156.0.8078.79-1~deb12u1
+     binary:   Chromium 156.0.8078.79 built on Debian GNU/Linux 12 (bookworm)
+     FRONTALIER_CHROMIUM_PATH=/usr/bin/chromium
+
+   /api/health:
+     {"service":"monreleve","instance":"pin2-pdf-807a324839e4059e","status":"ok",...,"runtime":true}
+
+   vitest, verbose:
+     ok tests/db/container-pdf.test.ts > R249: the PDF, in the image and here > the IMAGE renders a real PDF, with its own Chromium 2930ms
+     [pdf] image: 162997 bytes, 9 pages; here: 197462 bytes, 9 pages
+     ok tests/db/container-pdf.test.ts > R249: the PDF, in the image and here > BOTH renderers produce a document, and their difference is the finding 2373ms
+     (and the seven container-auth.test.ts tests, all ok)
+      Test Files  2 passed (2)
+           Tests  9 passed (9)
+     VITEST_EXIT=0
+
+   R133: the pass count is NON-ZERO (9), and both PDF tests are among the
+   passes by name. The image's render and this machine's Playwright render
+   agree on 9 pages, and their size ratio is 0.83.
+
+R855 - BASELINES AND THE START-TO-HEALTHY TIMES
+-----------------------------------------------
+1. `pnpm test:visual` (the gate did not select it), 2026-11-11T20:12:02Z,
+   exit 0 (.pin2-evidence/visual-1.log):
+
+     photographed: 8559d89 plus 1 uncommitted path(s) - the baselines below are of THAT tree, not of 8559d89
+     168 passed (2.4m)
+     visual suite: 168 passed
+
+   No baseline moved, so nothing was regenerated and `git status` stayed
+   clean. The uncommitted path was this report's draft, at the repository
+   root, outside web/.
+
+2. Start to first passing probe. ONE container of the new image
+   (monreleve-pin2-health, the image of R854; environment as in R854, no
+   published port; HEALTHCHECK as built: interval 10s, timeout 5s,
+   start period 60s, start interval 2s, retries 3) was started three times
+   with `docker start`. Each time, `docker inspect` was read as soon as
+   .State.Health.Status was "healthy", then the container was stopped.
+   Script: .pin2-evidence/health-starts.mjs; raw states in
+   health-start-{1,2,3}.json.
+
+   LABEL: NOT COMPARABLE with C1's measurements (Queue Ruling 3): the host
+   had been paging during this session.
+
+     start 1  StartedAt 2026-11-11T20:25:24.019424637Z
+              first pass 20:25:26.154498919Z -> 20:25:26.331779098Z exit 0
+              StartedAt -> end of first passing probe: 2.312 s
+              RAM before start: commit free 8 399 MB, free physical 2 550 MB
+              RAM at healthy:   commit free 8 430 MB, free physical 2 536 MB
+     start 2  StartedAt 2026-11-11T20:25:27.784457391Z
+              first pass 20:25:29.898039647Z -> 20:25:30.072224202Z exit 0
+              StartedAt -> end of first passing probe: 2.288 s
+              RAM before start: commit free 8 433 MB, free physical 2 540 MB
+              RAM at healthy:   commit free 8 380 MB, free physical 2 525 MB
+     start 3  StartedAt 2026-11-11T20:25:31.586849427Z
+              first pass 20:25:33.773271141Z -> 20:25:33.919709703Z exit 0
+              StartedAt -> end of first passing probe: 2.333 s
+              RAM before start: commit free 8 383 MB, free physical 2 537 MB
+              RAM at healthy:   commit free 8 385 MB, free physical 2 537 MB
+
+   What this measures:
+   - Each time, the FIRST probe of the start passed, about 2.1 s after
+     StartedAt. That is the --start-interval=2s tick, so the figure
+     measures the probe schedule. The server itself was ready sooner: the
+     R854 container of the same image logged "Ready in 453ms".
+   - .State.Health.Log SURVIVES `docker start`: starts 2 and 3 still
+     carried 1 and 2 entries from earlier starts. Only entries whose Start
+     is at or after StartedAt were counted.
+   - These were taken when the host had recovered to about 2.5 GB free
+     physical.
+
+MEMORY (QUEUE RULING 3) - THE READINGS THAT REPLACE THE 1.5 GB FLOOR
+--------------------------------------------------------------------
+Before Queue Ruling 3:
+- Free physical: 3 235 MB before the RED build, 3 118 MB before
+  gate:changed, 914 MB right after it.
+- Three waits read it every 30 s, from 18:16 to 19:54 UTC: 60 reads, then
+  110 (min 338 MB, max 1 011 MB), then 11. It never reached 1.5 GB.
+- At 19:45 UTC: AvailableMBytes 496, committed 25 848 MB of 16 195 MB
+  physical. vmmemWSL had grown from 2 491 MB to 4 900 MB. Inside the VM
+  (/proc/meminfo, unprivileged container): Cached 4 595 100 kB, Buffers
+  542 884 kB, MemAvailable 6 314 216 kB.
+
+Under Queue Ruling 3 there was one heavy step at a time. Commit free
+((Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory/1024) was read
+in its own step before each one, and a 10 s sampler ran during each
+(.pin2-evidence/run-sampled.ps1). The sampler's abort threshold was
+commit free < 2 000 MB; no step was aborted.
+
+  step                          precondition   min commit free   min free phys   samples  result
+  gate:clone (8559d89)           6 492 MB        4 589 MB          261 MB          69      PASSED, exit 0
+  test:container:e2e (run 1)     6 675 MB        6 555 MB        1 422 MB           1      NO RESULT - my invocation, see DEVIATIONS 2
+  test:container:e2e (run 2)     7 011 MB        4 966 MB          359 MB           9      exit 1 at home.spec.ts:197 (352/353)
+  R854 fallback                  6 935 MB        6 465 MB        1 830 MB           2      9 passed
+  test:visual                    6 759 MB        5 456 MB          219 MB          74      168 passed
+  R855 three starts              8 632 MB        8 454 MB        2 562 MB           2      3 x healthy
+
+The lowest commit free over every heavy step was 4 589 MB (gate:clone). The
+lowest free physical was 219 MB (test:visual). No worker died, no step
+timed out, and no "fetch failed" appeared.
+
+The sampler reads every 10 s, so a shorter dip between two reads is not
+seen. These are the minimums of the samples taken, not true minimums.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+- e2e/home.spec.ts:197. "/api/ready is 200 and ready when the process is
+  not marked as serving" asserts database.ok === null. Against the image
+  (FRONTALIER_RUNTIME=1) R355's database check IS evaluated and returns
+  true. So test:container:e2e fails on every commit and never reaches its
+  auth round trip or its PDF step.
+  container-e2e.mjs already excludes the sibling spec by title
+  (NON_SERVING_TITLE, the /api/health one) and does not exclude this one.
+  REPORT-FW-CHROMIUM-PIN.txt QUESTION 1 asked whether this is its own
+  task; it was never ruled.
+
+- THE CADENCE. The pin has broken twice in nine days:
+    .47 -> .73   FW-CHROMIUM-PIN, RED measured 2026-11-02
+    .73 -> .79   this task; C1 measured .73 gone on 2026-11-11
+  Debian keeps only the newest point release in bookworm-security. Each
+  new Chromium build there turns every uncached build into the R249
+  refusal until a one-line commit lands.
+  The options, NOT chosen here:
+    (a) keep the exact pin and bump it on each release. That is the current
+        practice: a renderer change is always a commit, at the cost of a
+        build outage between Debian's release and the bump.
+    (b) a scheduled read-only check (`apt-cache madison` against the ARG)
+        that announces the drift before a deploy meets it, keeping (a).
+    (c) install the pinned .deb from snapshot.debian.org. The version
+        stays installable, but security fixes arrive only when someone
+        bumps it.
+    (d) a base image with Chromium preinstalled, built once and referenced
+        by digest. Stable and fast, but it needs a registry and its own
+        refresh process.
+    (e) verify the major only and record the resolved version in the image.
+        This relaxes R249's "the browser cannot move without a commit".
+    (f) render with Playwright's own Chromium, pinned through the lockfile
+        (playwright-core), instead of Debian's package. The pin moves into
+        the lockfile, at the cost of image size and of R229's packaging
+        decision.
+
+- web/Dockerfile:253-260, R845's comment, now reads stale. It says the
+  archive "has 156.0.8078.79" while the pin is .73, and "When the pin IS
+  bumped, curl can move into that layer". The pin is now bumped; curl
+  stays in its own layer. The hard boundary allowed only the ARG line.
+
+- docs/deploy.md:190-193 gives the same reason for curl's separate layer
+  ("on 2026-11-11 Debian no longer offered the pinned Chromium, so that
+  layer builds only from a warm cache"). That is no longer true of the
+  pinned version.
+
+- web/scripts/container-check.mjs:254, a comment, still illustrates the
+  version format with 153.0.8010.52. It is illustrative and asserts
+  nothing.
+
+- The harnesses' fixed tags. test:container rebuilt monreleve:fw28
+  (1765697f32de -> c0a7659d734f), and gate:clone's test:container:write
+  rebuilt monreleve:write (93b1217cd50a -> 78fc23316a21). On this daemon's
+  image store the previous images are then gone: `docker image inspect` on
+  both old ids says "No such image". Every gate run does this to the
+  previous session's images. Nothing was pruned.
+  `docker buildx du --verbose` lists four chromium-layer cache records.
+  Their description shows ${CHROMIUM_VERSION} unexpanded, so whether the
+  .73 layer is still among them was NOT established.
+
+- C:/Users/KAMXKAM/AppData/Local/Temp/monreleve-clone-mZYHvm exists and is
+  not this session's (this session's clone, monreleve-clone-LYZESU, was
+  removed by gate:clone). Left alone.
+
+PARKED
+------
+None.
+
+DEVIATIONS
+----------
+1. THE MEMORY FLOOR. The prompt's ">= 1.5 GB free" was not met after
+   gate:changed, and 85 minutes of waiting did not bring it back. I asked
+   the orchestrator. Queue Ruling 3 replaced the floor with commit free
+   >= 5 000 MB before each heavy step, plus the 2 000 MB sampler abort.
+   Everything after gate:changed ran under that ruling (table above).
+   Nothing that the HOLDS forbid was done: no privileged container, no
+   tunables, no memory-pressure trick, no Docker or WSL restart, no prune.
+
+2. PowerShell 5.1 stripped the double quotes from my
+   `set "VAR=value" && ...` when passing the command to the nested
+   powershell.exe runner.
+   - test:container:e2e run 1 therefore got
+     CONTAINER_IMAGE="monreleve:pin2-e2e " with a trailing space. docker
+     refused the tag in under 10 s: "invalid tag ... invalid reference
+     format". No image was built, and the harness dropped its scratch
+     database. It is NO RESULT, my defect, not a re-run of a test result.
+     Run 2 set the variables in the parent PowerShell instead.
+   - gate:clone's DATABASE_URL carried the same trailing space. It was
+     harmless: gate:clone parses it with `new URL()`, which strips
+     surrounding whitespace, and the log shows the scratch database
+     monreleve_gate_clone_8559d89c created and the database suites run.
+
+3. gate:clone's admin DATABASE_URL pointed at the `postgres` maintenance
+   database on 5436, not at `frontalier`. It is used only to CREATE and
+   DROP the scratch database. This is the stricter reading of "never the
+   shared frontalier database".
+
+4. CONTAINER_IMAGE=monreleve:pin2-e2e instead of the harness default
+   monreleve:e2e. That left the pre-existing monreleve:e2e (7d83a79567c7,
+   9 days old) untouched. pin2-e2e is removed (cleanup below).
+
+5. The R855 measurement container used this session's scratch database
+   (migrated for R854). /api/health does not depend on it.
+
+QUESTIONS
+---------
+1. home.spec.ts:197 against the image: is it its own task? This is the
+   prior report's QUESTION 1, still unruled. Until it is ruled, every
+   Chromium bump proves the PDF through the fallback rather than through
+   the suite.
+2. The cadence: which of (a)-(f) above, if any?
+3. Do the minimums above set the floor for C2-C10? Queue Ruling 3 says
+   they replace 1.5 GB; the figure to adopt is the orchestrator's.
+
+PUSH PROOF
+----------
+1. Before the first push, Queue Ruling 3's attempt ran gate:clone ALONE on
+   8559d89: GATE:CLONE PASSED, STEP_EXIT=0, ABORTED=False (lines under
+   STATUS).
+2. `git push -u origin fw-chromium-pin-2` printed
+   "* [new branch]      fw-chromium-pin-2 -> fw-chromium-pin-2".
+   `git ls-remote --heads origin fw-chromium-pin-2` printed:
+     8559d89cec2426e4678738140e85d7fc8d5657a1	refs/heads/fw-chromium-pin-2
+3. Only the branch was pushed: never main, never production, and nothing
+   merged.
+4. This report commit is pushed to the same branch after gate:changed and
+   register-coverage. Its push result is stated in the hand-back, not here.
+
+CLEANUP (done before this report was committed)
+-----------------------------------------------
+- The monreleve-pin2-pdf and monreleve-pin2-health containers were removed;
+  both were created by this session.
+- The image tag monreleve:pin2-e2e was removed. "Untagged" and "Deleted
+  sha256:0ed5d9e9..." were printed; this session created it.
+- The scratch database monreleve_pin2_scratch was dropped. pg_database now
+  lists frontalier, postgres, template0 and template1. The harness's
+  monreleve_container_e2e and gate:clone's monreleve_gate_clone_8559d89c
+  were dropped by their own scripts.
+- frontalier-postgres was untouched apart from those scratch databases. No
+  other project's container was started, stopped or modified.
+- The session lock is removed after the last push (stated in the
+  hand-back).
