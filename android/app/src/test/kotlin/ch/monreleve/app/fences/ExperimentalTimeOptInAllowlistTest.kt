@@ -88,6 +88,10 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/forecast/JavaTimeForecast.kt" to 2,
             "app/src/main/kotlin/ch/monreleve/app/forecast/SimulationController.kt" to 3,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
+            // IOS-2d R814: the controller pins, in :app until they move with the controllers - one build helper each
+            // hands over a kotlin.time Clock.
+            "app/src/test/kotlin/ch/monreleve/app/forecast/ForecastControllerPinTest.kt" to 1,
+            "app/src/test/kotlin/ch/monreleve/app/forecast/SimulationControllerPinTest.kt" to 1,
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
             // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
             "shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 5,
