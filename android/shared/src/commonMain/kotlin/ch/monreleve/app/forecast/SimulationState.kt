@@ -1,6 +1,7 @@
 package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.TeleworkResult
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.datetime.DayOfWeek
 
 // AN-SIM (R340, R281). The simulator's UI-facing state, produced by SimulationController from the engine
@@ -12,6 +13,11 @@ import kotlinx.datetime.DayOfWeek
 // THE SCREEN SPEAKS UI VOCABULARY ONLY. SimScenario / SimInputs are the screen's words; the controller maps
 // them to the dossier-level SimChange, so the ui/ repository-only fence (no data.local, no dossier.SimChange in
 // a composable) holds.
+//
+// IOS-2d R814: moved to :shared. The two restorable types' supertype is PlatformSerializable - Android's actual
+// typealias IS java.io.Serializable, so the serialVersionUID and the Bundle bytes are what they were in :app (measured,
+// REPORT-IOS-2d); on iOS an empty marker, so nothing persists them there. R813 changed one field's type (the weekday,
+// java.time -> kotlinx), and with it SimInputs' computed serialVersionUID - recorded in the report, not hidden here.
 
 /** The four changes the engine can model (AN-SIM section 1), in the screen's vocabulary. */
 enum class SimScenario { EXTRA_WEEKDAY, EXTRA_MONTH_DAYS, RATE, MISSIONS }
@@ -31,7 +37,7 @@ data class SimInputs(
     val missionsFrance: String = "",
     /** MISSIONS: missions in a third state. */
     val missionsThird: String = "",
-) : java.io.Serializable
+) : PlatformSerializable
 
 /**
  * The simulator's restorable selection (R310): the scenario and its inputs, so a rotation, a text-size change, a
@@ -42,7 +48,7 @@ data class SimInputs(
 data class SimulationSnapshot(
     val scenario: SimScenario,
     val inputs: SimInputs,
-) : java.io.Serializable
+) : PlatformSerializable
 
 data class SimulationState(
     val scenario: SimScenario = SimScenario.EXTRA_WEEKDAY,

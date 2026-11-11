@@ -81,6 +81,9 @@ fun SimulationScreen(
     actions: SimulationActions,
     modifier: Modifier = Modifier,
 ) {
+    // IOS-2d R814: read once into a local (PrevisionScreen's idiom) - SimulationState now lives in :shared, and Kotlin
+    // smart-casts a public property of another module only through a local. The same value, read once.
+    val view = state.view
     Column(modifier = modifier.fillMaxSize()) {
         ForecastTopBar(onBack = actions.onBack, title = SimulationCopy.NAV_TITLE)
         Column(
@@ -94,11 +97,11 @@ fun SimulationScreen(
         ) {
             Text(text = SimulationCopy.TITLE, style = FrontierType.h1)
             ScenarioChips(state.scenario, actions.onSelectScenario)
-            if (state.view == null) {
+            if (view == null) {
                 Text(text = PrevisionCopy.INVITE_BODY, style = FrontierType.body, color = LightColors.textSecondary)
             } else {
                 ScenarioInput(state, actions.onInputsChange)
-                SimulationCard(state.view)
+                SimulationCard(view)
             }
             InfoNote(text = SimulationCopy.NOT_COVERED)
         }
