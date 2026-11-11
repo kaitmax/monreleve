@@ -122,6 +122,8 @@ class ExperimentalTimeOptInAllowlistTest {
             "shared/src/commonTest/kotlin/ch/monreleve/app/pilot/PilotFixtureTest.kt" to 2,
             // IOS-2c R793: the iOS UI test's one builder hands the shared CalendarController a fixed kotlin.time.Clock.
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/CalendrierReleveScreensIosTest.kt" to 1,
+            // IOS-2d R820: the iOS UI test's one builder hands the shared forecast controllers a fixed Clock.
+            "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/SimulationForecastScreensIosTest.kt" to 1,
         )
 
     private val optIn = Regex("""OptIn\(\s*(kotlin\.time\.)?ExperimentalTime::class\s*\)""")
