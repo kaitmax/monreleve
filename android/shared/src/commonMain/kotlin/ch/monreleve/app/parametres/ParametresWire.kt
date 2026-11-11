@@ -1,0 +1,27 @@
+package ch.monreleve.app.parametres
+
+import ch.monreleve.app.settings.Settings
+
+// IOS-2e R826. THE FOUR /api/v1 WIRE SITES ParametresController REACHES, HANDED IN AS ONE PARAMETER - IOS-2b R778's
+// codec-as-parameter shape, as one small interface rather than four lambdas because the constructor already lists
+// sixteen seams. The controller builds and reads no JSON itself: Android hands in its org.json implementation (:app's
+// OrgJsonParametres.kt, through the factory named like the controller - PARK-D3, the /me codec stays in :app), and an
+// iOS host hands in its own (REPORT-IOS-2e R839). Each member is exactly the body or parse the controller made before.
+
+/** The bodies ParametresController sends and the one response it parses, encoded by the platform. */
+interface ParametresWire {
+    /** The PATCH /api/v1/me body carrying the six manual settings (Android: MeWire.kt's Settings.mePatchBody). */
+    fun patchBody(settings: Settings): String
+
+    /** The PATCH /api/v1/me body turning automatic detection on, with consent, or off (DetectionMode.kt). */
+    fun consentBody(enable: Boolean): String
+
+    /** The POST /api/v1/account/delete body: DELETE_CONFIRMATION sent as `confirm` (SPEC 14). */
+    fun deleteBody(): String
+
+    /**
+     * The delete receipt (SPEC 14.1): the removed entry count and alertSubscriptionRemains. Android's throws on a
+     * malformed body, before the device is erased - the behaviour the controller had (ParametresWirePinTest).
+     */
+    fun parseReceipt(body: String): DeleteOutcome.Done
+}

@@ -1,8 +1,8 @@
 package ch.monreleve.app.ui.screens.parametres
 
 import ch.monreleve.app.fr.ParametresCopy
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 // AN-PARAMS. The « Début d'activité » row's value is DERIVED from the stored ISO day (R181 - presentation only,
 // never a second source): empty shows « Toute l'année », a stored day shows in the Swiss format (dd.MM.yyyy, the

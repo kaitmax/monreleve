@@ -32,8 +32,10 @@ private const val FENCE = "settings capture fence"
 private val settingsCaptureRoots =
     listOf(
         // IOS-2c R788: CalendarController moved to :shared commonMain (scanned below, under SettingsStore.kt's
-        // root), so :app's root is pinned by a controller that stays - ParametresController, the settings' writer.
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "ParametresController.kt"),
+        // root), so :app's root was pinned by a controller that stayed - ParametresController, the settings' writer.
+        // IOS-2e R829: ParametresController moved too (scanned under the :shared root, its two exemptions still
+        // matched by file name); :app's root is pinned by its composition root, MainActivity.kt, which stays.
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "MainActivity.kt"),
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app"), pin = "SettingsStore.kt"),
         FenceRoot(File("src/debug/kotlin/ch/monreleve/app"), pin = "SessionInjection.kt"),
     )

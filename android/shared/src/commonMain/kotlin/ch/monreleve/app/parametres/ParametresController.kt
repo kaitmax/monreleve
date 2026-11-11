@@ -14,6 +14,7 @@ import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.onboarding.isIsoDay
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.EveningNotificationStore
@@ -24,9 +25,8 @@ import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.ThresholdAlertStore
-import ch.monreleve.app.settings.detectionConsentBody
-import ch.monreleve.app.settings.mePatchBody
 import ch.monreleve.app.settings.toAggregatableUser
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -41,8 +41,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONObject
-import java.time.LocalDate
 
 // AN12 increment 1 (SPEC 11.5, R290). The settings screen's state holder. Lives OUTSIDE ui/ (fence 5): it
 // holds the /api/v1/me PATCH seam (the same SettingsSaver onboarding uses), the local store, and the entry
@@ -61,6 +59,17 @@ import java.time.LocalDate
 // same subset onboarding sets. VALIDATION HAS NO THIRD COPY OF THE RULE (R196): the 1-100 bound and the
 // exact-total-iff live in the engine and the database; this runs calculateTelework and accepts iff the
 // engine does, exactly as OnboardingController does.
+//
+// IOS-2e R826: the four org.json sites - the PATCH /me body, the detection-consent body, the delete body and the
+// delete receipt's parse - are reached through `wire` (ParametresWire), handed in by :app's factory of this class's
+// name (OrgJsonParametres.kt), so this file holds no JSON code. The bodies and the parse are unchanged, pinned
+// byte-exact by ParametresWirePinTest before and after.
+//
+// IOS-2e R829: this file moved to :shared commonMain, package unchanged, with ParametresWire, DeviceRate and LegalPage.
+// The one platform type it held - ParametresSnapshot's java.io.Serializable - is PlatformSerializable (Android's actual
+// typealias IS java.io.Serializable; serialVersionUID 1L kept, so the same Bundle bytes - measured). Its tests: the
+// Kotest specs stay in :app through OrgJsonParametres.kt's factory; ParametresControllerPinTest and
+// ParametresStartDatePinTest moved to commonTest unedited.
 
 enum class ParametresPhase { EDITING, SAVING, SAVED, NETWORK_ERROR, SESSION_ENDED }
 
@@ -198,7 +207,7 @@ data class ParametresSnapshot(
     val saveConfirmOpen: Boolean = false,
     val signOutOpen: Boolean = false,
     val deleteOpen: Boolean = false,
-) : java.io.Serializable {
+) : PlatformSerializable {
     companion object {
         private const val serialVersionUID: Long = 1L
     }
@@ -238,7 +247,9 @@ private const val CSV_FALLBACK = "mes-donnees.csv"
 
 // The default LocalStore for the increment-1 settings tests, which never sign out or delete. The app and the
 // account tests inject a real one; this exists only so those settings tests need not name a seam they do not use.
-private object NoOpLocalStore : LocalStore {
+// IOS-2e R826/R829: public, not private - :app's factory (OrgJsonParametres.kt) defaults to it as this class does,
+// across the module boundary now.
+object NoOpLocalStore : LocalStore {
     override suspend fun clearForSignOut() = Unit
 
     override suspend fun clearForDeletion() = Unit
@@ -291,6 +302,9 @@ class ParametresController(
     // the open confirmations are reopened once the rows load (resolvePendingReopen), with counts re-derived and
     // R290's before/after recomputed - never persisted (R181).
     restored: ParametresSnapshot? = null,
+    // IOS-2e R826: the four wire sites (ParametresWire). REQUIRED and last, so every call that does not name it - the
+    // app's and the tests' - resolves to :app's factory of this name, which hands in the org.json implementation.
+    private val wire: ParametresWire,
 ) {
     // The settings the server currently holds, so R290's "before" is the SAVED rate, not the edited one.
     // Post-onboarding this is always present (the settings screen is unreachable before onboarding saves).
@@ -541,7 +555,7 @@ class ParametresController(
     fun confirmDelete() {
         mutableState.update { it.copy(deletePrompt = null) }
         scope.launch {
-            val outcome = runDelete(authenticatedPost(ACCOUNT_DELETE_PATH, deleteBody()))
+            val outcome = runDelete(authenticatedPost(ACCOUNT_DELETE_PATH, wire.deleteBody()))
             mutableState.update { it.copy(deleteOutcome = outcome) }
         }
     }
@@ -556,7 +570,7 @@ class ParametresController(
         when (outcome) {
             is PostOutcome.Ok ->
                 if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
-                    val receipt = parseReceipt(outcome.body)
+                    val receipt = wire.parseReceipt(outcome.body)
                     localStore.clearForDeletion()
                     receipt
                 } else {
@@ -576,19 +590,6 @@ class ParametresController(
     /** R289: the person backed out of the deletion. Nothing is destroyed. */
     fun cancelDelete() {
         mutableState.update { it.copy(deletePrompt = null) }
-    }
-
-    private fun deleteBody(): String = JSONObject().put("confirm", DELETE_CONFIRMATION).toString()
-
-    // §14.1: `removed` is a map (parse as one, never a fixed record); alertSubscriptionRemains is surfaced
-    // (§14.3). The entry count is the figure worth showing a person; the rest of the receipt is not printed.
-    private fun parseReceipt(body: String): DeleteOutcome.Done {
-        val json = JSONObject(body)
-        val removed = json.optJSONObject("removed")
-        return DeleteOutcome.Done(
-            removedEntries = removed?.optInt("Entry", 0) ?: 0,
-            alertSubscriptionRemains = json.optBoolean("alertSubscriptionRemains", false),
-        )
     }
 
     // Every field change clears the last error and any pending confirmation: an edit after a before/after
@@ -680,7 +681,7 @@ class ParametresController(
      */
     fun setAutoDetection(enable: Boolean) {
         scope.launch {
-            when (val outcome = saver.saveSettings(detectionConsentBody(enable))) {
+            when (val outcome = saver.saveSettings(wire.consentBody(enable))) {
                 is PostOutcome.Ok ->
                     if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
                         modeStore.save(if (enable) LoggingMode.AUTO_DETECT else LoggingMode.MANUAL)
@@ -741,7 +742,7 @@ class ParametresController(
     private fun persist(settings: Settings) {
         mutableState.update { it.copy(phase = ParametresPhase.SAVING, error = null) }
         scope.launch {
-            when (val outcome = saver.saveSettings(settings.mePatchBody())) {
+            when (val outcome = saver.saveSettings(wire.patchBody(settings))) {
                 is PostOutcome.Ok ->
                     if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
                         // Cache only after the server accepted, so Aujourd'hui and the dossier never disagree.
@@ -813,7 +814,10 @@ class ParametresController(
         }
 
         val startDate = current.activityStartDate.trim().ifBlank { null }
-        if (startDate != null && runCatching { LocalDate.parse(startDate) }.isFailure) {
+        // IOS-2e R827: the shared isIsoDay (OnboardingDates, kotlinx LocalDate.parse - the one home of this check,
+        // R206) in place of java.time.LocalDate.parse; ParametresStartDatePinTest proved they accept and refuse the
+        // same strings, through this method, before and after.
+        if (startDate != null && !isIsoDay(startDate)) {
             return fail(SettingsError.START_DATE_INVALID)
         }
 

@@ -1,0 +1,382 @@
+REPORT-IOS-2e-FIX - Mon Releve
+THE PARAMETRES DATE SLOT'S FAKE PRESENTS IN ITS OWN LAYER (MATERIAL 3's AlertDialog); THE SLOT'S CONTRACT WRITTEN
+WHERE IT IS TYPED. TEST-ONLY PLUS ONE COMMENT. THE FULL :app:gate GREEN ON THE CODE TIP cf485c4. THE ONE iOS RUN,
+43004639615, GREEN: 316 TESTS, 0 FAILURES - STEP6 RAN WHOLE, ITS ASSERTIONS UNEDITED.
+
+TASK     relay/IOS-2e-FIX.txt (main checkout, untracked; read there, not copied), rulings R840-R843. Context read:
+         Ruling 14 (relay/RULINGS-2026-11-03-MOBILE.txt, main checkout) and REPORT-IOS-2e.txt (origin/ios2e).
+BASE     origin/ios2e d3adf771d5287971aa13936a12c1df2f4b4534c8 (R1 below).
+BRANCH   ios2e-fix, worktree C:/wt/ios2e-fix (R349), cut by `git worktree add -b ios2e-fix C:/wt/ios2e-fix origin/ios2e`
+         from the main checkout after `git fetch`. Lock .session-lock.json (gitignored). Pushed: ios2e-fix only.
+         PENDING MERGE - nothing here is on main.
+CODE TIP cf485c463aab7fd89dfb5421358b8376445c420f (cf485c4) - ONE code commit on d3adf77.
+EVIDENCE C:/wt/ios2e-fix/.ios2e-fix-evidence/ (ignored by /.*-evidence/): r841.diff, r840-test.diff, step6-before.txt,
+         step6-after.txt, fastcheck.log, ios-compile.log, gate.log, ios-run-43004639615.log, classes.txt,
+         step6-marks.txt, apk-ios2e.txt, apk-fix.txt.
+         android/local.properties was COPIED from C:/wt/ios2e (sdk.dir; gitignored) - the only thing taken from another
+         worktree. In C:/wt/ios2e nothing was written; its gate.log, its lock path (absent) and its release APK (sha256,
+         `unzip -lv`) were read.
+NO PHONE: no adb command was run. No container was started, stopped or removed. No port was used.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+  cf485c4  R840+R841  ZParametresScreensIosTest's PzFakeDatePicker presents inside Material 3's AlertDialog
+                      (onDismissRequest = onDismiss; text = the initial-value Text; dismissButton = cancel;
+                      confirmButton = pick); its behaviour unchanged. One comment added on the ParametresDatePicker
+                      typealias (ParametresEditTypes.kt): a filler presents itself in its own layer, never inline.
+  R842  step6's body byte-identical to d3adf77 (sha256 60216375...); steps 1-5 and 7 untouched.
+  R843  FULL :app:gate --rerun-tasks on cf485c4: BUILD SUCCESSFUL in 14m 59s, GATE_EXIT=0; :app 1399 tests 0 failures
+        (142 screenshot tests at 0.0), :shared 234 tests 0 failures - unchanged, as expected for a test-only change.
+        ONE run, 43004639615 on cf485c4 (headSha asserted): SUCCESS, every step success; "iOS SIMULATOR TESTS EXECUTED:
+        316"; 57 classes, 0 failures; every pilot class reached, ZParametresScreensIosTest 7/0; the canary "still broken
+        as expected"; 0 WATCHDOG lines; the only IrLinkageError the canary's.
+  `git diff --stat d3adf77 cf485c4`:
+     .../ui/screens/parametres/ParametresEditTypes.kt   |  4 ++++
+     .../app/pilot/ZParametresScreensIosTest.kt         | 26 ++++++++++++++++------
+     2 files changed, 23 insertions(+), 7 deletions(-)
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. GREEN: the FULL :app:gate --rerun-tasks ran on the code tip cf485c4 in this session and is GREEN, and the one
+iOS cloud run on that same SHA, 43004639615, is GREEN (R573). PENDING MERGE (--no-ff of ios2e-fix, the orchestrator's).
+FULL :app:gate --rerun-tasks on cf485c4, after ./gradlew --stop ("1 Daemon stopped"; 4.17 GB free, read in its own
+step), the tracked tree clean (git status --porcelain: nothing; HEAD = cf485c4), started 10:17:27Z:
+    test floor OK: 1399 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 14m 59s
+    260 actionable tasks: 260 executed
+    real 15m0.970s ; GATE_EXIT=0
+iOS RUN 43004639615 on cf485c4: conclusion SUCCESS; "iOS SIMULATOR TESTS EXECUTED: 316" (R843).
+`git diff --stat cf485c4 HEAD` (report-only): see PUSH PROOF.
+gate:clone NOT RUN: no web/ change (`git diff --stat d3adf77..HEAD -- web`: empty).
+
+================================================================================
+R1 - PRECONDITION
+================================================================================
+`git fetch` in the main checkout; `git rev-parse origin/ios2e` -> d3adf771d5287971aa13936a12c1df2f4b4534c8; origin/main
+19ce23f5f22dbb958099033cdfa95ddbb3db92d2. HOLDS. C:/wt/ios2e-fix and branch ios2e-fix did not exist before (ls: no such
+directory; `git branch -a --list '*ios2e-fix*'`: nothing).
+RULING NUMBERS, before the code commit: `grep -rlE '\bR84[0-3]\b' relay/ REPORT-*.txt CLAUDE.md docs` - worktree:
+REPORT-IOS-2e.txt only (lines 8 and 775, as spares); main checkout: relay/IOS-2e-FIX.txt, relay/IOS-2e.txt (line 61,
+"reserved spares"), relay/RULINGS-2026-11-03-MOBILE.txt (line 546, naming this task); every origin head (git grep, the
+pathspec quoted): origin/ios2e:REPORT-IOS-2e.txt only. All within the prompt's allowed set. Re-run: PUSH PROOF.
+
+================================================================================
+R840 - THE FAKE PRESENTS IN ITS OWN LAYER: THE LAYER CHOSEN, AND WHY
+================================================================================
+THE LAYER: Material 3's AlertDialog (androidx.compose.material3.AlertDialog, already in commonMain - BulkConfirmation
+  Dialog, ParametresAccountSection, ParametresDeleteSection, ParametresRateChange use it). R840's default. A raw
+  androidx.compose.ui.window.Dialog was NOT used: no linkage evidence for it was sought or needed.
+WHY, THE EVIDENCE BEFORE THE RUN:
+  - LINKAGE: CalendrierReleveScreensIosTest step3 opened an AlertDialog and confirmed it on iOS in the green run
+    42934860637 (R840's premise).
+  - GEOMETRY (R806's guard compares the centre of boundsInRoot with boundsInWindow, so the layer's root must sit at
+    the window origin): IOS-2c-PROBE read in the source that on skiko the ModalBottomSheet's container is itself a
+    Dialog (ModalBottomSheet.skiko.kt 56-70), and IOS-2c-FIX measured the sheet's Save with boundsInRoot ==
+    boundsInWindow; R836 measured a Popup layer's item, placed away from the origin at (24,368)-(136,416), with
+    boundsInRoot == boundsInWindow. That made it likely, NOT shown, for an AlertDialog: CalendrierReleve's step3 tap
+    was not behind R806's guard, and no AlertDialog had been driven over an open ModalBottomSheet on iOS.
+  - WHAT THE RUN THEN MEASURED (43004639615, step6's marks below): the fake's pick boundsInRoot = boundsInWindow =
+    Rect.fromLTRB(483.0, 387.0, 761.0, 427.0), its cancel boundsInRoot = boundsInWindow = Rect.fromLTRB(263.0, 387.0,
+    475.0, 427.0) - an AlertDialog over an open, expanded ModalBottomSheet, its buttons inside the 1024 x 768 window,
+    tapped behind R806's guard.
+THE CHANGE (the test file, `git diff d3adf77 cf485c4 -- .../pilot/ZParametresScreensIosTest.kt`: every added and
+removed line shown, unchanged context lines elided):
+    @@ -1,5 +1,6 @@
+     package ch.monreleve.app.pilot
+    +import androidx.compose.material3.AlertDialog
+     import androidx.compose.material3.Text
+    @@ -156,7 +157,13 @@ private class PzHeld {
+    -/** The date slot's fake (R830): shows the initial value it was handed; pick lands PICKED_DAY, cancel closes. */
+    +/**
+    + * The date slot's fake (R830): shows the initial value it was handed; pick lands PICKED_DAY, cancel closes.
+    + * IOS-2e-FIX R840: it presents in its OWN layer, Material 3's AlertDialog, as every real filler does - Android's
+    + * DatePickerDialog is a window of its own. Composed inline, as it first was, it laid out below the 1024 x 768 window
+    + * (run 42951476181). AlertDialog was opened and confirmed on iOS by CalendrierReleveScreensIosTest step3 (run
+    + * 42934860637). Its behaviour is unchanged: it records the initial value, pick calls onPicked then onDismiss.
+    + */
+    @@ -165,12 +172,17 @@ private fun PzFakeDatePicker(
+         LaunchedEffect(Unit) { held.pickerInitials += initialIsoDay }
+    -    Text(FAKE_PICKER_INITIAL + initialIsoDay)
+    -    TextButton(onClick = onDismiss) { Text(FAKE_PICKER_CANCEL) }
+    -    TextButton(onClick = {
+    -        onPicked(PICKED_DAY)
+    -        onDismiss()
+    -    }) { Text(FAKE_PICKER_PICK) }
+    +    AlertDialog(
+    +        onDismissRequest = onDismiss,
+    +        confirmButton = {
+    +            TextButton(onClick = {
+    +                onPicked(PICKED_DAY)
+    +                onDismiss()
+    +            }) { Text(FAKE_PICKER_PICK) }
+    +        },
+    +        dismissButton = { TextButton(onClick = onDismiss) { Text(FAKE_PICKER_CANCEL) } },
+    +        text = { Text(FAKE_PICKER_INITIAL + initialIsoDay) },
+    +    )
+     }
+  (the full diff, context included, is .ios2e-fix-evidence/r840-test.diff.)
+THE BEHAVIOUR, UNCHANGED: the LaunchedEffect recording the initial value stays outside the dialog, as it was; pick calls
+  onPicked(PICKED_DAY) then onDismiss; cancel calls onDismiss; the three texts are the same constants. New: an outside
+  tap or back would call onDismiss (onDismissRequest, as R840 prescribes) - the test makes neither.
+OTHER FILES: none. R840 did not need another file to move.
+
+================================================================================
+R841 - THE CONTRACT, WRITTEN WHERE THE SLOT IS TYPED (the diff)
+================================================================================
+`git diff d3adf77 cf485c4 -- android/shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/parametres/
+ParametresEditTypes.kt`:
+    @@ -12,6 +12,10 @@ import androidx.compose.runtime.Composable
+      * IOS-2e R830: the << Debut d'activite >> picker, supplied by the host (R776's seam, with an initial date). Composed
+      * while the picker is asked for, with the current value as an ISO day (yyyy-MM-dd) or null; it calls onPicked with
+      * the chosen ISO day and then onDismiss to close - or onDismiss alone to cancel. Android's is Material 3's dialog.
+    + *
+    + * IOS-2e-FIX R841, THE CONTRACT: a filler presents itself in its OWN layer (a dialog or a window), never inline.
+    + * StartDateSheetContent composes the slot after the sheet's scrolling body, where Android's dialog sat, so inline
+    + * content can land outside the window; any native iOS picker must present itself the same way.
+      */
+     typealias ParametresDatePicker =
+  (The first context line carries accented French and guillemets in the file; transliterated here because this report
+  is pure ASCII.)
+  Lines removed: 0. Added lines not starting " *": 0. COMMENT ONLY. No line over 120 characters.
+
+================================================================================
+R842 - STEP6 RUNS WHOLE, ITS ASSERTIONS UNEDITED (the test diff, step6's marks)
+================================================================================
+THE TEST DIFF: the hunks above - the import block and PzFakeDatePicker (its KDoc and body) only. step6's body extracted
+  from d3adf77 and from cf485c4 (from `fun step6TheDateSlotOpens...` to its closing brace, 55 lines each) and compared:
+  `cmp` -> identical; sha256 60216375fa6ebf0f... both. Steps 1-5 and 7, every helper (waitMarked, tapInsideTheWindow,
+  expandTheSheet, the finders), mark() and its "R835 MARK" tag: untouched (no hunk reaches them). No wait or finder
+  changed: the existing finders reached the dialog's nodes as they were.
+STEP6'S MARKS, run 43004639615 (69 "R835 MARK 6-date-slot" lines, all at 10:41:28Z; the full list in
+  .ios2e-fix-evidence/step6-marks.txt; the opening and the sheet's expansion are elided here):
+  the start-date row, the sheet, its pick button:
+    tap the start date ListItem: boundsInRoot=Rect.fromLTRB(20.0, 389.0, 1004.0, 461.0) tapPoint=Offset(512.0, 425.0)
+      boundsInWindow=Rect.fromLTRB(20.0, 389.0, 1004.0, 461.0)
+    the date sheet: settled=true, the handle offers Expand=[Expand bottom sheet] Collapse=0
+    the date sheet: EXPANDED through the handle's Expand action
+    tap the date sheet's pick button: boundsInRoot=Rect.fromLTRB(212.0, 431.0, 812.0, 471.0) tapPoint=Offset(512.0,
+      451.0) boundsInWindow=Rect.fromLTRB(212.0, 431.0, 812.0, 471.0)
+    wait (the fake picker shown, its initial value recorded) - returned
+  THE PICK TAPPED INSIDE THE WINDOW:
+    tap the fake's pick: performScrollTo - no scroll parent
+    tap the fake's pick: boundsInRoot=Rect.fromLTRB(483.0, 387.0, 761.0, 427.0) tapPoint=Offset(622.0, 407.0)
+      boundsInWindow=Rect.fromLTRB(483.0, 387.0, 761.0, 427.0)
+    tap the fake's pick: performClick - calling / - returned
+  THE PICK LANDING IN THE FIELD (activityStartDate == PICKED_DAY, formatDate(PICKED_DAY) shown, the dialog gone):
+    wait (the pick landed in the field) - calling, bounded at 10000ms / - returned
+  THE SAVE SENT WITH PICKED_DAY:
+    tap the date sheet's SAVE: boundsInRoot=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0) tapPoint=Offset(512.0, 656.0)
+      boundsInWindow=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0)
+    wait (saved and closed) - returned
+    (then, verbatim: `assertEquals(listOf<String?>(PICKED_DAY), wire.patched.map { it.activityStartDate }, "sent")` -
+    it has no mark of its own; it held, because the next mark, "tap the start date ListItem again", comes after it
+    and the class reports failures=0.)
+  THE REOPENED SLOT HANDED PICKED_DAY:
+    tap the start date ListItem again: boundsInRoot=Rect.fromLTRB(20.0, 389.0, 1004.0, 461.0) ... boundsInWindow=
+      Rect.fromLTRB(20.0, 389.0, 1004.0, 461.0)
+    the date sheet, again: EXPANDED through the handle's Expand action
+    tap the pick button again: boundsInRoot=Rect.fromLTRB(212.0, 431.0, 812.0, 471.0) ... boundsInWindow=
+      Rect.fromLTRB(212.0, 431.0, 812.0, 471.0)
+    wait (the fake picker shown with the saved day, recorded) - returned
+    (its condition: "fake parametres picker: initial=2026-03-02" shown and two initial values recorded; then
+    verbatim `assertEquals(listOf<String?>(null, PICKED_DAY), held.pickerInitials, "handed the current day")` held -
+    the next mark comes after it.)
+  THE CANCEL CLOSING IT, THE DAY UNCHANGED:
+    tap the fake's cancel: performScrollTo - no scroll parent
+    tap the fake's cancel: boundsInRoot=Rect.fromLTRB(263.0, 387.0, 475.0, 427.0) tapPoint=Offset(369.0, 407.0)
+      boundsInWindow=Rect.fromLTRB(263.0, 387.0, 475.0, 427.0)
+    wait (the fake picker closed, the day unchanged) - returned
+    finished
+  The test case line in the log: "ch.monreleve.app.pilot.ZParametresScreensIosTest.step6TheDateSlotOpensWithThe
+  CurrentValueAndThePickLandsInTheField[iosSimulatorArm64] STANDARD_OUT" - no FAILED line; the class tests=7 failures=0.
+WHAT THE RUN PROVES, AND NO MORE: on the simulator, in the 1024 x 768 Compose UI test window, the shared
+  StartDateSheetContent hands its slot the current value (null, then the saved day), takes the slot's pick into the
+  field, saves it through the controller, and closes the slot on cancel with the day kept - with a test filler that
+  presents in an AlertDialog. NOT shown: a native iOS picker (none exists), any iOS host, a phone-sized window,
+  VoiceOver.
+
+================================================================================
+R843 - THE GATE, THE RUN, WHAT IS LEFT
+================================================================================
+CHECKS BEFORE THE CODE COMMIT (not required by the prompt - DEVIATION 1):
+  ./gradlew fastCheck (R390), after ./gradlew --stop ("No Gradle daemons are running.") and a wait for memory (DEVIATION
+    3; 2,209 MB free when it started): BUILD SUCCESSFUL in 4m 42s, 108 actionable tasks: 108 executed. ktlint ran over
+    iosTest (":shared:runKtlintCheckOverIosTestSourceSet", ":shared:ktlintIosTestSourceSetCheck" executed) and over
+    commonMain; :shared:detekt's source set includes src/iosTest/kotlin.
+  THE WINDOWS COMPILE-ONLY CHECK (IOS-2e R835's command; R575's enableKlibsCrossCompilation overridden ON THE COMMAND
+    LINE, no file changed; COMPILE EVIDENCE ONLY, never a run result), after ./gradlew --stop ("1 Daemon stopped"; 3.03
+    GB free, read in its own step): `./gradlew :shared:compileTestKotlinIosSimulatorArm64
+    -Pkotlin.native.enableKlibsCrossCompilation=true --offline` -> "> Task :shared:compileTestKotlinIosSimulatorArm64"
+    (executed, not UP-TO-DATE), BUILD SUCCESSFUL in 2m 3s. Positive signal: the freshly written test klib's pilot
+    package (linkdata/package_ch.monreleve.app.pilot/10_pilot.knm) holds both PzFakeDatePicker and AlertDialog. Not
+    linked, not run. git status --porcelain afterwards: the two edited files only.
+THE GATE on the code tip cf485c4: STATUS above (BUILD SUCCESSFUL in 14m 59s; GATE_EXIT=0).
+  Test XML, every file stamped by this run (after 10:17:27Z; :app's at 10:32:20, :shared's at 10:32:25):
+    :app     184 files (all 184), testDebugUnitTest: 1399 tests, 0 failures, 0 errors, 0 skipped
+    :shared   42 files (all 42),  testDebugUnitTest:  234 tests, 0 failures, 0 errors, 0 skipped
+    screenshot suites: 142 tests, 0 failures; PaparazziZeroToleranceTest tests="2" failures="0".
+  = REPORT-IOS-2e's 1399 / 234 / 142: UNCHANGED, as a test-only change predicts - no JVM test added or removed.
+  My first two reads of these counts were NO RESULT (a reference timestamp reset to "now" by cp, so 0 files matched;
+  then an awk parse that summed 0 from 184 files); re-read with the correct reference and a sed parse - the numbers
+  above. Recorded, not hidden.
+  ":app:compileDebugAndroidTestKotlin", ":app:verifyPaparazziDebug", ":app:testDebugUnitTest" and
+  ":shared:testDebugUnitTest" all in the gate log. Compiler "w: " lines: 7 - MainActivity.kt x2, LiveLocation.kt x2,
+  MockProviderReplay.kt x2, the K/N targets notice: the same seven IOS-2e recorded; none in a file this task touched.
+  BASELINES: `git diff --stat d3adf77..HEAD -- android/app/src/test/snapshots` -> EMPTY. Re-recorded: 0.
+  androidTest: `git diff --stat d3adf77..HEAD -- android/app/src/androidTest` -> EMPTY.
+  UNTOUCHED, each `git diff --stat d3adf77 HEAD -- <path>` EMPTY: SimulationForecastScreensIosTest.kt (R836),
+  MaterialDatePickerCanaryTest.kt, android/app/src/test/kotlin/ch/monreleve/app/fences (IosTestRawWaitUntilFenceTest's
+  allowlist stays Onboarding 16, SignIn 6; ExperimentalTimeOptInAllowlistTest), .github, every build.gradle.kts and
+  android/gradle (no dependency or version change). Added lines matching OptIn|waitUntil|ExperimentalTime: 0.
+  The test window: untouched (runComposeUiTest's own 1024 x 768; no line about it changed). No sheet's behaviour or
+  state changed (no commonMain code line changed; R811(b) stays parked).
+  RELEASE APK (built by the gate's --rerun-tasks; measured, not asked for): 1,989,388 B - the same byte count as
+  IOS-2e's 9a6dd55 - but sha256 355afca5c43085bb... against IOS-2e's cc77402f241736b4... `unzip -lv` of both, entry by
+  entry (113 each): two entries differ - classes.dex 3,277,072 uncompressed in both, stored 1,563,754 -> 1,563,752, CRC
+  116c92bc -> abf10b79; assets/dexopt/baseline.prof 3,727 in both, CRC d04bba86 -> cb85bcc0. The only :app input this
+  task changed is R841's four comment lines, which move the source line numbers of the three declarations below them in
+  ParametresEditTypes.kt; that this is the cause (line-number debug information) was NOT measured at the dex level.
+THE PUSH of the code tip: PUSH PROOF.
+THE ONE RUN: `gh run list --workflow ios-shared.yml --branch ios2e-fix` -> [] after the code tip's push; then, once,
+  `gh workflow run ios-shared.yml --ref ios2e-fix` at 10:33:39Z -> https://github.com/kaitmax/monreleve/actions/runs/
+  43004639615. `gh run view` before anything else was read: headSha cf485c463aab7fd89dfb5421358b8376445c420f (=
+  the code tip), event workflow_dispatch, headBranch ios2e-fix. Job 10:33:44Z -> 10:42:40Z; conclusion SUCCESS.
+STEPS (every step's result, from the API):
+  1 Set up job - success                                   10:33:44..10:33:47
+  2 Run actions/checkout@3d3c42e5... - success            10:33:47..10:33:50
+  3 Run actions/setup-java@de7274f0... - success          10:33:50..10:33:54
+  4 Run gradle/actions/setup-gradle@3f5f9ada... - success 10:33:54..10:33:54
+  5 Restore the Kotlin/Native toolchain - success         10:33:54..10:33:55
+  6 Environment (diagnostic) - success                    10:33:55..10:34:02
+  7 Provision the Kotlin/Native toolchain - success       10:34:02..10:35:50
+  8 Boot the iPhone simulator - success                   10:35:50..10:36:43
+  9 Start the wire-recording server - success             10:36:43..10:36:47
+  10 iOS - simulator tests and device compile - success   10:36:47..10:41:45
+  11 The wire recording (what the simulator really sent) - success  10:41:45..10:41:46
+  12 Save the Kotlin/Native toolchain - success           10:41:46..10:42:02
+  13 Results - refuse a run that executed no tests - success  10:42:02..10:42:03
+  14 Which simulator ran (positive signal) - success      10:42:03..10:42:04
+  15 Room's generated iOS code (listing) - success        10:42:04..10:42:04
+  16 Run actions/upload-artifact@cf430e03... - success    10:42:04..10:42:05
+  30, 31, 32 Post steps - success; 33 Complete job - success  10:42:05..10:42:39
+STEP 10: "> Task :shared:compileTestKotlinIosSimulatorArm64", "> Task :shared:linkDebugTestIosSimulatorArm64", "> Task
+  :shared:iosSimulatorArm64Test", "> Task :shared:compileKotlinIosArm64" (the device compile); "BUILD SUCCESSFUL in 4m
+  48s", "25 actionable tasks: 25 executed". No "FAILED", no "Execution failed" anywhere in the log.
+STEP 13: "iOS SIMULATOR TESTS EXECUTED: 316" - 316 expected (REPORT-IOS-2e's count; this task adds and removes no test):
+  NOT one more, NOT one fewer. 57 class lines, summed: tests=316 failures=0 errors=0 skipped=0. Every pilot class
+  REACHED (the same ten as run 42951476181):
+  ch.monreleve.app.pilot.AujourdhuiPilotIosTest tests=7 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.BoundedWaitIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.CalendrierReleveScreensIosTest tests=5 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.LaunchSpeechIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.MaterialDatePickerCanaryTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.OnboardingScreensIosTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.PilotFixtureTest tests=3 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.SignInScreensIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.SimulationForecastScreensIosTest tests=6 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.ZParametresScreensIosTest tests=7 failures=0 errors=0 skipped=0
+  and IOS-2e's commonTest classes: ParametresControllerPinTest 8, ParametresStartDatePinTest 1,
+  InMemoryAlertStoresTest 4, ParametresListRowsTest 4 - each failures=0.
+  THE CANARY: "IOS-1b-A canary: still broken as expected - kotlin.internal.IrLinkageError: Can not get instance of
+  singleton 'Companion': No class found for symbol 'kotlinx.datetime/Instant.Companion|null[0]'" (unchanged).
+  "WATCHDOG" lines: 0. IrLinkageError lines: 1 - the canary's, named in full above; NO OTHER LINKAGE ERROR.
+  "R835 MARK" lines: 210 (170 in the red run, which stopped inside step6).
+STEP 14: "DEVICE: iPhone 17 Pro (<udid>) (Booted)".
+R836, re-run in the same run, still green: "R836 popup pointer tap the Friday item: boundsInRoot=Rect.fromLTRB(24.0,
+  368.0, 136.0, 416.0) tapPoint=Offset(80.0, 392.0) boundsInWindow=Rect.fromLTRB(24.0, 368.0, 136.0, 416.0)" ->
+  "the DropdownMenuItem PICKED by a pointer tap: Friday".
+WHAT IS LEFT: R839's lists (REPORT-IOS-2e) are UNCHANGED by this task - no file moved, no entry point changed. The one
+  addition: the ParametresDatePicker contract R839 points to ("the contract in ParametresEditTypes.kt") now also states
+  R841's rule - a filler presents in its own layer; any native iOS picker must.
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref        sha      result    job wall                      billed
+  43004639615  ios2e-fix  cf485c4  success   10:33:44Z-10:42:40Z (8m56s)   about 9 min (rounded up)
+The API's timing for the run: run_duration_ms 540000; its "billable" field reads MACOS total_ms 0 - the value as read,
+  not taken as the cost. Branch ios2e's two runs (Ruling 14's budget): 42951476181 (IOS-2e, failure, 9 min) and
+  43004639615 (this, success, about 9 min).
+ONE dispatch; zero push-triggered runs (ios2e-fix does not match ios-*): `gh run list --workflow ios-shared.yml --branch
+  ios2e-fix` -> [] before the dispatch (after the code tip's push), [43004639615, headSha cf485c4, success] after the
+  run; the count after the report push is in PUSH PROOF. No second run.
+
+================================================================================
+PARKED
+================================================================================
+Nothing new parked; parking.md not touched (PARK-IE1..IE4 as IOS-2e wrote them).
+IOS-2e's UNNUMBERED-1 (the date slot's placement): its rule is now written where the slot is typed (R841) and the test
+  filler follows it (R840) - the slot's placement itself is unchanged, as Ruling 14 ruled.
+IOS-2e's UNNUMBERED-3 (no Paparazzi baseline of the Parametres sheets or the date dialog): unchanged - this task touched
+  no Android pixel.
+UNNUMBERED-1  THE APK NOTE (R843): same byte count, different classes.dex and baseline.prof CRCs from four comment
+              lines; the cause not measured at the dex level. For the OUTCOME's record beside Ruling 14's note on
+              IOS-2e's classes.dex.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. TWO CHECKS THE PROMPT DID NOT NAME ran before the code commit, on my advisor's advice: fastCheck (R390) and the
+   Windows compile-only iOS check (R575's override on the command line, no file changed; compile evidence only, never
+   cited as a run result). Neither changed anything; both green (R843).
+2. THE NEW BRANCH WAS CREATED TRACKING origin/ios2e (git's default when `worktree add -b` starts from a remote branch).
+   `git branch --unset-upstream` was the next git act, before any commit; every push named the refspec
+   (`ios2e-fix:ios2e-fix`); the branch now tracks origin/ios2e-fix. origin/ios2e was never pushed to: it is d3adf77.
+3. THE FIRST MEMORY READ WAS BELOW THE FLOOR: 1.26 GB, then 1.22 GB free after ./gradlew --stop (no Gradle daemon of
+   mine was running; the memory was held by other applications - none stopped). No heavy step was started: a bounded
+   background wait polled the free memory every 15 s and returned at 2,209 MB; fastCheck started after it.
+4. THE FAKE'S KDoc WAS REWRITTEN as part of the fake's change (one line -> six, naming R840). The file header's lines
+   77-81 ("The date slot holds a FAKE picker ... that shows the initial value it was handed") were left as they are -
+   still true.
+5. READS IN THE MAIN CHECKOUT BEYOND fetch AND worktree add: `git worktree list`, `git rev-parse`, `git for-each-ref`,
+   `git grep` over remote refs, `git ls-remote`, `cat .session-lock.json`, and reading relay/IOS-2e-FIX.txt and the
+   rulings file. Read-only; nothing there was written, staged or committed.
+
+================================================================================
+QUESTIONS
+================================================================================
+None blocks. Step6 ran whole and green; the merge (--no-ff of ios2e-fix, gate:clone before the push, per Ruling 14) is
+the orchestrator's.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2e-fix only (never main, never production, never ios2e).
+  push  range                     commits / ruling        check before it
+  1     * [new branch] cf485c4    R840 + R841             the FULL GATE GREEN on cf485c4 (GATE_EXIT=0, read in its own
+                                                          step); git status --porcelain empty. `git push -u origin
+                                                          ios2e-fix:ios2e-fix` -> "* [new branch] ios2e-fix ->
+                                                          ios2e-fix"; `git rev-parse origin/ios2e-fix HEAD` -> cf485c4
+                                                          both. THE CODE TIP. Then `gh run list ... --branch ios2e-fix`
+                                                          -> [], the one dispatch.
+  2     cf485c4..<report>         this report - docs only; recorded in the follow-up below.
+`git diff --stat cf485c4 <report commit>` (report-only): REPORT-IOS-2e-FIX.txt only - the follow-up below shows it.
+Before this report's push: R840-R843 re-grepped (PUSH PROOF follow-up). No newer relay prompt had landed: the main
+checkout's relay/ newest files are RULINGS-2026-11-03-MOBILE.txt (555 lines, 10:01:38Z, before this session's start) and
+IOS-2e-FIX.txt. Re-fetched: origin/main 19ce23f, production 52caca8, origin/ios2e d3adf77 - unchanged.
+
+END OF REPORT-IOS-2e-FIX
+
+PUSH PROOF, FOLLOW-UP: push 2 - the report commit 00b39bf: `git push origin ios2e-fix:ios2e-fix` -> "cf485c4..00b39bf
+ios2e-fix -> ios2e-fix"; `git ls-remote origin refs/heads/ios2e-fix` -> 00b39bf76a31a128fef0ee1c097d179af5f0a476 = HEAD
+(MATCH); `git diff --stat cf485c4 00b39bf` -> " REPORT-IOS-2e-FIX.txt | 360 +++...", " 1 file changed, 360
+insertions(+)" (the STATUS pointer resolves here: report-only). `gh run list --workflow ios-shared.yml --branch
+ios2e-fix` after that push -> [43004639615, headSha cf485c4, success] - still one run.
+R840-R843 RE-GREPPED before push 2 (`grep -rlE '\bR84[0-3]\b' relay/ REPORT-*.txt CLAUDE.md docs`): worktree -
+REPORT-IOS-2e-FIX.txt (this report) and REPORT-IOS-2e.txt (spares); main checkout - relay/IOS-2e-FIX.txt,
+relay/IOS-2e.txt, relay/RULINGS-2026-11-03-MOBILE.txt; every origin head (git grep, pathspec quoted) -
+origin/ios2e:REPORT-IOS-2e.txt and origin/ios2e-fix:REPORT-IOS-2e.txt (inherited from d3adf77). All allowed.
+Re-fetched before push 2: origin/main 19ce23f, production 52caca8, origin/ios2e d3adf77 - unchanged.
+This follow-up commit changes REPORT-IOS-2e-FIX.txt only: these lines, and three precision edits made after push 2
+(R840's diff heading: unchanged context elided, every added and removed line shown; R841's transliteration note:
+because this report is pure ASCII; R842's two assertEquals quotes made verbatim, `listOf<String?>(...)`). It is pushed
+as this session's last git act; its own push result is in the hand-back. Not pushed: main, production, ios2e.
+CLEANUP: ./gradlew --stop after the last Gradle use ("1 Daemon stopped"); no server started, no port touched, no
+container touched, no phone, adb not used, no permission prompt refused. A temporary reference file /tmp/ios2efix-start
+(written to stamp the gate's start for the XML count) was deleted. Evidence stays in
+C:/wt/ios2e-fix/.ios2e-fix-evidence/ (ignored). The worktree C:/wt/ios2e-fix stays (R392); android/local.properties (copied, ignored) stays with it. No other
+C:/wt/* was written. The lock .session-lock.json is present at this commit and is removed as the session's last step,
+after this follow-up's push.

@@ -2,19 +2,8 @@ package ch.monreleve.app.parametres
 
 import ch.monreleve.app.auth.CallbackLink
 
-// AN12 increment 4 / AN-LINKS. The pages the « À propos » section (and the sign-in consent line) open on the
-// website. Each is a LIVE web route (AN-LINKS increment 0 fetched all five at 200 with their own heading and
-// the site stylesheet loaded), verified not guessed (R156 forbids parking a slug), and AppSiteLinksTest
-// re-derives the website's routes from web/app/**/page.tsx and fails the build if any path here stops
-// existing as a page (R246) - so renaming a web page breaks this build, not a link in someone's hand. The
-// path stays beside its page here (R206); Site, below, holds the one origin.
-enum class LegalPage(val path: String) {
-    PRIVACY("/confidentialite"),
-    TERMS("/cgu"),
-    LEGAL("/mentions-legales"),
-    SOURCES("/sources"),
-    ABOUT("/a-propos"),
-}
+// IOS-2e R829: split out UNCHANGED from LegalPage.kt when the LegalPage enum moved to :shared commonMain. The origin
+// derives from CallbackLink.HOST, which lives in :app's auth/ (java.net), so the one origin stays here with its host.
 
 // AN-LINKS increment 1 (R206). ONE home for the website's origin. Now that monreleve.ch is live, every
 // app -> site link is built from this one constant with the LegalPage's own path, rather than each call site

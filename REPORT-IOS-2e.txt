@@ -1,0 +1,794 @@
+REPORT-IOS-2e - Mon Releve
+PARAMETRES BECOMES SHARED - THE LAST SCREEN, ALONE. THE CONTROLLER, ITS WIRE AS A PARAMETER, THE STORES' INTERFACES,
+THE DATE FIELD ON R776'S SEAM WITH AN INITIAL DATE, AND THE TWELVE UI FILES MOVE TO :shared. ANDROID PIXEL-IDENTICAL.
+THE FULL :app:gate GREEN ON THE CODE TIP 9a6dd55. THE ONE iOS RUN, 42951476181, RED: 316 TESTS, 1 FAILURE - IN
+ZParametresScreensIosTest step6, R806'S GUARD REFUSED A TAP ON THE FAKE DATE PICKER, LAID OUT BELOW THE WINDOW. R836'S
+POINTER TAP GREEN. STOPPED AND HANDED BACK (no second run, no code change after the run).
+
+TASK     relay/IOS-2e.txt (main checkout, untracked; read there, not copied), rulings R826-R839 (R840-R843 spare,
+         unused). Before the first commit `grep -rE '\bR8(2[6-9]|3[0-9]|4[0-3])\b' relay/ REPORT-*.txt CLAUDE.md docs`:
+         worktree - relay/RULINGS-2026-11-03-MOBILE.txt lines 471 (R838(a)) and 513 (R836) only; main checkout -
+         relay/IOS-2e.txt and relay/RULINGS-2026-11-03-MOBILE.txt only; origin heads (git grep over every remote ref) -
+         RULINGS only. Re-run before the report push: PUSH PROOF.
+BASE     origin/main 19ce23f (R1 below).
+BRANCH   ios2e, worktree C:/wt/ios2e (R349), cut by `git worktree add -b ios2e C:/wt/ios2e origin/main` from the main
+         checkout after `git fetch` (its lock allows exactly those two; nothing else was done there). Lock
+         .session-lock.json (gitignored). Pushed: ios2e only. PENDING MERGE - nothing here is on main.
+CODE TIP 9a6dd55084e87480e7f5701bafdb8933a30bbfb3 (9a6dd55). Nine code commits b1b8d72..9a6dd55 (SUMMARY).
+EVIDENCE C:/wt/ios2e/.ios2e-evidence/ (ignored by /.*-evidence/): every gradle log, plant copies, hashes and diffs, the
+         RED XMLs, the Bundle probe's output, both release APKs, the gate log, the iOS run's log.
+         android/local.properties was COPIED from C:/wt/ios2d (sdk.dir; gitignored) - the only thing taken from another
+         worktree; nothing there was written.
+NO PHONE: no adb command was run. No container was started, stopped or removed. No port was used.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+ParametresController (with ParametresState and every prompt/outcome type, ParametresSnapshot, NoOpLocalStore),
+ParametresWire (new), DeviceRate and LegalPage; the ThresholdAlertStore / EveningNotificationStore / LocalStore
+interfaces with their in-memory implementations and AlertThreshold; and the twelve ui/screens/parametres files with
+LicencesScreen now live in :shared commonMain, package names unchanged. Android hosts them through the same calls as
+before (MainActivity and MainGraph UNEDITED - every :app call site resolves to a factory or overload named like the
+moved class or screen), and stays pixel-identical: every Paparazzi baseline verified at 0.0, NONE re-recorded. No
+dependency, version, wire, server, schema, engine, copy or drawable change; no navigation library.
+  b1b8d72  R826      the four org.json sites become `wire: ParametresWire`; :app's OrgJsonParametres.kt holds the org.json
+                     code and a factory of the controller's name. ParametresWirePinTest: GREEN, RED on 4 plants, GREEN.
+  9954f39  R827      the start date's check on the shared isIsoDay (kotlinx); ParametresStartDatePinTest, 33 vectors, no
+                     difference.
+  11f23b7  R828      the stores' interfaces + in-memory implementations to commonMain; SharedPreferences stays in :app.
+  f8a8a7c  R829      the controller, ParametresWire, DeviceRate, LegalPage to commonMain; two pins to commonTest unedited.
+  d77c74b  R830      the date field's Material3 picker becomes a slot with an initial date; the dialog stays in :app.
+  a78567f  R832+R834 the twelve UI files to commonMain (one commit); three fences RED once on a plant.
+  7422a78  R836      SimulationForecastScreensIosTest: the comment corrected; a separate pointer-tap pick test.
+  c37c84c  R833/R835 ZParametresScreensIosTest (7 tests) - Parametres and Licences driven over fakes.
+  9a6dd55  R835      that test's two picker waits also wait for the fake's recorded initial value.
+  R837  baselines untouched; the full gate on 9a6dd55: :app 1399 tests 0 failures, 142 screenshots at 0.0, :shared 234;
+        every androidTest compiles with no edit; APK 1,989,388 -> 1,989,388 B (classes.dex +1,145 stored).
+  R835  ONE run, 42951476181 on 9a6dd55 (headSha asserted): FAILURE - step 10 only; 316 tests executed, 315 passed, 1
+        failed (ZParametresScreensIosTest.step6, the date slot - R835 below); every other class green, the canary "still
+        broken as expected", no WATCHDOG line, no IrLinkageError but the canary's; the device compile ran.
+  R836  green on the simulator: the Friday item picked by a POINTER TAP behind R806's guard, the pick landed.
+  R838  series IE claimed; PARK-IE1..IE4 written; register-coverage OK.  R839  written below.
+
+================================================================================
+STATUS (R391)
+================================================================================
+NOT COMPLETE - NOT GREEN. The FULL :app:gate --rerun-tasks ran on the code tip 9a6dd55 in this session and is GREEN; the
+one iOS cloud run on that same SHA is RED. R573 needs a green iOS run on the commit that becomes main, so ios2e is NOT
+mergeable as it stands; the next run is the orchestrator's.
+FULL :app:gate --rerun-tasks on 9a6dd55, after ./gradlew --stop ("1 Daemon stopped"; 5.55 GB free, read in its own
+step), the tracked tree clean (git status --porcelain: nothing; HEAD = origin/ios2e = 9a6dd55), started 03:04:07Z:
+    test floor OK: 1399 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 9m 46s
+    260 actionable tasks: 260 executed
+    real 9m47.887s ; GATE_EXIT=0
+  Test XML (every file stamped by this run, 03:09:25-03:13:50): :app 184 files, 1399 tests, 0 failures, 0 errors, 0
+  skipped (142 Paparazzi screenshot tests at 0.0, 0 failures; PaparazziZeroToleranceTest 2/2); :shared 42 files, 234
+  tests, 0 failures. compileDebugAndroidTestKotlin in the gate, green. Compiler "w: " lines: 7 - all pre-existing
+  (MainActivity's LocalLifecycleOwner x2, LiveLocation x2, MockProviderReplay x2, the K/N targets notice); none in a file
+  this task touched.
+iOS RUN 42951476181 on 9a6dd55 (headSha asserted before anything was read): conclusion FAILURE - "316 tests completed, 1
+  failed"; "iOS SIMULATOR TESTS EXECUTED: 316" (R835).
+`git diff --stat 9a6dd55 HEAD` (report-only): see PUSH PROOF.
+gate:clone NOT RUN: no web/ change (`git diff --stat 19ce23f..HEAD -- web`: empty).
+
+================================================================================
+R273 - READ
+================================================================================
+REPORT-IOS-2d.txt in full (R812-R822: R822's blockers for this task and shared entry points, DEVIATION 7, the popup
+geometry - boundsInRoot = boundsInWindow (24,368)-(136,416) - and Q1); REPORT-IOS-2c.txt R795 and R785; REPORT-IOS-2c-
+FIX.txt (R806's guard, waitBounded and its positive control BoundedWaitIosTest, IosTestRawWaitUntilFenceTest's
+allowlist); REPORT-IOS-2b.txt R776 (the slot shape and its contract), R777 (isIsoDay's 37 vectors), R778 (the codec as
+a parameter; the org.json actual in :shared androidMain REJECTED because android.jar's org.json is stubbed to throw
+under :shared's JVM tests and adding org.json there is a :shared dependency); REPORT-IOS-1b-A.txt R602b/c/d (java.time
+factories left in :app) and R604 (fences red once); relay/RULINGS-2026-11-03-MOBILE.txt Rulings 9-13 and OUTCOME
+(IOS-2d) with R823. The files: ui/screens/parametres (12), parametres/ (4), settings/ThresholdAlert.kt,
+EveningNotification.kt, MeWire.kt, DetectionMode.kt, account/LocalStore.kt and DeviceLocalStores.kt, MainActivity's
+Parametres tab and openLegal, MainGraph's construction, the onboarding picker seam (OnboardingStartDatePicker.kt,
+OrgJsonOnboarding.kt), the iosTest pilot files. Every fence that names a path or reads ui/, parametres/, settings/ or
+account/: FencesTest, CommonMainFenceTest, RateFloatFenceTest, SettingsCaptureFenceTest, ThresholdAlertR340Test,
+ErasureCensusTest, CopyReachabilityTest, ParametresR282Test, AppSiteLinksTest, IosTestRawWaitUntilFenceTest,
+ExperimentalTimeOptInAllowlistTest, LogFenceTest, NoBareThresholdTest, DayCellGridHasLegendTest.
+THE FILES, VERIFIED: the orchestrator's list is exact (line counts equal). Facts it does not carry, found by reading:
+  - the LocalStore interface is in account/LocalStore.kt (with DeviceLocalStore), not DeviceLocalStores.kt;
+  - LegalPage.kt also holds `object Site`, whose origin reads :app's auth/CallbackLink (java.net) - so Site stays;
+  - ParametresListRowsTest and ParametresDialogScreenshotTest read two `internal` declarations of the moved UI
+    (startDateDisplay, RateRow);
+  - CommittedSettings (ParametresSections.kt) is a second java.io.Serializable held by a Bundle;
+  - ParametresSnapshot's serialVersionUID is explicit (1L).
+
+================================================================================
+R1 - PRECONDITION
+================================================================================
+`git fetch origin`; `git merge-base --is-ancestor 1d8d48e origin/main` -> true; `... 19ce23f origin/main` -> true;
+origin/main = 19ce23f5f22dbb958099033cdfa95ddbb3db92d2. HOLDS.
+
+================================================================================
+R826 - THE WIRE BODIES MOVED FIRST, PINNED (commit b1b8d72)
+================================================================================
+SHAPE: ONE SMALL INTERFACE, not four function parameters (the constructor already lists sixteen seams):
+    interface ParametresWire {
+        fun patchBody(settings: Settings): String      // was settings.mePatchBody()          (MeWire.kt)
+        fun consentBody(enable: Boolean): String       // was detectionConsentBody(enable)   (DetectionMode.kt)
+        fun deleteBody(): String                       // was the controller's private deleteBody()
+        fun parseReceipt(body: String): DeleteOutcome.Done  // was the controller's private parseReceipt(body)
+    }
+  The controller takes `wire: ParametresWire` as a REQUIRED LAST parameter, so every call that does not name it - the
+  app's and every test's - resolves to :app's factory of the same name (parametres/OrgJsonParametres.kt): the same
+  sixteen parameters, order and defaults, handing in a private `OrgJsonParametresWire` whose four members are
+  Settings::mePatchBody and detectionConsentBody BY REFERENCE and the delete body / receipt parse MOVED there from the
+  controller unchanged, line for line. MeWire.kt and DetectionMode.kt untouched (PARK-D3). NoOpLocalStore went
+  private -> internal so the factory's default is the class's own (public at R829).
+WHICH org.json THE PINS RUN AGAINST: android.jar's org.json is stubbed to throw under JVM tests (R778); :app's test scope
+  adds the real JVM library - app/build.gradle.kts line 483, `testImplementation(libs.json.org)` (AN2), verified. THAT
+  LIBRARY IS NOT ANDROID'S IMPLEMENTATION: its JSONObject keeps keys in a HashMap (the oracle run showed the order
+  activityStartDate, denominatorKind, exactTotalWorkDays, granularity, canton, employmentRate - not insertion order),
+  Android's in a LinkedHashMap. So the pins prove THE MOVE DID NOT CHANGE A BODY OR A PARSE - the org.json code itself
+  does not move - and NOT the bytes a phone sends.
+THE PIN - ParametresWirePinTest (:app test scope, kotlin.test + coroutines-test), through the controller's PUBLIC API
+  only (save(), setAutoDetection(), confirmDelete(), the state), so it compiled unedited before and after:
+    mePatchBody   26 cantons x 2 methods x 2 granularities x start "" / "2026-03-01" (208 bodies: exactTotalWorkDays and
+                  activityStartDate as JSON null; the name ABSENT, so omitted; every enum value) + the number form (rates
+                  1, 55, 100 with totals 1, 99, 365, trimmed " 55 "): each byte-exact.
+    consent       setAutoDetection(true) then (false): {"detectionConsent":true,"loggingMode":"AUTO_DETECT"},
+                  {"detectionConsent":false}.
+    delete body   one POST: ("/api/v1/account/delete", {"confirm":"SUPPRIMER"}).
+    parse         ten well-formed shapes - the SPEC 14.1 receipt (-> Done(2, true), erased), "removed" missing, a map
+                  without Entry, a number, an array, a string, JSON null, string values ("7" -> 7, "true" -> true), "x"/
+                  "yes" -> (0, false), {} - and FOUR MALFORMED bodies ("not json", "", "[1,2]", a truncated object): the
+                  parse THROWS org.json.JSONException out of the launched delete, BEFORE the device is erased - no
+                  outcome shown, nothing cleared, the exception at the scope's handler. Pinned AS FOUND, not changed.
+  The expected strings were taken from the current code's own output (the oracle: the first run failed 2 tests on key
+  order only) and checked by eye against MeWire.kt / DetectionMode.kt.
+  SEQUENCE ON THE FINAL TEXT (sha256 a2f76918...; the text was reformatted twice for ktlint/detekt - line wraps, an
+  assertNone helper, patchBody(Settings) for LongParameterList - and the whole sequence re-run on the final text):
+    GREEN on the original code (the R826 change set aside, the original controller restored from HEAD): 4/4.
+    RED on four VERIFIED plants (MeWire.kt, DetectionMode.kt, ParametresController.kt copied and hashed - 8e9a9549...,
+    052dee7d..., 26a56ce1...; a script refusing unless each anchor matched once; diff shown): activityStartDate omitted
+    when null; detectionConsentBody(false) adding loggingMode MANUAL; the delete word lowercased; optInt("Entries") ->
+    4 run, 4 failed: "deleteBody: ... but was: <[(/api/v1/account/delete, {"confirm":"supprimer"})]>",
+    "detectionConsentBody: the two PATCH bodies, in order ...", "parseReceipt: 2 mismatch(es) ...", "mePatchBody: 107
+    mismatch(es) ...". Restored from the copies: sha256 equal; grep PLANT: 0.
+    THE CHANGE, then GREEN UNEDITED (sha256 a2f76918... unchanged): 4/4; fastCheck green; :app parametres.*, fences.*,
+    ForcedSignOutTest, SignOutRefreshTest, SessionReconciledTest, MainGraphWiringTest: 32 files, 161 tests, 0 failures.
+  The pin STAYS in :app (it needs the org.json library).
+
+================================================================================
+R827 - THE START DATE'S VALIDATION, PINNED (commit 9954f39 - its own commit)
+================================================================================
+ParametresStartDatePinTest (kotlin.test; the controller built with an explicit test wire, so it moved to commonTest
+unedited at R829): onActivityStartDateChange(x) then save(); recorded per vector - the error, the start dates sent with a
+save, anything thrown. 33 VECTORS, every one the same on java.time and on kotlinx:
+  saved as given      2026-03-01; 2024-02-29 (leap); 0000-01-01; -0001-12-31
+  saved, trimmed      " 2026-03-01 "; "\t2026-03-01\n" (the controller trims before it asks)
+  whole year (null)   ""; "   "
+  PERIOD_INVALID      +12026-01-05; +10000-01-01 (parsed - a sign with more than four digits - then the engine's period)
+  START_DATE_INVALID  2026-02-29; 2026-04-31; 2026-13-01; 2026-00-10; 2026-01-00; 2026-01-32; 2026-1-5; 2026-01-5;
+                      2026-1-05; +2026-01-05; 12026-01-05; 10000-01-01; 02026-01-05; 2026-03-01T00:00;
+                      2026-03-01T00:00:00Z; 2026-03-01Z; 2026-03; 20260301; 2026/03/01; 01.03.2026; 2026-W09-7;
+                      2026-060; abc
+  GREEN on java.time (every expectation as predicted, first run - the oracle). RED on a VERIFIED plant (the controller
+  copied and hashed, 401f0067...; java.time's ofPattern("uuuu-MM-dd"), SMART resolution): 1 run, 1 failed, "start date:
+  2 mismatch(es) <[2026-02-29]> gave Seen(error=null, sent=[], thrown=DateTimeFormatException) ... <[2026-04-31]> ..."
+  (the SMART parser accepted both and the engine's own parse threw). Restored, sha256 OK.
+THE SWAP: `runCatching { java.time.LocalDate.parse(startDate) }.isFailure` -> `!isIsoDay(startDate)` - the SHARED
+  OnboardingDates.isIsoDay (kotlinx LocalDate.parse; R206's one home of this exact check, already pinned by R777's 37
+  vectors). GREEN unedited (sha256 3002ad06...). NO VECTOR DIFFERS: nothing kept on java.time, no question.
+
+================================================================================
+R828 - THE STORES' INTERFACES MOVED; THEIR IMPLEMENTATIONS STAYED (commit 11f23b7)
+================================================================================
+MOVED to :shared commonMain, package unchanged, BYTE-IDENTICAL (each segment compared against a copy of the original):
+  settings/ThresholdAlert.kt (git mv): AlertThreshold, ThresholdAlertStore, InMemoryThresholdAlertStore (ThresholdCrossing
+    was already shared, IOS-2d);
+  settings/EveningNotification.kt (git mv): EveningNotificationStore, InMemoryEveningNotificationStore;
+  account/LocalStore.kt (new in :shared): the LocalStore interface (it had no in-memory implementation; its no-op default,
+    NoOpLocalStore, sits in the controller's file and moved at R829).
+  No java.* / android.* in any (CommonMainFenceTest; compileCommonMainKotlinMetadata in fastCheck).
+STAYED in :app, BYTE-IDENTICAL: SharedPrefsThresholdAlertStore and SharedPrefsEveningNotificationStore, split into files
+  named for them (settings/SharedPrefs*Store.kt - detekt MatchingDeclarationName) - the same prefs file
+  (monreleve.detection), the same keys (alert.enabled, alert.fiscalCrossed, alert.socialCrossed, alert.alertedDay,
+  alert.alertedThreshold, evening.enabled, evening.lastNotifiedDay) and value forms; DeviceLocalStore (account/
+  LocalStore.kt git mv'd to DeviceLocalStore.kt).
+PINNED BY THE EXISTING TESTS (named; green through and after): ForcedSignOutTest (R527 - one in-memory detection file
+  shared by SharedPrefsThresholdAlertStore and SharedPrefsEveningNotificationStore, what each clear leaves), ErasureCensusTest
+  (the monreleve.* census over both roots), LocalStoreTest and ParametresAccountTest (DeviceLocalStore's scopes),
+  EmployerFigureStoreTest (the shared detection file), ThresholdAlertDecisionTest, ThresholdAlertNotifierTest,
+  EveningNotificationDecisionTest, ParametresControllerTest (the in-memory defaults). NO test asserts a key literal; the
+  key lines are unchanged by the byte comparison above.
+NEW: commonTest InMemoryAlertStoresTest (4) - nothing asserted the in-memory pair directly. Written AFTER the move (the
+  moved lines are identical); GREEN; RED on two verified plants (activeThresholdToday ignoring the day; evening on by
+  default): 4 run, 2 failed, "off by default", "another day answers nothing expected null, but was:<FISCAL>"; restored,
+  sha256 OK.
+ThresholdAlertR340Test, a path-naming scan, failed loudly on the move as its header says it will; its list follows both
+  halves (fixture plumbing, below).
+
+================================================================================
+R829 - THE CONTROLLER MOVED (commit f8a8a7c)
+================================================================================
+COLLABORATORS: none needs an Android Context. After R826-R828 every type the controller names is shared (SettingsSaver,
+  SettingsStore, EntryRepository, LocalStore, DetectionModeStore, the two notification stores, PostOutcome,
+  BytesOutcome, ExportEvent, the engine, isIsoDay); the wire is the parameter.
+THE PIN FIRST - ParametresControllerPinTest (8 tests, kotlin.test + coroutines-test, an explicit recording wire), written
+  in :app against the controller after R826/R827: the state from the stored settings and the three toggle stores (an
+  unknown canton opens unchosen); a save that moves no rate (one patch of the six fields, the name carried over in the
+  store - R475) and every PATCH outcome (NetworkError, SessionExpired -> NETWORK_ERROR; SessionEnded, NoSession ->
+  SESSION_ENDED; 422 -> EDITING + SAVE_REFUSED; nothing stored); every validation refusal (RATE_INVALID x3,
+  EXACT_TOTAL_MISSING, EXACT_TOTAL_INVALID x2, PERIOD_INVALID, START_DATE_INVALID, CANTON_MISSING) with nothing sent and
+  an edit clearing it; R290's before/after equal to the shared engine's deviceDeclarableRate (R181), cancel then
+  confirm; a granularity change against half-day rows refused (CHANGE_CONFLICTS_WITH_RECORD); sign-out with nothing
+  pending (no send) and with pending rows (one send, the distinct dates LEFT named, a retry sends once more, then
+  revoke -> clearForSignOut -> SignedOut in that order); deletion's prompt (3 recorded, 1 unsynced), its POST with the
+  wire's body, the receipt handed to the wire's parse, erasure ON SUCCESS ONLY, Deleted on acknowledge, and Refused /
+  Unknown / Unknown for 500 / NetworkError / SessionEnded with the device kept; the toggles (consent through the wire,
+  sampling started/stopped, a refused 403 leaving MANUAL, the two local opt-ins) and a revoked permission (MANUAL, no
+  PATCH); both exports (the JSON fallback name, the server's CSV name, 503 -> Failed, NetworkError ->
+  RequiresConnectivity); a restore reopening the delete confirmation with counts from the record.
+  GREEN 8/8 on its first run; RED on four VERIFIED plants (the controller copied and hashed; `whole = settings`, the
+  `.distinct()` dropped, the erasure dropped, the alert store's write commented out): 8 run, 4 failed - "stored with the
+  name carried over (R475)", "expected <[2026-03-03, 2026-03-05]> but was <[2026-03-03, 2026-03-05, 2026-03-05]>",
+  "expected <(true, true)> but was <(true, false)>", "erased after the server's success expected <[clearForDeletion]>
+  but was <[]>"; restored, sha256 OK; GREEN (sha256 fa77b4b1...).
+THE MOVE (git mv, package unchanged): ParametresController.kt (edits: ParametresSnapshot java.io.Serializable ->
+  PlatformSerializable with serialVersionUID 1L kept; NoOpLocalStore internal -> public, :app's factory defaults to it
+  across the module; header notes), ParametresWire.kt, DeviceRate.kt (pure), LegalPage.kt (the enum; `object Site`
+  split out UNCHANGED into :app's parametres/Site.kt - it reads :app's CallbackLink, java.net).
+THE BUNDLE, MEASURED (a throwaway JVM probe in :app's test scope, run before R829, after R829 and after R832, then deleted,
+  never committed - it serialised a fixed instance with ObjectOutputStream):
+                                class                    SUID  bytes  sha256 (first 8)  before = after
+    ParametresSnapshot          ...parametres.Parametres...  1   628    cf63c781          yes (R829)
+    CommittedSettings           ...ui.screens.parametres...  1   590    2a49e678          yes (R832)
+  Android's actual typealias PlatformSerializable IS java.io.Serializable; the class names, SUIDs and fields are
+  unchanged, so the saved-instance bytes are identical - unlike IOS-2d's SimInputs (R823).
+EACH TEST FILE AND WHERE IT ENDED:
+  :shared commonTest (JVM and iOS)  ParametresControllerPinTest (8) and ParametresStartDatePinTest (1) - git mv'd
+                                    UNEDITED (sha256 equal); InMemoryAlertStoresTest (4, R828); ParametresListRowsTest
+                                    (4, R832 - imports only).
+  :app test scope                   ParametresWirePinTest (org.json); ParametresDatePickerConversionsTest (java.time,
+                                    R830); ParametresControllerTest, ParametresAccountTest, DetectionSettingsTest,
+                                    SignOutSyncFirstTest, ParametresKeepsTheNameTest (Kotest + java.time.Clock, through
+                                    the factory, UNEDITED); ParametresR282Test, AppSiteLinksTest (JUnit, java.io.File);
+                                    LegalLinkTest (Kotest, android.content - its subject stays, R831);
+                                    ParametresDialogScreenshotTest (Paparazzi, R837).
+ONE :app SCREEN EDIT the move forced (DEVIATION 3): ParametresScreen.kt, still in :app at R829, read `state.error` into a
+  local - no smart cast on another module's public property (IOS-2d R814's DEVIATION 5 shape). It moved with it at R832.
+FENCES FOLLOWED: RateFloatFenceTest's two paths; SettingsCaptureFenceTest's :app root re-pinned on MainActivity.kt (the
+  controller's two exemptions still match it by file name under the :shared root).
+
+================================================================================
+R830 - THE DATE FIELD TAKES R776'S SEAM, WITH AN INITIAL DATE (commit d77c74b)
+================================================================================
+THE CONVERSIONS, PINNED FIRST (ParametresDatePickerConversionsTest, :app, kotlin.test) on isoToMillis / millisToIso where
+  they sat (ParametresDateField.kt; private -> internal, a visibility edit only). THE UTC-MIDNIGHT CONVENTION SHOWN:
+    isoToMillis  2026-01-15 -> 1768435200000 (winter)   2026-07-15 -> 1784073600000 (summer, CEST in Paris)
+                 2026-01-01 -> 1767225600000            2026-12-31 -> 1798675200000
+                 2024-02-29 -> 1709164800000 (leap)     1970-01-01 -> 0
+                 each a whole multiple of 86 400 000; null for "", "   ", "abc", 2026-02-29, 2026-13-01, " 2026-01-15",
+                 2026-1-5.
+    millisToIso  the five midnights back to their days; 1784073600000 + 22 h -> 2026-07-15 (already 16 Jul in Paris);
+                 1798675200000 + 23 h 30 -> 2026-12-31 (00:30 on 1 Jan in Paris); 1767225599999 -> 2025-12-31;
+                 1709164799999 -> 2024-02-28; 1709251199999 -> 2024-02-29; 0 -> 1970-01-01; -1 -> 1969-12-31; five
+                 round trips.
+  GREEN 2/2 (the hand-worked literals matched on the first run); RED on a VERIFIED plant (both conversions on
+  Europe/Paris instead of UTC; the file copied and hashed): 2 run, 2 failed, "isoToMillis(2026-01-15) = 1768431600000,
+  not 1768435200000 ...", "millisToIso(1784152800000) = 2026-07-16, not 2026-07-15 ..."; restored, sha256 OK; GREEN
+  UNEDITED after the split.
+THE SEAM: `typealias ParametresDatePicker = @Composable (initialIsoDay: String?, onPicked: (isoDay: String) -> Unit,
+  onDismiss: () -> Unit) -> Unit` (ParametresEditTypes.kt, with its contract). ParametresScreen takes `startDatePicker`
+  and hands it to the sheets in EditSheetFrame - not as a sixth ParametresOverlays parameter, which would need a
+  @Suppress the no-inline-string fence forbids in ui/ (DEVIATION 6). StartDateSheetContent keeps WHEN the picker shows
+  (its rememberSaveable pickerOpen) and composes `frame.startDatePicker(value.ifBlank { null }, onChange) { pickerOpen =
+  false }` exactly where the Material3 block sat; its @OptIn(ExperimentalMaterial3Api) and java.time imports went.
+ANDROID'S HALF stays in :app's ui/ (R776's reason - :app's ui/ fences, no dependency change): ui/screens/parametres/
+  ParametresStartDatePicker.kt holds the block UNEDITED except its three `pickerOpen = false` (now onDismiss()) and its
+  initial value (rememberDatePickerState(initialSelectedDateMillis = isoToMillis(initialIsoDay.orEmpty())) - the same
+  millis for every value: blank -> null either way), the two conversions unchanged, and an overload
+  ParametresScreen(state, actions, appVersion, modifier) passing it - MainActivity's call is unedited.
+PAPARAZZI ON THAT COMMIT: :app:verifyPaparazziDebug + :app:testDebugUnitTest --rerun -> BUILD SUCCESSFUL; 142 screenshot
+  tests, 0 failures, at 0.0; 1404 :app tests (1397 + WirePin 4 + Conversions 2 + the then-untracked probe 1), 0 failures;
+  snapshots untouched. WHAT THAT PROVES, AND NOT: no Paparazzi baseline shows the Parametres screen, a sheet or the date
+  dialog - ParametresDialogScreenshotTest photographs RateRow only (2 baselines). The dialog's pixels are not covered by
+  any baseline (as IOS-2b said of onboarding's); the block moved unedited is what stands in for them. iOS: no native
+  picker (out of scope); the iOS test fills the slot with a fake (R833).
+
+================================================================================
+R831 - LEGAL LINK STAYS A HOST PIECE
+================================================================================
+parametres/LegalLink.kt (openLegalLink, ActivityNotFoundException) stays in :app UNTOUCHED, with MainActivity's openLegal
+(Site.url + the Toast fallback) and LegalLinkTest. The shared screen receives onOpenLegal (LegalPage) in ParametresActions
+exactly as before; LegalPage moved (pure), Site stayed (R829).
+
+================================================================================
+R832 - THE SCREENS MOVED (commit a78567f) - ONE COMMIT FOR ALL
+================================================================================
+Why one: the files call each other's internals (EditSheet, EditSheetFrame, SettingRow, SwitchRow, ActionRow,
+CommittedSettings, StartDateSheetContent, SectionHeading ...), and `internal` does not cross a module (IOS-2d R816's
+reason). git mv to :shared commonMain ui/screens/parametres, package unchanged:
+  BYTE-IDENTICAL (sha256 before = after), 10: LicencesScreen, ParametresAccountSection, ParametresActions,
+    ParametresDateField, ParametresDeleteSection, ParametresEditTypes, ParametresFields, ParametresInfoContent,
+    ParametresListRows, ParametresScreen.
+  EDITED, 2: ParametresRateChange (RateRow internal -> public: ParametresDialogScreenshotTest stays in :app and reads it
+    - R604's MovingRate shape); ParametresSections (CommittedSettings java.io.Serializable -> PlatformSerializable, SUID
+    1L kept, bytes measured equal above).
+THE THREE ModalBottomSheets moved UNCHANGED (rememberModalBottomSheetState() with no argument, no skipPartiallyExpanded,
+  no sheet-state change); R811(b) stays open.
+HOSTS stay in :app, reached as today: MainActivity's ParametresTab (unedited) calls :app's overload; ShellState's
+  rememberSaveable ParametresSnapshot; MainGraph's factory call (unedited); the permission flows behind the toggles; the
+  share/export hand-off; openLegal.
+ParametresListRowsTest followed its subject into commonTest (imports only); startDateDisplay stayed internal (DEVIATION 7).
+
+================================================================================
+R833 - NEW MATERIAL ON iOS, INTERACTED WITH
+================================================================================
+MEASURED on 19ce23f (the sorted androidx imports of the twelve files minus every androidx import in shared commonMain;
+then by name for a fully-qualified androidx call outside an import: 0):
+  androidx.compose.material3.ListItem          ParametresListRows.kt:69, 86, 103, 118 (SettingRow, ActionRow, SwitchRow,
+                                               ValueRow)
+  androidx.compose.material3.Switch            ParametresListRows.kt:106 (SwitchRow's trailing content)
+  androidx.compose.material3.ListItemDefaults  ParametresListRows.kt:129 (transparentListColors)
+  (DatePicker, DatePickerDialog, rememberDatePickerState - the other three - stayed in :app, R830.) ModalBottomSheet,
+  rememberModalBottomSheetState, RadioButton, DropdownMenu, AlertDialog, HorizontalDivider, OutlinedTextField and the
+  material icons were already used by shared screens.
+HOW EACH IS USED IN THE iOS TEST (pilot/ZParametresScreensIosTest):
+  Run 42951476181, the class's own marks (170 "R835 MARK" lines in the log):
+  Switch            step2: the alert Switch TAPPED by a pointer (boundsInRoot = boundsInWindow (936,716)-(988,748)) ->
+                    thresholdAlertEnabled true and the node's ToggleableState On; the detection Switch TAPPED
+                    ((936,586)-(988,618)) -> one consent through the wire, autoDetectionEnabled true, a THIRD Switch
+                    (the evening one) appeared; it TAPPED -> eveningNotificationEnabled true, On; the alert still On.
+                    GREEN.
+  ListItem          TAPPED: the rate row (step3), the En-savoir-plus row (step4), the export row (step5), the start-date
+                    row (step6, (20,389)-(1004,461)), the Licences row (step7, (20,712)-(1004,768)). Each opened what it
+                    opens. GREEN.
+  ListItemDefaults  composed in every row (transparentListColors) - drawn, no separate interaction exists.
+  SHEET 1, the edit sheet (step3): OPEN; the handle offered Expand ("Expand bottom sheet") -> EXPANDED through it; "80"
+                    typed; its Save tapped inside the window -> one patch (rate 80), SAVED, closed. GREEN.
+  SHEET 2, learn more (step4): OPEN; Expand offered -> EXPANDED through it; its Close tapped inside the window -> closed.
+                    GREEN.
+  SHEET 3, the export chooser (step5): OPEN; the handle offered NEITHER Expand NOR Collapse within the 3 s settle
+                    ("settled=false ... Expand=[] Collapse=0") - the sheet opened fully expanded, so there was no Expand
+                    to perform (marked, not forced - DEVIATION 11, Q2); its JSON button tapped inside the window -> one
+                    export on /api/v1/account/export, a Ready event, the sheet closed. GREEN.
+  THE DATE SLOT (step6): the start-date sheet OPEN, EXPANDED through Expand, its pick button tapped inside the window
+                    ((212,431)-(812,471)) -> the slot COMPOSED and was HANDED null as the initial value (the bounded
+                    wait and the assertion on the recorded initial value passed). Then the fake's pick button: boundsInRoot
+                    (192,945)-(470,985), "performScrollTo - no scroll parent", boundsInWindow Rect.Zero - R806's guard
+                    FAILED THE TEST there, as it is built to, instead of tapping off-window. NOT SHOWN ON iOS: the pick
+                    landing in the field, its save, and the reopened slot being handed the saved day. RED.
+  Licences (step7): the Licences row -> LicencesScreen shown -> its Back -> Parametres back. GREEN.
+
+================================================================================
+R834 - FENCES
+================================================================================
+FOLLOWED THE MOVES (no fence widened - FencesTest, CommonMainFenceTest, LogFenceTest, NoBareThresholdTest,
+  DayCellGridHasLegendTest, CopyReachabilityTest and ErasureCensusTest already read :shared commonMain's roots):
+  RateFloatFenceTest - DeviceRate.kt, ParametresController.kt (R829), ParametresRateChange.kt (R832) follow the files;
+  SettingsCaptureFenceTest - :app's root re-pinned on MainActivity.kt (R829);
+  ThresholdAlertR340Test - both halves of the old ThresholdAlert.kt listed (R828).
+  ParametresR282Test, AppSiteLinksTest, CopyDuplicationTest, ParametresCopyAccentTest name no moved file (copy files and
+  LegalPage.entries only).
+RED ONCE ON A VERIFIED PLANT IN A MOVED PARAMETRES FILE (after a78567f's tree; ParametresListRows.kt copied and hashed;
+  anchors asserted once; diff kept): + import ...material3.DatePicker, + import ...graphics.Color, + import ...unit.dp,
+  + private val PLANT_COLOUR = Color(0xFF00FF00), + private val PLANT_GAP = 7.dp, + private const val PLANT_TEXT =
+  "Bonjour, plante". One run:
+  FencesTest 11 run, 2 failed -
+    uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens (TOKENS-ONLY): "ui//design/ token fence violated:
+      ..\shared\src\commonMain\kotlin\ch\monreleve\app\ui\screens\parametres\ParametresListRows.kt: raw Color(0x...)
+      literal outside design/Tokens.kt | ...ParametresListRows.kt: raw .dp literal outside Spacing/Radius";
+    uiAndDevFilesCarryNoStringLiteral (NO-INLINE-STRING): "...ParametresListRows.kt: string literal "Bonjour, plante" in
+      ui//dev/ - French copy must come from fr/".
+  CommonMainFenceTest 3 run, 1 failed - commonMainImportsNoPlatformApis: "...ParametresListRows.kt:12: import
+    androidx.compose.material3.DatePicker // PLANT-R834".
+  Restored from the copy: sha256 OK; grep PLANT/plante: 0. Then green (fastCheck, the gate).
+
+================================================================================
+R835 - iOS COMPILES AND DRIVES IT - THE ONE RUN
+================================================================================
+THE TEST: iosTest pilot/ZParametresScreensIosTest (7 tests, step1..step7; the class named to sort after every pilot
+  class - DEVIATION 10). Hosted as MainActivity hosts it, over the REAL shared ParametresController (a recording wire, a
+  saver answering 200, InMemorySettingsStore with a completed onboarding, an empty record, a recording export) and the
+  shared ParametresScreen with a FAKE in the date slot (no native picker - R830). No server, no account, no address.
+  Strings from fr/, values from shared code. Every wait through waitBounded (0 raw waits), a MARK on both sides of every
+  unbounded call, a 120 s watchdog ("R835 MARK" / "R835 WATCHDOG").
+  Plus, in commonTest and so on the simulator: ParametresControllerPinTest 8, ParametresStartDatePinTest 1 (the R827
+  vectors that moved; the R826 org.json vectors stay in :app), InMemoryAlertStoresTest 4, ParametresListRowsTest 4.
+THE WINDOWS COMPILE-ONLY CHECK before the run (R575's enableKlibsCrossCompilation overridden ON THE COMMAND LINE, no file
+  changed; COMPILE EVIDENCE ONLY, never a run result): `./gradlew :shared:compileTestKotlinIosSimulatorArm64
+  -Pkotlin.native.enableKlibsCrossCompilation=true --offline` - BUILD SUCCESSFUL on c37c84c's tree and again on 9a6dd55's.
+  Positive signal: the test klib held ZParametresScreensIosTest, PzFakeDatePicker, ParametresProgress,
+  step6TheSimulationsDropdownItemIsPickedByAPointerTap and pointerTapMarked; the main klib ParametresScreen,
+  ParametresController, ParametresWire, InMemoryThresholdAlertStore, LicencesScreen. Not linked, not run.
+THE RUN: 42951476181 - https://github.com/kaitmax/monreleve/actions/runs/42951476181 - workflow_dispatch, ref ios2e,
+  headSha 9a6dd55084e87480e7f5701bafdb8933a30bbfb3 (asserted), dispatched 03:15:01Z; job 03:15:05Z -> 03:23:54Z;
+  conclusion FAILURE. Simulator: "DEVICE: iPhone 17 Pro (<udid>) (Booted)" (step 14).
+STEPS (every step's result, from the API):
+  1 Set up job - success                                   03:15:05..03:15:08
+  2 Run actions/checkout@3d3c42e5... - success            03:15:08..03:15:11
+  3 Run actions/setup-java@de7274f0... - success          03:15:11..03:15:15
+  4 Run gradle/actions/setup-gradle@3f5f9ada... - success 03:15:15..03:15:16
+  5 Restore the Kotlin/Native toolchain - success         03:15:16..03:15:16
+  6 Environment (diagnostic) - success                    03:15:16..03:15:24
+  7 Provision the Kotlin/Native toolchain - success       03:15:24..03:17:20
+  8 Boot the iPhone simulator - success                   03:17:20..03:18:03
+  9 Start the wire-recording server - success             03:18:03..03:18:04
+  10 iOS - simulator tests and device compile - FAILURE   03:18:04..03:22:53
+  11 The wire recording (what the simulator really sent) - success
+  12 Save the Kotlin/Native toolchain - success
+  13 Results - refuse a run that executed no tests - success
+  14 Which simulator ran (positive signal) - success
+  15 Room's generated iOS code (listing) - success
+  16 Run actions/upload-artifact@cf430e03... - success
+  30, 31, 32 Post steps - success; 33 Complete job - success
+STEP 10: "> Task :shared:compileTestKotlinIosSimulatorArm64", "> Task :shared:linkDebugTestIosSimulatorArm64", "> Task
+  :shared:iosSimulatorArm64Test", then "ch.monreleve.app.pilot.ZParametresScreensIosTest.step6TheDateSlotOpensWithThe
+  CurrentValueAndThePickLandsInTheField[iosSimulatorArm64] FAILED / kotlin.AssertionError: R806/R833: the fake's pick is
+  not inside the window - its tap would land at Offset(331.0, 965.0) (the centre of its boundsInRoot
+  Rect.fromLTRB(192.0, 945.0, 470.0, 985.0)), outside its boundsInWindow Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)" (at
+  ZParametresScreensIosTest.kt:335, tapInsideTheWindow); "316 tests completed, 1 failed"; "Execution failed for task
+  ':shared:iosSimulatorArm64Test'" - the ONLY failed task; "> Task :shared:compileKotlinIosArm64" (the device compile)
+  then executed under --continue ("25 actionable tasks: 25 executed") and is not among the failed tasks; "BUILD FAILED in
+  4m 45s".
+STEP 13: "iOS SIMULATOR TESTS EXECUTED: 316" - expected 316 = 291 (run 42934860637) + ParametresControllerPinTest 8 +
+  ParametresStartDatePinTest 1 + InMemoryAlertStoresTest 4 + ParametresListRowsTest 4 + ZParametresScreensIosTest 7 +
+  SimulationForecastScreensIosTest's new step6 1. 57 classes, summed from the step's lines: 316 tests, 1 failure. Every
+  pilot class REACHED:
+  ch.monreleve.app.pilot.AujourdhuiPilotIosTest tests=7 failures=0
+  ch.monreleve.app.pilot.BoundedWaitIosTest tests=2 failures=0
+  ch.monreleve.app.pilot.CalendrierReleveScreensIosTest tests=5 failures=0
+  ch.monreleve.app.pilot.LaunchSpeechIosTest tests=2 failures=0
+  ch.monreleve.app.pilot.MaterialDatePickerCanaryTest tests=1 failures=0
+  ch.monreleve.app.pilot.OnboardingScreensIosTest tests=1 failures=0
+  ch.monreleve.app.pilot.PilotFixtureTest tests=3 failures=0
+  ch.monreleve.app.pilot.SignInScreensIosTest tests=2 failures=0
+  ch.monreleve.app.pilot.SimulationForecastScreensIosTest tests=6 failures=0
+  ch.monreleve.app.pilot.ZParametresScreensIosTest tests=7 failures=1
+  and the moved/new commonTest classes: ch.monreleve.app.parametres.ParametresControllerPinTest 8,
+  ParametresStartDatePinTest 1, ch.monreleve.app.settings.InMemoryAlertStoresTest 4,
+  ch.monreleve.app.ui.screens.parametres.ParametresListRowsTest 4 - each failures=0.
+  The canary: "IOS-1b-A canary: still broken as expected - kotlin.internal.IrLinkageError: Can not get instance of
+  singleton 'Companion': No class found for symbol 'kotlinx.datetime/Instant.Companion|null[0]'" (unchanged).
+  "WATCHDOG" lines: 0. IrLinkageError lines: 1 - the canary's. NO OTHER LINKAGE ERROR: the moved controller, stores and
+  twelve UI files linked and composed.
+WHAT THE RUN PROVES, AND NO MORE: on the simulator, in a 1024 x 768 Compose UI test window, the moved controller and its
+  pins, the stores' in-memory implementations, and the Parametres screen and Licences compile, link, compose and take
+  input; Switch and ListItem are interacted with; two of the three sheets are expanded through their handle and their
+  confirms tapped inside the window, the third opened fully expanded and its confirm tapped; the date slot opens and is
+  handed the initial value. NOT shown: the fake's pick landing in the field and its save (the failure), any iOS host
+  (none exists), a native picker, a phone-sized window, VoiceOver.
+THE FINDING (not a flake - R806's guard is deterministic geometry): StartDateSheetContent composes the slot AFTER the
+  EditSheet call, i.e. outside EditSheet's own verticalScroll Column, at the bottom of the sheet's content. Android's slot
+  content, Material3's DatePickerDialog, is a Dialog - its own window - so where it is called from never mattered. The
+  iOS fake is plain inline content (a Text and two TextButtons): it was laid out below the 768-px window, with no scroll
+  parent to bring it in. So an iOS implementation of the slot must PRESENT ITSELF (a dialog or popup layer, or a UIKit
+  presentation) - which a real date picker would - and the fake did not. Not changed: a code change after the run would
+  move the code tip, and the second run is the orchestrator's (Q1).
+
+================================================================================
+R836 - THE POPUP POINTER TAP (commit 7422a78)
+================================================================================
+THE COMMENT, CORRECTED (lines 94-102): it now states what run 42934860637 MEASURED - the Friday item's boundsInRoot EQUALS
+  its boundsInWindow, Rect.fromLTRB(24.0, 368.0, 136.0, 416.0), positionInWindow Offset(24.0, 368.0): the popup layer's
+  root sits at the window origin - and that the OnClick pick was a pre-run decision on a concern the run disproved. The
+  commit message of 0616b4e cannot be edited; this report and 7422a78's message record the correction.
+THE OnClick TEST STAYS AS IT IS (step5, unchanged).
+THE NEW, SEPARATE TEST: step6TheSimulationsDropdownItemIsPickedByAPointerTap - the same host, the menu opened by a
+  pointer tap on the field, the Friday item picked by performClick (a pointer tap at the centre of boundsInRoot) behind
+  R806's guard (pointerTapMarked: that point inside a non-empty boundsInWindow, or fail there), then a bounded wait for
+  extraWeekday == FRIDAY with the menu closed. Every assertion and wait message starts "R836 popup pointer tap"; its
+  watchdog name is R836-pointer-tap.
+RESULT ON iOS (run 42951476181, its marks): "R836 popup pointer tap the Friday item: boundsInRoot=Rect.fromLTRB(24.0,
+  368.0, 136.0, 416.0) tapPoint=Offset(80.0, 392.0) boundsInWindow=Rect.fromLTRB(24.0, 368.0, 136.0, 416.0)" -> "the tap point is inside the window;
+  performClick (a pointer tap) - calling" -> "returned" -> the bounded wait "Friday chosen by the pointer tap and the menu
+  closed" RETURNED -> "the DropdownMenuItem PICKED by a pointer tap: Friday". SimulationForecastScreensIosTest tests=6
+  failures=0. R836's POINTER-TAP TEST IS GREEN. IOS-2d's DEVIATION 7 / UNNUMBERED-4 closed on the evidence.
+
+================================================================================
+R837 - ANDROID IS THE PROOF
+================================================================================
+BASELINES: `git diff --stat 19ce23f..9a6dd55 -- android/app/src/test/snapshots` -> EMPTY. RE-RECORDED: 0. Every Paparazzi
+  rule at maxPercentDifference 0.0 (PaparazziZeroToleranceTest green). ParametresDialogScreenshotTest (RateRow at default
+  and 200 percent, composing the now-shared public RateRow) 2/2 at 0.0 - after R830, R832 and in the gate; 142
+  screenshot tests, 0 failures, in each of those runs.
+TESTS, ASSERTIONS UNEDITED. `git diff --stat -M 19ce23f..9a6dd55` over every test source set - 11 files:
+  new (this task's pins and tests):  ParametresWirePinTest (:app), ParametresDatePickerConversionsTest (:app),
+                      ParametresControllerPinTest and ParametresStartDatePinTest (commonTest; written in :app, moved
+                      unedited), InMemoryAlertStoresTest (commonTest), ZParametresScreensIosTest (iosTest).
+  FIXTURE PLUMBING AND IMPORTS (Ruling 13), every non-import line with its before and after:
+    ThresholdAlertR340Test (R828)  - File("src/main/kotlin/ch/monreleve/app/settings/ThresholdAlert.kt"),
+                                   + File("../shared/src/commonMain/kotlin/ch/monreleve/app/settings/ThresholdAlert.kt"),
+                                   + File("src/main/kotlin/ch/monreleve/app/settings/SharedPrefsThresholdAlertStore.kt"),
+                                   + three comment lines (IOS-2e R828).
+    RateFloatFenceTest (R829, R832) - "src/main/kotlin/ch/monreleve/app/parametres/DeviceRate.kt",
+                                   - "src/main/kotlin/ch/monreleve/app/parametres/ParametresController.kt",
+                                   - "src/main/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresRateChange.kt",
+                                   + the same three under "../shared/src/commonMain/kotlin/ch/monreleve/app/...",
+                                   + two comment lines.
+    SettingsCaptureFenceTest (R829) - FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "ParametresController.kt"),
+                                   + FenceRoot(File("src/main/kotlin/ch/monreleve/app"), pin = "MainActivity.kt"),
+                                   one comment line reworded, two added.
+    ParametresListRowsTest (R832, git mv to commonTest) - IMPORTS ONLY: org.junit.Assert.assertEquals ->
+                                   kotlin.test.assertEquals, org.junit.Test -> kotlin.test.Test.
+    SimulationForecastScreensIosTest (R836) - the header comment corrected; a new constant, helper and test added; step5
+                                   and every existing line of code unchanged.
+  `-- android/app/src/androidTest` -> EMPTY: every androidTest compiles with NO edit at all; measured, no androidTest names
+  Parametres (grep of app/src/androidTest for ParametresController, ParametresScreen and "parametres." -> nothing).
+  compileDebugAndroidTestKotlin ran in the gate, green.
+  Green in the gate on 9a6dd55 (counted from the XML, every file stamped by this run): :app 1399 tests 0 failures - =
+  19ce23f's 1397 + ParametresWirePinTest 4 + ParametresDatePickerConversionsTest 2 - ParametresListRowsTest 4 (now in
+  :shared); every parametres JVM test among them (ParametresControllerTest, ParametresAccountTest,
+  DetectionSettingsTest, SignOutSyncFirstTest, ParametresKeepsTheNameTest, ParametresR282Test, AppSiteLinksTest,
+  LegalLinkTest) and every fence. :shared 234 tests 0 failures = 217 + ParametresControllerPinTest 8 +
+  ParametresStartDatePinTest 1 + InMemoryAlertStoresTest 4 + ParametresListRowsTest 4.
+  There is no Compose UI JVM test and no accessibility test for Parametres beyond Paparazzi (none existed on 19ce23f).
+MaterialDatePickerCanaryTest: UNCHANGED (`git diff 19ce23f..9a6dd55 -- that file`: EMPTY).
+IosTestRawWaitUntilFenceTest: UNCHANGED (git diff: EMPTY), its allowlist exactly Onboarding 16, SignIn 6 (+ the helper's
+  own 1); ZParametresScreensIosTest is not on it (0 raw waits) and SimulationForecastScreensIosTest still has none; the
+  fence green in the gate.
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on), both built in this worktree:
+  base 19ce23f  1,989,388 B  sha256 463dc9494efa9add... - built BEFORE any change (BUILD SUCCESSFUL in 4m 24s); the same
+                hash IOS-2d recorded for its tip 0616b4e.
+  tip  9a6dd55  1,989,388 B  (+0)  sha256 cc77402f241736b4... - built by the gate's --rerun-tasks (assembleRelease,
+                checkMinifiedWireContract).
+  WHY +0 - 3 of 113 entries differ (the central directories compared entry by entry, CRC and sizes):
+    classes.dex                 3,274,536 -> 3,277,072 uncompressed (+2,536); 1,562,609 -> 1,563,754 stored (+1,145) -
+                                the new ParametresWire interface and the :app factory with its private org.json object,
+                                Site split into its own class, the date slot's typealias'd lambda and :app's overload, the
+                                two SharedPrefs stores' file classes, NoOpLocalStore public;
+    assets/dexopt/baseline.prof 4,663 -> 3,727 (-936); assets/dexopt/baseline.profm 613 -> 612 (-1) - the ART profile is
+                                GENERATED (there is no baseline-prof.txt in the repository's sources), so it follows the
+                                dex; why it shrank by these bytes was NOT measured.
+    resources.arsc and every res/ entry IDENTICAL (CRC). The archive size is unchanged to the byte (+1,145 - 937 stored
+    bytes absorbed by the zip's alignment, as in IOS-2a/2b/2d).
+
+================================================================================
+R838 - THE PARK ENTRIES (parking.md)
+================================================================================
+THE SERIES: `node web/scripts/register-coverage.mjs` on 19ce23f printed "series taken: one letter A..Z; two letters CA FT
+  HA IA IB PI; ... phantom citations: FW ZZ" - IE free; claimed. PARK_ID RUN, NOT READ (R456): the exported regex
+  matched the first IE id bare and the fourth in parentheses, and a two-digit IE id before a full stop; it refused an
+  IE id followed by "-x" and one followed by a letter (the exact test strings are in the evidence log, not retyped
+  here, so this report cites no id that has no heading).
+THE ENTRIES (repo-root parking.md, appended, a script refusing if any IE heading already existed):
+  PARK-IE1  (a) the device-only follow-up: RateOneStringInstrumentedTest and ProvenanceShownInstrumentedTest on the S9
+            against main's tip, and R823's two halves (same build: Simulation, a weekday, Home, `adb shell am kill`,
+            reopen, the weekday returns; then `adb install -r` of the next build over it, reopen, a cold start, no crash)
+            - only when the operator says the phone is signed out.
+  PARK-IE2  (b) the R812 JVM stand-in: no JVM test composes PrevisionScreen with a real ForecastController.
+  PARK-IE3  (c) the 11 ExperimentalTime opt-in sites IOS-2d added (IOS-2e added none).
+  PARK-IE4  (d) the double setDay save pinned as current behaviour - a pin of a defect, a known item, NOT fixed.
+AFTER: register-coverage "series taken: ... two letters CA FT HA IA IB IE PI ...", "register coverage: OK"; with this
+  report present (it cites the four): "register coverage: OK - 221 cited id(s) across 157 report(s), all have headings
+  in parking.md" (it was 217 / 156 before).
+
+================================================================================
+R839 - WHAT IS LEFT, WRITTEN DOWN - THE END STATE (update of REPORT-IOS-2d R822 / REPORT-IOS-2c R795)
+================================================================================
+SHARED ENTRY POINTS (all commonMain, package names unchanged) - R795/R822's list, with Parametres ADDED; this is the full
+set the standing instruction produced:
+  ui.screens.signin / auth: SignIn and Code screens and controllers (IOS-2a) - unchanged here.
+  ui.screens.onboarding / onboarding: OnboardingScreen(state, actions, startDatePicker, modifier) and
+    OnboardingController(..., patchBody) (IOS-2b) - unchanged here.
+  ui.screens.aujourdhui / aujourdhui: AujourdhuiScreen and AujourdhuiController (IOS-1b-A) - unchanged here.
+  ui.screens.calendrier / calendar, ui.screens.releve / releve (IOS-2c) - unchanged here.
+  ui.screens.{comparison, prevision, simulation, rythme, disclosure} / forecast (IOS-2d) - unchanged here.
+  NEW - parametres:
+    ParametresController(saver, store, repository, taxYear, scope, exportBytes = {NoSession}, revokeServer = {},
+      syncNow = {}, localStore = NoOpLocalStore, authenticatedPost = {NoSession}, modeStore = InMemory...,
+      startSampling = {}, stopSampling = {}, eveningNotificationStore = InMemory..., thresholdAlertStore = InMemory...,
+      restored: ParametresSnapshot? = null, wire: ParametresWire) - state (ParametresState), exportEvents (ExportEvent),
+      accountEvents (AccountEvent.SignedOut / Deleted); the field setters, save / confirmSave / cancelSave,
+      setAutoDetection, setEveningNotification, setThresholdAlert, onLocationPermissionRevoked, exportData,
+      requestSignOut / retrySignOutSync / confirmSignOut / cancelSignOut, requestDelete / confirmDelete / cancelDelete /
+      acknowledgeDelete.
+    ParametresWire (patchBody, consentBody, deleteBody, parseReceipt); ParametresSnapshot (PlatformSerializable);
+      DELETE_CONFIRMATION; deviceDeclarableRate; LegalPage; NoOpLocalStore.
+    settings: ThresholdAlertStore + InMemoryThresholdAlertStore + AlertThreshold; EveningNotificationStore +
+      InMemoryEveningNotificationStore. account: LocalStore.
+  NEW - ui.screens.parametres: ParametresScreen(state: ParametresState, actions: ParametresActions(24 callbacks, three
+    defaulted), appVersion: String, startDatePicker: ParametresDatePicker, modifier); typealias ParametresDatePicker =
+    @Composable (initialIsoDay: String?, onPicked: (String) -> Unit, onDismiss: () -> Unit) -> Unit (the contract in
+    ParametresEditTypes.kt); LicencesScreen(onBack, modifier); RateRow (public for Paparazzi).
+THEIR HOSTS: THERE IS NO SHARED HOST for any screen. Android's are MainActivity (every tab and overlay), ShellState
+  (rememberSaveable snapshots), MainGraph (the factories). iosTest's hosts (pilot/*IosTest.kt, ParametresHost included)
+  are minimal test shapes, not shipped.
+
+EVERY :app FILE THAT REMAINS (72 main files, measured by listing app/src/main/kotlin and, per file, its platform imports
+and the :app-only declarations it imports or uses - .ios2e-evidence/appdeps.txt; an approximation: a same-package use
+is matched by name). Classified, NOT chosen:
+  HOST - THE ANDROID COMPOSITION AND SHELL (Activity, Compose host, process):
+    MainActivity.kt, CallbackActivity.kt, MainGraph.kt, ShellState.kt; ui/shell/AppBottomBar.kt, AppTab.kt (the
+    Android shell; AppTab found no blocker but is the shell's vocabulary - a shared shell is out of scope).
+  HOST - THE PLATFORM HALF OF A MOVED SEAM (by design, each a factory/overload named like its shared class or screen):
+    parametres/OrgJsonParametres.kt (org.json wire + factory, PARK-D3), onboarding/OrgJsonOnboarding.kt (org.json),
+    ui/screens/parametres/ParametresStartDatePicker.kt and ui/screens/onboarding/OnboardingStartDatePicker.kt
+    (Material3 date dialogs - unlinked on iOS, CommonMainFenceTest / MaterialDatePickerCanaryTest), aujourdhui/
+    JavaTimeAujourdhui.kt, calendar/JavaTimeCalendar.kt, data/JavaTimeCalendarDay.kt, forecast/JavaTimeForecast.kt,
+    detection/JavaTimeCheckWindows.kt (java.time bridges).
+  HOST - ANDROID STORAGE AND SECURITY: settings/SharedPrefsSettingsStore.kt, SharedPrefsThresholdAlertStore.kt,
+    SharedPrefsEveningNotificationStore.kt, EmployerFigure.kt (SharedPreferences); settings/DetectionMode.kt
+    (SharedPreferences + the org.json consent body/parse); settings/MeWire.kt (the /me org.json codec, PARK-D3);
+    account/SharedPrefsAccountStore.kt, DeviceLocalStores.kt (the Context-built construction); auth/KeystoreTokenStore.kt
+    (Android Keystore), SharedPrefsPendingSignInStore.kt; data/SharedPrefsDossierCache.kt; data/MonReleveDatabaseBuilder.kt
+    (Room's Android builder).
+  HOST - ANDROID TRANSPORT, WORK AND LINKS: data/UrlConnectionTransport.kt (HttpURLConnection); data/SyncScheduler.kt,
+    SyncWorker.kt, YearDownloads.kt, AndroidRecordSeams.kt (WorkManager, android.util.Log, java.time.Clock, UUID);
+    auth/SessionHolder.kt, SessionEnds.kt (the process's session); auth/CallbackLink.kt (java.net) and
+    CallbackLinkReceipt.kt (the App Link); parametres/LegalLink.kt (ActivityNotFoundException, R831), Site.kt (reads
+    CallbackLink).
+  HOST - DETECTION (location, alarms, notifications - SPEC 13, Android-only by product decision so far):
+    detection/DetectionSampler.kt, DetectionScheduling.kt, SamplingWorker.kt, LiveLocation.kt, LocationPermission.kt,
+    MockProviderReplay.kt, BorderAssets.kt, BorderPolygon.kt (org.json polygon parse), FieldExport.kt (org.json),
+    SyntheticTracks.kt (java.time), EveningNotifier.kt, SharedPrefsNearBorderNoticeStore.kt; notification/
+    EveningAction.kt, EveningActionReceiver.kt, EveningTap.kt; fr/NotificationCopy.kt (the Android notification copy).
+  NO BLOCKER FOUND BY THIS MEASUREMENT (candidates if a later task wants them; not chosen, not measured further):
+    account/DeviceLocalStore.kt (pure over shared interfaces + three lambdas), detection/EveningNotificationDecision.kt,
+    detection/DetectionPlaceholder.kt; and, blocked only by another :app file: detection/ClassifiedFix.kt and
+    DetectionSession.kt (BorderPolygon), FixProvider.kt (FIX_PROVIDERS), ThresholdAlertDecision.kt (EveningNotice),
+    startup/StartupDecider.kt (MeWire's parseMeSettings / parseMeView - org.json).
+  DEV-ONLY (debug tooling, never shipped to iOS): dev/ - 10 files (GalleryScreen and its sections, the replay, recorder,
+    probe and notification activities).
+
+EVERY iOS PIECE STILL MISSING - the complete input to the iOS application work (IOS-1b-B and after). R795's and R822's
+lists, unchanged by this task:
+  - an AccountStore for iOS; the universal-link receipt (R770); the transport's base URL; syncNow / a composed iOS
+    SyncEngine; the iOS framework declaration and bundled Compose resources; the iOS /me codec (OnboardingController's
+    patchBody, StartupDecider's parseMeView); onboarding's evening-reminder and location halves and its restore;
+  - the dossier share/export (UIActivityViewController), fetch (an iOS DossierApi over the shared transport and an iOS
+    DossierCache) and exportBytes; the calendar's restore; R811(b) - whether a phone-sized window opens a sheet with its
+    Save visible;
+  - a forecast clock and host (an iOS composition of the Room rhythm DAO and entries into the repositories, a host owning
+    the scope and the forecast route); the simulator's restore; the bell (UNUserNotificationCenter permission, an alert
+    store, the evening/threshold notification itself); the location disclosure's host (Core Location, the on-device
+    border check) and its ANDROID_TEN_WARNING copy decision; the comparison's data (the Releve's document, an employer-
+    figure store); the forecast route itself.
+  NEW WITH THIS TASK (Parametres):
+  - AN iOS ParametresWire: the four bodies and the receipt parse in iOS's JSON, BYTE-COMPATIBLE with what the server
+    accepts - with mePatchBody's mixed rule (exactTotalWorkDays / activityStartDate sent as JSON null, name / loggingMode
+    / detectionConsent OMITTED when absent; R448's reason it cannot be one kotlinx Json configuration) and the receipt's
+    tolerance (a map "removed", Entry defaulting to 0, alertSubscriptionRemains defaulting to false). A malformed receipt
+    THROWS on Android before any erasure; an iOS implementation must decide the same or say otherwise.
+  - A NATIVE iOS DATE PICKER in ParametresScreen's startDatePicker slot (and OnboardingScreen's): UIDatePicker or a
+    Compose one once the CMP upgrade links Material3's (PARK-Z3 / the canary), honouring the contract - the initial ISO
+    day or null, onPicked(ISO day) then onDismiss, or onDismiss alone.
+  - iOS PERSISTENCE FOR THE STORES: ThresholdAlertStore and EveningNotificationStore (NSUserDefaults, keyed and cleared
+    as Android's detection file is - R303/R527), a SettingsStore and DetectionModeStore, and an iOS LocalStore that clears
+    the record, the tokens, the cached releve, the exports and the settings exactly as DeviceLocalStore does (R295/R297/
+    R289) - plus R521's session-end scope.
+  - THE ACCOUNT SEAMS ON iOS: exportBytes (the authenticated binary GET) and the share hand-off for the account export;
+    revokeServer and authenticatedPost (SessionManager over the iOS transport); syncNow (the R440 bounded drain).
+  - THE TOGGLES' HOST: the detection toggle's disclosure + permission flow (R316), the evening/alert toggles' notification
+    permission (R323), startSampling / stopSampling (iOS has no sampler).
+  - LEGAL LINKS: an iOS openLegal (UIApplication.open of Site.url's origin + path) with R299's no-handler fallback; Site's
+    origin is :app's (CallbackLink) - iOS needs its own home for it.
+  - THE PARAMETRES RESTORE: ParametresSnapshot and CommittedSettings are PlatformSerializable, an empty marker on iOS -
+    nothing persists an open sheet or confirmation across an iOS process death.
+  - THE APP VERSION LINE: Android passes BuildConfig's name and code through ParametresCopy.version; iOS needs its
+    bundle's.
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref    sha      result    job wall                      billed
+  42951476181  ios2e  9a6dd55  failure   03:15:05Z-03:23:54Z (8m49s)   9 min (rounded up)
+ONE dispatch (`gh workflow run ios-shared.yml --ref ios2e`); zero push-triggered runs (ios2e does not match ios-*):
+`gh run list --workflow ios-shared.yml --branch ios2e` -> [] before the dispatch (after the code tip's push), 1
+(42951476181, headSha 9a6dd55) after it; the count after the report push is in PUSH PROOF. No earlier run, no second run.
+
+================================================================================
+PARKED
+================================================================================
+PARK-IE1..PARK-IE4 - R838 above (parking.md).
+UNNUMBERED-1  THE DATE SLOT'S PLACEMENT (R835's finding, Q1): the slot is composed outside EditSheet's scrolling Column, so
+              content that does not present itself in its own layer lands below a short window. Android is unaffected
+              (its dialog is a window). The input to the iOS picker work and to the re-run's test.
+UNNUMBERED-2  NOTICED, NOT TOUCHED (pinned as found by ParametresWirePinTest): a delete answered 2xx with a MALFORMED body
+              makes the receipt parse throw out of the launched coroutine - the device is not erased and no outcome is
+              shown, and on Android the exception reaches the scope's handler (in the app, the uncaught-exception path).
+              Safe for the data (nothing erased), not a graceful outcome. A behaviour, recorded, not changed.
+UNNUMBERED-3  NO PAPARAZZI BASELINE shows the Parametres screen, a sheet or the date dialog (ParametresDialogScreenshotTest
+              photographs RateRow only, as on 19ce23f); the screen's Android pixels rest on the moved files being
+              byte-identical (10 of 12) and the two edits being a visibility and a supertype change.
+UNNUMBERED-4  NOTICED, NOT TOUCHED: CommonMainFenceTest still reads imports only (IOS-2b UNNUMBERED-2); for the moved
+              files the by-name grep for a fully-qualified androidx call found 0.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R826'S SHAPE IS ONE INTERFACE, NOT FOUR FUNCTION PARAMETERS (the ruling offered both): ParametresWire, required and last;
+   the constructor already listed sixteen seams. Its delete body and receipt parse MOVED from the controller into
+   :app's OrgJsonParametres.kt unchanged; MeWire.kt / DetectionMode.kt are referenced, untouched.
+2. EVERY PIN WAS REFORMATTED FOR ktlint/detekt AFTER ITS FIRST GREEN RUN (line wraps, a message helper, one helper's
+   parameters bundled for LongParameterList, comments moved onto their own lines), and each GREEN/RED sequence was
+   RE-RUN ON THE FINAL TEXT (R826: the change set aside and the original controller restored from HEAD for the GREEN
+   run; R827: the comment rewrap left the bytecode identical, so its green run stands; R829, R830: re-run). No
+   assertion changed between the runs.
+3. ParametresScreen.kt (still in :app at R829) READ `state.error` INTO A LOCAL: Kotlin does not smart-cast another
+   module's public property (IOS-2d R814's DEVIATION 5 shape). Same value, same branches; it moved with the edit at R832.
+4. R828's InMemoryAlertStoresTest WAS WRITTEN AFTER THE MOVE (the moved lines are byte-identical, checked segment by
+   segment), not pinned before it; it was shown RED on two verified plants.
+5. R829 IS ONE COMMIT: ParametresControllerPinTest was written and run (GREEN, RED on four plants, GREEN) in :app before
+   the move but first COMMITTED in commonTest - git shows it added there, not moved. The pre-move runs are in the
+   evidence logs and sha256 equal before and after the git mv.
+6. THE DATE SLOT TRAVELS IN EditSheetFrame (R830), not as a sixth ParametresOverlays parameter: a sixth would need a
+   @Suppress("LongParameterList") whose String argument the no-inline-string fence forbids in ui/.
+7. ParametresListRowsTest FOLLOWED ITS SUBJECT TO commonTest (imports only: org.junit -> kotlin.test, assertEquals has
+   the same argument order), so startDateDisplay stayed internal; RateRow went internal -> public because its reader,
+   ParametresDialogScreenshotTest (Paparazzi), must stay in :app. NoOpLocalStore private -> internal (R826) -> public
+   (R829); isoToMillis / millisToIso private -> internal (R830, for their pin).
+8. LegalPage.kt WAS SPLIT: the enum moved; `object Site` stayed in :app as parametres/Site.kt, unchanged (it reads
+   CallbackLink.HOST from :app's auth/, java.net).
+9. R827 USES THE SHARED isIsoDay (OnboardingDates), which IS kotlinx LocalDate.parse - the one existing home of the
+   identical check (R206) - rather than a second inline kotlinx parse.
+10. THE NEW iOS CLASS IS NAMED ZParametresScreensIosTest: the Z makes it sort after every pilot class (IOS-2d DEVIATION 9's
+   reason); its private top-level classes are prefixed Pz and its watchdog object is ParametresProgress (a private class
+   name is the package's on K/N - IOS-2d's Progress clash).
+11. R833's EXPAND IS CONDITIONAL ON THE HANDLE OFFERING IT: each sheet is opened, the handle's actions read after a bounded
+   settle; Expand is performed when offered, and a sheet that opened fully expanded (no Expand offered) is MARKED as such,
+   not forced. The confirm tap goes through R806's guard either way. What each sheet did is in R833.
+12. THE WINDOWS COMPILE-ONLY CHECK (R575's enableKlibsCrossCompilation overridden ON THE COMMAND LINE, no file changed)
+   ran twice (c37c84c's tree; 9a6dd55's) - compile evidence only, never cited as a run result.
+13. A ninth code commit after the first iOS-test commit (9a6dd55): the two picker waits in step6 also wait for the fake's
+   recorded initial value (a LaunchedEffect runs after the frame that shows the text) - found on review before the gate,
+   no assertion changed.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (THE RED RUN - the orchestrator's): ZParametresScreensIosTest step6 failed at R806's guard because the fake in the date
+   slot is inline content laid out below the window (R835's finding). Nothing was changed after the run. The options
+   seen, NOT chosen: (a) a TEST-ONLY change - the iOS fake presents itself in its own layer (Compose's
+   androidx.compose.ui.window.Dialog, in common code, already a dependency of the shared screens), as a real picker
+   would, then a second run; (b) a SHARED-CODE change - StartDateSheetContent composes the slot inside EditSheet's
+   scrolling body, so inline content scrolls into view (Android unaffected - its dialog is a window - but it is a layout
+   change to a moved file); (c) accept the run as it stands, step6's remaining half (the pick landing, its save, the
+   reopened initial value) proven on the JVM by ParametresStartDatePinTest / the controller pin and on Android by the
+   unedited Material block, and merge on that - which R573 does not allow without a ruling. Every other test in the
+   run passed, R836's included.
+Q2 (R833): the export chooser opened FULLY EXPANDED in the 1024 x 768 window - its handle offered no Expand - so it could
+   not be expanded "through the handle's Expand action"; its confirm was tapped inside the window. Is the recorded
+   "nothing to expand" acceptable for that sheet, or does a later run want a smaller window?
+No other question blocks.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2e only (never main, never production). Every push below was preceded by `test -z "$(git diff --stat
+19ce23f..HEAD -- web)"` printing "web diff EMPTY", and followed by `git ls-remote origin refs/heads/ios2e` = HEAD.
+  push  range                commits / ruling            check before it
+  1     * [new branch] b1b8d72   R826                    fastCheck BUILD SUCCESSFUL (FAST CHECK (R390)); :app 32 files 161 / 0
+  2     b1b8d72..9954f39         R827                    fastCheck BUILD SUCCESSFUL; :app 33 files 162 / 0
+  3     9954f39..11f23b7         R828                    fastCheck BUILD SUCCESSFUL; InMemoryAlertStoresTest 4/4
+  4     11f23b7..f8a8a7c         R829                    fastCheck BUILD SUCCESSFUL; :app 69 files 340 / 0; pins 8/8, 1/1
+  5     f8a8a7c..d77c74b         R830                    fastCheck BUILD SUCCESSFUL; verifyPaparazziDebug + testDebugUnitTest
+                                                         --rerun: 1404 / 0, 142 screenshots 0 failures
+  6     d77c74b..a78567f         R832 + R834             fastCheck + verifyPaparazziDebug + testDebugUnitTest --rerun: BUILD
+                                                         SUCCESSFUL in 3m 56s, 1400 / 0, 142 screenshots 0 failures
+  7     a78567f..c37c84c         R836 (7422a78), R835    fastCheck BUILD SUCCESSFUL; Windows compile-only iOS check BUILD
+                                 pilot (c37c84c)         SUCCESSFUL (compile evidence only)
+  8     c37c84c..9a6dd55         R835 (waits)            :shared ktlintIosTest + detekt + the compile-only check BUILD
+                                                         SUCCESSFUL. THE CODE TIP. Then: git status --porcelain empty,
+                                                         ls-remote = HEAD = 9a6dd55, the FULL GATE GREEN, `gh run list
+                                                         --workflow ios-shared.yml --branch ios2e` -> [], the dispatch.
+  9     9a6dd55..<report>        parking.md (R838) + this report - docs only; recorded in the follow-up below.
+`git diff --stat 9a6dd55 <report commit>` (report-only): parking.md and REPORT-IOS-2e.txt only - the follow-up below shows
+it.
+Before this report's push: R826-R843 re-grepped - the worktree holds them only in relay/RULINGS-2026-11-03-MOBILE.txt
+(lines 471, 513) and this report; the main checkout only in relay/IOS-2e.txt and that RULINGS file; every origin head
+(main, HEAD, ios2e) only in that RULINGS file. No newer relay prompt had landed (main checkout relay/ newest: IOS-2e.txt).
+Re-fetched: origin/main 19ce23f, production 52caca8 - unchanged.
+
+END OF REPORT-IOS-2e
+
+PUSH PROOF, FOLLOW-UP: the report commit 8eb19ff pushed - git push origin ios2e -> "9a6dd55..8eb19ff  ios2e -> ios2e";
+git ls-remote origin refs/heads/ios2e -> 8eb19ff02112789d65f32e04ec4d77f9b84a539c = HEAD (MATCH); "git diff --stat
+9a6dd55 8eb19ff" -> " REPORT-IOS-2e.txt | 779 +++...", " parking.md | 70 +++++", " 2 files changed, 849 insertions(+)"
+(the STATUS pointer resolves here); "gh run list --workflow ios-shared.yml --branch ios2e" after that push ->
+[42951476181, headSha 9a6dd55] - still one run. Re-fetched: origin/main 19ce23f, production 52caca8 - unchanged. This follow-up commit changes
+REPORT-IOS-2e.txt only: these lines, and R835's device-compile line worded to what the log shows ("25 actionable tasks:
+25 executed", only iosSimulatorArm64Test failed). Not pushed: main, production.
+CLEANUP: ./gradlew --stop after the last Gradle use ("1 Daemon stopped"); no server started, no port touched, no container
+touched, no phone, adb not used, no permission prompt refused. My throwaway Bundle probe (untracked, never committed) was
+deleted after its last run. Evidence stays in C:/wt/ios2e/.ios2e-evidence/ (ignored). The worktree C:/wt/ios2e stays
+(R392); android/local.properties (copied, ignored) stays with it. No other C:/wt/* was written: C:/wt/ios2d was read once
+(its local.properties copied). The lock .session-lock.json is present at this commit and is removed as the session's last
+step, after this follow-up's push.

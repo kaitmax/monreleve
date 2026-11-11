@@ -47,8 +47,10 @@ internal fun RateChangeDialog(
 
 // internal (not private) so ParametresDialogScreenshotTest can photograph it at 200 percent - the walkthrough
 // found the value fragmenting there when both texts were unconstrained in a SpaceBetween Row (k-02).
+// IOS-2e R832: public, not internal - that Paparazzi test stays in :app and reads it across the module boundary
+// (IOS-1b-A R604's MovingRate shape).
 @Composable
-internal fun RateRow(
+fun RateRow(
     label: String,
     rate: Double,
 ) {

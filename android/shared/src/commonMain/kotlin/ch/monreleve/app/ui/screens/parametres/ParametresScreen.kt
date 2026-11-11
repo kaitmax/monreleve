@@ -43,6 +43,9 @@ import ch.monreleve.app.parametres.SettingsError
 // in-progress edit itself lives in the controller's state, already persisted across both by ShellState's
 // ParametresSnapshot. The shared title uses the four screens' header style (FrontierType.h2 - ReleveScreen's
 // title and Aujourd'hui's greeting), down from the oversized h1 AN12 used.
+//
+// IOS-2e R830: the « Début d'activité » date picker is the host's (startDatePicker, R776's seam with an initial
+// date); Android's Material 3 dialog is passed by :app's overload of this function (ParametresStartDatePicker.kt).
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,7 @@ fun ParametresScreen(
     state: ParametresState,
     actions: ParametresActions,
     appVersion: String,
+    startDatePicker: ParametresDatePicker,
     modifier: Modifier = Modifier,
 ) {
     var showLicences by rememberSaveable { mutableStateOf(false) }
@@ -87,6 +91,7 @@ fun ParametresScreen(
                 editing = null
                 saveAttempted = false
             },
+            startDatePicker = startDatePicker,
         )
     val callbacks =
         ParametresListCallbacks(
@@ -217,13 +222,17 @@ private fun committedOf(state: ParametresState): CommittedSettings =
         activityStartDate = state.activityStartDate,
     )
 
-private fun sheetErrorFor(state: ParametresState): String? =
-    when {
-        state.error != null -> errorCopy(state.error)
+// IOS-2e R829: `state.error` is read once into a local - Kotlin does not smart-cast another module's public property,
+// and ParametresState now lives in :shared (IOS-2d R814's DEVIATION 5 shape). The same value, the same branches.
+private fun sheetErrorFor(state: ParametresState): String? {
+    val error = state.error
+    return when {
+        error != null -> errorCopy(error)
         state.phase == ParametresPhase.NETWORK_ERROR -> OnboardingCopy.ERROR_NETWORK
         state.phase == ParametresPhase.SESSION_ENDED -> OnboardingCopy.ERROR_SESSION_ENDED
         else -> null
     }
+}
 
 private fun errorCopy(error: SettingsError): String =
     when (error) {

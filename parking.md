@@ -5486,3 +5486,73 @@ QUESTION:  Points the implementation decided and the sources do not settle:
 TAKEN:     As listed, each visible in the code and its tests.
 
 STATE:      OPEN - for the expert reviewer (Checkpoint E) and the operator.
+
+## PARK-IE1 - the device-only follow-up: the two forecast/calendar instrumented tests and R823's two halves on the S9  [IOS-2e R838(a), 2026-11-11]
+
+RAISED BY:  relay/RULINGS-2026-11-03-MOBILE.txt Ruling 12 (no S9 run in IOS-2d)
+            and OUTCOME (IOS-2d) R823 (the simulator's saved-instance Bundle,
+            accepted with the measurement parked); REPORT-IOS-2d.txt R812 and
+            Q1; REPORT-IOS-2e.txt R838.
+WHAT:       A device-only task, IOS-2c-DEVICE's shape, no code change, against
+            main's tip:
+  1. RateOneStringInstrumentedTest (composes the shared PrevisionScreen with a
+     real ForecastController) and ProvenanceShownInstrumentedTest (the
+     calendar sheet content) on the S9.
+  2. R823, SAME BUILD: Simulation, pick a weekday, Home, `adb shell am kill`
+     the package, reopen - the weekday returns.
+  3. R823, NEXT BUILD: `adb install -r` of the next build over it, reopen - a
+     cold start, no crash. Half 3 means nothing without half 2.
+PRECONDITION: run ONLY when the operator says the phone is signed out (an
+            observation, not a decision - Ruling 12). connectedAndroidTest
+            uninstalls the app and deletes its on-device database.
+NOTE:       IOS-2e moved Parametres with no androidTest naming it (measured:
+            grep of app/src/androidTest for ParametresController,
+            ParametresScreen and "parametres." - nothing), so this follow-up
+            gains no Parametres test.
+STATE:      OPEN - the operator's to schedule.
+
+## PARK-IE2 - no JVM test composes PrevisionScreen with a real ForecastController (R812's stand-in)  [IOS-2e R838(b), 2026-11-11]
+
+RAISED BY:  REPORT-IOS-2d.txt R812 (2) and UNNUMBERED-3.
+AS WRITTEN: Searched app/src/test: PrevisionScreenScreenshotTest composes
+            PrevisionScreen from a ForecastState built from forecastResults
+            directly, not through the controller; no Robolectric or JVM
+            Compose rule is in :app's test scope. So nothing on the JVM does
+            what RateOneStringInstrumentedTest does on a device. The nearest
+            composition of the real controller with the screen is the iOS
+            run's SimulationForecastScreensIosTest step4.
+IF TAKEN:   a new test must be pinned to the current code first (R777's
+            shape), and a JVM Compose rule in :app's test scope would be a
+            dependency change (SPEC 20: ask first).
+STATE:      OPEN - not chosen; PARK-IE1 is the device half.
+
+## PARK-IE3 - the eleven ExperimentalTime opt-in sites IOS-2d added  [IOS-2e R838(c), 2026-11-11]
+
+RAISED BY:  REPORT-IOS-2d.txt UNNUMBERED-2 (R590's allowlist message calls a
+            new site an argument for the operator).
+THE SITES:  every one function-, property- or parameter-scoped and listed in
+            ExperimentalTimeOptInAllowlistTest: ForecastController 3 and
+            SimulationController 3 (the kotlin.time.Clock seam property and
+            its two readers), :app's JavaTimeForecast.kt 2 (the factories),
+            ForecastControllerPinTest 1, SimulationControllerPinTest 1 (one
+            build helper each), SimulationForecastScreensIosTest 1 (one
+            builder).
+IOS-2e:     added NONE (the Parametres move has no clock).
+STATE:      OPEN - PARK-Z3 deletes them all at Kotlin 2.3; recorded here so the
+            argument R590 asks for has an id.
+
+## PARK-IE4 - ForecastController.setDay saves the HELD rhythm twice on a two-tap burst (pinned as current behaviour)  [IOS-2e R838(d), 2026-11-11]
+
+RAISED BY:  REPORT-IOS-2d.txt R814 (the setDay vector) and UNNUMBERED-5;
+            OUTCOME (IOS-2d): "a pin of a defect, to get a PARK id".
+AS WRITTEN: setDay launches `rhythmRepo.save(rhythm)`, and the launched save
+            reads the held field when the coroutine RUNS, not when it was
+            launched - so two taps before the scope runs save the LATEST
+            rhythm twice. Harmless for the stored result (the last save is the
+            final rhythm), but it is two writes where one was meant, and the
+            first carries the wrong intermediate state's intent.
+PINNED:     ForecastControllerPinTest (commonTest; JVM and iOS) asserts this
+            behaviour AS FOUND. Fixing it changes that pin - which is the
+            point: the pin is the record that the behaviour is known.
+STATE:      OPEN - a known item, NOT fixed (IOS-2e's OUT OF SCOPE: "Fixing the
+            double setDay save").
