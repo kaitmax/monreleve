@@ -79,60 +79,87 @@ export const PLACEHOLDER_PRIVATE_KEY = 'REPLACE_WITH_THE_SERVICE_ACCOUNT_PRIVATE
  *
  * `placeholder: null` means the variable has no published placeholder - there
  * is nothing to compare against, so only absence is a verdict.
+ *
+ * ============================================================================
+ * `secret`: THE ONE HOME OF WHICH VARIABLES ARE SECRETS (R858, R206)
+ * ============================================================================
+ *
+ * `secret: true` marks a value whose disclosure is a credential leak: a
+ * password, a signing key, an API key. It decides one check today:
+ * `pnpm test:container` fails when any secret NAME appears in the built
+ * image's `docker history`, because a build argument is recorded there WITH
+ * ITS VALUE (REPORT-FW-CHROMIUM.txt section 4 found two of these marked
+ * build-time in Coolify). docs/deploy.md section 2 points here rather than
+ * keeping a list of its own.
+ *
+ * `false` is a statement too, not a default: FCM_CLIENT_EMAIL names a service
+ * account without being able to act as one, and the Android pair is
+ * published by /.well-known/assetlinks.json itself. The set is asserted in
+ * tests/unit/meta/env-contract.test.ts, so un-marking a secret - which would
+ * quietly stop the history check looking for it - is a test failure.
  */
 export const DEPLOYMENT_VARIABLES = Object.freeze([
   Object.freeze({
     name: 'DATABASE_URL',
     severity: 'required',
     placeholder: null,
+    secret: true,
     what: 'PostgreSQL connection string; the entries table is the product',
   }),
   Object.freeze({
     name: 'AUTH_SECRET',
     severity: 'required',
     placeholder: PLACEHOLDER_SECRET,
+    secret: true,
     what: 'signs the short-lived token that lets /releve/print render one year',
   }),
   Object.freeze({
     name: 'NEXT_PUBLIC_SITE_URL',
     severity: 'degradable',
     placeholder: null,
+    secret: false,
     what: 'the absolute site origin; unset serves the localhost stand-in, and /api/ready answers 503',
   }),
   Object.freeze({
     name: 'RESEND_API_KEY',
     severity: 'degradable',
     placeholder: null,
+    secret: true,
     what: 'unset collects confirmation mail in memory and delivers nothing',
   }),
   Object.freeze({
     name: 'FCM_PROJECT_ID',
     severity: 'degradable',
     placeholder: PLACEHOLDER_PROJECT_ID,
+    secret: false,
     what: 'unset means the reminder job is not scheduled at all, which is reported by name',
   }),
   Object.freeze({
     name: 'FCM_CLIENT_EMAIL',
     severity: 'degradable',
     placeholder: PLACEHOLDER_CLIENT_EMAIL,
+    secret: false,
     what: 'the service account the push assertion is signed as',
   }),
   Object.freeze({
     name: 'FCM_PRIVATE_KEY',
     severity: 'degradable',
     placeholder: PLACEHOLDER_PRIVATE_KEY,
+    secret: true,
     what: 'the service account private key, newlines escaped as \\n',
   }),
   Object.freeze({
     name: 'ANDROID_PACKAGE_NAME',
     severity: 'degradable',
     placeholder: null,
+    secret: false,
     what: 'unset withholds /.well-known/assetlinks.json entirely, which R205 requires',
   }),
   Object.freeze({
     name: 'ANDROID_SHA256_CERT_FINGERPRINTS',
     severity: 'degradable',
     placeholder: null,
+    secret: false,
     what: 'the signing certificate fingerprints App Links verify against',
   }),
 ]);

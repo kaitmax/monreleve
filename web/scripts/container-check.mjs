@@ -22,6 +22,7 @@
 // report four surviving mutants after running zero tests.
 
 import { execFileSync } from 'node:child_process';
+import { DEPLOYMENT_VARIABLES } from '../lib/deploy/placeholders.mjs';
 
 const MARKER = 'frontalier-container-facts';
 
@@ -39,6 +40,13 @@ const MARKER = 'frontalier-container-facts';
  * mistaken for the real domain.
  */
 const BUILD_ORIGIN = 'https://container-check.example';
+
+/**
+ * The build argument this suite passes, named once: both builds below pass
+ * it, and the history check (R858) requires it to be FOUND before it trusts
+ * that a secret name was NOT found.
+ */
+const ORIGIN_ARG = 'NEXT_PUBLIC_SITE_URL';
 
 const ARGS = process.argv.slice(2);
 const SHOULD_BUILD = ARGS.includes('--build');
@@ -62,7 +70,7 @@ if (SHOULD_BUILD) {
   try {
     execFileSync(
       'docker',
-      ['build', '--build-arg', `NEXT_PUBLIC_SITE_URL=${BUILD_ORIGIN}`, '-t', IMAGE, '.'],
+      ['build', '--build-arg', `${ORIGIN_ARG}=${BUILD_ORIGIN}`, '-t', IMAGE, '.'],
       {
         stdio: ['ignore', 'ignore', 'inherit'],
         // THE SAME BUDGET container-e2e.mjs USES, and it is here because
@@ -269,6 +277,83 @@ console.log(`\n  migrations in image: ${facts.migrations}`);
 
 if (facts.migrations < 1) {
   failures.push('no migrations in the image - the deployed version cannot create its own schema');
+}
+
+// ============================================================================
+// R858: THE IMAGE HISTORY CARRIES NO SECRET NAME
+// ============================================================================
+//
+// EVERY BUILD ARGUMENT IN SCOPE OF A RUN IS RECORDED WITH ITS VALUE. This
+// image's own history reads `RUN |2 CHROMIUM_VERSION=... NEXT_PUBLIC_SITE_URL=...
+// /bin/sh -c ...`, and an ARG instruction is recorded as `ARG NAME=value`.
+// Coolify 4.5.0 turns a variable marked "Available during build" into exactly
+// that - `ARG <NAME>` after every FROM plus `--build-arg <NAME>`
+// (ApplicationDeploymentJob.php 5241-5354; helpers/docker.php 2094-2108) - so
+// a secret marked build-time is published with every copy of the image.
+// REPORT-FW-CHROMIUM.txt section 4 found two.
+//
+// THE NAMES COME FROM THEIR ONE HOME (R206): `secret: true` in
+// lib/deploy/placeholders.mjs. A NAME IS ENOUGH: a secret's value can be
+// anything, but it cannot enter the history without its name beside it.
+//
+// PRESENCE BEFORE ABSENCE (R169's corollary). "No secret name was found" is
+// satisfied by an empty history, an unreadable one, or a matcher that can see
+// nothing. So the build argument this suite itself passes must be FOUND,
+// by the same matcher, in the same read, before any zero below is believed.
+//
+// NAMES AND COUNTS ONLY, NEVER A LINE. In the failure this guards, the
+// matching line carries the secret's value; printing it would turn the guard
+// into the leak.
+const SECRET_NAMES = DEPLOYMENT_VARIABLES.filter((variable) => variable.secret).map(
+  (variable) => variable.name,
+);
+
+/** How many history lines name `name` as a whole word (FOO, not FOO_BAR). */
+function linesNaming(lines, name) {
+  const word = new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`);
+
+  return lines.filter((line) => word.test(line)).length;
+}
+
+let history = [];
+
+try {
+  history = execFileSync(
+    'docker',
+    ['history', '--no-trunc', '--format', '{{.CreatedBy}}', IMAGE],
+    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+    .split('\n')
+    .filter((line) => line.trim() !== '');
+} catch (cause) {
+  // The message names the command, never its output.
+  failures.push(
+    `docker history ${IMAGE} could not be read: ${cause instanceof Error ? cause.message.split('\n')[0] : cause}`,
+  );
+}
+
+console.log(`\nimage history, ${history.length} lines, read for names only (R858):\n`);
+
+is(
+  'secret names known',
+  SECRET_NAMES.length > 0,
+  true,
+  'no variable is marked secret in lib/deploy/placeholders.mjs, so every zero below would be vacuous (R133)',
+);
+is(
+  `history names ${ORIGIN_ARG}`,
+  linesNaming(history, ORIGIN_ARG) > 0,
+  true,
+  `the build argument this suite passes is not in the history, so the matcher cannot be trusted to see a secret's name either (R169)`,
+);
+
+for (const name of SECRET_NAMES) {
+  is(
+    `history: no ${name}`,
+    linesNaming(history, name),
+    0,
+    `the image history names a secret: a build argument is recorded WITH ITS VALUE, so this image publishes ${name} - in Coolify set its "Build time" to "Not available during build" (docs/deploy.md section 2), and declare no ARG for it`,
+  );
 }
 
 // ============================================================================
@@ -511,7 +596,7 @@ if (SHOULD_BUILD) {
         '--target',
         'runner',
         '--build-arg',
-        `NEXT_PUBLIC_SITE_URL=${BUILD_ORIGIN}`,
+        `${ORIGIN_ARG}=${BUILD_ORIGIN}`,
         '--build-arg',
         `CHROMIUM_VERSION=${IMPOSSIBLE}`,
         '-t',

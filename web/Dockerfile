@@ -250,14 +250,13 @@ RUN set -eux; \
 # listed in REPORT-FW-READY-GATE.txt) and, with --no-install-recommends,
 # nothing more.
 #
-# ITS OWN LAYER, NOT THE ONE ABOVE, AND THE REASON IS MEASURED. The ruling
-# asked for the existing apt layer. On 2026-11-11 Debian no longer offered the
-# pinned chromium (156.0.8078.73-1~deb12u1; the archive has 156.0.8078.79),
-# so that layer builds only from a warm cache: changing one byte of it turned
-# this image's build into the R249 refusal. Bumping the pin to get past that
-# would change the renderer of the product's output of record, which R845
-# ("curl, and NOTHING else") does not allow. When the pin IS bumped, curl can
-# move into that layer.
+# ITS OWN LAYER. R845 asked for the existing apt layer; curl was given a layer
+# of its own on 2026-11-11 because the pinned chromium had then left the
+# archive, so the layer above could build only from a warm cache and changing
+# one byte of it produced the R249 refusal. That reason is gone: FW-CHROMIUM-PIN-2
+# bumped the pin the same day to a build the archive installed, and a cold
+# build passed. The layer is left as it is (Queue Ruling 4): merging curl into
+# the chromium layer would rebuild the renderer's layer, a change of its own.
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends curl; \
