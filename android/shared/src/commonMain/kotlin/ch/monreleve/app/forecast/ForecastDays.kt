@@ -4,8 +4,7 @@ import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.RhythmKind
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.dossier.SimChange
-import kotlinx.datetime.toKotlinDayOfWeek
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // IOS-2d R813. THE FORECAST'S WEEKDAYS, IN ONE FILE - every place the forecast and the simulator turn a weekday into
 // a stored field, a map key, an offered choice or the engine's change. Extracted UNCHANGED from ForecastController.kt
@@ -13,6 +12,10 @@ import java.time.DayOfWeek
 // so the pin (ForecastDaysPinTest) can reach them; R777's isIsoDay and R787's CalendarDates shape. RhythmChoice and its
 // RhythmKind mapping are beside this file (RhythmChoice.kt). Public because the controllers call them from :app once
 // this file is shared.
+//
+// THE SWAP: java.time.DayOfWeek became kotlinx-datetime's (the engine's own weekday since KMP-4), so the two library
+// conversions this file made (toKotlinDayOfWeek, before a map lookup and before the engine's change) are gone - each
+// was the identity on name, ordinal and ISO number, which DayOfWeekBridgeTest proves for all seven days.
 
 /** Monday..Friday - the weekdays a rhythm sets, in the order the simulator offers them. */
 val RHYTHM_WEEKDAYS: List<DayOfWeek> =
@@ -45,9 +48,9 @@ fun WeeklyRhythm.toChoiceMap(): Map<DayOfWeek, RhythmChoice> =
 /** The weekdays that are not already a home day - the only ones "one more day at home" can add. */
 fun availableWeekdays(rhythm: WeeklyRhythm): List<DayOfWeek> {
     val kinds = rhythm.toEntryKindMap()
-    return RHYTHM_WEEKDAYS.filter { kinds[it.toKotlinDayOfWeek()] != EntryKind.HOME }
+    return RHYTHM_WEEKDAYS.filter { kinds[it] != EntryKind.HOME }
 }
 
 /** The engine's change for "one more weekday at home" on [day]; no weekday left to add is no change at all. */
 fun extraWeekdayChange(day: DayOfWeek?): SimChange =
-    if (day != null) SimChange.ExtraWeekday(day.toKotlinDayOfWeek()) else SimChange.ExtraMonthDays(0)
+    if (day != null) SimChange.ExtraWeekday(day) else SimChange.ExtraMonthDays(0)

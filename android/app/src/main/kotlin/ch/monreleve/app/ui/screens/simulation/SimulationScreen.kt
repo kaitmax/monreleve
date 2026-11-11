@@ -43,7 +43,7 @@ import ch.monreleve.app.ui.screens.onboarding.InfoNote
 import ch.monreleve.app.ui.screens.onboarding.PrimaryButton
 import ch.monreleve.app.ui.screens.onboarding.SecondaryButton
 import ch.monreleve.app.ui.screens.rythme.ForecastTopBar
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-SIM (R340, R281). The simulator (design/decide/Simulation.dc.html): pick a scenario, feed its input, see
 // the current projection beside the simulated one, and the consequence. R340 - A PROJECTION IS NEVER A RECORD:

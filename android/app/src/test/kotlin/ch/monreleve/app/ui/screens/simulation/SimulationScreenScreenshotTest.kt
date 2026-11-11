@@ -20,13 +20,12 @@ import ch.monreleve.app.forecast.SimScenario
 import ch.monreleve.app.forecast.SimulationState
 import ch.monreleve.app.forecast.SimulationView
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
-import kotlinx.datetime.toKotlinDayOfWeek
 import org.junit.Rule
 import org.junit.Test
-import java.time.DayOfWeek
 
 // AN-SIM. Baselines for the simulator (R135/R207), default and 200 % (fontScale 2f). A regression guard, not
 // the proof of correctness - the on-device walkthrough is (R176). Every figure comes from the REAL engine
@@ -49,11 +48,11 @@ class SimulationScreenScreenshotTest {
 
     private val rhythm =
         mapOf(
-            DayOfWeek.MONDAY.toKotlinDayOfWeek() to EntryKind.CH,
-            DayOfWeek.TUESDAY.toKotlinDayOfWeek() to EntryKind.HOME,
-            DayOfWeek.WEDNESDAY.toKotlinDayOfWeek() to EntryKind.CH,
-            DayOfWeek.THURSDAY.toKotlinDayOfWeek() to EntryKind.HOME,
-            DayOfWeek.FRIDAY.toKotlinDayOfWeek() to EntryKind.CH,
+            DayOfWeek.MONDAY to EntryKind.CH,
+            DayOfWeek.TUESDAY to EntryKind.HOME,
+            DayOfWeek.WEDNESDAY to EntryKind.CH,
+            DayOfWeek.THURSDAY to EntryKind.HOME,
+            DayOfWeek.FRIDAY to EntryKind.CH,
         )
 
     private val available = listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
@@ -92,7 +91,7 @@ class SimulationScreenScreenshotTest {
             scenario = SimScenario.EXTRA_WEEKDAY,
             inputs = SimInputs(extraWeekday = DayOfWeek.FRIDAY, targetRate = "100"),
             availableWeekdays = available,
-            view = view(SimChange.ExtraWeekday(DayOfWeek.FRIDAY.toKotlinDayOfWeek())),
+            view = view(SimChange.ExtraWeekday(DayOfWeek.FRIDAY)),
             canAdopt = true,
         )
 

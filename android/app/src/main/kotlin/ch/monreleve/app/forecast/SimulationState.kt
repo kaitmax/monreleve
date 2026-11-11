@@ -1,7 +1,7 @@
 package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.TeleworkResult
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-SIM (R340, R281). The simulator's UI-facing state, produced by SimulationController from the engine
 // (dossier.simulationResults) run on the imagined year plus the chosen change. R340 - A PROJECTION IS NEVER A

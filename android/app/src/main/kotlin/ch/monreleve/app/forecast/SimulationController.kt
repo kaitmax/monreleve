@@ -17,9 +17,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import java.time.Clock
-import java.time.DayOfWeek
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 // AN-SIM (R340, R281, R28, R310). The one place a simulation is RUN - it drives the pure engine path
 // (dossier.simulationResults) and holds no UI. R340 - A PROJECTION IS NEVER A RECORD: computing a simulation
@@ -48,12 +49,16 @@ class SimulationController(
     // AN-CALENDAR (R475): the store is held and read at every emission - never a value read once here and kept.
     private val settingsStore: SettingsStore,
     taxYear: Int,
+    // IOS-2d R813: the clock seam is kotlin.time.Clock (an instant source; today is the Paris day of it, R28), IOS-2c
+    // R787's CalendarController shape. :app's java.time callers reach this through JavaTimeForecast.kt's factory.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     scope: CoroutineScope,
     // AN-SIM (R310): the restorable selection, seeded on a rebuild (rotation / text-size / dark mode / kill) so the
     // scenario and its inputs survive; the view is recomputed, never stored (R181). Null on a fresh build.
     restored: SimulationSnapshot? = null,
 ) {
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private var today: LocalDate = LocalDate.parse(todayInParis(clock))
     private var currentTaxYear: Int = taxYear
     private var rhythm: WeeklyRhythm = WeeklyRhythm()
@@ -92,6 +97,7 @@ class SimulationController(
     }
 
     /** F8 (as Aujourd'hui / the forecast do): recompute today and the tax year from the clock on resume. */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     fun refresh() {
         today = LocalDate.parse(todayInParis(clock))
         currentTaxYear = today.year

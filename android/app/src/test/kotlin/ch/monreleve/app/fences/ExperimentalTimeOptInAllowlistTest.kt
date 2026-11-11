@@ -81,6 +81,12 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
             "app/src/main/kotlin/ch/monreleve/app/detection/JavaTimeCheckWindows.kt" to 2,
+            // IOS-2d R813: the forecast's clock is the kotlin.time.Clock seam (CalendarController's shape): in each
+            // controller the property and the two members that read it (today, refresh); :app's JavaTimeForecast.kt
+            // holds the two java.time factories (one each).
+            "app/src/main/kotlin/ch/monreleve/app/forecast/ForecastController.kt" to 3,
+            "app/src/main/kotlin/ch/monreleve/app/forecast/JavaTimeForecast.kt" to 2,
+            "app/src/main/kotlin/ch/monreleve/app/forecast/SimulationController.kt" to 3,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
             // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.

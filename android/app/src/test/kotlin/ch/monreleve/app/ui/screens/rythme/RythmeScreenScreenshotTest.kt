@@ -10,9 +10,9 @@ import app.cash.paparazzi.Paparazzi
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.forecast.ForecastState
 import ch.monreleve.app.forecast.RhythmChoice
+import kotlinx.datetime.DayOfWeek
 import org.junit.Rule
 import org.junit.Test
-import java.time.DayOfWeek
 
 // AN-FORECAST (R341). Baselines for the weekly-rhythm screen (R135/R207), default and 200 % (fontScale 2f).
 // The first-time state has NOTHING preselected (the five days show both toggles outlined); the set state is

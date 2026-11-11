@@ -39,7 +39,7 @@ import ch.monreleve.app.fr.RythmeCopy
 import ch.monreleve.app.ui.screens.onboarding.BackButton
 import ch.monreleve.app.ui.screens.onboarding.BottomActions
 import ch.monreleve.app.ui.screens.onboarding.PrimaryButton
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-FORECAST (R341). The weekly-rhythm screen (design/decide/Rythme.dc.html): Monday to Friday, each
 // Suisse or Domicile, nothing preselected the first time. Stateless (fence 5): it reads a ForecastState and

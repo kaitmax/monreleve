@@ -1,7 +1,7 @@
 package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.TeleworkResult
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-FORECAST (R340, R281). The forecast's UI-facing state, produced by ForecastController from the engine
 // (dossier.forecastResults) run on the imagined year. R340 - A PROJECTION IS NEVER A RECORD: every figure

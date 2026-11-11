@@ -27,11 +27,8 @@ enum class AlertThreshold {
     SOCIAL,
 }
 
-/** The last-known crossing state of each threshold (the forecast would exceed it). Default: neither crossed. */
-data class ThresholdCrossing(
-    val fiscal: Boolean = false,
-    val social: Boolean = false,
-)
+// IOS-2d R813: ThresholdCrossing, the plain value the shared forecast returns, moved unchanged to :shared
+// (settings/ThresholdCrossing.kt, package unchanged); the stores below stay here beside android.content.
 
 /** The threshold alert's opt-in, the last crossing state per threshold, and the "alerted today" marker. */
 interface ThresholdAlertStore {
