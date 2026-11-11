@@ -23,6 +23,12 @@ export interface DeploymentVariable {
   readonly severity: EnvSeverity;
   /** The published example value, or null where there is none to compare. */
   readonly placeholder: string | null;
+  /**
+   * Its disclosure is a credential leak (R858). The one home of which
+   * variables are secrets: test:container refuses an image whose history
+   * names any of them.
+   */
+  readonly secret: boolean;
   readonly what: string;
 }
 

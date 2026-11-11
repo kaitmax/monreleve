@@ -72,6 +72,42 @@ export type EnvLike = Readonly<Record<string, string | undefined>>;
 /** Why there is no sender, named so a log says which thing to go and fix. */
 export type FcmRefusal = 'not_configured' | 'placeholder_credentials' | 'malformed_private_key';
 
+const PEM_HEADER = '-----BEGIN PRIVATE KEY-----';
+const PEM_FOOTER = '-----END PRIVATE KEY-----';
+
+/**
+ * R861: WHICH SHAPE OF FCM_PRIVATE_KEY FAILED - NEVER WHAT IT CONTAINED.
+ *
+ * Production logged `malformed_private_key` and nothing more (REPORT-FW-CHROMIUM
+ * section 4, plan e). The escaped newlines were already restored, so the value
+ * failed for some other reason the refusal could not name, and the next paste
+ * would have failed just as silently. Each shape below is a way a real paste
+ * goes wrong, and each sends whoever reads the log to a different fix.
+ *
+ * Every shape is a fact about the value's STRUCTURE - a quote at both ends, a
+ * backslash, where a PEM line sits. None of them carries a character of the
+ * key, its length or anything derived from it.
+ */
+export type MalformedKeyShape =
+  | 'quoted'
+  | 'backslash_after_restore'
+  | 'no_pem_header'
+  | 'text_before_pem_header'
+  | 'no_pem_footer'
+  | 'text_after_pem_footer';
+
+/** One sentence per shape, for the startup log. Names the variable, never the value. */
+export const MALFORMED_KEY_SHAPES: Readonly<Record<MalformedKeyShape, string>> = Object.freeze({
+  quoted:
+    'FCM_PRIVATE_KEY is wrapped in quotation marks: the value starts and ends with the same quote character.',
+  backslash_after_restore:
+    'FCM_PRIVATE_KEY still contains a backslash after its escaped newlines were restored: it was probably escaped twice.',
+  no_pem_header: `FCM_PRIVATE_KEY does not contain "${PEM_HEADER}".`,
+  text_before_pem_header: `FCM_PRIVATE_KEY has text before "${PEM_HEADER}".`,
+  no_pem_footer: `FCM_PRIVATE_KEY does not contain "${PEM_FOOTER}": it may have been cut short.`,
+  text_after_pem_footer: `FCM_PRIVATE_KEY has text after "${PEM_FOOTER}".`,
+});
+
 export interface FcmCredentials {
   readonly projectId: string;
   readonly clientEmail: string;
@@ -79,12 +115,53 @@ export interface FcmCredentials {
   readonly privateKey: string;
 }
 
+/** A refusal, with the shape that failed when the key itself was the problem. */
+export type FcmCredentialRefusal =
+  | { readonly ok: false; readonly code: 'not_configured' | 'placeholder_credentials' }
+  | {
+      readonly ok: false;
+      readonly code: 'malformed_private_key';
+      readonly detail: MalformedKeyShape;
+    };
+
 export type FcmCredentialResult =
   | { readonly ok: true; readonly credentials: FcmCredentials }
-  | { readonly ok: false; readonly code: FcmRefusal };
+  | FcmCredentialRefusal;
 
-const PEM_HEADER = '-----BEGIN PRIVATE KEY-----';
-const PEM_FOOTER = '-----END PRIVATE KEY-----';
+/**
+ * The first shape a restored, trimmed key fails, or null for a key that has
+ * the PEM structure.
+ *
+ * ORDER IS THE CONTRACT: the outermost cause wins, the one somebody looking at
+ * the value meets first. A doubly-escaped key with a trailing newline ends in a
+ * backslash once restored, so a footer test run first would report "text after
+ * the footer" for a footer that is there; the backslash is the cause.
+ *
+ * A BACKSLASH IS NEVER PART OF A KEY. The body is base64 and the PEM lines are
+ * fixed text, so a backslash left after the one restoration is always a paste
+ * that was escaped twice (or carried another escape, like \r).
+ */
+function malformedKeyShape(privateKey: string): MalformedKeyShape | null {
+  const first = privateKey.at(0);
+
+  if (privateKey.length >= 2 && (first === '"' || first === "'") && privateKey.endsWith(first)) {
+    return 'quoted';
+  }
+
+  if (privateKey.includes('\\')) return 'backslash_after_restore';
+
+  const header = privateKey.indexOf(PEM_HEADER);
+
+  if (header === -1) return 'no_pem_header';
+  if (header > 0) return 'text_before_pem_header';
+
+  const footer = privateKey.lastIndexOf(PEM_FOOTER);
+
+  if (footer === -1) return 'no_pem_footer';
+  if (footer + PEM_FOOTER.length !== privateKey.length) return 'text_after_pem_footer';
+
+  return null;
+}
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const MESSAGING_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
@@ -133,9 +210,10 @@ export function readFcmCredentials(env: EnvLike = process.env): FcmCredentialRes
   // here is the one transformation; a key that still has no PEM header after
   // it is not a key.
   const privateKey = rawKey.replaceAll(String.raw`\n`, '\n').trim();
+  const shape = malformedKeyShape(privateKey);
 
-  if (!privateKey.startsWith(PEM_HEADER) || !privateKey.endsWith(PEM_FOOTER)) {
-    return { ok: false, code: 'malformed_private_key' };
+  if (shape !== null) {
+    return { ok: false, code: 'malformed_private_key', detail: shape };
   }
 
   return { ok: true, credentials: { projectId, clientEmail, privateKey } };
@@ -282,7 +360,7 @@ class FcmSender implements PushSender {
 
 export type FcmSenderResult =
   | { readonly ok: true; readonly sender: PushSender }
-  | { readonly ok: false; readonly code: FcmRefusal };
+  | FcmCredentialRefusal;
 
 /**
  * The real sender, or the named reason there is not one.

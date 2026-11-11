@@ -241,3 +241,25 @@ describe('R250: what it prints', () => {
     );
   });
 });
+
+describe('R858: which deployment variables are secrets is a stated value', () => {
+  it('marks exactly the four credentials secret', () => {
+    // R345: STATED AND ASSERTED. test:container looks for every secret NAME
+    // in the built image's history; a secret quietly un-marked here would
+    // quietly drop out of that check, so the set itself is the assertion.
+    // DATABASE_URL carries the database password, AUTH_SECRET signs the print
+    // token, RESEND_API_KEY sends mail as the product, FCM_PRIVATE_KEY signs
+    // as its service account.
+    expect(
+      DEPLOYMENT_VARIABLES.filter((variable) => variable.secret).map((variable) => variable.name),
+    ).toEqual(['DATABASE_URL', 'AUTH_SECRET', 'RESEND_API_KEY', 'FCM_PRIVATE_KEY']);
+  });
+
+  it('says it of every variable, one way or the other', () => {
+    // An entry with no `secret` at all would read as false through a filter,
+    // which is the permissive default in the list that exists to be strict.
+    for (const variable of DEPLOYMENT_VARIABLES) {
+      expect(typeof variable.secret, variable.name).toBe('boolean');
+    }
+  });
+});
