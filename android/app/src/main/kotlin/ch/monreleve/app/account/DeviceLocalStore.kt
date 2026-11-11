@@ -21,17 +21,9 @@ import ch.monreleve.app.settings.SettingsStore
 // clearing them on sign-out costs the same person nothing and protects whoever holds the phone next. This
 // closes the multi-user half PARKAN-28 left open: after sign-out nothing of one person's setup outlives the
 // next. Deletion still adds the pending sign-in on top, so it remains a strict superset of sign-out.
-
-interface LocalStore {
-    /**
-     * R295 + R297: sign-out clears the record, the cache, the tokens, any queued sync, the exported files AND
-     * the settings. The pending sign-in is kept (it is not account data; deletion clears it).
-     */
-    suspend fun clearForSignOut()
-
-    /** R289: deletion clears the sign-out set PLUS the pending sign-in - a first-run state. */
-    suspend fun clearForDeletion()
-}
+//
+// IOS-2e R828: the LocalStore INTERFACE moved to :shared commonMain (account/LocalStore.kt, package unchanged); this
+// file kept the device's implementation, renamed from LocalStore.kt for the class it now holds alone.
 
 // The Room clear, the sync cancel and the exports delete are lambdas (seams): each needs an Android Context,
 // so injecting them as functions keeps this class - and the scope decision it encodes - JVM-testable against

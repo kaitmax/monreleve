@@ -27,12 +27,17 @@ import java.io.File
 // IOS-2d R813/R819: and a move DID fail it loudly - ThresholdForecast.kt moved to :shared commonMain, and
 // ThresholdCrossing split out of ThresholdAlert.kt into :shared's settings/ThresholdCrossing.kt. The paths follow
 // the files (the scan is unchanged); the split-off half is listed so the moved code stays under the scan.
+//
+// IOS-2e R828: and again - ThresholdAlert.kt (the store's interface, its in-memory implementation, AlertThreshold)
+// moved to :shared commonMain, and its SharedPreferences half split out into :app's SharedPrefsThresholdAlertStore.kt.
+// Both halves are listed; the scan is unchanged.
 private val ALERT_FILES =
     listOf(
         File("../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/ThresholdForecast.kt"),
         File("../shared/src/commonMain/kotlin/ch/monreleve/app/settings/ThresholdCrossing.kt"),
         File("src/main/kotlin/ch/monreleve/app/detection/ThresholdAlertDecision.kt"),
-        File("src/main/kotlin/ch/monreleve/app/settings/ThresholdAlert.kt"),
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/settings/ThresholdAlert.kt"),
+        File("src/main/kotlin/ch/monreleve/app/settings/SharedPrefsThresholdAlertStore.kt"),
         File("src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt"),
     )
 
