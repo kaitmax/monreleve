@@ -135,6 +135,79 @@ that is running perfectly and logging nothing.
 |---|---|
 | `FRONTALIER_SCHEDULER=1` | Enables the scheduler against a non-local database. **The image does not set it**, so `docker run monreleve` by hand cannot start notifying people. This process sends reminders without being asked, and a run against a real database is a notification in somebody's hand with no undo (R243). |
 
+### Build time or runtime: the Coolify setting for each variable (R858, R860)
+
+**A variable available during the build is published with the image.**
+Coolify 4.5.0 handles a variable whose *Build time* is *Available during build*
+in two moves (coollabsio/coolify `5ca69705`, `app/Jobs/ApplicationDeploymentJob.php`):
+
+- It writes `ARG <NAME>` after **every** `FROM` of the Dockerfile
+  (`add_build_env_variables_to_dockerfile()`, 5241-5354: the list at
+  5276-5285, the insertion at 5340-5347).
+- It passes `--build-arg '<NAME>'` with the value taken from the build's
+  environment (`bootstrap/helpers/docker.php` 2094-2108; the job, 4557-4560
+  and 4674-4676).
+
+Docker then records every build argument in scope **with its value** in the
+image history. Each `RUN` becomes `RUN |n NAME=value … /bin/sh -c …`, and the
+inserted instruction becomes `ARG NAME=value`. Anyone who can read a copy of the
+image can read the value, on the server or in any registry the image reaches.
+R858 measured this with a planted, harmless value (REPORT-FW-SECRETS.txt).
+
+**The build reads none of the secrets.** The Dockerfile declares exactly three
+build arguments: `NODE_IMAGE`, `CHROMIUM_VERSION` and `NEXT_PUBLIC_SITE_URL`
+(R859 asserts the set). `pnpm build` runs with no `.env` at all, as
+`gate:clone` proves on every push.
+
+**Which variables are secrets has one home:** the `secret: true` entries of
+`DEPLOYMENT_VARIABLES` in `web/lib/deploy/placeholders.mjs`. `pnpm
+test:container` fails if any of those names appears in the built image's
+`docker history` (R858). That check covers the repository's Dockerfile, not
+Coolify's setting. The production image is checked on the server (R862 item 3).
+
+**The record.** The table below was read in Coolify on **2026-10-21**
+(REPORT-FW-CHROMIUM.txt section 4), names and flags only.
+
+> **It is a record, not a live read.** Read the variables again in Coolify
+> before changing any setting. A variable that is not in the record gets no
+> setting from this table.
+
+| Variable | Recorded 2026-10-21 | Should be | Why |
+|---|---|---|---|
+| `RESEND_API_KEY` | build and runtime | **runtime only** | A secret (R858). Only the running mailer reads it (`lib/alerts/mailer.ts`). |
+| `FCM_PRIVATE_KEY` | build and runtime | **runtime only** | A secret (R858). Only `lib/push/fcm.ts` reads it, when the server resolves a push sender at startup. |
+| `FCM_CLIENT_EMAIL` | build (runtime not recorded) | **runtime only** | Not a secret, but nothing in the build reads it. `lib/push/fcm.ts` reads it at runtime. |
+| `FCM_PROJECT_ID` | build (runtime not recorded) | **runtime only** | The same: read only by `lib/push/fcm.ts` at runtime. |
+| `ANDROID_PACKAGE_NAME` | build (runtime not recorded) | **runtime only** | Not a secret. `/.well-known/assetlinks.json` reads it on each request: the route is dynamic, not prerendered. |
+| `EMAIL_FROM` | build (runtime not recorded) | **not available during build** | Nothing in the repository reads `EMAIL_FROM` from the environment. The senders are constants in `lib/fr/emails.ts`. Whether to delete it is the operator's call. |
+| `AUTH_SECRET` | runtime only | runtime only, **unchanged** | A secret (R858). Read at runtime only. |
+| `DATABASE_URL` | runtime only | runtime only, **unchanged** | A secret (R858). The build runs without a database, by design. |
+| `NEXT_PUBLIC_SITE_URL` | build | build and runtime, **unchanged** | Not a secret. It is a declared build argument, because prerendering bakes the canonicals (section 1). The entrypoint compares the runtime value with the baked one. |
+| `CHROMIUM_VERSION` | build | **absent** | Section 1 records that the override was deleted. If it is still there, delete it: the `ARG` in `web/Dockerfile` is the one source. |
+
+**PARKED: the operator's action** (Coolify 4.5.0; the token is gone, Queue
+Ruling 1). Do this for each variable whose setting the table changes (the first
+six rows):
+
+1. Open Coolify → *Projects* → the project → the environment → the application
+   `pkptabevr1nhtyygrq0mc8qx`. In the sidebar, open **Environment Variables**
+   (`/project/<p>/environment/<e>/application/pkptabevr1nhtyygrq0mc8qx/environment-variables`;
+   `configuration-sidebar.blade.php` 33-35, `routes/web.php` 390).
+2. On the variable's row, click the gear button **Edit environment variable**
+   (`environment-variable/show.blade.php` 104-109).
+3. Set the listbox **Build time** to **Not available during build**. Leave
+   **Runtime** at *Available in the container* (show.blade.php 240-253).
+4. Click **Update variable** (show.blade.php 288-293).
+
+The table's **Buildtime** column then shows a dash for that row
+(`environment-variable/all.blade.php` 228-231).
+
+The queue's prompts and earlier reports call this flag *Build Variable*. In
+4.5.0 it is this listbox, stored as `is_buildtime`. The change takes effect at
+the next build.
+After that build, the remaining steps run in order: remove the old images,
+rotate the keys. They are in REPORT-FW-SECRETS.txt R862.
+
 ---
 
 ## 3. Ports and the health checks
