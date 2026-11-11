@@ -76,7 +76,8 @@ private val PATH =
         // IOS-2e R829: DeviceRate and the Parametres controller moved to :shared commonMain (paths follow the files).
         "../shared/src/commonMain/kotlin/ch/monreleve/app/parametres/DeviceRate.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/parametres/ParametresController.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresRateChange.kt",
+        // IOS-2e R832: the Parametres screens moved to :shared commonMain (the path follows the file).
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresRateChange.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/comparison/ComparisonScreen.kt",
     )
 

@@ -14,6 +14,7 @@ import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.parametres.ParametresPhase
 import ch.monreleve.app.parametres.ParametresState
+import ch.monreleve.app.shared.PlatformSerializable
 
 // AN-PARAMS. The five grouped sections of the settings list (SPEC 11.5 / FD9), each a section heading over a
 // white card of Material 3 rows. The « Situation professionnelle » rows open their edit sheets; the
@@ -27,7 +28,8 @@ private const val PERCENT_WHOLE = 0
 /**
  * The last saved settings the rows display and the revert restores - built by ParametresScreen (R181).
  * Serializable, so rememberSaveable's default autoSaver stores it in the Bundle that outlives a background kill
- * (R310) - the same idiom as ParametresSnapshot.
+ * (R310) - the same idiom as ParametresSnapshot. IOS-2e R832: PlatformSerializable (on Android an actual typealias
+ * of java.io.Serializable, serialVersionUID 1L kept - the same Bundle bytes, measured), as ParametresSnapshot's.
  */
 internal data class CommittedSettings(
     val canton: Canton?,
@@ -36,7 +38,7 @@ internal data class CommittedSettings(
     val exactTotalWorkDays: String,
     val granularity: GranularityChoice,
     val activityStartDate: String,
-) : java.io.Serializable {
+) : PlatformSerializable {
     companion object {
         private const val serialVersionUID: Long = 1L
     }
