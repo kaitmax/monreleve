@@ -111,7 +111,9 @@ private const val NOW = "2026-06-15T10:00:00Z"
 private const val LARGE_TEXT = 2f
 
 // A fixture dossier in the server's wire shape, read by the shared parser (DossierWireGoldenTest's richer body).
-private val FIXTURE_DOSSIER =
+// IOS-2d R820: internal, not private - SimulationForecastScreensIosTest's Comparison host reads the same dossier
+// (one text, one home - R206), as MainActivity builds the comparison from the Releve's loaded document.
+internal val FIXTURE_DOSSIER =
     """
     {
       "taxYear": 2026,

@@ -22,15 +22,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import ch.monreleve.app.R
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
+import ch.monreleve.app.design.glyphPainter
 import ch.monreleve.app.forecast.ForecastState
 import ch.monreleve.app.forecast.RhythmChoice
 import ch.monreleve.app.fr.LicencesCopy
@@ -39,7 +39,7 @@ import ch.monreleve.app.fr.RythmeCopy
 import ch.monreleve.app.ui.screens.onboarding.BackButton
 import ch.monreleve.app.ui.screens.onboarding.BottomActions
 import ch.monreleve.app.ui.screens.onboarding.PrimaryButton
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-FORECAST (R341). The weekly-rhythm screen (design/decide/Rythme.dc.html): Monday to Friday, each
 // Suisse or Domicile, nothing preselected the first time. Stateless (fence 5): it reads a ForecastState and
@@ -190,7 +190,7 @@ private fun DayToggle(
 private fun InfoLine(text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.space8), verticalAlignment = Alignment.Top) {
         Icon(
-            painter = painterResource(R.drawable.ic_info),
+            painter = glyphPainter(Glyph.INFO),
             contentDescription = null,
             tint = LightColors.textSecondary,
             modifier = Modifier.size(Spacing.space20),

@@ -2,7 +2,6 @@ package ch.monreleve.app.forecast
 
 import ch.monreleve.app.calc.ruleSetFor
 import ch.monreleve.app.data.local.EntryEntity
-import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.toAggregatable
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.EntryRepository
@@ -18,10 +17,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toKotlinDayOfWeek
-import java.time.Clock
-import java.time.DayOfWeek
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 // AN-SIM (R340, R281, R28, R310). The one place a simulation is RUN - it drives the pure engine path
 // (dossier.simulationResults) and holds no UI. R340 - A PROJECTION IS NEVER A RECORD: computing a simulation
@@ -37,8 +36,7 @@ import java.time.DayOfWeek
 //
 // R28: the clock is the one seam for "today"; the dossier layer stays clock-free (today is a parameter).
 
-private val WEEKDAYS =
-    listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+// IOS-2d R813: the weekday list, availableWeekdays and the extra-weekday change moved unchanged to ForecastDays.kt.
 private const val MIN_RATE = 1
 private const val MAX_RATE = 100
 
@@ -51,12 +49,16 @@ class SimulationController(
     // AN-CALENDAR (R475): the store is held and read at every emission - never a value read once here and kept.
     private val settingsStore: SettingsStore,
     taxYear: Int,
+    // IOS-2d R813: the clock seam is kotlin.time.Clock (an instant source; today is the Paris day of it, R28), IOS-2c
+    // R787's CalendarController shape. :app's java.time callers reach this through JavaTimeForecast.kt's factory.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     scope: CoroutineScope,
     // AN-SIM (R310): the restorable selection, seeded on a rebuild (rotation / text-size / dark mode / kill) so the
     // scenario and its inputs survive; the view is recomputed, never stored (R181). Null on a fresh build.
     restored: SimulationSnapshot? = null,
 ) {
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private var today: LocalDate = LocalDate.parse(todayInParis(clock))
     private var currentTaxYear: Int = taxYear
     private var rhythm: WeeklyRhythm = WeeklyRhythm()
@@ -95,6 +97,7 @@ class SimulationController(
     }
 
     /** F8 (as Aujourd'hui / the forecast do): recompute today and the tax year from the clock on resume. */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     fun refresh() {
         today = LocalDate.parse(todayInParis(clock))
         currentTaxYear = today.year
@@ -158,7 +161,7 @@ class SimulationController(
         when (scenario) {
             SimScenario.EXTRA_WEEKDAY -> {
                 val day = inputs.extraWeekday ?: available.firstOrNull()
-                if (day != null) SimChange.ExtraWeekday(day.toKotlinDayOfWeek()) else SimChange.ExtraMonthDays(0)
+                extraWeekdayChange(day)
             }
             SimScenario.EXTRA_MONTH_DAYS ->
                 SimChange.ExtraMonthDays(inputs.extraMonthDays.toIntOrNull()?.coerceAtLeast(0) ?: 0)
@@ -172,12 +175,6 @@ class SimulationController(
                     inputs.missionsThird.toIntOrNull()?.coerceAtLeast(0) ?: 0,
                 )
         }
-}
-
-/** The weekdays that are not already a home day - the only ones "one more day at home" can add. */
-private fun availableWeekdays(rhythm: WeeklyRhythm): List<DayOfWeek> {
-    val kinds = rhythm.toEntryKindMap()
-    return WEEKDAYS.filter { kinds[it.toKotlinDayOfWeek()] != EntryKind.HOME }
 }
 
 /** Seed the effective weekday (first available) and the rate (the current one) so no field starts empty. */

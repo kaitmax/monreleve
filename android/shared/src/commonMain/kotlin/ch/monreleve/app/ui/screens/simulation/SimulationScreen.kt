@@ -43,7 +43,7 @@ import ch.monreleve.app.ui.screens.onboarding.InfoNote
 import ch.monreleve.app.ui.screens.onboarding.PrimaryButton
 import ch.monreleve.app.ui.screens.onboarding.SecondaryButton
 import ch.monreleve.app.ui.screens.rythme.ForecastTopBar
-import java.time.DayOfWeek
+import kotlinx.datetime.DayOfWeek
 
 // AN-SIM (R340, R281). The simulator (design/decide/Simulation.dc.html): pick a scenario, feed its input, see
 // the current projection beside the simulated one, and the consequence. R340 - A PROJECTION IS NEVER A RECORD:
@@ -81,6 +81,9 @@ fun SimulationScreen(
     actions: SimulationActions,
     modifier: Modifier = Modifier,
 ) {
+    // IOS-2d R814: read once into a local (PrevisionScreen's idiom) - SimulationState now lives in :shared, and Kotlin
+    // smart-casts a public property of another module only through a local. The same value, read once.
+    val view = state.view
     Column(modifier = modifier.fillMaxSize()) {
         ForecastTopBar(onBack = actions.onBack, title = SimulationCopy.NAV_TITLE)
         Column(
@@ -94,11 +97,11 @@ fun SimulationScreen(
         ) {
             Text(text = SimulationCopy.TITLE, style = FrontierType.h1)
             ScenarioChips(state.scenario, actions.onSelectScenario)
-            if (state.view == null) {
+            if (view == null) {
                 Text(text = PrevisionCopy.INVITE_BODY, style = FrontierType.body, color = LightColors.textSecondary)
             } else {
                 ScenarioInput(state, actions.onInputsChange)
-                SimulationCard(state.view)
+                SimulationCard(view)
             }
             InfoNote(text = SimulationCopy.NOT_COVERED)
         }

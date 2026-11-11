@@ -81,6 +81,9 @@ class ExperimentalTimeOptInAllowlistTest {
             "app/src/main/kotlin/ch/monreleve/app/data/repo/AndroidRecordSeams.kt" to 1,
             // IOS-1b-A R602b: CheckWindows moved to :shared on kotlin.time; :app keeps the java.time bridge.
             "app/src/main/kotlin/ch/monreleve/app/detection/JavaTimeCheckWindows.kt" to 2,
+            // IOS-2d R813: :app's JavaTimeForecast.kt holds the two java.time factories of the forecast's controllers
+            // (one each); the controllers' own seam sites moved to :shared with them (R814, below).
+            "app/src/main/kotlin/ch/monreleve/app/forecast/JavaTimeForecast.kt" to 2,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
             // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
@@ -96,6 +99,10 @@ class ExperimentalTimeOptInAllowlistTest {
             "shared/src/commonMain/kotlin/ch/monreleve/app/detection/CheckWindows.kt" to 4,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/LatenessForecast.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/dossier/ParisDay.kt" to 2,
+            // IOS-2d R813/R814: the forecast's clock is the kotlin.time.Clock seam (CalendarController's shape), moved
+            // from :app with the controllers: in each, the property and the two members that read it (today, refresh).
+            "shared/src/commonMain/kotlin/ch/monreleve/app/forecast/ForecastController.kt" to 3,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/forecast/SimulationController.kt" to 3,
             // AN-FR-TEXT R622: moved from iosMain/ios/IosInstantFormat.kt (3 there), function scope, same 3.
             "shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrInstants.kt" to 3,
             // IOS-1b-A R608: the pilot fixture hands the controller its clock; the pilot screen reads the system clock.
@@ -109,9 +116,14 @@ class ExperimentalTimeOptInAllowlistTest {
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/repo/GranularityRuleTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/data/sync/ServerInstantParseGoldenTest.kt" to 2,
             "shared/src/commonTest/kotlin/ch/monreleve/app/dossier/ParisDayDstTest.kt" to 1,
+            // IOS-2d R814: the controller pins, moved unedited - one build helper each hands over a kotlin.time Clock.
+            "shared/src/commonTest/kotlin/ch/monreleve/app/forecast/ForecastControllerPinTest.kt" to 1,
+            "shared/src/commonTest/kotlin/ch/monreleve/app/forecast/SimulationControllerPinTest.kt" to 1,
             "shared/src/commonTest/kotlin/ch/monreleve/app/pilot/PilotFixtureTest.kt" to 2,
             // IOS-2c R793: the iOS UI test's one builder hands the shared CalendarController a fixed kotlin.time.Clock.
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/CalendrierReleveScreensIosTest.kt" to 1,
+            // IOS-2d R820: the iOS UI test's one builder hands the shared forecast controllers a fixed Clock.
+            "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/SimulationForecastScreensIosTest.kt" to 1,
         )
 
     private val optIn = Regex("""OptIn\(\s*(kotlin\.time\.)?ExperimentalTime::class\s*\)""")

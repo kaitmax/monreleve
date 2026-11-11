@@ -23,9 +23,14 @@ import java.io.File
 // compute has its own guard (ForecastR340Test), named in the header above. R460 was already satisfied
 // here before this task - theAlertFilesAreReadSoTheScanIsNotVacuous asserts each file exists and is
 // non-trivial, so a move fails loudly naming the file.
+//
+// IOS-2d R813/R819: and a move DID fail it loudly - ThresholdForecast.kt moved to :shared commonMain, and
+// ThresholdCrossing split out of ThresholdAlert.kt into :shared's settings/ThresholdCrossing.kt. The paths follow
+// the files (the scan is unchanged); the split-off half is listed so the moved code stays under the scan.
 private val ALERT_FILES =
     listOf(
-        File("src/main/kotlin/ch/monreleve/app/forecast/ThresholdForecast.kt"),
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/ThresholdForecast.kt"),
+        File("../shared/src/commonMain/kotlin/ch/monreleve/app/settings/ThresholdCrossing.kt"),
         File("src/main/kotlin/ch/monreleve/app/detection/ThresholdAlertDecision.kt"),
         File("src/main/kotlin/ch/monreleve/app/settings/ThresholdAlert.kt"),
         File("src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt"),

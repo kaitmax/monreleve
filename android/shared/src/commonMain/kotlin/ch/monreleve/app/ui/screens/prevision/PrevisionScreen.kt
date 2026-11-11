@@ -20,10 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import ch.monreleve.app.R
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
@@ -32,6 +31,7 @@ import ch.monreleve.app.design.ZONE_BAND_COLOUR
 import ch.monreleve.app.design.Zone
 import ch.monreleve.app.design.ZoneBadge
 import ch.monreleve.app.design.ZoneThresholds
+import ch.monreleve.app.design.glyphPainter
 import ch.monreleve.app.design.statusFor
 import ch.monreleve.app.design.tabularNums
 import ch.monreleve.app.design.zoneFor
@@ -134,7 +134,7 @@ private fun AlertOfferRow(onEnable: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_bell),
+            painter = glyphPainter(Glyph.BELL),
             contentDescription = null,
             tint = LightColors.brand,
             modifier = Modifier.size(Spacing.space20),
@@ -188,7 +188,7 @@ private fun ForecastCard(projection: Projection) {
         ZoneBadge(statusFor(projection.projected))
         TileRow(projection, fiscalPct, socialPct)
         IconLine(
-            icon = R.drawable.ic_info,
+            icon = Glyph.INFO,
             text =
                 PrevisionCopy.assumptions(
                     rhythm = PrevisionCopy.domicilePhrase(projection.domicileDays),
@@ -197,9 +197,9 @@ private fun ForecastCard(projection: Projection) {
                 ),
         )
         if (projection.unrecordedPastDays > 0) {
-            IconLine(icon = R.drawable.ic_info, text = PrevisionCopy.unrecordedPast(projection.unrecordedPastDays))
+            IconLine(icon = Glyph.INFO, text = PrevisionCopy.unrecordedPast(projection.unrecordedPastDays))
         }
-        IconLine(icon = R.drawable.ic_lock, text = PrevisionCopy.R340_NOTE)
+        IconLine(icon = Glyph.LOCK, text = PrevisionCopy.R340_NOTE)
     }
 }
 
@@ -296,12 +296,12 @@ internal fun RemainingTile(
 
 @Composable
 private fun IconLine(
-    icon: Int,
+    icon: Glyph,
     text: String,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.space8), verticalAlignment = Alignment.Top) {
         Icon(
-            painter = painterResource(icon),
+            painter = glyphPainter(icon),
             contentDescription = null,
             tint = LightColors.textSecondary,
             modifier = Modifier.size(Spacing.space20),

@@ -19,9 +19,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import java.time.Clock
-import java.time.DayOfWeek
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 // AN-FORECAST (R340, R341, R281, R28, R310). The one place a forecast is RUN - it drives the pure engine path
 // (dossier.forecastResults) and holds no UI. R340 - A PROJECTION IS NEVER A RECORD: computing a projection
@@ -43,9 +44,13 @@ class ForecastController(
     // left the projection on the old employment rate, canton or method until the app was restarted.
     private val settingsStore: SettingsStore,
     taxYear: Int,
+    // IOS-2d R813: the clock seam is kotlin.time.Clock (an instant source; today is the Paris day of it, R28), IOS-2c
+    // R787's CalendarController shape. :app's java.time callers reach this through JavaTimeForecast.kt's factory.
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     private val scope: CoroutineScope,
 ) {
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     private var today: LocalDate = LocalDate.parse(todayInParis(clock))
     private var currentTaxYear: Int = taxYear
     private var rhythm: WeeklyRhythm = WeeklyRhythm()
@@ -78,6 +83,7 @@ class ForecastController(
     }
 
     /** F8 (as Aujourd'hui does): recompute today and the tax year from the clock on resume. */
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: reads the kotlin.time.Clock seam - on the allowlist.
     fun refresh() {
         today = LocalDate.parse(todayInParis(clock))
         currentTaxYear = today.year
@@ -128,39 +134,7 @@ class ForecastController(
     }
 }
 
-private fun RhythmChoice.toKind(): RhythmKind =
-    when (this) {
-        RhythmChoice.SUISSE -> RhythmKind.SUISSE
-        RhythmChoice.DOMICILE -> RhythmKind.DOMICILE
-    }
-
-private fun RhythmKind.toChoice(): RhythmChoice =
-    when (this) {
-        RhythmKind.SUISSE -> RhythmChoice.SUISSE
-        RhythmKind.DOMICILE -> RhythmChoice.DOMICILE
-    }
-
-private fun WeeklyRhythm.withDay(
-    day: DayOfWeek,
-    kind: RhythmKind,
-): WeeklyRhythm =
-    when (day) {
-        DayOfWeek.MONDAY -> copy(monday = kind)
-        DayOfWeek.TUESDAY -> copy(tuesday = kind)
-        DayOfWeek.WEDNESDAY -> copy(wednesday = kind)
-        DayOfWeek.THURSDAY -> copy(thursday = kind)
-        DayOfWeek.FRIDAY -> copy(friday = kind)
-        else -> this
-    }
-
-private fun WeeklyRhythm.toChoiceMap(): Map<DayOfWeek, RhythmChoice> =
-    buildMap {
-        monday?.let { put(DayOfWeek.MONDAY, it.toChoice()) }
-        tuesday?.let { put(DayOfWeek.TUESDAY, it.toChoice()) }
-        wednesday?.let { put(DayOfWeek.WEDNESDAY, it.toChoice()) }
-        thursday?.let { put(DayOfWeek.THURSDAY, it.toChoice()) }
-        friday?.let { put(DayOfWeek.FRIDAY, it.toChoice()) }
-    }
+// IOS-2d R813: withDay and toChoiceMap moved unchanged to ForecastDays.kt, the RhythmChoice mapping to RhythmChoice.kt.
 
 private fun WeeklyRhythm.domicileIndices(): List<Int> {
     val days = listOf(monday, tuesday, wednesday, thursday, friday)

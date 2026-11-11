@@ -25,19 +25,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import ch.monreleve.app.R
 import ch.monreleve.app.design.FrontierType
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.Radius
 import ch.monreleve.app.design.Size
 import ch.monreleve.app.design.Spacing
+import ch.monreleve.app.design.glyphPainter
 import ch.monreleve.app.dossier.ComparisonCause
 import ch.monreleve.app.dossier.ComparisonGap
 import ch.monreleve.app.dossier.ComparisonView
@@ -235,7 +235,7 @@ private fun CauseRow(
         }
         if (opensDays) {
             Icon(
-                painter = painterResource(R.drawable.ic_chevron_left),
+                painter = glyphPainter(Glyph.CHEVRON_LEFT),
                 contentDescription = null,
                 tint = LightColors.brand,
                 modifier = Modifier.size(Spacing.space20).rotate(180f),

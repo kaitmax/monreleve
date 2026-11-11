@@ -1,0 +1,717 @@
+REPORT-IOS-2d - Mon Releve
+COMPARISON, PREVISION, SIMULATION AND RYTHME BECOME SHARED - WITH THE FORECAST CONTROLLERS - AND DISCLOSURE MOVES
+ALONE. ANDROID PIXEL-IDENTICAL; THE ONE iOS RUN (42934860637) GREEN: 291 TESTS, 0 FAILURES, THE DROPDOWN OPENED AND
+PICKED ON THE SIMULATOR.
+
+TASK     relay/IOS-2d.txt (main checkout, untracked; read there, not copied), rulings R812-R822 (R823-R825 spare, unused).
+         Before the first commit `grep -rE '\bR8(1[2-9]|2[0-5])\b' relay/ REPORT-*.txt CLAUDE.md docs`: nothing in the
+         worktree; in the main checkout only relay/IOS-2d.txt; nothing on any origin head (git grep over every remote
+         ref). Re-run before the report push: PUSH PROOF.
+BASE     origin/main 52da740 (R1 below).
+BRANCH   ios2d, worktree C:/wt/ios2d (R349), cut from 52da740 by `git worktree add -b ios2d C:/wt/ios2d 52da740` from the
+         main checkout (its lock allows fetch and worktree add; nothing else was done there). Lock .session-lock.json
+         (gitignored). Pushed: ios2d only. PENDING MERGE - nothing here is on main.
+CODE TIP 0616b4e1071a0ca2d2fe0b355126837a418dfc8b (0616b4e). Nine code commits f3b70f6..0616b4e (listed in SUMMARY).
+EVIDENCE C:/wt/ios2d/.ios2d-evidence/ (ignored by /.*-evidence/): gradle logs of every step, plant copies and hashes,
+         the RED XMLs, the Bundle probe's source and outputs, both release APKs, the iOS run's log and artifact.
+         C:/wt/ios2d/android/local.properties was COPIED from C:/wt/ios2c-fix (sdk.dir only; gitignored) - the only
+         thing taken from another worktree; nothing there was written.
+NO PHONE (R812): no adb command was run. No container was started, stopped or removed. No port was used.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+The forecast (ForecastController, ForecastState, the weekday logic, ThresholdForecast), the simulator
+(SimulationController, SimulationState) and five screens - Comparison (with ComparisonCopy), Prevision, Simulation,
+Rythme and Disclosure - now live in :shared commonMain, package names unchanged. Android hosts them through the same
+calls as before (MainActivity, ShellState, MainGraph, EveningNotifier unedited) and stays pixel-identical: every
+Paparazzi baseline verified at 0.0, NONE re-recorded. No dependency, version, wire, server, schema, engine, copy or
+drawable change; no navigation library.
+  f3b70f6  R813 1/2  the weekday logic extracted unchanged (ForecastDays.kt, RhythmChoice.kt), ThresholdForecast on a
+                     kotlinx LocalDate with a java.time overload in :app; ForecastDaysPinTest green on java.time, RED on
+                     three verified plants; DayOfWeekBridgeTest (the java.time/kotlinx oracle, stays in :app).
+  83599be  R813 2/2  java.time.DayOfWeek -> kotlinx, the java.time Clock -> the kotlin.time.Clock seam (factories in
+                     :app's JavaTimeForecast.kt); the date files to :shared, ThresholdCrossing split out; the pin moved
+                     to commonTest unedited.
+  9ea742f  R814 1/2  ForecastControllerPinTest (6) and SimulationControllerPinTest (5) in :app, green, RED on four
+                     verified plants.
+  f880573  R814 2/2  the four controller/state files to :shared; Serializable -> PlatformSerializable (SUIDs measured);
+                     the pins moved unedited.
+  54c6942  R815      the five glyph call sites take Glyph (resolution shown from source first); Paparazzi 142 at 0.0.
+  32143c0  R816+R819 Comparison, Prevision, Simulation, Rythme + ComparisonCopy to :shared, byte-identical, one commit
+                     (cross-package internals); three fences re-pinned, RateFloatFence's paths follow.
+  c460b8c  R817      Disclosure to :shared, byte-identical - it needed nothing beyond itself.
+  9b9ec0b  R818/R820 iosTest SimulationForecastScreensIosTest (5 tests) - every wait bounded.
+  0616b4e  R818      the dropdown item picked by its OnClick action (a Popup layer's coordinates, before the run).
+  R812  no S9; every androidTest compiles with NO edit at all; no JVM stand-in exists - PARKED.
+  R819  the no-inline-string, tokens-only and CommonMainFence fences each RED once on a verified plant in two moved
+        screens, then the plant deleted.
+  R820  ONE run, 42934860637 on 0616b4e: SUCCESS, every step green, 291 tests 0 failures (= 269 + the three pins'
+        17 + the new class's 5), every pilot class reached, the canary "still broken as expected", no WATCHDOG line,
+        no IrLinkageError but the canary's.
+  R821  baselines untouched; :app 1397 tests 0 failures, assertions unedited; APK 1,989,388 -> 1,989,388 B.
+  R822  written below.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. GREEN: the FULL :app:gate --rerun-tasks ran on the code tip 0616b4e in this session, and the one iOS run on
+that same SHA is green.
+FULL :app:gate --rerun-tasks on 0616b4e, after ./gradlew --stop ("1 Daemon stopped"; 5.63 GB free, read in its own
+step), the tracked tree clean (git status --porcelain: nothing; HEAD 0616b4e), started 00:43:14Z:
+    > Task :app:checkTestFloor
+    test floor OK: 1397 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 9m 28s
+    260 actionable tasks: 260 executed
+    real 9m29.964s ; GATE_EXIT=0
+  Test XML (every file stamped by this run, after its start): :app 183 files, 1397 tests 0 failures 0 errors 0 skipped
+  (= 52da740's 1394 + DayOfWeekBridgeTest's 3; 142 Paparazzi screenshot tests at 0.0, 0 failures;
+  PaparazziZeroToleranceTest 2/2); :shared 38 files, 217 tests 0 failures (= 200 + ForecastDaysPinTest 6 +
+  ForecastControllerPinTest 6 + SimulationControllerPinTest 5). Compiler "w: " lines: 7 - all pre-existing
+  (MainActivity's LocalLifecycleOwner x2, LiveLocation x2, MockProviderReplay x2, the K/N targets notice); none in a
+  file this task touched. compileDebugAndroidTestKotlin / assembleDebugAndroidTest: in the gate, green.
+iOS RUN 42934860637 on 0616b4e (headSha asserted before anything was read): conclusion success, 291 tests, 0 failures
+  (R820).
+`git diff --stat 0616b4e HEAD` (report-only): see PUSH PROOF.
+gate:clone NOT RUN: no web/ change (`git diff --stat 52da740..HEAD -- web`: empty).
+
+================================================================================
+R273 - READ
+================================================================================
+REPORT-IOS-2c.txt (R785/R795: the table, the hosts, what is missing on iOS; R787/R788's pin-then-move and the clock
+seam; R792's fence plants), REPORT-IOS-2c-FIX.txt (waitBounded, its positive control BoundedWaitIosTest, R806's guard,
+IosTestRawWaitUntilFenceTest's allowlist Onboarding 16 / SignIn 6), REPORT-IOS-2b.txt (R777/R778's pin-then-move, the
+behaviour-neutral signature step), REPORT-IOS-1b-A.txt (R602b/c - CheckWindows and CalendarModel onto kotlinx with
+java.time factories left in :app; R603 / ruling 14's Glyph seam: Glyph.kt, Glyph.android.kt by name, Glyph.ios.kt
+generated; R604's fences RED once; R606's iOS UI tests), relay/RULINGS-2026-11-03-MOBILE.txt Rulings 9-12 (the main
+checkout's copy, Ruling 12 uncommitted there). The files: forecast/* (5), ui/screens/{comparison (2), prevision (2),
+simulation (2), rythme (1), disclosure (1)}, fr/ComparisonCopy.kt, settings/ThresholdAlert.kt, detection/
+EveningNotifier.kt's call, MainActivity's forecast overlay, comparison overlay and disclosure, MainGraph, ShellState;
+shared design/Glyph*.kt, fr/{Prevision,Rythme,Simulation,Disclosure}Copy, dossier/{Forecast,Simulation,
+EmployerComparison}.kt, data/repo/RhythmRepository.kt, data/local/CalendarDay.kt and :app's JavaTimeCalendarDay.kt;
+iosTest pilot/{BoundedWait, CalendrierReleveScreensIosTest}. Every fence that names a path or reads ui/, fr/ or
+forecast/: FencesTest, CopyReachabilityTest, CopyDuplicationTest, ParametresCopyAccentTest, DayCellGridHasLegendTest,
+LogFenceTest, NoBareThresholdTest, RateFloatFenceTest, SettingsCaptureFenceTest, ExperimentalTimeOptInAllowlistTest,
+IosTestRawWaitUntilFenceTest, CommonMainFenceTest, ThresholdAlertR340Test (a path-naming scan, found by the move).
+THE FILES, VERIFIED: the orchestrator's list is exact. Two facts it does not carry, found by reading: ThresholdForecast
+needs settings.ThresholdCrossing, which lived in :app's ThresholdAlert.kt beside android.content; and SimInputs (with
+its DayOfWeek) is a java.io.Serializable stored by ShellState's rememberSaveable (R813's stored form, below).
+
+================================================================================
+R1 - PRECONDITION
+================================================================================
+`git fetch origin`; `git merge-base --is-ancestor 7afda5e origin/main` -> true; `... 52da740 origin/main` -> true;
+origin/main = 52da740. HOLDS.
+
+================================================================================
+R812 - NO S9: THE androidTest COMPILE, AND THE STAND-IN
+================================================================================
+No adb command was run; no instrumented run; no screen read.
+(1) EVERY androidTest COMPILES WITH NO EDIT AT ALL (stricter than "imports only"): `git diff --stat 52da740..HEAD --
+    android/app/src/androidTest` -> EMPTY. :app:compileDebugAndroidTestKotlin green after R813, R814, R816 and R817 and in
+    the gate (compileDebugAndroidTestKotlin and assembleDebugAndroidTest are gate tasks). Named:
+    RateOneStringInstrumentedTest builds `ForecastController(TwoDaysHome, record, WholeDays, 2026, JUNE_15, scope)` with
+    a java.time Clock - it now resolves to :app's JavaTimeForecast.kt factory, unedited; it composes the shared
+    PrevisionScreen. ProvenanceShownInstrumentedTest composes the calendar sheet content (shared since IOS-2c); nothing
+    it imports moved here.
+(2) THE STAND-IN: NONE EXISTS. Searched app/src/test for a JVM test composing PrevisionScreen with a real
+    ForecastController: `grep -rln PrevisionScreen app/src/test` -> PrevisionScreenScreenshotTest and RateFloatFenceTest
+    (the positive control: the search reaches the screen's users); `grep -rln ForecastController app/src/test` ->
+    ForecastControllerTest, SimulationControllerTest (sic: a factory call), MainGraphWiringTest,
+    SettingsFollowedWithoutRestartTest; `grep -rln "Robolectric|createComposeRule|runComposeUiTest" app/src/test` ->
+    nothing. PrevisionScreenScreenshotTest composes PrevisionScreen from a ForecastState built from forecastResults
+    directly, not through the controller. So no JVM test does what RateOneStringInstrumentedTest does - PARKED, not
+    written (a new one would have to be pinned to the current code first, R777's shape, and a JVM Compose rule is not
+    in :app's test scope). The nearest composition of the real controller with the screen is the iOS run's step4 (R820).
+    The device run itself is PARKED as a later device-only task (Ruling 12).
+
+================================================================================
+R813 - THE FORECAST'S DATES MOVED FIRST, PINNED (commits f3b70f6 pin, 83599be swap + move)
+================================================================================
+WHAT HELD java.time: ForecastController - `java.time.Clock` (`LocalDate.parse(todayInParis(clock))` at init and in
+  refresh, through :app's java.time overload, itself `todayInParis(clock.toKotlinClock())`), `DayOfWeek` in setDay,
+  withDay, toChoiceMap; ForecastState.rhythmDays; SimulationController - the Clock the same way, the WEEKDAYS list,
+  availableWeekdays (`kinds[it.toKotlinDayOfWeek()]`), the extra-weekday change (`SimChange.ExtraWeekday(day
+  .toKotlinDayOfWeek())`), the seeding (`!in available`); SimulationState - SimInputs.extraWeekday, availableWeekdays;
+  ThresholdForecast - a java.time LocalDate (`today.toKotlinLocalDate()` on its first use); RythmeScreen and
+  SimulationScreen - `java.time.DayOfWeek` (`RythmeCopy.DAYS[day.ordinal]`).
+THE EXISTING TESTS PINNED ACROSS IT (measured by grep, not guessed): ForecastControllerTest 2, SimulationControllerTest 4,
+  ThresholdForecastTest 4, ThresholdAlertR340Test 2, SettingsFollowedWithoutRestartTest 5, MainGraphWiringTest 2, and
+  the screenshot classes RythmeScreenScreenshotTest 4, SimulationScreenScreenshotTest 7, PrevisionScreenScreenshotTest
+  7; RateOneStringInstrumentedTest compiled. Green before, through and after the swap.
+STEP 1, behaviour-neutral (R787's CalendarDates shape - DEVIATION 1): withDay, toChoiceMap and the RhythmChoice <->
+  RhythmKind mapping (ForecastController's private file-level functions) and the weekday list, availableWeekdays and
+  the extra-weekday branch (SimulationController's) moved UNCHANGED into forecast/ForecastDays.kt; the enum
+  RhythmChoice and its two mappings into forecast/RhythmChoice.kt (its own file: detekt MatchingDeclarationName);
+  public, because the controllers call them from :app once the file is shared. projectedThresholdCrossing took a
+  kotlinx LocalDate; :app's new forecast/JavaTimeForecast.kt keeps `projectedThresholdCrossing(..., today:
+  java.time.LocalDate, ...)` = exactly the conversion its first line made - EveningNotifier and ThresholdForecastTest
+  unedited.
+THE PIN, ON java.time, in :app's test scope: ForecastDaysPinTest - kotlin.test only, no java.*, and it NEVER NAMES THE
+  WEEKDAY TYPE: every weekday comes out of the code under test and is read through name, ordinal and same-type
+  equality, so the file compiles against java.time.DayOfWeek before the swap and kotlinx after it (the engine's
+  weekday, kotlinx on both sides, is read by isoDayNumber). Six groups, every mismatch collected:
+    order       Monday..Friday, ordinals 0..4, each label RythmeCopy.DAYS[ordinal] at its own position (the screens'
+                only arithmetic on a day); no weekday twice.
+    STORED      withDay writes exactly that weekday's WeeklyRhythm field (Room's column, R341), both kinds, over an empty
+                and a full rhythm.
+    COMPARED    toChoiceMap keys each set field under its own weekday; a lookup by weekday finds its choice; the
+                round trip withDay -> toChoiceMap for every weekday and choice; choice <-> kind 1:1 and same-named.
+    OFFERED     availableWeekdays for eight rhythms (empty, all Suisse, all Domicile, Tue/Thu home with and without the
+                others, Mon/Fri home, four home, one left) - names in order and their labels.
+    SENT        extraWeekdayChange hands the engine the same weekday by name and ISO number (1..5), and it is the very
+                key withDay's stored field projects to through toEntryKindMap (one engine day, two paths); no weekday ->
+                ExtraMonthDays(0).
+    THE DATE    projectedThresholdCrossing across the year end (100 + 20 home rows, the 20 dated January 2027: only the
+                100 count in 2026 -> (fiscal true, social false); only the 20 in 2027 -> neither; each year's rows alone)
+                and on 29 Feb 2024 (44 home rows up to it inclusive: all Suisse -> neither, M-W-F -> both; no rhythm ->
+                null).
+  The instant -> Paris day mapping on the 2026 DST days (Europe/Paris and Europe/Zurich, the same EU instant), on 29 Feb
+  2024 and across 31 Dec -> 1 Jan is todayInParis's, already pinned by CalendarDatesPinTest's todayInParis group,
+  ParisDayDstTest and CalendarDayGoldenTest - not re-proved here (R268); the controllers' own use of it (today, and
+  `currentTaxYear = today.year`) is R814's pin.
+  GREEN on java.time: 6 tests, 0 failures - every literal as worked out by hand on the first run (and so the RED below
+  is what makes it evidence).
+  RED on VERIFIED plants (R180): ForecastDays.kt and ThresholdForecast.kt copied and hashed (ed715c99..., d336b13b...);
+  three plants applied by a script that refused unless each anchor matched exactly once; `diff` shown: withDay's
+  WEDNESDAY and THURSDAY arms swapped, RHYTHM_WEEKDAYS' Monday and Tuesday reordered, ThresholdForecast's year filter
+  replaced by `filter { true }` -> 6 run, 6 failed, each naming its plant, e.g. "withDay: 16 mismatch(es) <TUESDAY,
+  SUISSE> on empty: [null, SUISSE, null, null, null], not [SUISSE, null, ...]", "extraWeekdayChange: ... <WEDNESDAY>
+  stored field projects to [THURSDAY], the engine gets WEDNESDAY", "projectedThresholdCrossing: 3 mismatch(es) <31 Dec
+  2026, 2026> crossing (true, true), expected (true, false) ...". Restored from the copies, sha256 -c OK, grep PLANT: 0.
+  (The pin was first run RED before detekt's line-length wrap; the wrap changed no assertion and the RED run was
+  repeated on the final text with the same three plants: 6 run, 6 failed again.)
+THE ORACLE, STAYS IN :app (it needs both libraries): DayOfWeekBridgeTest (3) - for ALL SEVEN days, java.time vs
+  kotlinx-datetime 0.7.1 (its own enum since KMP-DT): name, ordinal, getValue() == isoDayNumber, DayOfWeek(n), both
+  converters' round trip, the kotlinx entry at the java ordinal, Monday first and Sunday 7; each rhythm weekday's label
+  by either ordinal; and both libraries' weekday of 28/29 Feb and 1 Mar 2024, 29 Mar and 25 Oct 2026, 31 Dec 2026 and
+  1 Jan 2027. Green before and after the swap.
+THE SWAP (83599be): kotlinx.datetime.DayOfWeek in ForecastDays (the two toKotlinDayOfWeek conversions gone - each the
+  identity the oracle proves), both controllers, both states and the two screens; the Clock -> kotlin.time.Clock with
+  three function/property-scoped opt-ins per controller (the property, today, refresh); JavaTimeForecast.kt gains
+  `fun ForecastController(..., clock: java.time.Clock, ...)` and `fun SimulationController(..., clock:
+  java.time.Clock, ..., restored = null)` - factories named like the classes, the same parameters in the same order,
+  handing `clock.toKotlinClock()` over (IOS-2c's JavaTimeCalendar shape). MainGraph, MainActivity, ShellState,
+  SettingsFollowedWithoutRestartTest, MainGraphWiringTest and RateOneStringInstrumentedTest call them UNEDITED.
+  The pin, UNEDITED, green on kotlinx: 6/6.
+THE MOVE (IOS-2c R787's DEVIATION 2 shape - DEVIATION 2 here): ForecastDays.kt, RhythmChoice.kt and ThresholdForecast.kt
+  git mv'd to :shared commonMain (byte-identical); ThresholdCrossing (a plain data class) split out of :app's
+  ThresholdAlert.kt into :shared settings/ThresholdCrossing.kt, package unchanged (IOS-1b-A R602a's split shape; the
+  stores stay in :app beside android.content); ForecastDaysPinTest git mv'd to :shared commonTest UNEDITED (sha256
+  8c314233... before and after): 6/6 on the JVM; on iOS: 6/6 (run 42934860637, ch.monreleve.app.forecast
+  .ForecastDaysPinTest tests=6 failures=0 - shown in the run's JUnit XML, not inferred).
+THE STORED AND WIRE FORMS - every place a weekday's name or number is stored, sent or compared:
+  ROOM (the rhythm): WeeklyRhythm's monday..friday columns - no DayOfWeek is stored; withDay maps each weekday to its
+    field - pinned (STORED), unchanged.
+  THE ENGINE (sent): SimChange.ExtraWeekday was already kotlinx; the conversion before it is gone - pinned (SENT).
+  THE WIRE: the rhythm never leaves the phone (R341); nothing here touches a request.
+  THE SAVED-INSTANCE-STATE BUNDLE - THE ONE STORED FORM THE SWAP COULD NOT KEEP. ShellState keeps
+    `rememberSaveable { mutableStateOf<SimulationSnapshot?>(null) }`; SimulationSnapshot holds SimInputs, whose
+    extraWeekday is a DayOfWeek, java-serialized into the Bundle. Measured by a throwaway JVM probe (the same probe run on
+    52da740, after the swap and after the move - reformatted once for lint between its first and second runs, one line
+    wrapped, no semantic change - then deleted; it names no DayOfWeek type - FRIDAY read off the field's
+    own enum by reflection), on SimulationSnapshot(EXTRA_WEEKDAY, SimInputs(extraWeekday = FRIDAY, targetRate = "100")):
+                          field type            SimInputs SUID        SimulationSnapshot SUID   bytes  round trip
+      52da740             java.time.DayOfWeek   -2052860028838609161  -1354513128894474318      524    equal
+      after the swap      kotlinx...DayOfWeek    1497513778350915589  -1354513128894474318      538    equal
+      after the move      kotlinx...DayOfWeek    1497513778350915589  -1354513128894474318      538    equal
+    The enum is still written BY NAME ("FRIDAY"); the class descriptor written before it changes from java.time
+    .DayOfWeek to kotlinx.datetime.DayOfWeek, and SimInputs' computed serialVersionUID with it. A Bundle written and
+    read by the same build round-trips (measured). A Bundle written by a 52da740 build and read by this one would, by
+    Java serialization's own rules (a SUID mismatch, a field of another type), fail to deserialize the snapshot - reasoned,
+    NOT measured. The move to PlatformSerializable (R814) changed nothing further. Not hidden, not
+    worked around (any field type other than java.time.DayOfWeek changes that descriptor): UNNUMBERED-1 and Q1.
+
+================================================================================
+R814 - THE CONTROLLERS MOVED SECOND (commits 9ea742f pins, f880573 move)
+================================================================================
+COLLABORATORS: NONE needs an Android Context. ForecastController's and SimulationController's are RhythmRepository,
+  EntryRepository, SettingsStore (all shared), the engine (dossier.forecastResults / simulationResults /
+  unrecordedPastWorkdays, ruleSetFor - shared) and the clock (R813's kotlin.time seam). No interface, no iOS
+  implementation was needed or written.
+THE PINS, written in :app's test scope against the controllers as they stood after R813 (kotlin.test +
+  kotlinx-coroutines-test, controllers in backgroundScope driven by runCurrent - CalendarControllerPinTest's shape):
+  ForecastControllerPinTest 6, over a rhythm repository that RECORDS every save and a record whose record() throws:
+    today    the Paris day of the clock, read through what it decides - (unrecorded past weekdays up to and including
+             today, imagined weekdays after today), literal counts worked by hand (2026: 261 weekdays, 2024: 262,
+             2027: 261): 2026-06-15 (118, 143); Mon 30 Mar 2026 begins at 22:00Z on the 29th after spring forward
+             (21:59:59.999Z -> (62, 199), 22:00Z -> (63, 198)); Mon 26 Oct begins at 23:00Z on the 25th after fall back
+             ((212, 49) / (213, 48)); Thu 29 Feb 2024 (28th 22:59:59.999Z (43, 219), 23:00Z (44, 218), 29th 22:59:59.999Z
+             (44, 218), 23:00Z (45, 217)); 31 Dec 2026 22:59:59.999Z (261, 0) and 23:00Z - today 1 Jan 2027, the tax year
+             still 2026 - (261, 0). Paris and Zurich change at the same instant under the EU rule; each is named so.
+    refresh  at 23:00Z on 31 Dec: before (251, 0) with 10 2026 rows and their rate; after refresh() tax year 2027 ->
+             (1, 260) and rate 0.0 (2026's rows never count in 2027); the clock moved to 1 Mar 2027 -> (42, 219).
+    setDay   one save per tap, in order, when the scope runs between taps; and a two-tap burst before it runs saves the
+             HELD rhythm twice (each launched save reads the field when it runs) - pinned as found (NOTICED-1); the
+             rhythmDays, domicileDays [0, 1, 3, 4], domicileCount 4; nothing else written.
+    seeded once (R310): a later re-emission is ignored; the held rhythm is what setDay saves.
+    record   read for its own tax year only (2025 and 2027 rows ignored), a new row read at once, never written; the
+             current and projected rates and the TeleworkResult equal the shared engine's own (R181); the ceilings.
+    settings read at each emission: no settings -> the invitation; saved -> SIMPLIFIED240/240; EXACT 220 followed.
+  SimulationControllerPinTest 5:
+    seeding  Tue/Thu home -> offered [MON, WED, FRI], SimInputs(MONDAY, "100"), canAdopt, the view = the engine's own
+             for ExtraWeekday(MONDAY).
+    changes  15 (scenario, input) -> change vectors, each asserted as "the view the shared engine itself gives for
+             THIS literal change" (R181): ExtraWeekday FRIDAY / null -> MONDAY / TUESDAY (a home day) -> MONDAY;
+             ExtraMonthDays 6, "" / "-3" / "abc" -> 0; Rate 80, 1, "0" / "101" / "" -> the settings' 100; Missions (4, 2),
+             (-1, x) -> (0, 0), ("", 3) -> (0, 3); canAdopt after each; nothing written.
+    followed the rhythm (never a second copy): a new rhythm re-offers [TUE, THU, FRI] and re-seeds Wednesday ->
+             Tuesday; all home -> none offered, null weekday, canAdopt false, ExtraMonthDays(0).
+    restored RATE "80" reopens with the weekday seeded.
+    refresh  at the year end moves the tax year (the 2026 rows stop counting); no settings / no rhythm -> null views.
+  GREEN 6/6 and 5/5 (one harness correction before any commit: the setDay vector first expected one save per tap with
+  six taps before runCurrent; the controller's launched saves read the held field when they run - the test now runs the
+  scope between taps for the per-tap sequence and pins the burst separately; the code was not changed).
+  RED on VERIFIED plants (both files copied and hashed, 00599a5a... and 36468a9a...; anchors asserted once each; diffs
+  shown): refresh's `currentTaxYear = today.year` commented out, setDay's `scope.launch { rhythmRepo.save(rhythm) }`
+  commented out, the rate range `MIN_RATE..MAX_RATE` -> `0..MAX_RATE`, the weekday re-seed `|| !in available` dropped ->
+  11 run, 5 failed, exactly: refreshMovesTodayAndTheTaxYearWithTheClock ("expected <(1, 260)> but was <(251, 0)>"),
+  setDayStoresOneRhythmPerTapInOrderAndShowsIt, theRhythmIsSeededOnceAndThenHeld ("... but was <[]>"),
+  eachScenarioAndInputSendsItsChangeToTheEngine ("<EXTRA_WEEKDAY ... TUESDAY ...> does not send ExtraWeekday(MONDAY)",
+  "<RATE ... 0 ...> does not send Rate(100)"), theRhythmIsFollowedAndAWeekdayNoLongerOfferedIsReseeded ("expected
+  <TUESDAY> but was <WEDNESDAY>"). Restored, sha256 -c OK.
+THE MOVE: ForecastController.kt, ForecastState.kt, SimulationController.kt, SimulationState.kt git mv'd to :shared
+  commonMain (package unchanged). Edits: SimInputs' and SimulationSnapshot's supertype java.io.Serializable ->
+  PlatformSerializable (Android's actual typealias IS java.io.Serializable; SUIDs re-measured after the move, unchanged
+  from the swap - table above) and a header note. The pins git mv'd to commonTest UNEDITED (sha256 3b5b0ee7... and
+  6f301e52... before and after): 6/6, 5/5 on the JVM; on iOS: 6/6 and 5/5 (run 42934860637's XML:
+  ForecastControllerPinTest tests=6 failures=0, SimulationControllerPinTest tests=5 failures=0).
+  The Kotest specs (ForecastControllerTest, SimulationControllerTest, ThresholdForecastTest) stay in :app (Kotest and
+  java.time cannot run in commonTest), green across the boundary through JavaTimeForecast.kt.
+  ONE SCREEN EDIT the move forced (DEVIATION 5): SimulationScreen, still in :app, smart-cast `state.view` - Kotlin does
+  not smart-cast a public property declared in another module - so it reads `val view = state.view` once
+  (PrevisionScreen's own idiom); Simulation's 7 baselines verified at 0.0 after it.
+NO java.* / android.* IN commonMain: CommonMainFenceTest green; compileCommonMainKotlinMetadata green (fastCheck); the
+  iOS compile on Windows (compile evidence only, R820) and on the Mac (R820).
+FENCES FOLLOWED: RateFloatFenceTest's four forecast paths; the ExperimentalTime allowlist's paths.
+
+================================================================================
+R815 - THE GLYPH CALL SITES (commit 54c6942, in :app, before the screens moved)
+================================================================================
+THE RESOLUTION, FROM SOURCE, BEFORE ANY EDIT:
+  shared/src/commonMain/.../design/Glyph.kt:46   val fileName: String get() = FILE_PREFIX + name.lowercase()
+  shared/src/commonMain/.../design/Glyph.kt:49   private const val FILE_PREFIX = "ic_"
+  Glyph.kt:35/36/41/42                           CHEVRON_LEFT, INFO, LOCK, BELL are entries
+  shared/src/androidMain/.../Glyph.android.kt:26 val id = context.resources.getIdentifier(glyph.fileName, "drawable",
+                                                 context.packageName)  (check(id != 0) - a missing name fails loudly)
+  Glyph.android.kt:33                            actual fun glyphPainter(glyph: Glyph): Painter =
+                                                 painterResource(glyphSemanticsId(glyph))
+  -> CHEVRON_LEFT, BELL, INFO, LOCK resolve to ic_chevron_left, ic_bell, ic_info, ic_lock: the same drawables, by the
+  same androidx painterResource. All four XMLs are in app/src/main/res/drawable, and app/src/main/res/raw/
+  glyph_keep.xml keeps all four by name (so R8's shrinker cannot drop them).
+THE CALL SITES, MEASURED: six R.drawable references in four painterResource calls, four glyphs - Comparison 1
+  (ic_chevron_left, rotated 180), Prevision 4 (ic_bell in AlertOfferRow; IconLine's painterResource(icon) fed ic_info
+  twice and ic_lock once), Rythme 1 (ic_info) - the brief's "five" counts Prevision's three distinct drawables.
+THE EDIT: glyphPainter(Glyph.CHEVRON_LEFT / BELL / INFO); IconLine(icon: Int -> Glyph) with Glyph.INFO x2 and
+  Glyph.LOCK; the `ch.monreleve.app.R` and `androidx.compose.ui.res.painterResource` imports gone from all three files.
+PAPARAZZI ARBITRATED: :app:verifyPaparazziDebug on 54c6942 - 142 screenshot tests, 0 failures, at 0.0 (Comparison 3,
+  Prevision 7, Rythme 4 among them); `git status android/app/src/test/snapshots` empty; :app 1397 tests 0 failures.
+
+================================================================================
+R816 - THE SCREENS MOVED (commit 32143c0) - ONE COMMIT FOR ALL FOUR
+================================================================================
+Why one: Comparison and Simulation call rythme's `internal fun ForecastTopBar`; SimulationCard calls prevision's
+internal Figure, RemainingTile and ProjectionRail - `internal` does not cross a module, so any one-screen-at-a-time
+order leaves one side broken. No :app file read an internal of theirs (grep of ForecastTopBar, Figure, RemainingTile,
+ProjectionRail, Legend outside their files: none).
+git mv to :shared commonMain, package names unchanged, ALL EIGHT FILES BYTE-IDENTICAL (sha256 before = after):
+  ui/screens/comparison/ComparisonActions.kt, ComparisonScreen.kt; ui/screens/prevision/PrevisionRail.kt,
+  PrevisionScreen.kt; ui/screens/simulation/SimulationCard.kt, SimulationScreen.kt; ui/screens/rythme/RythmeScreen.kt;
+  fr/ComparisonCopy.kt (shared fr/; NotificationCopy stays in :app).
+THE HOSTS stay in :app, reached as today: MainActivity's forecast overlay (RYTHME, PREVISION, SIMULATION - setDay,
+  selectScenario, updateInputs, adopt routed to the ForecastController, the rate link to Parametres, the alert offer
+  to the notification-permission prompt), its comparison overlay (buildComparison over the Releve's loaded document,
+  the employer store), ShellState (savedSimulation), MainGraph (the two java.time factories). Unedited.
+fastCheck green; :app 1397 / 0, 142 screenshots at 0.0, snapshots untouched; :shared 217 / 0; androidTest compiles.
+
+================================================================================
+R817 - DISCLOSURE: MOVED (commit c460b8c) - IT MOVES ALONE
+================================================================================
+MEASURED: every import of DisclosureScreen.kt already resolves in shared code - the foundation/Material3 Button,
+OutlinedButton and Text other shared screens import; design/ FrontierType, LightColors, Radius, Size, Spacing;
+fr/DisclosureCopy (shared since KMP-0). No Glyph, no R, no painterResource, no java.* / android.*; no internal or private
+declaration read from elsewhere; its two hosts in MainActivity (the auto-detection toggle's path and the shell overlay)
+pass two lambdas, so no host interface; no dependency. No fence or build file names its path (the one mention is a
+comment in DisclosureCopy.kt). So the drop clause did not fire: git mv to :shared commonMain ui/screens/disclosure,
+BYTE-IDENTICAL (sha256 31351ccc... before and after). Its host - the location-permission flow - is platform and stays.
+DisclosureScreenScreenshotTest 2/2 at 0.0; :app 1397 / 0; :shared 217 / 0.
+
+================================================================================
+R818 - NEW MATERIAL ON iOS, INTERACTED WITH
+================================================================================
+MEASURED (imports of the moved files minus every import already in shared commonMain; then each by NAME, IOS-2b's
+UNNUMBERED-2 - no fully-qualified `androidx.<pkg>.<Name>(` call in any moved file: 0):
+  androidx.compose.material3.DropdownMenu       SimulationScreen.kt:207  (WeekdayField - the one new Material3 container)
+  androidx.compose.material3.DropdownMenuItem   SimulationScreen.kt:209
+  androidx.compose.foundation.layout.fillMaxHeight  PrevisionRail.kt:81, :95
+  androidx.compose.foundation.layout.offset     PrevisionRail.kt:93
+  androidx.compose.ui.draw.rotate               ComparisonScreen.kt:241  (the cause row's chevron)
+  (painterResource was the sixth, removed by R815.) Already used by shared screens: Button, OutlinedButton,
+  OutlinedTextField, Icon, Text, FlowRow, BoxWithConstraints.
+HOW EACH IS USED IN THE iOS TEST (R820's run): the DropdownMenu OPENED by a pointer tap on the weekday field, its items
+  asserted (Monday twice - field and item -, Wednesday, Friday; Tuesday and Thursday, home days, never offered), the
+  Friday DropdownMenuItem PICKED, and the pick reaching the controller (extraWeekday == FRIDAY) with the menu closed.
+  The pick is the item's own OnClick semantics action, not a pointer tap (DEVIATION 7 / UNNUMBERED-4): decided BEFORE
+  the run, on the concern that a Popup layer might give boundsInRoot local to the menu and boundsInWindow absolute, so
+  that R806's tap-point-in-window guard could fail on a correctly placed item; the item's geometry is recorded in a mark
+  and its area in the window asserted. (The run then showed the concern unfounded here - below.) offset and fillMaxHeight run when step4 draws the projection's rail; rotate when step2's tapped cause row
+  draws its chevron. The text fields are TYPED into (Comparison's attestation field, Simulation's rate field), a
+  scenario chip and a rhythm toggle TAPPED.
+  RESULT ON iOS (run 42934860637, the test's own marks): "the DropdownMenu OPEN" after the pointer tap on the field;
+  the item counts asserted; "pick the Friday item: boundsInRoot=Rect.fromLTRB(24.0, 368.0, 136.0, 416.0)
+  boundsInWindow=Rect.fromLTRB(24.0, 368.0, 136.0, 416.0) at Offset(24.0, 368.0)"; "OnClick - returned"; "the
+  DropdownMenuItem PICKED: Friday" (the bounded wait on extraWeekday == FRIDAY with the menu closed returned). No
+  IrLinkageError. THE GEOMETRY ANSWERS THE PRE-RUN WORRY: in this setup the Popup layer's root IS at the window origin
+  (boundsInRoot == boundsInWindow), so R806's guard would have held and a pointer tap would have aimed inside the window;
+  the pick still went through OnClick, as decided before the run (DEVIATION 7). The rail (offset, fillMaxHeight) drew
+  with the fixture forecast ("the fixture forecast shown: 26,25 %"); the rotated chevron's row was tapped and opened
+  the days.
+
+================================================================================
+R819 - FENCES
+================================================================================
+FOLLOWED THE MOVES (no fence was widened; the shared ui/, fr/, design/ and commonMain roots were already read):
+  CopyReachabilityTest, CopyDuplicationTest, ParametresCopyAccentTest - :app's fr/ root was pinned BY ComparisonCopy.kt;
+    re-pinned on NotificationCopy.kt, the one copy file left there (R460); the shared fr/ root (pinned Fr.kt) reads
+    ComparisonCopy now. CopyReachabilityTest's transitive formatPoints entry names no path.
+  RateFloatFenceTest - the four forecast paths (R814) and the four screen paths (R816) follow the files.
+  ThresholdAlertR340Test (a path-naming scan the move found by failing loudly, as its R460 header promised) -
+    ThresholdForecast's path follows it to :shared, and the split-off settings/ThresholdCrossing.kt is added so the
+    moved half stays scanned (DEVIATION 6).
+  ExperimentalTimeOptInAllowlistTest - paths and counts (UNNUMBERED-2).
+  FencesTest, DayCellGridHasLegendTest, LogFenceTest, NoBareThresholdTest, SettingsCaptureFenceTest,
+    CommonMainFenceTest - already read the shared roots; nothing named these screens or forecast/ by path.
+RED ONCE ON A VERIFIED PLANT IN TWO MOVED SCREENS (after 32143c0): SimulationScreen.kt and RythmeScreen.kt copied and
+  hashed (f44d1335..., 0bffede1...); each got `import androidx.compose.material3.DatePicker`, `import
+  androidx.compose.ui.graphics.Color`, `import androidx.compose.ui.unit.dp`, `private val PLANT_COLOUR =
+  Color(0xFF00FF00)`, `private val PLANT_GAP = 7.dp`, `private const val PLANT_TEXT = "Bonjour, plante"` (anchors
+  asserted once; a first draft's @Suppress("unused") lines were removed before the run so no unplanned literal could
+  fire; `diff` shown). One run:
+  FencesTest 11 run, 2 failed -
+    uiAndDesignHaveNoRadiusColourOrSpacingLiteralOutsideTokens (TOKENS-ONLY): "...\ui\screens\rythme\RythmeScreen.kt: raw
+      Color(0x...) literal outside design/Tokens.kt", "...: raw .dp literal outside Spacing/Radius", and the same two
+      for ...\ui\screens\simulation\SimulationScreen.kt;
+    uiAndDevFilesCarryNoStringLiteral (NO-INLINE-STRING): "...RythmeScreen.kt: string literal "Bonjour, plante" in
+      ui//dev/ - French copy must come from fr/" and the same for SimulationScreen.kt.
+  CommonMainFenceTest 3 run, 1 failed - commonMainImportsNoPlatformApis: "src\commonMain\...\rythme\RythmeScreen.kt:18:
+    import androidx.compose.material3.DatePicker // PLANT-R819" and "...\simulation\SimulationScreen.kt:17: ...".
+  Restored from the copies; sha256 -c OK on both; grep PLANT/plante: 0; `git status` clean. Then green (the gate).
+
+================================================================================
+R820 - iOS COMPILES AND DRIVES THEM - THE ONE RUN
+================================================================================
+THE TEST: iosTest pilot/SimulationForecastScreensIosTest (5 tests, step1..step5 so declaration and alphabetical order
+agree, least to most at risk; the class named to sort after every other pilot class - DEVIATION 9). Each screen hosted
+as MainActivity hosts it: RythmeHost / PrevisionHost / SimulationHost over the REAL shared ForecastController /
+SimulationController (an in-memory rhythm that records every save and re-emits it as Room does, a record whose
+record() throws, InMemorySettingsStore, a fixed kotlin.time Clock at 2026-06-15T10:00Z); ComparisonHost builds the
+comparison with the shared buildComparison from the Releve test's fixture dossier (made internal, not copied -
+DEVIATION 8) and parseEmployerRate, a completed year; the Disclosure with two counted lambdas. No server, no account,
+no address. Strings from fr/, expected values from shared code (R181). Every wait through waitBounded (0 raw waits:
+IosTestRawWaitUntilFenceTest unchanged and green); a MARK on both sides of every unbounded call; R793's 120 s watchdog
+("R820 MARK" / "R820 WATCHDOG").
+  step1 Disclosure: shown (title, what is kept); "Autoriser la localisation" -> onAllow 1; "Rester en saisie manuelle"
+        -> onStayManual 1.
+  step2 Comparison: shown; the attestation field's label; "41,25" TYPED (performTextReplacement) -> the gap headline
+        the shared buildComparison computes for 41,25 shown; the missions cause row (its chevron rotated) tapped ->
+        onViewDays 1.
+  step3 Rythme: shown with Tuesday and Thursday selected at home (2 selected Domicile toggles); Monday's Domicile
+        TAPPED -> exactly one save, WeeklyRhythm(DOMICILE, DOMICILE, SUISSE, DOMICILE, SUISSE); the helper line for 3
+        days; 3 selected; the controller's rhythmDays at home = [MONDAY, TUESDAY, THURSDAY]; nothing recorded.
+  step4 Prevision: the fixture forecast (five 2026 home rows + the Tue/Thu rhythm) - both figures the controller's
+        projection formats shown ("26,25 %" projected), the Projection chip, the R340 lock line (Glyph.LOCK), the INFO
+        lines, the alert offer (Glyph.BELL) TAPPED -> onEnableAlert 1, "Tester un changement" TAPPED -> 1; nothing
+        written.
+  step5 Simulation: shown, Monday seeded; the DropdownMenu OPENED and an item PICKED (R818 above); "Adopter ce rythme"
+        -> 1; the "Un autre taux" chip TAPPED -> scenario RATE, the chip selected, its field shown; "80" TYPED -> the
+        controller's targetRate "80"; the view present; nothing written.
+THE WINDOWS COMPILE-ONLY CHECK before the run (Ruling 12's permission; R575's enableKlibsCrossCompilation overridden ON
+  THE COMMAND LINE, no file changed; COMPILE EVIDENCE ONLY, never a run result): `./gradlew
+  :shared:compileTestKotlinIosSimulatorArm64 -Pkotlin.native.enableKlibsCrossCompilation=true --offline`. First attempt
+  (9b9ec0b's file before commit): compileKotlinIosSimulatorArm64 EXECUTED and succeeded (every moved commonMain file
+  compiled for iosSimulatorArm64), compileTestKotlinIosSimulatorArm64 FAILED - "Cannot access 'object Progress': it is
+  private in file" (a private top-level class name is the PACKAGE's: it clashed with CalendrierReleveScreensIosTest's;
+  renamed ForecastProgress). Then BUILD SUCCESSFUL twice (9b9ec0b; 0616b4e). Positive signal: the test klib holds
+  SimulationForecastScreensIosTest, its steps, pickMarked and ForecastProgress; the main klib the moved RythmeScreen,
+  SimulationScreen, ComparisonScreen, DisclosureScreen, ForecastController, ForecastDays. Frontend only: not linked,
+  not run - that was the Mac's.
+THE RUN: 42934860637 - https://github.com/kaitmax/monreleve/actions/runs/42934860637 - workflow_dispatch, ref ios2d,
+  headSha 0616b4e1071a0ca2d2fe0b355126837a418dfc8b (asserted), dispatched 00:53:26Z; job 00:53:30Z -> 01:02:06Z;
+  conclusion SUCCESS. Simulator: "DEVICE: iPhone 17 Pro (<udid>) (Booted)" (step 14; the UDID left out).
+STEPS (every step's result, from the API):
+  1 Set up job - success                                   00:53:30..00:53:33
+  2 Run actions/checkout@3d3c42e5... - success            00:53:33..00:53:39
+  3 Run actions/setup-java@de7274f0... - success          00:53:39..00:53:43
+  4 Run gradle/actions/setup-gradle@3f5f9ada... - success 00:53:43..00:53:44
+  5 Restore the Kotlin/Native toolchain - success         00:53:44..00:53:44
+  6 Environment (diagnostic) - success                    00:53:44..00:53:52
+  7 Provision the Kotlin/Native toolchain - success       00:53:52..00:55:44
+  8 Boot the iPhone simulator - success                   00:55:44..00:56:30
+  9 Start the wire-recording server - success             00:56:30..00:56:35
+  10 iOS - simulator tests and device compile - success   00:56:35..01:01:16
+  11 The wire recording (what the simulator really sent) - success
+  12 Save the Kotlin/Native toolchain - success
+  13 Results - refuse a run that executed no tests - success
+  14 Which simulator ran (positive signal) - success
+  15 Room's generated iOS code (listing) - success
+  16 Run actions/upload-artifact@cf430e03... - success
+  30 Post Run gradle/actions/setup-gradle - success; 31 Post Run actions/setup-java - success;
+  32 Post Run actions/checkout - success; 33 Complete job - success
+STEP 10: "> Task :shared:compileTestKotlinIosSimulatorArm64", "> Task :shared:linkDebugTestIosSimulatorArm64", "> Task
+  :shared:iosSimulatorArm64Test", "> Task :shared:compileKotlinIosArm64" (the device compile), "BUILD SUCCESSFUL in
+  4m 39s". No "FAILED" outside the workflow's own script text; no "Test running process exited unexpectedly".
+STEP 13: "iOS SIMULATOR TESTS EXECUTED: 291" - expected 291 = 269 (run 42292101917) + ForecastDaysPinTest 6 +
+  ForecastControllerPinTest 6 + SimulationControllerPinTest 5 + SimulationForecastScreensIosTest 5. 52 classes, every
+  one failures=0 errors=0 skipped=0 (summed from the step's lines: 291 tests, 0 failures, 0 errors); the artifact's 52
+  JUnit XML files agree. The pilot classes, every one reached:
+  ch.monreleve.app.pilot.AujourdhuiPilotIosTest tests=7 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.BoundedWaitIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.CalendrierReleveScreensIosTest tests=5 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.LaunchSpeechIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.MaterialDatePickerCanaryTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.OnboardingScreensIosTest tests=1 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.PilotFixtureTest tests=3 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.SignInScreensIosTest tests=2 failures=0 errors=0 skipped=0
+  ch.monreleve.app.pilot.SimulationForecastScreensIosTest tests=5 failures=0 errors=0 skipped=0
+  and the moved pins: ch.monreleve.app.forecast.ForecastDaysPinTest 6, ForecastControllerPinTest 6,
+  SimulationControllerPinTest 5 - each failures=0.
+  The canary: "IOS-1b-A canary: still broken as expected - kotlin.internal.IrLinkageError: Can not get instance of
+  singleton 'Companion': No class found for symbol 'kotlinx.datetime/Instant.Companion|null[0]'" (unchanged).
+  "R820 WATCHDOG" / "R793 WATCHDOG" lines: 0. IrLinkageError lines: 1 - the canary's. No linkage error elsewhere.
+THE CLASS'S XML: tests="5" failures="0" errors="0"; step1 0.033 s, step2 0.05 s, step3 0.039 s, step4 0.052 s, step5
+  0.157 s. 105 distinct "R820 MARK" lines (.ios2d-evidence/run/step-marks.txt), each test from "started" to
+  "finished".
+WHAT THE RUN PROVES, AND NO MORE: the five moved screens and the two moved controllers compile, link, compose and take
+  input on the iOS simulator in a 1024 x 768 Compose UI test window; the DropdownMenu opens from a pointer tap and its
+  item's click action reaches the controller; typed text reaches both hosts. NOT shown: a pointer tap on a popup item
+  (UNNUMBERED-4), a phone-sized window, any iOS host (none exists), VoiceOver.
+
+================================================================================
+R821 - ANDROID IS THE PROOF
+================================================================================
+BASELINES: `git diff --stat 52da740..HEAD -- android/app/src/test/snapshots` -> EMPTY. RE-RECORDED: 0. Every Paparazzi
+  rule at maxPercentDifference 0.0 (PaparazziZeroToleranceTest green). The moved screens' baselines verified at 0.0 on
+  the shared screens: ComparisonScreenScreenshotTest 3, PrevisionScreenScreenshotTest 7, RythmeScreenScreenshotTest 4,
+  SimulationScreenScreenshotTest 7, DisclosureScreenScreenshotTest 2 (after R813, R814, R815, R816, R817 and in the gate).
+TESTS, ASSERTIONS UNEDITED. `git diff --stat -M 52da740..HEAD -- android/app/src/test` - 11 files:
+  imports only:       ForecastControllerTest, SimulationControllerTest, RythmeScreenScreenshotTest (java.time.DayOfWeek
+                      -> kotlinx.datetime.DayOfWeek, one line each, re-sorted).
+  fixture conversions SimulationScreenScreenshotTest: the import as above, `import kotlinx.datetime.toKotlinDayOfWeek`
+                      removed, and six `.toKotlinDayOfWeek()` calls removed from fixture lines (the rhythm map's five
+                      keys and SimChange.ExtraWeekday(FRIDAY)) - each now the identity; no value and no assertion
+                      changed; its 7 baselines at 0.0 (DEVIATION 4).
+  fences, paths/pins: ThresholdAlertR340Test, CopyDuplicationTest, CopyReachabilityTest, ParametresCopyAccentTest,
+                      RateFloatFenceTest, ExperimentalTimeOptInAllowlistTest (R819).
+  new:                DayOfWeekBridgeTest (R813's oracle, stays). The three pins' adds-then-moves net to nothing in :app.
+  `-- android/app/src/androidTest` -> EMPTY (R812).
+  Green in :app (the gate): ForecastControllerTest 2, SimulationControllerTest 4, ThresholdForecastTest 4,
+  ThresholdAlertR340Test 2, SettingsFollowedWithoutRestartTest 5, MainGraphWiringTest 2, DayOfWeekBridgeTest 3, every
+  fence; :shared: ForecastDaysPinTest 6, ForecastControllerPinTest 6, SimulationControllerPinTest 5. There is no Compose
+  UI or accessibility JVM test for these screens beyond Paparazzi; the instrumented one is R812's (compiled, not run).
+MaterialDatePickerCanaryTest: UNCHANGED (git diff 52da740..HEAD -- that file: EMPTY); its iOS result: 1/1, "still
+  broken as expected" (run 42934860637).
+IosTestRawWaitUntilFenceTest: UNCHANGED (git diff: EMPTY), its allowlist exactly Onboarding 16, SignIn 6 (+ the
+  helper's own 1); the new pilot file is not on it (0 raw waits), the fence green.
+RELEASE APK SIZE (assembleRelease, unsigned, R8 on, no -P), both built in this worktree:
+  base 52da740  1,989,388 B  sha256 e1cf60f7ba4236f1... - built BEFORE any change (BUILD SUCCESSFUL in 3m 54s); the
+                same hash IOS-2c recorded for its tip f561d65 (android/ unchanged since).
+  tip  0616b4e  1,989,388 B  (+0)  sha256 463dc949... - built by the gate's release checks on 0616b4e
+                (checkMinifiedWireContract and kin run R8); `:app:assembleRelease` after the gate: every task UP-TO-DATE.
+  WHY +0: 3 of 114 entries differ (unzip -v, both sides): classes.dex 3,275,156 -> 3,274,536 uncompressed (-620),
+  1,562,660 -> 1,562,609 stored (-51) - the two toKotlinDayOfWeek conversions and the screens' java.time.DayOfWeek
+  gone, the JavaTimeForecast factories and the public ForecastDays functions added; assets/dexopt/baseline.prof
+  4,656 -> 4,663 (+7) and baseline.profm (same size, CRC changed). resources.arsc and every res/ entry IDENTICAL (CRC):
+  the four glyphs were already kept by glyph_keep.xml. The archive size is unchanged to the byte (zip alignment absorbed
+  it, as in IOS-2a/2b).
+
+================================================================================
+R822 - WHAT IS LEFT, WRITTEN DOWN (update of REPORT-IOS-2c R795; R811 changed its last item only)
+================================================================================
+SHARED ENTRY POINTS (all commonMain, package names unchanged), now also:
+  forecast: ForecastController(rhythmRepo, entryRepo, settingsStore, taxYear, clock: kotlin.time.Clock, scope) - state
+    (ForecastState: rhythmDays Map<kotlinx DayOfWeek, RhythmChoice>, projection: Projection?), setDay(day, choice),
+    refresh(); SimulationController(rhythmRepo, entryRepo, settingsStore, taxYear, clock: kotlin.time.Clock, scope,
+    restored: SimulationSnapshot? = null) - state (SimulationState), selectScenario, updateInputs, refresh;
+    SimInputs / SimulationSnapshot (PlatformSerializable - an empty marker on iOS); projectedThresholdCrossing(settings,
+    entries, rhythm, today: kotlinx LocalDate, taxYear) and crossingOf; ForecastDays (RHYTHM_WEEKDAYS, withDay,
+    toChoiceMap, availableWeekdays, extraWeekdayChange); RhythmChoice (+ toKind/toChoice); settings.ThresholdCrossing.
+  ui.screens.rythme: RythmeScreen(state: ForecastState, actions: RythmeActions(onSetDay, onViewForecast = {}, onBack =
+    {}), modifier).
+  ui.screens.prevision: PrevisionScreen(state: ForecastState, actions: PrevisionActions(onModifyRhythm, onTestChange,
+    onEnableAlert, onBack - all defaulted), alertEnabled = false, modifier).
+  ui.screens.simulation: SimulationScreen(state: SimulationState, actions: SimulationActions(onSelectScenario,
+    onInputsChange, onAdopt, onChangeRate, onReturn, onBack - all defaulted), modifier).
+  ui.screens.comparison: ComparisonScreen(view: ComparisonView, employerInput: String, employerRate: Double?, actions:
+    ComparisonActions(onInputChange, onViewDays, onBack - defaulted), modifier); fr.ComparisonCopy.
+  ui.screens.disclosure: DisclosureScreen(onAllow, onStayManual, modifier).
+THEIR HOSTS: THERE IS NO SHARED HOST for any of them. Android's are MainActivity's forecastRoute overlay (RYTHME /
+  PREVISION / SIMULATION; adopt routed to the ForecastController's setDay; the rate link opens Parametres; the alert
+  offer goes through the POST_NOTIFICATIONS prompt), its comparisonYear overlay (buildComparison over the Releve's
+  Loaded document, the account-scoped employer store, "voir mes journees" to the Calendrier tab) and its showDisclosure
+  overlay (FINE_LOCATION launcher); ShellState holds savedSimulation (rememberSaveable); MainGraph builds both
+  controllers with the java.time clock through JavaTimeForecast.kt. iosTest's RythmeHost / PrevisionHost /
+  SimulationHost / ComparisonHost (pilot/SimulationForecastScreensIosTest) are the minimal shapes - test code, not
+  shipped.
+STILL MISSING ON iOS - R795's list unchanged by this task (AccountStore for iOS; the universal-link receipt; the
+  transport's base URL; syncNow / a composed iOS SyncEngine; the framework declaration and bundled resources; the iOS
+  /me codec; onboarding's halves and restore; the dossier share/export, fetch and exportBytes; the calendar's restore;
+  R811's item on the sheet), and NEW WITH THIS TASK:
+  - A FORECAST CLOCK AND HOST ON iOS: the two controllers take a kotlin.time.Clock (Clock.System would do) and the
+    rhythm/entry repositories and a SettingsStore; an iOS composition of the Room rhythm DAO and entries (the shared
+    database exists on iOS) into those repositories, and a host that owns the scope and the forecast route, are not
+    built.
+  - THE SIMULATOR'S RESTORE ON iOS: SimulationSnapshot is PlatformSerializable, an empty marker there - nothing persists
+    the open scenario across an iOS process death (Android's Bundle does).
+  - THE BELL (Prevision's alert offer): Android routes it through the POST_NOTIFICATIONS permission and the threshold
+    alert store; iOS has neither a notification-permission request (UNUserNotificationCenter) nor an alert store, nor
+    the evening/threshold notification itself (EveningNotifier is :app's).
+  - THE LOCATION DISCLOSURE: the screen is shared, but its host - the location-permission request and the
+    auto-detection that follows (Core Location, the on-device border check) - is platform and absent on iOS; the copy
+    also carries ANDROID_TEN_WARNING, an Android-version sentence, which an iOS host would need to omit or replace
+    (a copy decision, not taken).
+  - THE COMPARISON'S DATA: its host needs the Releve's loaded document (R795's dossier fetch on iOS) and an employer-
+    figure store (Android's is SharedPreferences, account-scoped) - neither exists on iOS.
+  - "Tester un changement" / "Modifier mon rythme" / "Revenir": the forecast route itself (no navigation library; a
+    shared navigation host is out of scope).
+R785 - WHAT IS LEFT IN :app (re-measured by listing :app's ui/ and grepping each file; not chosen):
+  SCREEN / PIECE        FILES  BLOCKERS FOUND
+  parametres            12     ui/screens/parametres/*: the second Material3 date picker (ParametresDateField.kt:
+                               DatePicker, DatePickerDialog, rememberDatePickerState(initialSelectedDateMillis) + java.time
+                               Instant/LocalDate/ZoneOffset - R776's seam again, with an initial date); ParametresScreen.kt
+                               ModalBottomSheet x3 (R793/R811's sheet, now understood); parametres/ParametresController.kt
+                               org.json (the /me wire, PARK-D3) + java.time.LocalDate; parametres/LegalLink.kt
+                               android.content.ActivityNotFoundException; LicencesScreen.kt. No drawable/Glyph use.
+  onboarding's host     1      ui/screens/onboarding/OnboardingStartDatePicker.kt (R776's native date seam) + the
+                               OrgJsonOnboarding factory - host pieces, by design.
+  disclosure            0      MOVED here (R817); its host stays.
+  shell                 2      ui/shell/AppBottomBar.kt, AppTab.kt - the Android shell.
+  fr/                   1      NotificationCopy.kt (the Android notification copy).
+  forecast/             1      JavaTimeForecast.kt - the java.time bridge (factories + the LocalDate overload).
+  comparison, prevision, simulation, rythme - MOVED by this task.
+BLOCKERS FOUND HERE FOR IOS-2e (parametres), not chosen:
+  (1) the date picker: Material3's DatePicker is fenced out of shared UI (IrLinkageError on iOS until the parked CMP
+      upgrade); Parametres needs R776's native seam with an INITIAL date (onboarding's has none);
+  (2) ParametresController: org.json (PARK-D3's /me codec, R778's shape - an encoder parameter) and java.time.LocalDate;
+  (3) the three ModalBottomSheets: R811 (b) - whether a phone-sized screen opens a sheet with its Save visible is open;
+  (4) LegalLink's ActivityNotFoundException and the export/share, delete-account and sign-out paths behind
+      ParametresActions (host pieces);
+  (5) the threshold-alert and evening toggles (ThresholdAlertStore / EveningNotificationStore: SharedPreferences
+      interfaces partly in :app - ThresholdAlertStore and AlertThreshold still live in :app's ThresholdAlert.kt; only
+      ThresholdCrossing moved here);
+  (6) the Paparazzi ParametresDialogScreenshotTest's dialog content and the rate-change confirmation (R290).
+
+================================================================================
+CI MINUTES
+================================================================================
+  run          ref    sha      result    job wall                      billed
+  42934860637  ios2d  0616b4e  success   00:53:30Z-01:02:06Z (8m36s)   9 min (rounded up)
+ONE dispatch (`gh workflow run ios-shared.yml --ref ios2d`); zero push-triggered runs (ios2d does not match ios-*):
+`gh run list --workflow ios-shared.yml --branch ios2d` -> [] before the dispatch, 1 (42934860637) after it; the count
+after the report push is in PUSH PROOF. No earlier run, no second run.
+
+================================================================================
+PARKED (UNNUMBERED - no series letter claimed)
+================================================================================
+UNNUMBERED-1  THE SAVED-INSTANCE-STATE FORM OF THE SIMULATOR'S WEEKDAY (R813's table). The hard boundary says a stored
+              DayOfWeek keeps its exact stored form; the Bundle's class descriptor and SimInputs' SUID changed with the
+              type R813 ordered. The name written is unchanged and a same-build round trip is measured equal. Question
+              Q1 asks whether this is accepted (the argument offered, NOT measured here: a saved-instance Bundle is not
+              restored across an app update) or wants a mitigation. Nothing was attempted: no field type other than
+              java.time.DayOfWeek keeps that descriptor.
+UNNUMBERED-2  THE EXPERIMENTAL-TIME ALLOWLIST GREW by 11 sites, every one function-, property- or parameter-scoped, and
+              per R590's own message a new site is an argument for the operator: ForecastController 3 and
+              SimulationController 3 (the kotlin.time.Clock seam property and its two readers - CalendarController's
+              R787 shape), JavaTimeForecast.kt 2 (the factories), ForecastControllerPinTest 1, SimulationControllerPinTest
+              1 (one build helper each), SimulationForecastScreensIosTest 1 (one builder). PARK-Z3 deletes them all at
+              Kotlin 2.3.
+UNNUMBERED-3  R812 (2): NO JVM STAND-IN composes PrevisionScreen with a real ForecastController (searched; the positive
+              control above). The S9 device run of RateOneStringInstrumentedTest is a later device-only task (Ruling 12).
+UNNUMBERED-4  A POINTER TAP ON A POPUP ITEM ON iOS (R818): the DropdownMenuItem was picked by its OnClick semantics
+              action. Its recorded geometry - boundsInRoot = boundsInWindow = Rect.fromLTRB(24.0, 368.0, 136.0, 416.0),
+              positionInWindow Offset(24.0, 368.0) - shows the Popup layer's root at the window origin here, so R806's
+              guard holds for it and a pointer tap is expected to land; a later iOS task can switch the pick to
+              performClick behind that guard. Not done here: it would have needed a second run.
+UNNUMBERED-5  NOTICED, NOT TOUCHED (pinned as found): ForecastController.setDay launches `rhythmRepo.save(rhythm)`, which
+              reads the held field when the coroutine runs - two taps before the scope runs save the latest rhythm twice.
+              Harmless for the stored result (the last save is the final rhythm); a behaviour, recorded, not changed.
+UNNUMBERED-6  NOTICED, NOT TOUCHED: CommonMainFenceTest is still import-only (IOS-2b UNNUMBERED-2); for these files the
+              by-name grep found no fully-qualified androidx call.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R813'S PIN WAS PRECEDED BY A BEHAVIOUR-NEUTRAL EXTRACTION (IOS-2c R787's DEVIATION 1 shape): no pin can name a
+   DayOfWeek and move unedited across a type swap, so the weekday logic moved unchanged into ForecastDays.kt /
+   RhythmChoice.kt and the pin reads weekdays only through name, ordinal and same-type equality. projectedThresholdCrossing
+   took its kotlinx LocalDate in that same step, with the java.time overload in :app (bulkConfirmation's shape) - so the
+   pin saw ThresholdForecast on kotlinx, and ThresholdForecastTest (java.time, through the overload) is its java.time pin.
+2. R813 MOVED ForecastDays.kt, RhythmChoice.kt, ThresholdForecast.kt and ThresholdCrossing TO :shared IN ITS OWN COMMIT
+   (IOS-2c R787's DEVIATION 2 shape) so its pin could move to commonTest there, as R813 asks; ThresholdForecast is one of
+   R814's five, moved one ruling early. R814 then moved the other four.
+3. R813 AND R814 ARE TWO COMMITS EACH (pin, then swap/move) - each its own ruling's, none mixed with another's.
+4. SimulationScreenScreenshotTest IS NOT IMPORT-ONLY: six `.toKotlinDayOfWeek()` fixture conversions removed (now the
+   identity) with their import. No value and no assertion changed; its 7 baselines verified at 0.0.
+5. SimulationScreen (still in :app at R814) READS `state.view` INTO A LOCAL: Kotlin does not smart-cast another module's
+   public property. Same value, read once; PrevisionScreen's idiom; baselines at 0.0.
+6. ThresholdAlertR340Test's PATH LIST FOLLOWS ThresholdForecast.kt and ADDS the split-off ThresholdCrossing.kt (R819's
+   "every fence reads the new home"; its R460 header predicted the loud failure the move produced).
+7. THE DROPDOWN ITEM IS PICKED BY ITS OnClick SEMANTICS ACTION, not a pointer tap (R818 says "pick the option"; the menu
+   itself is opened by a pointer tap). Decided before the run, with this session's advisor, as a test-harness choice
+   (not a reserved item): R806's guard compares the centre of boundsInRoot with boundsInWindow, and the concern was that
+   a Popup layer would not put them in one coordinate space - a false red on a one-run budget. THE RUN SHOWED THE
+   CONCERN UNFOUNDED HERE: the item's boundsInRoot equals its boundsInWindow (24,368)-(136,416). The committed test's
+   header comment and 0616b4e's message state the concern as fact; they are left as committed (an edit would move the
+   code tip after the gate and the run) and are to be corrected when the pick is switched (UNNUMBERED-4).
+8. CalendrierReleveScreensIosTest's FIXTURE_DOSSIER: private -> internal, so the new test's Comparison host reads the
+   same dossier instead of a copy (R206). Nothing else in that file changed.
+9. THE NEW iOS CLASS IS NAMED SimulationForecastScreensIosTest so it sorts after every other pilot class: a hang in it
+   (its watchdog ends the process) would leave every other class already run.
+10. THE WINDOWS COMPILE-ONLY CHECK (R575 overridden on the command line, no file changed) was run three times as the iOS
+   test was corrected (a `Progress` object name clash - private top-level CLASSES share the package's namespace - then
+   the pick change); compile evidence only, never cited as a run result (Ruling 11).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R813, UNNUMBERED-1) - The simulator's saved-instance Bundle changes form with the weekday type: SimInputs' SUID
+   -2052860028838609161 -> 1497513778350915589 and the enum descriptor java.time.DayOfWeek -> kotlinx.datetime.DayOfWeek
+   (the name "FRIDAY" unchanged; same-build round trip equal). The hard boundary asks the exact stored form to be kept;
+   R813 asks for the kotlinx type. Is this accepted on the argument - offered, NOT measured here - that Android does not
+   restore one build's saved-instance state into another (an app update ends the process and its tasks' saved state), or
+   does the
+   orchestrator want a mitigation (e.g. a custom readObject for SimInputs in androidMain, or storing the weekday's ISO
+   number) - each of which is itself a change to that stored form?
+No other question blocks. The parked items above (the allowlist growth, the stand-in, the popup pointer tap, the
+pinned double save) are the orchestrator's to schedule; none is chosen here.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2d only (never main, never production). The code tip, after the gate's verdict was read in its own step and
+before the dispatch:
+  git push -u origin ios2d -> "* [new branch]      ios2d -> ios2d"
+  git ls-remote origin refs/heads/ios2d -> 0616b4e1071a0ca2d2fe0b355126837a418dfc8b = HEAD (MATCH)
+  gh run list --workflow ios-shared.yml --branch ios2d (after the push, before the dispatch) -> []; after the dispatch
+  -> 1 (42934860637, headSha 0616b4e).
+Before this report's push: R812-R825 re-grepped - the worktree holds them only in this report; the main checkout only
+in relay/IOS-2d.txt (relay/RULINGS-2026-11-03-MOBILE.txt carries none); no origin head carries any. No newer relay
+prompt had landed (relay/ newest: IOS-2d.txt). Re-fetched: origin/main 52da740, production 52caca8 - unchanged.
+This report is the commit after 0616b4e and changes REPORT-IOS-2d.txt only; its push is recorded in the follow-up
+below.
+
+END OF REPORT-IOS-2d
+
+PUSH PROOF, FOLLOW-UP: the report commit 9613f9b pushed - git push origin ios2d -> "0616b4e..9613f9b  ios2d -> ios2d";
+git ls-remote origin refs/heads/ios2d -> 9613f9bac269e6576a7753cde39354c889f1d0bc = HEAD (MATCH); `git diff --stat 0616b4e
+9613f9b` -> " REPORT-IOS-2d.txt | 700 ++++..." / " 1 file changed, 700 insertions(+)" (the STATUS pointer resolves
+here); `gh run list --workflow ios-shared.yml --branch ios2d` -> [42934860637] after that push. Re-fetched: origin/main
+52da740, production 52caca8 - unchanged. This follow-up commit changes REPORT-IOS-2d.txt only: the push lines above, and
+four precision edits made after 9613f9b (Q1's and UNNUMBERED-1's argument marked "offered, NOT measured here"; R813's
+cross-build failure marked "reasoned, NOT measured"; the probe described as "reformatted once" between runs). Not pushed:
+main, production.
+CLEANUP: ./gradlew --stop after the last Gradle use ("No Gradle daemons are running" / "1 Daemon stopped"); no server
+started, no port touched, no container touched, no phone, adb not used. Evidence stays in C:/wt/ios2d/.ios2d-evidence/
+(ignored). The worktree C:/wt/ios2d stays (R392); android/local.properties (copied, ignored) stays with it. No other
+C:/wt/* was written: C:/wt/ios2c-fix was read once (its local.properties copied). The lock .session-lock.json is present
+at this commit and is removed as the session's last step, after this follow-up's push.
