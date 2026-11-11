@@ -426,7 +426,8 @@ STEP 10: "> Task :shared:compileTestKotlinIosSimulatorArm64", "> Task :shared:li
   Rect.fromLTRB(192.0, 945.0, 470.0, 985.0)), outside its boundsInWindow Rect.fromLTRB(0.0, 0.0, 0.0, 0.0)" (at
   ZParametresScreensIosTest.kt:335, tapInsideTheWindow); "316 tests completed, 1 failed"; "Execution failed for task
   ':shared:iosSimulatorArm64Test'" - the ONLY failed task; "> Task :shared:compileKotlinIosArm64" (the device compile)
-  then ran under --continue with no failure; "BUILD FAILED in 4m 45s".
+  then executed under --continue ("25 actionable tasks: 25 executed") and is not among the failed tasks; "BUILD FAILED in
+  4m 45s".
 STEP 13: "iOS SIMULATOR TESTS EXECUTED: 316" - expected 316 = 291 (run 42934860637) + ParametresControllerPinTest 8 +
   ParametresStartDatePinTest 1 + InMemoryAlertStoresTest 4 + ParametresListRowsTest 4 + ZParametresScreensIosTest 7 +
   SimulationForecastScreensIosTest's new step6 1. 57 classes, summed from the step's lines: 316 tests, 1 failure. Every
@@ -777,3 +778,17 @@ Before this report's push: R826-R843 re-grepped - the worktree holds them only i
 Re-fetched: origin/main 19ce23f, production 52caca8 - unchanged.
 
 END OF REPORT-IOS-2e
+
+PUSH PROOF, FOLLOW-UP: the report commit 8eb19ff pushed - git push origin ios2e -> "9a6dd55..8eb19ff  ios2e -> ios2e";
+git ls-remote origin refs/heads/ios2e -> 8eb19ff02112789d65f32e04ec4d77f9b84a539c = HEAD (MATCH); "git diff --stat
+9a6dd55 8eb19ff" -> " REPORT-IOS-2e.txt | 779 +++...", " parking.md | 70 +++++", " 2 files changed, 849 insertions(+)"
+(the STATUS pointer resolves here); "gh run list --workflow ios-shared.yml --branch ios2e" after that push ->
+[42951476181, headSha 9a6dd55] - still one run. Re-fetched: origin/main 19ce23f, production 52caca8 - unchanged. This follow-up commit changes
+REPORT-IOS-2e.txt only: these lines, and R835's device-compile line worded to what the log shows ("25 actionable tasks:
+25 executed", only iosSimulatorArm64Test failed). Not pushed: main, production.
+CLEANUP: ./gradlew --stop after the last Gradle use ("1 Daemon stopped"); no server started, no port touched, no container
+touched, no phone, adb not used, no permission prompt refused. My throwaway Bundle probe (untracked, never committed) was
+deleted after its last run. Evidence stays in C:/wt/ios2e/.ios2e-evidence/ (ignored). The worktree C:/wt/ios2e stays
+(R392); android/local.properties (copied, ignored) stays with it. No other C:/wt/* was written: C:/wt/ios2d was read once
+(its local.properties copied). The lock .session-lock.json is present at this commit and is removed as the session's last
+step, after this follow-up's push.
