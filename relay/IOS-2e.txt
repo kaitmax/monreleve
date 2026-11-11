@@ -1,0 +1,335 @@
+IOS-2e SESSION PROMPT - Mon Releve
+PARAMETRES BECOMES SHARED - THE LAST SCREEN, ALONE
+(no Apple account, no phone)
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared. Uses the iOS cloud workflow (ONE dispatched run).
+Written by the orchestrating session on 2026-11-11, after IOS-2d merged as
+1d8d48e and its docs as 19ce23f (Rulings 12 and 13 and the OUTCOME
+(IOS-2d) in relay/RULINGS-2026-11-03-MOBILE.txt). The advisor rules in the
+operator's place for the orchestrator. YOUR OWN advisor may advise you; it
+does NOT rule on anything this prompt reserves (run budgets,
+dependencies, versions, re-recording a baseline) - those come back to the
+orchestrator. This task ENDS the standing instruction ("move the other
+screens into shared code one at a time").
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2e.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry in the report, continue. Ends early: R156's boundary;
+a red gate you cannot fix; a path reaching a real person; a degraded
+context. R334, R349, R392: your OWN worktree at C:/wt/ios2e, NEW branch
+ios2e cut from origin/main (19ce23f), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout (its lock says
+so); nothing else there. Every other C:/wt/* is an earlier session's:
+READ and COPY only (android/local.properties may be copied from
+C:/wt/ios2d, as IOS-2d did). Stage BY NAME. READ before writing. R393's
+guard is live. ABSENCE NEEDS A POSITIVE CONTROL. Push ios2e ONLY - DO NOT
+MERGE; never main, never production.
+
+THIS PROMPT is relay/IOS-2e.txt in the MAIN checkout, untracked - read
+it there, do not copy it; your worktree's relay/ does not carry it.
+
+SIZE. This is the largest move of the chain (12 UI files, an 851-line
+controller, four wire sites, three stores, a date seam, three sheets).
+Every increment is its own commit and is PUSHED to ios2e when green under
+`./gradlew fastCheck` - DURABILITY, not a claim: nobody merges ios2e
+before the report. PUSH PROOF lists every push with its fastCheck line,
+and `git diff --stat 19ce23f..HEAD -- web` is asserted EMPTY before
+every push (that is what keeps gate:clone's absence justified). If
+context degrades before step 8, STOP at the last green increment and
+write the report with STATUS in R391's narrow shape ("Increments green
+under fast check. FULL GATE NOT RUN on <sha>.") - a partial, honest
+report is a valid end; an unreported one is not. A later session then
+CONTINUES branch ios2e from its pushed tip; the one-run budget belongs to
+the BRANCH, not to a session.
+
+R391 governs STATUS: the FULL :app:gate --rerun-tasks AND the one iOS
+cloud run (R573) on the reported CODE tip, BUILD line and counts pasted
+from the log, with `git diff --stat <code tip> HEAD` shown report-only.
+
+THE RUN BUDGET IS EXACTLY ONE dispatched iOS run, on the code tip
+(`gh workflow run ios-shared.yml --ref ios2e`; `ios2e` does not match the
+workflow's `ios-*` push trigger, so pushes start nothing). There is NO
+earlier run. Before it you MAY run the compile-only Windows check with
+R575's kotlin.native.enableKlibsCrossCompilation overridden ON THE
+COMMAND LINE (no file changed); it is compile evidence only and is never
+cited as a run result. Red, lost, or zero steps -> STOP and hand back.
+A second run is the orchestrator's, never yours or your advisor's.
+
+RULING NUMBERS: R826-R839 below; R840-R843 are reserved spares. Before
+committing any, run
+`grep -rE '\bR8(2[6-9]|3[0-9]|4[0-3])\b' relay/ REPORT-*.txt CLAUDE.md docs`
+and renumber if any is taken (R162). Only relay/IOS-2e.txt and
+relay/RULINGS-2026-11-03-MOBILE.txt may already carry them.
+
+BASE: origin/main at 19ce23f (IOS-2d: :app:gate 1397/217 and iOS run
+42934860637 green on its code 0616b4e; merged as 1d8d48e).
+
+LIVE STATE (what the repository cannot tell you):
+  - THE MACHINE: start a heavy step only with >= 1.5 GB free, read in its
+    OWN step, after `./gradlew --stop`; one heavy step at a time. A killed
+    run is NO RESULT, re-run once; two in a row -> stop and hand back.
+  - The other projects' Docker containers (tizicorp-app-1,
+    tizicorp-postgres-1, counterworthy-postgres, mustapha-postgres,
+    zagora-postgres-1) were STOPPED on the operator's authorisation to
+    free memory. Never start, stop or remove any container.
+    frontalier-postgres is up. Never run test:db against the shared
+    `frontalier` database. Ports 3000, 3100, 3200 are tizicorp's.
+  - NO PHONE. No adb command at all. (No androidTest names Parametres -
+    measured by the orchestrator on 1d8d48e; verify. Every androidTest
+    still COMPILES, imports-only edits, in the gate.)
+
+R273. Read REPORT-IOS-2d.txt (R822: the blockers for this task, the
+    shared entry points, DEVIATION 7, the popup geometry finding, Q1),
+    REPORT-IOS-2c.txt and -FIX (R795; R811's sheet finding; waitBounded
+    and its positive control; IosTestRawWaitUntilFenceTest),
+    REPORT-IOS-2b.txt (R776's date seam; R778's codec-as-parameter shape;
+    why an org.json actual in :shared androidMain was REJECTED),
+    REPORT-IOS-1b-A (R602b/c; ruling 14's Glyph seam; R604 fences), Rulings
+    9-13, the files below, and every fence that reads ui/.
+R1. PRECONDITION, or stop before the first change: origin/main contains
+    1d8d48e and 19ce23f.
+
+THE FILES (measured by the orchestrator on 1d8d48e; verify):
+  android/app/src/main/kotlin/ch/monreleve/app/...
+  ui/screens/parametres/: LicencesScreen (44 lines), ParametresAccountSection
+    (137), ParametresActions (54), ParametresDateField (84: Material3
+    DatePicker, DatePickerDialog, rememberDatePickerState +
+    java.time Instant/LocalDate/ZoneOffset), ParametresDeleteSection (144),
+    ParametresEditTypes (46), ParametresFields (242), ParametresInfoContent
+    (81), ParametresListRows (134), ParametresRateChange (69),
+    ParametresScreen (238: ModalBottomSheet, rememberModalBottomSheetState),
+    ParametresSections (195). No drawable, no painterResource.
+  parametres/: ParametresController (851: org.json at deleteBody() and the
+    delete response's "removed" parse; java.time.LocalDate.parse in the
+    start-date validation; imports mePatchBody from settings/MeWire.kt and
+    detectionConsentBody from settings/DetectionMode.kt - both org.json,
+    PARK-D3), DeviceRate (46), LegalLink (31:
+    android.content.ActivityNotFoundException), LegalPage (35).
+  settings/: ThresholdAlert.kt (ThresholdAlertStore interface,
+    InMemoryThresholdAlertStore, SharedPrefsThresholdAlertStore,
+    AlertThreshold), EveningNotification.kt (EveningNotificationStore,
+    InMemory..., SharedPrefs...); account/DeviceLocalStores.kt (LocalStore).
+  Material3 the parametres UI uses that NO shared screen uses yet:
+    Switch, ListItem, ListItemDefaults (DatePicker/DatePickerDialog are
+    fenced out of shared UI - see R830).
+  Already shared: fr/ParametresCopy, fr/LicencesCopy; SettingsSaver,
+    SettingsStore, Settings, EntryRepository, LoggingMode,
+    DetectionModeStore, PostOutcome, BytesOutcome, ExportEvent.
+  Tests: app/src/test/.../parametres/ (AppSiteLinksTest,
+    DetectionSettingsTest, LegalLinkTest, ParametresAccountTest,
+    ParametresControllerTest, ParametresKeepsTheNameTest, ParametresR282Test,
+    SignOutSyncFirstTest) and .../ui/screens/parametres/
+    (ParametresDialogScreenshotTest, ParametresListRowsTest).
+
+HARD BOUNDARIES:
+  - ANDROID IS PIXEL-IDENTICAL: every Paparazzi baseline verifies at zero
+    (R626) with NONE re-recorded (`git diff --stat 19ce23f..<tip> --
+    android/app/src/test/snapshots` empty). A baseline that moves is a
+    STOP and hand back - never a re-record;
+  - Compose UI, JVM and accessibility tests pass with their ASSERTIONS
+    UNEDITED. Imports AND FIXTURE PLUMBING may change - wider than
+    IOS-2d's "imports may change", deliberately (Ruling 13, after IOS-2d's
+    DEVIATION 4): say which, file by file, with the before and after of
+    every non-import line;
+  - no behaviour change: the same requests in the same order, the same
+    errors, copy, dates, numbers and storage. EVERY WIRE BODY KEEPS ITS
+    EXACT BYTES (key order, null encoding, number format); EVERY STORED
+    PREFERENCE KEEPS ITS KEY AND VALUE FORM; a date the validation
+    accepts or refuses today is accepted or refused the same way;
+  - no wire, server, schema or engine change; no copy change;
+  - no drawable moved (ruling 14); no navigation library;
+  - ANY dependency added to :shared, or any version change, STOPS and asks
+    with the trade-off (SPEC 20). No org.json in :shared - R778's
+    rejection stands for the same reason;
+  - MaterialDatePickerCanaryTest passes UNCHANGED;
+    IosTestRawWaitUntilFenceTest's allowlist stays exactly Onboarding 16,
+    SignIn 6 - the new pilot file is NOT added to it;
+  - every :app HOST stays (MainActivity's routes, the shell, the
+    permission flows, the share/export intent, LegalLink's launch); no
+    iOS app, Xcode project, signing or TestFlight.
+
+====================================================================
+THE RULINGS
+====================================================================
+R826. THE WIRE BODIES MOVE FIRST, PINNED (R778's shape, R787's order).
+    The controller's org.json sites - Settings.mePatchBody,
+    detectionConsentBody, deleteBody(), and the delete response's
+    "removed" parse - become PARAMETERS of the controller (one small
+    commonMain interface or plain function parameters - say which), with
+    :app's factory of the same name handing in the org.json
+    implementations, which STAY in :app (PARK-D3). WHICH org.json the
+    pins run against, first: android.jar's org.json is stubbed to throw
+    under JVM tests (R778's finding); :app's test scope adds the real JVM
+    library (app/build.gradle.kts, AN2's `testImplementation(libs.json
+    .org)` - verify). That library is NOT Android's implementation, so
+    the pins prove the MOVE did not change a body - the org.json code
+    itself does not move - and NOT the bytes a phone sends; the report
+    says exactly that. FIRST byte-exact
+    vector tests on the CURRENT code in :app's test scope: each body for
+    a fixture set that includes nulls, an absent optional, and every
+    enum value; the parse for a well-formed body, a missing "removed", a
+    non-object "removed" and a malformed body. GREEN, then RED on a
+    VERIFIED plant (R180), then the change, then green unedited. Its own
+    commit.
+
+R827. THE START DATE'S VALIDATION, PINNED. java.time.LocalDate.parse ->
+    kotlinx.datetime.LocalDate.parse only if they accept and refuse the
+    SAME strings: vectors on the current code first - a plain date, 29
+    Feb 2024 (leap) and 29 Feb 2026 (not), 31 Apr, month 13, day 0,
+    single-digit fields ("2026-1-5"), a leading "+", a five-digit year,
+    surrounding whitespace, an empty string, a time suffix. Any vector
+    where the two differ is NOT papered over: it is either kept on the
+    java.time side behind a parameter (R602b/c's factory left in :app),
+    or it is a QUESTION. Shown red on a verified plant, then green after
+    the swap. May share R826's commit or have its own - say which.
+
+R828. THE STORES' INTERFACES MOVE; THEIR IMPLEMENTATIONS STAY.
+    ThresholdAlertStore, EveningNotificationStore and LocalStore (with
+    their InMemory implementations and any pure types they need, e.g.
+    AlertThreshold - measure) to commonMain; every SharedPreferences
+    implementation stays in :app, keys and value forms unchanged, pinned
+    by the existing tests (name them). No java.*/android.* in commonMain.
+    Its own commit.
+
+R829. THE CONTROLLER MOVES. ParametresController, its state and prompt
+    types, DeviceRate and LegalPage (if pure) to commonMain, package
+    names unchanged; its existing tests pinned and moved to commonTest
+    UNEDITED (R768's way) where they no longer need :app; any that still
+    need :app (org.json vectors, SharedPreferences) stay in :app's test
+    scope - list each test file and where it ended. Its own commit.
+
+R830. THE DATE FIELD TAKES R776'S SEAM, WITH AN INITIAL DATE.
+    ParametresDateField's Material3 DatePicker/DatePickerDialog become a
+    SLOT the shared field composes, the way OnboardingScreen's
+    `startDatePicker` does, but carrying the current value in (an ISO day
+    string or null) as well as onPicked/onDismiss. Android's Material
+    implementation - rememberDatePickerState(initialSelectedDateMillis)
+    and the java.time millis<->ISO conversion - stays in :app's ui/
+    (not androidMain, R776's reason), under :app's fences. Pin the
+    initial-millis and picked-ISO conversions with vectors on the current
+    code first (a date in winter, one in summer, 1 Jan, 31 Dec, 29 Feb
+    2024 - the UTC-midnight convention Material3 uses must be shown, not
+    assumed). Paparazzi at 0.0 on that commit. No native iOS date picker
+    is built (out of scope); iOS gets a test fake in the slot.
+
+R831. LEGAL LINK STAYS A HOST PIECE. LegalLink's
+    ActivityNotFoundException wrapper and openLegal's launch stay in
+    :app; the shared screen keeps receiving onOpenLegal (and the other
+    ParametresActions) exactly as today. LegalLinkTest stays where its
+    subject is.
+
+R832. THE SCREENS MOVE. The twelve ui/screens/parametres files (with
+    LicencesScreen) to commonMain, package names unchanged; hosts stay in
+    :app, reached as today. The THREE ModalBottomSheets move UNCHANGED in
+    behaviour - no skipPartiallyExpanded or sheet-state change to suit
+    iOS (R811(b) stays open, not decided here). One commit per group or
+    one for all - say which.
+
+R833. NEW MATERIAL ON iOS, INTERACTED WITH. Switch and ListItem (and any
+    other composable you find that no shared screen used before - grep,
+    file and line) are INTERACTED WITH in the iOS test: toggle the
+    switch and assert the action fired and the state changed, tap the
+    list row. Each of the three sheets is OPENED, EXPANDED through the
+    handle's Expand action (IOS-2c-FIX's way), its tap point asserted
+    inside the window, and its confirm tapped. The date slot is opened
+    and the fake's pick lands in the field.
+
+R834. FENCES. Every fence that read ui/screens/parametres, parametres/
+    and the moved settings/account files reads the new home (FenceRoot).
+    The no-inline-string fence, the tokens-only fence and
+    CommonMainFenceTest are each shown RED once on a VERIFIED plant in a
+    moved parametres file (R180), then the plant is deleted.
+
+R835. iOS COMPILES AND DRIVES IT - THE ONE RUN. On the code tip, after
+    the full gate: commonTest for the moved controller, the R826/R827
+    vectors that moved, the stores' InMemory tests; Compose UI tests on
+    iOS over fakes in a NEW pilot file whose every wait goes through
+    waitBounded, named to sort after every other pilot class: Parametres
+    shown with a fixture; R833's interactions; Licences shown. No server,
+    no account, no real address. It must be GREEN: 0 failures, every
+    pilot class reached, the canary printing "still broken as expected".
+    Paste the run id, every step's result, the test count. Name any
+    linkage error in full; it is a finding, not a flake.
+
+R836. THE POPUP POINTER TAP - IOS-2d's DEVIATION 7 CLOSED. IOS-2d
+    measured the dropdown item's boundsInRoot == boundsInWindow
+    ((24,368)-(136,416)), which says a popup layer's root sits at the
+    window origin on iOS, but picked the item through its OnClick action
+    and left a test comment and a commit message stating the pre-run
+    concern as fact. In SimulationForecastScreensIosTest: correct the
+    comment to state what was measured, and ADD a separate test that
+    picks the item by a POINTER TAP behind R806's in-window guard,
+    asserting the pick landed. The OnClick test stays as it is. Its
+    failure message NAMES ITSELF ("R836 popup pointer tap: ...") so a red
+    run is readable without opening the logs. It rides in the one run on
+    purpose: the measured geometry makes green likely. If it is red, the
+    run is red, STATUS reads narrow, and that is a FINDING - hand back
+    with it, never change the test to pass; a re-run is the
+    orchestrator's.
+
+R837. ANDROID IS THE PROOF. Paparazzi at zero, none re-recorded
+    (ParametresDialogScreenshotTest named); every parametres JVM and
+    Compose test green with assertions unedited; every androidTest
+    compiling; the release APK size before and after in bytes, with the
+    reason for any change (IOS-2d: 1,989,388 B).
+
+R838. THE PARK ENTRIES THIS CHAIN OWES (R456). Claim a series nobody
+    uses by asking web/scripts/register-coverage.mjs (every single
+    letter is taken on 1d8d48e - a two-letter series), confirm PARK_ID
+    sees it, and write parking.md entries for: (a) THE DEVICE-ONLY
+    FOLLOW-UP (Ruling 12): RateOneStringInstrumentedTest and
+    ProvenanceShownInstrumentedTest on the S9 against main's tip, plus
+    R823's two halves - same build: Simulation, pick a weekday, Home,
+    `adb shell am kill`, reopen, the weekday returns; then `adb install
+    -r` of the next build over it, reopen, a cold start with no crash -
+    run only when the operator says the phone is signed out; (b) the R812
+    JVM stand-in (no JVM test composes PrevisionScreen with a real
+    ForecastController); (c) the 11 ExperimentalTime opt-in sites IOS-2d
+    added; (d) the double setDay save IOS-2d pinned as current behaviour
+    - a pin of a defect, recorded as a known item, NOT fixed here.
+    register-coverage green with them.
+
+R839. WHAT IS LEFT, WRITTEN DOWN - THE END STATE. R795/R822's lists
+    brought to their final form: every shared entry point (parametres
+    added); every :app file that remains, each classified HOST (and why)
+    or BLOCKED (and by what); every iOS piece still missing, now the
+    complete input to the iOS application work (IOS-1b-B and after). Do
+    not choose.
+
+====================================================================
+THE WORK
+====================================================================
+0. R1; worktree, lock; R273.  1. R826 (+R827) wire bodies and date
+validation, pinned. Commit, push.  2. R828 stores. Commit, push.
+3. R829 controller. Commit, push.  4. R830 date seam, Paparazzi at 0.0.
+Commit, push.  5. R833 measured; R832 screens; R834 fences. Commit(s),
+push.  6. R836 test edits (iosTest only).  7. R837 (Android proof,
+androidTest compile, size).  8. FULL :app:gate --rerun-tasks on the code
+tip, BUILD line and counts pasted. Push.  9. R835, the one iOS run.
+10. R838 parking entries (docs).  11. R839. Report; commit; push.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+A native iOS date picker, share sheet, notification permission or
+location. Changing any sheet's behaviour. A shared navigation host.
+Navigation libraries. Any iOS app, Xcode project, signing, TestFlight.
+Moving drawables. Dark mode. Any behaviour or copy change. Fixing the
+double setDay save. Any phone use. web/.
+
+====================================================================
+REPORT - REPORT-IOS-2e.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / R826 (bodies byte-exact, RED then
+GREEN, plant verified) / R827 (the vectors, any difference) / R828 /
+R829 (each test file and where it ended) / R830 (the conversions shown,
+Paparazzi 0.0) / R831 / R832 / R833 (each new composable and each sheet,
+interacted with) / R834 (each fence red then green, plant verified) /
+R835 (run id, steps, counts) / R836 / R837 (baselines untouched, tests
+run, size) / R838 (the series claimed, the entries) / R839 / CI MINUTES /
+PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF IOS-2e PROMPT

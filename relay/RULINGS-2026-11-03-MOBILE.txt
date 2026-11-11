@@ -516,3 +516,99 @@ written 2026-11-11 on main 1d8d48e)
 - AFTER IOS-2e: the standing instruction is complete. What remains -
   IOS-1b-B (the Apple account), the device-only follow-up, AN14b, the
   five stopped containers - is the operator's.
+
+RULING 14 - THE ADVISOR'S, in the operator's place (IOS-2e's red run,
+branch ios2e d3adf77, code tip 9a6dd55, 2026-11-11)
+- IOS-2e's full :app:gate on 9a6dd55 is GREEN; its one iOS run
+  42951476181 is RED, 316 tests, 1 failed: ZParametresScreensIosTest
+  step6, at R806's in-window guard - the test's fake date picker, inline
+  content composed where Android's DatePickerDialog (a window of its own)
+  sat, laid out below the 1024 x 768 window. Confirmed by the
+  orchestrator from the run's own log, not only read in the report.
+- Q1: OPTION (a), TEST-ONLY. (c) - merge without a green run - is R573
+  verbatim refused. (b) - change the moved StartDateSheetContent's layout
+  to suit a test fake - is REJECTED: its "Android unaffected" rests on an
+  absence, since no Paparazzi baseline photographs the Parametres sheets
+  or the date dialog (IOS-2e's UNNUMBERED-3). The defect is in the fake;
+  the slot's contract (a filler presents in its own layer) is implicit
+  and real, and IOS-2e-FIX writes it down where the slot is typed. The
+  layer is Material 3's AlertDialog, whose iOS linkage the green run
+  42934860637 proved; a raw Dialog would need its own evidence.
+- Q2: ACCEPTED, no smaller window. The export chooser opened fully
+  expanded (its handle offered no Expand) and its confirm was tapped
+  inside the window - the positive pair R833 was after. "Through the
+  handle's Expand action" over-specified the means. R811(b) stays parked.
+- THE SECOND RUN IS WITHIN AUTHORITY: the runs are funded (since
+  2026-11-02), run budgets are the orchestrator's with the advisor
+  (Ruling 12), and the cost is one run of about 9 billed minutes. The
+  reason is recorded: a test-fake placement defect, fixed test-only.
+- WHO: a fresh, narrow session (IOS-2c-FIX's pattern) - relay/
+  IOS-2e-FIX.txt, R840-R843, worktree C:/wt/ios2e-fix, branch ios2e-fix
+  cut from origin/ios2e (d3adf77). Not the exhausted IOS-2e agent, not
+  the orchestrator. Its one run must be GREEN on its code tip; the merge
+  is then --no-ff of ios2e-fix, with gate:clone before the push.
+- FOR THE OUTCOME, two things the pixel proof understates: the 142
+  Paparazzi baselines at 0.0 say nothing about the Parametres sheets or
+  the date dialog (UNNUMBERED-3); and the release APK's unchanged byte
+  count (1,989,388) hides a +1,145 B classes.dex offset by baseline-
+  profile shrinkage nobody measured - recorded as unmeasured, not as
+  "unchanged".
+
+OUTCOME (IOS-2e)
+- IOS-2e-FIX (relay/IOS-2e-FIX.txt, R840-R843; branch ios2e-fix
+  ac90684, code tip cf485c4, one code commit on d3adf77): the fake moved
+  into Material 3's AlertDialog and ParametresDatePicker's contract
+  written as four comment lines - `git diff d3adf77 cf485c4` is those
+  two files only, the comment file adding comment lines and nothing
+  else; step6's body byte-identical (checked by the orchestrator: the
+  same hash on d3adf77 and cf485c4). Its full :app:gate on cf485c4
+  (gate.log: "BUILD SUCCESSFUL in 14m 59s", "260 actionable tasks: 260
+  executed", GATE_EXIT=0; :app 1399 / :shared 234) and iOS run
+  43004639615 on cf485c4 (conclusion success; the run's own log: "iOS
+  SIMULATOR TESTS EXECUTED: 316"; canary "still broken as expected"; no
+  WATCHDOG, no failed test) are GREEN. Step6 ran whole: the pick tapped
+  inside the window (the AlertDialog's buttons measured boundsInRoot =
+  boundsInWindow over an open ModalBottomSheet - the first AlertDialog
+  tapped behind R806's guard on iOS), the pick landed, the save sent
+  PICKED_DAY, the reopened slot was handed it, the cancel closed it.
+- Merged as 116079b (--no-ff, of ios2e-fix ac90684). Identity proven:
+  116079b's tree equals ac90684's (c182357); main had not moved (base
+  19ce23f), so the run and the gate on cf485c4 carry to the merge by
+  identity; cf485c4..ac90684 is REPORT-IOS-2e-FIX.txt only. Across the
+  whole chain (19ce23f..ac90684): snapshots, androidTest, web, build
+  files, version catalogue and .github - all EMPTY, checked by the
+  orchestrator.
+- gate:clone alone on exactly 116079b - free memory 4.05 GB read in
+  its own step after `gradlew --stop`, CPU 9 %, only frontalier-postgres
+  running: GATE:CLONE PASSED on its first run (register-coverage,
+  fixture-coverage, install, typecheck, lint, test, build, size,
+  db:deploy, test:db, test:container:write).
+- WHAT THE PIXEL PROOF DOES NOT COVER (Ruling 14): the 142 Paparazzi
+  baselines at 0.0 do not photograph the Parametres sheets or the date
+  dialog (IOS-2e's UNNUMBERED-3, parked). The release APK stays 1,989,388
+  B on 19ce23f, 9a6dd55 and cf485c4, but its contents moved: on 9a6dd55
+  classes.dex +1,145 B stored and baseline.prof -936 B; on cf485c4 (four
+  comment lines) classes.dex -2 B stored with a new CRC and baseline.prof
+  a new CRC - attributed to shifted line numbers, NOT measured at the dex
+  level (IOS-2e-FIX's UNNUMBERED-1). Recorded as unmeasured, not as
+  "unchanged".
+- PARKED by the chain (parking.md, series IE, register-coverage OK):
+  PARK-IE1 the device-only follow-up with R823's two halves; PARK-IE2 the
+  R812 JVM stand-in; PARK-IE3 the 11 ExperimentalTime sites; PARK-IE4 the
+  double setDay save, pinned as current behaviour. In the reports:
+  IOS-2e's UNNUMBERED-2 (a malformed 2xx delete receipt throws before any
+  erasure, pinned as found) and UNNUMBERED-3; IOS-2e-FIX's UNNUMBERED-1.
+- THE STANDING INSTRUCTION IS COMPLETE. Every screen is shared code:
+  sign-in (IOS-2a), onboarding (IOS-2b), Aujourd'hui (IOS-1b-A), Releve
+  and Calendrier (IOS-2c), comparison, prevision, simulation, rythme and
+  disclosure (IOS-2d), parametres (IOS-2e). What stays in :app is
+  classified in REPORT-IOS-2e R839: the Android host and shell, the
+  platform halves of the moved seams (org.json codecs, the Material 3
+  date dialogs, the java.time bridges), Android storage, transport,
+  work, links and detection, and dev tooling. The iOS pieces still
+  missing are listed there in full - the input to IOS-1b-B and after.
+- relay/ and every origin head rescanned for R826-R843 before the push:
+  only relay/IOS-2e.txt, relay/IOS-2e-FIX.txt, REPORT-IOS-2e.txt,
+  REPORT-IOS-2e-FIX.txt and this file carry them (Ruling 13 on main
+  already named R836); origin/main was still 19ce23f.
+  main pushed 19ce23f..116079b. production untouched (52caca8).

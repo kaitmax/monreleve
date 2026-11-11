@@ -1,0 +1,141 @@
+IOS-2e-FIX SESSION PROMPT - Mon Releve
+THE PARAMETRES DATE SLOT'S FAKE PRESENTS IN ITS OWN LAYER - STEP6 RUNS WHOLE
+(test-only, plus one comment; one iOS run that must be GREEN; no phone)
+Written by the orchestrating session on 2026-11-11 after REPORT-IOS-2e
+(branch ios2e, tip d3adf77, code tip 9a6dd55; run 42951476181 RED, 316
+tests, 1 failed). The advisor rules in the operator's place (Ruling 14 in
+relay/RULINGS-2026-11-03-MOBILE.txt, main checkout, uncommitted). YOUR
+OWN advisor may advise you; it does NOT rule on anything this prompt
+reserves (run budgets, dependencies, versions, re-recording a baseline).
+
+====================================================================
+WHAT IOS-2e's RUN ESTABLISHED (the premise of this task)
+====================================================================
+- The full :app:gate --rerun-tasks on 9a6dd55 is GREEN (1399 / 234,
+  142 Paparazzi at 0.0). The one iOS run on 9a6dd55 failed ONE test of
+  316: ZParametresScreensIosTest.step6TheDateSlotOpensWithTheCurrentValue
+  AndThePickLandsInTheField, at R806's in-window guard - the fake's pick
+  button at boundsInRoot (192,945)-(470,985), boundsInWindow Rect.Zero.
+- CAUSE: the shared StartDateSheetContent composes the picker slot
+  exactly where Material 3's DatePickerDialog sat - after the sheet's
+  scrolling body. Android's filler is a DIALOG, a window of its own, so
+  placement never mattered. The iOS test's fake (PzFakeDatePicker) is
+  plain INLINE content, so it laid out below the 1024 x 768 window. The
+  defect is in the FAKE, not in shared code: every real filler -
+  Android's dialog, any future native iOS picker - presents in its own
+  layer.
+- Before the guard fired, the slot opened and was handed null (an empty
+  field). NOT yet shown on iOS: the pick landing in the field, its save,
+  and the reopened picker being handed the saved day. step6 already
+  asserts all three; they never ran.
+- Everything else in the run passed, R836's pointer tap included.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2e-FIX.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/ios2e-fix, NEW branch ios2e-fix cut from origin/ios2e (d3adf77),
+your lock in it. You may run `git fetch` and `git worktree add` from the
+main checkout (its lock says so); nothing else there. Every other C:/wt/*
+is an earlier session's: READ and COPY only (android/local.properties may
+be copied from C:/wt/ios2e). This prompt is relay/IOS-2e-FIX.txt in the
+MAIN checkout, untracked - read it there, do not copy it. Stage BY NAME.
+Push ios2e-fix ONLY - DO NOT MERGE; never main, never production. The
+branch name does not match `ios-*`.
+
+THE RUN BUDGET IS EXACTLY ONE dispatched iOS run on the code tip
+(`gh workflow run ios-shared.yml --ref ios2e-fix`), authorised by the
+orchestrator with the advisor (Ruling 14) as branch ios2e's second. It
+must be GREEN: 0 failures, every pilot class reached (ZParametresScreens
+IosTest included), the canary printing "still broken as expected". Red,
+lost, or zero steps -> STOP and hand back. A further run is NOT yours or
+your own advisor's to authorise.
+
+R391: the FULL :app:gate --rerun-tasks on the dispatched code tip (the
+fences read iosTest and commonMain), BUILD line and counts pasted from
+the log. `git diff --stat <code tip> HEAD` report-only.
+
+THE MACHINE: heavy steps only with >= 1.5 GB free, read in its own step,
+after `./gradlew --stop`; one at a time. A killed run is NO RESULT,
+re-run once. Never start, stop or remove a Docker container. Ports 3000,
+3100, 3200 are tizicorp's. No phone, no adb.
+
+RULING NUMBERS: R840-R843. Before committing any, run
+`grep -rE '\bR84[0-3]\b' relay/ REPORT-*.txt CLAUDE.md docs`; only
+relay/IOS-2e.txt, REPORT-IOS-2e.txt (as unused spares) and the two
+files named above may carry them.
+
+HARD BOUNDARIES:
+  - CHANGED: android/shared/src/iosTest (ZParametresScreensIosTest.kt
+    only, unless R840 proves another file must move - say why) and ONE
+    COMMENT in android/shared/src/commonMain/.../parametres/
+    ParametresEditTypes.kt (R841). NOTHING ELSE in commonMain, :app,
+    the workflow, any dependency or version;
+  - step6's steps and assertions UNEDITED (R842); steps 1-5 and 7+
+    untouched; SimulationForecastScreensIosTest (R836) untouched;
+  - Paparazzi 0 re-recorded (`git diff --stat d3adf77..HEAD --
+    android/app/src/test/snapshots` empty); androidTest untouched;
+  - no new @OptIn(ExperimentalTime) site; IosTestRawWaitUntilFenceTest's
+    allowlist stays exactly Onboarding 16, SignIn 6;
+  - the test window stays 1024 x 768; no sheet's behaviour or state
+    changes (R811(b) stays parked).
+
+====================================================================
+THE RULINGS
+====================================================================
+R840. THE FAKE PRESENTS IN ITS OWN LAYER. PzFakeDatePicker's content
+    goes inside Material 3's AlertDialog (onDismissRequest = onDismiss;
+    the initial-value text and the cancel and pick buttons as its
+    slots), which is already in commonMain and was opened and confirmed
+    on iOS by CalendrierReleveScreensIosTest step3 in the green run
+    42934860637 - its linkage is PROVEN. A raw
+    androidx.compose.ui.window.Dialog is NOT the default: an artefact on
+    the classpath says nothing about iOS linkage (R624 compiled and threw
+    only when used); if you want it, name the linkage evidence first.
+    The fake's behaviour stays exactly as it is: it records the initial
+    value it was handed; pick calls onPicked(PICKED_DAY) then onDismiss;
+    cancel calls onDismiss.
+
+R841. THE CONTRACT, WRITTEN WHERE THE SLOT IS TYPED. One comment on
+    the ParametresDatePicker typealias (ParametresEditTypes.kt): a filler
+    presents itself in its OWN layer (a dialog or window), never inline -
+    the slot is composed after the sheet's scrolling body, where Android's
+    dialog sat, so inline content can land outside the window; any native
+    iOS picker must do the same. COMMENT ONLY: show `git diff` of that
+    file adding comment lines and nothing else.
+
+R842. STEP6 RUNS WHOLE, ITS ASSERTIONS UNEDITED. `git diff d3adf77 --
+    <the test file>` shows the fake changed and step6's body NOT changed.
+    If a wait or finder must change to reach a dialog's root, STOP and
+    say why before changing it - that would be an assertion-shaped edit.
+    The run must show, with step6's marks pasted: the pick tapped INSIDE
+    the window, the pick landing in the field, the save sent with
+    PICKED_DAY, the reopened slot handed PICKED_DAY, the cancel closing it
+    with the day unchanged.
+
+R843. THE GATE, THE RUN, WHAT IS LEFT. Full :app:gate --rerun-tasks on
+    the code tip, BUILD line and counts pasted (expect :app 1399 / :shared
+    234 unchanged - a test-only change adds no JVM test; say if it does).
+    Then the ONE run: run id, every step's result, the executed-test
+    count (316 expected - one fewer or more is a finding), 0 failures,
+    every pilot class, the canary, no WATCHDOG lines, any IrLinkageError
+    named in full. R839's lists (REPORT-IOS-2e) change only if this task
+    changes them.
+
+====================================================================
+THE WORK
+====================================================================
+0. R1: origin/ios2e is d3adf77. Worktree, lock.  1. R840 + R841.
+Commit.  2. FULL :app:gate --rerun-tasks on the code tip. Push.
+3. The one iOS run (R842, R843).  4. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-IOS-2e-FIX.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R840 (the layer chosen, why) / R841 (the
+diff) / R842 (the test diff, step6's marks) / R843 (gate, run id, steps,
+counts) / CI MINUTES / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF IOS-2e-FIX PROMPT
