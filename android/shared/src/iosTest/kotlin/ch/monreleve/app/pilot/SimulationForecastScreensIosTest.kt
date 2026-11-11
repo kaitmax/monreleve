@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
@@ -20,6 +21,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import ch.monreleve.app.calc.ruleSetFor
@@ -91,8 +93,13 @@ import kotlin.time.Instant
 //
 // R818 - USED, NOT ONLY COMPOSED (R624: the date picker compiled and threw only when run; R791 (2) made the same point
 // for the sheet). The one Material3 container no shared screen used before is the Simulation's weekday DropdownMenu
-// with its DropdownMenuItems: step5 OPENS it, asserts its items, and PICKS one - through R806's guard (the tap point
-// inside the window, an off-window popup item being exactly R793's class) - and the choice must reach the controller.
+// with its DropdownMenuItems: step5 OPENS it (a pointer tap on the field), asserts its items, and PICKS one - and the
+// choice must reach the controller and close the menu. The pick is the item's own OnClick semantics action (the one
+// VoiceOver offers; IOS-2c-FIX's path for the sheet's handle and scrim), NOT a pointer tap: inside a Popup layer the
+// node's boundsInRoot is local to the menu while boundsInWindow is absolute, so R806's tap-point-in-window guard cannot
+// be read the way it was for the sheet's Dialog layer and could fail on a correctly placed item. The item's geometry is
+// RECORDED (boundsInRoot, boundsInWindow, positionInWindow) and its having area in the window is asserted; a pointer
+// tap on a popup item is left to a probe (REPORT-IOS-2d, PARKED).
 // The new modifiers run as composed: PrevisionRail's offset and fillMaxHeight (step4, a projection drawn) and
 // Comparison's rotate (step2, the chevron of the tapped cause row). Every text field touched is typed into, every
 // toggle and chip tapped.
@@ -374,25 +381,22 @@ class SimulationForecastScreensIosTest {
         mark("tap $what: performClick - returned")
     }
 
-    /** R806's guard, then the tap: the tap point (the centre of boundsInRoot) must lie inside the window. */
-    private fun SemanticsNodeInteractionsProvider.tapInsideTheWindow(
+    /**
+     * A popup item PICKED by its own OnClick semantics action (see the header): its geometry recorded in a mark, its
+     * having area in the window asserted, then the action - which runs the item's onClick, the one VoiceOver offers.
+     */
+    private fun SemanticsNodeInteractionsProvider.pickMarked(
         what: String,
         matcher: SemanticsMatcher,
     ) {
         val node = onAllNodes(matcher).onFirst()
-        node.scrollToMarked(what)
         val target = node.fetchSemanticsNode()
-        val inRoot = target.boundsInRoot
         val inWindow = target.boundsInWindow
-        mark("tap $what: boundsInRoot=$inRoot tapPoint=${inRoot.center} boundsInWindow=$inWindow")
-        assertTrue(
-            !inWindow.isEmpty && inWindow.contains(inRoot.center),
-            "R806: $what is not inside the window - its tap would land at ${inRoot.center} (the centre of its " +
-                "boundsInRoot $inRoot), outside its boundsInWindow $inWindow",
-        )
-        mark("tap $what: the tap point is inside the window; performClick - calling")
-        node.performClick()
-        mark("tap $what: performClick - returned")
+        mark("pick $what: boundsInRoot=${target.boundsInRoot} boundsInWindow=$inWindow at ${target.positionInWindow}")
+        assertTrue(!inWindow.isEmpty, "R818: $what has no area in the window (boundsInWindow $inWindow)")
+        mark("pick $what: OnClick - calling (the item's own click action)")
+        node.performSemanticsAction(SemanticsActions.OnClick)
+        mark("pick $what: OnClick - returned")
     }
 
     private fun SemanticsNodeInteractionsProvider.typeMarked(
@@ -539,7 +543,7 @@ class SimulationForecastScreensIosTest {
             }
         }
 
-    /** R818: the DropdownMenu OPENED, its items asserted, one PICKED through R806's guard, the choice reaching it. */
+    /** R818: the DropdownMenu OPENED, its items asserted, one PICKED by its OnClick action, the choice reaching it. */
     private fun ComposeUiTest.pickFriday(simulation: SimulationController) {
         val monday = RythmeCopy.DAYS[DayOfWeek.MONDAY.ordinal]
         val wednesday = RythmeCopy.DAYS[DayOfWeek.WEDNESDAY.ordinal]
@@ -552,7 +556,7 @@ class SimulationForecastScreensIosTest {
         assertEquals(1, count(hasText(wednesday) and hasClickAction()), "Wednesday offered")
         val home = listOf(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY).map { RythmeCopy.DAYS[it.ordinal] }
         assertTrue(home.none { count(hasText(it) and hasClickAction()) > 0 }, "a home day is never offered")
-        tapInsideTheWindow("the Friday item", hasText(friday) and hasClickAction())
+        pickMarked("the Friday item", hasText(friday) and hasClickAction())
         waitMarked("Friday chosen and the menu closed") {
             simulation.state.value.inputs.extraWeekday == DayOfWeek.FRIDAY && !shows(wednesday)
         }
