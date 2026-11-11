@@ -14,6 +14,7 @@ import ch.monreleve.app.dossier.toTeleworkInput
 import ch.monreleve.app.onboarding.DenominatorChoice
 import ch.monreleve.app.onboarding.GranularityChoice
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.onboarding.isIsoDay
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.EveningNotificationStore
@@ -39,7 +40,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.time.LocalDate
 
 // AN12 increment 1 (SPEC 11.5, R290). The settings screen's state holder. Lives OUTSIDE ui/ (fence 5): it
 // holds the /api/v1/me PATCH seam (the same SettingsSaver onboarding uses), the local store, and the entry
@@ -806,7 +806,10 @@ class ParametresController(
         }
 
         val startDate = current.activityStartDate.trim().ifBlank { null }
-        if (startDate != null && runCatching { LocalDate.parse(startDate) }.isFailure) {
+        // IOS-2e R827: the shared isIsoDay (OnboardingDates, kotlinx LocalDate.parse - the one home of this check,
+        // R206) in place of java.time.LocalDate.parse; ParametresStartDatePinTest proved they accept and refuse the
+        // same strings, through this method, before and after.
+        if (startDate != null && !isIsoDay(startDate)) {
             return fail(SettingsError.START_DATE_INVALID)
         }
 
