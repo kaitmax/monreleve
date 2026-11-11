@@ -27,8 +27,10 @@ test:container:e2e stopped before its PDF step again, at
 e2e/home.spec.ts:197 (352 passed, 1 failed). The fallback the prompt names
 then ran.
 
-Host memory never reached the prompt's 1.5 GB floor in 85 minutes of
-waiting. Queue Ruling 3 replaced that floor with commit free >= 5 000 MB
+In 85 minutes of waiting, host memory was above the prompt's 1.5 GB floor
+only once: 1 515-1 599 MB for about two minutes (18:32-18:34 UTC). My
+waiter stopped only at 1 700 MB, for margin, and did not act on that window
+(see the CORRECTION under DEVIATIONS). Queue Ruling 3 replaced that floor with commit free >= 5 000 MB
 before each heavy step, plus a 10 s sampler that kills the step below
 2 000 MB. The minimums each run reached are under MEMORY.
 
@@ -68,7 +70,8 @@ test:db named its two skips as in every earlier run: [export-pdf] and
 
 The hold's caveat ("Chromium layer from cache; a cold build fails R249") no
 longer describes this commit. The .79 layer was built from the archive by
-gate:changed at about 18:10 UTC; later builds, the clone's included, may
+gate:changed's test:container, between 18:07 and 18:16 UTC (the gate's start
+and end; the log carries no wall-clock time for the step); later builds, the clone's included, may
 have taken it from cache. A cold build of 8559d89 installs a version the
 archive offers today.
 
@@ -260,8 +263,14 @@ MEMORY (QUEUE RULING 3) - THE READINGS THAT REPLACE THE 1.5 GB FLOOR
 Before Queue Ruling 3:
 - Free physical: 3 235 MB before the RED build, 3 118 MB before
   gate:changed, 914 MB right after it.
-- Three waits read it every 30 s, from 18:16 to 19:54 UTC: 60 reads, then
-  110 (min 338 MB, max 1 011 MB), then 11. It never reached 1.5 GB.
+- Three waits read it every 30 s, from 18:16 to 19:54 UTC
+  (.pin2-evidence/ram-wait-{1,2,3}.txt):
+    wait 1  18:16-18:46   60 reads   min 609 MB   max 1 599 MB
+    wait 2  18:47-19:43  110 reads   min 338 MB   max 1 011 MB
+    wait 3  19:48-19:54   11 reads   min 695 MB   max 821 MB
+  The only readings at or above 1.5 GB were five in wait 1:
+  18:32:20 1 599, 18:32:51 1 522, 18:33:22 1 543, 18:33:52 1 516,
+  18:34:23 1 515 MB. The next reading was 1 478 MB.
 - At 19:45 UTC: AvailableMBytes 496, committed 25 848 MB of 16 195 MB
   physical. vmmemWSL had grown from 2 491 MB to 4 900 MB. Inside the VM
   (/proc/meminfo, unprivileged container): Cached 4 595 100 kB, Buffers
@@ -280,6 +289,7 @@ commit free < 2 000 MB; no step was aborted.
   R854 fallback                  6 935 MB        6 465 MB        1 830 MB           2      9 passed
   test:visual                    6 759 MB        5 456 MB          219 MB          74      168 passed
   R855 three starts              8 632 MB        8 454 MB        2 562 MB           2      3 x healthy
+  gate:changed (report e394630)  8 546 MB        7 059 MB        1 400 MB          27      GATE PASSED, 3622
 
 The lowest commit free over every heavy step was 4 589 MB (gate:clone). The
 lowest free physical was 219 MB (test:visual). No worker died, no step
@@ -360,8 +370,15 @@ None.
 DEVIATIONS
 ----------
 1. THE MEMORY FLOOR. The prompt's ">= 1.5 GB free" was not met after
-   gate:changed, and 85 minutes of waiting did not bring it back. I asked
-   the orchestrator. Queue Ruling 3 replaced the floor with commit free
+   gate:changed. In 85 minutes of waiting it held only from 18:32:20 to
+   18:34:23 UTC (MEMORY above), and I asked the orchestrator.
+
+   CORRECTION: my message to the orchestrator said free memory never
+   reached the floor, quoting "min 338, max 1 011 MB". Those figures cover
+   the second wait only. The first wait reached 1 599 MB. My waiter stopped
+   only at 1 700 MB, a margin of my own above the prompt's 1.5 GB, so it let
+   that two-minute window pass. A heavy step started then would have
+   satisfied the prompt's precondition as written. Queue Ruling 3 replaced the floor with commit free
    >= 5 000 MB before each heavy step, plus the 2 000 MB sampler abort.
    Everything after gate:changed ran under that ruling (table above).
    Nothing that the HOLDS forbid was done: no privileged container, no
@@ -393,6 +410,18 @@ DEVIATIONS
 5. The R855 measurement container used this session's scratch database
    (migrated for R854). /api/health does not depend on it.
 
+6. Queue Ruling 3 item 4 ("PASS ... with counts equal to the last green:
+   3 622 unit tests, and gate:clone's step lines as on bf2b77b") is NOT met
+   literally, for two reasons:
+   - gate:clone's log cannot show the unit count (STATUS).
+   - No gate:clone log of bf2b77b was found in the main checkout's relay/,
+     in C:/wt/queue-evidence or in any report, so the step lines were
+     compared with FW-READY-GATE's last green on ef88fa3 instead.
+   The 3 622 comes from gate:changed, run twice on the same web/ tree
+   (8559d89 and this report's commit). Whether that is accepted as the
+   count is the orchestrator's to rule; I have not declared it a pass on
+   my own.
+
 QUESTIONS
 ---------
 1. home.spec.ts:197 against the image: is it its own task? This is the
@@ -414,8 +443,13 @@ PUSH PROOF
      8559d89cec2426e4678738140e85d7fc8d5657a1	refs/heads/fw-chromium-pin-2
 3. Only the branch was pushed: never main, never production, and nothing
    merged.
-4. This report commit is pushed to the same branch after gate:changed and
-   register-coverage. Its push result is stated in the hand-back, not here.
+4. The first version of this report, e394630, was pushed after
+   gate:changed and register-coverage: "8559d89..e394630
+   fw-chromium-pin-2 -> fw-chromium-pin-2".
+5. This correction commit (the wait maxima, the 18:07-18:16 window,
+   DEVIATIONS 1 and 6, the e394630 table row) goes to the same branch after
+   its own gate:changed and register-coverage. Its push result is stated in
+   the hand-back, not here.
 
 CLEANUP (done before this report was committed)
 -----------------------------------------------
