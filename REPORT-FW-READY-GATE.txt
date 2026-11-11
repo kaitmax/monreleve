@@ -44,17 +44,21 @@ SUMMARY
   main builds only from a warm layer cache, and every gate here passed
   through that cached layer. It blocks every promotion that misses the
   server's cache. Not fixed here: a renderer change is not this task's.
+- QUESTION 4: R846's 60 s start period also widens, from ~10 s to ~60 s,
+  the window in which Traefik serves the old and new versions side by
+  side during a deploy (reasoned from (b) and (c), not measured).
 
 ====================================================================
 STATUS
 ====================================================================
-COMPLETE, with QUESTIONS 1-3 handed back. gate:clone PASSED on ef88fa3
+COMPLETE, with QUESTIONS 1-4 handed back. gate:clone PASSED on ef88fa3
 (the code tip) in this session, exit 0, and ef88fa3 is the pushed tip of
 the change (PUSH PROOF). Web only; no Android code changed, so no
-:app:gate applies. The branch tip after it adds this report and one
-docs/deploy.md wording fix (a Coolify UI label), under gate:changed only
-(below) - not gate:clone, which the prompt's step order puts before the
-report commit.
+:app:gate applies. The two commits after it - this report with a
+docs/deploy.md label fix, then an amendment to both after the final
+review - touch only REPORT-FW-READY-GATE.txt and docs/deploy.md, under
+gate:changed only (below), NOT gate:clone: only ef88fa3 was
+gate:clone'd. The prompt's step order puts the report after it.
 
 gate:clone, pasted from evidence/gate-clone.log:
   GATE:CLONE PASSED
@@ -75,7 +79,12 @@ gate:changed, per commit (evidence/gate-changed-1..3.log):
            suites: typecheck, lint, test, build
            typecheck exit 0, lint exit 0, test 3622 passed, build exit 0.
            GATE PASSED for the paths changed.
-  (final)  REPORT-FW-READY-GATE.txt + docs/deploy.md wording fix
+  a0fee1f  REPORT-FW-READY-GATE.txt + docs/deploy.md wording fix
+           no path matched the selector - base chain only
+           suites: typecheck, lint, test, build
+           typecheck exit 0, lint exit 0, test 3622 passed, build exit 0.
+           GATE PASSED for the paths changed.
+  (amend)  REPORT-FW-READY-GATE.txt + docs/deploy.md, after review
            no path matched the selector - base chain only
            suites: typecheck, lint, test, build
            typecheck exit 0, lint exit 0, test 3622 passed, build exit 0.
@@ -129,9 +138,19 @@ THE FILES AND LINES THAT BUILD THE CHECK
                contains HEALTHCHECK and the check is DISABLED (2704);
                copies --interval/--timeout/--start-period/--retries with
                the regexes at 2723-2726; sets custom_healthcheck_found =
-               true (2740-2743). Cleared only when HEALTHCHECK disappears
-               from the Dockerfile (2691-2702) or the build pack changes
-               away from dockerfile (386-392).
+               true (2740-2743). Cleared three ways: HEALTHCHECK
+               disappears from the repository Dockerfile (2691-2702, via
+               the deploy job's parse); the build pack changes away from
+               dockerfile (386-392); or the app's INLINE `dockerfile`
+               column changes - a General-page save or an API PATCH that
+               carries `dockerfile` re-parses that column
+               (app/Livewire/Project/Application/General.php 845-847,
+               app/Http/Controllers/Api/ApplicationsController.php
+               3781-3783), and a column without HEALTHCHECK resets the
+               flag. This app is built from git: the deploy job only READS
+               that column (593, 4144) and never writes it, so it is
+               presumably empty (unread). A PATCH of the health_check_*
+               fields alone does not reach any of the three.
   app/Livewire/Project/Shared/HealthChecks.php
     199-231    toggleHealthcheck(): writes custom_healthcheck_found back
                UNCHANGED (218). Same in instantSave/submit (160, 187).
@@ -181,6 +200,13 @@ app's values - port = first "Ports exposes" entry when Port is empty
     found in Dockerfile." (2733) instead of "Healthcheck URL (inside the
     container): ..." (2739-2742). The UI's callout claims the opposite
     (blade 27-33).
+    THE EXCEPTION THAT TURNS "IGNORED" INTO THE FORBIDDEN CASE: if the
+    flag is cleared by one of the three paths above WHILE the check is
+    enabled, the next deploy does not re-parse (2704 runs only when
+    disabled), writes Coolify's /api/ready check into the compose, and
+    (a)+(c) apply in full. The UI toggle and a health_check_* PATCH -
+    the routes the operator would use - cannot clear it; an API PATCH
+    carrying `dockerfile`, or a build-pack change, can.
     CONSEQUENCE FOR PRODUCTION TODAY (inferred from source plus the
     orchestrator's measured container healthcheck, NOT read from
     Coolify): releases are already gated on LIVENESS (/api/health), not
@@ -307,9 +333,15 @@ GREEN after: Tests  7 passed (7).
 STATED COST: while Coolify's check is disabled it copies --start-period
 into its pre-poll sleep (Application.php 2725 -> ApplicationDeploymentJob
 2743-2748), so each deploy waits 60 s before Coolify's first look instead
-of 20 s; then up to 3 polls 10 s apart. The container itself turns
-healthy within ~2 s of answering (start interval), so this costs deploy
-time, not availability.
+of 20 s; then up to 3 polls 10 s apart.
+AND A SECOND COST, NOT ONLY DEPLOY TIME (reasoned from (b) and (c), not
+measured): the new container turns healthy ~2 s after it answers, and
+Traefik routes to it at once (c); the old one is removed only after
+Coolify's 60 s sleep and its first poll (b). Both carry the same router,
+so for about a minute per deploy - about 10 s before - Traefik spreads
+requests across two versions. A page served by one version can then ask
+the other for a hashed /_next/static chunk it does not have (a 404). The
+same window existed at 10 s; R846's 60 s widens it. QUESTION 4.
 
 R267 applied: the Dockerfile's R375 block and this test's header both
 said Coolify's check "runs ONCE, when a version is released". Source says
@@ -322,8 +354,8 @@ Image monreleve:ready-gate-after (this change), a NEW scratch database
 fw_ready_gate_r847 on frontalier-postgres (:5436), zero tables at start.
 ONE container for both halves. The command is Coolify 4.5.0's, verbatim,
 run through sh -c as its CMD-SHELL runs it. No port published; every
-probe from INSIDE the container. Driven by a throwaway script in the
-session scratchpad (not committed); env passed by --env-file, deleted
+probe from INSIDE the container. Driven by a throwaway script, kept as
+evidence/r847.mjs (not committed); env passed by --env-file, deleted
 after; DATABASE_URL and AUTH_SECRET never printed.
 
 THE TWO OUTPUTS (and the control), pasted from the run:
@@ -603,7 +635,9 @@ QUESTION 1 (R844's condition met). WHERE MAY COOLIFY'S CHECK POINT?
   database blip takes every page - static ones included - out of routing
   (R375, R357). Where it does not take effect - while the Dockerfile has a
   HEALTHCHECK, which R846 requires - enabling it is silently ignored, and
-  releases stay gated on /api/health (inferred; tells in R849 item 5).
+  releases stay gated on /api/health (inferred; tells in R849 item 4) -
+  unless the flag is ever cleared while it is enabled, which turns it
+  into the forbidden case (R844 (a), the three paths).
   Nothing was enabled, changed or papered over; docs/deploy.md section 3
   says "do not enable until question 1 is ruled".
   Options seen:
@@ -651,8 +685,16 @@ QUESTION 2. THE CHROMIUM PIN NO LONGER INSTALLS (found by this task,
     chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
   main at 67e6766 builds only from a warm layer cache (this machine's
   "before" build: that layer CACHED). Every gate in this report passed
-  THROUGH that cached layer. The server's cache is unread; Coolify 4.5.0
-  runs `docker builder prune -af` whenever forced cleanup is on or disk
+  THROUGH that cached layer - and so will every later queue step's
+  test:container, test:container:write and gate:clone on this machine,
+  until the pin is bumped. RUN NO PRUNE HERE: the layer cannot be
+  rebuilt. Read-only, after this session's last build: build-cache
+  record le3v9m23mjkhdg522dnzztzj7, 992.3MB, created 2026-11-02 09:41
+  UTC (the pin moved to .73 in a68003a, 2026-11-02 10:12) - the RUN text
+  hides the version, so the match is by date; and the images
+  monreleve:fw28 and monreleve:write, rebuilt today, carry the layer
+  (test:container read "pinned at build : 156.0.8078.73-1~deb12u1").
+  The server's cache is unread; Coolify 4.5.0 runs `docker builder prune -af` whenever forced cleanup is on or disk
   usage reaches the threshold (app/Actions/Server/CleanupDocker.php 160,
   app/Jobs/DockerCleanupJob.php 115-160), so the next deploy may fail at
   the pin - safely (a failed build leaves the running version serving),
@@ -669,6 +711,14 @@ QUESTION 3. CURL'S CLOSURE (UNNUMBERED-1). R845 says "curl and nothing
   requires for it are part of it - curl kept, per R845's own tie-breaker
   (Coolify tries curl first). Confirm, or rule wget (a one-line change).
 
+QUESTION 4. THE OVERLAP WINDOW (R846's side effect, see R846's second
+  cost). With a 60 s start period, Coolify keeps the old container for
+  ~60 s after Traefik starts routing to the new one, so two builds serve
+  side by side for about a minute per deploy (about 10 s before). Keep
+  60 s as ruled, or accept a shorter start period - Docker's start
+  window only matters for a slow cold start, and the start interval
+  already makes the healthy transition fast?
+
 ====================================================================
 NOTICED BUT NOT TOUCHING
 ====================================================================
@@ -683,6 +733,15 @@ NOTICED BUT NOT TOUCHING
 - CLAUDE.md's R251 bullet says test:container is "fifteen checks
   against running containers"; it reports 22 now, 21 before this
   change. Not touched.
+- MY OWN COMMENTS, ONE EDGE SHORT: the Dockerfile's R844 block ("WHILE
+  THIS INSTRUCTION EXISTS, Coolify uses it instead ... enabling
+  Coolify's check in its UI does not change that") and the test header
+  state the custom_healthcheck_found rule without the three ways the
+  flag is cleared (R844 (a), added to this report and docs/deploy.md
+  after the code tip was gated). Both stay true for the routes the
+  operator would use (the UI toggle, a health_check_* PATCH). Not
+  amended: a change there re-runs test:container and gate:clone; it
+  belongs with whatever QUESTION 1's ruling changes.
 
 ====================================================================
 PUSH PROOF
@@ -692,10 +751,16 @@ Commits on fw-ready-gate (base origin/main 67e6766):
            liveness HEALTHCHECK (R845, R846)
   ef88fa3  FW-READY-GATE: docs/deploy.md section 3 - the gate as it
            stands, R844 from Coolify's source, R847's proof (R848)
-  (next)   this report, and the one-label docs fix ("General ->
-           Networking -> Port mappings"; "Advanced -> Container ->
-           Container naming"). A file cannot name its own commit: its SHA
-           is in the hand-back.
+  a0fee1f  REPORT-FW-READY-GATE: R844-R849 ... (this report, and the
+           one-label docs fix "General -> Networking -> Port mappings",
+           "Advanced -> Container -> Container naming"); pushed
+           ef88fa3..a0fee1f
+  (next)   amendment after the final review: the three ways
+           custom_healthcheck_found is cleared (General.php 845-847,
+           ApplicationsController.php 3781-3783), the overlap-window cost
+           and QUESTION 4, QUESTION 2's reach and the read-only cache
+           check - report and docs/deploy.md only. A file cannot name its
+           own commit: its SHA is in the hand-back.
 
 Push of the code tip, after GATE:CLONE PASSED on it (exit read in its
 own step first):

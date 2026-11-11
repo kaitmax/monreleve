@@ -177,7 +177,12 @@ values Coolify's own parser reads back from the line.
 **One cost, stated.** While Coolify's check is disabled it copies
 `--start-period` into its own deploy wait (`Application.php` 2725) and sleeps
 that long before its first poll (`ApplicationDeploymentJob.php` 2743-2748), so
-a deploy now waits 60 s there instead of 20 s.
+a deploy now waits 60 s there instead of 20 s. And because Traefik routes to
+the new container as soon as Docker calls it healthy (c) while Coolify removes
+the old one only after that wait (b), two versions now share the router for
+about a minute per deploy instead of about 10 s — reasoned, not measured: a
+page from one version can ask the other for a hashed `/_next/static` chunk it
+does not have. QUESTION 4 of `REPORT-FW-READY-GATE.txt`.
 
 **curl is in the image (R845).** Coolify generates its check as
 `curl … || wget … || exit 1`, and the image had neither, so that command could
@@ -244,15 +249,24 @@ set, the compose gets **no** Coolify healthcheck (job 4198), and the release
 gate still runs — 2727 skips it only when the flag is false — on the
 **image's** `HEALTHCHECK`, that is `/api/health`. **Enabling the check in the
 UI does not clear the flag:** `app/Livewire/Project/Shared/HealthChecks.php`
-writes it back unchanged (218, in `toggleHealthcheck()` 199-231); only removing
-`HEALTHCHECK` from the Dockerfile clears it (`Application.php` 2691-2702). The
+writes it back unchanged (218, in `toggleHealthcheck()` 199-231). Three things
+clear it: `HEALTHCHECK` leaving the repository Dockerfile (`Application.php`
+2691-2702); the build pack changing away from dockerfile (386-392); or the
+application's inline `dockerfile` column changing, through a General-page save
+or an API PATCH carrying `dockerfile`
+(`app/Livewire/Project/Application/General.php` 845-847,
+`app/Http/Controllers/Api/ApplicationsController.php` 3781-3783). This app is
+built from git and the deploy job only reads that column (593, 4144). The
 UI says the opposite — *"Enabling this configuration replaces the custom
 healthcheck currently defined by the application"*
 (`resources/views/livewire/project/shared/health-checks.blade.php` 27-33) — and
 the deploy job does not do it. As things stand, **pointing Coolify at
 `/api/ready` would be silently ignored**: the deploy log would say
 `Custom healthcheck found in Dockerfile.` (2733) where it would otherwise say
-`Healthcheck URL (inside the container): …` (2739-2742).
+`Healthcheck URL (inside the container): …` (2739-2742). **The exception:** if
+the flag is cleared by one of those three while the check is enabled, the next
+deploy does not re-parse (2704 runs only while it is disabled) and writes
+Coolify's `/api/ready` check into the compose — the forbidden case below.
 
 *Inferred, not read:* the flag cannot be read without Coolify. Its two tells
 are the *"Custom healthcheck detected"* callout on the application's
@@ -398,7 +412,8 @@ application → sidebar *Healthcheck*** (`…/application/<uuid>/healthcheck`) �
 `/api/ready`, *Expected code* 200 → **Timing and retries**: *Start period* 60
 or more, *Interval* 10, *Timeout* 5, *Retries* 3 → save.
 
-While the Dockerfile carries a `HEALTHCHECK` that does nothing (R844 (a));
+While the Dockerfile carries a `HEALTHCHECK` that does nothing — unless the flag
+is later cleared, which makes it the forbidden case (R844 (a));
 without one it is the forbidden case (R844 (c)). Read-only, and useful before
 the ruling: whether the Healthcheck page shows *"Custom healthcheck
 detected"*; whether the last deploy log says `Custom healthcheck found in
