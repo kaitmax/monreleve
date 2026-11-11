@@ -1,5 +1,6 @@
 package ch.monreleve.app.pilot
 
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -156,7 +157,13 @@ private class PzHeld {
     val pickerInitials = mutableListOf<String?>()
 }
 
-/** The date slot's fake (R830): shows the initial value it was handed; pick lands PICKED_DAY, cancel closes. */
+/**
+ * The date slot's fake (R830): shows the initial value it was handed; pick lands PICKED_DAY, cancel closes.
+ * IOS-2e-FIX R840: it presents in its OWN layer, Material 3's AlertDialog, as every real filler does - Android's
+ * DatePickerDialog is a window of its own. Composed inline, as it first was, it laid out below the 1024 x 768 window
+ * (run 42951476181). AlertDialog was opened and confirmed on iOS by CalendrierReleveScreensIosTest step3 (run
+ * 42934860637). Its behaviour is unchanged: it records the initial value, pick calls onPicked then onDismiss.
+ */
 @Composable
 private fun PzFakeDatePicker(
     initialIsoDay: String?,
@@ -165,12 +172,17 @@ private fun PzFakeDatePicker(
     held: PzHeld,
 ) {
     LaunchedEffect(Unit) { held.pickerInitials += initialIsoDay }
-    Text(FAKE_PICKER_INITIAL + initialIsoDay)
-    TextButton(onClick = onDismiss) { Text(FAKE_PICKER_CANCEL) }
-    TextButton(onClick = {
-        onPicked(PICKED_DAY)
-        onDismiss()
-    }) { Text(FAKE_PICKER_PICK) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onPicked(PICKED_DAY)
+                onDismiss()
+            }) { Text(FAKE_PICKER_PICK) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(FAKE_PICKER_CANCEL) } },
+        text = { Text(FAKE_PICKER_INITIAL + initialIsoDay) },
+    )
 }
 
 /** MainActivity's ParametresTab, reduced: the toggles go straight to the controller (no OS permission on iOS here). */

@@ -12,6 +12,10 @@ import androidx.compose.runtime.Composable
  * IOS-2e R830: the « Début d'activité » picker, supplied by the host (R776's seam, with an initial date). Composed
  * while the picker is asked for, with the current value as an ISO day (yyyy-MM-dd) or null; it calls onPicked with
  * the chosen ISO day and then onDismiss to close - or onDismiss alone to cancel. Android's is Material 3's dialog.
+ *
+ * IOS-2e-FIX R841, THE CONTRACT: a filler presents itself in its OWN layer (a dialog or a window), never inline.
+ * StartDateSheetContent composes the slot after the sheet's scrolling body, where Android's dialog sat, so inline
+ * content can land outside the window; any native iOS picker must present itself the same way.
  */
 typealias ParametresDatePicker =
     @Composable (initialIsoDay: String?, onPicked: (isoDay: String) -> Unit, onDismiss: () -> Unit) -> Unit
