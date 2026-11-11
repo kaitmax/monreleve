@@ -1,0 +1,728 @@
+REPORT-FW-READY-GATE - Mon Releve - queue step C1
+THE DEPLOY GATE THAT HAS BEEN MISSING SINCE OCTOBER
+Session: FW-READY-GATE, launched by the NO-PHONE QUEUE orchestrator, 2026-11-11.
+Worktree C:/wt/fw-ready-gate, branch fw-ready-gate, cut from origin/main 67e6766.
+Prompt: relay/FW-READY-GATE.txt (main checkout, untracked; read, not copied).
+Evidence: "evidence/" below = C:/wt/fw-ready-gate/.fw-ready-gate-evidence/
+(gitignored; build, gate and R847 logs; lives as long as the worktree).
+
+====================================================================
+SUMMARY
+====================================================================
+- R844, read from coollabsio/coolify v4.5.0 (5ca69705) and Traefik
+  v3.7.0, not from memory: Coolify has NO once-at-release probe. Its
+  release gate reads Docker's health status of the new container; its own
+  check, when in effect, is a compose healthcheck that REPLACES the
+  image's for the container's whole life; Traefik STOPS ROUTING to any
+  container that is not "healthy". The prompt's condition is met, so
+  nothing was enabled: QUESTION 1, with five options.
+  A second finding inside it: while the Dockerfile carries a HEALTHCHECK
+  (it must, R846), Coolify sets custom_healthcheck_found on every deploy
+  with its check disabled, and enabling the check in the UI does NOT
+  clear it - so pointing Coolify at /api/ready would be silently ignored,
+  and production releases are most likely already gated on /api/health
+  (inferred from source; the flag is unread).
+- R845: curl in the runner image, --no-install-recommends - 9 packages
+  (curl + 8 required libraries), +1287352 bytes (372165557 ->
+  373452909), no other package added, removed or changed. In its own
+  layer, not the Chromium one (DEVIATION 1). test:container now reads it
+  out of a running container.
+- R846: HEALTHCHECK on /api/health with --start-period=60s and
+  --start-interval=2s (interval 10s, timeout 5s, retries 3 unchanged);
+  four new value assertions, RED on the old Dockerfile, GREEN now.
+- R847: proven both ways in one container on a new scratch database -
+  unmigrated: Coolify's exact command exit=1, body HTTP 503 "unmigrated",
+  the container's own HEALTHCHECK "healthy" (R357 working); migrated:
+  exit=0, HTTP 200. Control: the image as it was fails that command even
+  on /api/health (no curl, no wget). Not folded into test:container
+  (database-free by its own header); parked for test:container:write.
+- R848: docs/deploy.md section 3 rewritten from the source; the Coolify
+  step parked as "do not enable until question 1 is ruled".
+- R849: the after-deploy checklist, ready to paste.
+- FOUND ON THE WAY (QUESTION 2): Debian no longer offers the pinned
+  Chromium 156.0.8078.73-1~deb12u1 (archive: 156.0.8078.79-1~deb12u1).
+  main builds only from a warm layer cache, and every gate here passed
+  through that cached layer. It blocks every promotion that misses the
+  server's cache. Not fixed here: a renderer change is not this task's.
+
+====================================================================
+STATUS
+====================================================================
+COMPLETE, with QUESTIONS 1-3 handed back. gate:clone PASSED on ef88fa3
+(the code tip) in this session, exit 0, and ef88fa3 is the pushed tip of
+the change (PUSH PROOF). Web only; no Android code changed, so no
+:app:gate applies. The branch tip after it adds this report and one
+docs/deploy.md wording fix (a Coolify UI label), under gate:changed only
+(below) - not gate:clone, which the prompt's step order puts before the
+report commit.
+
+gate:clone, pasted from evidence/gate-clone.log:
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  ef88fa3cf00aa25cb3772d81b1fd2fdf98ec91d1
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-YxIv8d (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+  EXIT 0
+  (Its first run on the same commit is NO RESULT - DEVIATION 7.)
+
+gate:changed, per commit (evidence/gate-changed-1..3.log):
+  88d1701  web/Dockerfile, web/scripts/container-check.mjs -> R251
+           suites: typecheck, lint, test, build, test:container
+           typecheck exit 0, lint exit 0, test 3622 passed, build exit 0,
+           test:container 22 passed. GATE PASSED for the paths changed.
+  ef88fa3  no path matched the selector - base chain only
+           suites: typecheck, lint, test, build
+           typecheck exit 0, lint exit 0, test 3622 passed, build exit 0.
+           GATE PASSED for the paths changed.
+  (final)  REPORT-FW-READY-GATE.txt + docs/deploy.md wording fix
+           no path matched the selector - base chain only
+           suites: typecheck, lint, test, build
+           typecheck exit 0, lint exit 0, test 3622 passed, build exit 0.
+           GATE PASSED for the paths changed.
+
+THE CAVEAT A BARE "PASSED" WOULD HIDE (QUESTION 2). Every image these
+gates built - test:container's and test:container:write's (the latter
+inside the clone) - took its Chromium layer from THIS MACHINE's build
+cache: the archive no longer has the pinned version, so an uncached
+build of that layer fails at the R249 guard (proven: evidence/build-
+after-attempt1-pin-refused.log). gate:clone's claim "builds ... from a
+clean checkout" is therefore true here only because the daemon holds
+that layer; the clone's own build log keeps only its tail, so the CACHED
+line itself is not in the log - the inference is that a non-cached build
+cannot succeed. test:container's log does show it: "#6 [runner 3/12] RUN
+... chromium=156.0.8078.73-1~deb12u1 ..." / "#6 CACHED".
+
+NOT RUN, and the claim not made: test:e2e and test:visual (no app/,
+lib/ui/, lib/fr/ or style path changed, so the selector did not choose
+them; no claim about pages); lighthouse; :app:gate (no Android change).
+
+====================================================================
+R844 - HOW COOLIFY 4.5.0 APPLIES ITS DEPLOY HEALTH CHECK (FROM SOURCE)
+====================================================================
+Source read: coollabsio/coolify, tag v4.5.0 = commit
+5ca69705d681da46028ea15a8a39d90a4ebcce89 (GitHub tarball, 2026-11-11).
+Traefik: traefik/traefik tag v3.7.0, pkg/provider/docker/ (the filter
+lines are identical at v3.7.9). Line numbers are at those tags. Nothing
+here was read from Coolify itself: there is no Coolify access (Queue
+Ruling 1) and no SSH was used.
+
+THE FILES AND LINES THAT BUILD THE CHECK
+  app/Jobs/ApplicationDeploymentJob.php
+    4402-4455  generate_healthcheck_commands(): the command (4450-4452)
+    4143-4152  each deploy cats the repository's Dockerfile and calls
+               parseHealthcheckFromDockerfile()
+    4195-4212  the compose `healthcheck:` - written ONLY if
+               !custom_healthcheck_found && !isHealthcheckDisabled() (4198)
+    4278-4280  healthcheck removed from the compose when disabled
+    2670-2717  rolling_update(); non-rolling branch 2687-2706, rolling
+               path 2707-2713
+    2721-2801  health_check(): skipped only if disabled AND
+               custom_healthcheck_found === false (2727-2731); sleeps
+               start_period (2743-2748); then `docker inspect
+               .State.Health.Status` up to retries times, interval apart
+               (2749-2792)
+    4943-4990  stop_running_container(); rollback branch 4964-4973
+  app/Models/Application.php
+    1462-1469  isHealthcheckDisabled(): health_check_enabled === false
+    2686-2745  parseHealthcheckFromDockerfile(): runs when the Dockerfile
+               contains HEALTHCHECK and the check is DISABLED (2704);
+               copies --interval/--timeout/--start-period/--retries with
+               the regexes at 2723-2726; sets custom_healthcheck_found =
+               true (2740-2743). Cleared only when HEALTHCHECK disappears
+               from the Dockerfile (2691-2702) or the build pack changes
+               away from dockerfile (386-392).
+  app/Livewire/Project/Shared/HealthChecks.php
+    199-231    toggleHealthcheck(): writes custom_healthcheck_found back
+               UNCHANGED (218). Same in instantSave/submit (160, 187).
+  resources/views/livewire/project/shared/health-checks.blade.php
+    27-33      the callout: "Custom healthcheck detected - Enabling this
+               configuration replaces the custom healthcheck currently
+               defined by the application." The job does not do that.
+  database/migrations/2023_03_27_081716_create_applications_table.php
+    45-55      defaults: path '/', host 'localhost', method GET, scheme
+               http, interval 5, timeout 5, retries 10, start period 5
+  bootstrap/helpers/proxy.php
+    741        default proxy image traefik:v3.7; 808-809 Docker provider,
+               exposedbydefault=false; no allowEmptyServices anywhere in
+               the Coolify source (grep, 0 hits)
+  bootstrap/helpers/docker.php 573-588  container name = uuid-YmdTHis
+               unless consistent naming is on
+  traefik pkg/provider/docker/config.go
+    197-232    keepContainer(); 228-231: "Filtering unhealthy or starting
+               container" unless AllowEmptyServices
+  traefik pkg/provider/docker/pdocker.go 123-127  re-reads on every
+               health_status event
+
+THE EXACT COMMAND (when Coolify's own check is in effect), with this
+app's values - port = first "Ports exposes" entry when Port is empty
+(4419-4427), URL shell-quoted (4441), run as compose
+`test: [CMD-SHELL, <command>]` (4201-4210):
+
+  curl -s -X 'GET' -f 'http://localhost:3000/api/ready' > /dev/null || wget -q -O- 'http://localhost:3000/api/ready' > /dev/null || exit 1
+
+  curl first; wget only if curl fails. Coolify does not prefer wget.
+
+(a) REPLACE, OR ONLY GATE THE RELEASE?  REPLACES, for the container's
+    whole life - when it is used at all. There is NO once-at-release
+    probe in 4.5.0: the release gate (health_check) only reads Docker's
+    own health status of the new container. Coolify's check is written
+    into the generated compose as the service's healthcheck (4195-4212),
+    which Docker runs for the container's life in place of the image's
+    HEALTHCHECK.
+    BUT NOT WHILE THE DOCKERFILE CARRIES A HEALTHCHECK, which ours has
+    since FW28. Every deploy with the check disabled sets
+    custom_healthcheck_found (Application.php 2704-2743); with it set,
+    no Coolify healthcheck goes into the compose (4198), and the release
+    gate still runs (2727) - on the IMAGE's HEALTHCHECK, i.e.
+    /api/health. Enabling the check in the UI does not clear the flag
+    (HealthChecks.php 218), so pointing it at /api/ready would be
+    SILENTLY IGNORED: the deploy log would read "Custom healthcheck
+    found in Dockerfile." (2733) instead of "Healthcheck URL (inside the
+    container): ..." (2739-2742). The UI's callout claims the opposite
+    (blade 27-33).
+    CONSEQUENCE FOR PRODUCTION TODAY (inferred from source plus the
+    orchestrator's measured container healthcheck, NOT read from
+    Coolify): releases are already gated on LIVENESS (/api/health), not
+    on readiness. The flag's value cannot be read without Coolify; its
+    tells are the "Custom healthcheck detected" callout on the app's
+    Healthcheck page and that deploy-log line.
+
+(b) WHEN IT FAILS - DOES THE OLD CONTAINER KEEP SERVING?  YES, ON THE
+    ROLLING PATH ONLY. rolling_update() starts the new container beside
+    the old, runs health_check(), then stop_running_container():
+    unhealthy, or still "starting" after the last poll, gives "New
+    container is not healthy, rolling back to the old container." (4970),
+    failDeployment() (4971), the new container shut down (4972), the old
+    one untouched. The failed() handler also removes the new version
+    unless it had become healthy (6141-6153). The rolling path needs: no
+    port mappings, consistent container naming off, no PR, no custom
+    --ip (2687). Otherwise the old container is stopped FIRST and the new
+    one started with NO health check at all (2687-2706). Production's
+    container name pkptabevr1nhtyygrq0mc8qx-20261102T154408 is the
+    uuid-timestamp form (docker.php 573-588), so consistent naming is
+    off; port mappings were NOT read.
+
+(c) DOES TRAEFIK STOP ROUTING TO A CONTAINER DOCKER MARKS UNHEALTHY?
+    YES. keepContainer() drops any container whose health is not
+    "healthy" - unhealthy AND starting (config.go 228-231) - and Traefik
+    re-reads on every health_status event (pdocker.go 123-127). Coolify's
+    default proxy command never sets allowEmptyServices. The only
+    container behind a router takes the router with it: every path
+    404s, static pages included. The SERVER's proxy version was not read
+    (an existing proxy keeps its saved compose); v3.7 is Coolify 4.5.0's
+    default. Corollary: a new container takes traffic the moment Docker
+    calls it healthy, whatever Coolify's poll concludes afterwards.
+
+VERDICT: (a) is "replaces" and (c) is "stops routing", so the prompt's
+condition is met. Pointing Coolify's check at /api/ready - where it
+takes effect at all - turns readiness into liveness for the container's
+life: a database blip, three failed probes 10 s apart, and every page out
+of routing (R375, R357). Not papered over: QUESTION 1.
+
+====================================================================
+R845 - CURL IN THE RUNNER IMAGE
+====================================================================
+curl, --no-install-recommends, in the runner stage - in ITS OWN apt
+layer directly after the Chromium one, NOT in that layer (DEVIATION 1:
+the existing layer's pin no longer installs, see QUESTION 2).
+
+DRY RUN FIRST, as root in the "before" image (apt-get install -s
+--no-install-recommends), evidence/apt-dry-run.txt:
+  curl: 9 newly installed - libsasl2-modules-db, libsasl2-2,
+        libldap-2.5-0, libnghttp2-14, libpsl5, librtmp1, libssh2-1,
+        libcurl4, curl                       installed size 2941 KiB
+  wget: 2 newly installed - libpsl5, wget    installed size 3617 KiB
+  curl kept: R845's own tie-breaker (Coolify tries curl first; it does
+  not prefer wget) and the smaller install in bytes. QUESTION 3.
+
+IMAGE SIZE (docker image inspect .Size; containerd snapshotter, so this
+is the content size; both built from this worktree for the same origin,
+https://ready-gate.example, on 2026-11-11):
+  before  monreleve:ready-gate-before  372165557  (sha256:a63b8c3e716f...)
+          = origin/main 67e6766
+  after   monreleve:ready-gate-after   373452909  (sha256:3bd0cbd45197...)
+          = this change (curl layer + HEALTHCHECK)
+  delta   +1287352 bytes (+1.23 MiB)
+  (`docker image ls` shows 1.44GB for both - unpacked, rounded.)
+
+PACKAGE DIFF (dpkg-query -W, sorted, before 264 lines, after 273):
+  > curl 7.88.1-10+deb12u15
+  > libcurl4 7.88.1-10+deb12u15
+  > libldap-2.5-0 2.5.13+dfsg-5
+  > libnghttp2-14 1.52.0-1+deb12u3
+  > libpsl5 0.21.2-1
+  > librtmp1 2.4+20151223.gitfa8646d.1-2+b2
+  > libsasl2-2 2.1.28+dfsg-10+deb12u1
+  > libsasl2-modules-db 2.1.28+dfsg-10+deb12u1
+  > libssh2-1 1.10.0-3+deb12u1
+  Nine additions, ZERO removals, ZERO version changes among the 264.
+  Nothing new beyond curl and the eight libraries apt requires for it
+  (UNNUMBERED-1, DEVIATION 2).
+
+ENFORCED, not only measured: scripts/container-check.mjs reads
+`curl --version` out of a RUNNING container (R249) - "curl present
+(R845)". RED against the before image (evidence/
+red-container-check-before-image.log):
+  FAIL  curl present (R845)        false
+  - curl present (R845): expected true, got false - Coolify's generated
+    health check runs curl inside the container, falling back to wget
+  (That run also failed "a complete environment STARTS": the before image
+  was built for https://ready-gate.example and the suite starts it with
+  https://container-check.example, so the entrypoint refused the origin
+  mismatch - confirmed separately: "this image was BUILT for
+  "https://ready-gate.example"" / "refusing to start (R250)". Not the
+  defect under test.)
+
+====================================================================
+R846 - THE CONTAINER HEALTHCHECK
+====================================================================
+web/Dockerfile, the runner's HEALTHCHECK:
+  before  HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3
+  after   HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --start-interval=2s --retries=3
+  command unchanged: node fetch of /api/health (R375 stands).
+Read back from a running container of the after image (R847 log):
+  {"Test":["CMD-SHELL","node -e \"fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""],"Interval":10000000000,"Timeout":5000000000,"StartPeriod":60000000000,"StartInterval":2000000000,"Retries":3}
+
+tests/unit/meta/healthcheck-target.test.ts keeps its three tests and
+gains four, each asserting a VALUE (R345):
+  R846  gives the container a start period of 60 seconds   ('60s')
+  R846  probes every 2 seconds during that window          ('2s')
+  R846  keeps the steady-state values it had                (10s, 5s, 3)
+  R844  reads interval 10s, timeout 5s, start period 60s and retries 3,
+        using COOLIFY'S OWN patterns, quoted from Application.php
+        2723-2726 - because Coolify copies those four values into its
+        deploy wait, and a pattern that read "2s" out of
+        --start-interval would make it poll five times too fast.
+RED on the old Dockerfile (evidence/red-healthcheck-target.log):
+  x gives the container a start period of 60 seconds
+    AssertionError: expected '20s' to be '60s'
+  x probes every 2 seconds during that window
+    AssertionError: expected undefined to be '2s'
+  x reads interval 10s, timeout 5s, start period 60s and retries 3
+    (startPeriod read as '20s')
+  Tests  3 failed | 4 passed (7)
+GREEN after: Tests  7 passed (7).
+
+STATED COST: while Coolify's check is disabled it copies --start-period
+into its pre-poll sleep (Application.php 2725 -> ApplicationDeploymentJob
+2743-2748), so each deploy waits 60 s before Coolify's first look instead
+of 20 s; then up to 3 polls 10 s apart. The container itself turns
+healthy within ~2 s of answering (start interval), so this costs deploy
+time, not availability.
+
+R267 applied: the Dockerfile's R375 block and this test's header both
+said Coolify's check "runs ONCE, when a version is released". Source says
+otherwise (R844); both now carry the correction beside the original.
+
+====================================================================
+R847 - THE REFUSAL, PROVEN LOCALLY, BOTH DIRECTIONS
+====================================================================
+Image monreleve:ready-gate-after (this change), a NEW scratch database
+fw_ready_gate_r847 on frontalier-postgres (:5436), zero tables at start.
+ONE container for both halves. The command is Coolify 4.5.0's, verbatim,
+run through sh -c as its CMD-SHELL runs it. No port published; every
+probe from INSIDE the container. Driven by a throwaway script in the
+session scratchpad (not committed); env passed by --env-file, deleted
+after; DATABASE_URL and AUTH_SECRET never printed.
+
+THE TWO OUTPUTS (and the control), pasted from the run:
+  === R847 - 2026-11-11T16:43:31.496Z ===
+  image under test: monreleve:ready-gate-after   control image: monreleve:ready-gate-before   scratch database: fw_ready_gate_r847 on frontalier-postgres (:5436)
+  
+  --- 1. a NEW, UNMIGRATED scratch database ---
+  created fw_ready_gate_r847; tables in public: 0
+  
+  --- 2. docker run -d --name monreleve-ready-gate-r847 --add-host host.docker.internal:host-gateway --env-file <DATABASE_URL, AUTH_SECRET, NEXT_PUBLIC_SITE_URL> monreleve:ready-gate-after ---
+  container 9a4fa5e433e6
+  
+  --- 3. presence first: /api/health from inside the container ---
+  $ docker exec monreleve-ready-gate-r847 curl -s http://localhost:3000/api/health
+  {"service":"monreleve","instance":null,"status":"ok","reasons":[],"origin":"https://ready-gate.example","runtime":true}
+  
+  --- 4. UNMIGRATED: the exact command Coolify 4.5.0 generates, against /api/ready ---
+  $ docker exec monreleve-ready-gate-r847 sh -c "curl -s -X 'GET' -f 'http://localhost:3000/api/ready' > /dev/null || wget -q -O- 'http://localhost:3000/api/ready' > /dev/null || exit 1"; echo "exit=$?"
+  sh: 1: wget: not found
+  exit=1   (want NON-ZERO)
+  
+  the body Coolify discards (-s -f > /dev/null), read separately:
+  $ docker exec monreleve-ready-gate-r847 sh -c "curl -s -w '\nHTTP %{http_code}\n' http://localhost:3000/api/ready"; echo "exit=$?"
+  {"ready":false,"checks":[{"name":"site-origin","ok":true},{"name":"database","ok":false,"reason":"unmigrated","detail":"The database is reachable but does not have every migration this version ships. Run prisma migrate deploy as docs/deploy.md section 4 describes, then redeploy. Ruling R353."}]}
+  HTTP 503
+  exit=0
+  
+  the container's OWN HEALTHCHECK (/api/health) meanwhile: "healthy"
+  $ docker inspect --format '{{json .Config.Healthcheck}}' monreleve-ready-gate-r847
+  {"Test":["CMD-SHELL","node -e \"fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""],"Interval":10000000000,"Timeout":5000000000,"StartPeriod":60000000000,"StartInterval":2000000000,"Retries":3}
+  
+  --- 5. migrate it: prisma migrate deploy against fw_ready_gate_r847 (pnpm db:deploy's first half) ---
+  Datasource "db": PostgreSQL database "fw_ready_gate_r847", schema "public" at "localhost:5436"
+  15 migrations found in prisma/migrations
+  Applying migration `20260913075645_alert_subscriber`
+  Applying migration `20260913120000_unsubscribe_token`
+  Applying migration `20260918003225_user_device_auth`
+  Applying migration `20260918075246_entry_provenance_mutation_id`
+  Applying migration `20260918080540_entry_event_append_only`
+  Applying migration `20260918121230_device_session_tokens`
+  Applying migration `20260918165649_drop_oauth_columns`
+  Applying migration `20260921103850_entry_event_mutation_id`
+  Applying migration `20260921125431_entry_mutation_id_per_account`
+  Applying migration `20260922225413_reminder_sent`
+  Applying migration `20261005204903_verification_token_code`
+  Applying migration `20261006071936_verification_issuance_record`
+  Applying migration `20261006094423_name_change_dates`
+  Applying migration `20261015104441_code_attempt_budget`
+  Applying migration `20261025200000_entry_granularity_exclusion`
+  The following migration(s) have been applied:
+  migrations/
+  All migrations have been successfully applied.
+  migrate exit=0
+  
+  --- 6. MIGRATED: the same command, the same container ---
+  $ docker exec monreleve-ready-gate-r847 sh -c "curl -s -X 'GET' -f 'http://localhost:3000/api/ready' > /dev/null || wget -q -O- 'http://localhost:3000/api/ready' > /dev/null || exit 1"; echo "exit=$?"
+  exit=0   (want 0)
+  
+  $ docker exec monreleve-ready-gate-r847 sh -c "curl -s -w '\nHTTP %{http_code}\n' http://localhost:3000/api/ready"; echo "exit=$?"
+  {"ready":true,"checks":[{"name":"site-origin","ok":true},{"name":"database","ok":true}]}
+  HTTP 200
+  exit=0
+  container health: "healthy"
+  
+  --- 7. CONTROL: the same command in the image as it was (monreleve:ready-gate-before), against /api/health ---
+  (monreleve-ready-gate-control answers /api/health - read with node, since it has no curl)
+  $ docker exec monreleve-ready-gate-control sh -c "curl -s -X 'GET' -f 'http://localhost:3000/api/health' > /dev/null || wget -q -O- 'http://localhost:3000/api/health' > /dev/null || exit 1"; echo "exit=$?"
+  sh: 1: curl: not found
+  sh: 1: wget: not found
+  exit=1   (the liveness path, on a healthy server)
+  
+  SUMMARY unmigrated=1 migrated=0 control(before image, /api/health)=1
+  removed monreleve-ready-gate-r847, monreleve-ready-gate-control, and the env file
+
+READING IT:
+  - unmigrated: Coolify's command exit=1, body HTTP 503 naming
+    "unmigrated" (not "unreachable": the database answered SELECT 1).
+    curl exits 22 on the 503 (-f), the shell then tries wget, which the
+    image lacks: "sh: 1: wget: not found", exit 1 either way.
+  - the container's OWN HEALTHCHECK read "healthy" during the unmigrated
+    half: R357 working - liveness does not wait on the database, which is
+    exactly why it cannot also be the readiness gate (QUESTION 1).
+  - migrated (15 migrations), same container: exit=0, HTTP 200.
+  - control: the image as it was (67e6766) cannot pass Coolify's command
+    even on /api/health - curl and wget both "not found", exit=1. Before
+    R845, enabling Coolify's own check would have failed every deploy
+    in which it took effect (custom_healthcheck_found false).
+
+FOLDED INTO test:container? NO, and why: scripts/container-check.mjs is
+database-free by its own header ("Anything that needs a database, a
+browser or a rendered page belongs to test:db or test:e2e"; its start
+case uses DATABASE_URL=...@db.invalid), and the pair needs a database it
+can migrate between the halves. It gained the structural half instead -
+"curl present (R845)", read from a running container. The natural home
+for the pair is test:container:write (it already owns a scratch database
+and a running container, and gate:clone runs it); the prompt named
+test:container, so that is PARKED, not done (the unmigrated half would
+need its own second scratch database, since gate:clone hands that suite
+an already-migrated one).
+
+====================================================================
+R848 - docs/deploy.md SECTION 3
+====================================================================
+docs/deploy.md section 3 rewritten ("Ports and the health checks"):
+  - the table now says what R844 found: ONE Docker healthcheck on
+    /api/health, which is also Coolify's release gate and Traefik's
+    routing signal; /api/ready has no automatic consumer. The old row
+    "/api/ready | Coolify's deploy health check | once, at release" was
+    wrong on both counts and is gone.
+  - the HEALTHCHECK as it now stands, its values and why (R846), the
+    stated 60 s deploy-wait cost.
+  - curl in the image (R845): why, the layer and why not the Chromium
+    one, the size delta, the test that enforces it.
+  - THE BLOCK QUOTE STAYS, its first four lines byte-identical:
+    "Coolify's deploy health check is currently DISABLED, so the deploy
+    gate described below does not exist yet: a release goes live whether
+    or not the new version is ready. ..." - it is still true. Appended
+    inside it: "Do not enable it until QUESTION 1 of
+    REPORT-FW-READY-GATE.txt is ruled". Followed by what DOES gate a
+    release today (liveness, inferred from source).
+  - "What Coolify 4.5.0 does with a health check (R844, read from its
+    source)": the command, (a) (b) (c) with file and line.
+  - "What /api/ready checks (R353)": kept; the sentence "A failing
+    readiness check stops the deploy and leaves the running version
+    serving - that is the point of pointing Coolify here" replaced by
+    what that can and cannot mean on Coolify 4.5.0.
+  - "The refusal, proven locally (R847)": both outputs, the control, the
+    docker inspect of the healthcheck, and why it is not in a suite.
+  - "PARKED - the operator's Coolify step: do not enable until QUESTION 1
+    is ruled": the exact 4.5.0 UI path, recorded for later only -
+    Projects -> the project -> the environment -> the application ->
+    sidebar Healthcheck (.../application/<uuid>/healthcheck) -> Enable
+    (confirm "Enable healthcheck?") -> Check type HTTP request, Method
+    GET, Scheme HTTP, Host localhost, Port 3000, Path /api/ready,
+    Expected code 200 -> Timing and retries: Start period >= 60,
+    Interval 10, Timeout 5, Retries 3 -> save (routes/web.php 404,
+    configuration-sidebar.blade.php 99-101, health-checks.blade.php).
+    Plus three READ-ONLY checks worth doing before the ruling: the
+    "Custom healthcheck detected" callout, the deploy-log line, and
+    General -> Networking -> Port mappings empty / Advanced -> Container
+    -> Container naming "Generated name (rolling updates)" (R844 (b)).
+
+====================================================================
+R849 - PARKED FOR THE ORCHESTRATOR (paste into QUEUE-STATE.md)
+====================================================================
+Paste under "PARKED PROMOTIONS" in relay/QUEUE-STATE.md:
+
+### C1 FW-READY-GATE (branch fw-ready-gate) - run when the Coolify token is back; C1 first
+- [ ] 0. BLOCKER FOR EVERY PROMOTION, not only this one: the Chromium pin
+      (QUESTION 2). Debian no longer offers 156.0.8078.73-1~deb12u1; a
+      build that misses the layer cache fails at the R249 pin guard and
+      deploys nothing (the running version keeps serving). The server's
+      cache is unread, and Coolify prunes it (`docker builder prune -af`)
+      when forced or at the disk threshold. Rule and land the pin bump
+      first, or accept that this promotion may simply not build.
+- [ ] 1. QUESTION 1 ruled. Until then Coolify's Healthcheck stays
+      DISABLED - do not enable it.
+- [ ] 2. fw-ready-gate merged to main by the orchestrator after reading
+      this report; gate:clone alone on the merge commit, verdict line
+      recorded. No migration in this change (no prisma/ diff).
+- [ ] 3. Promote: `git push origin <merge-sha>:production` (fast-forward).
+      Follow the deploy in Coolify's deployment list (read only); never
+      trigger one through the API.
+- [ ] 4. The deploy log shows, in order:
+        "Rolling update started."                            (absent => port mappings or consistent naming on: NO gate, R844 (b))
+        "Custom healthcheck found in Dockerfile."            (2733: confirms custom_healthcheck_found)
+        "Waiting for the start period (60 seconds) before starting healthcheck."
+        "Attempt 1 of 3 | Healthcheck status: "healthy""
+        "New container is healthy."
+        "Rolling update completed."
+- [ ] 5. curl -fsS https://monreleve.ch/api/health
+        -> 200, body "service":"monreleve"
+- [ ] 6. curl -sS -w '\nHTTP %{http_code}\n' https://monreleve.ch/api/ready
+        -> HTTP 200, "ready":true, database ok
+- [ ] 7. The NEW container's HEALTHCHECK values, read from the running
+      container (server; the filter names this app's uuid only):
+        ssh monreleve-vps "docker inspect --format '{{json .Config.Healthcheck}} {{json .State.Health.Status}}' \$(docker ps -q --filter name=pkptabevr1nhtyygrq0mc8qx)"
+      want: Test [CMD-SHELL, node -e ... /api/health ...],
+        "Interval":10000000000,"Timeout":5000000000,
+        "StartPeriod":60000000000,"StartInterval":2000000000,"Retries":3,
+        and "healthy".
+- [ ] 8. curl in that container, against readiness:
+        ssh monreleve-vps "docker exec \$(docker ps -q --filter name=pkptabevr1nhtyygrq0mc8qx) curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:3000/api/ready"
+      -> 200
+- [ ] 9. "The first deploy with Coolify's check enabled PASSING it":
+      BLOCKED on QUESTION 1. If the ruling enables it, that deploy's log
+      must read "Healthcheck URL (inside the container): GET:
+      http://localhost:3000/<path>" (2739-2742) and "New container is
+      healthy."; if it reads "Custom healthcheck found in Dockerfile."
+      instead, the setting was IGNORED (R844 (a)) - record that as NO
+      RESULT, not a pass.
+
+====================================================================
+PARKED
+====================================================================
+- THE PROMOTION of this change, with its after-deploy checks: R849's
+  checklist above. Rides the next promotion after the token is back.
+- THE COOLIFY STEP (enable the deploy check): do not enable until
+  QUESTION 1 is ruled. Exact 4.5.0 UI path in docs/deploy.md section 3.
+- THE CHROMIUM PIN BUMP (QUESTION 2): a renderer change, its own task.
+  When it lands, curl can move into that apt layer (the ruling's original
+  ask) at no extra cost.
+- THE R847 PAIR AS A SUITE: fold into test:container:write (it owns a
+  scratch database and a running container; gate:clone runs it). Needs a
+  second, unmigrated scratch database of its own. About 70 lines.
+- READ-ONLY OPERATOR CHECKS that decide what R844 means for production:
+  the "Custom healthcheck detected" callout on the app's Healthcheck page;
+  the "Custom healthcheck found in Dockerfile." line in the last deploy
+  log; General -> Networking -> Port mappings empty, and Advanced ->
+  Container -> Container naming "Generated name (rolling updates)"
+  (otherwise there is no gate at all).
+- DEPLOY.md BEYOND SECTION 3 is untouched: section 1 still says only that
+  the Chromium pin "lives only in web/Dockerfile", which stays true.
+
+====================================================================
+DEVIATIONS
+====================================================================
+1. R845 "in the existing apt layer if there is one": curl went into a
+   NEW layer directly after the Chromium one. The first after-build put
+   it in the existing layer and FAILED at the R249 pin guard (evidence/
+   build-after-attempt1-pin-refused.log): Debian no longer offers the
+   pinned chromium, so that layer exists only in the warm cache, and
+   changing one byte of it forces a rebuild that cannot succeed. The only
+   way through was bumping the pin - a renderer change R845 ("curl, and
+   NOTHING else") forbids. The rebuild log shows the Chromium step
+   CACHED and the curl step run (evidence/build-after.log); git diff
+   shows no hunk inside the Chromium RUN.
+2. UNNUMBERED-1 (R156). "Nothing else new" / "any new dependency beyond
+   curl/wget: STOP": apt installs curl with eight required libraries.
+   Read as: the tool chosen is curl and its required libraries are part
+   of it; --no-install-recommends keeps everything optional out. Not a
+   STOP, because it is inherent to the instruction and reversible in one
+   line. QUESTION 3 asks for the ruling.
+3. test:container gained one check ("curl present (R845)") although the
+   R847 PAIR did not fit it. The prompt asked only whether the pair
+   fits; the curl fact is a structural image fact, inside the suite's
+   stated scope, and without it nothing would notice curl leaving the
+   image. The suite's count rises by one.
+4. No separate R847 commit: R847 changed no repository file beyond what
+   commit 1 (container-check) and commit 2 (docs) carry, so its proof is
+   in the docs commit and this report.
+5. THE SHARED DOCKER VM'S PAGE CACHE WAS DROPPED, twice, to reach the
+   1.5 GB free-RAM floor before heavy steps (free RAM 0.86 -> 2.01 GB,
+   then 1.48 -> 2.35 GB):
+     docker run --rm --privileged --entrypoint sh node:22-bookworm-slim \
+       -c 'sync; echo 3 > /proc/sys/vm/drop_caches'
+   Two readings, recorded rather than resolved: (i) it touches no other
+   project's container, database, volume or process - it frees clean
+   kernel cache, which is rebuilt on demand, and Windows reclaims the
+   memory; (ii) it is a privileged action on a VM other projects share,
+   and the never-touch rule's spirit may cover it. No prune of any kind
+   was run (the Chromium layer in this machine's build cache is now
+   irreplaceable until the pin is bumped).
+6. docs/deploy.md section 3 was restructured rather than amended: its
+   table and two paragraphs described a Coolify behaviour the source
+   does not have. The block quote R848 protects is kept verbatim, with
+   one sentence appended inside it.
+7. gate:clone's FIRST run is NO RESULT, not a failure (R391): it stopped
+   after `pnpm size` with 'database "fw_ready_gate" does not exist'.
+   gate:clone reaches the local PostgreSQL through web/.env's
+   DATABASE_URL, and that scratch database had never been created - the
+   setup step meant to create it ran before pnpm install and died on
+   "Cannot find module 'pg'", and I did not re-run it. Created it, re-ran
+   gate:clone on the same commit. The first run's log is kept as
+   evidence/gate-clone-attempt1-no-result.log (typecheck, lint, test,
+   build and size had passed in it before the stop).
+
+====================================================================
+QUESTIONS
+====================================================================
+QUESTION 1 (R844's condition met). WHERE MAY COOLIFY'S CHECK POINT?
+  Finding: on Coolify 4.5.0 the release gate and the container's
+  life-long healthcheck are ONE Docker healthcheck (a), and Traefik
+  unroutes any container that is not healthy (c). So "Coolify's deploy
+  check on /api/ready" cannot be had as a release-only gate: where it
+  takes effect it makes readiness the container's liveness, and a
+  database blip takes every page - static ones included - out of routing
+  (R375, R357). Where it does not take effect - while the Dockerfile has a
+  HEALTHCHECK, which R846 requires - enabling it is silently ignored, and
+  releases stay gated on /api/health (inferred; tells in R849 item 5).
+  Nothing was enabled, changed or papered over; docs/deploy.md section 3
+  says "do not enable until question 1 is ruled".
+  Options seen:
+    A. LEAVE IT OFF (status quo, no change anywhere). Releases stay
+       gated on liveness through the image's HEALTHCHECK; readiness is
+       checked by the after-deploy checklist (R849) and by the
+       migrate-before-promote order (docs/deploy.md section 4). An
+       unmigrated release goes live: static pages serve, data-backed
+       requests fail, until it is migrated. curl's only consumers: operator
+       checks inside the container, and R847's proof.
+    B. READINESS STRICT ONLY IN A START WINDOW, INSIDE THE IMAGE'S
+       HEALTHCHECK (no new route): the probe asks /api/ready until it
+       has passed once in this container's life, then /api/health for
+       the rest of it (a latch file in /tmp). Coolify's existing poll
+       (via custom_healthcheck_found) then gates the release on
+       readiness, and a later database blip cannot unroute. Costs: it
+       amends R375 (the continuous probe touches /api/ready during the
+       window), and a container (re)started while the database is down -
+       a host reboot - stays unrouted until the database returns. The
+       command may stay node; curl is optional here.
+    C. A NEW START-WINDOW PATH (e.g. /api/startup: strict for the first N
+       seconds of process life, then liveness) with Coolify's check on
+       it. Needs a new route (outside this task) AND either the image
+       HEALTHCHECK removed (to clear the flag, against R846/R375) or the
+       image HEALTHCHECK pointed at it (then it is B by another name).
+       curl is consumed only if Coolify's own command runs.
+    D. THE RELEASE GATE DONE ANOTHER WAY: the entrypoint refuses to
+       start the server while the database is unmigrated, so the new
+       container never turns healthy and the rolling update rolls back.
+       Costs: R83/R250's crash-loop argument (Coolify's compose sets
+       restart: unless-stopped, bootstrap/helpers/constants.php 62), and
+       a database outage at boot becomes a crash loop. curl not needed.
+    E. Remove the Dockerfile HEALTHCHECK and enable Coolify's check on
+       /api/ready - the forbidden case, listed only to be rejected.
+  Leaning, for the ruler to overrule: A now; B if a release-time
+  readiness gate is wanted, as its own task with its own ruling on R375.
+  Whatever is ruled, R844 (b) applies: there is no gate at all unless
+  Port mappings is empty and container naming is not consistent.
+
+QUESTION 2. THE CHROMIUM PIN NO LONGER INSTALLS (found by this task,
+  not caused by it). Debian dropped chromium 156.0.8078.73-1~deb12u1;
+  the R249 guard's own diagnosis in this session's first after-build
+  printed:
+    chromium | 156.0.8078.79-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+    chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+  main at 67e6766 builds only from a warm layer cache (this machine's
+  "before" build: that layer CACHED). Every gate in this report passed
+  THROUGH that cached layer. The server's cache is unread; Coolify 4.5.0
+  runs `docker builder prune -af` whenever forced cleanup is on or disk
+  usage reaches the threshold (app/Actions/Server/CleanupDocker.php 160,
+  app/Jobs/DockerCleanupJob.php 115-160), so the next deploy may fail at
+  the pin - safely (a failed build leaves the running version serving),
+  but it deploys nothing. C2's planned build-cache prune makes that
+  certain. Bumping the pin changes the renderer of the output of record
+  and is not this task's (R845). Who bumps it, and before which
+  promotion?
+
+QUESTION 3. CURL'S CLOSURE (UNNUMBERED-1). R845 says "curl and nothing
+  else"; the brief says "any new dependency beyond curl/wget: STOP".
+  apt installs curl with eight required libraries (9 packages, 2941 KiB
+  installed). wget would be 2 packages (wget + libpsl5) but 3617 KiB.
+  Read under R156 as: the one tool chosen is curl, and the libraries apt
+  requires for it are part of it - curl kept, per R845's own tie-breaker
+  (Coolify tries curl first). Confirm, or rule wget (a one-line change).
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- web/app/api/ready/route.ts (header: "FW28 points Coolify's deploy
+  health check here") and web/lib/content/readiness.ts (header, same
+  claim) describe the "runs once" model R844 found false. Not touched:
+  this task allows no route change. Comment-only; for a later task.
+- docs/domain-checklist.md and REPORT-FW-CHROMIUM.txt / REPORT-FW-READY.txt
+  record "health_check_enabled: false" as the whole story; R844 adds
+  custom_healthcheck_found, which those records predate. History, left
+  as written.
+- CLAUDE.md's R251 bullet says test:container is "fifteen checks
+  against running containers"; it reports 22 now, 21 before this
+  change. Not touched.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Commits on fw-ready-gate (base origin/main 67e6766):
+  88d1701  FW-READY-GATE: curl in the runner, a 60 s start window on the
+           liveness HEALTHCHECK (R845, R846)
+  ef88fa3  FW-READY-GATE: docs/deploy.md section 3 - the gate as it
+           stands, R844 from Coolify's source, R847's proof (R848)
+  (next)   this report, and the one-label docs fix ("General ->
+           Networking -> Port mappings"; "Advanced -> Container ->
+           Container naming"). A file cannot name its own commit: its SHA
+           is in the hand-back.
+
+Push of the code tip, after GATE:CLONE PASSED on it (exit read in its
+own step first):
+  $ git push -u origin fw-ready-gate:fw-ready-gate
+  To https://github.com/kaitmax/monreleve.git
+   * [new branch]      fw-ready-gate -> fw-ready-gate
+  branch 'fw-ready-gate' set up to track 'origin/fw-ready-gate'.
+  $ git rev-parse origin/fw-ready-gate
+  ef88fa3cf00aa25cb3772d81b1fd2fdf98ec91d1
+The upstream git worktree add set (origin/main) was unset before any
+push. Only fw-ready-gate was pushed. Nothing merged; main and production
+untouched. Pending merge, by the orchestrator.
+
+CLEANUP, done before this report was committed:
+  - scratch databases fw_ready_gate and fw_ready_gate_r847 DROPPED on
+    frontalier-postgres (listing after: none matching fw_ready_gate% or
+    %gate_clone%; gate:clone dropped its own monreleve_gate_clone_ef88fa3c).
+  - containers: monreleve-ready-gate-r847 and monreleve-ready-gate-control
+    removed by the R847 script; the suites removed theirs; `docker ps -a`
+    shows no monreleve container.
+  - images this session tagged, removed: monreleve:ready-gate-before
+    (a63b8c3e716f), monreleve:ready-gate-after (3bd0cbd45197). The
+    harness tags monreleve:fw28 and monreleve:write were rebuilt by
+    test:container and gate:clone as every run does, and left. No prune
+    of any kind.
+  - web/.env (mine, DATABASE_URL only) deleted; the main checkout's
+    web/.env was only read.
+  - the session lock is removed after the final push (hand-back).
+
+END OF REPORT-FW-READY-GATE

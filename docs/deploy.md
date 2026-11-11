@@ -402,8 +402,9 @@ While the Dockerfile carries a `HEALTHCHECK` that does nothing (R844 (a));
 without one it is the forbidden case (R844 (c)). Read-only, and useful before
 the ruling: whether the Healthcheck page shows *"Custom healthcheck
 detected"*; whether the last deploy log says `Custom healthcheck found in
-Dockerfile.`; and that **General → Network → Port mappings** is empty and
-**Advanced → Container naming** is not consistent, which together decide
+Dockerfile.`; and that **General → Networking → Port mappings** is empty and
+**Advanced → Container → Container naming** reads *Generated name (rolling
+updates)*, which together decide
 whether a failed check rolls back at all (R844 (b)).
 
 `/api/health` names the product in a `service` field. Every harness in this
