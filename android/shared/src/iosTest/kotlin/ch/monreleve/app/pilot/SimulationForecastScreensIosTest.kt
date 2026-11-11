@@ -94,12 +94,15 @@ import kotlin.time.Instant
 // R818 - USED, NOT ONLY COMPOSED (R624: the date picker compiled and threw only when run; R791 (2) made the same point
 // for the sheet). The one Material3 container no shared screen used before is the Simulation's weekday DropdownMenu
 // with its DropdownMenuItems: step5 OPENS it (a pointer tap on the field), asserts its items, and PICKS one - and the
-// choice must reach the controller and close the menu. The pick is the item's own OnClick semantics action (the one
-// VoiceOver offers; IOS-2c-FIX's path for the sheet's handle and scrim), NOT a pointer tap: inside a Popup layer the
-// node's boundsInRoot is local to the menu while boundsInWindow is absolute, so R806's tap-point-in-window guard cannot
-// be read the way it was for the sheet's Dialog layer and could fail on a correctly placed item. The item's geometry is
-// RECORDED (boundsInRoot, boundsInWindow, positionInWindow) and its having area in the window is asserted; a pointer
-// tap on a popup item is left to a probe (REPORT-IOS-2d, PARKED).
+// choice must reach the controller and close the menu. In step5 the pick is the item's own OnClick semantics action
+// (the one VoiceOver offers; IOS-2c-FIX's path for the sheet's handle and scrim). That was decided BEFORE IOS-2d's
+// run, on a CONCERN - that inside a Popup layer boundsInRoot might be local to the menu while boundsInWindow is
+// absolute, so that R806's tap-point-in-window guard could fail on a correctly placed item. IOS-2e R836 corrects this
+// comment to what the run MEASURED: on the simulator (run 42934860637) the Friday item's boundsInRoot EQUALS its
+// boundsInWindow, Rect.fromLTRB(24.0, 368.0, 136.0, 416.0), positionInWindow Offset(24.0, 368.0) - the popup layer's
+// root sits at the window origin, so the guard reads the same there as for the sheet's Dialog layer. step5 keeps the
+// OnClick pick as it was; step6 (R836) picks the same item by a POINTER TAP behind R806's guard, a separate test whose
+// every failure names itself.
 // The new modifiers run as composed: PrevisionRail's offset and fillMaxHeight (step4, a projection drawn) and
 // Comparison's rotate (step2, the chevron of the tapped cause row). Every text field touched is typed into, every
 // toggle and chip tapped.
@@ -305,6 +308,9 @@ private object ForecastProgress {
 private const val WATCHDOG_SECONDS = 120L
 private const val WATCHDOG_EXIT = 3
 
+/** IOS-2e R836: every failure of the pointer-tap test starts with this, so a red run reads without the logs. */
+private const val R836 = "R836 popup pointer tap"
+
 @OptIn(ExperimentalForeignApi::class) // the posix stdout flush - function-scoped, as KeychainTokenStore's interop is.
 private fun mark(step: String) {
     ForecastProgress.step = step
@@ -397,6 +403,30 @@ class SimulationForecastScreensIosTest {
         mark("pick $what: OnClick - calling (the item's own click action)")
         node.performSemanticsAction(SemanticsActions.OnClick)
         mark("pick $what: OnClick - returned")
+    }
+
+    /**
+     * IOS-2e R836: a popup item PICKED BY A POINTER TAP, behind R806's guard. performClick injects its touch at the
+     * centre of the node's boundsInRoot (R800 (3)); before it does, that point must lie inside the node's non-empty
+     * boundsInWindow - otherwise the test fails HERE, naming R836 and where the tap would have landed.
+     */
+    private fun SemanticsNodeInteractionsProvider.pointerTapMarked(
+        what: String,
+        matcher: SemanticsMatcher,
+    ) {
+        val node = onAllNodes(matcher).onFirst()
+        val target = node.fetchSemanticsNode()
+        val inRoot = target.boundsInRoot
+        val inWindow = target.boundsInWindow
+        mark("$R836 $what: boundsInRoot=$inRoot tapPoint=${inRoot.center} boundsInWindow=$inWindow")
+        assertTrue(
+            !inWindow.isEmpty && inWindow.contains(inRoot.center),
+            "$R836: $what is not inside the window - its tap would land at ${inRoot.center} (the centre of its " +
+                "boundsInRoot $inRoot), outside its boundsInWindow $inWindow",
+        )
+        mark("$R836 $what: the tap point is inside the window; performClick (a pointer tap) - calling")
+        node.performClick()
+        mark("$R836 $what: performClick - returned")
     }
 
     private fun SemanticsNodeInteractionsProvider.typeMarked(
@@ -540,6 +570,43 @@ class SimulationForecastScreensIosTest {
                 }
                 assertNotNull(simulation.state.value.view, "the simulated view")
                 assertEquals(0 to 0, rhythms.saved.size to record.records, "simulating writes nothing (R340)")
+            }
+        }
+
+    /**
+     * IOS-2e R836: the same DropdownMenu, its Friday item picked by a POINTER TAP behind R806's in-window guard (the
+     * geometry IOS-2d measured makes this likely to land; that is what this run shows or refutes). step5's OnClick
+     * pick is unchanged. Every assertion and every wait names R836, so a red run is readable from its first line.
+     */
+    @Test
+    fun step6TheSimulationsDropdownItemIsPickedByAPointerTap() =
+        watched("R836-pointer-tap") {
+            runComposeUiTest {
+                val rhythms = RecordingRhythms(TUE_THU_HOME)
+                val record = ReadOnlyRecord(RECORDED)
+                val held = Held()
+                val taps = Taps()
+                mark("setContent - calling")
+                setContent { SimulationHost(rhythms, record, held, taps) }
+                mark("setContent - returned")
+                waitMarked("$R836: the simulator shown") {
+                    shows(SimulationCopy.TITLE) && held.simulation?.state?.value?.view != null
+                }
+                val simulation = assertNotNull(held.simulation, "$R836: the controller")
+                assertEquals(DayOfWeek.MONDAY, simulation.state.value.inputs.extraWeekday, "$R836: seeded Monday")
+                val monday = RythmeCopy.DAYS[DayOfWeek.MONDAY.ordinal]
+                val wednesday = RythmeCopy.DAYS[DayOfWeek.WEDNESDAY.ordinal]
+                val friday = RythmeCopy.DAYS[DayOfWeek.FRIDAY.ordinal]
+                tapMarked("the weekday field", hasText(monday) and hasClickAction())
+                waitMarked("$R836: the DropdownMenu open") { count(hasText(friday) and hasClickAction()) == 1 }
+                pointerTapMarked("the Friday item", hasText(friday) and hasClickAction())
+                waitMarked("$R836: Friday chosen by the pointer tap and the menu closed") {
+                    simulation.state.value.inputs.extraWeekday == DayOfWeek.FRIDAY && !shows(wednesday)
+                }
+                mark("$R836: the DropdownMenuItem PICKED by a pointer tap: Friday")
+                assertEquals(DayOfWeek.FRIDAY, simulation.state.value.inputs.extraWeekday, "$R836: the pick landed")
+                assertEquals(0, taps.adopt, "$R836: nothing adopted")
+                assertEquals(0 to 0, rhythms.saved.size to record.records, "$R836: nothing written (R340)")
             }
         }
 
