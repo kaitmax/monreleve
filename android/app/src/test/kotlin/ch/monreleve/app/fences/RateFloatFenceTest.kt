@@ -73,8 +73,9 @@ private val PATH =
         "../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/SimulationController.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/SimulationState.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/simulation/SimulationCard.kt",
-        "src/main/kotlin/ch/monreleve/app/parametres/DeviceRate.kt",
-        "src/main/kotlin/ch/monreleve/app/parametres/ParametresController.kt",
+        // IOS-2e R829: DeviceRate and the Parametres controller moved to :shared commonMain (paths follow the files).
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/parametres/DeviceRate.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/parametres/ParametresController.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresRateChange.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/comparison/ComparisonScreen.kt",
     )

@@ -217,13 +217,17 @@ private fun committedOf(state: ParametresState): CommittedSettings =
         activityStartDate = state.activityStartDate,
     )
 
-private fun sheetErrorFor(state: ParametresState): String? =
-    when {
-        state.error != null -> errorCopy(state.error)
+// IOS-2e R829: `state.error` is read once into a local - Kotlin does not smart-cast another module's public property,
+// and ParametresState now lives in :shared (IOS-2d R814's DEVIATION 5 shape). The same value, the same branches.
+private fun sheetErrorFor(state: ParametresState): String? {
+    val error = state.error
+    return when {
+        error != null -> errorCopy(error)
         state.phase == ParametresPhase.NETWORK_ERROR -> OnboardingCopy.ERROR_NETWORK
         state.phase == ParametresPhase.SESSION_ENDED -> OnboardingCopy.ERROR_SESSION_ENDED
         else -> null
     }
+}
 
 private fun errorCopy(error: SettingsError): String =
     when (error) {

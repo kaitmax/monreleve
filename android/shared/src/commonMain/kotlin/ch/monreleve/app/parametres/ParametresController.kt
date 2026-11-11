@@ -26,6 +26,7 @@ import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.ThresholdAlertStore
 import ch.monreleve.app.settings.toAggregatableUser
+import ch.monreleve.app.shared.PlatformSerializable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -63,6 +64,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 // delete receipt's parse - are reached through `wire` (ParametresWire), handed in by :app's factory of this class's
 // name (OrgJsonParametres.kt), so this file holds no JSON code. The bodies and the parse are unchanged, pinned
 // byte-exact by ParametresWirePinTest before and after.
+//
+// IOS-2e R829: this file moved to :shared commonMain, package unchanged, with ParametresWire, DeviceRate and LegalPage.
+// The one platform type it held - ParametresSnapshot's java.io.Serializable - is PlatformSerializable (Android's actual
+// typealias IS java.io.Serializable; serialVersionUID 1L kept, so the same Bundle bytes - measured). Its tests: the
+// Kotest specs stay in :app through OrgJsonParametres.kt's factory; ParametresControllerPinTest and
+// ParametresStartDatePinTest moved to commonTest unedited.
 
 enum class ParametresPhase { EDITING, SAVING, SAVED, NETWORK_ERROR, SESSION_ENDED }
 
@@ -200,7 +207,7 @@ data class ParametresSnapshot(
     val saveConfirmOpen: Boolean = false,
     val signOutOpen: Boolean = false,
     val deleteOpen: Boolean = false,
-) : java.io.Serializable {
+) : PlatformSerializable {
     companion object {
         private const val serialVersionUID: Long = 1L
     }
@@ -240,8 +247,9 @@ private const val CSV_FALLBACK = "mes-donnees.csv"
 
 // The default LocalStore for the increment-1 settings tests, which never sign out or delete. The app and the
 // account tests inject a real one; this exists only so those settings tests need not name a seam they do not use.
-// IOS-2e R826: internal, not private - :app's factory (OrgJsonParametres.kt) defaults to it as this class did.
-internal object NoOpLocalStore : LocalStore {
+// IOS-2e R826/R829: public, not private - :app's factory (OrgJsonParametres.kt) defaults to it as this class does,
+// across the module boundary now.
+object NoOpLocalStore : LocalStore {
     override suspend fun clearForSignOut() = Unit
 
     override suspend fun clearForDeletion() = Unit
