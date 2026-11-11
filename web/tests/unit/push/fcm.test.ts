@@ -124,9 +124,12 @@ describe('readFcmCredentials names which rule refused (R198)', () => {
   });
 
   it('distinguishes a key that is not a key from one that is missing', () => {
+    // R861: the refusal also names WHICH rule failed - here, there is no PEM
+    // header at all. Every shape has its own test in malformed-key.test.ts.
     expect(readFcmCredentials(env({ FCM_PRIVATE_KEY: 'a-password-someone-pasted' }))).toEqual({
       ok: false,
       code: 'malformed_private_key',
+      detail: 'no_pem_header',
     });
   });
 

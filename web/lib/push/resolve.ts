@@ -44,7 +44,8 @@
 
 import { ConsolePushSender } from '@/lib/push/console';
 import { createFcmSender } from '@/lib/push/fcm';
-import type { EnvLike, FcmRefusal } from '@/lib/push/fcm';
+import { MALFORMED_KEY_SHAPES } from '@/lib/push/fcm';
+import type { EnvLike, FcmCredentialRefusal } from '@/lib/push/fcm';
 import type { PushSender } from '@/lib/push/sender';
 
 export type { EnvLike };
@@ -53,7 +54,7 @@ export type PushSenderKind = 'fcm' | 'console';
 
 export type PushAvailability =
   | { readonly ok: true; readonly sender: PushSender; readonly kind: PushSenderKind }
-  | { readonly ok: false; readonly code: FcmRefusal };
+  | FcmCredentialRefusal;
 
 /**
  * The sender for this process, or the named reason there is none.
@@ -80,6 +81,12 @@ export function resolvePushSender(env: EnvLike = process.env): PushAvailability 
  * `placeholder_credentials` send somebody to different places - one means
  * "you have not filled this in", the other means "you filled it in with the
  * example".
+ *
+ * R861: A MALFORMED KEY ALSO SAYS WHICH SHAPE FAILED, and only the shape. This
+ * line is what instrumentation.ts logs at startup, so it is the one place an
+ * operator reads after pasting a key - and a log is a place things get pasted
+ * FROM, so it carries the variable's name and never a character of its value.
+ * The other two refusals read exactly as they always have.
  */
 export function describePushSender(availability: PushAvailability): string {
   if (availability.ok) {
@@ -87,6 +94,15 @@ export function describePushSender(availability: PushAvailability): string {
       ? '[push] Firebase credentials found: reminders will be delivered.'
       : '[push] no Firebase credentials: reminders will be PRINTED to this terminal ' +
           'and delivered to nobody (development only).';
+  }
+
+  if (availability.code === 'malformed_private_key') {
+    return (
+      `[push] no push sender (${availability.code}: ${availability.detail}): ` +
+      `${MALFORMED_KEY_SHAPES[availability.detail]} The daily reminder will NOT be ` +
+      'scheduled. Reminders are opt-in and nobody is told they stopped, so this ' +
+      'refuses rather than reporting sends that reached no device.'
+    );
   }
 
   return (
