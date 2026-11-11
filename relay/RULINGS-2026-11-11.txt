@@ -231,3 +231,208 @@ APPLIED AND VERIFIED
   and the pin as item 0. DB-ROTATION-PLAN.md Option B struck with R844's
   reason.
 - Next ruling number: R852.
+
+====================================================================
+QUEUE RULING 3 - C1b (FW-CHROMIUM-PIN-2) BLOCKED ON HOST MEMORY
+====================================================================
+THE EVIDENCE (the C1b session's message, and the orchestrator's own
+readings at 2026-11-11 ~19:50 UTC)
+- R852 done: the archive offers chromium 156.0.8078.79-1~deb12u1
+  (bookworm-security); R249 refused on bf2b77b, BUILD_EXIT=1, "R249:
+  chromium 156.0.8078.73-1~deb12u1 is not installable from this
+  archive." R853 done: web/Dockerfile:65 -> .79, commit 8559d89, local,
+  unpushed. gate:changed GREEN on 8559d89 (typecheck, lint, test 3622
+  passed, build, test:container 22 passed; the chromium layer ran from
+  the archive, not from cache).
+- Not started: R854, R855, gate:clone - all under the 1.5 GB floor.
+- Free RAM 3 118 MB before gate:changed, 914 MB after. 85 minutes of
+  30 s samples (18:16-19:43 UTC): min 338, max 1 011 MB, never at
+  1.5 GB. vmmemWSL grew 2 491 -> 4 900 MB; inside the VM Cached 4.6 GB,
+  MemAvailable 6.3 GB - this session's build cache, not returned while
+  idle.
+  CORRECTED (Queue Ruling 4, from the C1b report's own correction): the
+  "min 338, max 1 011 MB" covered the SECOND wait only. The first wait
+  reached 1 515-1 599 MB from 18:32:20 to 18:34:23 UTC, and the
+  session's waiter, which stopped only at 1 700 MB (its own margin), let
+  that window pass. Free physical was about 2.5 GB by 20:25 UTC. So
+  "never at 1.5 GB" is wrong, and "the VM's cache does not come back on
+  idle" is NOT established. The ruling stands on the commit argument and
+  on the measured run, not on that premise.
+- Orchestrator's reading: free physical 743 MB; commit limit 32 389 MB,
+  commit free 6 467 MB; pagefile 2 574 of 16 194 MB used; vmmemWSL
+  private 7 409 MB against the VM's 7.66 GiB cap; the only running
+  container frontalier-postgres (86 MB). The rest of the host is the
+  operator's desktop apps, untouched.
+- The 1.5 GB floor is written ONLY in the orchestrator's relay prompts
+  (grep: not in ORCH-NO-PHONE-QUEUE.txt, CLAUDE.md or the memory) - the
+  orchestrator's convention, not the operator's number.
+
+THE QUESTION
+(a) keep waiting, (b) a ruled way to get the floor back (the operator
+closing apps, or a Docker Desktop restart), or (c) end blocked, the
+report committed locally and not pushed.
+
+THE ADVISOR'S ANSWER (verbatim in substance, ASCII)
+Neither (a), (b) nor (c) as posed: one measured attempt under the
+floor, then park.
+- Not (a): the 2.2 GB drop matches vmmem's growth exactly, and 85 flat
+  minutes prove the VM's file cache does not come back on idle. Stop
+  the 30 s sampling.
+- Not (b): Docker Desktop / WSL restart, drop_caches, prune - all stay
+  off. A daemon restart can bring other projects' stopped containers
+  back through their restart policies, and restarting them is the
+  operator's (A1). Park it as an operator action.
+- The floor is a proxy. 1.5 GB free physical guards against dead
+  workers and the operator's desktop running dry; on Windows both are
+  decided by COMMIT, and the readings have room there (6 467 MB commit
+  free, pagefile mostly unused; vmmem near its cap, so the VM cannot
+  take much more). It is not among the limits the advisor cannot lift.
+- The attempt: (1) gate:clone ALONE on 8559d89 first - it decides
+  whether anything in the queue can gate at all; R854 and R855 after,
+  one heavy step at a time, the orchestrator idle. (2) Precondition,
+  read in its own step: commit free >= 5 GB (provisional). (3) A
+  background sampler logs commit-free and free-physical every 10 s;
+  below 2 GB commit free it kills ONLY that step's own tree (taskkill
+  /T), nothing else. (4) PASS only from the log with counts equal to
+  the last green (3 622; gate:clone's lines as on bf2b77b); a timeout,
+  dead worker, "fetch failed", short count or abort is NO RESULT; one
+  re-run allowed; a second NO RESULT ends the attempt. (5) The run's
+  minimum commit-free and free-physical replace 1.5 GB as the floor for
+  C2-C10. (6) R855's start-to-healthy times are recorded with the RAM
+  reading beside them, labelled not comparable with C1's; not
+  merge-blocking.
+- If it ends NO RESULT twice: the whole queue is blocked (every step
+  needs gate:clone). No third variation. 8559d89 stays local and
+  unpushed; the report draft stays on disk with a handoff note in
+  relay/, uncommitted; QUEUE-STATE gets a top BLOCKED entry with the
+  exact operator action (close desktop apps or restart Docker Desktop,
+  then say continue); only zero-RAM work proceeds (the C11 write-up
+  drafted on disk).
+
+APPLIED
+- Sent to the C1b session verbatim in substance (stop sampling;
+  gate:clone first on 8559d89; commit free >= 5 000 MB read in its own
+  step; the 10 s sampler with its 2 000 MB kill of its own tree only;
+  PASS from the log with matching counts; one re-run; the minimum
+  readings recorded; R855 labelled; the two-NO-RESULT exit with
+  relay/FW-CHROMIUM-PIN-2-HANDOFF.txt uncommitted in its worktree).
+- VERIFIED: pending the C1b hand-back - recorded in the next
+  QUEUE-STATE commit.
+- PARKED FOR THE OPERATOR: a Docker Desktop restart (it may start other
+  projects' containers through their restart policies - the operator's,
+  A1), or closing desktop apps, if the attempt fails.
+- VERIFIED (Queue Ruling 3): the attempt ran. gate:clone PASSED on
+  8559d89 on its first run: "GATE:CLONE PASSED", commit
+  8559d89cec2426e4678738140e85d7fc8d5657a1, STEP_EXIT=0 ABORTED=False.
+  The lowest commit free was 4 589 MB, the lowest free physical 261 MB;
+  no worker died and nothing was aborted. See Queue Ruling 4.
+
+====================================================================
+QUEUE RULING 4 - C1b (FW-CHROMIUM-PIN-2) HANDED BACK: MERGE, AND THREE
+QUESTIONS
+====================================================================
+THE EVIDENCE (V1, the orchestrator's reads of the branch and of the
+session's logs in C:/wt/fw-chromium-pin-2/.pin2-evidence/)
+- Branch tip 0df4463 on origin; code tip 8559d89; base bf2b77b.
+  `git diff --stat bf2b77b 8559d89`: web/Dockerfile only, 1+/1-
+  (CHROMIUM_VERSION .73 -> .79). The two commits above it change the
+  report only.
+- R852: madison at 2026-11-11T18:06:22Z listed .79 (bookworm-security)
+  and 150.0.7871.100 (bookworm). The R249 refusal on bf2b77b printed
+  "#14 6.960 R249: chromium 156.0.8078.73-1~deb12u1 is not installable
+  from this archive."
+- gate:changed on 8559d89 selected typecheck, lint, test, build and
+  test:container. Results: Tests 3622 passed, Container checks 22
+  passed, "GATE PASSED for the paths changed". The chromium layer took
+  "#12 DONE 132.0s" (from the archive, not cache), and the live binary
+  reported Chromium 156.0.8078.79.
+- gate:clone-1.log reads "GATE:CLONE PASSED", "commit
+  8559d89cec24...", ran register-coverage through test:container:write,
+  STEP_EXIT=0 ABORTED=False. The orchestrator normalized it (SHAs,
+  durations, the clone dir) and diffed it against its own green
+  clone-bf2b77b.log. The only differences are the dirty-path list, free
+  memory, durations and the build ids, so every step's tail is
+  identical in shape to bf2b77b's.
+- R854: test:container:e2e gave 352 passed, 1 failed at
+  e2e/home.spec.ts:197 (`database?.ok` expected null, received true),
+  the same failure as REPORT-FW-CHROMIUM-PIN.txt, so it never reached
+  the PDF step. The fallback ran container-auth and container-pdf
+  against a container of the new image. Inside it the pin file read
+  .79 and the binary "Chromium 156.0.8078.79". Result: "Test Files 2
+  passed (2) / Tests 9 passed (9)", VITEST_EXIT=0, "[pdf] image: 162997
+  bytes, 9 pages".
+- R855: test:visual 168 passed, nothing regenerated. Three warm starts
+  took 2.312, 2.288 and 2.333 s to the end of the first passing probe,
+  each with commit free about 8.4 GB and free physical about 2.5 GB.
+  They are labelled not comparable with C1's.
+- Memory: minimum commit free 4 589 MB (gate:clone); minimum free
+  physical 219 MB (test:visual); no deaths, no aborts.
+- The questions: (1) is home.spec.ts:197 against the image its own
+  task? (2) the pin cadence, options (a)-(f) in the report, none chosen;
+  (3) do the minimums set the floor for C2-C10? Deviation 6: Ruling 3's
+  "counts equal to the last green" cannot be met literally, because
+  gate:clone keeps a 14-line tail per step and no clone log of bf2b77b
+  was found by the session.
+
+THE ADVISOR'S ANSWER (verbatim in substance, ASCII)
+Merge C1b. V1 holds and nothing below blocks the merge. Items 2 and 4
+come before the record commit, and item 4 before C2 launches.
+1. Deviation 6 is met. The orchestrator's normalized diff against
+   clone-bf2b77b.log is the comparison Ruling 3 asked for, and the
+   3 622 comes from the identical web/ tree. Park as a finding that
+   gate:clone's 14-line tails make a short unit count invisible.
+2. Correct Ruling 3's record, because part of its premise was wrong:
+   free RAM reached 1 515-1 599 MB for two minutes in the first wait,
+   and about 2.5 GB by 20:25. So "never at 1.5 GB" and "the cache does
+   not come back on idle" are not established. The ruling stands on the
+   commit argument and the measured run. Fix the EVIDENCE block and the
+   HOLDS sentence.
+3. The floor for C2-C10 (Q3):
+   - Web steps: commit free >= 5 000 MB before each heavy step, and the
+     2 000 MB abort. gate:clone bottomed at 4 589 MB with no deaths at
+     219-261 MB free physical.
+   - Gradle steps (C5, C8, and C4 if it builds): unmeasured, so
+     provisionally >= 7 000 MB after `gradlew --stop`, with the same
+     sampler. The first Gradle step's minimum then sets the figure.
+   - The orchestrator's own gate:clone: the same regime. Read
+     run-sampled.ps1 first to confirm it kills only the PID tree it is
+     given, then copy it to C:/wt/queue-evidence/.
+4. Fix the eight drafted prompts before committing them. Each says
+   ">= 1.5 GB free", so C2 would block exactly as C1b did. Replace the
+   figure with a pointer to QUEUE-STATE HOLDS and the sampler's path,
+   so the number lives in one place.
+5. home.spec.ts:197 (Q1) is its own task, parked and not in this
+   queue. Meanwhile the fallback is the accepted PDF proof; name it in
+   C2's prompt, since C2 changes the Dockerfile. The parked task first
+   establishes which side is wrong. If the image's /api/health touches
+   the database, that is an R375 question to hand back, not a test
+   edit.
+6. The cadence (Q2) is the operator's; (a) stays in force. Options
+   (c)-(f) change R249 or add infrastructure.
+   - P1 item 0 becomes a same-day `apt-cache madison` read showing the
+     pinned version still offered, else bump first.
+   - Drop "a cold build fails R249" from the verdict caveat, citing
+     C1b's archive install (#12 DONE 132.0s, 2026-11-11).
+   - Keep the prune hold on this machine with a new reason: the cache
+     is what keeps gates green between a Debian release and the next
+     bump.
+7. Stale texts: route docs/deploy.md:190-193 into C7's prompt and the
+   Dockerfile:253-260 comment into C2's, comment only.
+8. HOLDS still says the next ruling number is R852; it is R924.
+
+APPLIED
+- run-sampled.ps1 was read. It starts `cmd.exe /d /c <command>` and,
+  below 2 000 MB commit free, runs `taskkill /T /F /PID` on that
+  process's own id, nothing else. It is copied to
+  C:/wt/queue-evidence/run-sampled.ps1, with the evidence directory made
+  a parameter (default C:\wt\queue-evidence\logs) and nothing else
+  changed.
+- Ruling 3's EVIDENCE block carries a CORRECTED note. QUEUE-STATE HOLDS
+  is rewritten: the floor regime, the prune hold's new reason, and the
+  next number R924.
+- The eight prompts point at QUEUE-STATE HOLDS instead of a figure.
+  C2's prompt names the fallback PDF proof and the Dockerfile:253-260
+  comment; C7's names docs/deploy.md:190-193.
+- P1 item 0 is the same-day madison read.
+- Parked: PARK home.spec.ts:197-in-container (its own task); the
+  14-line-tail finding; the cadence (the operator's).

@@ -1,0 +1,115 @@
+FW-DEPLOY-DOC SESSION PROMPT - Mon Releve
+ONE RUNBOOK FOR A PROMOTION, ITS CHECKS AND ITS ROLLBACK (queue step C7)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C7. Read relay/QUEUE-STATE.md (its PARKED
+PROMOTIONS P1 is the first real use of what you write) and docs/deploy.md
+whole first. YOUR OWN advisor may advise you; reserved items come back to
+the orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-DEPLOY-DOC.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/fw-deploy-doc, NEW branch fw-deploy-doc cut from origin/main at
+BASE_SHA (the orchestrator's launch message), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout; nothing else
+there. Stage BY NAME. Push fw-deploy-doc ONLY - DO NOT MERGE.
+gate:changed before every commit; gate:clone before every push (R199).
+DOCS ONLY: docs/deploy.md and the report. No code, no test, no Dockerfile.
+
+LIVE STATE (what the repository cannot tell you):
+  - NO COOLIFY, NO SSH, NO PRODUCTION (Queue Ruling 1: the API token is
+    gone). Everything you write about Coolify is read from its SOURCE at
+    tag v4.5.0 (coollabsio/coolify, as C1 did for R844 - cite file and
+    lines) or from a measurement already recorded; nothing from memory.
+  - THE RESTART MEASUREMENT (the orchestrator's record, 2026-10-28, on
+    the operator's authorisation; the repository has only one line of it,
+    relay/QUEUE-2026-10-28.txt "A Coolify restart applies env
+    (measured)"): a harmless ROTATION_PROBE variable was added while
+    absent from the running container (the negative control); the app was
+    restarted through Coolify's API; Coolify QUEUED A DEPLOYMENT (about 4
+    minutes) and a NEW container came up carrying the variable (length 16,
+    set). /api/ready sampled every second: 1 timeout in 251 s at the swap;
+    a second restart, 0 in 163 s. Coolify masks env values in its task
+    logs; creating a variable through the API also creates a preview copy
+    (both must be deleted). Write it into the doc as that: measured on
+    2026-10-28, by whom, with what control.
+  - FOLLOWING A DEPLOY: with auto-deploy on `production`, the push IS the
+    trigger. A deploy is followed by READING Coolify's deployments list
+    (GET /api/v1/deployments/applications/<app uuid>?skip=0&take=N - an
+    object {count, deployments}, not an array) and one deployment's log
+    (GET /api/v1/deployments/<deployment uuid>), never by calling the
+    deploy endpoint: on 2026-10-14 a push followed by an API deploy call
+    started two deployments of the same commit, three times. Coolify
+    marks secret-bearing log lines hidden; a runbook never prints them.
+  - THE MACHINE: gate:clone only under the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only),
+    read in its own step.
+    NO PRIVILEGED CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS).
+  - ONE STALE PASSAGE (Queue Ruling 4). docs/deploy.md section 3, the "curl is in the image (R845)"
+    paragraph (lines 186-195 at bf2b77b), explains
+    curl's separate image layer by the old Chromium pin being impossible
+    to install. Since C1b, the pin is 156.0.8078.79-1~deb12u1 and the
+    archive installed it on 2026-11-11 ("#12 DONE 132.0s",
+    REPORT-FW-CHROMIUM-PIN-2.txt), so that reason is gone. Correct the
+    passage in the same commit as R883-R885, stating only what is true
+    now.
+  - THE PIN CHECK BEFORE A PROMOTION (Queue Ruling 4). The runbook's
+    first step after gate:clone is a same-day `apt-cache madison chromium`
+    read in node:22-bookworm-slim showing the pinned CHROMIUM_VERSION
+    still offered. If it is not offered, the pin is bumped first as its
+    own gated commit. Reference R249 where the Dockerfile and
+    docs/deploy.md already state it; do not restate it.
+
+RULING NUMBERS: R883-R885; R886-R887 reserved spares. Before committing
+any: `grep -rE '\bR88[3-7]\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+
+====================================================================
+THE RULINGS
+====================================================================
+R883. ONE PROMOTION RUNBOOK, IN ORDER. A new section of docs/deploy.md
+    that a person can follow top to bottom: gate:clone alone on the exact
+    SHA; any migration first through section 4's in-container route with
+    `migrate status` before `deploy`; the fast-forward push to
+    `production`; following the deploy by reading (never triggering); the
+    after-deploy checks (/api/health naming the product, /api/ready 200,
+    the running container's image tag = the SHA, the HEALTHCHECK values,
+    the PDF when the renderer, the dossier or the Dockerfile changed); and
+    on ANY failed check, the rollback. It REFERENCES sections 1, 3 and 4
+    for their detail rather than copying them (R206: one text, one home).
+
+R884. THE ROLLBACK FROM COOLIFY, FROM ITS SOURCE. How Coolify 4.5.0
+    restores a previous deployment: the UI path, what it actually runs
+    (re-uses the previous image, or rebuilds?), whether it needs the old
+    image still on the server - which ties to C2's planned prune of old
+    images: say how many old images must be kept for a rollback to stay
+    possible - and what it does NOT undo (a migration already applied).
+    Cite file and lines. Where the source does not settle a point, say
+    "not established" - a rollback runbook that guesses is worse than
+    none.
+
+R885. THE RESTART, MEASURED, AND WHAT IT IS FOR. The 2026-10-28 record
+    above, written as a measurement with its date and control, and what
+    depends on it (an environment change applies only through a restart,
+    which is a queued deployment with a swap; the database password
+    rotation plan, relay/DB-ROTATION-PLAN.md, rests on it). The readiness
+    gate as C1 left it: Coolify's deploy check OFF, releases gated on the
+    image's /api/health, QUESTION 1 open - pointing at section 3, not
+    restating it.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock.  1. Read Coolify v4.5.0's rollback path.  2. R883-R885
+in docs/deploy.md.  3. gate:changed; commit.  4. gate:clone ALONE on the
+tip; push the branch.  5. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-FW-DEPLOY-DOC.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R883 / R884 (source lines; what is "not
+established") / R885 / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-DEPLOY-DOC PROMPT

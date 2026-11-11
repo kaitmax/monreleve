@@ -1,0 +1,104 @@
+AN-PARAM-BASELINES SESSION PROMPT - Mon Releve
+PAPARAZZI FOR THE PARAMETRES SHEETS AND THE DATE DIALOG (queue step C5)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C5. Read relay/QUEUE-STATE.md and
+REPORT-IOS-2e.txt's UNNUMBERED-3 first. YOUR OWN advisor may advise you;
+reserved items come back to the orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is
+REPORT-AN-PARAM-BASELINES.txt, committed and pushed. Unclear? R156:
+conservative, reversible, an UNNUMBERED-n entry, continue. R334, R349,
+R392: your OWN worktree at C:/wt/an-param-baselines, NEW branch
+an-param-baselines cut from origin/main at BASE_SHA (the orchestrator's
+launch message), your lock in it. You may run `git fetch` and `git
+worktree add` from the main checkout; nothing else there. Stage BY NAME.
+Push an-param-baselines ONLY - DO NOT MERGE. `./gradlew fastCheck` per
+increment (R390); the FULL `:app:gate` on the reported tip (R391);
+gate:clone before every push (R199).
+
+LIVE STATE (what the repository cannot tell you):
+  - WHY (IOS-2e's UNNUMBERED-3, Ruling 14): no Paparazzi baseline shows
+    the Parametres screen, any of its sheets, or the start-date dialog.
+    ParametresDialogScreenshotTest photographs RateRow only. The screen
+    moved into shared code in IOS-2e (android/shared/src/commonMain/.../
+    ui/screens/parametres/ParametresScreen.kt); the date picker filler
+    is :app's ParametresStartDatePicker.kt (a Material 3 dialog in its
+    own layer - the slot contract from IOS-2e-FIX). Its Android pixels
+    rested on files being byte-identical, not on a photograph.
+  - 142 baselines exist under android/app/src/test/snapshots/images, all
+    at maxPercentDifference 0.0 (R626/R345, guarded by
+    fences/PaparazziZeroToleranceTest). EVERY ONE STAYS BYTE-IDENTICAL.
+  - THE MACHINE: Gradle is heavy. Read free RAM in its own step before
+    each :app:gate or gate:clone (the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only): Gradle's figure for :app:gate,
+    the web figure for gate:clone; each under the sampler); `./gradlew --stop` after
+    each Gradle run (stale daemons hold ~4 GB). NO PRIVILEGED CONTAINERS,
+    NO PRUNE (QUEUE-STATE HOLDS). No device is needed: do not touch the
+    phone. Never stop another project's container or process.
+  - A :shared change needs the iOS cloud run (R573). This task should not
+    change :shared at all; if it must, STOP and hand back first - iOS
+    minutes are the orchestrator's (60 per step).
+
+RULING NUMBERS: R871-R874; R875-R876 reserved spares. Before committing
+any: `grep -rE '\bR87[1-6]\b' relay/ REPORT-*.txt CLAUDE.md docs`. A park
+id takes a free series letter, confirmed with web/scripts/register-
+coverage.mjs (R456).
+
+HARD BOUNDARIES: test code and new baseline images only. NO product
+change - no file under android/app/src/main or android/shared/src/*Main
+changes. If a state cannot be rendered without a product seam, it is
+PARKED with the reason, not opened up.
+
+====================================================================
+THE RULINGS
+====================================================================
+R871. THE STATES, NAMED BEFORE ANY RECORDING (R207). From the code, list
+    every sheet the Parametres screen can open and every state each one
+    can be in (empty, filled, error, the before/after rate, whatever the
+    code branches on), plus the start-date dialog's states. Each gets a
+    baseline NAME, written in the report and committed before the first
+    `recordPaparazzi`. The recording must produce exactly that set: a
+    file in the output that was not in the list stops the run and is
+    investigated, never kept.
+
+R872. THE DIALOG'S WINDOW - ONE PROBE, MEASURED. Paparazzi renders one
+    window; a Compose Dialog draws in its own. Before writing the date-
+    dialog test, run one probe and LOOK at the image: if the dialog does
+    not appear, photograph its content composable inside the theme
+    instead, and the report states exactly what that baseline does NOT
+    show (the scrim, the window's placement). A baseline that shows an
+    empty screen certifies nothing (R169's presence corollary).
+
+R873. EVERY IMAGE LOOKED AT. Each new baseline is opened and read by a
+    person's standard: the copy is the lib/fr / ParametresCopy text, the
+    layout is whole at the device size, nothing clipped. One line per
+    image in the report. A baseline certifies that nothing changes, never
+    that what exists is right (R135) - this is where "right" is checked.
+    Anything that looks wrong is NOTICED BUT NOT TOUCHING, and its
+    baseline is still recorded as-is, labelled.
+
+R874. THE OTHER 142. Before the push, prove every existing baseline is
+    byte-identical to BASE_SHA (`git diff --stat BASE_SHA --
+    android/app/src/test/snapshots` lists only your new files) and that
+    `verifyPaparazzi` passes at 0.0 inside the full :app:gate.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock.  1. R871 (the list, committed).  2. R872 probe.
+3. Tests + `recordPaparazzi`, the set checked against the list.
+4. R873.  fastCheck and a commit per increment.  5. R874; the FULL
+:app:gate on the tip (BUILD line and exit code pasted); gradlew --stop;
+RAM; gate:clone ALONE; push the branch.  6. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-AN-PARAM-BASELINES.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R871 (the named list) / R872 (the probe,
+what the dialog baseline shows and does not) / R873 (one line per image)
+/ R874 / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-PARAM-BASELINES PROMPT

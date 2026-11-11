@@ -1,0 +1,184 @@
+FW-WEB-ACCOUNT SESSION PROMPT - Mon Releve
+A READ-ONLY SIGNED-IN AREA ON THE WEBSITE (queue step C9)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C9. Read relay/QUEUE-STATE.md first, then
+SPEC-frontalier-web.md D14, section 3's R209 note and section 10, and
+CLAUDE.md's R209/R210 bullets. YOUR OWN advisor may advise you; reserved
+items (dependencies, production, Coolify, the server) come back to the
+orchestrator. This is a LARGE task: push the branch after every green
+increment so progress survives a session limit.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-WEB-ACCOUNT.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/fw-web-account, NEW branch fw-web-account cut from origin/main at
+BASE_SHA (the orchestrator's launch message), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout; nothing else
+there. Stage BY NAME. Push fw-web-account ONLY - DO NOT MERGE.
+Test-first (a RED run with its reason before each behaviour).
+gate:changed before every commit; gate:clone before every push (R199).
+
+THE OPERATOR'S RULING, RECORDED AS SUCH (the queue's C9, verbatim in
+substance): the website gains a signed-in area - this REVERSES the spec's
+"no signed-in area" (D14); amend SPEC in one sentence. Version 1 is
+READ-ONLY:
+  - "Se connecter" in the header (the A2 header), sign-in by code by
+    e-mail, using the existing auth routes and FW-CODE-CAP's budget;
+  - a session cookie ONLY on account pages (HttpOnly, Secure,
+    SameSite=Lax, short life, revoked on sign-out); public pages stay
+    cookie-free (a test proves it);
+  - a "Mon releve" page: the year's figures and days remaining from the
+    server, the PDF and CSV downloads through the existing routes,
+    sign-out;
+  - no recording on the web in this version (park it);
+  - CSRF protection on every state-changing route; the security checks
+    written down in the report (session fixation, enumeration, rate
+    limits, cookie scope);
+  - the A2 design language; copy in lib/fr; e2e for sign-in, download,
+    sign-out; budgets.
+  An additive migration (a web-session table) is allowed, applied in
+  production by the in-container route. Deploy under Part B's
+  conditions.
+(The page's French name is the queue's ASCII; its accented form comes
+from lib/fr's existing product name, never from this prompt - R155,
+R168.)
+
+LIVE STATE (what the repository cannot tell you):
+  - NO DEPLOY IN THIS SESSION. No Coolify, no SSH, no production (Queue
+    Ruling 1). The promotion, with the migration through docs/deploy.md
+    section 4's route, is PARKED for the orchestrator (R911).
+  - THE AUTH THAT EXISTS: web/app/api/v1/auth/{code, magic-link,
+    callback, refresh, sign-out, revoke-all}; opaque hashed refresh
+    tokens with rotation and reuse detection (R210); bearer middleware;
+    the code-attempt budget (FW-CODE-CAP). Auth.js stays out (R209):
+    the web session is this product's own mechanism, beside the bearer
+    one, never a library's.
+  - THE ZERO-COOKIE GUARANTEE today is total (SPEC section 10, AC3).
+    After this task it is total on every PUBLIC page; the account area is
+    the one exception, and the exception is bounded by a test, not by
+    prose.
+  - THE MACHINE: heavy steps (test:e2e, test:visual, gate:clone) only
+    under the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only),
+    read in its own step; one at a time. NO PRIVILEGED
+    CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS). frontalier-postgres (:5436):
+    scratch databases only; drop yours at the end. Never start, stop or
+    remove another project's container (CLAUDE.md). Ports 3000, 3100,
+    3200 are tizicorp's - use FRONTALIER_PORT. @monreleve.test accounts
+    and the fake outbox only.
+
+RULING NUMBERS: R898-R911; R912-R913 reserved spares. Before committing
+any: `grep -rE '\bR(89[89]|90[0-9]|91[0-3])\b' relay/ REPORT-*.txt
+CLAUDE.md docs`. A park id takes a free series letter, confirmed with
+web/scripts/register-coverage.mjs (R456).
+
+HARD BOUNDARIES: read-only - no route that records, edits or deletes a
+day; no engine change; an ADDITIVE migration only; no new dependency (Ask
+first - a CSRF or cookie library included: build on the platform); no
+third-party script; tokens only (no raw value outside tokens.scss).
+
+====================================================================
+THE RULINGS
+====================================================================
+R898. THE SPEC, FIRST. D14 amended in ONE sentence naming the operator's
+    ruling and its date (2026-11-11, the no-phone queue's C9); section
+    10's zero-cookie guarantee re-stated as "every public page" with the
+    account area named as the one exception. Nothing else in SPEC moves.
+
+R899. THE WEB SESSION. A new table (an opaque token's HASH, the user,
+    created/expires/revoked, server-assigned); constraints in the
+    database where it can express them (R196, both directions). A new
+    session id on every sign-in (fixation); sign-out revokes server-side,
+    and a revoked or expired cookie is refused (tests for each); the life
+    is short and STATED as a value and asserted (R345). The table's
+    columns are disclosed (lib/content/personal-data.ts - the existing
+    test is your RED).
+
+R900. COOKIE SCOPE, DECIDED AND ASSERTED. Choose where the account area
+    lives and how the cookie is scoped (Path, no Domain) so that NO public
+    page and no public API request ever carries it - and so that the
+    downloads still reach "the existing routes" (by sharing their
+    implementation behind the account path, or by the existing routes
+    accepting the session where it arrives - your choice, stated with its
+    reason). A test crawls every public route in lib/content/routes.ts
+    and asserts no Set-Cookie and no cookie read; another asserts the
+    account pages set exactly one cookie with exactly the attributes
+    above.
+
+R901. SIGN-IN BY CODE. The header's "Se connecter" (rendered only when
+    the account route is live, R85) leads to e-mail then code, through
+    the existing auth routes and FW-CODE-CAP's budget - not a second
+    budget. The same response for a known and an unknown address
+    (enumeration, a test); rate limits as the existing routes enforce,
+    asserted from the web path too.
+
+R902. CSRF. Every state-changing request from the account area (sign-in
+    steps, sign-out) is protected - SameSite=Lax alone is not the whole
+    answer; state the mechanism (an Origin check, a token, or both) and
+    test a cross-origin request refused.
+
+R903. THE PAGE. The year's figures and the days remaining from the
+    server (the same numbers the app shows - one engine, derived, never
+    recomputed client-side), the PDF and CSV downloads, sign-out. R225:
+    each figure asserted present on the rendered page. The A2 design
+    language, tokens only, a11y (focus, labels, contrast), budgets (R2)
+    with the size report pasted.
+
+R904. NO RECORDING ON THE WEB - PARKED, with what it would need.
+
+R905. THE MAIL. The sign-in code mail is transactional: R245's header
+    rule asserted (no List-Unsubscribe pair).
+
+R906. THE ROUND TRIP (R204). One e2e drives sign-in (e-mail -> code from
+    the fake outbox -> the page), a PDF and a CSV download (bytes
+    non-empty, types right), and sign-out (the cookie gone, the page
+    refused), through the real route handlers.
+
+R907. THE SECURITY CHECKS, WRITTEN DOWN. In the report: session fixation,
+    enumeration, rate limits, cookie scope, CSRF, revocation, the cookie
+    attributes - each with the test that proves it, or "not proven" with
+    why.
+
+R908. COPY. lib/fr only, fully accented (R155); the header link, the
+    sign-in steps, the page, the errors (an expired code distinct from a
+    wrong one; R210's rule that an unauthenticated caller is not told
+    which case fired).
+
+R909. THE WALKTHROUGH (R176) against `pnpm dev`: sign in with a
+    @monreleve.test address, read the page, download both files, sign
+    out, and the public pages after it carry no cookie (devtools or the
+    response headers, pasted).
+
+R910. BASELINES. New baselines for the header's link and each account
+    state, NAMED before recording (R207); every existing baseline that
+    moves (the header is on every page) is listed with why, before
+    regenerating - a header change will move many; that list is a STOP
+    for the orchestrator only if a change is not explained by the link.
+
+R911. WHAT IS PARKED FOR THE ORCHESTRATOR: the promotion checklist -
+    gate:clone on the exact SHA; the migration through section 4's route,
+    `migrate status` first; the fast-forward push; the after-deploy checks
+    (health, ready, a public page with NO Set-Cookie, a sign-in with a
+    @monreleve.test account end to end, both downloads, sign-out); the
+    rollback if any fails.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock, scratch DB.  1. R898.  2. R899 + R900.  3. R901 +
+R902.  4. R903 + R905 + R908.  5. R906.  gate:changed, a commit and a
+push of the branch after each green increment.  6. R909 walkthrough.
+7. R910.  8. gate:clone ALONE on the tip; push.  9. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-FW-WEB-ACCOUNT.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R898-R906 (each with its RED) / R907
+(the security table) / R908 / R909 WALKTHROUGH / R910 (baselines named
+and moved) / R911 (the checklist) / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF FW-WEB-ACCOUNT PROMPT

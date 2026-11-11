@@ -1,0 +1,103 @@
+FW-TESTDB-GUARD SESSION PROMPT - Mon Releve
+test:db REFUSES A DATABASE THAT IS NOT A SCRATCH ONE (queue step C6)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C6. Read relay/QUEUE-STATE.md first. YOUR
+OWN advisor may advise you; reserved items (dependencies, production,
+Coolify, the server) come back to the orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-TESTDB-GUARD.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/fw-testdb-guard, NEW branch fw-testdb-guard cut from origin/main at
+BASE_SHA (the orchestrator's launch message), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout; nothing else
+there. Stage BY NAME. Push fw-testdb-guard ONLY - DO NOT MERGE.
+gate:changed before every commit; gate:clone before every push (R199).
+
+LIVE STATE (what the repository cannot tell you):
+  - WHY: every test:db file starts by EMPTYING the table it owns. The main
+    checkout's web/.env points DATABASE_URL at the shared development
+    database `frontalier` on frontalier-postgres (:5436), so `pnpm test:db`
+    run there empties the developer's data. The rule "never run test:db
+    against the shared frontalier dev DB" exists only as a sentence in
+    briefs. This task makes it a refusal.
+  - THE SCRATCH NAMES IN USE TODAY, all `monreleve_*`:
+      monreleve_gate_clone_<sha8>   web/scripts/gate-clone.mjs:670
+      monreleve_container_e2e       web/scripts/container-e2e.mjs:51
+      monreleve_scheduler_probe     web/scripts/container-scheduler.mjs:53
+      monreleve_container_write     web/scripts/container-write.mjs:70
+      monreleve_restore_probe       web/scripts/backup-restore.mjs:46
+    Re-derive this list yourself (R181: from the code, not from this
+    prompt) before you encode a pattern.
+  - CI (.github/workflows/ci.yml:102, 115, 548-618) names its throwaway
+    service database `frontalier` - scratch by construction there, but
+    the same NAME as the shared dev database. CI is OFF (R248: private
+    repository, CI_FULL unset) and must still be correct when it returns.
+  - THE MACHINE: heavy steps (gate:clone) only under the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only),
+    read in its own step. NO PRIVILEGED CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS).
+    frontalier-postgres (:5436): scratch databases only - NEVER run
+    test:db against `frontalier` to watch it fail before your guard
+    exists; your positive control runs only once the guard refuses
+    before any test file loads. Drop yours at the end. Never start, stop
+    or remove another project's container (CLAUDE.md).
+
+RULING NUMBERS: R877-R880; R881-R882 reserved spares. Before committing
+any: `grep -rE '\bR8(7[7-9]|8[0-2])\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+A park id takes a free series letter, confirmed with web/scripts/
+register-coverage.mjs (R456).
+
+====================================================================
+THE RULINGS
+====================================================================
+R877. THE REFUSAL HAPPENS BEFORE ANY TEST FILE RUNS. test:db reads
+    DATABASE_URL's database name and refuses - non-zero exit, a message
+    naming the database it was pointed at, the pattern it requires, and
+    how to make a scratch database - unless the name matches the scratch
+    pattern. The pattern has ONE home (R206), and the scripts that create
+    scratch databases either take their names from it or are asserted
+    against it by a test, so a sixth script cannot invent a name the
+    guard refuses (or, worse, a pattern that admits `frontalier`).
+
+R878. BOTH DIRECTIONS, PROVEN (R196's shape). Negative: pointed at
+    `frontalier`, test:db refuses, and NO table was touched - prove it
+    (e.g. a sentinel row you put in a COPY of the situation, i.e. a
+    scratch database deliberately named outside the pattern, survives the
+    refused run; never `frontalier` itself for the sentinel). Positive:
+    pointed at a scratch database, test:db runs and its pass count is
+    non-zero (R133). Unit tests for the name check itself, including the
+    near misses (`frontalier_test`, `monreleve` alone, a name in another
+    URL position such as the user or the schema parameter).
+
+R879. CI NAMES ITS DATABASE BY THE PATTERN. Change ci.yml's throwaway
+    database name to one the pattern admits, everywhere it appears, so CI
+    passes the guard without an exemption. No escape-hatch environment
+    variable: an opt-out is an exemption list of one, and exemption lists
+    grow (R206's corollary). If you find a case that truly cannot be
+    renamed, STOP and hand it back as a QUESTION.
+
+R880. THE DOC. docs/deploy.md or the contributing notes, wherever test:db
+    is described: the guard, the pattern's home, how to make a scratch
+    database. web/.env.example keeps pointing at the dev database (that
+    is what `pnpm dev` needs) and gains one comment line saying test:db
+    will refuse it and why.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock, a scratch DB.  1. R877 test-first (RED: the name check's
+unit tests).  2. R878 both directions.  3. R879.  gate:changed and a commit
+after each.  4. R880.  5. gate:clone ALONE on the tip (it runs test:db on
+its own scratch database - the guard must admit it); push the branch.
+6. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-FW-TESTDB-GUARD.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R877 / R878 (both outputs pasted) / R879 /
+R880 / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-TESTDB-GUARD PROMPT

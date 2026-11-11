@@ -1,0 +1,105 @@
+AN-APK-DIFF SESSION PROMPT - Mon Releve
+THE RELEASE APK WHOSE CONTENTS MOVED WHILE ITS SIZE DID NOT (queue step C4)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C4. Read relay/QUEUE-STATE.md and the
+OUTCOME (IOS-2e) block of relay/RULINGS-2026-11-03-MOBILE.txt first.
+YOUR OWN advisor may advise you; reserved items come back to the
+orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-AN-APK-DIFF.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/an-apk-diff, NEW branch an-apk-diff cut from origin/main at
+BASE_SHA (the orchestrator's launch message), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout; nothing else
+there. Stage BY NAME. Push an-apk-diff ONLY - DO NOT MERGE. This task
+changes NO code: the report, and at most a script under android/scripts/
+that it ran (if you commit one, it is gated like code). gate:changed
+before every commit; gate:clone before every push (R199).
+
+LIVE STATE (what the repository cannot tell you):
+  - THE APKS, copied out of finished worktrees before their removal, in
+    C:/wt/queue-evidence/ (READ-ONLY - copy what you need into your own
+    worktree's gitignored evidence folder; never write there).
+    SHA256SUMS.txt lists them:
+      52da740  ios2d/base-52da740-app-release-unsigned.apk   e1cf60f7...
+      0616b4e  ios2d/tip-0616b4e-app-release-unsigned.apk    463dc949...
+      19ce23f  ios2e/apk-before-19ce23f.apk                  463dc949...
+      9a6dd55  ios2e/apk-after-9a6dd55.apk                   cc77402f...
+      cf485c4  ios2e-fix/worktree-build-release-unsigned.apk 355afca5...
+    Every one is 1 989 388 bytes. Verify every hash before using a file
+    (sha256sum -c from that folder); a mismatch is a STOP.
+    ios2e/apk-compare.mjs and ios2e-fix/{apk-ios2e,apk-fix,classes}.txt
+    are the earlier sessions' entry-level comparisons.
+  - WHAT IS RECORDED (Ruling 14's OUTCOME): on 9a6dd55 classes.dex +1 145 B
+    stored and baseline.prof -936 B; on cf485c4 (four comment lines)
+    classes.dex -2 B stored with a new CRC and baseline.prof a new CRC -
+    ATTRIBUTED to shifted line numbers, NOT measured at the dex level. The
+    unchanged total is unexplained.
+  - TOOLS: Android SDK build-tools 34.0.0-36.0.0 under
+    %LOCALAPPDATA%/Android/Sdk/build-tools (dexdump, aapt2, zipalign).
+    No device is needed or to be touched. No Gradle build is needed; if
+    you run one, `./gradlew --stop` afterwards and read RAM first
+    (the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only); its own step).
+  - NO PRIVILEGED CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS). Never stop or
+    remove another project's container or process (CLAUDE.md).
+
+RULING NUMBERS: R865-R868; R869-R870 reserved spares. Before committing
+any: `grep -rE '\bR8(6[5-9]|70)\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+A park id takes a free series letter, confirmed with web/scripts/
+register-coverage.mjs (R456).
+
+====================================================================
+THE RULINGS
+====================================================================
+R865. FILE BY FILE, FOR THREE PAIRS. 52da740 -> 0616b4e (IOS-2d),
+    19ce23f -> 9a6dd55 (IOS-2e), 9a6dd55 -> cf485c4 (IOS-2e-FIX). For
+    each: every zip entry's name, stored/compressed size, CRC, offset and
+    extra-field length; then INSIDE what changed - dex (classes, methods,
+    and the debug-info / line-number tables, via dexdump), resources and
+    resources.arsc, the manifest (aapt2 dump), native libraries, the
+    baseline profile, and the signing block (these APKs are UNSIGNED -
+    confirm it and say so rather than skipping the line).
+
+R866. WHY THE TOTAL DID NOT MOVE - MEASURED. Explain the identical
+    1 989 388 bytes from the archive layout itself (alignment padding in
+    extra fields, the central directory, stored-versus-deflated entries -
+    whatever the bytes show). A hypothesis is labelled as one until a
+    number confirms it; the confirming number is pasted.
+
+R867. EVERY DIFFERENCE BY A COMMIT. Each difference found in R865 is
+    tied to the commit(s) in that pair's range that produce it
+    (`git log <pair> -- android` - :shared lives at android/shared - and
+    the diffs), named by SHA and
+    file. A dex change attributed to "shifted line numbers" is confirmed
+    or refuted at the line-number-table level. Anything you cannot
+    explain goes into one list, UNEXPLAINED, with its evidence; the
+    orchestrator takes that list to its advisor, and no Android release is
+    built until it is empty or the advisor rules (the queue's C4).
+
+R868. A REUSABLE COMPARISON, IF IT EARNS ITS PLACE. If the comparison
+    you built is a script others would run again (before a release), put
+    it under android/scripts/ with its usage in its header, run it once in
+    the report on a pair, and say whether a test covers it. If it is a
+    one-off, keep it in your evidence folder and say so. Do not add a
+    dependency.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock; hashes verified.  1. R865 per pair.  2. R866.
+3. R867.  4. R868 (optional).  5. gate:changed; commit.  6. gate:clone
+ALONE on the tip; push the branch.  7. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-AN-APK-DIFF.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R865 (the three tables) / R866 / R867
+(difference -> commit, per pair; UNEXPLAINED, possibly empty) / R868 /
+PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF AN-APK-DIFF PROMPT

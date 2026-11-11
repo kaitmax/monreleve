@@ -1,0 +1,156 @@
+FW-DELAI-RAPPEL SESSION PROMPT - Mon Releve
+ONE REMINDER BEFORE THE DROIT D'OPTION DEADLINE, THEN NOTHING KEPT (queue step C10)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C10. Read relay/QUEUE-STATE.md first, then
+R748-R750 in relay/FW-CALCS-A2.txt and PARK-CA10 / PARK-CA11 in
+parking.md. YOUR OWN advisor may advise you; reserved items
+(dependencies, production, Coolify, the server) come back to the
+orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-DELAI-RAPPEL.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/fw-delai-rappel, NEW branch fw-delai-rappel cut from origin/main at
+BASE_SHA (the orchestrator's launch message), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout; nothing else
+there. Stage BY NAME. Push fw-delai-rappel ONLY - DO NOT MERGE.
+Test-first (a RED run with its reason before each behaviour).
+gate:changed before every commit (it selects test:e2e, test:visual,
+test:db as the paths require); gate:clone before every push (R199).
+
+THE QUEUE'S WORDS (C10): "The person enters an e-mail and the computed
+date; a CONFIRMATION e-mail first (no reminder to an address nobody
+confirmed), using the alert sign-up's confirm flow. One reminder, two
+weeks before the date, through the existing job queue; then the address
+and the date are DELETED (a test proves the row is gone). The privacy
+notice gains the sentence: what is kept, why, until when. The comparator's
+helper shows the form (FW-CALCS-A2 R749 unparks). Deploy under Part B's
+conditions."
+
+LIVE STATE (what the repository cannot tell you):
+  - NO DEPLOY IN THIS SESSION. No Coolify, no SSH, no production (Queue
+    Ruling 1). The promotion - with this task's migration through
+    docs/deploy.md section 4's in-container route, `migrate status`
+    first - is PARKED for the orchestrator (R921).
+  - THE DATE IS INDICATIVE. web/lib/lamal/deadline.ts: the three months
+    are sourced, HOW they are counted is not (PARK-CA11, S3 not found);
+    the helper shows "environ" and the warning to confirm with the fund
+    (row L17). The reminder inherits that: the e-mail says the date is
+    indicative and to confirm with the fund, in the same terms - by KEY
+    from lib/fr, never retyped (R206).
+  - ZERO STORAGE (R750) STILL HOLDS for everything the comparator asks:
+    incomes, the event, the household - none of it reaches the server.
+    The ONLY things this feature stores are the address and the date the
+    person submits, with the minimum the confirm flow needs.
+  - THE MACHINE: heavy steps (test:e2e, test:visual, gate:clone) only
+    under the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only),
+    read in its own step; one at a time. NO PRIVILEGED
+    CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS). frontalier-postgres (:5436):
+    scratch databases only, never the shared `frontalier` database; drop
+    yours at the end. Never start, stop or remove another project's
+    container (CLAUDE.md). Ports 3000, 3100, 3200 are tizicorp's - use
+    FRONTALIER_PORT. Mail goes to the fake outbox only; @monreleve.test
+    addresses only.
+
+RULING NUMBERS: R914-R921; R922-R923 reserved spares. Before committing
+any: `grep -rE '\bR9(1[4-9]|2[0-3])\b' relay/ REPORT-*.txt CLAUDE.md
+docs`. A park id takes a free series letter, confirmed with
+web/scripts/register-coverage.mjs (R456).
+
+HARD BOUNDARIES: no engine change; no change to how the deadline is
+computed; an ADDITIVE migration only (a new table; nothing altered or
+dropped); no new dependency (Ask first); copy in lib/fr, fully accented
+(R155); nothing claims more than the record supports (CLAUDE.md's
+"never claim more" rule and its word list - read there, not here, R168).
+
+====================================================================
+THE RULINGS
+====================================================================
+R914. THE RECORD, MINIMAL, AND ITS CONSTRAINTS IN THE DATABASE (R196).
+    One new table: the address, the deadline date, what the confirm flow
+    needs (a token HASH, never the token), the server's timestamps. The
+    invariants the database can express are constraints, proven in both
+    directions (an illegal row refused BY CONSTRAINT NAME, a legal one
+    accepted). Every column appears in the privacy enumeration
+    (lib/content/personal-data.ts, DISCLOSED_RECORDS) - the existing test
+    fails until it does; that failure is your RED.
+
+R915. CONFIRMATION FIRST, BY THE ALERT FLOW'S MECHANICS. Reuse
+    lib/alerts' confirm machinery (token, hash, single use, expiry, the
+    purge of unconfirmed rows) rather than writing a second one; where it
+    is too specific to reuse, extract the shared part and keep the alert
+    tests green, untouched. An unconfirmed row never gets a reminder (a
+    test), and unconfirmed rows are purged on the alert flow's schedule.
+    The same address submitted twice does not create two reminders. The
+    response never tells a caller whether an address was already known
+    (enumeration).
+
+R916. ONE REMINDER, FOURTEEN DAYS BEFORE, THEN THE ROW IS GONE. Scheduled
+    through the existing job queue (pg-boss, lib/jobs or wherever the
+    queue lives - find it). On send: the row is DELETED in the same unit
+    of work, and a test reads the table afterwards and finds nothing
+    (R154: a positive test of delivery AND a positive test of deletion).
+    A failed send is retried by the queue's policy and the row stays
+    until it succeeds or the deadline passes, whichever is first - after
+    the deadline the row is deleted unsent (a test). A delete link in
+    every message removes the row at once (a test).
+    QUESTION, not a decision: a date fewer than fourteen days away when
+    the person signs up or confirms. Do not invent the behaviour: hide
+    the form for such dates (the conservative choice, no mail ever
+    sent for them) and hand the alternative back as a QUESTION.
+
+R917. THE MESSAGES. Copy in lib/fr. The confirmation and the reminder
+    each carry the indicative-date warning by key, the delete link, and
+    nothing the record does not support. R245: decide from the header
+    rule whether these are list or transactional mail and assert the
+    List-Unsubscribe pair present or absent accordingly, in both
+    directions.
+
+R918. THE FORM IN THE HELPER. The DeadlineHelper on /calculateur-lamal-cmu
+    shows the form once a date is computed; the date sent is the
+    computed one, never retyped by the person, and nothing else from
+    the comparator leaves the page (R750 - a test inspects the request
+    body). A11y, the A2 design language, tokens only; R225: the
+    confirmation state is asserted present on the rendered page.
+    Budgets (R2) hold; the size report pasted.
+
+R919. THE PRIVACY NOTICE. One sentence, by the existing mechanism (keyed
+    to the record, R206): what is kept (the address and the date), why
+    (to send one reminder), until when (deleted when the reminder is
+    sent, when the deadline passes, or at once by the link; unconfirmed
+    rows purged). /confidentialite rendered and asserted.
+
+R920. THE ROUND TRIP (R204). One test drives the whole path through the
+    real route handlers: submit -> the confirmation mail in the fake
+    outbox -> its link -> the job fires at its time (a controllable
+    clock) -> the reminder in the outbox -> the table is empty.
+
+R921. WHAT IS PARKED FOR THE ORCHESTRATOR: the promotion checklist, in
+    order - gate:clone on the exact SHA; the migration through section 4's
+    route with `migrate status` first; the fast-forward push; the
+    after-deploy checks (health, ready, the form on the live page, one
+    real sign-up with a @monreleve.test address whose confirmation
+    arrives, and its delete link removing the row - read by count, never
+    by printing addresses); the rollback if any check fails.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock, scratch DB.  1. R914 (RED: the disclosure test).
+2. R915.  3. R916.  4. R917.  5. R918 + R919.  6. R920.  gate:changed and
+a commit after each increment.  7. The walkthrough (R176): `pnpm dev`,
+the page driven, the form used, the mail read from the outbox.
+8. gate:clone ALONE on the tip; push the branch.  9. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-FW-DELAI-RAPPEL.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R914-R920 (each with its RED) /
+WALKTHROUGH / R921 (the checklist) / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF FW-DELAI-RAPPEL PROMPT

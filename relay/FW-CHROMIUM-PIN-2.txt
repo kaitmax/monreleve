@@ -1,0 +1,118 @@
+FW-CHROMIUM-PIN-2 SESSION PROMPT - Mon Releve
+THE CHROMIUM PIN, AGAIN (queue step C1b, Queue Ruling 2)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt, on Queue Ruling 2 (relay/RULINGS-2026-11-11.txt):
+"the pin bump is the next session, before C2". Read relay/QUEUE-STATE.md
+(HOLDS) first. YOUR OWN advisor may advise you; reserved items
+(dependencies, production, Coolify, the server) come back to the
+orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-CHROMIUM-PIN-2.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/fw-chromium-pin-2, NEW branch fw-chromium-pin-2 cut from origin/main
+at BASE_SHA (below), your lock in it. You may run `git fetch` and `git
+worktree add` from the main checkout (its lock says so); nothing else
+there. Stage BY NAME. Push fw-chromium-pin-2 ONLY - DO NOT MERGE; never
+main, never production. gate:changed before every commit (a Dockerfile
+change selects test:container, R251); gate:clone before every push (R199).
+
+BASE_SHA: see the orchestrator's launch message (origin/main after the
+C1 record commit).
+
+LIVE STATE (what the repository cannot tell you):
+  - WHY: web/Dockerfile:65 pins ARG CHROMIUM_VERSION=156.0.8078.73-1~deb12u1.
+    C1 (REPORT-FW-READY-GATE.txt, QUESTION 2) measured on 2026-11-11 that
+    Debian no longer offers it and offers 156.0.8078.79-1~deb12u1. R249's
+    guard therefore stops any build that does not take the Chromium layer
+    from this machine's cache. It is the second time in nine days: .47 ->
+    .73 was FW-CHROMIUM-PIN on 2026-11-03 (REPORT-FW-CHROMIUM-PIN.txt).
+  - THE CACHE IS WHAT KEEPS main BUILDABLE until this lands. NO PRUNE OF
+    ANY KIND - builder, system, image, volume - on this machine (QUEUE-STATE
+    HOLDS). A build that must not use the cache uses `--no-cache` (or
+    `--no-cache-filter`), which reads past the cache without deleting it.
+  - THE MACHINE: heavy steps (image builds, test:container*, test:visual,
+    gate:clone) only with >= 1.5 GB free read in its own step; one at a
+    time; a heavy step WAITS for memory. NO PRIVILEGED CONTAINERS and
+    nothing written to the Docker VM's kernel tunables (Queue Ruling 2,
+    deviation 5 of C1 - not to be repeated). frontalier-postgres (:5436)
+    is up; scratch databases only, never the shared `frontalier`
+    database; drop yours at the end. Never start, stop or remove another
+    project's container (CLAUDE.md). Ports 3000, 3100, 3200 are
+    tizicorp's - use FRONTALIER_PORT.
+  - NO COOLIFY, NO SSH, NO PRODUCTION (Queue Ruling 1).
+
+RULING NUMBERS: R852-R855; R856-R857 reserved spares. Before committing
+any: `grep -rE '\bR85[2-7]\b' relay/ REPORT-*.txt CLAUDE.md docs`. A park
+id takes a free series letter, confirmed with web/scripts/register-
+coverage.mjs (R456).
+
+HARD BOUNDARIES: the ONE line ARG CHROMIUM_VERSION changes in the
+Dockerfile, nothing else there; no route, engine, copy or test change
+(e2e/home.spec.ts included - see R854); no new dependency.
+
+====================================================================
+THE RULINGS
+====================================================================
+R852. RED FIRST, FROM TODAY'S ARCHIVE. `apt-cache madison chromium` in
+    node:22-bookworm-slim (the archive moves: use what it lists at the
+    time of the run, never this prompt's number), and R249's refusal on
+    BASE_SHA from a build that does not use the cache for the runner's
+    Chromium layer. Both pasted.
+
+R853. THE PIN. Set the ARG to the newest version in bookworm-security
+    with the SAME major (156). A different major is a STOP: hand it back
+    as QUESTION 1 with the listing, change nothing.
+
+R854. THE PDF, RENDERED BY THE IMAGE'S CHROMIUM. Part B's deploy
+    condition: "the PDF proven when the renderer, the dossier or the
+    Dockerfile changed". The only suite that renders it through the
+    image's Chromium is tests/db/container-pdf.test.ts, run by
+    `pnpm test:container:e2e` - which stopped before its PDF step last
+    time, at e2e/home.spec.ts:197 (deterministic in container mode;
+    REPORT-FW-CHROMIUM-PIN.txt, SUITES RUN item 4). Run test:container:e2e.
+    If it stops before the PDF step again, run the two vitest files it
+    would have run - tests/db/container-auth.test.ts and
+    tests/db/container-pdf.test.ts, `--config vitest.db.config.ts` -
+    against a container of the NEW image with the same environment
+    scripts/container-e2e.mjs passes them (its "THE AUTH ROUND TRIP" block:
+    DATABASE_URL, CONTAINER_BASE_URL, FRONTALIER_INSTANCE_ID, the print
+    secret the container holds). R133: paste the NON-ZERO pass count -
+    both files skip silently without CONTAINER_BASE_URL, and a skip exits
+    0. Do NOT edit home.spec.ts: record the mismatch under NOTICED BUT NOT
+    TOUCHING (REPORT-FW-CHROMIUM-PIN.txt's QUESTION 1 asked whether it is
+    its own task; it was never ruled).
+
+R855. BASELINES AND ONE MEASUREMENT. `pnpm test:visual` (if the gate did
+    not select it). Expected: no baseline moves (Playwright drives its own
+    browser, not the Debian package). If ANY moves, STOP before
+    regenerating and hand back the list (R207, R135). Then, for C1's
+    QUESTION 4 (the 60 s start period): from one container of the new
+    image, the time from .State.StartedAt to the first passing health
+    probe in .State.Health.Log, read with `docker inspect`, three starts,
+    all three pasted. Measured, not argued.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock, scratch DB.  1. R852 RED.  2. R853, gate:changed,
+commit.  3. R854.  4. R855.  5. gate:clone ALONE on the tip (a memory
+death is NO RESULT, re-run once; two in a row: stop). Push the branch.
+6. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-FW-CHROMIUM-PIN-2.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape: the gates that ran on the reported tip,
+their lines pasted) / R852 (the listing, the refusal) / R853 / R854 (the
+suite's lines; if the fallback ran, its command with secrets elided and
+its pass count) / R855 (baselines; the three start-to-healthy times) /
+NOTICED BUT NOT TOUCHING (home.spec.ts:197; the cadence - the pin broke
+twice in nine days, and what the options are, without choosing one) /
+PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-CHROMIUM-PIN-2 PROMPT

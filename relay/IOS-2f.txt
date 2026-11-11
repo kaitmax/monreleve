@@ -1,0 +1,130 @@
+IOS-2f SESSION PROMPT - Mon Releve
+THE iOS PIECES THAT NEED NO APP HOST (queue step C8)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C8. Read relay/QUEUE-STATE.md, and
+REPORT-IOS-2e.txt's R839 ("WHAT IS LEFT, WRITTEN DOWN - THE END STATE")
+whole, first: it is this task's input. YOUR OWN advisor may advise you;
+reserved items (dependencies, iOS minutes beyond your budget, production)
+come back to the orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2f.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/ios2f, NEW branch ios2f cut from origin/main at BASE_SHA (the
+orchestrator's launch message), your lock in it. You may run `git fetch`
+and `git worktree add` from the main checkout; nothing else there. Stage
+BY NAME. Push ios2f ONLY - DO NOT MERGE. Test-first (a RED run, with its
+reason, before each piece's code). `./gradlew fastCheck` per increment
+(R390); the FULL `:app:gate` on the reported tip (R391); gate:clone
+before every push (R199).
+
+THE QUEUE'S WORDS (C8): "the remaining iOS pieces from REPORT-IOS-2e
+(R839) that can be built and tested on the simulator WITHOUT an app host:
+the account store, the sync trigger logic, the export file generation,
+the notification scheduling logic. Location and detection are OUT (their
+own measured gate later). Anything that needs an app host (share sheet,
+UNUserNotificationCenter permission, BGTaskScheduler) is PARKED to
+IOS-1b-B with what was proven. Android unchanged (0 files under
+android/app). Within the minutes cap."
+
+LIVE STATE (what the repository cannot tell you):
+  - iOS MINUTES. The step's cap is 60 billed macOS minutes, the queue's
+    200; a run costs about 9 billed minutes. YOUR BUDGET: FOUR runs of
+    `gh workflow run ios-shared.yml --ref ios2f`, at most. The orchestrator
+    keeps the rest for the merge-result run (R573). Record each run's id
+    and its billed time (`gh api repos/{owner}/{repo}/actions/runs/<id>/
+    timing`, the MACOS billable ms). Never re-run a red run blindly: read
+    its log, fix, then spend the next run. A fifth run is a STOP: hand back
+    with what is green and what is not. Never cancel or re-run anyone
+    else's run.
+  - WHAT EXISTS (do not rebuild it): android/shared/src/iosMain/.../ios/
+    already holds IosSyncTrigger.kt, FileDossierCache.kt,
+    KeychainTokenStore.kt, KeychainPendingSignInStore.kt,
+    UserDefaultsSettingsStore.kt, NsUrlSessionTransport.kt and others.
+    The CI simulator is BOOTED and tests run non-standalone, so the
+    Keychain answers (IOS-1a R565: standalone gave errSecNotAvailable).
+    Map the queue's four pieces against R839's list AND these files
+    before writing anything: a piece that exists is reported as existing,
+    with its test, not written twice.
+  - THE MACHINE: Windows; iOS compiles only in the cloud run (R575 dropped
+    local iOS klibs). Gradle is heavy: read free RAM in its own step
+    before :app:gate / gate:clone (the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only): Gradle's figure for :app:gate,
+    the web figure for gate:clone; each under the sampler); `./gradlew --stop` after
+    each Gradle run. NO PRIVILEGED CONTAINERS, NO PRUNE (QUEUE-STATE
+    HOLDS). No device: do not touch the phone.
+
+RULING NUMBERS: R888-R895; R896-R897 reserved spares. Before committing
+any: `grep -rE '\bR8(8[89]|9[0-7])\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+A park id takes a free series letter, confirmed with web/scripts/
+register-coverage.mjs (R456).
+
+HARD BOUNDARIES: 0 files under android/app (asserted in the report with
+`git diff --stat BASE_SHA -- android/app`). New code in iosMain/iosTest.
+A commonMain change only where an interface must be shared, with Android's
+behaviour unchanged - the full :app:gate green and the 142 Paparazzi
+baselines byte-identical at 0.0 prove it. No new dependency (Ask first).
+No product decision: where R839 says "an iOS implementation must decide
+the same or say otherwise", it decides THE SAME as Android, or STOPs.
+
+====================================================================
+THE RULINGS
+====================================================================
+R888. THE MAP FIRST. A table: each of the queue's four pieces, R839's
+    lines it covers, what already exists (file, test), what is missing,
+    and whether the missing part needs an app host - measured where it
+    can be (one probe test) or argued from Apple's documentation, labelled
+    which. Committed before any code.
+
+R889. THE ACCOUNT STORE (R839: "an AccountStore for iOS"; "an iOS
+    LocalStore that clears ..."). Keyed and cleared as Android's is;
+    sign-out and deletion clear it, with a test for each.
+
+R890. THE SYNC TRIGGER LOGIC. Whatever of "syncNow / a composed iOS
+    SyncEngine" runs without BGTaskScheduler: the decision of when to sync
+    and the call into the shared engine, tested on the simulator. The
+    scheduling half that needs BGTaskScheduler is PARKED to IOS-1b-B.
+
+R891. THE EXPORT FILE. exportBytes produces the file the share sheet would
+    hand over - written to the app's temporary directory, its bytes equal
+    to what the shared export produces for the same fixture (a golden, or
+    the Android path's own fixture). The share sheet itself
+    (UIActivityViewController) is PARKED to IOS-1b-B.
+
+R892. THE NOTIFICATION SCHEDULING LOGIC. The decision of WHAT to schedule
+    and WHEN (evening reminder, threshold alert), pure, tested - deciding
+    the same as Android's EveningNotificationDecision / ThresholdAlert-
+    Decision. Posting through UNUserNotificationCenter and its permission
+    is PARKED to IOS-1b-B.
+
+R893. WHAT IS PARKED, WITH WHAT WAS PROVEN. One entry per parked half in
+    IOS-1b-B's input (R839's list updated): what it needs (the host, the
+    entitlement, the API), and which test here proves the logic it will
+    call.
+
+R894. R839 UPDATED. The report re-states R839's "EVERY iOS PIECE STILL
+    MISSING" with this task's pieces moved out of it.
+
+R895. THE RUNS. A table of every cloud run: id, commit, result, billed
+    minutes, and the cumulative total; the last one GREEN on the code tip.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock.  1. R888 (the map, committed).  2. R889-R892, each
+test-first; fastCheck and a commit per increment; cloud runs within the
+budget.  3. R893-R894.  4. The FULL :app:gate on the tip; gradlew --stop;
+RAM; gate:clone ALONE; push the branch.  5. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-IOS-2f.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape: :app:gate's BUILD line and exit code;
+gate:clone's lines; the last iOS run) / R888 (the map) / R889-R892 /
+R893 / R894 / R895 (the runs table) / PARKED / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF IOS-2f PROMPT

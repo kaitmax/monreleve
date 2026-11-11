@@ -39,16 +39,40 @@ none
    measured. **The operator's action:** keep 60 s, or allow a shorter start period (the
    2 s start interval makes the container healthy on its first passing probe either way).
 
+5. **C1b's QUESTION 2 - the Chromium pin cadence.** The pin has broken twice in nine days (.47 -> .73 on 2026-11-02, .73 -> .79 on 2026-11-11): Debian keeps only the newest point release. **In force: option (a)**, an exact pin bumped by a one-line commit on each release, with a same-day madison read before every promotion (P1 item 0). The other options are in REPORT-FW-CHROMIUM-PIN-2.txt's NOTICED section: (b) a scheduled read-only drift check; (c) the .deb from snapshot.debian.org; (d) a prebuilt base image by digest; (e) pin the major only; (f) Playwright's Chromium. Options (c)-(f) change R249 or add infrastructure. **The operator's action:** keep (a), or choose another.
+
+## PARKED TASKS (outside this queue - Queue Ruling 4)
+
+- **e2e/home.spec.ts:197 against the image.** test:container:e2e stops there (`database?.ok` expected null, received true), so it never reaches its PDF step. It was REPORT-FW-CHROMIUM-PIN.txt's QUESTION 1 and never ruled. The task first establishes which side is wrong. If the image's `/api/health` touches the database, that is an R375 question to hand back, not a test edit. Until then, the PDF proof for a Dockerfile change is C1b's fallback (REPORT-FW-CHROMIUM-PIN-2.txt R854).
+- **gate:clone keeps a 14-line tail per step**, so a short unit count is invisible in its log. The step still fails on a red suite, but a run with fewer tests than before reads the same. Found by C1b (its deviation 6).
+
 ## HOLDS (until lifted)
 
-- **No `docker builder prune` / `system prune` / image prune on this machine or on the server**
-  until the Chromium pin is bumped (C1's QUESTION 2): Debian dropped `156.0.8078.73-1~deb12u1`,
-  so a cold build fails R249 and every build here takes the Chromium layer from cache. Every
-  gate:clone verdict until then reads "Chromium layer from cache; a cold build fails R249".
+- **No `docker builder prune` / `system prune` / image prune on this machine** (Queue Ruling 4).
+  The pin moved to `156.0.8078.79-1~deb12u1` (C1b), and the archive installed it on 2026-11-11
+  (`#12 DONE 132.0s`), so a cold build passes today. The hold stays for a new reason: Debian
+  keeps only the newest point release, so this cache is what keeps gates green between a Debian
+  release and the next one-line bump. Cadence option (a) is in force; options (c)-(f) are the
+  operator's. On the server, C2's image prune keeps the rollback images that C7 names.
 - **No privileged containers**, and nothing written to the shared Docker VM's kernel tunables:
-  C1 dropped the page cache twice that way (Queue Ruling 2, deviation 5). A heavy step waits for
-  memory.
-- **Next ruling number: R852** (R844-R851 are C1's).
+  C1 dropped the page cache twice that way (Queue Ruling 2, deviation 5). No Docker Desktop / WSL
+  restart either (it can start other projects' stopped containers through their restart
+  policies - the operator's, A1).
+- **THE MEMORY FLOOR (Queue Rulings 3-4) - the one home of the figure; prompts point here.** The
+  old 1.5 GB free-physical floor was the orchestrator's convention, never the operator's number.
+  Commit free is what decides dead workers on Windows. Read it in its own step:
+  `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory/1024`.
+  - **Web heavy steps** (test:e2e, test:visual, test:container:e2e, gate:clone): commit free
+    **>= 5 000 MB** before the step. Measured by C1b: gate:clone bottomed at 4 589 MB commit
+    free and 261 MB free physical, with no deaths.
+  - **Gradle heavy steps** (`:app:gate`, recordPaparazzi, assembleRelease): **>= 7 000 MB** after
+    `./gradlew --stop`. This is provisional and unmeasured; the first Gradle step's minimum
+    replaces it.
+  - **Every heavy step** runs under `C:/wt/queue-evidence/run-sampled.ps1 -Label <name> -WorkDir
+    <dir> -Command "<cmd>" -EvidenceDir <your evidence dir>`. It samples every 10 s and, below
+    2 000 MB commit free, kills ONLY the tree it started; that is NO RESULT. The step's minimum
+    commit free and free physical go in the report.
+- **Next ruling number: R924** (C9 holds R898-R913, C10 R914-R923).
 
 ## PARKED PROMOTIONS (run in this order once the token is back)
 
@@ -56,8 +80,10 @@ none
 
 From REPORT-FW-READY-GATE.txt's R849, with the PDF line added (Queue Ruling 2):
 
-- [ ] 0. The Chromium pin is bumped and merged (HOLDS). A promotion before it builds only if the
-      server's cache still holds the old layer - never rely on that.
+- [ ] 0. On the day of the promotion, run `apt-cache madison chromium` in `node:22-bookworm-slim`
+      and check that it still offers the pinned `CHROMIUM_VERSION` (web/Dockerfile). If it does
+      not, bump the pin first, as a one-line commit through its own gate (Queue Ruling 4). The
+      server cannot build a version the archive no longer has.
 - [ ] 1. QUESTION 1 stays open: Coolify's deploy check stays OFF.
 - [ ] 2. gate:clone alone on the exact SHA promoted. No migration in this change.
 - [ ] 3. `git push origin <sha>:production`, fast-forward. Watch Coolify's deployment list
@@ -89,6 +115,8 @@ The 27 minutes of IOS-2d / IOS-2e / IOS-2e-FIX on 2026-11-11 predate the queue.
 
 ## EVIDENCE OUTSIDE THE REPO
 
+`C:/wt/queue-evidence/run-sampled.ps1` is the memory sampler every heavy step runs under (Queue Ruling 4; copied from C1b, with only the evidence directory made a parameter). `C:/wt/fw-chromium-pin-2/.pin2-evidence/` holds C1b's logs.
+
 `C:/wt/queue-evidence/` - the release APKs and gate logs copied out of the IOS-2d/2e/2e-FIX
 worktrees before A6 removes them, with `SHA256SUMS.txt`: 52da740 `e1cf60f7`, 0616b4e = 19ce23f
 `463dc949`, 9a6dd55 `cc77402f`, cf485c4 `355afca5`. C4 reads these.
@@ -101,13 +129,52 @@ app `pkptabevr1nhtyygrq0mc8qx`, database `poxl2l4x0p0fxd85or0itnxo`. First conta
 read-only: `hostname; whoami; docker ps | grep <uuids>` and one `docker inspect` of the app
 container.
 
+## C11 - THE GUIDE AND THE HUB (PARKED FOR THE OPERATOR'S DECISION)
+
+**The trigger did not fire.** The queue runs C11 "when FW-CALCS-A2's report lists the overlap"
+between /guides/droit-option-lamal-cmu and the comparator page. REPORT-FW-CALCS-A2.txt does not
+list it: a grep for overlap, droit-option-lamal-cmu, Search Console and redirect returns nothing,
+and none of the FW-CALCS-A2 prompts asked for it. Nothing in the repository measures the overlap.
+
+**What the repository does show (main bf2b77b, read 2026-11-11):**
+- The guide's frontmatter `title` (content/guides/droit-option-lamal-cmu.mdx) and the comparator's
+  `LAMAL_COPY.metaTitle` (lib/fr, set by R675) both open on the droit d'option. The two pages
+  compete for that query.
+- Their roles already differ in the copy:
+  - The guide explains the deadline, the four situations that open it and why the choice is
+    irrevocable, and gives no amount. Its last FAQ answer says so and points to the comparator.
+  - The comparator computes the two annual costs, and its DeadlineHelper gives the indicative
+    date (PARK-CA11).
+
+**The options, without figures** (this machine has no Search Console access; the figures are the
+operator's):
+1. **Keep both, with distinct roles.**
+   - The guide keeps the droit d'option query.
+   - The comparator's `metaTitle` moves to the cost question and stops opening on the droit
+     d'option.
+   - Each page links the other where its role ends (the guide's FAQ link exists already).
+   - Cost: one copy change that reopens R675's title, and the comparator's baselines move. No
+     redirect.
+   - Risk: the page currently ranked for the query may lose position while the titles settle.
+2. **Redirect the guide to the comparator (308)**, folding the guide's content into the
+   comparator page as its explanatory section.
+   - Cost: a published URL is retired, which SPEC section 14 treats as permanent, so this needs
+     an explicit ruling. The guide's FAQ structured data moves or is lost, and the cluster and
+     related links are rewired.
+   - Risk: the most-shown page changes URL.
+3. **Do nothing:** keep both as they are and re-read the figures after a quarter.
+
+**The operator's action:** export from Search Console, for both URLs over the last 3 months: clicks,
+impressions, average position and the top queries. Then choose among options 1-3. A session then
+writes the chosen option as a task, with its baselines named (R207).
+
 ## STEPS
 
 | step | status | SHAs | verified how | rulings |
 |---|---|---|---|---|
 | C0 is the new design live | DONE | production 52caca8 | deployed image read on the server: `pkptabevr1nhtyygrq0mc8qx:52caca8cf6388cb596c9a074175756d16a867858`; /api/health 200 naming monreleve; /api/ready 200 (database ok); /calculateur-lamal-cmu serves R743's "Individuelle"/"Commune", copy that exists only from the fw-calcs-a2 merge. ADDENDUM 1 was never delivered (FW-CALCS-A2.txt's orchestrator note), so "both addenda" = addendum 2 under the exception it restates. ORCH-A2-LIVE (named, nonexistent) not needed. | Queue Ruling 1 |
-| C1 FW-READY-GATE | MERGED, readiness gate NOT delivered - releases still gated on liveness only; promotion PARKED (P1) | branch b339a88 (code ef88fa3); merge b4df928 | V1: tips, 5-file diff, merge tree == branch tip on web/docs/report; gate:clone PASSED on ef88fa3 (session log); r847.log both directions (unmigrated exit=1 + 503 `unmigrated`, migrated exit=0 + 200); R846 value tests. V2: gate:clone runs on the commit that carries this row, before its push; the verdict is recorded in the next QUEUE-STATE commit (it cannot be written into the commit it vouches for). V3: Queue Ruling 2. QUESTIONS 1 and 4 -> BLOCKED 3-4; Q2 -> step C1b; Q3 curl confirmed. | Queue Ruling 2 |
-| C1b FW-CHROMIUM-PIN-2 (Queue Ruling 2, before C2) | next | | | |
+| C1 FW-READY-GATE | MERGED, readiness gate NOT delivered - releases still gated on liveness only; promotion PARKED (P1) | branch b339a88 (code ef88fa3); merge b4df928 | V1: tips, 5-file diff, merge tree == branch tip on web/docs/report; gate:clone PASSED on ef88fa3 (session log); r847.log both directions (unmigrated exit=1 + 503 `unmigrated`, migrated exit=0 + 200); R846 value tests. V2: gate:clone PASSED on bf2b77b, the commit carrying this row (scratchpad clone-bf2b77b.log, EXIT 0), before its push. At that time the Chromium layer came from cache; C1b has since installed .79 from the archive (Queue Ruling 4). V3: Queue Ruling 2. QUESTIONS 1 and 4 -> BLOCKED 3-4; Q2 -> step C1b; Q3 curl confirmed. | Queue Ruling 2 |
+| C1b FW-CHROMIUM-PIN-2 (Queue Ruling 2, before C2) | MERGED - the pin is 156.0.8078.79-1~deb12u1; no promotion of its own (it rides P1, item 0) | branch 0df4463 (code 8559d89); merge 7065b1b | V1 checks: diff bf2b77b..8559d89 = web/Dockerfile 1+/1-. R852: madison 18:06:22Z offered .79 and 150.0.7871.100; the R249 refusal on bf2b77b is "#14 6.960 R249: ... .73 ... not installable". gate:changed on 8559d89: 3622 passed, test:container 22, chromium "#12 DONE 132.0s" from the archive, live binary 156.0.8078.79. gate:clone PASSED on 8559d89 (STEP_EXIT=0, ABORTED=False); its normalized log has every step tail identical to clone-bf2b77b.log. R854: container:e2e 352 passed, 1 failed at home.spec.ts:197 (parked task); the fallback container-auth + container-pdf on the .79 image gave 9 passed, "[pdf] image: 162997 bytes, 9 pages". R855: visual 168 passed, none moved; three warm starts 2.31 / 2.29 / 2.33 s, not comparable with C1's. Memory minimums: commit free 4 589 MB, free physical 219 MB, no deaths. Merge tree == branch on web/docs/report. V2: gate:clone on this commit, before its push; the verdict goes in the next QUEUE-STATE commit. | Queue Rulings 3-4 |
 | C2 FW-SECRETS (its prune of this app's server images waits for C1b - HOLDS) | | | | |
 | C3 DB password rotation (prepare) | PARKED FOR THE OPERATOR (prepared, never executed) | - | relay/DB-ROTATION-PLAN.md: inventory, backup, stage env, ALTER ROLE, restart, align Coolify record, verify both directions (old password refused, new accepted), backups, rollback. Option B struck by C1's R844 (Queue Ruling 2): the release gate is the image's `/api/health`, which a container with a wrong password passes. Basis: relay/QUEUE-2026-10-28.txt "A Coolify restart applies env (measured)" - not re-run (no token). **Operator action:** authorise the rotation with a time; then the plan runs as written. | - |
 | C4 AN-APK-DIFF | | | | |
@@ -117,4 +184,4 @@ container.
 | C8 IOS-2f | | | | |
 | C9 FW-WEB-ACCOUNT | | | | |
 | C10 FW-DELAI-RAPPEL | | | | |
-| C11 the guide and the hub | | | | |
+| C11 the guide and the hub | PARKED FOR THE OPERATOR - trigger not fired (REPORT-FW-CALCS-A2 lists no overlap) | - | the options and the operator's action in the C11 section above; no Search Console access here | - |
