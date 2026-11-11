@@ -7,6 +7,13 @@ The queue's memory. After any compaction, or when unsure where the queue is: rea
 
 none
 
+Known condition, not a new incident (Queue Ruling 5): REPORT-FW-CHROMIUM.txt section 4 read
+RESEND_API_KEY and FCM_PRIVATE_KEY marked build-time in Coolify on 2026-10-21, and a build
+argument is recorded in the image history WITH ITS VALUE (C2 measured the mechanism locally).
+Exposure in the serving image is PRESUMED and UNMEASURED until P2 item 1's baseline count. The
+containment is P2 item 5d, revoking the old keys after A5's rotation; C2 (merged) and A5 exist
+for it.
+
 ## BLOCKED ON THE OPERATOR
 
 1. **THE COOLIFY API TOKEN IS GONE.** `C:/Users/KAMXKAM/AppData/Local/Temp/cf/` exists and is empty;
@@ -17,8 +24,8 @@ none
    unknown, so treat it as lost. Until then (Queue Ruling 1): no `production` promotion, because
    Part B's rollback ("restore the previous deployment from Coolify at once") cannot be done; code
    lands on `main`, and each promotion is PARKED below with its exact command and after-deploy
-   checks, to run in order (C1 first) when the token is back. C2's Coolify setting (untick Build
-   Variable) parks the same way. **C1's is not a parked action: Coolify's deploy health check is
+   checks, to run in order (C1 first) when the token is back. C2's Coolify setting ("Build time" =
+   "Not available during build", P2 item 1) parks the same way. **C1's is not a parked action: Coolify's deploy health check is
    DO NOT ENABLE** until QUESTION 1 below is ruled (Queue Ruling 2).
 
 2. **C3, THE DATABASE PASSWORD ROTATION** - prepared in `relay/DB-ROTATION-PLAN.md`, never executed. **The operator's action:** authorise it with a time (it also needs Coolify - the UI, or a new token).
@@ -41,10 +48,26 @@ none
 
 5. **C1b's QUESTION 2 - the Chromium pin cadence.** The pin has broken twice in nine days (.47 -> .73 on 2026-11-02, .73 -> .79 on 2026-11-11): Debian keeps only the newest point release. **In force: option (a)**, an exact pin bumped by a one-line commit on each release, with a same-day madison read before every promotion (P1 item 0). The other options are in REPORT-FW-CHROMIUM-PIN-2.txt's NOTICED section: (b) a scheduled read-only drift check; (c) the .deb from snapshot.debian.org; (d) a prebuilt base image by digest; (e) pin the major only; (f) Playwright's Chromium. Options (c)-(f) change R249 or add infrastructure. **The operator's action:** keep (a), or choose another.
 
+6. **REMINDERS NEED `FRONTALIER_SCHEDULER`, NOT ONLY A KEY** (C2's NOTICED, Queue Ruling 5).
+   Production's startup log in October said `[scheduler] not started (non_local_database)`
+   (REPORT-FW-CHROMIUM.txt, from #444's dump). Without `FRONTALIER_SCHEDULER=1` the reminder job
+   never runs, whatever the FCM key. It is not the orchestrator's to set: it turns on a job that
+   sends to real devices. P2 item 7's claim and C10 (FW-DELAI-RAPPEL) depend on it. **The
+   operator's action:** decide whether production runs the scheduler. If yes, in the same Coolify
+   visit as P2 item 1, add `FRONTALIER_SCHEDULER` = `1`, runtime only ("Build time" = "Not
+   available during build"), then restart, and read the `[scheduler]` line (P2 item 6).
+
+7. **C2's Q1, NON-BLOCKING - a quoted `FCM_PRIVATE_KEY`** (Queue Ruling 5). In force: REFUSED
+   with `malformed_private_key: quoted`, and the startup line names the fix. The alternative,
+   unwrapping one pair of outer quotes, widens what counts as a credential. **The operator's
+   action:** none needed. Say so only if the quoted form should be accepted.
+
 ## PARKED TASKS (outside this queue - Queue Ruling 4)
 
 - **e2e/home.spec.ts:197 against the image.** test:container:e2e stops there (`database?.ok` expected null, received true), so it never reaches its PDF step. It was REPORT-FW-CHROMIUM-PIN.txt's QUESTION 1 and never ruled. The task first establishes which side is wrong. If the image's `/api/health` touches the database, that is an R375 question to hand back, not a test edit. Until then, the PDF proof for a Dockerfile change is C1b's fallback (REPORT-FW-CHROMIUM-PIN-2.txt R854).
 - **gate:clone keeps a 14-line tail per step**, so a short unit count is invisible in its log. The step still fails on a red suite, but a run with fewer tests than before reads the same. Found by C1b (its deviation 6).
+- **The annual PDF went from 9 to 10 pages between C1b and C2, cause NOT ESTABLISHED** (Queue Ruling 5). C1b: "image: 162997 bytes, 9 pages; here: 197462 bytes, 9 pages"; C2: "image: 163847 bytes, 10 pages; here: 199305 bytes, 10 pages". Both sides moved, and "here" renders the HTML served by the same container, so the change is in the served page, not in a renderer. C2's diff touches no renderer or dossier path. The baked-origin explanation is refuted by reading: the print page's only origin input is `MONRELEVE_VERIFICATION_ORIGIN`, which neither fallback set. **Until this is closed, every PDF proof records:** its page count, the image's baked origin, whether `MONRELEVE_VERIFICATION_ORIGIN` was set, and the render's UTC time.
+- **C1b's `r854-fallback.sh` polls health with an unbounded `curl`**, which hung C2's first PDF run when the entrypoint refused. Later PDF proofs use C2's bounded pattern (`C:/wt/fw-secrets/.secrets-evidence/pdf-fallback.sh`: the origin read from the image's `/etc/frontalier-site-origin`, `--max-time` on curl, and a stop if the container exits).
 
 ## HOLDS (until lifted)
 
@@ -105,6 +128,60 @@ From REPORT-FW-READY-GATE.txt's R849, with the PDF line added (Queue Ruling 2):
       on production for a `@monreleve.test` account, opened, its pages and timestamps read.
 - [ ] 10. Any failed item: restore the previous deployment from Coolify at once, then fix.
 
+### P2 - C2 FW-SECRETS (main d036e67 or later; after P1; needs the token back, and A5's keys for item 5)
+
+From REPORT-FW-SECRETS.txt's R862, amended by Queue Ruling 5. Every server command names this
+app's uuid. Counts only: never print a history line or a value.
+
+- [ ] 1. **THE BUILD-TIME SETTING (R860), one Coolify visit.** Re-read the variables in Coolify
+      first (names and settings only). Then take the BASELINE: item 3's command, run on the image
+      serving NOW. If RESEND_API_KEY or FCM_PRIVATE_KEY counts above 0, the exposure is measured
+      (SECURITY INCIDENTS' known condition) and item 5d becomes urgent. Then, for each of the
+      first six rows of docs/deploy.md section 2's table ("Build time or runtime"): Environment
+      Variables -> the row's gear "Edit environment variable" -> "Build time" = "Not available
+      during build" (Runtime stays "Available in the container") -> "Update variable".
+      In the same visit: **EMAIL_FROM** is read by nothing (Queue Ruling 5's grep), so delete it
+      or keep it, the operator's call (C2's Q4). **FRONTALIER_SCHEDULER** is BLOCKED 6.
+- [ ] 2. **THE DEPLOY** rides the next promotion: P1's checklist, run on a SHA at or after
+      d036e67 (madison item 0, gate:clone on the exact SHA, the fast-forward push, Coolify's list
+      watched read-only, the after-deploy checks, and the PDF, because web/Dockerfile changed,
+      comment only). Item 2 comes before item 5, so R861's detail is live when the new key is
+      pasted.
+- [ ] 3. **THE NEW IMAGE'S HISTORY, counted per name**, on the server:
+      `ssh monreleve-vps 'C=$(docker ps -q --filter name=pkptabevr1nhtyygrq0mc8qx | head -1); I=$(docker inspect --format "{{.Image}}" "$C"); echo "image $I"; for n in NEXT_PUBLIC_SITE_URL DATABASE_URL AUTH_SECRET RESEND_API_KEY FCM_PRIVATE_KEY FCM_CLIENT_EMAIL FCM_PROJECT_ID EMAIL_FROM ANDROID_PACKAGE_NAME; do printf "%s %s\n" "$n" "$(docker history --no-trunc --format "{{.CreatedBy}}" "$I" | grep -cw "$n")"; done'`
+      Expected: NEXT_PUBLIC_SITE_URL above 0 (the presence control, R169), every other name 0.
+      The secret names are the `secret: true` entries of web/lib/deploy/placeholders.mjs.
+- [ ] 4. **THIS APP'S OLD IMAGES (hygiene, not containment).** Only after P1 has put the .79 pin
+      in production, and keeping the rollback images that C7 (FW-DEPLOY-DOC, R884) names. List
+      first: `ssh monreleve-vps "docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}
+      {{.CreatedAt}}' pkptabevr1nhtyygrq0mc8qx"` and the serving image's id. Then remove, one tag
+      per command, each tag that is neither serving nor a rollback image: `ssh monreleve-vps
+      "docker image rm pkptabevr1nhtyygrq0mc8qx:<tag>"`. **No build-cache prune** (Queue Ruling 5,
+      Q3 (a)): no filter names one app's cache, and a server-wide prune needs the operator's own
+      words.
+- [ ] 5. **THE ROTATION, with A5's keys.**
+      a. Coolify -> Environment Variables -> RESEND_API_KEY -> gear -> the new key, "Build time" =
+         "Not available during build" -> "Update variable". The same for FCM_PRIVATE_KEY, and for
+         FCM_CLIENT_EMAIL / FCM_PROJECT_ID if the new key belongs to another service account.
+         FCM_PRIVATE_KEY is the JSON file's "private_key" value without its surrounding quotation
+         marks, on one line, with its newlines left as the two characters \n.
+      b. Restart the application from Coolify (a restart applies changed env, measured
+         2026-10-28).
+      c. Item 6 must pass before item d.
+      d. **MANDATORY - THIS IS THE CONTAINMENT** (Queue Ruling 5): revoke the old keys. Resend ->
+         API Keys -> the old key -> delete. Google Cloud console -> IAM & Admin -> Service
+         Accounts -> the account -> Keys -> the old key id -> delete. Whatever is left in old
+         images or the build cache becomes revoked keys.
+- [ ] 6. **THE STARTUP LOG:** `ssh monreleve-vps "docker logs \$(docker ps -q --filter
+      name=pkptabevr1nhtyygrq0mc8qx | head -1) 2>&1 | grep -E '^\[(push|scheduler)'"`. Expected:
+      "[push] Firebase credentials found: reminders will be delivered." If it still refuses, it
+      now reads "[push] no push sender (malformed_private_key: <shape>): <one sentence>"; fix the
+      paste as the sentence says, then restart. The `[scheduler]` line says whether the job can
+      run at all (BLOCKED 6).
+- [ ] 7. **THE PROOF AVAILABLE:** "the sender initialises" (item 6's line), and no more. A test
+      reminder needs a test device registered in production by a signed-in app (the operator's,
+      with the S9), the scheduler running (BLOCKED 6), and a reminder due.
+
 ## macOS MINUTES (cap: 60 per step, 200 for the queue)
 
 | step | run | billed min | running total |
@@ -115,7 +192,7 @@ The 27 minutes of IOS-2d / IOS-2e / IOS-2e-FIX on 2026-11-11 predate the queue.
 
 ## EVIDENCE OUTSIDE THE REPO
 
-`C:/wt/queue-evidence/run-sampled.ps1` is the memory sampler every heavy step runs under (Queue Ruling 4; copied from C1b, with only the evidence directory made a parameter). `C:/wt/fw-chromium-pin-2/.pin2-evidence/` holds C1b's logs.
+`C:/wt/queue-evidence/run-sampled.ps1` is the memory sampler every heavy step runs under (Queue Ruling 4; copied from C1b, with only the evidence directory made a parameter). `C:/wt/fw-chromium-pin-2/.pin2-evidence/` holds C1b's logs. `C:/wt/fw-secrets/.secrets-evidence/` holds C2's (gate logs with sampler files, the R858 plant, the R861 RED and leak plant, and the bounded `pdf-fallback.sh`).
 
 `C:/wt/queue-evidence/` - the release APKs and gate logs copied out of the IOS-2d/2e/2e-FIX
 worktrees before A6 removes them, with `SHA256SUMS.txt`: 52da740 `e1cf60f7`, 0616b4e = 19ce23f
@@ -174,8 +251,8 @@ writes the chosen option as a task, with its baselines named (R207).
 |---|---|---|---|---|
 | C0 is the new design live | DONE | production 52caca8 | deployed image read on the server: `pkptabevr1nhtyygrq0mc8qx:52caca8cf6388cb596c9a074175756d16a867858`; /api/health 200 naming monreleve; /api/ready 200 (database ok); /calculateur-lamal-cmu serves R743's "Individuelle"/"Commune", copy that exists only from the fw-calcs-a2 merge. ADDENDUM 1 was never delivered (FW-CALCS-A2.txt's orchestrator note), so "both addenda" = addendum 2 under the exception it restates. ORCH-A2-LIVE (named, nonexistent) not needed. | Queue Ruling 1 |
 | C1 FW-READY-GATE | MERGED, readiness gate NOT delivered - releases still gated on liveness only; promotion PARKED (P1) | branch b339a88 (code ef88fa3); merge b4df928 | V1: tips, 5-file diff, merge tree == branch tip on web/docs/report; gate:clone PASSED on ef88fa3 (session log); r847.log both directions (unmigrated exit=1 + 503 `unmigrated`, migrated exit=0 + 200); R846 value tests. V2: gate:clone PASSED on bf2b77b, the commit carrying this row (scratchpad clone-bf2b77b.log, EXIT 0), before its push. At that time the Chromium layer came from cache; C1b has since installed .79 from the archive (Queue Ruling 4). V3: Queue Ruling 2. QUESTIONS 1 and 4 -> BLOCKED 3-4; Q2 -> step C1b; Q3 curl confirmed. | Queue Ruling 2 |
-| C1b FW-CHROMIUM-PIN-2 (Queue Ruling 2, before C2) | MERGED - the pin is 156.0.8078.79-1~deb12u1; no promotion of its own (it rides P1, item 0) | branch 0df4463 (code 8559d89); merge 7065b1b | V1 checks: diff bf2b77b..8559d89 = web/Dockerfile 1+/1-. R852: madison 18:06:22Z offered .79 and 150.0.7871.100; the R249 refusal on bf2b77b is "#14 6.960 R249: ... .73 ... not installable". gate:changed on 8559d89: 3622 passed, test:container 22, chromium "#12 DONE 132.0s" from the archive, live binary 156.0.8078.79. gate:clone PASSED on 8559d89 (STEP_EXIT=0, ABORTED=False); its normalized log has every step tail identical to clone-bf2b77b.log. R854: container:e2e 352 passed, 1 failed at home.spec.ts:197 (parked task); the fallback container-auth + container-pdf on the .79 image gave 9 passed, "[pdf] image: 162997 bytes, 9 pages". R855: visual 168 passed, none moved; three warm starts 2.31 / 2.29 / 2.33 s, not comparable with C1's. Memory minimums: commit free 4 589 MB, free physical 219 MB, no deaths. Merge tree == branch on web/docs/report. V2: gate:clone on this commit, before its push; the verdict goes in the next QUEUE-STATE commit. | Queue Rulings 3-4 |
-| C2 FW-SECRETS (its prune of this app's server images waits for C1b - HOLDS) | | | | |
+| C1b FW-CHROMIUM-PIN-2 (Queue Ruling 2, before C2) | MERGED - the pin is 156.0.8078.79-1~deb12u1; no promotion of its own (it rides P1, item 0) | branch 0df4463 (code 8559d89); merge 7065b1b | V1 checks: diff bf2b77b..8559d89 = web/Dockerfile 1+/1-. R852: madison 18:06:22Z offered .79 and 150.0.7871.100; the R249 refusal on bf2b77b is "#14 6.960 R249: ... .73 ... not installable". gate:changed on 8559d89: 3622 passed, test:container 22, chromium "#12 DONE 132.0s" from the archive, live binary 156.0.8078.79. gate:clone PASSED on 8559d89 (STEP_EXIT=0, ABORTED=False); its normalized log has every step tail identical to clone-bf2b77b.log. R854: container:e2e 352 passed, 1 failed at home.spec.ts:197 (parked task); the fallback container-auth + container-pdf on the .79 image gave 9 passed, "[pdf] image: 162997 bytes, 9 pages". R855: visual 168 passed, none moved; three warm starts 2.31 / 2.29 / 2.33 s, not comparable with C1's. Memory minimums: commit free 4 589 MB, free physical 219 MB, no deaths. Merge tree == branch on web/docs/report. V2: gate:clone PASSED on f0ff349, the commit carrying this row (scratchpad clone-f0ff349.log: GATE:CLONE PASSED, STEP_EXIT=0, ABORTED=False; minimum commit free 6 932 MB, free physical 243 MB). main was pushed bf2b77b..f0ff349. | Queue Rulings 3-4 |
+| C2 FW-SECRETS | MERGED - R858-R862 in; the Coolify setting, deploy, image count, image hygiene and key rotation PARKED as P2 | branch 82bdc17 (code 8c27bb9); merge d036e67 | V1: merge-base f0ff349; 12 files +1193/-18; web/Dockerfile comment only, ARG set NODE_IMAGE / CHROMIUM_VERSION / NEXT_PUBLIC_SITE_URL. Logs read from C:/wt/fw-secrets/.secrets-evidence/: gate:clone PASSED on 8c27bb9 ("tree clean", STEP_EXIT=0, ABORTED=False, min commit free 6 775 MB); gate:changed GATE PASSED before each commit (3624 / 3626 / 3641; test:container 28; test:db 714); session minimum commit free 4 945 MB, no deaths. PDF fallback 9 passed, "image ... 10 pages; here ... 10 pages" (the 9 -> 10 move is a parked task). Secret-shape scan of the diff: 0. V3 (Queue Ruling 5): three reads PASSED - history printed as names and counts only; the refusal detail reaches no route; the twice-escaped key throws ERR_OSSL_UNSUPPORTED at signing while the control signs, so deviation 1 stands. Merge tree == branch tip (b104a05). V2: see the record commit's gate:clone. | Queue Ruling 5 |
 | C3 DB password rotation (prepare) | PARKED FOR THE OPERATOR (prepared, never executed) | - | relay/DB-ROTATION-PLAN.md: inventory, backup, stage env, ALTER ROLE, restart, align Coolify record, verify both directions (old password refused, new accepted), backups, rollback. Option B struck by C1's R844 (Queue Ruling 2): the release gate is the image's `/api/health`, which a container with a wrong password passes. Basis: relay/QUEUE-2026-10-28.txt "A Coolify restart applies env (measured)" - not re-run (no token). **Operator action:** authorise the rotation with a time; then the plan runs as written. | - |
 | C4 AN-APK-DIFF | | | | |
 | C5 AN-PARAM-BASELINES | | | | |

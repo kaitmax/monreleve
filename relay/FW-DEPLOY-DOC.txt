@@ -49,7 +49,8 @@ LIVE STATE (what the repository cannot tell you):
     read in its own step.
     NO PRIVILEGED CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS).
   - ONE STALE PASSAGE (Queue Ruling 4). docs/deploy.md section 3, the "curl is in the image (R845)"
-    paragraph (lines 186-195 at bf2b77b), explains
+    paragraph (lines 186-195 AT bf2b77b; C2 added 73 lines to the file
+    since, so find it by its text, not its line numbers), explains
     curl's separate image layer by the old Chromium pin being impossible
     to install. Since C1b, the pin is 156.0.8078.79-1~deb12u1 and the
     archive installed it on 2026-11-11 ("#12 DONE 132.0s",
@@ -62,6 +63,23 @@ LIVE STATE (what the repository cannot tell you):
     still offered. If it is not offered, the pin is bumped first as its
     own gated commit. Reference R249 where the Dockerfile and
     docs/deploy.md already state it; do not restate it.
+  - THREE MORE CORRECTIONS IN docs/deploy.md, FROM C2 (Queue Ruling 5).
+    Same commit as R883-R885; each states only what its source shows.
+    (a) Section 2's Coolify citation for the build-argument insertion
+        loop. It reads ApplicationDeploymentJob.php 5340-5347; C2's report
+        says 5337-5345 (REPORT-FW-SECRETS.txt DEVIATIONS 8). TRUST
+        NEITHER: re-read the file at tag v4.5.0 and cite what is there.
+    (b) Section 8, N2 lists EMAIL_FROM as an operator setting. Nothing
+        reads it from the environment (the senders are the constants in
+        web/lib/fr/emails.ts; docs/domain-checklist.md 126-130 already says
+        so). Correct N2 to match. Whether Coolify's EMAIL_FROM is deleted
+        is the operator's (QUEUE-STATE P2 item 1); do not decide it.
+    (c) Section 1's date for deleting Coolify's CHROMIUM_VERSION override.
+        REPORT-FW-CHROMIUM-PIN.txt R753 and web/scripts/container-check.mjs
+        say 2026-10-14; REPORT-FW-CHROMIUM.txt (2026-10-21) read it as still
+        set that day; section 1 says "the same day". Do not pick one. Write
+        what each record says, with its date, and that the live state is
+        re-read in Coolify (P2 item 1) before anything depends on it.
 
 RULING NUMBERS: R883-R885; R886-R887 reserved spares. Before committing
 any: `grep -rE '\bR88[3-7]\b' relay/ REPORT-*.txt CLAUDE.md docs`.

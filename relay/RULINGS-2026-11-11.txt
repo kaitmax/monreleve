@@ -436,3 +436,126 @@ APPLIED
 - P1 item 0 is the same-day madison read.
 - Parked: PARK home.spec.ts:197-in-container (its own task); the
   14-line-tail finding; the cadence (the operator's).
+
+====================================================================
+QUEUE RULING 5 - C2 (FW-SECRETS) HANDED BACK: MERGE, AND FOUR QUESTIONS
+====================================================================
+EVIDENCE (V1, read by the orchestrator, not taken from the report)
+- origin/fw-secrets = 82bdc17 (report correction), code tip 8c27bb9;
+  merge-base f0ff349 = origin/main. 12 files, +1193/-18. web/Dockerfile:
+  comment only (the curl-layer reason, Queue Ruling 4); ARG set at the
+  tip = NODE_IMAGE, CHROMIUM_VERSION, NEXT_PUBLIC_SITE_URL.
+- Logs in C:/wt/fw-secrets/.secrets-evidence/: gate-clone-1.log
+  "commit 8c27bb99...", "tree clean", "GATE:CLONE PASSED", STEP_EXIT=0
+  ABORTED=False, min commit free 6775 MB. gate:changed before each
+  commit: 3624 / 3626 / 3641 passed; R858's run test:container 28 and
+  test:db 714; every run "GATE PASSED for the paths changed",
+  STEP_EXIT=0. Session minimum commit free 4945 MB (gate:changed R861).
+- PDF fallback on the image: "Tests 9 passed (9)", "[pdf] image:
+  163847 bytes, 10 pages; here: 199305 bytes, 10 pages".
+- A secret-shape scan of the branch diff's added lines (PEM body, re_
+  keys, a postgres URL with a password, AIza keys): 0.
+- R858-R862 appear only in relay/FW-SECRETS.txt on main; R863-R864
+  unused.
+QUESTIONS (the session's Q1-Q4, plus V3's merge question)
+  Q1 a quoted FCM_PRIVATE_KEY: refuse (as now) or unwrap?
+  Q2 keep refusing a twice-escaped key whose PEM lines are intact
+     (deviation 1)?
+  Q3 no `docker builder prune` filter names one app's build cache:
+     (a) no prune, the rotation makes what is left worthless; (b) a
+     server-wide prune on the operator's word; (c) per-record removal.
+  Q4 EMAIL_FROM is a Coolify variable nothing reads: delete it?
+  V3 merge?
+
+ANSWER (the advisor, verbatim in substance)
+Verdict: merge C2 - after three short reads that V1 skipped. You
+verified tips, gates and the Dockerfile, but never opened the two files
+that handle secret material. None is a heavy step:
+1. web/scripts/container-check.mjs diff: confirm a hit prints NAME and
+   COUNT only, and that raw `docker history` output never reaches
+   stdout or a log - history lines carry build-arg values and gate logs
+   get pasted into reports. Blocking if a line is printed.
+2. web/lib/push/fcm.ts and resolve.ts diff: confirm no message
+   interpolates any part of the value; `git grep` where `detail`
+   travels - it must not appear in any web/app route body (/api/ready,
+   /api/health). Blocking if a route serialises it.
+3. Q2's premise - the report asserts, does not show, that the
+   newly-refused twice-escaped key could never sign. Look for an
+   assertion in malformed-key.test.ts that signing with that restored
+   key throws; if none, a ten-line node check in the scratchpad with a
+   generated key settles it. Throws -> deviation 1 stands. Signs -> the
+   branch narrows what the product accepts; round 2 to the session, do
+   not merge.
+Rulings:
+- Q1: keep refusing, no code change; listed for the operator,
+  non-blocking. Refusal fails closed and the line now names the fix;
+  unwrapping widens what counts as a credential.
+- Q2: keep, conditional on check 3.
+- Q3: (a), no prune. (b) is not mine to grant: a server-wide prune
+  touches other projects' cache and needs the operator's own words.
+  Write the consequence into P2: revoking the old keys (5d) is the
+  containment and is mandatory; image removal (4) is hygiene; "and its
+  build cache" leaves item 4.
+- Q4: park as an operator action in the same Coolify visit as P2 item
+  1; one repo-wide `git grep EMAIL_FROM` first to confirm nothing reads
+  it. The doc fix goes to C7.
+10-page PDF: not merge-blocking (C2's diff has no renderer or dossier
+path, and main's renderer code is C1b's - so the change is inputs), but
+blocking for READING it as "same as C1b". The session's explanation
+(the baked origin) only works if the local "here" render is fed the
+same origin - check whether C1b's line also had "here" at 9 pages. If
+both sides moved, read container-pdf.test.ts for what the local render
+takes as origin/data. If reading explains it, record it; if not, PARKED
+TASKS, and every PDF proof from now on records page count together
+with the image's origin. Do not spend a heavy step on it.
+Carry-forward: C7's prompt gets the Coolify citation (re-read at
+v4.5.0, trust neither range), N2's EMAIL_FROM, the R753 date conflict
+in section 1, and a note that its "lines 186-195" are at bf2b77b and C2
+added 73 lines to that file. QUEUE-STATE gets P2 as amended;
+FRONTALIER_SCHEDULER as an operator question with the exact action (not
+yours to set; C10 and P2 item 7's claim depend on it); and the
+unbounded curl in C1b's r854-fallback.sh - point later PDF proofs at
+C2's bounded pdf-fallback.sh pattern. Final summary: the first line
+stays "no security incident" - the build-time keys are the known
+condition C2 and A5 exist for; state that exposure in the serving image
+is presumed, unmeasured until P2 item 1's baseline.
+
+APPLIED AND VERIFIED
+- Check 1 PASSED: container-check.mjs reads `docker history` with
+  stdio ['ignore','pipe','pipe'] (captured, never inherited), prints
+  "image history, <n> lines, read for names only", then `is()` checks
+  whose values are booleans and per-name COUNTS; a read failure keeps
+  only the first line of the command error. No history line is
+  printed.
+- Check 2 PASSED: MALFORMED_KEY_SHAPES is six constant sentences; the
+  startup line interpolates only availability.code and .detail (the
+  shape id). `detail` / describePushSender reach instrumentation.ts:54
+  (console.log) and lib/scheduler/jobs.ts:142 (the skipped reasons
+  returned to instrumentation); `git grep` over web/app finds no
+  scheduler, skipped or describePushSender use. No route serialises it.
+- Check 3 PASSED, deviation 1 STANDS: no signing assertion in
+  malformed-key.test.ts, so the scratchpad check q2-sign-check.mjs
+  (a generated 2048-bit pkcs8 key): the positive control (escaped once,
+  restored once) "=> SIGNS"; escaped twice, restored once (lone
+  backslash true, header true, footer true) "=> THROWS
+  ERR_OSSL_UNSUPPORTED error:1E08010C:DECODER routines::unsupported".
+  The refused key could never sign.
+- Q4's grep: EMAIL_FROM is read from the environment nowhere; the code
+  uses the constants EMAIL_FROM / AUTH_EMAIL_FROM in lib/fr/emails.ts.
+  Hits are SPEC 1009, docs/deploy.md 182 and 724 (N2),
+  docs/domain-checklist.md 126-130, tasks/todo.md 693.
+- 10-page PDF: C1b's line (REPORT-FW-CHROMIUM-PIN-2.txt:198) was
+  "image: 162997 bytes, 9 pages; here: 197462 bytes, 9 pages" - BOTH
+  sides moved 9 -> 10. "here" renders `${BASE}/releve/print` served BY
+  THE SAME CONTAINER with Playwright's Chromium, so the change is in the
+  served HTML. The origin explanation is REFUTED by reading: the print
+  page's only origin input is verificationOrigin()
+  (MONRELEVE_VERIFICATION_ORIGIN, page.tsx 221), and neither C1b's
+  r854-fallback.sh nor C2's pdf-fallback.sh sets it, so the
+  verification block is absent from both; the page imports nothing
+  that reads NEXT_PUBLIC_SITE_URL. Cause NOT ESTABLISHED -> PARKED
+  TASKS, and every PDF proof from now on records its page count with
+  the image's origin, whether MONRELEVE_VERIFICATION_ORIGIN was set,
+  and the render's UTC time.
+- Merged; P2, the operator items, the parked tasks and C7's prompt
+  carry the rest (QUEUE-STATE, relay/FW-DEPLOY-DOC.txt).
