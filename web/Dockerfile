@@ -237,6 +237,32 @@ RUN set -eux; \
     printf '%s\n' "$installed" > /etc/frontalier-chromium-version; \
     rm -rf /var/lib/apt/lists/*
 
+# ============================================================================
+# R845: CURL, AND NOTHING ELSE CHOSEN
+# ============================================================================
+#
+# Coolify 4.5.0 generates its health check as
+#   curl -s -X 'GET' -f <url> > /dev/null || wget -q -O- <url> > /dev/null || exit 1
+# (app/Jobs/ApplicationDeploymentJob.php 4450-4452), and this image had neither
+# tool, so that command could only ever exit 1. curl is also how an operator
+# asks /api/ready from INSIDE the container (docs/deploy.md section 3). apt
+# brings the eight libraries curl requires (libcurl4 and what libcurl4 needs,
+# listed in REPORT-FW-READY-GATE.txt) and, with --no-install-recommends,
+# nothing more.
+#
+# ITS OWN LAYER, NOT THE ONE ABOVE, AND THE REASON IS MEASURED. The ruling
+# asked for the existing apt layer. On 2026-11-11 Debian no longer offered the
+# pinned chromium (156.0.8078.73-1~deb12u1; the archive has 156.0.8078.79),
+# so that layer builds only from a warm cache: changing one byte of it turned
+# this image's build into the R249 refusal. Bumping the pin to get past that
+# would change the renderer of the product's output of record, which R845
+# ("curl, and NOTHING else") does not allow. When the pin IS bumped, curl can
+# move into that layer.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl; \
+    rm -rf /var/lib/apt/lists/*
+
 # THE ORIGIN THIS IMAGE WAS BUILT FOR, recorded so the entrypoint can refuse a
 # mismatch. Static routes bake their canonicals at build time, so an image
 # built for staging and run with a production NEXT_PUBLIC_SITE_URL serves
@@ -353,7 +379,51 @@ EXPOSE 3000
 # tests/unit/meta/healthcheck-target.test.ts asserts both directions, and
 # docs/deploy.md states the split: container -> /api/health, Coolify's deploy
 # check -> /api/ready.
-HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
+#
+# ============================================================================
+# R844: "RUNS ONCE, WHEN A VERSION IS RELEASED" IS NOT WHAT COOLIFY DOES
+# ============================================================================
+#
+# The paragraph above describing Coolify's check was written from memory.
+# Read from coollabsio/coolify at v4.5.0 (FW-READY-GATE), there is no one-shot
+# release probe at all:
+#
+#   - THE RELEASE GATE IS DOCKER'S HEALTH STATUS of the new container, read
+#     with `docker inspect` after start_period, retries times, interval apart
+#     (app/Jobs/ApplicationDeploymentJob.php 2743-2792).
+#   - COOLIFY'S OWN CHECK, when it is in effect, is written into the
+#     generated compose as the service's healthcheck (4198-4212). That
+#     REPLACES this instruction for the container's WHOLE LIFE, and Traefik
+#     stops routing to any container whose health is not "healthy".
+#   - WHILE THIS INSTRUCTION EXISTS, Coolify uses it instead, for both
+#     (app/Models/Application.php 2704-2743, the job 2727 and 4198) - and
+#     enabling Coolify's check in its UI does not change that.
+#
+# So the argument above holds with more force than it knew: the "two checks"
+# are one Docker healthcheck, and it must be liveness. Where Coolify's check
+# could point instead is QUESTION 1 of REPORT-FW-READY-GATE.txt; docs/deploy.md
+# section 3 has the source lines.
+#
+# ============================================================================
+# R846: A 60 s START WINDOW, PROBED EVERY 2 s
+# ============================================================================
+#
+# --start-period=60s: failures in the first minute do not count, so a slow
+# cold start (Chromium, the Prisma engine, a busy host) is not marked
+# unhealthy - and the first SUCCESS ends the window at once.
+# --start-interval=2s: inside that window the probe runs every 2 s, so the
+# container turns healthy within ~2 s of answering rather than at the first
+# 10 s tick. Docker >= 25 is required; the server runs 29.7.1, this machine
+# 29.6.1 (measured 2026-11-11).
+#
+# ONE COST, STATED. While Coolify's check is disabled it copies --start-period
+# into its own deploy wait (Application.php 2725; it sleeps that long before
+# its first poll, ApplicationDeploymentJob.php 2743-2748), so a deploy now
+# waits 60 s there instead of 20 s.
+#
+# The values are asserted, not merely present (R345):
+# tests/unit/meta/healthcheck-target.test.ts.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --start-interval=2s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # R250: THE PREFLIGHT IS THE ENTRYPOINT, so a misconfigured container never

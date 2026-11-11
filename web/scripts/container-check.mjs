@@ -110,6 +110,7 @@ process.stdout.write(JSON.stringify({
   resolvedTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   pinnedChromium: read('/etc/frontalier-chromium-version'),
   chromiumVersion: run((process.env.FRONTALIER_CHROMIUM_PATH || 'chromium') + ' --version'),
+  curlVersion: run('curl --version'),
   serverJs: existsSync('/app/server.js'),
   staticDir: existsSync('/app/.next/static'),
   fonts: dir('/app/public/fonts'),
@@ -224,6 +225,17 @@ is(
   facts.playwrightTestPresent,
   false,
   'lib/export/pdf.ts requires playwright-core and a system Chromium; the test runner is dev-only and must not ship',
+);
+// R845: READ FROM THE RUNNING IMAGE, not from the Dockerfile's apt line.
+// Coolify 4.5.0 generates its health check as `curl ... || wget ... || exit 1`
+// (ApplicationDeploymentJob.php 4450-4452), so an image with neither tool can
+// only ever fail it: every deploy rolled back, the cause one WARNING line in
+// the deploy log.
+is(
+  'curl present (R845)',
+  typeof facts.curlVersion === 'string' && facts.curlVersion.startsWith('curl '),
+  true,
+  "Coolify's generated health check runs curl inside the container, falling back to wget",
 );
 
 // THE PIN, BOTH HALVES. The recorded file proves the build verified something;
