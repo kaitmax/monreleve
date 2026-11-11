@@ -82,7 +82,8 @@ WHY, THE EVIDENCE BEFORE THE RUN:
     Rect.fromLTRB(483.0, 387.0, 761.0, 427.0), its cancel boundsInRoot = boundsInWindow = Rect.fromLTRB(263.0, 387.0,
     475.0, 427.0) - an AlertDialog over an open, expanded ModalBottomSheet, its buttons inside the 1024 x 768 window,
     tapped behind R806's guard.
-THE CHANGE (the test file, `git diff d3adf77 cf485c4 -- .../pilot/ZParametresScreensIosTest.kt`, in full):
+THE CHANGE (the test file, `git diff d3adf77 cf485c4 -- .../pilot/ZParametresScreensIosTest.kt`: every added and
+removed line shown, unchanged context lines elided):
     @@ -1,5 +1,6 @@
      package ch.monreleve.app.pilot
     +import androidx.compose.material3.AlertDialog
@@ -116,8 +117,7 @@ THE CHANGE (the test file, `git diff d3adf77 cf485c4 -- .../pilot/ZParametresScr
     +        text = { Text(FAKE_PICKER_INITIAL + initialIsoDay) },
     +    )
      }
-  (two context lines elided above for width: the blank line after the package line, and the parameter lines of
-  PzFakeDatePicker; the full diff is .ios2e-fix-evidence/r840-test.diff.)
+  (the full diff, context included, is .ios2e-fix-evidence/r840-test.diff.)
 THE BEHAVIOUR, UNCHANGED: the LaunchedEffect recording the initial value stays outside the dialog, as it was; pick calls
   onPicked(PICKED_DAY) then onDismiss; cancel calls onDismiss; the three texts are the same constants. New: an outside
   tap or back would call onDismiss (onDismissRequest, as R840 prescribes) - the test makes neither.
@@ -138,7 +138,8 @@ ParametresEditTypes.kt`:
     + * content can land outside the window; any native iOS picker must present itself the same way.
       */
      typealias ParametresDatePicker =
-  (The first context line carries accented French and guillemets in the file; transliterated here, R168.)
+  (The first context line carries accented French and guillemets in the file; transliterated here because this report
+  is pure ASCII.)
   Lines removed: 0. Added lines not starting " *": 0. COMMENT ONLY. No line over 120 characters.
 
 ================================================================================
@@ -170,9 +171,9 @@ STEP6'S MARKS, run 43004639615 (69 "R835 MARK 6-date-slot" lines, all at 10:41:2
     tap the date sheet's SAVE: boundsInRoot=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0) tapPoint=Offset(512.0, 656.0)
       boundsInWindow=Rect.fromLTRB(212.0, 628.0, 812.0, 684.0)
     wait (saved and closed) - returned
-    (then `assertEquals(listOf(PICKED_DAY), wire.patched.map { it.activityStartDate }, "sent")` - it has no mark of
-    its own; it held, because the next mark, "tap the start date ListItem again", comes after it and the class
-    reports failures=0.)
+    (then, verbatim: `assertEquals(listOf<String?>(PICKED_DAY), wire.patched.map { it.activityStartDate }, "sent")` -
+    it has no mark of its own; it held, because the next mark, "tap the start date ListItem again", comes after it
+    and the class reports failures=0.)
   THE REOPENED SLOT HANDED PICKED_DAY:
     tap the start date ListItem again: boundsInRoot=Rect.fromLTRB(20.0, 389.0, 1004.0, 461.0) ... boundsInWindow=
       Rect.fromLTRB(20.0, 389.0, 1004.0, 461.0)
@@ -181,8 +182,8 @@ STEP6'S MARKS, run 43004639615 (69 "R835 MARK 6-date-slot" lines, all at 10:41:2
       Rect.fromLTRB(212.0, 431.0, 812.0, 471.0)
     wait (the fake picker shown with the saved day, recorded) - returned
     (its condition: "fake parametres picker: initial=2026-03-02" shown and two initial values recorded; then
-    `assertEquals(listOf(null, PICKED_DAY), held.pickerInitials, "handed the current day")` held - the next mark comes
-    after it.)
+    verbatim `assertEquals(listOf<String?>(null, PICKED_DAY), held.pickerInitials, "handed the current day")` held -
+    the next mark comes after it.)
   THE CANCEL CLOSING IT, THE DAY UNCHANGED:
     tap the fake's cancel: performScrollTo - no scroll parent
     tap the fake's cancel: boundsInRoot=Rect.fromLTRB(263.0, 387.0, 475.0, 427.0) tapPoint=Offset(369.0, 407.0)
@@ -358,3 +359,24 @@ checkout's relay/ newest files are RULINGS-2026-11-03-MOBILE.txt (555 lines, 10:
 IOS-2e-FIX.txt. Re-fetched: origin/main 19ce23f, production 52caca8, origin/ios2e d3adf77 - unchanged.
 
 END OF REPORT-IOS-2e-FIX
+
+PUSH PROOF, FOLLOW-UP: push 2 - the report commit 00b39bf: `git push origin ios2e-fix:ios2e-fix` -> "cf485c4..00b39bf
+ios2e-fix -> ios2e-fix"; `git ls-remote origin refs/heads/ios2e-fix` -> 00b39bf76a31a128fef0ee1c097d179af5f0a476 = HEAD
+(MATCH); `git diff --stat cf485c4 00b39bf` -> " REPORT-IOS-2e-FIX.txt | 360 +++...", " 1 file changed, 360
+insertions(+)" (the STATUS pointer resolves here: report-only). `gh run list --workflow ios-shared.yml --branch
+ios2e-fix` after that push -> [43004639615, headSha cf485c4, success] - still one run.
+R840-R843 RE-GREPPED before push 2 (`grep -rlE '\bR84[0-3]\b' relay/ REPORT-*.txt CLAUDE.md docs`): worktree -
+REPORT-IOS-2e-FIX.txt (this report) and REPORT-IOS-2e.txt (spares); main checkout - relay/IOS-2e-FIX.txt,
+relay/IOS-2e.txt, relay/RULINGS-2026-11-03-MOBILE.txt; every origin head (git grep, pathspec quoted) -
+origin/ios2e:REPORT-IOS-2e.txt and origin/ios2e-fix:REPORT-IOS-2e.txt (inherited from d3adf77). All allowed.
+Re-fetched before push 2: origin/main 19ce23f, production 52caca8, origin/ios2e d3adf77 - unchanged.
+This follow-up commit changes REPORT-IOS-2e-FIX.txt only: these lines, and three precision edits made after push 2
+(R840's diff heading: unchanged context elided, every added and removed line shown; R841's transliteration note:
+because this report is pure ASCII; R842's two assertEquals quotes made verbatim, `listOf<String?>(...)`). It is pushed
+as this session's last git act; its own push result is in the hand-back. Not pushed: main, production, ios2e.
+CLEANUP: ./gradlew --stop after the last Gradle use ("1 Daemon stopped"); no server started, no port touched, no
+container touched, no phone, adb not used, no permission prompt refused. A temporary reference file /tmp/ios2efix-start
+(written to stamp the gate's start for the XML count) was deleted. Evidence stays in
+C:/wt/ios2e-fix/.ios2e-fix-evidence/ (ignored). The worktree C:/wt/ios2e-fix stays (R392); android/local.properties (copied, ignored) stays with it. No other
+C:/wt/* was written. The lock .session-lock.json is present at this commit and is removed as the session's last step,
+after this follow-up's push.
