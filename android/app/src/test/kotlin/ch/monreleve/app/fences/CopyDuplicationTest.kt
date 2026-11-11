@@ -29,7 +29,9 @@ import java.io.File
 private val FR_DIRS =
     listOf(
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "ComparisonCopy.kt"),
+        // IOS-2d R816/R819: ComparisonCopy moved to :shared fr (read by the root above); NotificationCopy is the one
+        // copy file left in :app, so it pins this root now (R460).
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "NotificationCopy.kt"),
     )
 
 private fun frFiles(): List<File> {

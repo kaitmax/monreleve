@@ -64,18 +64,19 @@ private val PATH =
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/aujourdhui/MovingRate.kt",
         // IOS-2c R789: the Releve screen moved to :shared commonMain (path follows the file).
         "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/releve/ReleveSections.kt",
-        // IOS-2d R814: the forecast and simulation controllers and states moved to :shared commonMain (paths follow).
+        // IOS-2d R814/R816: the forecast and simulation controllers and states, and the Prevision, Simulation and
+        // Comparison screens, moved to :shared commonMain (paths follow the files).
         "../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/ForecastController.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/ForecastState.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionScreen.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionRail.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionScreen.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/prevision/PrevisionRail.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/SimulationController.kt",
         "../shared/src/commonMain/kotlin/ch/monreleve/app/forecast/SimulationState.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/simulation/SimulationCard.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/simulation/SimulationCard.kt",
         "src/main/kotlin/ch/monreleve/app/parametres/DeviceRate.kt",
         "src/main/kotlin/ch/monreleve/app/parametres/ParametresController.kt",
         "src/main/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresRateChange.kt",
-        "src/main/kotlin/ch/monreleve/app/ui/screens/comparison/ComparisonScreen.kt",
+        "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/comparison/ComparisonScreen.kt",
     )
 
 /** Names that end like a rate and are NOT the declarable rate - each a different quantity. */
