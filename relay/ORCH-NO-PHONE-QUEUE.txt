@@ -1,0 +1,206 @@
+ORCHESTRATION PROMPT - Mon Releve
+THE NO-PHONE QUEUE: EVERYTHING THAT NEEDS NEITHER THE S9 NOR THE APPLE ACCOUNT
+(for the orchestrating Claude Code session - one session, C0 to C11, a verification loop between every step)
+
+====================================================================
+PART A - WHAT THE OPERATOR DOES (listed first; you do not wait for them)
+====================================================================
+Remind me of these once at the start, then carry on with Part C:
+  A1. Restart the containers of my OTHER projects you stopped:
+      docker start tizicorp-app-1 tizicorp-postgres-1 counterworthy-postgres
+      mustapha-postgres zagora-postgres-1
+  A2. The OVH network firewall: allow inbound 22, 80, 443 (and Coolify's
+      8000, 6001, 6002 only from my IP or behind its own domain).
+  A3. The D-U-N-S number for KAMELEO LTD (for the Apple Developer
+      organisation enrolment).
+  A4. The Chrome source collection S1-S3 (CHROME-SOURCES-OPTION-2); I commit
+      its report to docs/sources/primes-lamal/sources-2026-11.md.
+  A5. New keys when C2 asks for them (Resend, the FCM service account).
+  A6. The worktree cleanup for ios2d, ios2e, ios2e-fix (I run it).
+  A7. Remove the Coolify API token when the queue is done.
+
+====================================================================
+PART B - HOW YOU RUN THE QUEUE: ONE SESSION, NO WAITING, A LOOP PER STEP
+====================================================================
+ONE SESSION FROM C0 TO C11. You run the whole queue yourself in this
+session, step after step, without handing back to me in between.
+
+WHENEVER THERE IS AN ISSUE - a failed check, an error, a question, a
+judgement call, a report that disagrees with the repository - ASK THE
+ADVISOR. I trust the advisor's answer as mine:
+  1. ask, with the evidence;
+  2. APPLY the answer;
+  3. VERIFY it worked (the check that failed now passes, with its output);
+  4. record the question and the answer verbatim in
+     relay/RULINGS-<date>.txt;
+  5. MOVE ON.
+Do not stop to wait for me.
+
+THE VERIFICATION LOOP - BETWEEN EVERY STEP, BEFORE THE NEXT ONE STARTS:
+  V1. Re-read the step's own acceptance points (the C-item text) and check
+      each one against the REPOSITORY and the LIVE SITE, not against a
+      report's claims: the files changed, the tests that ran (with counts),
+      the gate output on the exact SHA, the deployed SHA, the URLs answering.
+  V2. Run the step's checks again from a clean state: gate:clone ALONE on
+      the exact commit; for a deploy, the after-deploy checks on the live
+      site.
+  V3. Ask the advisor to review V1 and V2. If anything is missing or red,
+      fix it (apply, verify) and run V1-V3 again.
+  V4. At most THREE rounds. If the step is still not verified after the
+      third, the advisor rules: either it ships as verified so far with the
+      gap written down, or the step is PARKED with the exact gap - and you
+      move to the next step either way.
+  V5. Write the step's outcome to relay/QUEUE-STATE.md: status (done /
+      parked), SHAs, what was verified and how, advisor rulings, minutes
+      spent. Commit it with the step.
+
+CONTINUITY. This is a long session. relay/QUEUE-STATE.md is your memory:
+whenever your context has been compacted or you are unsure where you are,
+re-read it and the current RULINGS file before doing anything else, and
+re-verify the last completed step (V1-V2) before starting the next.
+
+NEVER WAIT, EVEN FOR THE THINGS ONLY I CAN DO. When a step reaches
+something only I can do - a key only I can create (C2), the password
+rotation (C3), a permission-system refusal, the SEO choice (C11) - do not
+stop the queue: finish everything around it that you can, PARK the rest
+in QUEUE-STATE.md with the EXACT action I must take (the command, the page,
+the value), and go on to the next step.
+
+THE LIMITS THE ADVISOR CANNOT LIFT (they do not stop the queue; they park
+the step that hits them):
+  - never delete or rewrite production data, never run a destructive
+    migration;
+  - never execute the database password rotation (C3 only prepares it);
+  - a security incident (an exposed port, a leaked secret, access you did
+    not expect, an unknown deploy): contain it at once if a safe step
+    exists (restore the previous deployment, close the port), record it at
+    the TOP of QUEUE-STATE.md, and tell me in the final summary's first
+    line - then continue with steps that do not touch it;
+  - a permission-system refusal: never look for a way round it;
+  - money: 60 billed macOS minutes per step, 200 for the queue; a step
+    that would exceed its cap is parked;
+  - never stop, remove or modify a container, database, volume or process
+    of another project on this machine (record this rule in CLAUDE.md).
+
+MERGES AND DEPLOYS, unchanged in substance: gate:clone ALONE on the exact
+merge commit before pushing main; a production deploy only under
+ORCH-A2-LIVE's conditions (gate on exactly the candidate SHA; the PDF
+proven when the renderer, the dossier or the Dockerfile changed; a pending
+migration only through the in-container route with migrate status first;
+a fast-forward push; the after-deploy checks; on any failed check, restore
+the previous deployment from Coolify at once, then fix and loop).
+For each C-task you may write its own prompt file in relay/ in the house
+format and follow it; whether you work it yourself or through a
+sub-session, it is still this one queue, run to C11 without handing back.
+
+====================================================================
+PART C - THE QUEUE, IN ORDER
+====================================================================
+C0. IS THE NEW DESIGN LIVE? Check whether production (52caca8 or later)
+    serves fw-calcs-a2 with both addenda. If not, run ORCH-A2-LIVE first,
+    to its end. Then continue.
+
+C1. FW-READY-GATE - the deploy gate that has been missing since October.
+    - curl (or wget) in the runner image, nothing else added; image size
+      before and after.
+    - The container HEALTHCHECK stays on /api/health (liveness, R375), with
+      a start period of at least 60 s and a short start interval.
+    - Coolify's deploy health check ENABLED, on /api/ready, with headroom
+      (start period >= 60 s, a few retries).
+    - Proof: a scratch build where readiness fails (an unmigrated scratch
+      database) is refused by the check; the next real deploy passes it.
+    - docs/deploy.md section on the gate.
+
+C2. FW-SECRETS - keys out of the image, and the reminders working again.
+    - Every Coolify variable the build does not read: "Build Variable"
+      unticked (list each, with why it is not needed at build time).
+    - A container check that the image history contains none of the secret
+      names (positive control: a planted ARG is found).
+    - Deploy; then on the server, remove the OLD images and prune the build
+      cache of THIS app only (list what is removed first).
+    - Rotation: the new Resend key and the new FCM service-account key come
+      from me (A5). If they are not in Coolify yet, PARK the rotation with
+      the exact steps for me and go on; when they appear, set, deploy, verify.
+    - The startup log no longer says "no push sender (malformed_private_key)";
+      a test reminder reaches a test device token if one exists, otherwise
+      the sender initialises - say which was proven.
+
+C3. DB PASSWORD ROTATION - PREPARE ONLY. Write the step-by-step plan with its
+    rollback, using the restart-test result (does a Coolify restart pick up a
+    changed setting?). If the restart test has not been run, run it as
+    ORCH-A2-LIVE step 4 described. Then PARK the plan in QUEUE-STATE.md for
+    me and go on.
+
+C4. AN-APK-DIFF - the release APK whose contents changed while its size did
+    not. Compare the two release builds file by file (dex classes and
+    methods, resources, manifest, native libraries, signing block). Explain
+    every difference by a commit. Anything unexplained: advisor; no Android
+    release until it is explained; if the advisor cannot explain it, PARK
+    with the list of unexplained differences.
+
+C5. AN-PARAM-BASELINES - Paparazzi baselines for the Parametres sheets and
+    the date dialog (every state), each named before recording; no product
+    change; every other baseline untouched.
+
+C6. FW-TESTDB-GUARD - test:db refuses to run unless DATABASE_URL names a
+    scratch database (a name pattern the gate's scratch databases use);
+    positive control: pointed at the dev database, it refuses with a clear
+    message.
+
+C7. FW-DEPLOY-DOC - docs/deploy.md: the in-container migration route, the
+    restart measurements, the production-branch promotion, the readiness
+    gate from C1, the rollback from Coolify. Docs only.
+
+C8. IOS-2f - the remaining iOS pieces from REPORT-IOS-2e (R839) that can be
+    built and tested on the simulator WITHOUT an app host: the account
+    store, the sync trigger logic, the export file generation, the
+    notification scheduling logic. Location and detection are OUT (their
+    own measured gate later). Anything that needs an app host (share sheet,
+    UNUserNotificationCenter permission, BGTaskScheduler) is PARKED to
+    IOS-1b-B with what was proven. Android unchanged (0 files under
+    android/app). Within the minutes cap.
+
+C9. FW-WEB-ACCOUNT - the operator's ruling, recorded as such: the website
+    gains a signed-in area (this reverses the spec's "no signed-in area";
+    amend SPEC in one sentence). Version 1 is READ-ONLY:
+    - "Se connecter" in the header (the A2 header), sign-in by code by
+      e-mail, using the existing auth routes and FW-CODE-CAP's budget;
+    - a session cookie ONLY on account pages (HttpOnly, Secure,
+      SameSite=Lax, short life, revoked on sign-out); public pages stay
+      cookie-free (a test proves it);
+    - "Mon releve": the year's figures and days remaining from the server,
+      the PDF and CSV downloads through the existing routes, sign-out;
+    - no recording on the web in this version (park it);
+    - CSRF protection on every state-changing route; the security checks
+      written down in the report (session fixation, enumeration, rate
+      limits, cookie scope);
+    - the A2 design language; copy in lib/fr; e2e for sign-in, download,
+      sign-out; budgets.
+    An additive migration (a web-session table) is allowed by the
+    in-container route. Deploy under Part B's conditions.
+
+C10. FW-DELAI-RAPPEL - the reminder e-mail for the droit d'option deadline.
+    - The person enters an e-mail and the computed date; a CONFIRMATION
+      e-mail first (no reminder to an address nobody confirmed), using the
+      alert sign-up's confirm flow.
+    - One reminder, two weeks before the date, through the existing job
+      queue; then the address and the date are DELETED (a test proves the
+      row is gone).
+    - The privacy notice gains the sentence: what is kept, why, until when.
+    - The comparator's helper shows the form (FW-CALCS-A2 R749 unparks).
+    - Deploy under Part B's conditions.
+
+C11. THE GUIDE AND THE HUB - when FW-CALCS-A2's report lists the overlap
+    between /guides/droit-option-lamal-cmu and the comparator page, write
+    the options (keep both with distinct roles; redirect) with the Search
+    Console figures, and PARK them for my decision (it is an SEO choice on
+    my most-shown page). This is the last step: then the summary.
+
+====================================================================
+WHEN THE QUEUE IS DONE (after C11)
+====================================================================
+Only then, one summary for me - first line: any security incident, or
+"no security incident". Then: each task (merged or parked), what is live and its
+SHA, the after-deploy checks, every advisor ruling, the minutes spent, and
+what still waits on the S9 (PARK-IE1, R823's measurement, the migration
+suites), the Apple account (IOS-1b-B), or me (A1-A7, C3, C11).

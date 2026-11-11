@@ -1,0 +1,119 @@
+RULINGS 2026-11-11 - THE NO-PHONE QUEUE (relay/ORCH-NO-PHONE-QUEUE.txt)
+The advisor rules in the operator's place (Part B: "I trust the advisor's
+answer as mine"). Each entry: the question with its evidence, the answer
+VERBATIM (this file is ASCII: the advisor's dashes are written "-", its
+arrows "->"; no word changed), what was applied, and the check that
+verified it.
+
+====================================================================
+QUEUE RULING 1 - C0, THE MISSING COOLIFY TOKEN, SSH, THE FIRST COMMIT
+====================================================================
+THE EVIDENCE PUT TO THE ADVISOR
+- C0: origin/production is 52caca8 ("Merge fw-calcs-a2: both calculators
+  in the A2 style, and the droit d'option comparator's six features").
+  FW-CALCS-A2.txt's ORCHESTRATOR NOTE ON ADDENDUM 2 (2026-11-02): "ADDENDUM
+  1 was never delivered"; its exception is read as addendum 2 states it.
+  Live: https://monreleve.ch/api/health 200 {"service":"monreleve",...,
+  "runtime":true}; /api/ready 200 (site-origin ok, database ok);
+  /calculateur-lamal-cmu 200 carrying "Individuelle" and "Commune" - the
+  joint-return toggle (R743), copy that exists only from the fw-calcs-a2
+  merge (web/lib/fr/lamal.ts:224-225 on 52caca8).
+- ORCH-A2-LIVE is named by the queue but exists nowhere: not in relay/,
+  docs, the repo root, or any commit (`git log --all -S ORCH-A2-LIVE`
+  empty). Part B carries its deploy conditions inline.
+- THE COOLIFY API TOKEN IS GONE: C:/Users/KAMXKAM/AppData/Local/Temp/cf/
+  exists and is EMPTY, its mtime 2026-11-10 20:02; cause unknown. Every
+  Coolify read and act (deploy status, rollback, the deploy health check,
+  Build Variable flags) needed it.
+- ~/.ssh/config holds Host monreleve-vps (164.132.85.231, the shared VPS)
+  with key id_ed25519_monreleve_vps; docs/deploy.md names SSH as the route
+  for server work. Not used until this ruling.
+
+THE ANSWER (verbatim)
+  **C0: verified, record it with its gap.** Production tip 52caca8 + a
+  copy string (`Individuelle`/`Commune`) that exists only from that merge
+  + health 200 naming the product + ready 200 with the database check. The
+  gap: the deployed SHA was not read from Coolify. That's the honest V1
+  line - "inferred from production's tip and a merge-unique string, not
+  read from the deployer". ORCH-A2-LIVE isn't needed for C0. Cite
+  FW-CALCS-A2.txt's orchestrator note for "Addendum 1 was never
+  delivered".
+
+  **The token: park, never substitute.** Three things not to do: create
+  one over SSH (`artisan`/DB - credential creation is the operator's),
+  drive the Coolify web UI through a browser session you weren't given, or
+  roll back by hand on the server. Write the exact operator action at the
+  top of QUEUE-STATE.md under BLOCKED ON THE OPERATOR (not the incident
+  slot - a missing file is not an exposure): *create a new API token in
+  Coolify (same read-write scope), save it as
+  `C:/Users/KAMXKAM/AppData/Local/Temp/cf/tok`, and revoke the old one -
+  its whereabouts are unknown, so treat it as lost.* Record the directory
+  mtime (2026-11-10 20:02, cause unknown). Note A7 assumes it exists; it
+  doesn't - say so in your reminder.
+
+  **Deploys: no `production` promotion without Coolify rollback.** Part
+  B's condition is "restore the previous deployment from Coolify at once";
+  a git-revert rebuild is minutes of broken site, not that. So for every
+  step: code lands on main (gate:clone alone on the merge, as today), and
+  the promotion is PARKED with the exact fast-forward command and the
+  after-deploy checklist, ready to run in order (C1 first - it is the gate
+  the others deploy through) when the token appears. The Coolify-setting
+  parts of C1 (enable the deploy check on `/api/ready`) and C2 (untick
+  Build Variable) park the same way, with the exact UI path. Everything
+  else in C1/C2 is doable now: the Dockerfile, HEALTHCHECK, the local
+  scratch-DB refusal proof, the image-history check with its planted-ARG
+  control, docs.
+
+  **SSH: within authority for what the queue itself asks** (C2's prune of
+  this app's images, the in-container migration route) - the key is
+  MonReleve's and deploy.md names the route. Fence: first contact is
+  read-only (`hostname; whoami; docker ps --format '{{.Names}}' | grep -i
+  monreleve`) recorded in QUEUE-STATE; thereafter no docker command without
+  a filter naming this app's containers/images; a passphrase prompt or
+  refusal is NO RESULT, parked. Nothing on the server is needed until a
+  promotion resumes, so one probe now, then leave it.
+
+  **Before anything else - copy the APK evidence out.** C4 needs the four
+  release APKs and gate logs in `C:/wt/ios2e/.ios2e-evidence/` and
+  `C:/wt/ios2e-fix/.ios2e-fix-evidence/`; A6 has the operator deleting
+  those worktrees, and a rebuild won't be byte-reproducible. Copy to a
+  folder that is neither a worktree nor the session scratchpad (e.g.
+  `C:/wt/queue-evidence/`), sha256 each, record the path in QUEUE-STATE.
+  Ten seconds now; irrecoverable later.
+
+  **First commit:** CLAUDE.md gets the operator's sentence verbatim under
+  the never-relaxed rules (one line of measured instance: the five
+  containers stopped 2026-11-10 only on explicit authorisation);
+  `relay/QUEUE-STATE.md`; `relay/RULINGS-2026-11-11.txt` with C0's record
+  and this ruling verbatim. gate:changed (base chain - paste the
+  selection), gate:clone, push. QUEUE-STATE also carries a macOS-minutes
+  ledger starting at 0 for the queue (today's 27 predate it) and an
+  incident line reading "none".
+
+  **Two things for later, not now:** C3's restart test is already measured
+  (2026-10-28) - find its record in the repo (grep `ROTATION_PROBE` in
+  REPORT-*/RULINGS-*), cite that, not memory. C11 needs Search Console
+  figures you have no access to; it parks with the options written and the
+  figures named as operator-supplied.
+
+  Per-step V3 calls: evidence and the red/missing item only.
+
+APPLIED AND VERIFIED
+- APK evidence copied to C:/wt/queue-evidence/ (ios2d/, ios2e/,
+  ios2e-fix/, SHA256SUMS.txt). Every hash matches the sessions' reports:
+  52da740 e1cf60f7, 0616b4e = 19ce23f 463dc949, 9a6dd55 cc77402f,
+  cf485c4 355afca5 (the last two from the worktrees' build outputs, whose
+  HEADs are d3adf77 and ac90684).
+- THE SSH PROBE (read-only, filtered on this app's Coolify uuids - the
+  containers are named by uuid, so "grep -i monreleve" would have matched
+  nothing): host vps-57f2f70c-vps-ovh-net, user root;
+  pkptabevr1nhtyygrq0mc8qx-20261102T154408 Up 9 days (healthy);
+  poxl2l4x0p0fxd85or0itnxo Up 2 weeks (healthy). Then ONE read-only
+  `docker inspect` of that app container: image
+  pkptabevr1nhtyygrq0mc8qx:52caca8cf6388cb596c9a074175756d16a867858.
+- C0'S GAP IS THEREBY CLOSED: the deployed SHA is read from the server -
+  52caca8 - not only inferred. C0 = DONE, no ORCH-A2-LIVE run needed.
+- CLAUDE.md: the operator's sentence verbatim as a never-relaxed rule,
+  with the measured instance and the VPS clause.
+- relay/QUEUE-STATE.md opened: BLOCKED ON THE OPERATOR (the token) at its
+  top, incident line "none", minutes ledger at 0.
