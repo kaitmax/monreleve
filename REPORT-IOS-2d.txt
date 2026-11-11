@@ -208,8 +208,9 @@ THE STORED AND WIRE FORMS - every place a weekday's name or number is stored, se
   THE WIRE: the rhythm never leaves the phone (R341); nothing here touches a request.
   THE SAVED-INSTANCE-STATE BUNDLE - THE ONE STORED FORM THE SWAP COULD NOT KEEP. ShellState keeps
     `rememberSaveable { mutableStateOf<SimulationSnapshot?>(null) }`; SimulationSnapshot holds SimInputs, whose
-    extraWeekday is a DayOfWeek, java-serialized into the Bundle. Measured by a throwaway JVM probe (the same file run on
-    52da740, after the swap and after the move, then deleted; it names no DayOfWeek type - FRIDAY read off the field's
+    extraWeekday is a DayOfWeek, java-serialized into the Bundle. Measured by a throwaway JVM probe (the same probe run on
+    52da740, after the swap and after the move - reformatted once for lint between its first and second runs, one line
+    wrapped, no semantic change - then deleted; it names no DayOfWeek type - FRIDAY read off the field's
     own enum by reflection), on SimulationSnapshot(EXTRA_WEEKDAY, SimInputs(extraWeekday = FRIDAY, targetRate = "100")):
                           field type            SimInputs SUID        SimulationSnapshot SUID   bytes  round trip
       52da740             java.time.DayOfWeek   -2052860028838609161  -1354513128894474318      524    equal
@@ -217,8 +218,9 @@ THE STORED AND WIRE FORMS - every place a weekday's name or number is stored, se
       after the move      kotlinx...DayOfWeek    1497513778350915589  -1354513128894474318      538    equal
     The enum is still written BY NAME ("FRIDAY"); the class descriptor written before it changes from java.time
     .DayOfWeek to kotlinx.datetime.DayOfWeek, and SimInputs' computed serialVersionUID with it. A Bundle written and
-    read by the same build round-trips (measured). A Bundle written by a 52da740 build and read by this one would fail
-    to deserialize the snapshot. The move to PlatformSerializable (R814) changed nothing further. Not hidden, not
+    read by the same build round-trips (measured). A Bundle written by a 52da740 build and read by this one would, by
+    Java serialization's own rules (a SUID mismatch, a field of another type), fail to deserialize the snapshot - reasoned,
+    NOT measured. The move to PlatformSerializable (R814) changed nothing further. Not hidden, not
     worked around (any field type other than java.time.DayOfWeek changes that descriptor): UNNUMBERED-1 and Q1.
 
 ================================================================================
@@ -614,9 +616,9 @@ PARKED (UNNUMBERED - no series letter claimed)
 UNNUMBERED-1  THE SAVED-INSTANCE-STATE FORM OF THE SIMULATOR'S WEEKDAY (R813's table). The hard boundary says a stored
               DayOfWeek keeps its exact stored form; the Bundle's class descriptor and SimInputs' SUID changed with the
               type R813 ordered. The name written is unchanged and a same-build round trip is measured equal. Question
-              Q1 asks whether this is accepted (the argument: a saved-instance Bundle is not restored across an app
-              update) or wants a mitigation. Nothing was attempted: no field type other than java.time.DayOfWeek keeps
-              that descriptor.
+              Q1 asks whether this is accepted (the argument offered, NOT measured here: a saved-instance Bundle is not
+              restored across an app update) or wants a mitigation. Nothing was attempted: no field type other than
+              java.time.DayOfWeek keeps that descriptor.
 UNNUMBERED-2  THE EXPERIMENTAL-TIME ALLOWLIST GREW by 11 sites, every one function-, property- or parameter-scoped, and
               per R590's own message a new site is an argument for the operator: ForecastController 3 and
               SimulationController 3 (the kotlin.time.Clock seam property and its two readers - CalendarController's
@@ -675,8 +677,9 @@ QUESTIONS
 Q1 (R813, UNNUMBERED-1) - The simulator's saved-instance Bundle changes form with the weekday type: SimInputs' SUID
    -2052860028838609161 -> 1497513778350915589 and the enum descriptor java.time.DayOfWeek -> kotlinx.datetime.DayOfWeek
    (the name "FRIDAY" unchanged; same-build round trip equal). The hard boundary asks the exact stored form to be kept;
-   R813 asks for the kotlinx type. Is this accepted on the argument that Android does not restore one build's
-   saved-instance state into another (an app update ends the process and its tasks' saved state), or does the
+   R813 asks for the kotlinx type. Is this accepted on the argument - offered, NOT measured here - that Android does not
+   restore one build's saved-instance state into another (an app update ends the process and its tasks' saved state), or
+   does the
    orchestrator want a mitigation (e.g. a custom readObject for SimInputs in androidMain, or storing the weekday's ISO
    number) - each of which is itself a change to that stored form?
 No other question blocks. The parked items above (the allowlist growth, the stand-in, the popup pointer tap, the
@@ -698,3 +701,17 @@ This report is the commit after 0616b4e and changes REPORT-IOS-2d.txt only; its 
 below.
 
 END OF REPORT-IOS-2d
+
+PUSH PROOF, FOLLOW-UP: the report commit 9613f9b pushed - git push origin ios2d -> "0616b4e..9613f9b  ios2d -> ios2d";
+git ls-remote origin refs/heads/ios2d -> 9613f9bac269e6576a7753cde39354c889f1d0bc = HEAD (MATCH); `git diff --stat 0616b4e
+9613f9b` -> " REPORT-IOS-2d.txt | 700 ++++..." / " 1 file changed, 700 insertions(+)" (the STATUS pointer resolves
+here); `gh run list --workflow ios-shared.yml --branch ios2d` -> [42934860637] after that push. Re-fetched: origin/main
+52da740, production 52caca8 - unchanged. This follow-up commit changes REPORT-IOS-2d.txt only: the push lines above, and
+four precision edits made after 9613f9b (Q1's and UNNUMBERED-1's argument marked "offered, NOT measured here"; R813's
+cross-build failure marked "reasoned, NOT measured"; the probe described as "reformatted once" between runs). Not pushed:
+main, production.
+CLEANUP: ./gradlew --stop after the last Gradle use ("No Gradle daemons are running" / "1 Daemon stopped"); no server
+started, no port touched, no container touched, no phone, adb not used. Evidence stays in C:/wt/ios2d/.ios2d-evidence/
+(ignored). The worktree C:/wt/ios2d stays (R392); android/local.properties (copied, ignored) stays with it. No other
+C:/wt/* was written: C:/wt/ios2c-fix was read once (its local.properties copied). The lock .session-lock.json is present
+at this commit and is removed as the session's last step, after this follow-up's push.
