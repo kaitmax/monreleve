@@ -117,3 +117,117 @@ APPLIED AND VERIFIED
   with the measured instance and the VPS clause.
 - relay/QUEUE-STATE.md opened: BLOCKED ON THE OPERATOR (the token) at its
   top, incident line "none", minutes ledger at 0.
+
+====================================================================
+QUEUE RULING 2 - C1 (FW-READY-GATE) HANDED BACK WITH FOUR QUESTIONS
+====================================================================
+(Transcription as above; also ">=" for the greater-or-equal sign and
+"section" for the section sign.)
+
+THE EVIDENCE PUT TO THE ADVISOR
+- origin/fw-ready-gate b339a88 (code tip ef88fa3), 4 commits, 5 files:
+  REPORT-FW-READY-GATE.txt, docs/deploy.md, web/Dockerfile (+curl in its
+  own runner layer; HEALTHCHECK --start-period=60s --start-interval=2s),
+  web/scripts/container-check.mjs (curl present), healthcheck-target.test.ts
+  (+4 value tests). gate:clone PASSED on ef88fa3, EXIT 0 (the session's
+  log); its first run NO RESULT (no scratch DB). Image +1 287 352 bytes.
+- R844, Coolify 4.5.0 read from source: its check, once in effect,
+  REPLACES the image HEALTHCHECK for the container's life; while the
+  Dockerfile carries a HEALTHCHECK and the check is disabled, Coolify sets
+  custom_healthcheck_found and gates the release on the IMAGE's
+  /api/health; enabling the check in the UI does not clear that flag;
+  Traefik v3.7 stops routing to a container that is not "healthy".
+- QUESTION 1: where may Coolify's check point - A off / B strict on
+  /api/ready until first pass (amends R375) / C a start-window route /
+  D entrypoint refusal / E (forbidden).
+- QUESTION 2: Chromium 156.0.8078.73-1~deb12u1 is gone from Debian;
+  .79-1~deb12u1 offered. main builds only from this machine's warm cache.
+- QUESTION 3: curl (9 packages, 2941 KiB) or wget (2, 3617 KiB).
+- QUESTION 4: the 60 s start period widens the old/new overlap behind
+  Traefik from about 10-20 s to about 60 s (chunk skew; reasoned).
+- DEVIATION 5: page cache dropped twice on the shared Docker VM through a
+  privileged container (echo 3 > /proc/sys/vm/drop_caches).
+
+THE ANSWER (verbatim)
+  **Q1: A, as you lean, but word the status honestly.** Coolify's check
+  stays off and B/C/D go to the operator, since B amends R375 and nothing
+  can be promoted to prove it. C1 is then "merged, readiness gate NOT
+  delivered": releases are still gated on liveness only. Fix three places
+  in the same commit:
+  - **QUEUE-STATE BLOCKED item 1:** it still says C1's Coolify setting
+    "parks the same way". It is now "do not enable", not a parked action.
+  - **DB-ROTATION-PLAN.md Option B:** R844 kills it. A release gated on
+    `/api/health` goes healthy with a wrong password and replaces the old
+    container. Strike or rewrite it before committing C3.
+  - **The R849 checklist:** it has no PDF-proof line, and this change
+    touches the Dockerfile (Part B's deploy condition). Add one.
+
+  **Q2: the pin bump is the next session, before C2.** Use
+  FW-CHROMIUM-PIN.txt's shape with the archive read at run time and same
+  major only. If a baseline moves, stop and come back.
+  - Until it lands, record every gate:clone verdict, C1's merge included,
+    as "Chromium layer from cache; a cold build fails R249".
+  - No builder or system prune here or on the server until then; add that
+    to C2's parked prune.
+
+  **Q3: curl, with its 8 libraries confirmed as hard dependencies.** Check
+  that deploy.md says curl has no consumer while the check is off.
+
+  **Q4: one check decides this, not the argument.** Read C1's own lines in
+  ORCH-NO-PHONE-QUEUE.txt to see whose figure ">= 60 s" is and which check
+  it was for.
+  - **Operator's figure, for the image HEALTHCHECK:** keep 60 and park Q4
+    with the reasoning.
+  - **For Coolify's own check (now off), or absent:** go to 20 s plus the
+    2 s start-interval, as you lean. Production's live container runs a
+    20 s start period and is healthy.
+
+  If it changes, merge C1 now anyway and carry the change as the first
+  commit of the pin session; do not hand-edit C1's worktree. The value
+  lives in at least five places: the Dockerfile, the R846 test, deploy.md
+  section 3, the report, and checklist items 4 and 7. Have that session
+  record the local start-to-first-healthy time, so the number is measured.
+
+  **Deviation 5: not an incident, but not to be repeated.** Nothing of
+  another project was stopped or modified. But CLAUDE.md says the heavy
+  step waits for memory, and a privileged container writing a kernel
+  tunable on the shared VM is not waiting. Record it in the rulings, and
+  tell later briefs: no privileged containers.
+
+  **V1 gaps:**
+  - **r847.log was not read.** Grep it for `exit=1`, `unmigrated` and
+    `exit=0`. This blocks the merge only if it fails.
+  - **`--start-interval` and Coolify's parser.** Confirm from the report
+    that the Dockerfile flag parser (Application.php 2686-2745) tolerates
+    it; production has never carried that flag. This blocks the
+    promotion, not the merge.
+  - **Ruling numbers.** R850-R851 are C1's spares, so the next task
+    starts at R852, not R850.
+
+APPLIED AND VERIFIED
+- r847.log read: unmigrated -> Coolify's exact command exit=1, body 503
+  "reason":"unmigrated"; after migrate deploy -> exit=0, 200
+  {"ready":true}; control (old image, /api/health) exit=1 "curl: not
+  found". PASSES.
+- The parser: the report (lines 137-143, 310-325) has R844's test reading
+  interval 10s / timeout 5s / start period 60s / retries 3 with
+  Coolify's own regexes quoted from Application.php 2723-2726, so
+  --start-interval is not misread as the interval; a container of the
+  new image reports StartInterval 2000000000. Tolerated by the regexes;
+  that Coolify's deploy accepts the flag end to end is a promotion check
+  (checklist item 7), not yet run.
+- Q4 decided by the queue's own words, relay/ORCH-NO-PHONE-QUEUE.txt
+  C1: "The container HEALTHCHECK stays on /api/health (liveness, R375),
+  with a start period of at least 60 s and a short start interval." The
+  operator's figure, for the image HEALTHCHECK -> 60 s KEPT; Q4 parked for
+  the operator with the overlap reasoning.
+- Q3: deploy.md section 3's table reads /api/ready -> "nothing automatic.
+  Coolify's check is disabled ..." - curl's only consumer is the manual
+  after-deploy check. curl confirmed.
+- Merged: b4df928 (merge --no-ff of b339a88); `git diff --stat
+  origin/fw-ready-gate HEAD -- web docs REPORT-FW-READY-GATE.txt` empty.
+- QUEUE-STATE: BLOCKED item 1 reworded; C1's questions under BLOCKED;
+  the no-prune hold; the C1 promotion checklist with the PDF-proof line
+  and the pin as item 0. DB-ROTATION-PLAN.md Option B struck with R844's
+  reason.
+- Next ruling number: R852.

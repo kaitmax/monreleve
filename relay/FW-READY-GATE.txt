@@ -1,0 +1,127 @@
+FW-READY-GATE SESSION PROMPT - Mon Releve
+THE DEPLOY GATE THAT HAS BEEN MISSING SINCE OCTOBER (queue step C1)
+Paste into a fresh Claude Code session at the repository root.
+Written by the orchestrating session on 2026-11-11 for relay/
+ORCH-NO-PHONE-QUEUE.txt step C1. Read relay/QUEUE-STATE.md and Queue
+Ruling 1 in relay/RULINGS-2026-11-11.txt first. YOUR OWN advisor may
+advise you; reserved items (dependencies, production, Coolify, the
+server) come back to the orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-READY-GATE.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry, continue. R334, R349, R392: your OWN worktree at
+C:/wt/fw-ready-gate, NEW branch fw-ready-gate cut from origin/main, your
+lock in it. You may run `git fetch` and `git worktree add` from the main
+checkout (its lock says so); nothing else there. Stage BY NAME. Push
+fw-ready-gate ONLY - DO NOT MERGE; never main, never production.
+gate:changed before every commit (Dockerfile changes select
+test:container, R251); gate:clone before every push (R199).
+
+LIVE STATE (what the repository cannot tell you):
+  - NO COOLIFY ACCESS AT ALL (Queue Ruling 1): the API token is gone.
+    Nothing in this task reads, sets or deploys anything in Coolify, and
+    the production server is NOT yours (no SSH). The orchestrator measured
+    on 2026-11-11, read-only: server Docker Engine 29.7.1; Coolify
+    coollabsio/coolify:4.5.0; the live app container's healthcheck is the
+    IMAGE's (node fetch of /api/health, interval 10s, timeout 5s, start
+    period 20s, retries 3) - Coolify's own deploy check is OFF. Local
+    Docker Engine 29.6.1.
+  - THE MACHINE: heavy steps (image builds, test:container, gate:clone)
+    only with >= 1.5 GB free read in its own step; one at a time.
+    frontalier-postgres (:5436) is up; scratch databases only, never the
+    shared `frontalier` database; drop yours at the end. Never start,
+    stop or remove another project's container (CLAUDE.md). Ports 3000,
+    3100, 3200 are tizicorp's - use FRONTALIER_PORT.
+
+RULING NUMBERS: R844-R849; R850-R851 reserved spares. Before committing
+any: `grep -rE '\bR8(4[4-9]|5[01])\b' relay/ REPORT-*.txt CLAUDE.md docs`.
+
+HARD BOUNDARIES: /api/health stays LIVENESS and never checks the
+database (R83, R357); /api/ready's semantics unchanged (R353, R354); no
+route, engine or copy change; the runner image gains curl (or wget) and
+NOTHING else; no new npm dependency.
+
+====================================================================
+THE RULINGS
+====================================================================
+R844. FIRST, HOW COOLIFY 4.5.0 APPLIES ITS DEPLOY HEALTH CHECK - FROM ITS
+    SOURCE, NOT FROM MEMORY. Read coollabsio/coolify at tag v4.5.0 (the
+    application deploy job and the generated compose): name the file and
+    lines that build the health check, the exact command it runs (curl /
+    wget form, host, port, path), and ANSWER: (a) does it REPLACE the
+    image's HEALTHCHECK for the container's whole life, or only gate the
+    release? (b) what does Coolify do when it fails - keep the old
+    container serving? (c) does the proxy (Traefik in Coolify 4.5.0) stop
+    routing to a container Docker marks unhealthy? If (a) is "replaces"
+    and (c) is "stops routing", then pointing Coolify's check at
+    /api/ready turns readiness into LIVENESS for the container's life -
+    a database blip would take every page, static ones included, out of
+    routing - which is exactly what R375/R357 forbid. In that case DO NOT
+    paper over it: write the finding, the options you see (e.g. a
+    readiness path that is strict only during a start window; Coolify's
+    check on /api/health with the release gate done another way; leave it
+    off), and hand it back as QUESTION 1. Everything below that does not
+    depend on the answer continues.
+
+R845. curl IN THE RUNNER IMAGE, NOTHING ELSE. One apt package with
+    --no-install-recommends (curl, or wget if R844 shows Coolify prefers
+    it), in the runner stage, in the existing apt layer if there is one.
+    Image size (docker image inspect .Size) before and after, both
+    printed, the delta stated. dpkg -l in the runner shows nothing else
+    new (diff the package lists).
+
+R846. THE CONTAINER HEALTHCHECK STAYS ON /api/health (R375) with
+    --start-period >= 60s and a short --start-interval (e.g. 2s; Docker
+    >= 25 on both engines, measured above). Its command may stay the
+    node fetch; healthcheck-target.test.ts keeps passing, and gains a
+    test that asserts the start period and start interval VALUES from
+    the Dockerfile (R345: state the value and assert the value).
+
+R847. THE REFUSAL, PROVEN LOCALLY - BOTH DIRECTIONS. Build the image;
+    run it against a NEW, UNMIGRATED scratch database on
+    frontalier-postgres; run inside the container the exact command R844
+    found Coolify uses, against /api/ready: it must exit NON-ZERO, with
+    the 503 body naming `unmigrated`. Migrate that scratch database
+    (db:deploy) and run the same command: exit 0. Both outputs pasted.
+    If the container's own HEALTHCHECK reads healthy during the
+    unmigrated half, say so - that is R357 working. Fold the pair into
+    test:container if it fits its scope (R251: narrow, no browser);
+    otherwise record why not.
+
+R848. docs/deploy.md section 3: the gate as it now stands - curl in the
+    image, the HEALTHCHECK values, R844's findings with their source
+    lines, R847's proof. The Coolify step is written as the OPERATOR'S
+    PARKED ACTION with its exact UI path in Coolify 4.5.0 (the app ->
+    the health-check settings -> path /api/ready, port, start period >=
+    60 s, retries) - or, if QUESTION 1 is open, as "do not enable until
+    question 1 is ruled". The block quote "Coolify's deploy health check
+    is currently DISABLED" stays true until someone enables it.
+
+R849. WHAT IS PARKED FOR THE ORCHESTRATOR. The promotion of this change
+    to production (it rides the next promotion, after the token is back)
+    with its after-deploy checks: /api/health 200 naming monreleve,
+    /api/ready 200, the new container's HEALTHCHECK values read from the
+    running container, and the first deploy with Coolify's check enabled
+    PASSING it. Written in the report as a checklist the orchestrator can
+    paste into QUEUE-STATE.md.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock, scratch DB.  1. R844 (source read), written down.
+2. R845 + R846 (Dockerfile, tests). gate:changed. Commit.  3. R847 proof
+(and test:container if it fits). Commit.  4. R848 docs. Commit.
+5. gate:clone on the tip. Push.  6. Report; commit; push.
+
+====================================================================
+REPORT - REPORT-FW-READY-GATE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape: the gates that ran on the reported tip,
+their lines pasted) / R844 (source file and lines, answers a-c) / R845
+(sizes, package diff) / R846 / R847 (both outputs) / R848 / R849 (the
+checklist) / PARKED / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-READY-GATE PROMPT
