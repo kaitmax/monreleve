@@ -1,0 +1,260 @@
+IOS-2d SESSION PROMPT - Mon Releve
+COMPARISON, PREVISION, SIMULATION AND RYTHME BECOME SHARED - WITH THE
+FORECAST CONTROLLERS - AND DISCLOSURE IF IT MOVES ALONE
+(no Apple account, no phone)
+Paste into a fresh Claude Code session at the repository root.
+Android plus :shared. Uses the iOS cloud workflow (ONE dispatched run).
+Written by the orchestrating session on 2026-11-10, after IOS-2c merged as
+7afda5e and its docs as 52da740 (Ruling 11 and Ruling 12 in
+relay/RULINGS-2026-11-03-MOBILE.txt). The advisor rules in the operator's
+place for the orchestrator. YOUR OWN advisor may advise you; it does NOT
+rule on anything this prompt reserves (run budgets, dependencies,
+versions, re-recording a baseline) - those come back to the orchestrator.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-IOS-2d.txt,
+committed and pushed. Unclear? R156: conservative, reversible, an
+UNNUMBERED-n entry in the report, continue. Ends early: R156's boundary;
+a red gate you cannot fix; a path reaching a real person; a degraded
+context. R334, R349, R392: your OWN worktree at C:/wt/ios2d, NEW branch
+ios2d cut from origin/main (52da740), your lock in it. You may run
+`git fetch` and `git worktree add` from the main checkout (its lock says
+so); nothing else there. Every other C:/wt/* is an earlier session's:
+READ and COPY only. Stage BY NAME. READ before writing. R393's guard is
+live. ABSENCE NEEDS A POSITIVE CONTROL. Push ios2d ONLY - DO NOT MERGE;
+never main, never production.
+
+R391 governs STATUS: the FULL :app:gate --rerun-tasks AND the one iOS
+cloud run (R573) on the reported CODE tip, BUILD line and counts pasted
+from the log, with `git diff --stat <code tip> HEAD` shown report-only.
+
+THE RUN BUDGET IS EXACTLY ONE dispatched iOS run, on the code tip
+(`gh workflow run ios-shared.yml --ref ios2d`; `ios2d` does not match the
+workflow's `ios-*` push trigger, so pushes start nothing). There is NO
+earlier run. Before it you MAY run the compile-only Windows check with
+R575's kotlin.native.enableKlibsCrossCompilation overridden ON THE
+COMMAND LINE (no file changed); it is compile evidence only and is never
+cited as a run result. Red, lost, or zero steps -> STOP and hand back.
+A second run is the orchestrator's, never yours or your advisor's.
+
+RULING NUMBERS: R812-R822 below; R823-R825 are reserved spares. Before
+committing any, run
+`grep -rE '\bR8(1[2-9]|2[0-5])\b' relay/ REPORT-*.txt CLAUDE.md docs`
+and renumber if any is taken (R162). Only relay/IOS-2d.txt and
+relay/RULINGS-2026-11-03-MOBILE.txt may already carry them.
+
+BASE: origin/main at 52da740 (IOS-2c: :app:gate 1394/200 and iOS run
+42292101917 green on its code 9433c4e).
+
+LIVE STATE (what the repository cannot tell you):
+  - THE MACHINE: start a heavy step only with >= 1.5 GB free, read in its
+    OWN step, after `./gradlew --stop`; one heavy step at a time. A killed
+    run is NO RESULT, re-run once; two in a row -> stop and hand back.
+  - The other projects' Docker containers (tizicorp-app-1,
+    tizicorp-postgres-1, counterworthy-postgres, mustapha-postgres,
+    zagora-postgres-1) were STOPPED on the operator's authorisation to
+    free memory. Never start, stop or remove any container.
+    frontalier-postgres is up. Never run test:db against the shared
+    `frontalier` database. Ports 3000, 3100, 3200 are tizicorp's.
+  - NO PHONE (R812). No adb command at all.
+
+====================================================================
+THE ADVISOR'S DECISION ON THE DEVICE, recorded here as R812 (Ruling 12)
+====================================================================
+R812. NO S9 IN THIS TASK. RateOneStringInstrumentedTest drives
+    PrevisionScreen with ForecastController on the S9, but its
+    precondition (the phone signed out) is an observation nobody in this
+    chain can make, and connectedAndroidTest deletes the app's on-device
+    database. So: no adb, no instrumented run, no screen read. Instead:
+    (1) every androidTest COMPILES with imports-only edits
+        (compileDebugAndroidTestKotlin), RateOneStringInstrumentedTest and
+        ProvenanceShownInstrumentedTest named;
+    (2) name the JVM test (app/src/test - Robolectric, Compose UI or
+        otherwise) that composes PrevisionScreen with a real
+        ForecastController the way RateOneStringInstrumentedTest does. If
+        one exists it is the runtime-composition stand-in; if none does,
+        that is a PARK entry, not a blocker. Do not write one unless it
+        is pinned to the CURRENT code first (R777's shape) - say which.
+    The device run itself is PARKED as a later device-only task.
+
+R273. Read REPORT-IOS-2c.txt (R795: the R785 table, the hosts, what is
+    missing on iOS), REPORT-IOS-2c-FIX.txt (waitBounded, its positive
+    control, IosTestRawWaitUntilFenceTest), REPORT-IOS-2b.txt
+    (R777/R778's pin-then-move), REPORT-IOS-1b-A (R602b/c: the java.time
+    factory left in :app; ruling 14's Glyph seam; R604 fences; R606),
+    Rulings 9-12, the files below, and every fence that reads ui/.
+R1. PRECONDITION, or stop before the first change: origin/main contains
+    7afda5e and 52da740.
+
+THE FILES (measured by the orchestrator on 52da740; verify):
+  android/app/src/main/kotlin/ch/monreleve/app/...
+  comparison: ui/screens/comparison/ComparisonActions.kt,
+              ComparisonScreen.kt (painterResource(R.drawable
+              .ic_chevron_left)); fr/ComparisonCopy.kt - the only copy
+              object of these screens still in :app (NotificationCopy
+              stays).
+  prevision:  ui/screens/prevision/PrevisionRail.kt, PrevisionScreen.kt
+              (painterResource(R.drawable.ic_bell); IconLine(icon: Int)
+              with R.drawable.ic_info twice and R.drawable.ic_lock once).
+  simulation: ui/screens/simulation/SimulationCard.kt,
+              SimulationScreen.kt (java.time.DayOfWeek).
+  rythme:     ui/screens/rythme/RythmeScreen.kt (R.drawable.ic_info;
+              java.time.DayOfWeek).
+  forecast/:  ForecastController.kt (java.time Clock, DayOfWeek),
+              ForecastState.kt (DayOfWeek), SimulationController.kt
+              (Clock, DayOfWeek), SimulationState.kt (DayOfWeek),
+              ThresholdForecast.kt (LocalDate).
+  disclosure: ui/screens/disclosure/DisclosureScreen.kt (69 lines). Its
+              HOST - the location-permission flow - is platform and stays.
+  Already shared: design/Glyph.kt (CHEVRON_LEFT, BELL, INFO and LOCK are
+  among its entries), fr/PrevisionCopy, RythmeCopy, SimulationCopy,
+  DisclosureCopy, iosTest pilot/BoundedWait.kt (waitBounded).
+
+HARD BOUNDARIES:
+  - ANDROID IS PIXEL-IDENTICAL: every Paparazzi baseline verifies at zero
+    (R626) with NONE re-recorded (`git diff --stat 52da740..<tip> --
+    android/app/src/test/snapshots` empty). A baseline that moves is a
+    STOP and hand back - never a re-record;
+  - Compose UI, JVM and accessibility tests pass with their ASSERTIONS
+    UNEDITED (imports may change; say which);
+  - no behaviour change: the same requests in the same order, the same
+    errors, copy, dates, numbers and storage. A DayOfWeek that is
+    persisted, sent or compared by name or number keeps its exact stored
+    and wire form;
+  - no wire, server, schema or engine change; no copy change;
+  - no drawable moved (ruling 14); no navigation library;
+  - ANY dependency added to :shared, or any version change, STOPS and asks
+    with the trade-off (SPEC 20). kotlinx-datetime and cmp.material3 are
+    already :shared dependencies;
+  - MaterialDatePickerCanaryTest passes UNCHANGED;
+    IosTestRawWaitUntilFenceTest's allowlist stays exactly Onboarding 16,
+    SignIn 6 - the new pilot file is NOT added to it;
+  - parametres, onboarding's host and every other :app host stay; no iOS
+    app, Xcode project, signing or TestFlight.
+
+====================================================================
+THE RULINGS
+====================================================================
+R813. THE FORECAST'S DATES MOVE FIRST, PINNED (R787's shape).
+    java.time.DayOfWeek -> kotlinx.datetime.DayOfWeek; the java.time
+    Clock -> the kotlin.time.Clock seam IOS-2c gave CalendarController,
+    with the java.time factory left in :app (R602b/c);
+    ThresholdForecast's LocalDate -> kotlinx. NAME the existing forecast
+    tests you pin (measure them; do not trust a guessed list). FIRST
+    vector tests on the CURRENT code in :app's test scope, GREEN, then RED
+    on a VERIFIED plant (R180): week boundaries and day ordering
+    (java.time's getValue 1-7 against kotlinx's isoDayNumber and ordinal -
+    any arithmetic or ordering on a day must be proven equal), every
+    place a day's NAME or NUMBER is stored, sent or compared, the year
+    end, 29 Feb 2024, a DST change day in Europe/Paris and Europe/Zurich.
+    Then the swap, then the same tests moved to commonTest UNEDITED and
+    green. Its own commit.
+
+R814. THE CONTROLLERS MOVE SECOND, BEFORE ANY UI. ForecastController,
+    ForecastState, SimulationController, SimulationState and
+    ThresholdForecast to commonMain; their existing tests pinned and
+    moved unedited (R768's way). Any collaborator that needs an Android
+    Context goes behind a commonMain interface, its Android
+    implementation left in :app; an iOS implementation only if small and
+    dependency-free, otherwise deferred with the reason. No java.* or
+    android.* in commonMain. Its own commit.
+
+R815. THE GLYPH CALL SITES - MEASURE, THEN PAPARAZZI ARBITRATES. Before
+    any edit, show from source that the Android side of the Glyph seam
+    resolves CHEVRON_LEFT, BELL, INFO and LOCK to ic_chevron_left,
+    ic_bell, ic_info and ic_lock - the same drawables these FIVE call
+    sites use today (comparison 1, prevision 3 incl. ic_lock, rythme 1).
+    Then the call sites take Glyph (IconLine takes a Glyph - a signature
+    change inside the moved file, fine). Do this IN :app, BEFORE the
+    screens move, so the pixel proof is isolated: Paparazzi verifies at
+    0.0 on that commit. A moved baseline is a STOP. Its own commit.
+
+R816. THE SCREENS MOVE. comparison (with ComparisonCopy to shared fr),
+    prevision, simulation and rythme to commonMain, package names
+    unchanged. Their hosts stay in :app, reached as today. One commit per
+    screen or one for all - say which.
+
+R817. DISCLOSURE LAST, WITH A DROP CLAUSE. DisclosureScreen moves to
+    commonMain as the final code commit ONLY IF it moves alone - no new
+    Glyph, no host interface, no dependency beyond what is already
+    shared. If it needs anything more, it stays in :app and becomes a
+    PARK entry with the measurement. Either outcome is acceptable; say
+    which, and why.
+
+R818. NEW MATERIAL ON iOS, INTERACTED WITH. Grep which Material3 and
+    foundation composables the moved screens use that NO shared screen
+    uses yet (for example Slider, Switch, RadioButton, SegmentedButton,
+    a progress indicator - list what you find, with file and line). The
+    iOS UI test must INTERACT with each one (drag the slider, toggle the
+    switch, pick the option), not merely compose it: R624's
+    IrLinkageError compiled and threw only when used, and R791(2) made
+    the same point for the sheet.
+
+R819. FENCES. Every fence that read ui/screens/{comparison,prevision,
+    simulation,rythme,disclosure} and forecast/ reads the new home
+    (FenceRoot). The no-inline-string fence, the tokens-only fence and
+    CommonMainFenceTest are each shown RED once on a VERIFIED plant in a
+    moved screen (R180), then the plant is deleted.
+
+R820. iOS COMPILES AND DRIVES THEM - THE ONE RUN. On the code tip, after
+    the full gate: commonTest for the moved controllers and the R813
+    vectors; Compose UI tests on iOS over fakes, in a NEW pilot file
+    whose every wait goes through waitBounded: Comparison shown;
+    Prevision shown with a fixture forecast; Simulation shown and changed
+    (R818's interactions); Rythme shown and changed; Disclosure shown if
+    R817 moved it. No server, no account, no real address. It must be
+    GREEN: 0 failures, every pilot class reached, the canary printing
+    "still broken as expected". Paste the run id, every step's result,
+    the test count. Name any linkage error in full; it is a finding, not
+    a flake.
+
+R821. ANDROID IS THE PROOF. Paparazzi at zero, none re-recorded; every
+    comparison/prevision/simulation/rythme/disclosure JVM and Compose
+    test green with assertions unedited; R812's compile and stand-in; the
+    release APK size before and after in bytes, with the reason for any
+    change.
+
+R822. WHAT IS LEFT, WRITTEN DOWN. Update R795's lists (REPORT-IOS-2c):
+    the shared entry points now including these screens; their hosts;
+    every iOS piece still missing that these add (a forecast clock and
+    host on iOS, anything the bell or the location disclosure needs);
+    R785's table re-measured - what remains in :app, which should be
+    parametres, onboarding's host pieces and disclosure if R817 parked
+    it; and every blocker found here for IOS-2e (parametres). Do not
+    choose.
+
+====================================================================
+THE WORK
+====================================================================
+0. R1; worktree, lock; R273.  1. R813 dates. Commit.  2. R814
+controllers. Commit.  3. R815 glyph call sites, Paparazzi at 0.0.
+Commit.  4. R818 measured; R816 screens; R819 fences. Commit(s).
+5. R817 disclosure. Commit, or park.  6. R821 and R812 (Android proof,
+androidTest compile, stand-in).  7. FULL :app:gate --rerun-tasks on the
+code tip, BUILD line and counts pasted. Push the branch.  8. R820, the
+one iOS run.  9. R822. Report; commit; push the branch.
+
+====================================================================
+OUT OF SCOPE
+====================================================================
+parametres. Onboarding's host. Any iOS native piece (share sheet,
+notification permission, location). A shared navigation host.
+Navigation libraries. Any iOS app, Xcode project, signing, TestFlight.
+Moving drawables. Dark mode. Any behaviour or copy change. Any phone use.
+web/ (the HomeCounter speed-up is not this task's).
+
+====================================================================
+REPORT - REPORT-IOS-2d.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391) / R273 / R1 / R812 (androidTest compile, the
+stand-in or its PARK) / R813 (vectors, RED then GREEN, plant verified,
+the stored and wire forms) / R814 / R815 (the resolution shown,
+Paparazzi 0.0) / R816 / R817 (moved or parked, why) / R818 (the new
+composables, each interacted with) / R819 (each fence red then green,
+plant verified) / R820 (run id, steps, counts) / R821 (baselines
+untouched, tests run, size) / R822 / CI MINUTES / PARKED / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF IOS-2d PROMPT

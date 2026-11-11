@@ -384,3 +384,135 @@ OUTCOME (IOS-2c)
   10 s test and hook timeouts against Docker PostgreSQL tip over the same
   way. Neither is fixed by loosening; a faster sweep without less coverage
   is a candidate web task, not taken.
+
+RULING 12 - THE ADVISOR'S, in the operator's place (the IOS-2d brief,
+written 2026-11-10 on main 52da740)
+- The operator, 2026-11-10, after IOS-2c was pushed: "go do not stop
+  urtil all is set and if there is an issue or you need my answer ask
+  the advisor, i trust his answer and move to the next". The stop rules
+  are unchanged by it.
+- SCOPE: comparison, prevision, simulation, rythme, forecast/* and
+  ComparisonCopy move as one task (R795's own suggestion). Disclosure is
+  its last commit WITH A DROP CLAUSE: if that one file needs anything
+  beyond itself (a Glyph, a host interface, a dependency) it stays in
+  :app and is parked with the measurement.
+- NO S9 RUN IN IOS-2d. RateOneStringInstrumentedTest drives PrevisionScreen
+  with ForecastController on the S9, so this move has a device test. Its
+  precondition - the as-found APK signed out, nothing outside the app in
+  front - is an OBSERVATION. The operator delegated decisions, not
+  observations, and the screen read that could make one was refused by
+  the permission system in IOS-2c. connectedAndroidTest uninstalls the app
+  and deletes its on-device database, so running it on a word nobody gave
+  could destroy a real account's unsynced entries - a stop-rule item.
+  Android's proof is Paparazzi at zero, the JVM and Compose tests with
+  assertions unedited, every androidTest compiling, and the shared-
+  controller shape IOS-2c-DEVICE already ran on the S9. PARKED, not
+  skipped: a device-only follow-up (IOS-2c-DEVICE's shape, no code
+  change) against main's tip, run when the operator says the phone is
+  signed out.
+- RUN BUDGET: exactly ONE dispatched iOS run on the code tip. IOS-2c's
+  "plus one earlier run" clause is withdrawn - it is where the overspend
+  came from. In its place the compile-only Windows check (R575's
+  override on the command line, no file changed) is permitted, as
+  compile evidence only. A second run is the orchestrator's, with the
+  advisor, never a session's or its own advisor's.
+- THE GLYPH CALL SITES: Paparazzi arbitrates. A moved baseline is a STOP,
+  never a re-record.
+- AFTER IOS-2d: IOS-2e, parametres, last and alone. That ends the standing
+  instruction. The HomeCounter speed-up was offered, not accepted, and
+  stays out.
+
+OUTCOME (IOS-2d)
+- Merged as 1d8d48e (--no-ff, of ios2d 787541d, code tip 0616b4e).
+  Identity proven: 1d8d48e's tree equals 787541d's (e47b1a4); main had
+  not moved (base 52da740), so R573's run 42934860637 on 0616b4e (291
+  simulator tests, 0 failures, read from the run's own log: "iOS
+  SIMULATOR TESTS EXECUTED: 291"; canary "still broken as expected") and
+  the full :app:gate on 0616b4e (gate.log: "BUILD SUCCESSFUL in 9m 28s",
+  "260 actionable tasks: 260 executed", GATE_EXIT=0; :app 1397 /
+  :shared 217) carry to the merge by identity. No iOS re-run.
+  0616b4e..787541d is REPORT-IOS-2d.txt only.
+- Android proof checked by the orchestrator, not only read in the report:
+  `git diff --stat 52da740..787541d` over android/app/src/test/snapshots,
+  android/app/src/androidTest, web, *.gradle.kts, android/gradle and
+  *.toml - all EMPTY. Release APK 1,989,388 B before and after (report).
+- Disclosure MOVED (R817, c460b8c) - it needed nothing beyond itself.
+- gate:clone alone on exactly 1d8d48e - free memory 5.87 GB read in
+  its own step after `gradlew --stop`, CPU 19 %, only frontalier-postgres
+  running: GATE:CLONE PASSED on its first run (register-coverage,
+  fixture-coverage, install, typecheck, lint, test, build, size,
+  db:deploy, test:db, test:container:write).
+- R823 - THE ADVISOR'S, in the operator's place, on IOS-2d's Q1 (the
+  simulator's saved-instance Bundle: SimInputs' serialVersionUID
+  -2052860028838609161 -> 1497513778350915589 and the enum's class
+  descriptor java.time.DayOfWeek -> kotlinx.datetime.DayOfWeek; the
+  name FRIDAY unchanged; a same-build round trip equal, measured).
+  ACCEPTED, NO MITIGATION. REASONED, NOT MEASURED:
+  (1) The boundary reads "A DayOfWeek that is persisted, sent or compared
+      by name or number keeps its exact stored and wire form". The day is
+      still written BY NAME, and that name is unchanged. What changed is
+      the Java-serialization descriptor of a rememberSaveable Bundle -
+      state the system holds for one installed build's task, never read
+      back by the product across a build. It is not the database's or the
+      API's form, which is what the boundary protects; this is the
+      interpretation, stated rather than implied.
+  (2) No legitimate path hands a pre-IOS-2d Bundle to a post-IOS-2d
+      build: replacing the package stops it and finishes its activities,
+      and saved-instance state lives with the activity record. Auto
+      Backup does not carry instance state. Offered by the session, NOT
+      measured by anyone.
+  (3) If it did happen the failure is loud, not silent: the restore
+      throws (an InvalidClassException inside the Bundle's unparcel) -
+      a crash on resume, never a wrong weekday shown as right.
+  (4) Every mitigation offered (a custom readObject, storing the ISO
+      number) is itself a change to the stored form, and moving the code
+      tip would cost the full gate and a second iOS run Ruling 12 forbids.
+  THE MEASUREMENT IS PARKED with the device-only follow-up (IOS-2e's
+  R838(a)), both halves, because the second means nothing without the
+  first: same build - Simulation, pick a weekday, Home, `adb shell am
+  kill`, reopen, the weekday returns; then `adb install -r` of the next
+  build over it, reopen - a cold start, no crash.
+- The merge message 1d8d48e says Q1 is "Recorded in the rulings file's
+  OUTCOME (IOS-2d)". That record is THIS entry, which landed one commit
+  after the message that cites it. Not amended: amending would have
+  discarded the gate already running on 1d8d48e.
+- relay/ and every origin head rescanned for R812-R825 before the push:
+  only relay/IOS-2d.txt and REPORT-IOS-2d.txt carry them (R823-R825
+  there only as unused spares); origin/main was still 52da740.
+  main pushed 52da740..1d8d48e. production untouched (52caca8).
+- CARRIED INTO IOS-2e, not fixed here: DEVIATION 7 (a test comment and
+  0616b4e's message state as fact a popup-tap concern the run's geometry
+  disproved - boundsInRoot equals boundsInWindow); the double setDay save
+  pinned as current behaviour (a pin of a defect, to get a PARK id); the
+  R812 JVM stand-in; the 11 ExperimentalTime opt-in sites; R822's
+  parametres blockers.
+
+RULING 13 - THE ADVISOR'S, in the operator's place (the IOS-2e brief,
+written 2026-11-11 on main 1d8d48e)
+- SCOPE: parametres - the twelve ui/screens/parametres files with
+  LicencesScreen, ParametresController, DeviceRate, LegalPage, and the
+  ThresholdAlertStore / EveningNotificationStore / LocalStore interfaces
+  - as ONE task, ONE branch, ONE iOS run. NOT split into 2e-A/2e-B: R573
+  wants an iOS run per merge, so a split costs a run rather than saving
+  one. Durability comes instead from pushing every green increment to
+  ios2e; a session that runs out stops at its last green increment with
+  a narrow STATUS, and a later session continues the SAME branch - the
+  run budget belongs to the branch.
+- THE ORDER is the chain's: the platform pieces pinned and moved first
+  (the four org.json sites as parameters, R778's shape, org.json staying
+  in :app; java.time's LocalDate.parse swapped only where proven equal on
+  vectors), the stores' interfaces, the controller, the date field onto
+  R776's seam WITH an initial date, then the screens.
+- THE BOUNDARY IS WIDENED, ON PURPOSE: tests may change their imports AND
+  their fixture plumbing, assertions never - after IOS-2d's DEVIATION 4,
+  which had to remove six fixture conversion calls. Every non-import line
+  changed is listed with its before and after.
+- NO PHONE. No androidTest names Parametres (measured on 1d8d48e), so the
+  move has no device test of its own; the device-only follow-up stays
+  parked, and IOS-2e writes it into parking.md with R823's two halves.
+- R836: IOS-2d's parked popup pointer tap rides in IOS-2e's one run, as a
+  separate, self-naming test beside the OnClick one. If it alone is red,
+  the run is red and the re-run is the orchestrator's.
+- AFTER IOS-2e: the standing instruction is complete. What remains -
+  IOS-1b-B (the Apple account), the device-only follow-up, AN14b, the
+  five stopped containers - is the operator's.
