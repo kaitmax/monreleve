@@ -43,6 +43,9 @@ import ch.monreleve.app.parametres.SettingsError
 // in-progress edit itself lives in the controller's state, already persisted across both by ShellState's
 // ParametresSnapshot. The shared title uses the four screens' header style (FrontierType.h2 - ReleveScreen's
 // title and Aujourd'hui's greeting), down from the oversized h1 AN12 used.
+//
+// IOS-2e R830: the « Début d'activité » date picker is the host's (startDatePicker, R776's seam with an initial
+// date); Android's Material 3 dialog is passed by :app's overload of this function (ParametresStartDatePicker.kt).
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,7 @@ fun ParametresScreen(
     state: ParametresState,
     actions: ParametresActions,
     appVersion: String,
+    startDatePicker: ParametresDatePicker,
     modifier: Modifier = Modifier,
 ) {
     var showLicences by rememberSaveable { mutableStateOf(false) }
@@ -87,6 +91,7 @@ fun ParametresScreen(
                 editing = null
                 saveAttempted = false
             },
+            startDatePicker = startDatePicker,
         )
     val callbacks =
         ParametresListCallbacks(
