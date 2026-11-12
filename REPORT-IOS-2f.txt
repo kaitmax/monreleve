@@ -437,9 +437,10 @@ MEMORY (commit free / free physical, MB; every Gradle and web step under run-sam
   FULL :app:gate                          39a384e   8 201 (8 443 read   3 547             382                 BUILD
                                                     after --stop)                                             SUCCESSFUL
   gate:clone                              39a384e   8 567               6 737             2 615               PASSED
-No sampler abort; no worker death. `./gradlew --stop` after each Gradle run before the next memory read. The full gate
-started above the 8 000 MB floor (8 443 MB read after --stop, in its own step). The fastChecks and the compile-only
-checks are not on the HOLDS' heavy list and ran under the sampler at the reads shown.
+No sampler abort; no worker death. `./gradlew --stop` RAN: before compile-only check #1, before #2, before the full
+gate, after the gate (before #3) and after #3 - NOT between the JVM runs, the RED-tree fastChecks or the four
+per-piece fastChecks. The full gate started above the 8 000 MB floor (8 443 MB read after --stop, in its own step).
+Every OTHER Gradle step started below it - DEVIATION 10.
 
 ================================================================================
 PARKED
@@ -473,7 +474,7 @@ DEVIATIONS
    -Pkotlin.native.enableKlibsCrossCompilation=true --offline`, the property on the command line, no file changed) ran
    three times (2567ceb's tree twice, 39a384e once), compile evidence only, never cited as a run result. Classed as not
    a HOLDS heavy step (it is not on the list: :app:gate, recordPaparazzi, assembleRelease) and run under the sampler;
-   its minimum was 7 053 MB commit free.
+   its minimum was 7 053 MB commit free. Its starting reads are in DEVIATION 10.
 9. STYLE REDS BEFORE EACH GREEN fastCheck, all fixed before the commit they precede, none in a committed tree:
    fastcheck-red-1 (detekt: 18 MaxLineLength, 1 FunctionOnlyReturningConstant on a stub), fastcheck-red-2 (ktlint: an
    EOL comment after a KDoc; a first scripted move of those comments overreached - its lazy pattern spanned two KDocs -
@@ -481,6 +482,12 @@ DEVIATIONS
    run), fastcheck-r891 (detekt: one long line), fastcheck-r892 / r892b (ktlintFormat refused an EOL comment after a
    KDoc; the sampler's log held no output because only the second command of the `&&` pair was redirected - NO RESULT,
    re-run directly to read the message). Each green run after them is the one cited.
+10. GRADLE STEPS BELOW THE 8 000 MB FLOOR. The launch message counts "a fastCheck under pressure" as a heavy step at
+   commit free >= 8 000 MB after --stop. Only the FULL :app:gate met it (8 443 MB). Every fastCheck started at 5 483 -
+   7 171 MB commit free (the RED-tree one bottomed at 3 672 MB, 546 MB free physical), the JVM test runs at 6 082 -
+   8 577 MB, the compile-only checks at 7 016 - 8 611 MB at the sampler's first read (one read after --stop was
+   4 666 MB, before #3); several without a --stop before them. All ran under the sampler: no abort, no worker death,
+   every test count as expected. Recorded as run, not explained away.
 
 ================================================================================
 QUESTIONS
@@ -520,19 +527,21 @@ Branch ios2f only (never main, never production). gate:clone ran before each pus
         `git ls-remote origin refs/heads/ios2f` -> 39a384ef92d0c0381440224d6241be576299d8ff = HEAD (MATCH); then one
         dispatch -> 43177226628, headSha 39a384e. ios2f does not match the workflow's push filter ('ios-*'), so no push
         started a run: the branch's runs are exactly the two dispatches.
-  3     39a384e..<this commit>    REPORT-IOS-2f.txt + parking.md (PARK-IF1..IF4)  gate:clone on this commit - PENDING at
-                                                                                  the time of writing; the hand-back
-                                                                                  states its lines and the ls-remote.
-`git diff --stat 39a384e <this commit>` touches REPORT-IOS-2f.txt and parking.md only (the hand-back shows it).
+  3     39a384e..<the report tip>   c6c6932 the report + parking.md (PARK-IF1..IF4); gate:clone on the report tip - PENDING
+                                    4124565 R893 reworded (register-coverage     at the time of writing; the hand-back
+                                    refused a headless id the first report       states its lines, the push and the
+                                    commit cited); the commit carrying this      ls-remote.
+                                    paragraph (DEVIATION 10, CLEANUP pending)
+`git diff --stat 39a384e <the report tip>` touches REPORT-IOS-2f.txt and parking.md only (the hand-back shows it).
 Ruling numbers: before this commit `grep -rlE '\bR8(8[89]|9[0-7])\b' relay/ REPORT-*.txt CLAUDE.md docs` -> the worktree:
   relay/IOS-2f.txt and this report only; the main checkout: relay/IOS-2f.txt only. R896-R897 unused.
 Not pushed, not touched: main, production. No merge.
 
 ================================================================================
-CLEANUP (done after the last push; the hand-back confirms each)
+CLEANUP - PENDING at the time of writing (it follows the last gate:clone and push; the hand-back states each as done)
 ================================================================================
-web/.env removed; the monreleve_ios2f database dropped (a read-only pg_database listing in the hand-back);
-android/local.properties removed; `./gradlew --stop`; the lock .session-lock.json removed last. Evidence stays in
+To do: remove web/.env; drop the monreleve_ios2f database and read pg_database (no monreleve_gate_clone_* left either);
+remove android/local.properties; `./gradlew --stop`; remove the lock .session-lock.json last. Evidence stays in
 C:/wt/ios2f/.ios2f-evidence/ (ignored): every step's log and samples, run1/ and run2/ (both runs' downloaded results
 and job logs), run1-expected.txt, green-backup/. The worktree C:/wt/ios2f stays (R392). No phone, no adb, no server
 started, no container touched, no prune.
