@@ -1,0 +1,68 @@
+FW-WEB-ACCOUNT HANDOFF - queue step C9 (written 2026-11-12, Queue Ruling 16 item 5)
+
+WHY THIS FILE EXISTS. Everything past R898 is UNCOMMITTED in the worktree
+C:/wt/fw-web-account (branch fw-web-account). No subset of it is green on its
+own: every coherent part either touches lib/fr, lib/ui or app/** (which selects
+test:visual, red until the 109 header baselines are committed) or adds the
+WebSession table, whose disclosure lives in lib/fr. So nothing but this file
+is pushed, and a successor reading the remote branch learns from it where the
+work is. A backup of the uncommitted work also sits in the worktree's
+gitignored evidence directory (see BACKUP below).
+
+PUSHED: 7af6a06 R898 (SPEC D14 + section 10). gate:changed GATE PASSED,
+gate:clone PASSED ("ran" names db:deploy, test:db, test:container:write).
+
+UNCOMMITTED, IN C:/wt/fw-web-account (git status at the time of writing):
+  modified  docs/api-v1.md                       (export key webSessions documented)
+  modified  web/app/(public)/confidentialite/ConfidentialiteContent.tsx (webFor(PRODUCT_STATE))
+  modified  web/app/api/v1/auth/code/route.ts    (edge budget moved to lib/auth/code-exchange.ts)
+  modified  web/lib/account/export.ts            (webSessions exported, no hash)
+  modified  web/lib/auth/magic-link.ts           (CODE_DIGITS exported)
+  modified  web/lib/auth/tokens.ts               (revoke-all also ends web sessions)
+  modified  web/lib/content/personal-data.ts     (WebSession columns -> webSession)
+  modified  web/lib/content/product-state.ts     (webAccountExists: true, the one source)
+  modified  web/lib/content/routes.ts            (ACCOUNT_PATH, ACCOUNT_ROUTE, accountHrefIfLive)
+  modified  web/lib/export/print-token.ts        (authSecret exported - PDF proof owed)
+  modified  web/lib/fr/auth.ts                   (mail code line generic, Ruling 13 item 6)
+  modified  web/lib/fr/confidentialite.ts        (webSession, accountCookie, webFor, neutral signInLink)
+  modified  web/lib/fr/shell.ts                  (signIn label)
+  modified  web/lib/ui/react/PublicShell/*       (the header link; icon on phones, A2 pill from md)
+  modified  web/prisma/schema.prisma             (WebSession)
+  modified  web/tests/... (6 files)              (censuses, CLAIM 1 rewritten, codepoints, no-JS map)
+  new       web/app/(account)/                   (layout, 3 pages, 3 POST handlers)
+  new       web/lib/web-account/                 (cookie, csrf, step seal, session, paths, respond, open, code-shape)
+  new       web/lib/auth/web-session.ts, web/lib/auth/code-exchange.ts, web/lib/fr/mon-releve.ts
+  new       web/prisma/migrations/20261112090000_web_session/migration.sql (ADDITIVE)
+  new       web/e2e/mon-releve.nojs.spec.ts, web/e2e/support/database.ts
+  new       tests: tests/db/web-session, tests/db/web-sign-in, tests/unit/web-account/*,
+            tests/unit/content/account-path, tests/unit/meta/account-cookie-scope,
+            tests/support/web-account.ts, tests/support/account-cookie-scope.ts
+  modified  web/tests/visual/baselines/*.png (109) - regenerated from a DIRTY tree;
+            NOT to be committed as they are (Ruling 13 item 4: regenerate from a
+            committed clean tree). Copies: .webaccount-evidence/regenerated-dirty-1/.
+
+WHERE THE INCREMENT STANDS (R899-R902 + Rulings 12-16):
+  - unit 3794 + new, test:db, typecheck and lint were green on this tree; the
+    full gate:changed has NOT run on it (test:e2e and test:visual pending).
+  - Queue Ruling 13 items 1, 2, 5, 6: done (evidence r13-item1.txt,
+    r13-item1-classification.tsv, visual-compare-1.passed.txt, flag-off and
+    mail REDs). Item 3: 108 files inside the header band and byte-identical
+    across two runs; calculateur-erreur-desktop.png does NOT repeat (47 px,
+    x756-767 y521-983) - Rulings 14-16: locate it, fix the spec's error-state
+    steps (two attempts max), prove it in ONE container evidence run through
+    the real scripts/visual.mjs with a temporary uncommitted spec, then remove
+    it and regenerate from a committed clean tree.
+  - NEXT after that: commit the code (gate:changed first), regenerate the 109
+    from that commit, commit them, gate:clone, push. Then increment 4 (R903
+    page figures, downloads via lib/export/respond.ts - drafts in the session
+    scratchpad, not in the repository), R906, R909, R910 new baselines, the
+    PDF proof (lib/export changed), the report.
+
+STATE OUTSIDE GIT: web/.env (gitignored, scratch DATABASE_URL
+monreleve_fw_web_account on frontalier-postgres :5436, migrated to 16
+migrations, generated AUTH_SECRET); .session-lock.json (this session's lock);
+.webaccount-evidence/ (logs, samples, REDs, plants, crops). At cleanup: remove
+web/.env, drop monreleve_fw_web_account, remove the lock.
+
+BACKUP: .webaccount-evidence/uncommitted-backup/ holds `git diff --binary`
+(tracked changes) and a tar of the untracked paths, written with this file.
