@@ -865,3 +865,110 @@ APPLIED AND VERIFIED
   first); BLOCKED 8 (the seam, with both caveats); PARKED TASKS: N2
   release-relevant, N1/N3 waiting on the S9; HOLDS: the Gradle floor
   8 000 MB, measured; C6's brief carries deviation 4.
+
+====================================================================
+QUEUE RULING 9 - C6 (FW-TESTDB-GUARD) HANDED BACK: MERGE, AND WHAT IT CHANGES FOR EVERY LATER SESSION
+====================================================================
+
+EVIDENCE (V1, read by the orchestrator from the repository and from
+C:/wt/fw-testdb-guard/.testdb-evidence/)
+(1) Tips by ls-remote: fw-testdb-guard 4e0f008, main 4a65f42 (the
+    merge-base), production 52caca8. Six commits: 8b9c3b3 (the guard, its
+    home web/lib/db/scratch-database.mjs, 56 unit tests), 78ce2c5 (the
+    CREATE DATABASE census; gate-clone.mjs and the fw14 probe take their
+    names from the home), f8a1395 (ci.yml on monreleve_ci), d34a007 (README,
+    .env.example, docker-compose, PARK-TG1), 9154595 and 4e0f008 (report).
+    13 files, +1499/-10.
+(2) The guard runs while vitest.db.config.ts is evaluated:
+    assertScratchTestDatabase(process.env.DATABASE_URL). test:db runs
+    `node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run
+    --config vitest.db.config.ts`, so web/.env is in process.env before the
+    config loads, and a shell value wins. Every connection in tests/db reads
+    DATABASE_URL (12 reads; the others are CONTAINER_BASE_URL and
+    NEXT_PUBLIC_SITE_URL). Pattern ^monreleve_[a-z0-9_]{1,53}$, anchored.
+(3) R878 logs: through pnpm test:db on frontalier_guard_sentinel, "test:db
+    REFUSED (R877) ... pointed at "frontalier_guard_sentinel"", exit 1; the
+    sentinel database's table counts identical before and after both
+    refusals, tup_inserted and tup_deleted unchanged. The `frontalier`
+    refusal line, exit 1, run only after the sentinel proof; frontalier's
+    per-table counts before == final.
+(4) Gates read from the logs: gate:changed GATE PASSED before each commit
+    (test:db 714 on 8b9c3b3 and 78ce2c5; unit 3698 -> 3724); the first run
+    on 8b9c3b3 FAILED at test:db on the AUTH_SECRET placeholder and was not
+    committed. gate:clone on 4e0f008: "tree clean", GATE:CLONE PASSED,
+    "ran" naming db:deploy, test:db, test:container:write, STEP_EXIT=0.
+    No sampler cmd= line carries a URL or credential; no step aborted; the
+    URLs in the diff are the committed local-dev defaults and fixtures.
+QUESTION: merge, and what does it change for the queue's later sessions?
+
+ANSWER (the advisor, verbatim in substance)
+Merge C6 once three reads pass - nothing read so far blocks it; the
+reads are the guard's sides your checks could not see:
+1. Connections that do not come from DATABASE_URL: find the literal-URL
+   templates' files. A tests/db file or helper touching tables through one
+   is outside the guard - round 2; a CREATE/DROP-only session on
+   frontalier, like gate:clone's, is recorded, not a block. Confirm
+   test-db-guard.test.ts only ever spawns against the unresolvable host -
+   it runs in every `pnpm test`, so a real host there would empty
+   frontalier if the guard ever regressed. Confirm no other vitest config
+   can load tests/db - "the one door" rests on that.
+2. The census: a scan or a list? R877 holds only if it discovers CREATE
+   DATABASE sites and fails on one it cannot resolve. Record the roots it
+   does not walk.
+3. What else the pattern admits: production's database name from the
+   repository's records, not the server. The guard is name-only, on any
+   host - write that limit in the row either way; a match becomes an
+   operator question, not a block.
+In the record commit (blocks C7's launch, not the merge): HOLDS'
+gate-of-record sentence now sends every session into a refusal - replace
+it: web/.env names the session's own monreleve_<task> database, created
+and db:deploy'ed; AUTH_SECRET generated inside a script, never echoed,
+never in -Command (a throwaway for a scratch database, within the rule);
+both removed at cleanup, shown by a pg_database listing. Grep the C7-C10
+prompts for .env / test:db / scratch names written before the guard and
+correct them. Check pdf-fallback.sh's database name (outside the repo,
+the census cannot see it).
+Your own gate: gate:clone from this checkout is the first run with a
+web/.env naming frontalier - C6 never measured that. Expect the same
+"ran" line; a test:db failure there is a finding, not a flake, and this
+checkout's web/.env is not yours to edit.
+Row and rulings: R879 shown by the census test only, CI NO RESULT. Q1 (a
+fixed `postgres` admin connection for gate:clone) a parked task,
+behaviour unchanged. Q2 (monreleve_fw30 admitted) accepted, recorded.
+_wt-setup.mjs / _mint-readback.mjs a parked task, and sessions do not run
+them. frontalier at 14 of 15 migrations is the operator's - do not
+migrate it. PARK-TG2 stands.
+
+APPLIED AND VERIFIED
+- Read 1: `git grep 'localhost:54'` on the branch over web/tests,
+  web/scripts, web/lib: backup-restore.mjs:64 and container-scheduler.mjs:69
+  (harnesses with their own scratch names, census-checked);
+  test-db-guard.test.ts:51 and :192 feed only the pure judgeTestDatabase /
+  testDatabaseRefusal; its two spawned vitest runs (lines 255-300) use
+  db.invalid, the admitted one filtered to tests/db/__no_such_file__. No
+  tests/db file builds its own URL. vitest.config.ts excludes tests/db/**;
+  vitest.db.config.ts is the only config that includes it. PASS.
+- Read 2: scratch-database-census.test.ts walks the package with
+  readdirSync (codeFiles(WEB)), matches /\bcreate\s+database\b/i, treats an
+  unresolvable name (a template with a substitution, a reassignment,
+  scratchDatabaseName without the home import) as a failure, asserts the
+  walk found sites (presence), and reads .github/workflows/*.yml. Roots it
+  does not walk: tests/unit (no database by construction) and everything
+  outside web/ except the workflows - android/scripts' walkthrough
+  databases (monreleve_an5c, monreleve_anaudit) are named in its header as
+  outside the walk. A scan. PASS.
+- Read 3: docs/deploy.md section 4 records production's `migrate status`
+  of 2026-10-14: database "postgres". The pattern refuses it. LIMIT: the
+  guard reads the name only, on any host - a monreleve_* name on a remote
+  server would be admitted.
+- pdf-fallback.sh (C2's bounded PDF proof) creates monreleve_fw_secrets_pdf
+  and administers through -d postgres: admitted; the parked PDF line
+  stands as written.
+- Merged: 074680b (--no-ff origin/fw-testdb-guard); merge tree == 4e0f008's
+  tree (2814fbb).
+- QUEUE-STATE: HOLDS' gate-of-record sentence replaced as ruled; C6 row
+  MERGED; PARKED TASKS: gate:clone's admin connection (Q1), the two
+  tracked _wt-setup / _mint-readback scripts; Q2 and frontalier's 14 of 15
+  migrations recorded. relay/FW-WEB-ACCOUNT.txt and FW-DELAI-RAPPEL.txt:
+  "scratch databases only" gains the monreleve_<task> name and the
+  pointer to HOLDS. FW-DEPLOY-DOC.txt and IOS-2f.txt name no database.

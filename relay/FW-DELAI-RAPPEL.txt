@@ -50,8 +50,10 @@ LIVE STATE (what the repository cannot tell you):
     under the MEMORY FLOOR in QUEUE-STATE HOLDS (figure and sampler live there only),
     read in its own step; one at a time. NO PRIVILEGED
     CONTAINERS, NO PRUNE (QUEUE-STATE HOLDS). frontalier-postgres (:5436):
-    scratch databases only, never the shared `frontalier` database; drop
-    yours at the end. Never start, stop or remove another project's
+    scratch databases only, never the shared `frontalier` database, named
+    monreleve_<task> - test:db REFUSES any other name (R877; web/.env set
+    up as QUEUE-STATE HOLDS' gate-of-record item says, Queue Ruling 9);
+    drop yours at the end. Never start, stop or remove another project's
     container (CLAUDE.md). Ports 3000, 3100, 3200 are tizicorp's - use
     FRONTALIER_PORT. Mail goes to the fake outbox only; @monreleve.test
     addresses only.
