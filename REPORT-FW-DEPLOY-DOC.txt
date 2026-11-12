@@ -1,0 +1,468 @@
+REPORT-FW-DEPLOY-DOC
+====================
+
+Queue step C7 (relay/ORCH-NO-PHONE-QUEUE.txt); prompt relay/FW-DEPLOY-DOC.txt.
+Branch fw-deploy-doc, in its own worktree C:/wt/fw-deploy-doc, with the session
+lock .session-lock.json written there at the start. The branch was cut from
+origin/main 2accbac6 (BASE_SHA). DOCS ONLY: docs/deploy.md and this report.
+Not merged. Cleanup (the lock, web/.env, the scratch database, the Coolify
+source directory) comes after this report's own gate:clone, so it is recorded
+in the hand-back, not here.
+
+SUMMARY
+-------
+1. docs/deploy.md has a new SECTION 10, appended after section 9 so that the
+   section numbers 2-5, which other files cite, stay valid:
+   - 10.1, the promotion runbook, in order (R883);
+   - 10.2, Coolify 4.5.0's rollback, read from its source at tag v4.5.0
+     (R884);
+   - 10.3, the 2026-10-28 restart measurement and what depends on it (R885).
+   Section 10 says in its first lines that nothing in it has been run.
+2. ROLLBACK IMAGE COUNT FOR P2 ITEM 4: ONE besides the serving image. That is
+   the image `pkptabevr1nhtyygrq0mc8qx:<sha>` of the commit that served
+   immediately before. Each further step back needs one more. Keeping more is
+   a policy choice, not something the source requires.
+3. 52caca8 (serving now) and b4df928 both pin chromium 156.0.8078.73-1~deb12u1,
+   which C1b's madison read of 2026-11-11 no longer lists. If their image is
+   absent, or a build-affecting setting changed, Coolify's "rollback" rebuilds
+   the old commit from git. That build stops at the R249 guard, unless the
+   server's build cache holds the layer; the cache has not been read, and
+   Coolify's own cleanup prunes it. So, as read from source and never run,
+   the image on the server is the only dependable way back to those commits.
+4. A rollback does not move `production`. A Restart and the next push both
+   deploy `production`'s head, which is the failed SHA. So after a rollback,
+   no restart and no environment change may run until `production` is
+   realigned. How to realign it is QUESTION Q1.
+5. Changing a build-time variable after a promotion turns a later rollback or
+   restart into a build: adding one, deleting one (as P2 item 1 may do with
+   EMAIL_FROM), or changing its value or flags. 10.1 now forbids changing any
+   variable between the push and the checks. Whether the 2026-10-28 restart
+   re-used the image or rebuilt is not established.
+6. The stale curl passage and corrections (a), (b) and (c) are in the first
+   commit, b2ea738, with R883-R885.
+
+STATUS (R391)
+-------------
+Code tip 165cc7b. gate:clone ran on it in this session and PASSED (PUSH PROOF
+below). The report tip's own gate:changed and gate:clone are recorded in the
+hand-back, because a report cannot carry the verdict of the commit that
+contains it. No Android source changed, so :app:gate does not apply.
+
+COMMITS
+-------
+b2ea738  R883-R885: docs/deploy.md section 10 and the four corrections
+165cc7b  R884/R885 amended: added or deleted build-time variables rebuild; the
+         2026-10-28 restart's re-use is not established; pr-<n> tags; the
+         no-variable-change guard in 10.1
+(this report is the next commit)
+
+EVERY HUNK OF docs/deploy.md
+----------------------------
+- The intro: one sentence. Section 10 is the exception to "measured during
+  FW28".
+- Section 1: a pointer to section 10, and correction (c) as a list of three
+  records.
+- Section 2: correction (a); the CHROMIUM_VERSION row aligned to (c); after
+  the R862 sentence, "Removing old images keeps the ones a rollback needs:
+  section 10.2 says which."
+- Section 3: the stale curl passage.
+- Section 8: N2, correction (b).
+- Section 10: new (10.1, 10.2, 10.3).
+
+R883 - ONE PROMOTION RUNBOOK, IN ORDER (docs/deploy.md 10.1)
+------------------------------------------------------------
+Each step points at the section that holds its detail rather than copying it
+(R206).
+0. Record what serves now. `docker ps --filter name=<uuid> --format
+   '{{.Names}} {{.Image}}'` must print one line, and `git ls-remote` must show
+   the same SHA for production. That SHA is PREVIOUS, the rollback target.
+   ADDED: R883's list has no step that names the target, and choosing the
+   target by the page's badge is unsafe here (R884).
+1. gate:clone alone, on the exact SHA (NEW). It counts only if its "ran" line
+   names db:deploy, test:db and test:container:write (Queue Ruling 6).
+2. The same-day `apt-cache madison chromium` read in node:22-bookworm-slim,
+   against NEW's `ARG CHROMIUM_VERSION`. If the pinned version is not offered,
+   bump the pin first as its own gated commit and restart at step 1. This step
+   points at R249 and the Dockerfile's pin block; it does not restate them.
+3. A migration, only if `git diff --name-only PREVIOUS NEW --
+   web/prisma/migrations` lists one. Apply it by section 4's route, with
+   `migrate status` before `migrate deploy`. The step states that the rollback
+   does not undo it.
+4. `git push origin NEW:production`, fast-forward only, never forced; then
+   `git ls-remote` must show NEW.
+   - Then the guard, added by 165cc7b: no Coolify variable changes between
+     the push and the checks, or a rollback's checks.
+5. Follow the deploy by READING it: the UI's Deployments list, or the two GET
+   endpoints (routes/api.php 154, 156; the list comes back as an object
+   {count, deployments}). No deploy or restart call.
+   - R849's expected log lines.
+   - How to read "Attempt n" (2774-2793) and a missing "Rolling update
+     started.".
+   - Coolify's own "rolling back to the old container" (4970).
+   - A failed build: the build (1182) comes before the swap (1189).
+6. The after-deploy checks:
+   - /api/health names the product;
+   - /api/ready answers 200;
+   - the running container's image is `<uuid>:NEW` (one line);
+   - the HEALTHCHECK values match section 3 and R847's JSON;
+   - readiness answers from inside the container;
+   - the PDF, when the diff touches web/Dockerfile, web/lib/export,
+     web/lib/dossier or web/app/releve/print. The PDF proof records the page
+     count, the baked origin, whether MONRELEVE_VERIFICATION_ORIGIN is set,
+     and the UTC time.
+7. Any failed check: roll back.
+   - The UI path; choose the row BY TAG; the log line to expect (1530) and
+     the two that mean a rebuild (1542, 1552); then checks 1-5 again.
+   - Then "After a rollback": a restart redeploys `production`'s head.
+
+R884 - THE ROLLBACK FROM COOLIFY, FROM ITS SOURCE (docs/deploy.md 10.2)
+---------------------------------------------------------------------
+Source: coollabsio/coolify, shallow-cloned at tag v4.5.0 into
+C:/wt/fw-deploy-doc-coolify-src, at HEAD
+5ca69705d681da46028ea15a8a39d90a4ebcce89 (the commit section 3 already cites).
+It was read as data and never executed. All lines are at that tag. "job" means
+app/Jobs/ApplicationDeploymentJob.php.
+
+THE UI PATH
+- The sidebar entry "Rollback": resources/views/components/application/
+  configuration-sidebar.blade.php 104-108.
+- The route: routes/web.php 385 (prefix) and 405 ('/rollback').
+- The page: resources/views/livewire/project/application/rollback.blade.php.
+  - The list: 31-89.
+  - "Roll back to this image": 79.
+  - "Images to keep": 22-27.
+  - The helper text at 3: "Rollback uses an existing image without rebuilding
+    the application". The job does not always do that; see below.
+
+WHAT IT RUNS
+- app/Livewire/Project/Application/Rollback.php 51-79: rollbackImage() queues
+  an ordinary deployment, with commit = the chosen tag, rollback: true and
+  force_rebuild: false (59-65).
+- The API equivalent, not used by the runbook: routes/api.php 289 and
+  app/Http/Controllers/Api/ApplicationsController.php 6243-6310.
+- bootstrap/helpers/applications.php 54-68: the "already queued for this
+  commit" skip does not apply to a rollback (61).
+- The dockerfile build pack (job 1154-1190):
+  - ls-remote runs (1164; 3109-3202), and the given commit is kept on a
+    rollback (3171);
+  - the repository is cloned and the commit checked out (1166;
+    app/Models/Application.php 1603-1615);
+  - it looks for `<uuid>:<commit>` on the server (1581-1601; the command at
+    1584), and pulls only when a registry image name is set (1588).
+- Image naming without a registry: job 1458-1459. This application's images
+  are `<uuid>:<sha>` (QUEUE-STATE C0: `pkptabevr1nhtyygrq0mc8qx:52caca8...`).
+  INFERRED: there is no registry and no pull fallback.
+- Re-use or rebuild: should_skip_build(), job 1507-1567.
+  - It re-uses the image, logging "No build configuration changed & image
+    found ... Build step skipped." (1528-1540; the line at 1530).
+  - It REBUILDS ("Build configuration changed. Rebuilding image.", 1541-1542)
+    when the pending configuration diff requires a build. The diff is taken
+    against the last successful deployment (Application.php 1492-1511,
+    1275-1278; ConfigurationDiff.php 64-67). It requires a build when:
+    - an item is marked impact "build":
+      app/Services/DeploymentConfiguration/ApplicationConfigurationSnapshot.php
+      109-114 (the source items), 124-150 (the build items), and 310-312 (a
+      variable's impact is build exactly when it is build-time);
+    - a variable is DELETED: it keeps its previous impact, so one that was
+      build-time forces a build (ConfigurationDiffer.php 52-54);
+    - there is no stored snapshot and the legacy configuration hash differs
+      (Application.php 1499-1508, then ConfigurationDiffer.php 44).
+  - It also REBUILDS when:
+    - the image is absent ("Image not found ... Building new image.", 1552);
+    - "Disable build cache" is on, which sets force_rebuild (249-253) and so
+      skips the image check (1167);
+    - a build-time variable refers to a remote secret store (1523-1527).
+- New variables are build-time unless set otherwise. That is the API's
+  default (ApplicationsController.php 4473, 4506) and the column's
+  (database/migrations/2025_09_18_080152_add_runtime_and_buildtime_to_environment_variables_table.php
+  18).
+- After that, a rolling update like any deploy (job 2670-2717), gated on the
+  old commit's Dockerfile HEALTHCHECK, which is read again (4143-4151).
+- A failed rebuild leaves the serving container untouched: the build (1182)
+  comes before the swap (1189).
+
+THE PINS AT THE COMMITS A ROLLBACK COULD TARGET (git show <c>:web/Dockerfile)
+- 52caca8 (2026-11-02), b4df928: 156.0.8078.73-1~deb12u1.
+- 7065b1b, d036e67, 2accbac: 156.0.8078.79-1~deb12u1.
+- C1b's madison read (REPORT-FW-CHROMIUM-PIN-2.txt R852, 2026-11-11T18:06:22Z)
+  listed only .79 and 150.0.7871.100.
+- 52caca8's HEALTHCHECK: /api/health, --start-period=20s, no
+  --start-interval.
+
+WHAT IT DOES NOT UNDO
+- A migration. No database command is on the path.
+  - web/lib/content/readiness.ts 239-252 checks only for migrations that the
+    running build ships, so /api/ready answers 200 with an older image over a
+    newer schema.
+  - Nothing in the repository reverses a migration.
+- The environment. The CURRENT variables are written (job 1532-1535,
+  1738-1747).
+- The `production` ref.
+  - A deployment queued without a commit takes git_commit_sha, else HEAD
+    (applications.php 21). The column default is 'HEAD'
+    (database/migrations/2023_03_27_081716_create_applications_table.php 25).
+  - The job resolves HEAD to the branch head (3171-3193, 3227-3231).
+- A post-deployment command, if one is set, runs again (job 611-649).
+
+THE IMAGE COUNT FOR P2 ITEM 4: ONE previous image, `<uuid>:<PREVIOUS>`.
+- When no registry is set, the page lists only images on the server
+  (app/Actions/Application/GetRollbackImages.php 35-49, 73-77).
+- The job rebuilds a target whose image is absent (1552).
+- Only a bare commit SHA or a `pr-<n>` tag is offered (rollback.blade.php
+  36-38, 73-77).
+- The non-static dockerfile path tags `<uuid>:<commit>` directly (job
+  4845-4869). `-build` tags come only from the static path (4596-4743).
+
+A CONSEQUENCE FOR P2 ITEM 4, NOT A DECISION. If P2 item 2's deploy is the
+first build after item 1's setting, the image kept as its rollback target was
+built while RESEND_API_KEY and FCM_PRIVATE_KEY were build-time. Their presence
+in it is presumed and unmeasured until item 1's baseline count. Keeping that
+image keeps its history until 5d revokes the keys, which is the containment
+P2 already names.
+
+COOLIFY'S OWN CLEANUP
+- app/Actions/Server/CleanupDocker.php 293-385.
+- It keeps docker_images_to_keep, default 2:
+  - Rollback.php 26 and 33;
+  - database/migrations/2025_12_05_000000_add_docker_images_to_keep_to_application_settings.php
+    13;
+  - CleanupDocker.php 333 (0 when the server disables retention, 305).
+- It removes the rest with `docker rmi` without -f, which refuses an image in
+  use (369-382; the command at 395).
+- The running image is left out of the count only when a container is named
+  exactly the uuid (337). This application's containers are
+  `<uuid>-<timestamp>` (bootstrap/helpers/docker.php 573-588). INFERRED:
+  "keep 2" means the two newest tags, the running one included. After a
+  normal deploy, that is the serving image and ONE previous image.
+- It also runs `docker builder prune -af` (160).
+- When it runs: when the server forces it (app/Jobs/DockerCleanupJob.php
+  115-116; the default became true in
+  database/migrations/2024_09_06_062534_change_server_cleanup_to_forced.php
+  16), or at the disk threshold (156-157).
+
+THE "RUNNING IMAGE" BADGE (inferred, not seen)
+- GetRollbackImages.php 30-33 runs `docker inspect <uuid>`. For a
+  `<uuid>-<timestamp>` container that names nothing, and the failed lookup
+  returns null (app/Traits/SshRetryable.php 139-149).
+- So no row is marked "Running image", and the serving row offers "Roll back
+  to this image". The runbook therefore chooses the row by tag.
+
+NOT ESTABLISHED (each would be closed by one read-only look in the next
+Coolify visit, or by the action's own log)
+- Whether a given rollback re-uses the image or rebuilds. It depends on
+  "Disable build cache", remote secret references, and any build-affecting
+  change since the last successful deployment, including the no-snapshot
+  legacy case. Its log says which (1530 / 1542 / 1552).
+- Whether the 2026-10-28 restart re-used the image or rebuilt: the record does
+  not say how ROTATION_PROBE was created.
+- This application's "Images to keep", and the server's Docker-cleanup
+  settings: forced or not, frequency, threshold, retention disabled. Hence
+  also how many images are on the server now; P2 item 4's listing answers
+  that.
+- This application's "Commit SHA" setting (default HEAD; not read).
+- Whether the application has a post-deployment command. Its pre-deployment
+  command was null on 2026-10-21 (REPORT-FW-CHROMIUM.txt).
+- That the Rollback page shows no "Running image" badge here (inferred).
+- Whether the server's build cache holds the .73 chromium layer.
+- Whether the previous code is correct against a schema the failed release
+  migrated (Q2).
+- That a rollback fails before changing anything when the repository is
+  unreachable (inferred: the clone runs first).
+- Whether any rollback of this application has ever run. None is recorded.
+
+R885 - THE RESTART, MEASURED (docs/deploy.md 10.3)
+--------------------------------------------------
+THE MEASUREMENT. Written as a measurement: 2026-10-28, by the orchestrating
+session, on the operator's authorisation, through Coolify's API.
+- The control first: ROTATION_PROBE was absent from the running container.
+- A queued deployment of about 4 minutes.
+- A new container carrying the variable (length 16, set).
+- /api/ready: 1 timeout in 251 s, at the swap; 0 in 163 s on a second
+  restart.
+- Coolify masks env values in its logs; the API also creates a preview copy.
+- Not re-run.
+- Added by 165cc7b: whether that restart re-used the image or rebuilt is not
+  established. The "about 4 minutes" may include a build. The rotation's
+  restart (DATABASE_URL, runtime-only) re-uses the image by reading; its
+  length has not been measured.
+
+THE SOURCE. A Restart queues restart_only
+(app/Livewire/Project/Application/Heading.php 197-201;
+ApplicationsController.php 4915-4920). For a dockerfile build pack the job
+turns restart_only off (job 255), so a restart is the deploy path: the head is
+resolved (3171), the image re-used if nothing build-related changed
+(1528-1540), and a rolling update follows (2670-2717).
+
+WHAT DEPENDS ON IT
+- An environment change applies only through a restart.
+- Turning Build time OFF is a runtime-impact change (ConfigurationDiffer.php
+  52, 94; snapshot 312): no rebuild, as read and not measured. So section 2's
+  setting needs the next promotion's build.
+- Adding or deleting a build-time variable DOES rebuild (52-54; the defaults
+  above). That includes P2 item 1's possible deletion of EMAIL_FROM.
+- relay/DB-ROTATION-PLAN.md, whose step 5 is this restart.
+- No restart after a rollback until `production` is realigned.
+
+THE READINESS GATE AS C1 LEFT IT. This part is a pointer to section 3, not a
+restatement:
+- the check is OFF;
+- releases are gated on the image's /api/health;
+- QUESTION 1 is open.
+
+THE STALE PASSAGE AND THE THREE CORRECTIONS - HOW EACH NOW READS
+-----------------------------------------------------------------
+Quoted from the committed file.
+
+STALE CURL PASSAGE (section 3, Queue Ruling 4):
+  "...in a layer of its own right after the Chromium one. It was split out on
+  2026-11-11 because the pin then in the file, `156.0.8078.73-1~deb12u1`, had
+  left the archive. That reason is gone: the pin is now
+  `156.0.8078.79-1~deb12u1`, and the archive installed it the same day
+  (`#12 DONE 132.0s`, `REPORT-FW-CHROMIUM-PIN-2.txt`). The layer stays where it
+  is, for the reason the Dockerfile's R845 block gives (Queue Ruling 4)."
+The size measurement and the test:container sentence are unchanged.
+
+(a) SECTION 2'S COOLIFY CITATION, re-read at v4.5.0. Both earlier ranges were
+partly wrong:
+- the function is 5241-5355 (it closes at 5355);
+- the list is 5276-5284 (5285 is the next comment);
+- the insertion is 5337-5345, from comment to closing brace, and the loop
+  itself is 5339-5344.
+C2's 5337-5345 matches the insertion block; the doc's 5340-5347 did not. The
+neighbours in the same bullet were verified unchanged: docker.php 2094-2108,
+job 4557-4560 and 4674-4676. It now reads:
+  "(`add_build_env_variables_to_dockerfile()`, 5241-5355: the list at
+  5276-5284, the insertion at 5337-5345, the loop itself 5339-5344)."
+
+(b) SECTION 8, N2, "Where it goes":
+  "`RESEND_API_KEY` only. The sender addresses are constants in
+  `web/lib/fr/emails.ts`, and nothing reads `EMAIL_FROM` from the environment
+  (section 2's `EMAIL_FROM` row; `docs/domain-checklist.md` 126-130)"
+Sources:
+- emails.ts 101 (EMAIL_FROM) and 111 (AUTH_EMAIL_FROM) are constants.
+- `git grep EMAIL_FROM` finds no environment read.
+Whether Coolify's EMAIL_FROM is deleted is the operator's call (P2 item 1).
+Section 2's row already says so; this change does not decide it.
+
+(c) SECTION 1'S DATE. It now lists three records, each with its date:
+- section 1 as written on 2026-10-24 (737cfa4), quoting "the same day" and
+  "after it had kept every deploy failing for six days";
+- REPORT-FW-CHROMIUM.txt (2026-10-21): still set that day, to
+  155.0.8059.39-1~deb12u1;
+- REPORT-FW-CHROMIUM-PIN.txt R753 (2026-11-02) and container-check.mjs 657:
+  2026-10-14, the script naming docs/deploy.md as its source.
+Then: "Which is right is not established. The variable's live state is
+re-read in Coolify, names only, at the start of P2 item 1
+(`relay/QUEUE-STATE.md`), before anything depends on it." Section 2's
+CHROMIUM_VERSION row now points to it.
+
+PARKED
+------
+Nothing in parking.md.
+
+NOTICED BUT NOT TOUCHING (outside "docs/deploy.md and the report"):
+- NOTICED-1. docs/domain-checklist.md 130-132 says "deploy.md section 8 N2
+  lists `EMAIL_FROM` as an operator setting".
+  - On this branch that is no longer true. This is R267: a finding that names
+    a second site.
+  - The fix is to delete or reword that blockquote. It is not done here,
+    because the scope is docs/deploy.md only.
+- NOTICED-2. web/scripts/container-check.mjs 657, a comment, says the
+  override "was deleted on 2026-10-14 (docs/deploy.md)".
+  - The doc now records that date as disputed.
+  - Only the comment is affected. The assertion (the R249 refusal names no
+    Coolify override) does not depend on the date.
+- NOTICED-3. Section 3's other Coolify citations (R844) were not re-verified
+  one by one.
+  - Those this work leaned on match the tag: rolling_update 2670-2717 and
+    2687, health_check 2721-2801, the 4970 log line, and docker.php 573-588.
+  - web/Dockerfile 246's citation (job 4450-4452) matches too.
+- NOTICED-4. SPEC-frontalier-web.md 1009 and tasks/todo.md 693 still name
+  EMAIL_FROM as an environment setting (C2's grep).
+
+DEVIATIONS
+----------
+D1. THE ORDER AGAINST P1. The runbook follows the prompt: gate:clone first,
+    then the same-day madison read. QUEUE-STATE P1 has madison as item 0,
+    before gate:clone. P1 also has no "record PREVIOUS" step and no by-tag
+    rule for the rollback. Reconciling P1 with 10.1 is the orchestrator's job.
+D2. THE MEASUREMENT IS RELAYED, NOT RE-RUN. relay/QUEUE-2026-10-28.txt is an
+    operator file that git does not track (it is in the main checkout and not
+    in the worktree). The doc cites it as such, names
+    relay/DB-ROTATION-PLAN.md as the tracked record of the detail, and writes
+    the measurement from the prompt's account.
+D3. SECTION 10 IS APPENDED. It is not inserted after section 4, because
+    sections 2, 3 and 4 are cited by number from web/Dockerfile,
+    container-check.mjs, readiness.ts and relay/DB-ROTATION-PLAN.md.
+D4. TWO DOCUMENT COMMITS, NOT ONE. b2ea738 carries R883-R885 and all four
+    corrections, in one commit as the prompt asks. 165cc7b amends R884/R885
+    after a review that followed the first push: added or deleted build-time
+    variables, the restart's re-use left not established, pr-<n> tags, and
+    the 10.1 guard. Each commit had its own gate:changed and gate:clone.
+D5. STEP 0 AND THE GUARD ARE ADDITIONS to R883's list. Step 0 records
+    PREVIOUS; the guard stops variable changes during a promotion. Both
+    follow from R884's source reading.
+
+QUESTIONS
+---------
+Q1. HOW `production` IS REALIGNED AFTER A ROLLBACK (10.1, "After a rollback").
+    After a Coolify rollback, or Coolify's own health rollback, `production`
+    still names the failed SHA. A Restart or the next push deploys that head
+    (applications.php 21; job 3171, 3227-3231). That blocks every environment
+    change, including the DB rotation's restart and P2 item 5b, until it is
+    resolved. The options, not chosen here:
+    (a) Force-push PREVIOUS to `production`. That is not a fast-forward. By
+        reading, its auto-deploy re-uses PREVIOUS's image, which means another
+        swap.
+    (b) Fix forward: a new commit, promoted from step 0, with no restart
+        before it.
+    (c) Another way the operator prefers.
+Q2. A RELEASE THAT CARRIED A MIGRATION. A rollback runs the previous code
+    against the migrated schema, and /api/ready cannot see the difference.
+    Nothing in the repository shows that the previous code works on the newer
+    schema, and nothing reverses a migration. Three ways out: roll back by
+    image anyway, fix forward, or require migrations to be additive. The
+    runbook states the fact and does not choose.
+Q3. HOW MANY ROLLBACK IMAGES TO KEEP, AS A POLICY. The source requires one,
+    PREVIOUS, for a one-step rollback; more is the operator's choice.
+    Coolify's own cleanup, by default and as read for this application's
+    container naming, already keeps only one previous image.
+
+MEMORY (C:/wt/queue-evidence/run-sampled.ps1; logs in
+C:/wt/fw-deploy-doc/.deploydoc-evidence/)
+---------------------------------------------------------------------
+step                        before (commit/phys MB)  min commit free  min free phys  result
+gate:changed  (b2ea738 wt)   8 927 / 3 397            7 106            1 657          STEP_EXIT=0 ABORTED=False
+gate:clone    b2ea738        8 967 / 3 276            6 974              899          STEP_EXIT=0 ABORTED=False
+gate:changed  (165cc7b wt)   8 875 / 3 004            7 294            1 466          STEP_EXIT=0 ABORTED=False
+gate:clone    165cc7b        8 883 / 2 853            7 211        1 626      STEP_EXIT=0 ABORTED=False
+No sampler abort. Both gate:changed runs counted 3724 tests, the same as C6's
+record, so no worker died there. gate:clone's 14-line step tails show no unit
+count (the parked QUEUE-STATE task), so its runs are read from their
+pass/STEP_EXIT lines only. No credential and no URL appears in any -Command:
+the samples files' cmd= lines are `pnpm gate:changed` and `pnpm gate:clone`
+only.
+
+PUSH PROOF
+----------
+gate:changed, before each commit (selection, then the pass line):
+  b2ea738: "no path matched the selector - base chain only"; suites:
+           typecheck, lint, test, build; Tests 3724 passed (3724); "GATE
+           PASSED for the paths changed."; STEP_EXIT=0
+  165cc7b: the same selection; Tests 3724 passed (3724); "GATE PASSED for the
+           paths changed."; STEP_EXIT=0
+gate:clone, before each push:
+  b2ea738: commit b2ea738d6caa5327b84b75fbb81022c9e2302042; tree "clean -
+           HEAD is everything you have"; "GATE:CLONE PASSED"; ran
+           "register-coverage, fixture-coverage, install, typecheck, lint,
+           test, build, size, db:deploy, test:db, test:container:write";
+           STEP_EXIT=0 ABORTED=False.
+           Then pushed: origin fw-deploy-doc = b2ea738 (new branch).
+  165cc7b: commit 165cc7b0258167263bbeca23b8808c241cc869e6; tree "clean -
+           HEAD is everything you have"; "GATE:CLONE PASSED"; ran
+           "register-coverage, fixture-coverage, install, typecheck, lint,
+           test, build, size, db:deploy, test:db, test:container:write";
+           STEP_EXIT=0 ABORTED=False.
+           Then pushed: origin fw-deploy-doc b2ea738..165cc7b.
+main is untouched: origin main = 2accbac6a4a358bc8c033a9caae608cc03e9dc71 at
+the time of writing. Nothing was pushed to production.
