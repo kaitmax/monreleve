@@ -11,18 +11,56 @@ SSH, no :shared change. Evidence: C:/wt/an-param-baselines/.param-evidence/
 --------------------------------------------------------------------------------
 SUMMARY
 --------------------------------------------------------------------------------
-IN PROGRESS. This commit adds the 17 baselines named in the re-issued R871 list,
-their three test files, and R873's look at every image.
-  - recordPaparazziDebug ran filtered to the two new classes.
-  - It produced exactly the 17 named files and touched no existing one: git status
-    showed 17 "??" lines and no "M".
-THE SEVEN SHEETS AND THE START-DATE DIALOG ARE NOT DELIVERED: they are PARKED
-(PARK-PB1, PARK-PB2).
+1. DELIVERED: 17 Paparazzi baselines at maxPercentDifference 0.0, of the Parametres
+   screen as :app's public ParametresScreen draws it:
+   - the whole settings list in five states (default, filled, empty, saving,
+     200 %), on a tall PIXEL_5 at device resolution;
+   - all eleven dialog states ParametresState drives, each over the list with its
+     window and scrim: the R290 rate change; sign-out sending / clear /
+     still-pending, plus the still-pending one at 200 %; the delete prompt without
+     and with unsynced days; the four delete outcomes;
+   - the licences sub-screen.
+   Every test calls a public product composable. Nothing reaches past
+   `internal` or `private`.
+2. NOT DELIVERED (Queue Ruling 7):
+   - the seven sheets (PARK-PB1);
+   - the start-date dialog and its picker (PARK-PB2);
+   - the delete dialog with its word typed (PARK-PB3).
+   IOS-2e UNNUMBERED-3 is therefore closed for the screen and its dialogs. It
+   stays OPEN for the sheets and the date dialog.
+3. FINDINGS (NOTICED BUT NOT TOUCHING):
+   - N1: Paparazzi draws Material 3's DatePickerDialog clipped, in a centred 320 dp
+     window that does not depend on the screen width.
+   - N2: at 200 %, the still-pending sign-out dialog cuts off the dates and the
+     loss sentence it exists to show. Its baseline is recorded as-is, labelled.
+   - N3: every recorded dialog sits in that same 320 dp window. These baselines
+     certify the renderer's dialog width, not a measured phone's.
+4. R874:
+   - the other 142 are byte-identical: the diff stat lists only the 17 new files;
+   - the FULL :app:gate --rerun-tasks is GREEN on f5d39c9, verifyPaparazziDebug at
+     0.0 included, with 1416 unit tests (1399 + 17).
+5. MEMORY: these are the queue's first Gradle measurements (table below). The full
+   gate started at 8 195 MB commit free and bottomed at 3 115 MB commit free and
+   228 MB free physical, with no death.
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-Increments green under fast check. FULL GATE NOT RUN on this commit.
+GREEN on the code tip f5d39c9f05fcdc84a2f425cbc5642acd2626fb0a, for what was
+delivered.
+  - The FULL :app:gate --rerun-tasks ran on f5d39c9 in this session, from a clean
+    tracked tree:
+      BUILD SUCCESSFUL in 8m 47s
+      260 actionable tasks: 260 executed
+      STEP_EXIT=0 ABORTED=False   (Gradle exit 0)
+  - gate:clone ran ALONE on f5d39c9: GATE:CLONE PASSED, and its "ran" line names
+    db:deploy, test:db and test:container:write. That is the gate of record.
+  - The seven sheets and the start-date dialog were NOT delivered: they are parked,
+    PARK-PB1 and PARK-PB2.
+  - This report's commit changes only this file: `git diff --stat f5d39c9 HEAD` is
+    REPORT-AN-PARAM-BASELINES.txt alone. gate:clone runs again on it before its
+    push.
+  - PENDING MERGE (the orchestrator's).
 
 --------------------------------------------------------------------------------
 R871 - THE STATES, NAMED BEFORE ANY RECORDING
@@ -201,6 +239,12 @@ CONSEQUENCE
   No date baseline is recorded (Ruling 7, points 2 and 3). The clipped
   DatePickerDialog is a finding: see NOTICED BUT NOT TOUCHING and PARK-PB2. The
   state-driven AlertDialogs are recorded as composed, window and scrim included.
+  Their window is the same renderer-sized one:
+    - measured on a middle row of rateChangeDialog, signOutDialog and deleteDoneDialog,
+      the container is 375 of 461 px, 878.5 px at 1 080, 319.5 dp;
+    - that is probe 2's 320 dp within one thumbnail pixel;
+    - an AlertDialog's content fits in it, so nothing is cut, but the width is the
+      renderer's (N3).
 
 --------------------------------------------------------------------------------
 R873 - EVERY IMAGE LOOKED AT (one line per image)
@@ -295,6 +339,8 @@ Context the images cannot carry:
     (the save flow), not over the bare list.
   - The sheets themselves are PARK-PB1, so these baselines show the dialog over the
     list.
+  - Every dialog (6-16) is drawn in Paparazzi's 320 dp dialog window (N3), and so is
+    N2's clipping. The phone's width was not measured.
 
 --------------------------------------------------------------------------------
 NOTICED BUT NOT TOUCHING
@@ -316,3 +362,249 @@ N2. At 200 % on a PIXEL_5, SignOutStillPendingDialog cuts off the very text it e
     - The phone was not consulted.
     - Recorded as-is and labelled. The fix (a scroll, or a different layout at large
       font) is a product change, so it is not this task's.
+N3. Every recorded dialog sits in a 320 dp window (measured: 319.5 dp, see R872), the
+    width Paparazzi gave DatePickerDialog at both screen widths. These baselines
+    therefore certify that the dialogs do not change in THIS renderer's window.
+    They do not certify the width a PIXEL_5-class phone gives them, and N2's cut
+    could differ there. A device look is the orchestrator's to schedule (Q2).
+
+--------------------------------------------------------------------------------
+R874 - THE OTHER 142
+--------------------------------------------------------------------------------
+BYTE-IDENTICAL, MEASURED. Run on f5d39c9, the code tip:
+`git diff --stat 12e0e276116e505afa5235973ef07ea99fdd1abb -- android/app/src/test/snapshots`
+    ...res_ParametresListScreenshotTest_parametresList.png | Bin 0 -> 245555 bytes
+    ...arametresListScreenshotTest_parametresListEmpty.png | Bin 0 -> 245795 bytes
+    ...rametresListScreenshotTest_parametresListFilled.png | Bin 0 -> 288882 bytes
+    ...arametresListScreenshotTest_parametresListLarge.png | Bin 0 -> 478135 bytes
+    ...rametresListScreenshotTest_parametresListSaving.png | Bin 0 -> 288829 bytes
+    ...res_ParametresScreenScreenshotTest_deleteDialog.png | Bin 0 -> 87647 bytes
+    ...metresScreenScreenshotTest_deleteDialogUnsynced.png | Bin 0 -> 93350 bytes
+    ...etresScreenScreenshotTest_deleteDoneAlertDialog.png | Bin 0 -> 82258 bytes
+    ...ParametresScreenScreenshotTest_deleteDoneDialog.png | Bin 0 -> 73974 bytes
+    ...ametresScreenScreenshotTest_deleteRefusedDialog.png | Bin 0 -> 75811 bytes
+    ...ametresScreenScreenshotTest_deleteUnknownDialog.png | Bin 0 -> 76847 bytes
+    ...ametres_ParametresScreenScreenshotTest_licences.png | Bin 0 -> 99616 bytes
+    ...ParametresScreenScreenshotTest_rateChangeDialog.png | Bin 0 -> 79289 bytes
+    ...es_ParametresScreenScreenshotTest_signOutDialog.png | Bin 0 -> 86431 bytes
+    ...metresScreenScreenshotTest_signOutPendingDialog.png | Bin 0 -> 87468 bytes
+    ...sScreenScreenshotTest_signOutPendingDialogLarge.png | Bin 0 -> 92521 bytes
+    ...metresScreenScreenshotTest_signOutSendingDialog.png | Bin 0 -> 70607 bytes
+    17 files changed, 0 insertions(+), 0 deletions(-)
+`git diff --name-status` over the same range and path: 17 x "A", no "M", no "D".
+Images in the directory: 142 at BASE_SHA, 159 now.
+NO PRODUCT FILE: `git diff --stat 12e0e27 HEAD -- android/app/src/main android/shared`
+is empty. The branch's whole diff is:
+  - this report;
+  - parking.md (PARK-PB1..PB3);
+  - three test files under android/app/src/test/kotlin/.../ui/screens/parametres/;
+  - the 17 images.
+verifyPaparazziDebug AT 0.0, INSIDE THE FULL :app:gate. Run on f5d39c9 with
+--rerun-tasks, after ./gradlew --stop, from a tracked tree that was clean
+(`git status --porcelain`: nothing; HEAD = f5d39c9), under the sampler
+(.param-evidence/app-gate-f5d39c9.log):
+    > Task :app:verifyPaparazziDebug
+    test floor OK: 1416 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 8m 47s
+    260 actionable tasks: 260 executed
+    STEP_EXIT=0 ABORTED=False
+- 1416 = IOS-2e-FIX's 1399 + these 17. The count did not fall, so no worker died.
+- The run's result XML:
+  - ParametresListScreenshotTest: 5 tests, 0 failures, 0 errors.
+  - ParametresScreenScreenshotTest: 12 tests, 0 failures, 0 errors.
+  - ParametresDialogScreenshotTest (the existing two): 2 tests, 0 failures.
+  - PaparazziZeroToleranceTest: 2 tests, 0 failures. It instantiated both new rules
+    and read 0.0 off each.
+  - RegisterCoverageTest: 1 test, 0 failures.
+- `git status --porcelain` afterwards: nothing.
+
+--------------------------------------------------------------------------------
+MEMORY - THE QUEUE'S FIRST GRADLE STEPS (Queue Rulings 3-4)
+--------------------------------------------------------------------------------
+How it was read:
+  - "before" is commit free read in its own step, after ./gradlew --stop for every
+    Gradle step.
+  - "first", "min commit" and "min phys" are the sampler's: its first sample, then
+    its minimums.
+  - All in MB. Logs and .samples.txt files: .param-evidence/<label>.*
+  label                     kind    before  first   min commit  min phys  verdict
+  probe-r872-noresult-1     Gradle  8 250   8 240   8 240       2 842     NO RESULT (gradlew.bat not found)
+  probe-r872                Gradle  8 250   8 079   5 167         502     BUILD SUCCESSFUL, exit 0
+  changed-1-r871            web     8 337   8 160   6 693       1 743     GATE PASSED, exit 0
+  probe-r872-wide           Gradle  8 376   8 091   5 910       1 525     BUILD SUCCESSFUL, exit 0
+  changed-2-r871-reissue    web     8 290   8 120   6 779       1 834     GATE PASSED, exit 0
+  record-1                  Gradle  8 288   8 040   5 734       1 456     BUILD SUCCESSFUL, exit 0
+  fastcheck-1               Gradle  8 291   8 024   4 057         702     BUILD SUCCESSFUL, exit 0
+  verify-new                Gradle  8 346   8 092   6 572       1 956     BUILD SUCCESSFUL, exit 0
+  changed-3-baselines       web     8 330   8 115   6 461       2 139     GATE PASSED, exit 0
+  app-gate-f5d39c9          Gradle  8 195   7 937   3 115         228     BUILD SUCCESSFUL, exit 0
+  gclone-f5d39c9            web     9 294   9 078   7 141       2 687     GATE:CLONE PASSED, exit 0
+  (gate:clone on this report's commit runs after it is written; its row is in the hand-back)
+- No step was ABORTED, and no worker died: the full gate counted 1416 tests.
+- One read before verify-new was 6 970 MB, below the 7 000 floor, with no java.exe
+  running. The step waited until a read showed 8 346.
+- WHAT THIS SAYS ABOUT THE PROVISIONAL 7 000 MB FIGURE (the orchestrator's to set):
+  - The FULL :app:gate --rerun-tasks started at 8 195 MB commit free. It bottomed at
+    3 115 MB commit free and 228 MB free physical: 5 080 MB of commit charge at its
+    peak, and 1 115 MB above the sampler's 2 000 MB kill line.
+  - fastCheck took 4 234 MB (8 291 -> 4 057).
+  - A gate started at 7 000 would have bottomed near 1 920 MB, below the kill line,
+    by the same arithmetic. That is a projection from one run, not a measurement.
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+Series PB, confirmed free with web/scripts/register-coverage.mjs before use. Taken
+two-letter series at BASE_SHA were CA FT HA IA IB IE PI, phantom FW ZZ. The check
+read 221 cited ids before and 224 after (R456).
+PARK-PB1 - THE SEVEN SHEETS, NOT DELIVERED (Queue Ruling 7, point 1).
+    - The five edit sheets, "En savoir plus" and the export chooser, with every
+      state R871 names.
+    - Each is `internal` in :shared and opened only by a tap. The seam is
+      visibility only (the R832 RateRow shape); it is a :shared change and needs the
+      iOS run.
+PARK-PB2 - THE START-DATE DIALOG, NOT DELIVERED (Queue Ruling 7, points 2 and 3).
+    - The wired MaterialStartDateDialog (private, behind a sheet's tap), its picker
+      with a stored day, and the picker with no date (the clock's month).
+    - No product symbol reaches the date content from :app's tests.
+    - Paparazzi draws the dialog clipped in a fixed 320 dp window (N1).
+PARK-PB3 - the delete dialog with its word typed (local state; typing only).
+FOR THE ORCHESTRATOR TO PARK (Ruling 7, point 3; no id taken here):
+    - N1, and N3: whether the S9 draws Material 3's DatePickerDialog whole, and how
+      wide it draws an AlertDialog.
+    - N2: the 200 % still-pending sign-out dialog (a product fix).
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. PROBE 1 RAN BEFORE THE FIRST LIST WAS COMMITTED. THE WORK orders "1. R871 (the
+   list, committed). 2. R872 probe."
+   - What held: no recordPaparazzi ran before either list was committed, and the
+     probe wrote nothing under src/test/snapshots (git status: nothing). R871's own
+     requirement, committed before the first recordPaparazzi, therefore held.
+   - What happened: the first list (3c2a074) was written with the probe's result in
+     hand. It was then re-issued under Queue Ruling 7 (d9853f6), again before any
+     recording.
+2. TWO NAMES BEYOND RULING 7's ENUMERATION, both in the re-issued list before
+   recording:
+   - licences: the product's public LicencesScreen, the sub-screen the
+     LICENCES_ROW row opens;
+   - signOutPendingDialogLarge: the 200 % case the stacked layout was written for.
+     It is the image that found N2.
+3. DEVICE RESOLUTION ON THE LIST CLASS (useDeviceResolution = true).
+   - The other 142, and ParametresScreenScreenshotTest, keep Paparazzi's 1 000 px
+     thumbnails.
+   - A 5 800 px or 12 000 px list as a thumbnail is about 190 or 90 px wide, which
+     nobody can read (R873).
+   - Cost: the five list images are 246 KB to 478 KB, 1.5 MB together (1 547 196 bytes).
+4. web/.env WAS COPIED FROM web/.env.example WITH ONE EDIT: the database name in
+   DATABASE_URL, frontalier -> postgres (the maintenance database, C4's choice).
+   - gate:clone takes the host from that URL and creates and drops its own scratch
+     database through it.
+   - So its admin connection never opens the shared `frontalier` database. Host,
+     port and credentials are the example's.
+   - It was created after f5d39c9's gate:changed. The three earlier gate:changed runs
+     had no web/.env; the run on this report's tree had it. All four counted 3641
+     tests.
+5. fastCheck DID NOT RUN ON THE DOCUMENT-ONLY COMMITS (3c2a074, d9853f6, and this
+   report's commit).
+   - They changed no Android file, only the report and parking.md. gate:changed ran
+     on each.
+   - It ran on the test increment (f5d39c9): BUILD SUCCESSFUL, STEP_EXIT=0
+     ABORTED=False.
+6. AN EXTRA FILTERED verifyPaparazziDebug ran before committing the baselines: the
+   17 plus PaparazziZeroToleranceTest, 5 + 12 + 2 tests, 0 failures. It is not in
+   THE WORK. It showed the recording reproduces before a 9-minute gate was spent on
+   it.
+7. gate:clone RAN TWICE, once on the code tip f5d39c9 before its push and once on
+   this report's commit before its push. R199 has no report-only exemption, and
+   register-coverage reads this file.
+8. THE FIRST PROBE ATTEMPT IS NO RESULT. cmd.exe did not search the current
+   directory for gradlew.bat. Every later step names the full path.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+Q1. N2: should SignOutStillPendingDialog's text scroll at large font, as DeleteDialog's
+    does?
+    - It is a product change in :shared, with the iOS run.
+    - It would move exactly one baseline, signOutPendingDialogLarge, which is labelled
+      for that.
+Q2. N1 / N3: should a device task measure on the S9:
+    - Material 3's DatePickerDialog (whole or clipped at 393 dp), and
+    - the AlertDialog width?
+    Every dialog baseline here is drawn in Paparazzi's fixed 320 dp window.
+Q3. PARK-PB1 / PB2: when is the visibility seam scheduled? It would turn the seven
+    sheets and the start-date dialog into baselines; it needs the iOS run.
+
+--------------------------------------------------------------------------------
+CLEANUP
+--------------------------------------------------------------------------------
+At this commit (stated as it stands; nothing below has been removed yet):
+  - Created by this session and NOT committed:
+    - .session-lock.json (the R349 lock, gitignored);
+    - android/local.properties (sdk.dir, gitignored);
+    - web/.env (DEVIATION 4, gitignored);
+    - .param-evidence/ (logs, samplers, probe images, crops; gitignored);
+    - web/node_modules (pnpm install).
+  - The two probe classes were created and deleted by this session. They were never
+    staged.
+  - The lock, web/.env and android/local.properties are removed after the last push.
+    That removal is reported in the hand-back, not here, because a report states
+    only what has happened.
+  - .param-evidence/, web/node_modules and the worktree itself stay for the
+    operator's cleanup, as C4's did.
+  - Gradle daemons are stopped after every Gradle run.
+  - No container, process, database or file of another session or project was
+    touched. The main checkout saw only `git fetch` and `git worktree add`. Its lock
+    and its untracked files (relay/*.txt, android/scripts/*.mjs) were not touched.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+CODE PUSH. It was gated on gate:clone's verdict, read from its log in its own step:
+GATE:CLONE PASSED, STEP_EXIT=0 ABORTED=False, "commit f5d39c9...", the "ran" line
+naming db:deploy, test:db and test:container:write, and `git status --porcelain`
+empty.
+  HEAD = f5d39c9f05fcdc84a2f425cbc5642acd2626fb0a = the commit gate:clone named
+  git push -u origin an-param-baselines  ->  * [new branch] an-param-baselines -> an-param-baselines
+  PUSH_EXIT=0
+  git ls-remote origin refs/heads/an-param-baselines
+    f5d39c9f05fcdc84a2f425cbc5642acd2626fb0a  refs/heads/an-param-baselines
+gate:clone on f5d39c9 (.param-evidence/gclone-f5d39c9.log):
+  commit    f5d39c9f05fcdc84a2f425cbc5642acd2626fb0a
+  tree      clean - HEAD is everything you have
+  swept     no stale clones (older than 4h) found
+  --- database: scratch database monreleve_gate_clone_f5d39c9f created ---
+  GATE:CLONE PASSED
+  ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+  STEP_EXIT=0 ABORTED=False
+  NOT RUN in the clone, as it prints: test:e2e, test:visual, test:runtime,
+  lighthouse, parity:check, test:container.
+Commits on an-param-baselines over 12e0e27:
+  3c2a074  R871/R872  the first list (18 names) and probe 1; PARK-PB1..PB3
+  d9853f6  R871/R872  the list re-issued under Queue Ruling 7 (17 names); probe 2
+  f5d39c9  R871/R873  the three test files and the 17 baselines
+RULING NUMBERS. Before the push: `git fetch origin` (origin/main still 12e0e27).
+  - Every origin head was then grepped (relay/, REPORT-*.txt, CLAUDE.md, docs) for
+    R871-R876. Only relay/AN-PARAM-BASELINES.txt, the prompt, carries them.
+  - The main checkout's relay/ was grepped read-only. The prompt and
+    RULINGS-2026-11-11.txt (Queue Ruling 7's text) cite R871-R874 in the prompt's
+    meanings.
+  - R871-R874 are used as the prompt defines them; R875-R876 are unused.
+gate:changed ON THIS REPORT'S TREE (f5d39c9 plus this file), under the sampler, before
+it was committed (.param-evidence/changed-4-report.log):
+  - selection: "no path matched the selector - base chain only"
+  - typecheck exit 0, lint exit 0, test 3641 passed, build exit 0
+  - "GATE PASSED for the paths changed." STEP_EXIT=0 ABORTED=False
+  - commit free 8 844 MB before; minimum 7 338 MB commit free, 3 040 MB free physical
+  After it, this file alone was edited, in four places: these lines, DEVIATION 3's
+  size total, DEVIATION 4's web/.env sentence, and DEVIATION 5's list of commits.
+  gate:clone runs on the committed text.
+REGISTER. `node web/scripts/register-coverage.mjs` on this report's tree: exit 0.
+  "register coverage: OK - 224 cited id(s) across 163 report(s), all have headings
+  in parking.md"
+THIS REPORT'S COMMIT is pushed to an-param-baselines after gate:clone passes on it.
+Its SHA, that gate:clone's lines and the ls-remote line are in the hand-back, not
+here.
+NOT pushed: main, production. NOT merged.
