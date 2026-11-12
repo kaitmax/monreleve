@@ -30,8 +30,6 @@ fun iosExportsDirectory(): String = NSTemporaryDirectory().trimEnd('/') + "/" + 
 class IosExportFiles(
     val directoryPath: String = iosExportsDirectory(),
 ) {
-    // RED STUB (IOS-2f run 1): writes an EMPTY file. Replaced at the R891 code step.
-
     /** Writes [event]'s bytes to <directory>/<event.filename> and returns that path (Android's shareFile's file). */
     fun write(event: ExportEvent.Ready): String {
         val manager = NSFileManager.defaultManager
@@ -44,12 +42,15 @@ class IosExportFiles(
             )
         }
         val path = "$directoryPath/${event.filename}"
-        writeFileBytesAtomically(path, ByteArray(0))
+        // Android's File.writeBytes throws when the file cannot be written; so does this - never an empty share.
+        check(writeFileBytesAtomically(path, event.bytes)) { "the export could not be written" }
         return path
     }
 
-    // RED STUB (IOS-2f run 1): deletes nothing. Replaced at the R891 code step.
-
     /** Deletes the exports directory and everything in it (Android's clearExports); a no-op when there is none. */
-    fun clear() = Unit
+    fun clear() {
+        val manager = NSFileManager.defaultManager
+        // Android's deleteRecursively() result is ignored there; a removal that fails is ignored here the same way.
+        if (manager.fileExistsAtPath(directoryPath)) manager.removeItemAtPath(directoryPath, null)
+    }
 }
