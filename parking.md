@@ -5685,3 +5685,102 @@ WHY PARKED: A required check that is red on main cannot tell anyone whether
             or exempt tracked files under public/), and either changes a gate
             script, which is not this task.
 STATE:      OPEN.
+
+## PARK-IF1 - the iOS sync SCHEDULER (BGTaskScheduler) that calls the drain IOS-2f built  [IOS-2f R893, 2026-11-12]
+
+RAISED BY:  relay/IOS-2f.txt R890 (the scheduling half PARKED to IOS-1b-B);
+            REPORT-IOS-2f.txt R888 piece 2, R893.
+WHAT:       The half of Android's SyncScheduler / SyncWorker that needs an app:
+            BGTaskScheduler.register for a task identifier before the app
+            finishes launching; that identifier in the app's Info.plist
+            BGTaskSchedulerPermittedIdentifiers and the background-mode
+            capability; a request after a write and on foreground
+            (requiresNetworkConnectivity = Android's CONNECTED constraint); the
+            backoff on RETRY_LATER; the app's repository write path calling
+            IosSyncTrigger.afterWrite (Android: SyncScheduler.requestSync).
+PROVEN HERE (the logic it will call, on the CI simulator - REPORT-IOS-2f R895):
+            iosSyncDrain reads the account when the drain RUNS and sends
+            nothing without one (IosSyncCompositionIosTest, over the real iOS
+            database and the shared SyncEngine); syncNow is that drain, cancelled
+            by its caller's bound with the day left PENDING (same class);
+            syncFollowUp is SyncWorker's mapping (same class); IosSyncTrigger's
+            single-flight, coalescing, failure and cancellation
+            (IosSyncTriggerTest, IOS-1a) and its cancel() for the sign-out
+            (IosSyncTriggerCancelIosTest).
+MEASURED:   the CI test binary has no bundle identifier and no
+            BGTaskSchedulerPermittedIdentifiers (AppHostProbeIosTest) - the
+            premise of this park.
+STATE:      OPEN - IOS-1b-B's input.
+
+## PARK-IF2 - the iOS SHARE SHEET (UIActivityViewController) for the file IOS-2f writes  [IOS-2f R893, 2026-11-12]
+
+RAISED BY:  relay/IOS-2f.txt R891; REPORT-IOS-2f.txt R888 piece 3, R893.
+WHAT:       Android's MainActivity.shareFile's second half on iOS: present a
+            UIActivityViewController for the file URL IosExportFiles.write
+            returns (the event's mimeType as its type), from the app's window;
+            and Android's two toasts (ReleveCopy.EXPORT_REQUIRES_CONNECTIVITY,
+            EXPORT_FAILED) as iOS presentations. Both screens (the Releve's PDF
+            and CSV, Parametres' JSON and CSV account export) go through it.
+PROVEN HERE: the file it will be handed - IosExportFilesIosTest: the Android
+            path's own fixture through the shared ReleveController to
+            <tmp>/exports/<server filename>, byte for byte; the same over the
+            REAL iOS transport (the session's binary GET of the wire server's
+            256 bytes); the clear, which is the LocalStore's clearExports
+            (IosLocalStoreIosTest asserts a written export gone after sign-out,
+            deletion and a server-ended session).
+NOTICED:    the filename is the server's Content-Disposition name, joined to
+            the directory as Android's File(dir, name) joins it; neither
+            platform strips a path separator from it. Server-controlled; not
+            changed (Android unchanged).
+STATE:      OPEN - IOS-1b-B's input.
+
+## PARK-IF3 - POSTING the evening reminder and the threshold alert on iOS (UNUserNotificationCenter)  [IOS-2f R893, 2026-11-12]
+
+RAISED BY:  relay/IOS-2f.txt R892; REPORT-IOS-2f.txt R888 piece 4, R893.
+WHAT:       What EveningNotifier.kt does on Android, for iOS, around the plan
+            IosNotificationPlan.kt returns:
+  1. requestAuthorization when the evening or alert toggle is turned on
+     (Android's R323 POST_NOTIFICATIONS flow), and the toggles' host;
+  2. add a request: a UNCalendarNotificationTrigger whose date components
+     carry the Europe/Paris zone for NotificationTime.ParisWallClock, an
+     immediate one for Now; ONE identifier per Paris day, so a re-plan
+     replaces rather than stacks (never two Mon Releve notifications a day);
+  3. remove the day's pending request when the plan is null, and when the day
+     is recorded by any path (Android: EveningNotifier.cancel on record);
+  4. the store writes, in Android's order: maybeAlertThreshold saves the
+     crossing whether or not it fires, then markAlerted after an alert, and
+     markNotified when the reminder posted or was merged; maybeNotifyEvening
+     markNotified after its post;
+  5. NOT DECIDED, the operator's or IOS-1b-B's: how far ahead to schedule
+     (this plans today only); how "already notified" is learnt for a request
+     that fired while the app was not running (Android marks at post);
+  6. the copy (NotificationCopy is :app's) and the lock-screen privacy
+     (Android's PUBLIC version without buttons), the record buttons as
+     UNNotificationAction with the authenticationRequired option (Android's
+     setAuthenticationRequired), the tap opening Aujourd'hui or the forecast;
+  7. the persistent stores the plan reads (the detection file - R894).
+PROVEN HERE: IosNotificationPlanIosTest (the WHEN: the conclusion minute is
+            CHECK_WINDOWS' last end, or Now once past it; nothing on a
+            weekend, an opt-out, a recorded day or an already-notified day; the
+            alert at once, merged when the reminder is due now) and
+            NotificationDecisionTwinIosTests (every case of :app's
+            EveningNotificationDecisionTest and ThresholdAlertDecisionTest, on
+            the iOS copies of the two files).
+STATE:      OPEN - IOS-1b-B's input.
+
+## PARK-IF4 - move the three :app files iOS copies into commonMain and delete the copies  [IOS-2f R893, 2026-11-12]
+
+RAISED BY:  REPORT-IOS-2f.txt R888 (THE CONSTRAINT), DEVIATIONS.
+WHAT:       account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt
+            and detection/ThresholdAlertDecision.kt are pure (R839: NO BLOCKER
+            FOUND) and live twice: in :app, and byte-identical in :shared's
+            iosMain, because IOS-2f could change 0 files under android/app.
+            The task: git mv the three :app files to :shared commonMain
+            (package unchanged), delete the iosMain copies, and empty
+            IosAndroidTwinsTest's expected set (or delete the test if no copy
+            remains). Needs a task allowed to change android/app, the full
+            :app:gate and the R573 iOS run.
+GUARDS UNTIL THEN: IosAndroidTwinsTest fails on any byte of drift and on any
+            fourth copy; a move that forgets the copy fails iOS compilation
+            with a redeclaration.
+STATE:      OPEN.
