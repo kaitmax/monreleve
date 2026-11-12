@@ -2150,3 +2150,238 @@ APPLIED AND VERIFIED
   - EVIDENCE records the verified copy.
 - C10's brief carries items 2 and the list above. Its BASE_SHA is the
   commit carrying this ruling.
+
+====================================================================
+QUEUE RULING 24 - C10's INCREMENT 1 MUST MOVE THE PRIVACY NOTICE: THE ORDER RULE WITHDRAWN AS WORDED; R912 PICKED FIRST
+====================================================================
+
+EVIDENCE (C10's message during the step)
+(1) R914's RED is tests/unit/content/personal-data.test.ts. It fails
+    until every column of the new table maps to a DISCLOSED_RECORDS key
+    the notice renders. So R914's first green commit carries:
+    - R919's notice sentence (lib/fr/confidentialite.ts);
+    - the WEB_STATEMENTS.twoCases change, since "two cases" becomes
+      false by count.
+    privacy-claims.test.ts goes RED first.
+(2) That touches lib/fr, so gate:changed selects test:visual, and two
+    baselines move: page-confidentialite-desktop.png and -mobile.png.
+    The brief said server increments land before any baseline change,
+    which they cannot here.
+(3) C10's proposal: increment 1 carries the table, the disclosure and
+    the twoCases fix, with exactly those two files named before the run.
+    The comparator baselines wait for the UI increment. The
+    alternative: hold increment 1 until the UI increment, at the cost
+    of one push of durability.
+(4) The probe on 17270f3 (fresh .next, gzip-9): calculator 127 945 B,
+    comparator 125 602 B (db68601: 127 946 / 125 598). The design adds
+    ZERO routes.ts entries and ZERO product-state flags. The outcome
+    landings are unregistered [etat] pages, as /alertes/confirmation/*
+    are, and the form copy is a new lib/fr module imported only by
+    DeadlineHelper.
+QUESTION: approve increment 1 with the notice, or hold it?
+
+ANSWER (the advisor, verbatim in substance)
+Approve. "Server increments before any baseline change" is withdrawn as
+worded: its purpose was that no work piles up uncommitted behind a
+visual run, as it did in C9. A closed disclosure list makes the notice
+part of the table's commit, and holding it back would recreate the
+pile-up.
+1. Take R912 first, before any visual run: cherry-pick db68601 as the
+   branch's first commit. C10 will run the visual suite several times,
+   and R912 is not on main. In C9's evidence run about one first capture
+   in ten differed from main's erreur baseline, so an update run could
+   rewrite that file as an unnamed third file, and a compare could pass
+   only on a retry; both are stops. If `git diff --quiet db68601 HEAD --
+   web` exits 0 after the pick, db68601's gate carries over and only
+   gate:clone is owed.
+2. Write the final notice sentence now (R919), so the two files move
+   once. Any lead time comes from the job's constant; the case count is
+   asserted against the list of cases.
+3. Measure the two files by shift, not by band. Rows above the first
+   change are identical; rows below the last change are identical once
+   offset by the growth.
+4. The notice now runs ahead of the code. The handoff lists each clause
+   no test backs yet (the deletion, the purge); R916 closes them.
+5. Probe, before increment 1 commits: compare against C10's own base
+   build (the 1 B and 4 B between the two bases are noise), and show the
+   zero-entry claim by an empty git diff on routes.ts and
+   product-state.ts, not by bytes alone.
+6. Later, not blocking: name the guards the alert landings get (robots,
+   320 dp, a11y, e2e); the new unregistered landings get the same.
+For the orchestrator:
+- record this as Queue Ruling 24, with the withdrawal;
+- C10's row: the branch merges whole or not at all, since increment 1
+  alone states a retention nothing performs yet;
+- the paint entry: R912 reaches main with C10, if the pick lands;
+- at V1, run the shift comparison on the two privacy files.
+
+APPLIED AND VERIFIED
+- Sent to C10 with items 1-6 and "merges whole or not at all". Proof is
+  pending until C10 reports.
+- QUEUE-STATE: the C10 row and the paint entry carry this ruling.
+
+====================================================================
+QUEUE RULING 25 - C10 WAITS ON THE MEMORY FLOOR: MAKE IT DURABLE, MEASURE THE FLOOR, SET A DEADLINE
+====================================================================
+
+EVIDENCE (C10's message at 16:35 UTC, and the orchestrator's reads)
+(1) Commit free has read 2 000-4 000 MB since about 15:40 UTC. It was
+    under 3 500 MB while tizicorp's Playwright e2e ran, and has held at
+    about 3 900-4 000 MB since that ended at about 16:20.
+(2) C10 runs nothing. Increment 1 is ready in the worktree: typecheck,
+    lint, unit and db are green, and the expected regeneration names
+    two files. Increments 2-6 are written and green in a scratch copy of
+    web/ outside the worktree. None of it is committed.
+(3) The orchestrator's reads at 16:38-16:42 UTC:
+    - commit free 3 892, then 3 856 MB; free physical 2 158 MB;
+    - holders: vmmemWSL 8 090 MB, VS Code 4 789 (28 processes), brave
+      2 527, claude 1 833, msedgewebview2 1 283;
+    - node.exe is only the MCP servers and Adobe's; there is no java.exe
+      and no Gradle daemon;
+    - containers: tizicorp-app-1 905 MiB, tizicorp-postgres-1 80 MiB,
+      frontalier-postgres 83 MiB; the Docker VM is 7.66 GiB;
+    - the VM, read through frontalier-postgres's /proc/meminfo:
+      MemAvailable 4 115 332 kB, MemFree 1 478 076 kB.
+    Nothing this project runs holds the memory. Docker's VM and
+    tizicorp's containers are untouchable (HOLDS; the operator's rule of
+    2026-11-11).
+QUESTION: wait, or set another floor for today?
+
+ANSWER (the advisor, verbatim in substance)
+Neither "keep waiting" nor a floor lowered by feel. Waiting has no
+mechanism: nothing this project runs can free the memory, and an
+open-ended wait is a wait on the operator, which the queue forbids.
+1. Durability first; it costs no memory. C10 saves each increment as a
+   checksummed tree under C:/wt/queue-evidence (C9's pattern), writes a
+   handoff in relay/ inside its worktree, and reports the scratch path
+   and the scratch DB's name. No commit; nothing is gated.
+2. Measure the floor, don't rule it. The measured drop D is the worst
+   first-sample minus minimum in the sampler logs, per selection. A
+   selection may run when reading >= D + 2 000. The 2 000 is the swing
+   tizicorp's e2e made today, so a repeat mid-run cannot take commit
+   free to zero. If a selection does not clear, or D is not in the logs,
+   the 5 000 stands.
+3. Visual runs load the VM, not the host. Before any visual run in this
+   state, read MemAvailable from frontalier-postgres's /proc/meminfo. An
+   out-of-memory kill in that VM can land on tizicorp-app-1, and no
+   ruling lifts that limit.
+4. Deadline: 30 minutes from the reply to C10. If no selection clears by
+   then, park C10 whole with its saved trees, and state the operator's
+   action: reading >= 5 000 MB by the commit-free command. Which apps
+   they close is theirs.
+5. Parking does not escape the floor. The record commit (C10's row,
+   Rulings 24-25) still needs gate:changed and gate:clone before the
+   push; apply test 2 to those selections. If they do not clear, the
+   final summary says the record is uncommitted and pending.
+
+APPLIED AND VERIFIED
+- Sent to C10 at about 16:38 UTC: keep waiting; save checksummed trees
+  under C:/wt/queue-evidence/fw-delai-rappel/; write
+  relay/FW-DELAI-RAPPEL-HANDOFF.txt in its worktree; report the scratch
+  path, the scratch DB and the OK/FAILED count.
+- Test 2, read by scratchpad floor-drops.cjs over every *.samples.txt
+  under C:/wt and the scratchpad. D is first sample minus minimum, the
+  worst run per selection:
+  | selection                                | worst D | needs   |
+  |------------------------------------------|---------|---------|
+  | gate:clone (clone-dd5231a)               | 3 155   | 5 155   |
+  | gate:changed + e2e + visual (inc23-2)    | 3 045   | 5 045   |
+  | r858-plant build                         | 3 010   | 5 010   |
+  | test:visual:update (r912-update)         | 2 385   | 4 385   |
+  | test:visual (evidence-erreur)            | 2 109   | 4 109   |
+  | gate:changed, base chain (r858)          | 1 954   | 3 954   |
+  Reading 3 856 MB at 16:41:58 UTC: NOTHING CLEARS, so the 5 000 stands.
+- A finding, not a change: gate:clone's own worst D + 2 000 is 5 155,
+  above the 5 000 floor. The floor stays as ruled.
+- Deadline 17:12 UTC.
+
+====================================================================
+QUEUE RULING 26 - C10 HANDED BACK PARKED ON THE MEMORY FLOOR: THE PARK STANDS; RULING 25's gate:clone FIGURE CORRECTED
+====================================================================
+
+EVIDENCE (V1, read by the orchestrator)
+(1) The deadline watch ended "17:12:12 DEADLINE commitFree=4113". C10's
+    84 reads (16:46:14-17:13:10 UTC, park/floor-samples.txt) peaked at
+    4 835 MB. At 17:17:36 UTC the reading was 4 134 MB.
+(2) ls-remote of fw-delai-rappel is empty. Commits from 17270f3: 764ef54
+    (R912) only, and `git diff --quiet db68601 HEAD -- web` exits 0.
+(3) The worktree: 10 modified and 5 untracked web paths (increment 1),
+    plus the report and the handoff. The lock, web/.env and the scratch
+    copy's .env are gone. The report (288 lines) and handoff (132) have
+    0 non-ASCII. The report's STATUS reads "PARKED. FULL GATE NOT RUN;
+    nothing committed".
+(4) pg_database: frontalier, monreleve_fw_delai_rappel, postgres,
+    template0, template1.
+(5) C:/wt/queue-evidence/fw-delai-rappel/: 9 dirs, and sha256sum -c
+    gives 187 OK and 0 failed.
+(6) C10's report: the byte probe (calculator 127 945 B, comparator
+    126 622 B with the stub, routes.ts and product-state.ts diff empty),
+    an additive migration, every gate NOT RUN, deviations D1-D3,
+    questions Q1-Q7, and the R921 runtime note.
+QUESTION: does the park stand, and what does the record commit carry?
+
+ANSWER (the advisor, verbatim in substance)
+The park stands; V1 covers it. Two checks block the record commit, and a
+third decides whether it can be pushed today.
+1. The saved trees must equal the worktree as it is now, because C10
+   edited increment 1 after its full light runs. Run inc1-R914's
+   SHA256SUMS against the worktree and compare the list with
+   `git status --porcelain -uall`. On any difference, save a new folder
+   and do not overwrite.
+2. Scan all 187 evidence files for secrets, not only the report and
+   handoff, and check for any .env in the saved trees.
+3. The 5 155 is probably not gate:clone's own: clone-dd5231a (13:52)
+   and C9's gate-changed-report (13:55) both bottom near 4 720-4 740.
+   Add end times, flag overlapping runs, and take the worst solo drop
+   per selection. If the overlap is confirmed:
+   - correct Ruling 25's table and the floor bullet;
+   - record that dd5231a's clone did not run alone;
+   - confirm 17270f3's clone had no overlap.
+   gate:clone's test becomes solo D + 2 000. Read commit free in its own
+   step, and the VM's MemAvailable. If it clears, run gate:changed then
+   gate:clone, once each, under the sampler. A sampler abort, or a red
+   shaped like dead workers, is NO RESULT, with no second attempt under
+   5 000. Allow one 15-minute watch at most; after that the push is
+   pending.
+4. Record as it happened: the message to C10 used a flat 5 000, while
+   Ruling 25's test was per selection. C10 read up to 4 835, above
+   test:visual:update's 4 385. This does not reopen the park, because
+   each C10 commit owes the gate with e2e and visual (5 045), which never
+   cleared.
+5. The record:
+   - C10's row PARKED WHOLE, with the operator's action;
+   - Q1-Q7 and the R921 runtime note;
+   - D1-D3 and the never-fully-run edits owed at resume; R914-R923 stay
+     C10's;
+   - C:/wt/fw-delai-rappel must not be removed, and the scratch DB is
+     kept;
+   - R912 is still not on main;
+   - P1's blocker moves to whichever of C9 or C10 merges first;
+   - the resume note: C9 and C10 change the same notice and baselines,
+     so the second to merge rebases and regenerates;
+   - the push is worded as pending.
+6. Commit locally on a green gate:changed even if gate:clone cannot run.
+   Then the live line says "origin/main 17270f3, local ahead by one,
+   gate:clone NOT RUN". Re-read the live SHA, and do not restate it from
+   memory. Remove the session lock last.
+
+APPLIED AND VERIFIED
+- Item 1: inc1-R914's SHA256SUMS against the worktree gives 15 OK. The
+  16th entry is the handoff, which C10 rewrote later; park/'s copy of it
+  and of the report equal the worktree's. The worktree's 17 changed paths
+  are inc1's 16 plus the report. Nothing is missing, so no new folder.
+- Item 2: 196 files (187 plus 9 SHA256SUMS), no .env, and 0 secret hits.
+  Positive control: the pattern found 2 of 2 planted lines.
+- Item 3: floor-drops.cjs now carries end times and an overlap flag.
+  - clone-dd5231a (13:52-14:08) OVERLAPS C9's gate:changed (13:55) and
+    gate:clone (14:05). So dd5231a's gate:clone did not run alone. It
+    PASSED, and it is recorded as it happened.
+  - clone-17270f3 (14:32-14:41) is solo, so main's tip is vouched solo.
+  - ERRATUM to Ruling 25's table: gate:clone's worst solo drop is 1 958
+    (gate-clone-handoff-2), so its test is 3 958, not 5 155. The other
+    rows stand.
+- Item 5: QUEUE-STATE carries:
+  - BLOCKED 12, with the action and Q1-Q7;
+  - C10's row PARKED WHOLE, with V1, owed at resume and the resume note;
+  - the C9 row's P1 item, the paint entry, the floor bullet with its
+    erratum, and the EVIDENCE entry.
