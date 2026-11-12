@@ -5556,3 +5556,87 @@ PINNED:     ForecastControllerPinTest (commonTest; JVM and iOS) asserts this
             point: the pin is the record that the behaviour is known.
 STATE:      OPEN - a known item, NOT fixed (IOS-2e's OUT OF SCOPE: "Fixing the
             double setDay save").
+
+## PARK-PB1 - no baseline of the Parametres edit sheets, "En savoir plus" or the export chooser: internal in :shared and opened only by a tap  [AN-PARAM-BASELINES R871, 2026-11-12]
+
+RAISED BY:  REPORT-AN-PARAM-BASELINES.txt R871 (the states named but parked);
+            the orchestrator's Queue Ruling 7, point 1 (park all seven, no seam
+            in C5);
+            REPORT-IOS-2e.txt UNNUMBERED-3 (no baseline shows the screen, a
+            sheet or the date dialog).
+WHAT:       The seven sheets ParametresOverlays composes in a ModalBottomSheet:
+            CantonSheetContent, RateSheetContent, MethodSheetContent,
+            GranularitySheetContent, StartDateSheetContent (all through
+            EditSheet with an EditSheetFrame), LearnMoreSheetContent and
+            ExportChooserContent. The R871 list names their states:
+            empty / filled, the method's exact-total field, the canton menu
+            open, every sheetErrorFor string, saving.
+WHY PARKED: Each content composable is `internal` in :shared
+            (ui/screens/parametres/ParametresFields.kt, ParametresDateField.kt,
+            ParametresInfoContent.kt). :app's Paparazzi suite lives in another
+            module and cannot call it. Through the public ParametresScreen, a
+            sheet opens only on a tap, via rememberSaveable state local to the
+            screen (`editing`, `showLearnMore`, `showExport`), and Paparazzi
+            cannot tap. The prompt's HARD BOUNDARY forbids the product seam and
+            any route round `internal` (a suppression, reflection or a friend
+            path is the same seam by another name).
+THE SEAM IT NEEDS: visibility only, internal -> public, for the seven content
+            composables and EditSheetFrame. That is the shape IOS-2e R832 gave
+            RateRow and that CalendarEditSheetContent already has, because
+            their Paparazzi tests stay in :app. It is a :shared change, so it
+            needs the iOS cloud run (R573).
+STATE:      OPEN - the orchestrator's to schedule.
+
+## PARK-PB2 - no baseline of the start-date dialog: neither the wired dialog nor its picker  [AN-PARAM-BASELINES R872, Queue Ruling 7, 2026-11-12]
+
+RAISED BY:  REPORT-AN-PARAM-BASELINES.txt R871 and R872; the orchestrator's
+            Queue Ruling 7, points 2 and 3.
+WHAT:       1. The dialog the product shows: :app's MaterialStartDateDialog
+               (ParametresStartDatePicker.kt), with its container, scrim,
+               ParametresCopy.START_DATE_PICK confirm and
+               CalendarCopy.SHEET_CANCEL cancel.
+            2. Its picker with a stored day (startDatePicker, named in R871's
+               first list at 3c2a074 and withdrawn by Ruling 7).
+            3. The picker opened on an empty field (initialIsoDay null).
+WHY PARKED: 1-2. No product symbol reaches the date content from :app's tests.
+               MaterialStartDateDialog is `private`, and it is composed only
+               while the START_DATE sheet's own `pickerOpen` is true: a tap
+               inside a PARK-PB1 sheet. A DatePicker built in the test is the
+               library plus a copy of the product's setup. It would stay green
+               when the product's dialog changed, so it is not a baseline of
+               the product (Ruling 7, point 2).
+            3. With no initial date, Material 3 shows the clock's current
+               month. A baseline of it would change on the first of every
+               month, and there is no clock seam.
+MEASURED ON THE WAY (R872, two probes):
+            - Paparazzi 1.3.5 draws Material 3's DatePickerDialog in a
+              centred window exactly 320 dp wide, at a 392.7 dp and at a
+              523.6 dp screen alike. Its content requires 360 dp, so the
+              seventh weekday column and the confirm's copy are cut at the
+              right. Since a wider screen did not help, this reads as the
+              renderer's window sizing, not a phone-width problem. That is
+              reasoned, not measured on a device; on a phone narrower than
+              360 dp it cannot fit.
+            - The locale "fr" gave French strings and dates. "fr-rFR" gave
+              French strings but English dates and weekday initials.
+            A baseline taken at device size today would certify a clipped
+            picture.
+STATE:      OPEN. Needs:
+            - for items 1 and 2: PARK-PB1's seam, plus a dialog window the
+              renderer draws whole at device size (or the S9's look);
+            - for item 3: a clock seam (a product change).
+            Whether a phone draws the dialog whole waits on the S9 (the
+            orchestrator's).
+
+## PARK-PB3 - no baseline of the delete dialog with the confirmation word typed  [AN-PARAM-BASELINES R871, 2026-11-12]
+
+RAISED BY:  REPORT-AN-PARAM-BASELINES.txt R871.
+WHAT:       DeleteDialog with DELETE_CONFIRMATION typed, so its confirm button
+            is enabled.
+WHY PARKED: `typed` is rememberSaveable state local to DeleteDialog (an
+            `internal` composable in :shared). It changes only when someone
+            types, and Paparazzi cannot type. The two reachable states, prompt
+            without and with unsynced days, are recorded with the word empty
+            (deleteDialog, deleteDialogUnsynced).
+STATE:      OPEN - with PARK-PB1's seam (DeleteDialog public), or an initial-word
+            parameter (a product change).
