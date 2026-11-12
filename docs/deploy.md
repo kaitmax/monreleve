@@ -847,6 +847,10 @@ The second command must print NEW. If the push is refused as not a
 fast-forward, stop; never `--force`. It means `production` holds a commit NEW
 does not contain. **This push is the deploy** (section 1).
 
+**From this push until step 6's checks pass, or until a rollback's checks
+pass, change no Coolify environment variable.** Adding, deleting or changing a
+build-time variable turns a rollback into a rebuild (10.2, point 3).
+
 **5. Follow the deploy by reading it, never by triggering one.**
 
 - **Where to read it:** in Coolify, the application's *Deployments*, newest
@@ -1007,10 +1011,13 @@ uses the page.
    - a build-time variable refers to a remote secret store (1523-1527);
    - the configuration differs from that of the **last successful deployment**
      in anything marked as affecting the build (1528-1543; `Application.php`
-     1492-1511, 1275-1278). That covers a variable marked *Available during
-     build* whose value or flags changed (`ApplicationConfigurationSnapshot.php`
-     310-312), a build setting (124-150), and the repository, branch, *Commit
-     SHA* setting or source (109-114). If that deployment carries no snapshot
+     1492-1511, 1275-1278). That covers:
+     - a variable marked *Available during build* whose value or flags
+       changed, one added marked so, or one deleted that was marked so at that
+       deployment (`ApplicationConfigurationSnapshot.php` 310-312; a deleted
+       variable keeps its old impact, `ConfigurationDiffer.php` 52-54);
+     - a build setting (124-150);
+     - the repository, branch, *Commit SHA* setting or source (109-114). If that deployment carries no snapshot
      and the stored configuration hash differs, every setting counts as changed
      (`Application.php` 1499-1508; `ConfigurationDiffer.php` 44), so it
      builds.
@@ -1077,8 +1084,8 @@ offers "Roll back to this image". That is why step 7 chooses by tag.
 - **For step 7's one-step rollback, keep ONE image besides the serving one:**
   `pkptabevr1nhtyygrq0mc8qx:<PREVIOUS>`, the commit that served immediately
   before. Each further step back needs one more.
-- **A tag that is not a bare commit SHA is never offered** (`rollback.blade.php`
-  36-38, 73-77), a `…-build` tag for instance. On a non-static dockerfile
+- **Only a bare commit SHA or a `pr-<n>` tag is offered** (`rollback.blade.php`
+  36-38, 73-77); a `…-build` tag, for instance, is not. On a non-static dockerfile
   build, the job tags `<uuid>:<commit>` directly (4845-4869); `-build` tags
   come only from the static path (4596-4743).
 - Keeping more than one previous image is a policy choice, not something the
@@ -1123,6 +1130,14 @@ is gone.
 - **Housekeeping.** Coolify masks environment values in its task logs. Creating
   a variable through the API also creates a **preview** copy, so both copies
   had to be deleted afterwards.
+- **Re-use or rebuild: not established.** The record does not say how
+  `ROTATION_PROBE` was created. A variable created through the API is
+  build-time unless the request says otherwise (`ApplicationsController.php`
+  4473 and 4506), and an added build-time variable makes the restart a build
+  (10.2, point 3). So the "about 4 minutes" may include a build. The password
+  rotation changes `DATABASE_URL`, recorded runtime-only (section 2), so by
+  reading its restart re-uses the image; how long that restart takes has not
+  been measured.
 
 **Why a restart is a deployment, from the source.** A *Restart* queues a
 deployment with `restart_only` (`app/Livewire/Project/Application/Heading.php`
@@ -1146,6 +1161,17 @@ That swap is where the timeout fell.
   312). So, as read and not measured, the restart re-uses the image, and the
   image keeps what it was built with. That is why section 2's setting takes
   effect only at the next promotion's build.
+- **Adding or deleting a build-time variable does rebuild.**
+  - A deleted variable keeps the impact it had at the last successful
+    deployment (`ConfigurationDiffer.php` 52-54).
+  - A new variable is build-time unless set otherwise: that is the API's
+    default (`ApplicationsController.php` 4473 and 4506) and the column's
+    (`2025_09_18_080152_add_runtime_and_buildtime_to_environment_variables_table.php`
+    18).
+  - P2 item 1 may delete `EMAIL_FROM`, and a leftover `CHROMIUM_VERSION`; both
+    are recorded build-time. After that, the next deployment of any kind is a
+    build, a restart or a rollback included. P2 places item 1 before item 2's
+    promotion, whose build absorbs it.
 - **Changing a variable that is still marked build-time, then restarting,
   rebuilds** (1528-1543). That build is of `production`'s head, with its
   Chromium pin, through the R249 guard.
