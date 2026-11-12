@@ -1,5 +1,6 @@
 package ch.monreleve.app.contracts
 
+import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
@@ -48,6 +49,17 @@ class MemoryTokenStoreContractTest : TokenStoreContract() {
     }
 
     override fun somethingIsStored(): Boolean = holder[0] != null
+}
+
+// IOS-2f R889: the AccountStore contract's JVM half; KeychainAccountStoreContractTest is its simulator half.
+class MemoryAccountStoreContractTest : AccountStoreContract() {
+    private var holder: Array<String?> = arrayOf(null)
+
+    override fun reset() {
+        holder = arrayOf(null)
+    }
+
+    override fun newInstance(): AccountStore = MemoryAccountStore(holder)
 }
 
 class TheDossierContractCanFailTest {
