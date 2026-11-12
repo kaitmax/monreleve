@@ -2046,3 +2046,107 @@ APPLIED AND VERIFIED
     cost.
 - Pending: the copy to C:/wt/queue-evidence/ with checksums (after the
   hand-back), and the C10 module check before C10's launch.
+
+====================================================================
+QUEUE RULING 23 - C9 HANDED BACK PARKED: THE PARK STANDS; WHAT BLOCKS C10's LAUNCH
+====================================================================
+
+EVIDENCE (V1, read by the orchestrator)
+(1) ls-remote: fw-web-account 00e2d17, main dd5231a. Commits from
+    863edb0: 7af6a06 R898, c2f5cd3 and 18882cf (handoffs), db68601 R912,
+    00e2d17 (the PARKED report and the handoff). 5 files, +599/-2.
+(2) The report says PARKED and "FULL GATE NOT RUN on the increment".
+    It is 0 non-ASCII over 542 lines; the secret scan is 0.
+(3) gate:clone on 00e2d17 (gate-clone-report.log, read directly):
+    "tree clean", PASSED, "ran" naming db:deploy, test:db and
+    test:container:write, STEP_EXIT=0; minimum 5 675 MB commit free.
+(4) The worktree: porcelain empty; the lock and web/.env gone. The
+    orchestrator's own pg_database listing: frontalier, postgres,
+    template0, template1.
+(5) Saved trees:
+    - saved-trees-sha.txt checks 239 OK and 0 FAILED;
+    - its 12 indented section lines match the report: refactor-tree
+      7cd5727e, pre-gate-tree 30e0d295, gated-tree-1 MANIFEST 43ab21c8,
+      inc4-tree-2 ceafd862;
+    - the whole .webaccount-evidence/ (1 340 files, 727 MB) was copied
+      to C:/wt/queue-evidence/fw-web-account/ and verified against
+      fw-web-account.SHA256SUMS, taken from the source before the copy.
+(6) Bytes (bytes/db68601-all-routes.txt):
+    - the calculator 127 946 B, 54 B spare;
+    - /calculateur-lamal-cmu 125 598 B, 2 402 B spare;
+    - / 116 730 B, 11 270 B spare.
+(7) The report's erratum (C9's hand-back): the GATE B floor is
+    103 014 B, not the 103 028 the report states; no other figure moves.
+(8) The orchestrator's static client-import walk:
+    - the calculator page's closure (CalculatorForm and PublicShell)
+      holds lib/content/routes.ts, product-state.ts, regulatory.ts and
+      provisional.ts, and 14 lib/fr modules;
+    - DeadlineHelper's closure holds lib/fr/lamal.ts only;
+    - lib/fr/index.ts defines constants and re-exports nothing.
+QUESTION: does the park stand, and what must precede C10's launch?
+
+ANSWER (the advisor, verbatim in substance)
+The park stands: V1 and the verified copy are enough. Three things block
+C10's launch.
+1. Finish the byte check on built chunks, not imports. C9 measured that
+   an unused route constant is dropped and only its product-state read
+   ships, so "in the closure" does not yet mean "costs bytes". Grep the
+   calculator's first-load files in bytes/chunks-db68601 for the paths
+   of two registered routes that neither the shell nor the calculator
+   links. If absent, plain route entries are free; if present, every
+   page C10 registers lands on a page with 54 B.
+2. C10's increment 0 is a byte probe, whichever way that reads. C10
+   stubs every route and flag it will need, builds fresh and reads both
+   routes:
+   - the calculator over 128 000 B: stop before anything is built;
+   - the comparator has 2 402 B; if the form cannot fit, stop, without
+     trimming to the printout;
+   - a new PRODUCT_STATE flag ships to every page.
+3. Commit and push the park record first; C10's BASE_SHA is that
+   commit. Before it, read gate-clone-report.log's verdict lines and run
+   your own pg_database listing. Relabel the row's "Owed at V1" items as
+   owed at C9's resume. Correct the paint entry: R912 is not on main,
+   the avis substitution was saved but never gated, and any task that
+   regenerates calculateur-erreur-desktop.png needs db68601's two files
+   first.
+C10's brief also carries:
+- order: server-side increments land and push before any UI or
+  baseline change;
+- focus: no full-page capture ends with focus in an invalid field
+  (blur, then assert the state, R912's pattern at db68601);
+- regeneration: the expected set comes from the specs, named before
+  the run; each file's difference from main sits in the region its
+  change explains; the gate's compare passes every file on attempt 1;
+- the claims the feature makes false: Ruling 12's conditions 1 and 2
+  apply (the comparator's zero-storage wording is the obvious one);
+  each claim is scoped or changed, and the operator reads the new
+  sentences before promotion;
+- size: build and size from a fresh .next before any commit touching
+  app, lib/ui, lib/fr or lib/content;
+- the known defect: a gate failing only on the erreur file means stop
+  and message.
+For the orchestrator: the P1 item ("main's tip", "empty migration
+list") now attaches to C10's record commit and blocks it.
+
+APPLIED AND VERIFIED
+- Read 1 (scratchpad route-in-chunks.cjs over db68601's 15 calculator
+  first-load files, both layouts included, 421 040 bytes of JS):
+  - /guides/geneve and /guides/attestation-employeur-teletravail SHIP,
+    and neither appears in PublicShell, the calculator's files, or the
+    shell, calculator, result and provisional copy;
+  - so the registry in lib/content/routes.ts ships WHOLE, and every
+    route C10 registers costs bytes on the 54 B page;
+  - '/api/', '/dev/' and '/releve/print' are absent.
+  Recorded in BLOCKED 11.
+- Read 3: gate-clone-report.log PASSED (verdicts in (3)); pg_database
+  as in (4).
+- QUEUE-STATE:
+  - the C9 row is PARKED, with V1 and the erratum;
+  - "Owed at V1" is relabelled as owed at C9's resume;
+  - the P1 item is moved to C10's record commit;
+  - the paint entry is corrected;
+  - BLOCKED 11 gains the registry fact, C9's byte facts and C9's
+    questions;
+  - EVIDENCE records the verified copy.
+- C10's brief carries items 2 and the list above. Its BASE_SHA is the
+  commit carrying this ruling.
