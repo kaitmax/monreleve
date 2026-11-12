@@ -93,26 +93,35 @@ jobs:
     # 5432 here, 5436 in docker-compose.yml: the runner's port is private to
     # the job, while a developer's machine already has other projects'
     # databases on the usual port.
+    #
+    # R879: THE DATABASE IS `monreleve_ci`, NOT `frontalier`. test:db refuses
+    # any database whose name is not a scratch name (R877; the pattern's one
+    # home is web/lib/db/scratch-database.mjs), and `frontalier` is the shared
+    # development database's name. This one is scratch by construction - the
+    # runner is thrown away - so it is NAMED as scratch, rather than let
+    # through by an opt-out variable. The user and password stay `frontalier`:
+    # they are not the database. tests/unit/meta/scratch-database-census.test.ts
+    # asserts every database name in this file against the pattern.
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: frontalier
           POSTGRES_PASSWORD: frontalier
-          POSTGRES_DB: frontalier
+          POSTGRES_DB: monreleve_ci
         ports:
           - 5432:5432
         # Starting the container is not the same as the database accepting
         # connections. Without the health check, migrations race the socket
         # and fail in a way that reads like a configuration error.
         options: >-
-          --health-cmd "pg_isready -U frontalier -d frontalier"
+          --health-cmd "pg_isready -U frontalier -d monreleve_ci"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 20
 
     env:
-      DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+      DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/monreleve_ci?schema=public
 
     steps:
       # R201 - THE ALARM, AND IT IS THE FIRST STEP ON PURPOSE.
@@ -539,13 +548,16 @@ jobs:
       run:
         working-directory: web
 
+    # R879: `monreleve_ci`, for the reason the test job's services block
+    # gives. container-e2e hands it to vitest.db.config.ts directly, so the
+    # guard reads this name too.
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: frontalier
           POSTGRES_PASSWORD: frontalier
-          POSTGRES_DB: frontalier
+          POSTGRES_DB: monreleve_ci
         ports:
           - 5432:5432
         options: >-
@@ -573,7 +585,7 @@ jobs:
       # run in CI, the answer is a mechanism, not an exemption.
       - run: pnpm test:container:e2e
         env:
-          CONTAINER_E2E_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+          CONTAINER_E2E_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/monreleve_ci?schema=public
 
       # TWO CONTAINERS, ONE DATABASE. `globalThis` is per-process, so replicas
       # are separate schedulers - and what matters is whether the WORK is
@@ -583,7 +595,7 @@ jobs:
       # the shape of a lock nobody released - it looks exactly like success.
       - run: pnpm test:container:scheduler
         env:
-          CONTAINER_SCHEDULER_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+          CONTAINER_SCHEDULER_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/monreleve_ci?schema=public
 
       # THE PRODUCTION WRITE (FW31, R256). Nothing else in this repository
       # exercises one: the browser suite cannot reach /api/v1 by design since
@@ -601,7 +613,7 @@ jobs:
         env:
           CONTAINER_IMAGE: monreleve:e2e
           CONTAINER_WRITE_NO_BUILD: '1'
-          CONTAINER_WRITE_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+          CONTAINER_WRITE_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/monreleve_ci?schema=public
 
       # A BACKUP NOBODY HAS RESTORED IS A HOPE. pg_dump running nightly proves
       # a file is being written; it says nothing about whether that file can
@@ -615,7 +627,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - run: pnpm test:container:restore
         env:
-          RESTORE_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/frontalier?schema=public
+          RESTORE_DATABASE_URL: postgresql://frontalier:frontalier@localhost:5432/monreleve_ci?schema=public
 
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}

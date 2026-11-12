@@ -51,7 +51,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { SCRATCH_DATABASE_PATTERN } from '../../../lib/db/scratch-database.mjs';
+import { SCRATCH_DATABASE_PATTERN, judgeTestDatabase } from '../../../lib/db/scratch-database.mjs';
 
 const WEB = join(import.meta.dirname, '..', '..', '..');
 const UNIT_TESTS = join(WEB, 'tests', 'unit');
@@ -242,5 +242,92 @@ describe('the resolver itself refuses what it cannot read (R180: a check proven 
       "let DB = null;\nDB = scratchDatabaseName(`gate_clone_${head}`);\n";
 
     expect(resolveIdentifier(source, 'DB').how).toBe('home');
+  });
+});
+
+// ============================================================================
+// R879: CI NAMES ITS THROWAWAY DATABASE BY THE SAME PATTERN
+// ============================================================================
+//
+// CI's `services: postgres` database is scratch by construction - the runner
+// is thrown away - but it used to be called `frontalier`, the same name as the
+// shared development database. With R877's guard, `pnpm test:db` and
+// container-e2e's direct vitest run would refuse it, and the tempting fix is
+// an opt-out variable: an exemption list of one, which grows. So CI's database
+// is named by the pattern instead, and this asserts it, everywhere a workflow
+// names a database: the service's POSTGRES_DB, a health check's `-d`, and the
+// database path of every connection string.
+//
+// CI IS OFF (R248), so no workflow run can show this. What can be shown here
+// is that every name the workflows give passes the very predicate test:db
+// applies, and that each connection string names a database a service in the
+// same workflow actually creates - so a half-applied rename (R267's shape)
+// fails here rather than at the first CI run after it returns.
+
+const WORKFLOWS = join(WEB, '..', '.github', 'workflows');
+
+interface CiName {
+  readonly where: string;
+  readonly kind: 'POSTGRES_DB' | 'pg_isready -d' | 'connection string';
+  readonly database: string | null;
+  readonly admitted: boolean;
+}
+
+function ciNames(): { names: CiName[]; created: Map<string, Set<string>> } {
+  const names: CiName[] = [];
+  const created = new Map<string, Set<string>>();
+
+  for (const file of readdirSync(WORKFLOWS).filter((name) => /\.ya?ml$/u.test(name))) {
+    const lines = readFileSync(join(WORKFLOWS, file), 'utf8').split('\n');
+    const databases = new Set<string>();
+
+    created.set(file, databases);
+
+    lines.forEach((text, index) => {
+      if (/^\s*#/u.test(text)) return;
+
+      const where = `${file}:${index + 1}`;
+      const service = /\bPOSTGRES_DB:\s*['"]?([^'"\s]+)/u.exec(text);
+
+      if (service?.[1] !== undefined) {
+        databases.add(service[1]);
+        names.push({ where, kind: 'POSTGRES_DB', database: service[1], admitted: SCRATCH_DATABASE_PATTERN.test(service[1]) });
+      }
+
+      const health = /\bpg_isready\b[^\n]*?\s-d\s+['"]?([^'"\s]+)/u.exec(text);
+
+      if (health?.[1] !== undefined) {
+        names.push({ where, kind: 'pg_isready -d', database: health[1], admitted: SCRATCH_DATABASE_PATTERN.test(health[1]) });
+      }
+
+      for (const match of text.matchAll(/postgres(?:ql)?:\/\/[^\s'"]+/gu)) {
+        const verdict = judgeTestDatabase(match[0]);
+
+        names.push({ where, kind: 'connection string', database: verdict.database, admitted: verdict.admitted });
+      }
+    });
+  }
+
+  return { names, created };
+}
+
+const CI = ciNames();
+
+describe('R879: every database a CI workflow names is a scratch database', () => {
+  it('found the service database and the connection strings, so nothing below passes vacuously', () => {
+    expect(CI.names.some((name) => name.kind === 'POSTGRES_DB')).toBe(true);
+    expect(CI.names.some((name) => name.kind === 'connection string')).toBe(true);
+  });
+
+  it.each(CI.names.map((name) => [`${name.where} ${name.kind}`, name] as const))('%s', (_where, name) => {
+    expect(name.admitted, `${String(name.database)} is outside ${SCRATCH_DATABASE_PATTERN.source}`).toBe(true);
+  });
+
+  it('every connection string names a database a service in the same workflow creates', () => {
+    for (const name of CI.names.filter((each) => each.kind === 'connection string')) {
+      const file = name.where.split(':')[0] ?? '';
+
+      expect(CI.created.get(file)?.has(name.database ?? ''), `${name.where} names ${String(name.database)}`).toBe(true);
+    }
   });
 });
