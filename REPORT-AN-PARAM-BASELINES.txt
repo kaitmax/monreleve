@@ -1,22 +1,25 @@
-REPORT-AN-PARAM-BASELINES - Paparazzi for the Parametres screen, its dialogs and the start-date picker
+REPORT-AN-PARAM-BASELINES - Paparazzi for the Parametres screen and its dialogs (the sheets and the date dialog parked)
 ================================================================================
 Queue step C5 of relay/ORCH-NO-PHONE-QUEUE.txt, prompt relay/AN-PARAM-BASELINES.txt
-(R871-R874). Session worktree C:/wt/an-param-baselines, branch an-param-baselines,
-cut from origin/main 12e0e276116e505afa5235973ef07ea99fdd1abb (BASE_SHA). Pushed:
-an-param-baselines only. NOT merged; main and production untouched. No device, no
-adb, no Coolify, no SSH. Evidence: C:/wt/an-param-baselines/.param-evidence/
+(R871-R874), with the orchestrator's Queue Ruling 7. Session worktree
+C:/wt/an-param-baselines, branch an-param-baselines, cut from origin/main
+12e0e276116e505afa5235973ef07ea99fdd1abb (BASE_SHA). Pushed: an-param-baselines
+only. NOT merged; main and production untouched. No device, no adb, no Coolify, no
+SSH, no :shared change. Evidence: C:/wt/an-param-baselines/.param-evidence/
 (gitignored).
 
 --------------------------------------------------------------------------------
 SUMMARY
 --------------------------------------------------------------------------------
-IN PROGRESS. This commit carries the R871 list and the R872 probe's result, and
-nothing else. No recordPaparazzi has run, and no baseline exists for any name below.
+IN PROGRESS. This commit re-issues the R871 list under Queue Ruling 7 and records
+R872's second probe. Nothing is recorded yet.
+THE SEVEN SHEETS AND THE START-DATE DIALOG WILL NOT BE DELIVERED: they are PARKED
+(PARK-PB1, PARK-PB2).
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-List committed, nothing recorded. FULL GATE NOT RUN.
+List re-issued, nothing recorded. FULL GATE NOT RUN.
 
 --------------------------------------------------------------------------------
 R871 - THE STATES, NAMED BEFORE ANY RECORDING
@@ -24,6 +27,14 @@ R871 - THE STATES, NAMED BEFORE ANY RECORDING
 Read from the code at BASE_SHA:
   - android/shared/src/commonMain/kotlin/ch/monreleve/app/ui/screens/parametres/*.kt
   - android/app/src/main/kotlin/ch/monreleve/app/ui/screens/parametres/ParametresStartDatePicker.kt
+
+THE LIST HAS TWO ISSUES.
+  - The first is commit 3c2a074 (18 names). It recorded the date picker's content as
+    a stand-in (startDatePicker).
+  - Queue Ruling 7 withdrew that name. A date baseline must call a PRODUCT
+    composable, and none is reachable from :app's tests (point 2 below).
+  - The list below (17 names) is the one recorded against. It is committed on its
+    own, before the first recordPaparazzi (Queue Ruling 7, point 4).
 
 WHAT THE SCREEN CAN SHOW. Five layers:
   - the settings list (ParametresSettingsColumn);
@@ -34,78 +45,88 @@ WHAT THE SCREEN CAN SHOW. Five layers:
   The rhythm editor (onOpenRhythm) is another screen with its own baselines, and the
   five legal rows open the browser. Neither is a sheet of this screen.
 
-WHAT :app's TEST CODE CAN REACH, without a product seam (the HARD BOUNDARY):
-  - PUBLIC: ParametresScreen (:app's 4-argument overload, and :shared's), LicencesScreen,
-    RateRow, ParametresActions, EditTarget, the ParametresDatePicker typealias.
-    ParametresState and its prompt types (RateChange, SignOutPrompt, DeletePrompt,
-    DeleteOutcome) are public too.
-  - :app-INTERNAL, so visible to :app's tests: isoToMillis / millisToIso.
+WHAT :app's TEST CODE CAN REACH, without a product seam (the HARD BOUNDARY; Queue
+Ruling 7, point 1):
+  - PUBLIC: ParametresScreen (:app's 4-argument overload, and :shared's),
+    LicencesScreen, RateRow, ParametresActions, EditTarget, the ParametresDatePicker
+    typealias. ParametresState and its prompt types (RateChange, SignOutPrompt,
+    DeletePrompt, DeleteOutcome) are public too.
+  - :app-INTERNAL, so visible to :app's tests: isoToMillis / millisToIso. These are
+    functions, not composables.
   - NOT REACHABLE:
     - every sheet's content composable and every dialog composable is `internal` in
       :shared, a different module;
     - MaterialStartDateDialog is `private` in :app;
     - the sheets open only on a tap, through rememberSaveable state local to
       ParametresScreen (`editing`, `showLearnMore`, `showExport`) or to the sheet
-      (`pickerOpen`), and Paparazzi cannot tap.
-  The dialogs, by contrast, are driven by ParametresState, so the public screen
-  reaches them. R872's probe showed that their window is drawn.
+      (`pickerOpen`), and Paparazzi cannot tap. A hand-built SaveableStateRegistry
+      keyed to that state is excluded by Ruling 7.
+  The dialogs are driven by ParametresState, so the public screen reaches them, and
+  R872 measured that their window is drawn.
 
-THE LIST TO BE RECORDED - 18 names. Each file is
+POINT 2 OF THE RULING, ANSWERED: NO PRODUCT SYMBOL REACHES THE DATE CONTENT.
+  - The only product composable that composes Android's date picker is the private
+    MaterialStartDateDialog.
+  - The only public way in is ParametresScreen, through the START_DATE sheet's
+    `editing` and then its `pickerOpen`: two taps.
+  - The test would have had to call Material 3's own DatePicker. That is the library
+    plus a copy of the product's setup, so it is PARKED (PARK-PB2), not recorded.
+
+THE LIST TO BE RECORDED - 17 names, all calling public product composables. Each file
+is
 android/app/src/test/snapshots/images/ch.monreleve.app.ui.screens.parametres_<Class>_<name>.png
-The recording must produce exactly these 18 files; anything else stops the run.
+The recording must produce exactly these 17 files; anything else stops the run.
+Shared fixtures (ParametresScreenshotFixtures.kt, no rule in it):
+  - defaultParametresState: canton GE, rate "100", SIMPLIFIED240, DAY, no start
+    date, every switch off, phase EDITING.
+  - ParametresHost(state): :app's public ParametresScreen (the overload MainActivity
+    calls), over FrontierTheme and the background colour, with appVersion "1.0.0"
+    and actions that do nothing.
 
   Class ParametresListScreenshotTest
     - The whole scrolling list on a tall PIXEL_5 (screenHeight 5 800 px; 12 000 px at
       200 %), at device resolution (useDeviceResolution = true).
     - Device resolution because Paparazzi scales every image to 1 000 px on its longest
       side: a 5 800 px list would be about 190 px wide and could not be read (R873).
-    - Each test composes :app's ParametresScreen over FrontierTheme with appVersion
-      "1.0.0".
-    1. parametresList - canton GE, rate "100", SIMPLIFIED240, DAY, no start date;
-       detection, evening and alert off; phase EDITING.
-       Shows: no evening row, "Toute l annee" (START_DATE_EMPTY), "100 %".
-    2. parametresListFilled - canton GE, rate "80", EXACT (total "200"), HALF_DAY,
-       start 2026-03-02; detection, evening and alert ON.
+    1. parametresList - the default state.
+       Shows: no evening row, START_DATE_EMPTY, "100 %".
+    2. parametresListFilled - rate "80", EXACT (total "200"), HALF_DAY, start
+       2026-03-02; detection, evening and alert ON.
        Shows: the evening row (the autoDetectionEnabled branch), METHOD_EXACT,
        GRANULARITY_HALF_DAY, the dd.MM.yyyy date, "80 %".
-    3. parametresListEmpty - canton null, rate "", otherwise as 1.
+    3. parametresListEmpty - canton null, rate "".
        Shows: CANTON_PLACEHOLDER, and rateValue's non-integer branch (the raw, empty
        string).
-    4. parametresListSaving - as 1 with detection ON and phase SAVING.
+    4. parametresListSaving - detection ON, phase SAVING.
        Shows: all three switches disabled (the SaisieSection `enabled` branch).
-    5. parametresListLarge - as 1 at fontScale 2 (12 000 px).
+    5. parametresListLarge - the default state at fontScale 2 (12 000 px).
 
   Class ParametresScreenScreenshotTest
-    - PIXEL_5 at device size; each dialog is drawn over the default list (state 1's
-      settings). These are the public screen's own dialogs, set through ParametresState.
+    - PIXEL_5 at device size; each dialog is drawn over the default list.
+    - These are the public screen's own dialogs, each reached by a ParametresState
+      handed to ParametresHost.
     6.  rateChangeDialog - pendingRateChange = RateChange(before 0.41, after 0.83), R290.
     7.  signOutSendingDialog - signOutSending = true (no buttons, R440).
-    8.  signOutDialog - signOutPrompt with no pending dates (SignOutClearDialog).
+    8.  signOutDialog - signOutPrompt with no pending dates (the clear confirmation).
     9.  signOutPendingDialog - signOutPrompt with pendingDates 2026-06-02 and 2026-06-03
-        (SignOutStillPendingDialog: the named dates, three stacked actions).
+        (the named dates, three stacked actions).
     10. signOutPendingDialogLarge - as 9 at fontScale 2 (the case the stacked layout
         was written for).
     11. deleteDialog - deletePrompt recordedDays 42, unsyncedDays 0 (no unsynced line;
         the typed word empty, so the confirm is disabled).
-    12. deleteDialogUnsynced - deletePrompt 42 / 3 (the R289 unsynced warning in the
-        error colour).
+    12. deleteDialogUnsynced - deletePrompt 42 / 3 (the R289 unsynced warning).
     13. deleteDoneDialog - deleteOutcome Done(42, alertSubscriptionRemains = false).
     14. deleteDoneAlertDialog - Done(42, true) (adds DELETE_ALERT_REMAINS).
     15. deleteRefusedDialog - deleteOutcome Refused.
     16. deleteUnknownDialog - deleteOutcome Unknown.
-    17. licences - LicencesScreen, the sub-screen the LICENCES_ROW row opens. The
-        composable is public, and the screen renders it as-is.
-
-  Class ParametresStartDatePickerScreenshotTest
-    - PIXEL_5, locale fr-rFR (see R872).
-    18. startDatePicker - Material 3's DatePicker, the content of the start-date
-        dialog, with
-        rememberDatePickerState(initialSelectedDateMillis = isoToMillis("2026-03-02")),
-        the state MaterialStartDateDialog builds for that stored day. March 2026 can
-        never be "today" again, so no today-ring can appear.
+    17. licences - the product's public LicencesScreen, the sub-screen the
+        LICENCES_ROW row opens. ParametresScreen renders it as-is while showLicences
+        is set.
+  Ruling 7's count holds: one screen (5 states of the list), rate change, sign-out x3
+  (plus one 200 % variant), delete x2, delete outcome x4, and the licences sub-screen.
 
 STATES NAMED BUT PARKED, which cannot be rendered without a product seam (see PARKED):
-  PARK-PB1
+  PARK-PB1 - THE SEVEN SHEETS, NOT DELIVERED.
     - cantonSheet, cantonSheetEmpty, cantonSheetMenuOpen;
     - rateSheet, rateSheetEmpty;
     - methodSheet, methodSheetExact (with the exact-total field);
@@ -115,60 +136,74 @@ STATES NAMED BUT PARKED, which cannot be rendered without a product seam (see PA
       eight SettingsError values, NETWORK_ERROR, SESSION_ENDED);
     - every sheet while saving (ParametresCopy.SAVING, controls disabled);
     - learnMoreSheet, exportSheet.
-  PARK-PB2
-    - startDateDialog: the WIRED dialog, with its confirm and cancel;
+  PARK-PB2 - THE START-DATE DIALOG, NOT DELIVERED.
+    - startDateDialog: the wired dialog, with its confirm and cancel;
+    - startDatePicker: its content with a stored day, withdrawn from list 1;
     - startDatePickerNoDate: no initial date, which shows the clock's current month.
   PARK-PB3
     - deleteDialogTyped: the word typed, so the confirm is enabled.
 
 --------------------------------------------------------------------------------
-R872 - THE DIALOG'S WINDOW: ONE PROBE, MEASURED
+R872 - THE DIALOG'S WINDOW: TWO PROBES, MEASURED
 --------------------------------------------------------------------------------
-HOW IT RAN
-  - A throwaway class, ParamProbeScreenshotTest. It was never committed and was
-    deleted before recording.
-  - Command: `:app:testDebugUnitTest --tests ...ParamProbeScreenshotTest`. This is
-    neither a record nor a verify, so it wrote only to app/build/reports/paparazzi.
-    git status of android/app/src/test/snapshots afterwards: nothing.
-  - Log: .param-evidence/probe-r872.log, "BUILD SUCCESSFUL in 2m 40s",
-    "STEP_EXIT=0 ABORTED=False".
-  - The images, copied by name: .param-evidence/probe/.
-  - The first attempt is NO RESULT and is kept as probe-r872-noresult-1.log. cmd.exe
-    did not find a bare `gradlew.bat`, because this environment does not search the
-    current directory. The re-run named the full path.
+Both probes were throwaway classes, never committed and deleted afterwards. Both ran
+as `:app:testDebugUnitTest --tests <class>`, which is neither a record nor a verify,
+so they wrote only to app/build/reports/paparazzi. git status of
+android/app/src/test/snapshots after each: nothing. Images, copied by name:
+.param-evidence/probe/.
 
-WHAT WAS LOOKED AT
-  a. probeRateChangeDialog. :app's ParametresScreen with pendingRateChange set.
-     RESULT: the product's AlertDialog is drawn WHOLE and centred over the list, with
-     the scrim dimming it. Paparazzi 1.3.5 draws a Compose Dialog's own window.
-  b. probeDatePickerDialog. Material 3's DatePickerDialog, assembled in the test like
+PROBE 1 (ParamProbeScreenshotTest)
+  Log probe-r872.log: "BUILD SUCCESSFUL in 2m 40s", "STEP_EXIT=0 ABORTED=False".
+  The first attempt is NO RESULT and is kept as probe-r872-noresult-1.log: cmd.exe did
+  not find a bare `gradlew.bat`, because this environment does not search the current
+  directory. The re-run named the full path.
+  a. probeRateChangeDialog - :app's ParametresScreen with pendingRateChange set.
+     The product's AlertDialog is drawn WHOLE and centred over the list, with the scrim
+     dimming it. Paparazzi 1.3.5 draws a Compose Dialog's own window.
+  b. probeDatePickerDialog - Material 3's DatePickerDialog, assembled in the test like
      MaterialStartDateDialog, over the list.
-     RESULT: the window is drawn, with its scrim, but NOT whole at device size. The
-     dialog starts about 36 dp from the left and runs off the right edge: the seventh
-     weekday column and the confirm button's ParametresCopy.START_DATE_PICK are cut.
-     DatePickerDialog uses usePlatformDefaultWidth = false and a required 360 dp
-     width. The 393 dp PIXEL_5 should hold it whole and centred, so the clipping reads
-     as Layoutlib's window placement, not the product's. This is REASONED, not
-     measured: no device in this queue.
-  c. probeDatePickerContent. The DatePicker alone, inside FrontierTheme.
-     RESULT: whole, nothing clipped.
-     With locale "fr" the week started on SUNDAY. A French device starts it on Monday,
-     because "fr" with no region does not name a region's first day. So the baseline
-     names fr-rFR. The product's users live in France; for fr-CH the layout is the
-     same.
-  d. probeListTall. The list at 4 000 px.
-     RESULT: it stopped at the ABOUT_HEADING ("A propos") heading. Hence 5 800 px, and device
-     resolution (the 4 000 px image was 270 px wide).
+     The window is drawn, with its scrim, but NOT whole: the seventh weekday column
+     and the confirm button's ParametresCopy.START_DATE_PICK are cut at the right.
+  c. probeDatePickerContent - the DatePicker alone.
+     Whole. Locale "fr": French strings and dates, the week starting on Sunday.
+  d. probeListTall - the list at 4 000 px.
+     It stopped at the ABOUT_HEADING heading. Hence 5 800 px, and device resolution
+     (the 4 000 px image was 270 px wide).
+
+PROBE 2 (ParamProbeWideScreenshotTest, Queue Ruling 7 point 3: artefact or width?)
+  Log probe-r872-wide.log: "BUILD SUCCESSFUL in 57s", "STEP_EXIT=0 ABORTED=False".
+  The same DatePickerDialog, over a plain background, at device resolution, at two
+  widths: PIXEL_5 (1 080 px = 392.7 dp) and screenWidth 1 440 px (523.6 dp). The
+  container edges were measured on pixel row y = 1800 with System.Drawing:
+    probeDialogPixel5: white from x=100 to x=979 -> 880 px = 320.0 dp,
+                       centre 539.5 (screen centre 540); top 389, bottom 1950
+    probeDialogWide:   white from x=280 to x=1159 -> 880 px = 320.0 dp,
+                       centre 719.5 (screen centre 720); top 389, bottom 1950
+  RESULT: at both widths the window is centred and exactly 320 dp wide, and the content
+  is cut at its right edge.
+  - DatePickerDialog asks for a required 360 dp, so the clipping does NOT depend on the
+    screen width. A wider screen gives the same 320 dp window and the same cut.
+  - That reads as Paparazzi/Layoutlib sizing the dialog window, not as a width problem
+    of the product on a 393 dp phone. This is reasoned from the measurement; the S9 was
+    not consulted, since there is no device in this queue.
+  - It does NOT clear phones narrower than 360 dp. There, Material 3's required 360 dp
+    would not fit whatever the renderer.
+  ALSO MEASURED: with locale "fr-rFR" the picker's resource strings were French
+  (DatePickerTitle in French, transliterated here as "Selectionner une date") but its dates and weekday initials were
+  English ("2 Mar 2026", S M T W T F). With "fr" (probe 1) both were French. Paparazzi's
+  locale reaches resources and formatting differently, so a future PARK-PB2 baseline
+  must check both by eye.
 
 CONSEQUENCE
-  The start-date baseline (18) photographs the dialog's CONTENT composable inside the
-  theme. Item b shows the window, but it is not whole at the device size, and a clipped
-  baseline would certify a picture of the test rig. What 18 does NOT show:
-    - the scrim and the window's placement;
-    - the dialog container and its shape;
-    - the confirm and cancel buttons and their copy (ParametresCopy.START_DATE_PICK,
-      CalendarCopy.SHEET_CANCEL);
-    - that the product's dialog is the one composed. MaterialStartDateDialog is
-      private, so the test ASSEMBLES the picker from the same library call and the
-      product's own isoToMillis.
-  The wired dialog is PARK-PB2.
+  No date baseline is recorded (Ruling 7, points 2 and 3). The clipped
+  DatePickerDialog is a finding: see NOTICED BUT NOT TOUCHING and PARK-PB2. The
+  state-driven AlertDialogs are recorded as composed, window and scrim included.
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+N1. Material 3's DatePickerDialog, as MaterialStartDateDialog composes it, is drawn
+    clipped by Paparazzi 1.3.5: a 320 dp window holding 360 dp of content. Probe 2
+    shows this does not depend on the screen width (above). Whether a phone shows it
+    whole is the S9's to answer (the orchestrator parks it); on a phone narrower than
+    360 dp it cannot fit.
