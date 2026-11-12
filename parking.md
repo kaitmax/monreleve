@@ -5556,3 +5556,68 @@ PINNED:     ForecastControllerPinTest (commonTest; JVM and iOS) asserts this
             point: the pin is the record that the behaviour is known.
 STATE:      OPEN - a known item, NOT fixed (IOS-2e's OUT OF SCOPE: "Fixing the
             double setDay save").
+
+## PARK-PB1 - no baseline of the Parametres edit sheets, "En savoir plus" or the export chooser: internal in :shared and opened only by a tap  [AN-PARAM-BASELINES R871, 2026-11-12]
+
+RAISED BY:  REPORT-AN-PARAM-BASELINES.txt R871 (the states named but parked);
+            REPORT-IOS-2e.txt UNNUMBERED-3 (no baseline shows the screen, a
+            sheet or the date dialog).
+WHAT:       The seven sheets ParametresOverlays composes in a ModalBottomSheet:
+            CantonSheetContent, RateSheetContent, MethodSheetContent,
+            GranularitySheetContent, StartDateSheetContent (all through
+            EditSheet with an EditSheetFrame), LearnMoreSheetContent and
+            ExportChooserContent. The R871 list names their states:
+            empty / filled, the method's exact-total field, the canton menu
+            open, every sheetErrorFor string, saving.
+WHY PARKED: Each content composable is `internal` in :shared
+            (ui/screens/parametres/ParametresFields.kt, ParametresDateField.kt,
+            ParametresInfoContent.kt). :app's Paparazzi suite lives in another
+            module and cannot call it. Through the public ParametresScreen, a
+            sheet opens only on a tap, via rememberSaveable state local to the
+            screen (`editing`, `showLearnMore`, `showExport`), and Paparazzi
+            cannot tap. The prompt's HARD BOUNDARY forbids the product seam and
+            any route round `internal` (a suppression, reflection or a friend
+            path is the same seam by another name).
+THE SEAM IT NEEDS: visibility only, internal -> public, for the seven content
+            composables and EditSheetFrame. That is the shape IOS-2e R832 gave
+            RateRow and that CalendarEditSheetContent already has, because
+            their Paparazzi tests stay in :app. It is a :shared change, so it
+            needs the iOS cloud run (R573).
+STATE:      OPEN - the orchestrator's to schedule.
+
+## PARK-PB2 - no baseline of the WIRED start-date dialog, nor of the picker with no date  [AN-PARAM-BASELINES R872, 2026-11-12]
+
+RAISED BY:  REPORT-AN-PARAM-BASELINES.txt R872.
+WHAT:       1. The dialog the product actually shows. It is :app's
+               MaterialStartDateDialog (ParametresStartDatePicker.kt), with its
+               container, scrim, ParametresCopy.START_DATE_PICK confirm and
+               CalendarCopy.SHEET_CANCEL cancel.
+            2. The picker opened on an empty field (initialIsoDay null).
+WHY PARKED: 1. MaterialStartDateDialog is `private`, and it is composed only
+               while the START_DATE sheet's own `pickerOpen` is true (a tap
+               inside a PARK-PB1 sheet). R872's probe also measured that
+               Paparazzi 1.3.5 draws Material 3's DatePickerDialog window NOT
+               whole at PIXEL_5: the seventh weekday column and the confirm
+               button's copy are cut at the right edge. The recorded baseline
+               startDatePicker is therefore the CONTENT composable, assembled
+               by the test from the same library call and the product's
+               isoToMillis.
+            2. With no initial date, Material 3 shows the clock's current
+               month. A baseline of it would change on the first of every
+               month, and there is no clock seam.
+STATE:      OPEN. Item 1 follows PARK-PB1's seam and needs a window placement
+            that is whole at device size. Item 2 needs a clock seam (a product
+            change).
+
+## PARK-PB3 - no baseline of the delete dialog with the confirmation word typed  [AN-PARAM-BASELINES R871, 2026-11-12]
+
+RAISED BY:  REPORT-AN-PARAM-BASELINES.txt R871.
+WHAT:       DeleteDialog with DELETE_CONFIRMATION typed, so its confirm button
+            is enabled.
+WHY PARKED: `typed` is rememberSaveable state local to DeleteDialog (an
+            `internal` composable in :shared). It changes only when someone
+            types, and Paparazzi cannot type. The two reachable states, prompt
+            without and with unsynced days, are recorded with the word empty
+            (deleteDialog, deleteDialogUnsynced).
+STATE:      OPEN - with PARK-PB1's seam (DeleteDialog public), or an initial-word
+            parameter (a product change).
