@@ -1,0 +1,1152 @@
+REPORT-AN-APK-DIFF - the release APK whose contents moved while its size did not
+================================================================================
+Queue step C4 of relay/ORCH-NO-PHONE-QUEUE.txt, prompt relay/AN-APK-DIFF.txt
+(R865-R868). Session worktree C:/wt/an-apk-diff, branch an-apk-diff, cut from
+origin/main ab1a583 (BASE_SHA). Pushed: an-apk-diff only. NOT merged; main and
+production untouched. No Coolify, no SSH, no production, no device, no Gradle
+build. Evidence: C:/wt/an-apk-diff/.apk-diff-evidence/ (gitignored).
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+1. R866, MEASURED: the five APKs are 1 989 388 B because of alignment. AGP
+   8.10 stores the four lib/*.so uncompressed and puts each one's data on a
+   16 KiB page. The first one's data starts at 1 572 864 = 96 x 16 384 in all
+   five. Everything stored before it (two META-INF files, baseline.prof,
+   baseline.profm, classes.dex) is absorbed by that .so's LOCAL extra-field
+   padding: 4 446 -> 4 489 -> 4 281 -> 4 283 B. In each pair the ledger's
+   terms sum to the measured delta, 0. The central directory is 9 250 B in
+   all five, because names and counts did not change and no central extra
+   field is used. CONSEQUENCE: for anything stored before the first lib/
+   entry, the size moves in whole 16 KiB pages. On cf485c4 the slack is
+   +4 283 / -12 100 B (DERIVED from the alignment rule, not built). The byte
+   count is not a content check.
+2. IOS-2e-FIX (9a6dd55 -> cf485c4, four comment lines). The recorded
+   attribution, "shifted line numbers" in the dex, is REFUTED at the dex
+   level and CONFIRMED in mapping.txt:
+   - The two dexes are the same length. Only 30 bytes differ. 23 of them
+     are in the header checksum and signature. The other 7 are R8's marker
+     string, pg-map-id "180618c" -> "eab54c0". debug_info_item is
+     byte-identical. dexdump's full output, including every positions and
+     locals table, is identical.
+   - The shift lives in mapping.txt. 41 member lines differ, and each one
+     is the same line with its original line numbers +4. The pg-map-id is
+     the first 7 hex digits of the SHA-256 of the mapping's body, recomputed
+     here for all four mappings. That is how the comment lines reach the
+     dex: through the marker, then the header, the entry CRC, and
+     baseline.prof.
+   - The profile's body differs only in its 4-byte embedded dex checksum,
+     which is the zip CRC of classes.dex.
+3. IOS-2e's baseline.prof -936 B, MEASURED. The content grew by 20 B
+   (Function5, four hot-method entries, +11 method ids). The method-id count
+   became 21 184, a multiple of 8. The post-startup half of the flag bitmap
+   therefore starts on a byte boundary and repeats the startup half (21 168
+   of 21 184 flags are equal), which deflate encodes as back-references.
+   At Node's deflate level 1 the two bodies compress to 4 620 and 3 687 B,
+   and 0616b4e's own body with ONLY its bitmap repacked byte-aligned to
+   3 700 B. The realignment alone is 920 of Node's 933 B drop; AGP's stored
+   drop is 936 B. AGP's level is not identified; its output runs 23-26 B
+   above Node's level 1 on both
+   sides.
+4. IOS-2d and IOS-2e, the dex compared class by class in ORIGINAL names,
+   using each build's own mapping.txt:
+   - 67 classes differ in IOS-2d (156 member-level rows) and 51 in IOS-2e
+     (155 rows).
+   - Every row is tied to the commit(s) behind it except one,
+     OnboardingController.next in IOS-2e (UNEXPLAINED, 1 entry, R867).
+     Its semantic operations are identical; only the branch layout of one
+     return path differs.
+   - Two findings stand out:
+     a) A file or type moved :app -> :shared with IDENTICAL content (R100)
+        compiles to different Compose $changed constants and group keys,
+        and R8 then reshapes the callees: the Material 3 Text overload,
+        ProvisionalBanner's parameter order, restart lambdas. Each commit
+        tie is measured. WHY the compiler infers differently across
+        modules is NOT measured: both build files apply the same compose
+        plugin with no stability configuration.
+     b) d77c74b's typealias (a 3-parameter @Composable lambda, Function5
+        at bytecode level) changes library code. Function5 is kept, and
+        ComposableLambdaImpl gains a Function5 invoke pair.
+        kotlin.jvm.internal.ClassReference/TypeIntrinsics now reference
+        Function5. One Material 3 lambda group gains a member.
+5. Identical in every pair, by CRC and by aapt2: resources.arsc, all res/
+   entries, AndroidManifest.xml (aapt2 badging, xmltree and resources dumps
+   hash-identical across all four distinct APKs), the four native
+   libraries' bytes, assets/border, every META-INF file. All five APKs are
+   UNSIGNED: no APK Signing Block before the central directory, no v1
+   signature file, and apksigner verify says "DOES NOT VERIFY / ERROR:
+   Missing META-INF/MANIFEST.MF" (exit 1).
+6. DETERMINISM, the control that licenses blaming commits rather than build
+   noise:
+   - 0616b4e (built in C:/wt/ios2d) and 19ce23f (built in C:/wt/ios2e) are
+     byte-identical, and android/ did not change between them.
+   - 52da740's e1cf60f7 is also the APK in C:/wt/ios2c, ios2c-fix and
+     ios2c-probe, three builds made at three different times.
+7. R868: android/scripts/apk-diff.mjs (f171564) is the dependency-free part
+   (layout, ledger, slack, dex sections, marker, byte ranges, profiles,
+   signing). Its test is android/scripts/apk-diff.test.mjs (4 tests,
+   node --test), which no gate runs. The mapping-dependent class diff is a
+   one-off in the evidence folder.
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+Code tip f171564 (the script and its test); branch tip = this report's
+commit (see PUSH PROOF). This task changed no Android code: no :app:gate and
+no Gradle step ran (none was needed - the APKs were measured, not built).
+gate:clone ran ALONE on the code tip f171564, in this session, under the
+queue sampler, twice:
+  RUN 1 (.apk-diff-evidence/gates/gclone-f171564.log) - a NARROWER claim,
+  not the gate of record. The worktree has no web/.env, so DATABASE_URL was
+  unset, and the log names it: "--- database suites: SKIPPED, and named ---".
+    GATE:CLONE PASSED; ran register-coverage, fixture-coverage, install,
+    typecheck, lint, test, build, size. STEP_EXIT=0 ABORTED=False.
+    Min commit free 6 721 MB, min free physical 1 311 MB.
+  RUN 2 (.apk-diff-evidence/gates/gclone2-f171564.log), with DATABASE_URL
+  set in the command's own environment. It pointed at the local
+  frontalier-postgres (:5436) maintenance database `postgres`. gate:clone
+  takes only the host from it, then creates and drops its own scratch
+  database. The shared `frontalier` database was not used.
+      commit    f171564aeb81b2f29324cf8b25e93b47fb3fe3f0
+      tree      clean - HEAD is everything you have
+      swept     no stale clones (older than 4h) found
+    --- database: scratch database monreleve_gate_clone_f171564a created ---
+    GATE:CLONE PASSED
+      CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+      commit  f171564aeb81b2f29324cf8b25e93b47fb3fe3f0
+      ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    STEP_EXIT=0 ABORTED=False
+    Min commit free 6 511 MB, min free physical 1 248 MB.
+  NOT RUN in the clone, as it prints: test:e2e, test:visual, test:runtime,
+  lighthouse, parity:check, test:container. The clone log keeps a short tail
+  per step and no per-suite counts (QUEUE-STATE's parked task); each step's
+  pass is the step's own check.
+gate:changed on f171564's tree, before it was committed
+(.apk-diff-evidence/gates/gc-script.log):
+  - selection: "no path matched the selector - base chain only"
+  - typecheck exit 0, lint exit 0, test 3641 passed, build exit 0
+  - "GATE PASSED for the paths changed." STEP_EXIT=0 ABORTED=False
+  - min commit free 6 769 MB, min free physical 1 826 MB
+node --test android/scripts/apk-diff.test.mjs: 4 pass, 0 fail. This ran
+outside any gate.
+MEMORY: commit free was read in its own step before every heavy step: 8 559
+MB before gate:changed, 8 578 MB before run 1, 8 528 MB before run 2. The
+floor is 5 000 MB. No Gradle step ran.
+STATUS: gate:clone PASSED on the code tip f171564 (run 2, the full database
+set). FULL :app:gate NOT RUN on f171564. This task changed no Android
+source or build file. Its only android/ files are a Node script and its
+test, which Gradle does not read.
+
+--------------------------------------------------------------------------------
+R865 - FILE BY FILE, FOR THREE PAIRS
+--------------------------------------------------------------------------------
+INPUTS. C:/wt/queue-evidence/SHA256SUMS.txt checked first (sha256sum -c: 16
+of 16 "OK", exit 0), then the five APKs copied to .apk-diff-evidence/apks/
+and re-hashed equal:
+  52da740  e1cf60f7ba4236f1...  ios2d/base-52da740      built in C:/wt/ios2d before any change
+  0616b4e  463dc9494efa9add...  ios2d/tip-0616b4e       built by IOS-2d's gate on 0616b4e
+  19ce23f  463dc9494efa9add...  ios2e/apk-before        built in C:/wt/ios2e before any change
+  9a6dd55  cc77402f241736b4...  ios2e/apk-after         built by IOS-2e's gate (--rerun-tasks)
+  cf485c4  355afca5c43085bb...  ios2e-fix/worktree-build built by IOS-2e-FIX's gate (--rerun-tasks)
+(Build provenance as REPORT-IOS-2d/2e/2e-FIX record it.) Every APK is
+1 989 388 B, 113 entries. 0616b4e and 19ce23f are the same bytes, so the
+three pairs are three comparisons over four distinct files.
+
+THE MAPPINGS (not in SHA256SUMS - see DEVIATIONS 1). Copied read-only from
+build/outputs/mapping/release/ of finished worktrees, each tied to its APK
+three ways: that worktree's app-release-unsigned.apk has the evidence APK's
+sha256; the mapping's recomputed body SHA-256 equals its own pg_map_hash;
+and that hash's first 7 digits equal the marker in the evidence APK's dex.
+  52da740  C:/wt/ios2c-fix/...  78f219975c25371b...  pg_map_id 35be951  (apk e1cf60f7 = 52da740's)
+  0616b4e  C:/wt/ios2d/...      adbefe12fcc9bf90...  pg_map_id e36126c  (apk 463dc949)
+  9a6dd55  C:/wt/ios2e/...      0bef2e023f82c474...  pg_map_id 180618c  (apk cc77402f)
+  cf485c4  C:/wt/ios2e-fix/...  fb0731dec6c394f8...  pg_map_id eab54c0  (apk 355afca5)
+
+THE FULL TABLE - 52da740, all 113 entries in file order (offset = local
+header; le = local extra-field length; ce = central extra-field length;
+m = 0 stored / 8 deflated). There is no gap anywhere: each entry starts where
+the previous one ends, and the central directory starts where the last entry
+ends (1 980 116). No entry uses a data descriptor. Zip times, dates and flags
+are identical across all five APKs.
+  #   offset    le ce m    stored  uncompr. crc32     name
+    0       0     0 0 8        52        57 555cf04c  META-INF/com/android/build/gradle/app-metadata.properties
+    1     139     0 0 8        48        46 b8ff6554  META-INF/version-control-info.textproto
+    2     256     3 0 0      4656      4656 63da7f7a  assets/dexopt/baseline.prof
+    3    4972     2 0 0       613       613 323909ff  assets/dexopt/baseline.profm
+    4    5645     0 0 8   1562660   3275156 b0e62a21  classes.dex
+    5 1568346  4446 0 0     10096     10096 9734baa0  lib/arm64-v8a/libandroidx.graphics.path.so
+    6 1582960  6214 0 0      7252      7252 9a714d3a  lib/armeabi-v7a/libandroidx.graphics.path.so
+    7 1596500  9066 0 0      9284      9284 3d9afc66  lib/x86/libandroidx.graphics.path.so
+    8 1614916  7031 0 0     10760     10760 81bd88ae  lib/x86_64/libandroidx.graphics.path.so
+    9 1632776     0 0 8       666      1229 433c90b1  assets/border/switzerland.json.LICENSE.txt
+   10 1633514     0 0 8     58120    157852 d2a0a863  assets/border/switzerland.json
+   11 1691694     0 0 8       782      1738 2d73be70  DebugProbesKt.bin
+   12 1692523     0 0 8         8         6 ab5bb421  META-INF/androidx.activity_activity-compose.version
+   13 1692612     0 0 8         8         6 ab5bb421  META-INF/androidx.activity_activity-ktx.version
+   14 1692697     0 0 8         8         6 ab5bb421  META-INF/androidx.activity_activity.version
+   15 1692778     0 0 8         8         6 6b070e7e  META-INF/androidx.annotation_annotation-experimental.version
+   16 1692876     0 0 8        61        67 4de833ac  META-INF/androidx.arch.core_core-runtime.version
+   17 1693015     0 0 8         8         6 fd7ea868  META-INF/androidx.autofill_autofill.version
+   18 1693096     0 0 8         8         6 38ca8087  META-INF/androidx.browser_browser.version
+   19 1693175     0 0 8         8         6 36f33757  META-INF/androidx.compose.animation_animation-core.version
+   20 1693271     0 0 8         8         6 36f33757  META-INF/androidx.compose.animation_animation.version
+   21 1693362     0 0 8         8         6 36f33757  META-INF/androidx.compose.foundation_foundation-layout.version
+   22 1693462     0 0 8         8         6 36f33757  META-INF/androidx.compose.foundation_foundation.version
+   23 1693555     0 0 8         8         6 f6d036c7  META-INF/androidx.compose.material3_material3.version
+   24 1693646     0 0 8         8         6 36f33757  META-INF/androidx.compose.material_material-icons-core.version
+   25 1693746     0 0 8         8         6 36f33757  META-INF/androidx.compose.material_material-ripple.version
+   26 1693842     0 0 8         8         6 36f33757  META-INF/androidx.compose.runtime_runtime-saveable.version
+   27 1693938     0 0 8         8         6 36f33757  META-INF/androidx.compose.runtime_runtime.version
+   28 1694025     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui-geometry.version
+   29 1694111     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui-graphics.version
+   30 1694197     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui-text.version
+   31 1694279     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui-tooling-preview.version
+   32 1694372     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui-unit.version
+   33 1694454     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui-util.version
+   34 1694536     0 0 8         8         6 36f33757  META-INF/androidx.compose.ui_ui.version
+   35 1694613     0 0 8         9         7 f82a387c  META-INF/androidx.core_core-ktx.version
+   36 1694691     0 0 8         9         7 f82a387c  META-INF/androidx.core_core.version
+   37 1694765     0 0 8         8         6 fd7ea868  META-INF/androidx.customview_customview-poolingcontainer.version
+   38 1694867     0 0 8         8         6 efcb0786  META-INF/androidx.emoji2_emoji2.version
+   39 1694944     0 0 8         8         6 e4659929  META-INF/androidx.graphics_graphics-path.version
+   40 1695030     0 0 8         8         6 fd7ea868  META-INF/androidx.interpolator_interpolator.version
+   41 1695119     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-livedata-core-ktx.version
+   42 1695220     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-livedata-core.version
+   43 1695317     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-livedata.version
+   44 1695409     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-process.version
+   45 1695500     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-runtime-compose.version
+   46 1695599     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-runtime-ktx.version
+   47 1695694     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-runtime.version
+   48 1695785     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-service.version
+   49 1695876     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-viewmodel-ktx.version
+   50 1695973     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-viewmodel-savedstate.version
+   51 1696077     0 0 8         8         6 f11f64ee  META-INF/androidx.lifecycle_lifecycle-viewmodel.version
+   52 1696170     0 0 8         8         6 f6d036c7  META-INF/androidx.profileinstaller_profileinstaller.version
+   53 1696267     0 0 8         8         6 d40b80fd  META-INF/androidx.room_room-ktx.version
+   54 1696344     0 0 8         8         6 d40b80fd  META-INF/androidx.room_room-runtime.version
+   55 1696425     0 0 8         8         6 4e6c51a2  META-INF/androidx.savedstate_savedstate-ktx.version
+   56 1696514     0 0 8         8         6 4e6c51a2  META-INF/androidx.savedstate_savedstate.version
+   57 1696599     0 0 8         8         6 552f1bb5  META-INF/androidx.sqlite_sqlite-framework.version
+   58 1696686     0 0 8         8         6 552f1bb5  META-INF/androidx.sqlite_sqlite.version
+   59 1696763     0 0 8         8         6 5cd9fe4c  META-INF/androidx.startup_startup-runtime.version
+   60 1696850     0 0 8         8         6 577760e3  META-INF/androidx.tracing_tracing-ktx.version
+   61 1696933     0 0 8         8         6 577760e3  META-INF/androidx.tracing_tracing.version
+   62 1697012     0 0 8         8         6 5cd9fe4c  META-INF/androidx.versionedparcelable_versionedparcelable.version
+   63 1697115     0 0 8         9         7 e707e392  META-INF/androidx.work_work-runtime-ktx.version
+   64 1697201     0 0 8         9         7 e707e392  META-INF/androidx.work_work-runtime.version
+   65 1697283     0 0 8      3563     10175 f9a816a8  META-INF/androidx/annotation/annotation/LICENSE.txt
+   66 1700927     0 0 8      3563     10175 f9a816a8  META-INF/androidx/room/room-common/LICENSE.txt
+   67 1704566     0 0 8         7         5 6a2f0318  META-INF/kotlinx_coroutines_android.version
+   68 1704646     0 0 8         7         5 6a2f0318  META-INF/kotlinx_coroutines_core.version
+   69 1704723     0 0 8         8         6 1c770c07  META-INF/services/f3.v
+   70 1704783     0 0 8         8         6 1e31b25e  META-INF/services/g3.a
+   71 1704843     0 0 8       129       145 86d9ab41  META-INF/versions/9/OSGI-INF/MANIFEST.MF
+   72 1705042     0 0 8       283       627 7c6b376a  kotlin-tooling-metadata.json
+   73 1705383     0 0 8       533      1006 05ba09ef  kotlin/annotation/annotation.kotlin_builtins
+   74 1705990     0 0 8      1834      8308 1387abda  kotlin/collections/collections.kotlin_builtins
+   75 1707900     0 0 8      1082      2674 4aad3a53  kotlin/concurrent/atomics/atomics.kotlin_builtins
+   76 1709061     0 0 8       116       137 51120a1b  kotlin/coroutines/coroutines.kotlin_builtins
+   77 1709251     0 0 8       357       590 d3f25358  kotlin/internal/internal.kotlin_builtins
+   78 1709678     0 0 8      5342     29399 822356c5  kotlin/kotlin.kotlin_builtins
+   79 1715079     0 0 8      1354      4184 53cba89d  kotlin/ranges/ranges.kotlin_builtins
+   80 1716499     0 0 8      1435      4827 ddb416ef  kotlin/reflect/reflect.kotlin_builtins
+   81 1718002     0 0 8      3303     14528 f5eca23b  AndroidManifest.xml
+   82 1721354     0 0 8       462      1392 90ea17f1  res/-I.xml
+   83 1721856     0 0 8       413       968 058912ae  res/0G.xml
+   84 1722309     0 0 8       241       548 2b0fe6d8  res/0K.xml
+   85 1722590     0 0 8       428      1156 f9130827  res/0a.xml
+   86 1723058     0 0 8       507      1784 63ccae6c  res/0r.xml
+   87 1723605     0 0 8       302       568 43a59ddb  res/0w.xml
+   88 1723947     0 0 8       304      1032 c6cd4656  res/4j.xml
+   89 1724291     0 0 8       149       264 11f98a11  res/8G.xml
+   90 1724480     0 0 8       147       284 35b190a5  res/8K.xml
+   91 1724667     0 0 8       241       548 2b0fe6d8  res/BW.xml
+   92 1724948     0 0 8       498      1272 a639465a  res/CN.xml
+   93 1725486     0 0 8       426      1020 4f726bc9  res/Fk.xml
+   94 1725952     0 0 8       500      1352 fdee0275  res/IQ.xml
+   95 1726492     0 0 8       432       980 0a63b8ee  res/IR.xml
+   96 1726964     0 0 8       484      1592 2b81155f  res/Ka.xml
+   97 1727488     0 0 8       233       568 94de16c2  res/Qq.xml
+   98 1727761     0 0 8       483      1320 779b9e0e  res/Qr.xml
+   99 1728284     0 0 8       572      2368 69ced726  res/SW.xml
+  100 1728896     0 0 8       481      1320 6ddc4030  res/Vy.xml
+  101 1729417     0 0 8       475      1180 66b8a9d3  res/Yf.xml
+  102 1729932     0 0 8       503      1624 a48f7d1f  res/Yy.xml
+  103 1730475     0 0 8       454      1052 29831e8e  res/Zr.xml
+  104 1730969     0 0 8       518      1624 a77d823c  res/eQ.xml
+  105 1731527     0 0 8       402       960 3fdb9d63  res/kT.xml
+  106 1731969     0 0 8       497       956 005f270e  res/le.xml
+  107 1732506     0 0 8       362       736 037dd1be  res/mI.xml
+  108 1732908     0 0 8       459      1184 780bdfee  res/md.xml
+  109 1733407     0 0 8       435      1040 09e9bee7  res/nt.xml
+  110 1733882     0 0 8       448      1036 2667927b  res/qT.xml
+  111 1734370     0 0 8       423      1156 fff81962  res/s9.xml
+  112 1734833     3 0 0    245236    245236 6aa50a27  resources.arsc
+
+THE THREE PAIR TABLES - the entries that moved in ANY field; every other
+entry is identical in name, method, sizes, CRC, offset, local and central
+extra length, flags, time and date.
+
+PAIR 1 - IOS-2d, 52da740 -> 0616b4e: 4 moved, 109 identical
+  name                                       m  stored         uncompr.         crc32               offset            le
+  assets/dexopt/baseline.prof                0  4656 -> 4663   4656 -> 4663     63da7f7a->c4693f75  256 -> 256        3 -> 3
+  assets/dexopt/baseline.profm               0  613 -> 613     613 -> 613       323909ff->16925668  4972 -> 4979      2 -> 3
+  classes.dex                                8  1562660->1562609  3275156->3274536  b0e62a21->692e73b1  5645 -> 5653   0 -> 0
+  lib/arm64-v8a/libandroidx.graphics.path.so 0  10096 (same)   10096 (same)     9734baa0 (same)     1568346->1568303  4446 -> 4489
+
+PAIR 2 - IOS-2e, 19ce23f -> 9a6dd55: 4 moved, 109 identical
+  assets/dexopt/baseline.prof                0  4663 -> 3727   4663 -> 3727     c4693f75->d04bba86  256 -> 256        3 -> 3
+  assets/dexopt/baseline.profm               0  613 -> 612     613 -> 612       16925668->074f7aea  4979 -> 4043      3 -> 3
+  classes.dex                                8  1562609->1563754  3274536->3277072  692e73b1->116c92bc  5653 -> 4716   0 -> 0
+  lib/arm64-v8a/libandroidx.graphics.path.so 0  10096 (same)   10096 (same)     9734baa0 (same)     1568303->1568511  4489 -> 4281
+
+PAIR 3 - IOS-2e-FIX, 9a6dd55 -> cf485c4: 3 moved, 110 identical
+  assets/dexopt/baseline.prof                0  3727 (same)    3727 (same)      d04bba86->cb85bcc0  256 (same)        3 (same)
+  classes.dex                                8  1563754->1563752  3277072 (same)  116c92bc->abf10b79  4716 (same)      0 (same)
+  lib/arm64-v8a/libandroidx.graphics.path.so 0  10096 (same)   10096 (same)     9734baa0 (same)     1568511->1568509  4281 -> 4283
+
+(The control: 0616b4e -> 19ce23f, 0 moved, 113 identical - the same bytes.)
+
+INSIDE WHAT CHANGED
+
+DEX (one classes.dex per APK; DEX version 038; R8 8.10.24, full mode,
+min-api 26, release):
+  Pair 1: checksum 5e70a202 -> 150d2804. Counts: method ids 21 178 -> 21 173,
+  type ids 5 246 -> 5 244, class defs 4 331 -> 4 329, strings 15 440 ->
+  15 438, protos 5 623 -> 5 622, fields 13 976 -> 13 969, code items
+  17 565 -> 17 560. debug_info_item 406 -> 406 (4 886 B both). Marker
+  pg-map-id 35be951 -> e36126c.
+  Pair 2: checksum 150d2804 -> da1a0869. Counts: method ids 21 173 -> 21 184,
+  type ids 5 244 -> 5 249, class defs 4 329 -> 4 334, strings 15 438 ->
+  15 445, protos 5 622 -> 5 628, fields 13 969 -> 13 982, code items
+  17 560 -> 17 570. debug_info_item 406 -> 407 (4 886 -> 4 894 B). Marker
+  e36126c -> 180618c.
+  Pair 3: every count and every section offset identical. Same length
+  (3 277 072 B). 3 differing byte ranges, 30 bytes:
+    8..9      header_item  (checksum, first byte; the second is equal by chance)
+    10..32    header_item  (checksum rest + SHA-1 signature)
+    3106319..3106326 string_data_item "180618c" -> "eab54c0", R8's marker
+  Nothing in code_item, debug_info_item, class_data_item or any id table
+  differs. dexdump of both (default mode, every class, method, positions and
+  locals table) is identical apart from the file name in its first two lines.
+CLASSES AND METHODS (original names, via each side's mapping.txt; the
+normaliser deobfuscates class descriptors, member references and member
+declarations, masks file offsets, index comments and switch-payload bytes;
+pair 3 is the control and reports 4 334 identical, 0 differing; parsed class
+count = class_def count on every side; 290 of ~170 000 member references
+unresolved per side - a count per side, the references themselves not
+compared; member keys repeat in 5 classes per side (two members, one
+deobfuscated name and type), so a key is compared with ALL its members'
+texts, and the counts below did not change when that control was added):
+  Pair 1: 4 331 -> 4 329 classes. Identical 4 268, changed 57, added 4,
+  removed 6. Added: ForecastDaysKt; SimulationScreenKt$$ExternalSyntheticLambda16,
+  21 and 23. Removed: SimulationControllerKt; ForecastControllerKt$WhenMappings;
+  SimulationScreenKt$$ExternalSyntheticLambda17, 18 and 22;
+  PrevisionScreenKt$$ExternalSyntheticLambda9.
+  Pair 2: 4 329 -> 4 334 classes. Identical 4 283, changed 46, added 5,
+  removed 0. Added: kotlin.jvm.functions.Function5;
+  ComposableSingletons$ParametresStartDatePickerKt$$ExternalSyntheticLambda0;
+  ParametresScreenKt$$ExternalSyntheticLambda13;
+  OnboardingStartDatePickerKt$$ExternalSyntheticLambda2 and 5 (two new R8
+  lambda groups whose contributors include ParametresStartDatePickerKt).
+  Every differing class, with its rows' categories and commits, is listed in
+  R867.
+DEBUG INFO / LINE-NUMBER TABLES. This build carries almost none. Only 407
+debug_info items exist for 17 570 code items, and dexdump finds 2 766
+position entries in the whole dex. That is R8's encoding for min API 26:
+a method without debug info reports its pc as its line, and mapping.txt's
+minified ranges are pc ranges. The real source lines live only in
+mapping.txt, which is why four comment lines cannot move a byte of code.
+Measured on pair 3 above; the pc-range reading is what made the mapping's
+frames line up with the differing instructions in R867.
+RESOURCES, resources.arsc, MANIFEST. resources.arsc (245 236 B, crc 6aa50a27),
+AndroidManifest.xml (14 528 B, crc f5eca23b) and all 30 res/ entries have
+identical CRCs in all five. aapt2 (build-tools 36.0.0) dump badging, dump
+xmltree --file AndroidManifest.xml and dump resources give byte-identical
+output for the four distinct APKs (sha256 98bbcc8337a8..., 4ec760febc15...,
+aa67ee21aeaf...). Package ch.monreleve.app, versionCode 1, versionName
+0.1.0, minSdk 26, targetSdk 36. git diff of res/, AndroidManifest.xml,
+assets/, every *.gradle.kts, android/gradle and proguard-rules.pro over all
+three ranges is EMPTY.
+NATIVE LIBRARIES. The four libandroidx.graphics.path.so (arm64-v8a 10 096 B,
+armeabi-v7a 7 252, x86 9 284, x86_64 10 760) have identical CRCs and data
+offsets (1 572 864, 1 589 248, 1 605 632, 1 622 016 - every one on a 16 KiB
+page) in all five. Only arm64-v8a's local header and padding move (R866).
+BASELINE PROFILE (assets/dexopt/baseline.prof, ART profile "pro" 010, one
+dex; decoded here, the body fully consumed on every side):
+  52da740  body 38 610 B, deflated 4 639; classes 2 040, hot methods 7 302, startup 7 302, post 7 318; method ids 21 178 (mod 8 = 2)
+  0616b4e  body 38 609 B, deflated 4 646; classes 2 040, hot methods 7 302, startup 7 302, post 7 318; method ids 21 173 (mod 8 = 5)
+  9a6dd55  body 38 629 B, deflated 3 710; classes 2 041, hot methods 7 306, startup 7 306, post 7 322; method ids 21 184 (mod 8 = 0)
+  cf485c4  body 38 629 B, deflated 3 710; the same counts; only body bytes 8..11 differ from 9a6dd55
+  The profile keys its one dex by a checksum field, and that field equals
+  the ZIP CRC of classes.dex on every side (b0e62a21, 692e73b1, 116c92bc,
+  abf10b79). A changed dex therefore always changes the profile.
+  By original names (a hot method keyed by class, name and deobfuscated
+  proto; 7 302 entries give 7 299 distinct keys on both sides of pair 1,
+  7 306 give 7 303 in 9a6dd55 and cf485c4, because 3 entries share a key):
+    pair 1  classes +0 -0. Hot entries +2 -2: TextKt.Text-IbK3jfQ and
+            TextKt$Text$5.<init>, the same methods re-signatured with one
+            more int (C1).
+    pair 2  classes +1 (kotlin.jvm.functions.Function5). Hot entries +4 -0:
+            ComposableLambdaImpl.invoke(String, Function1, Function0,
+            ComposerImpl, Integer) and (..., ComposerImpl, I), and in the
+            Material 3 lambda group AlertDialogKt$BasicAlertDialog$2,
+            ComposableLambdaImpl$invoke$3.<init> and the group's invoke
+            (all C4).
+    pair 3  +0 -0.
+  Compression, by region at deflate level 9 (header / hot methods / classes /
+  bitmap):
+    0616b4e: 35 / 1 287 / 445 / 1 789 B
+    9a6dd55: 35 / 1 283 / 443 /   973 B
+  The bitmap is where the bytes went. Byte-aligned repacking, measured on
+  each side:
+    52da740: bitmap 1 954 B (level 1) -> 1 085 B repacked
+    0616b4e: bitmap 1 969 B (level 1) -> 1 090 B repacked
+    9a6dd55: bitmap 1 073 B, already aligned, unchanged by repacking
+  Whole body: 0616b4e's actual body deflates to 4 620 B at level 1, and
+  with its bitmap repacked byte-aligned to 3 700 B.
+  baseline.profm (metadata "prm" 002): its body records the dex's type-id
+  count (5 246 -> 5 244 -> 5 249, equal to the dex header's) and the class
+  list. Pair 1: 3 body bytes differ (same size). Pair 2: 4 101 -> 4 103 B.
+  Pair 3: identical.
+SIGNING BLOCK. All five UNSIGNED. The 16 bytes before the central directory
+are not "APK Sig Block 42"; the last entry ends exactly where the central
+directory starts (no room for a block); no META-INF/MANIFEST.MF, *.SF, *.RSA,
+*.DSA or *.EC. apksigner verify --verbose (build-tools 36.0.0) on 52da740,
+0616b4e, 9a6dd55 and cf485c4: "DOES NOT VERIFY" / "ERROR: Missing
+META-INF/MANIFEST.MF", exit 1 each.
+OTHER ENTRIES. META-INF/com/android/build/gradle/app-metadata.properties
+("appMetadataVersion=1.1 / androidGradlePluginVersion=8.10.1") and
+META-INF/version-control-info.textproto are identical in all five. The
+latter reads "generate_error_reason: NO_SUPPORTED_VCS_FOUND" - see NOTICED.
+
+--------------------------------------------------------------------------------
+R866 - WHY THE TOTAL DID NOT MOVE (measured; every term from the archives)
+--------------------------------------------------------------------------------
+Every byte of these archives is a local header (30 + name), a local extra
+field, entry data, the central directory (9 250 B) or the EOCD (22 B). No
+gap and no data descriptor exists. The only padding is in local extra
+fields, as raw zero bytes (not extra-field records): 4-byte alignment for
+the stored baseline.prof, baseline.profm and resources.arsc, and 16 KiB for
+the four stored lib/*.so.
+
+The ledger (android/scripts/apk-diff.mjs, LEDGER section) - delta = header +
+padding + data per entry, + central directory + EOCD + gaps:
+  PAIR 1  baseline.prof data +7; baseline.profm padding +1 (its start moved
+          7 B, re-aligned 2 -> 3); classes.dex data -51; arm64 .so padding
+          +43. CD 0, EOCD 0, gaps 0. Sum 0 = measured 0.
+  PAIR 2  baseline.prof data -936; baseline.profm data -1 (padding stays 3);
+          classes.dex data +1 145; arm64 .so padding -208. CD 0, EOCD 0,
+          gaps 0. Sum 0 = measured 0.
+  PAIR 3  classes.dex data -2; arm64 .so padding +2. Sum 0 = measured 0.
+The arm64 .so's data starts at 1 572 864 in every APK, so the prefix up to
+that page boundary is a constant 1 572 864 B whatever it contains. After the
+boundary, nothing moved: the other three .so, assets, res/, resources.arsc
+and the central directory (fixed-size fields; the same names) are
+byte-for-byte where they were. Hence 1 989 388 B five times.
+
+THE SLACK (derived from the rule above, not from a build): with padding p
+before a 16 KiB-aligned entry, the content stored before it can grow by up
+to p bytes, or shrink by up to 16 383 - p, before the total moves by one
+page. Before -> after:
+  52da740  p = 4 446
+  0616b4e  p = 4 489
+  9a6dd55  p = 4 281
+  cf485c4  p = 4 283: growth up to +4 283 B, shrinkage up to -12 100 B
+Any APK-size check of this app is therefore blind to a dex change smaller
+than that slack. Entries stored after the libraries (assets, res/,
+resources.arsc) move the size directly, apart from resources.arsc's 0-3 B
+of 4-byte padding.
+
+--------------------------------------------------------------------------------
+R867 - EVERY DIFFERENCE BY A COMMIT
+--------------------------------------------------------------------------------
+HOW A ROW IS TIED (the rule, stated once). A difference is tied when the
+input that changed is MEASURED and touches the same dex object as the
+difference. A tie names the source file and every commit in the pair's range
+that touched it. Where several commits touched one file, which of them made
+the byte is NOT separable without per-commit builds, and the tie says so by
+listing them all. "R8 decided differently" with no changed input shown is
+UNEXPLAINED. A mechanism inside R8 or the Compose compiler is labelled a
+HYPOTHESIS unless a number confirms it.
+
+APK-SOURCE FILES are those under android/app/src/main and
+android/shared/src/{commonMain,androidMain}, matched by package path and
+file name. Tests and iOS sets never reach the APK. Commits that touched none
+of them, each checked with git show --name-only, have no difference to own:
+  pair 1  9ea742f (app/test), 9b9ec0b (app/test, shared/iosTest),
+          0616b4e (shared/iosTest)
+  pair 2  c37c84c, 7422a78, 9a6dd55 (shared/iosTest)
+11f23b7 (pair 2) touched APK sources, but no measured difference lands in a
+file it touched. Its moves compiled to the same bytecode, by the measures
+used here.
+
+THE CATEGORIES, by strength. Each was computed by the one-off scripts in
+.apk-diff-evidence (dexclassdiff.mjs, attribute.mjs), which work in original
+names.
+
+  TIER 1 - direct:
+  OWN-SOURCE           The member's original owner is in a changed file.
+                       For a member R8 merged into a host class, that is
+                       its recorded original class.
+  FRAME-FROM-CHANGED   The mapping's frames at the differing instructions'
+                       pcs lie in a changed file. This covers inlined and
+                       merged code.
+  CONTRIBUTOR-CHANGED / GROUP-MEMBERSHIP-CHANGED
+                       An R8 merged group (synthetic lambdas told apart by
+                       an int class id) gained or lost a contributor from a
+                       changed file. The contributors are measured from the
+                       mapping block on each side.
+  LAMBDA-CLASS-ID      A constant that changed is the class id handed to a
+                       merged group's constructor (new-instance, const,
+                       invoke-direct <init>), and that group's contributors
+                       changed as above.
+  NAMES-ONLY           Code identical; only the mapping-recorded synthetic
+                       name differs. The owner is in a changed file.
+
+  TIER 2 - one measured step removed:
+  REFERENCES-CHANGED   The differing instructions name a class whose file
+                       changed: a call into, or a field of, changed code.
+  CALL-SITES-CHANGED   For a member present on one side only, or for a call
+                       target or inlined callee present on one side only,
+                       the set of call sites differs between the sides, and
+                       the added or removed sites' frames lie in a changed
+                       file. For example, R8 keeps a parameter because a
+                       new caller passes a different value.
+
+The differing instructions come from an IN-ORDER diff of the methods with
+addresses, registers and branch targets masked. One inserted instruction
+therefore does not make every later line count as "differing".
+
+PAIR 3 - IOS-2e-FIX, 9a6dd55 -> cf485c4 (one commit, cf485c4)
+  Every difference is tied to cf485c4, a change to
+  android/shared/src/commonMain/.../parametres/ParametresEditTypes.kt that
+  inserts four comment lines after its line 14.
+  - mapping.txt: 43 lines differ. 2 are the header (pg_map_id,
+    pg_map_hash). The other 41 member lines are each the same line with its
+    ORIGINAL line numbers +4 and nothing else. Their owners are
+    EditSheetFrame, EditTarget, InfoSheets and ParametresListCallbacks, all
+    declared in ParametresEditTypes.kt (sourceFile in the mapping). Sixteen
+    distinct original lines move, 20->24 through 58->62. EditTarget,
+    declared at old line 20, is now at line 24.
+  - classes.dex: the marker's pg-map-id, which is SHA-256(mapping body)[0:7],
+    plus the header checksum and SHA-1 that cover it. The entry's stored
+    size is -2 B from deflating 7 different bytes.
+  - baseline.prof: the embedded dex checksum only, the dex's new zip CRC.
+  - arm64 .so padding +2: the layout absorbing the -2.
+  VERDICT on "attributed to shifted line numbers": CONFIRMED as the cause,
+  REFUTED as a dex line-number change. No line-number table in the dex
+  changed. The shift reached the dex only as the mapping's hash.
+
+PAIR 1 - IOS-2d, 52da740 -> 0616b4e
+  Entry level:
+  - classes.dex: the class rows below.
+  - baseline.prof: the dex CRC, plus re-indexing, because method ids went
+    21 178 -> 21 173. By original names (class, name and proto) the
+    classes are unchanged and two hot entries are re-signatured: C1's
+    Text-IbK3jfQ and TextKt$Text$5.<init>, each with one more int.
+  - baseline.profm: type ids 5 246 -> 5 244.
+  - .so padding: R866.
+  - Marker: the new mapping hash.
+  Class level: 67 classes, 156 rows. Tier 1: OWN-SOURCE 71,
+  FRAME-FROM-CHANGED 17, GROUP-MEMBERSHIP-CHANGED 1. Tier 2:
+  REFERENCES-CHANGED 46, CALL-SITES-CHANGED 9. Clusters below: 12. Automated
+  rows tie to 83599be (141 rows), f880573 (114), 32143c0 (104),
+  f3b70f6 (44), 54c6942 (27) and c460b8c (1). A row ties to every commit
+  that touched its file, so the counts overlap.
+  C1 (7 rows) - androidx.compose.material3.TextKt.Text-IbK3jfQ (the
+     AnnotatedString overload; 2 rows), its restart lambda TextKt$Text$5
+     (4 rows) and RequestLinkScreenKt.ConsentLine (1 row).
+     MEASURED:
+     - The overload has the same two app callers on both sides,
+       RequestLinkScreenKt.ConsentLine and ComparisonScreenKt.ComparisonCard.
+     - Its signature ends ...ComposerImpl;II in 52da740 and
+       ...ComposerImpl;III in 0616b4e.
+     - In 0616b4e the two callers pass DIFFERENT values in the added
+       position: ConsentLine 0, ComparisonCard 12 582 912. ComparisonCard
+       also passes 384 where it passed 0 in 52da740.
+     - Text$5 gains the field $$changed1, ConsentLine passes the extra
+       argument, and the profile's two hot entries for these methods are
+       re-signatured (R865).
+     TIED to ComparisonScreen.kt: 32143c0 (moved :app -> :shared, R100) and
+     54c6942 (its glyph call sites), not separable.
+     HYPOTHESIS: in 52da740 every caller passed one constant in that
+     position, and R8 removed the parameter. ComparisonCard's arguments
+     became Static to the Compose compiler once its code compiled in
+     :shared.
+  C2 (4 rows) - ReleveHeaderKt.ProvisionalBanner.
+     MEASURED: in 52da740 two methods carry the proto
+     (I, I, ComposerImpl, String)V: ProvisionalBanner and
+     PrevisionScreenKt.IconLine. 54c6942 changed IconLine's parameter
+     `icon: Int` to `icon: Glyph` (its diff), and IconLine left that proto.
+     In 0616b4e ProvisionalBanner is (String, I, ComposerImpl, I)V, and its
+     two callers (ReleveScreenKt.DocumentBody, ReleveHeaderKt's restart
+     lambda) pass the arguments in the new order.
+     TIED to 54c6942.
+     HYPOTHESIS: R8's proto normalisation picks a canonical parameter order
+     from the protos present in the dex.
+  C3 (1 row) - AujourdhuiScreenKt$$ExternalSyntheticLambda15, the restart
+     lambda that re-invokes PrevisionScreen(ForecastState, PrevisionActions,
+     Boolean, Modifier).
+     MEASURED: its updateChangedFlags constant is 1 -> 9, the "stable" bit
+     on parameter 0, ForecastState.
+     TIED to ForecastState.kt: f3b70f6 and 83599be (dates moved to kotlinx)
+     and f880573 (moved :app -> :shared, R100), not separable.
+     HYPOTHESIS: the Compose compiler's stability inference for the type.
+
+PAIR 2 - IOS-2e, 19ce23f -> 9a6dd55
+  Entry level:
+  - classes.dex: below.
+  - baseline.prof: content +1 class and +4 hot-method entries (C4), the dex CRC,
+    and -936 B of compression from the bitmap's byte alignment (method ids
+    21 184; SUMMARY 3, the numbers in R865).
+  - baseline.profm: type ids 5 244 -> 5 249, plus the class list.
+  - .so padding: R866.
+  - Marker: the new mapping hash.
+  Class level: 51 classes, 155 rows. Tier 1: OWN-SOURCE 65, NAMES-ONLY 29,
+  LAMBDA-CLASS-ID 15, FRAME-FROM-CHANGED 10, CONTRIBUTOR-CHANGED 2,
+  GROUP-MEMBERSHIP-CHANGED 1. Tier 2: CALL-SITES-CHANGED 14,
+  REFERENCES-CHANGED 6. Clusters below: 13. Automated rows tie to a78567f
+  (151 rows), d77c74b (69), f8a8a7c (23), b1b8d72 (7) and 9954f39 (6),
+  again overlapping.
+  C4 (9 rows) - THE FUNCTION5 RIPPLE: kotlin.jvm.functions.Function5 added;
+     ComposableLambdaImpl's interfaces and trackRead;
+     kotlin.jvm.internal.ClassReference.<clinit>;
+     TypeIntrinsics.isFunctionOfArity; four rows in the Material 3 lambda
+     group AlertDialogKt$BasicAlertDialog$2.
+     MEASURED:
+     - d77c74b adds typealias ParametresDatePicker = @Composable
+       (String?, (String) -> Unit, () -> Unit) -> Unit in
+       ParametresEditTypes.kt. A grep of the added lines of every commit's
+       APK-source diff in the range for "@Composable (" function types finds
+       only this one.
+     - ComposableLambdaImpl in 9a6dd55 implements Function5 and gains
+       invoke(String, Function1, Function0, ComposerImpl, Integer) and
+       invoke(String, Function1, Function0, ComposerImpl, I) - that
+       typealias's shape - plus a call to trackRead from the new invoke
+       (call sites 3 -> 4).
+     - The group BasicAlertDialog$2 gains the contributor
+       ComposableLambdaImpl$invoke$3. Its constructor's class ids shift
+       (5 -> 6, 4 -> 5), its switch grows a case, and its synthetic debug
+       lines renumber.
+     - ClassReference.<clinit> now loads Function5.class where 0616b4e had
+       ComposableLambdaImpl.class in that slot.
+       TypeIntrinsics.isFunctionOfArity grows from 139 to 141 code units.
+       Its arity-5 test reads "instance-of ComposableLambdaImpl" at pc 0035
+       in 0616b4e and "instance-of Function5" in 9a6dd55.
+     - The profile's +1 class and +4 hot-method entries are the same
+       objects.
+     - In 0616b4e the mapping has NO entry for Function5 at all, and
+       ComposableLambdaImpl's interfaces are Function2, 3, 4 and 6 only.
+     TIED to d77c74b.
+     MEASURED: the two stdlib sites that name Function5 in 9a6dd55 name
+     ComposableLambdaImpl in 0616b4e, where Function5 is absent.
+     HYPOTHESIS: why R8 did so - it removed an interface nothing invoked
+     through, and rewrote the remaining references to its single
+     implementer.
+  C5 (1 row) - PrevisionScreenKt.FigureRow (hosted in kotlin.math.MathKt).
+     MEASURED: with registers masked, the only difference is the class id
+     for the group CodeScreenKt$$ExternalSyntheticLambda8, 20 -> 19. That
+     group lost its ParametresScreenKt contributor: 36 -> 35 contributors.
+     19 also happens to be the method's `and` mask, so B shares one
+     register for both.
+     TIED to ParametresScreen.kt: a78567f, d77c74b and f8a8a7c.
+  C6 (2 rows) - MainActivityKt$$ExternalSyntheticLambda2 (MainShell, at
+     MainActivity.kt:881) and $$ExternalSyntheticLambda74 (the restart
+     lambda of ParametresTab).
+     MEASURED: the $changed passed to ParametresTab is 0 -> 72, and its
+     restart flags 1 -> 73. 72 sets the "stable" bit on parameters 0 and 1,
+     ParametresState and ParametresController, both declared in
+     ParametresController.kt.
+     TIED to ParametresController.kt: f8a8a7c (moved :app -> :shared,
+     R098), 9954f39 and b1b8d72, not separable.
+     HYPOTHESIS: as C3.
+  C7 (1 row) - UNEXPLAINED, below.
+
+UNEXPLAINED (the complete list; 1 entry)
+  U1. ch.monreleve.app.onboarding.OnboardingController.next()V, pair 2
+      (0616b4e -> 9a6dd55). Source OnboardingController.kt, NOT touched in
+      19ce23f..9a6dd55.
+      EVIDENCE:
+      - The in-order diff with registers, addresses and branch targets
+        masked leaves 311 -> 310 instructions. 0616b4e has 3 lines B lacks
+        ("const/4 v, #int 0", "goto T", "goto T"). 9a6dd55 has 2 that A
+        lacks ("goto/16 T", "return-void"). No invoke, field access or
+        constant other than that 0 differs.
+      - The region is periodError's start-date branch (frames
+        OnboardingController.validateStep:228/234, next:214,
+        periodError:249). In 0616b4e the "START_DATE_INVALID / null" result
+        goes through a shared block. In 9a6dd55 the tail is duplicated
+        (move-object/from16 v32, v10; goto/16 00aa).
+      CANDIDATE INPUT, NOT CONFIRMED: OnboardingDatesKt.isIsoDay is inlined
+      into next() on both sides. In 9a6dd55 it is ALSO inlined into
+      ParametresController.validate: the mapping shows 1 -> 2 holders, and
+      the new caller is 9954f39 (R827). That a second caller changes how R8
+      lays out next() is a hypothesis no number here confirms.
+      READING FOR RISK: the same operations in a different block layout.
+      Nothing measured says behaviour changed, and nothing measured
+      excludes it.
+
+EVERY DIFFERING CLASS (category counts per class; "-> sha" = the commits its
+automated rows tie to; C1..C7 = the clusters above):
+
+PAIR 1 - 52da740 -> 0616b4e (67 classes)
+  CHANGED _COROUTINE._BOUNDARY
+          CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED androidx.compose.material3.TextKt
+          C1 x2
+  CHANGED androidx.compose.material3.TextKt$Text$5
+          C1 x4
+  CHANGED androidx.work.impl.model.RawWorkInfoDao_Impl
+          FRAME-FROM-CHANGED x2  -> 32143c0
+  CHANGED ch.monreleve.app.data.local.CalendarDayKt
+          CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.data.local.MonReleveDatabaseKt
+          CALL-SITES-CHANGED x2  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.detection.EveningNotifierKt
+          FRAME-FROM-CHANGED, CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.detection.SamplingWorker
+          CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.dossier.DossierPayloadKt
+          REFERENCES-CHANGED x5  -> 32143c0 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.dossier.SimChange$ExtraWeekday
+          CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.forecast.ForecastController
+          OWN-SOURCE x7  -> 83599be f3b70f6 f880573
+  REMOVED ch.monreleve.app.forecast.ForecastControllerKt$WhenMappings
+          OWN-SOURCE  -> 83599be f3b70f6 f880573
+  ADDED   ch.monreleve.app.forecast.ForecastDaysKt
+          OWN-SOURCE  -> 83599be
+  CHANGED ch.monreleve.app.forecast.SimInputs
+          OWN-SOURCE x10  -> 83599be f880573
+  CHANGED ch.monreleve.app.forecast.SimulationController
+          OWN-SOURCE x5  -> 83599be f3b70f6 f880573
+  REMOVED ch.monreleve.app.forecast.SimulationControllerKt
+          OWN-SOURCE  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.MainActivity
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.MainActivity$$ExternalSyntheticLambda6
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.MainActivityKt$$ExternalSyntheticLambda2
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.MainActivityKt$$ExternalSyntheticLambda31
+          FRAME-FROM-CHANGED  -> 32143c0 54c6942 83599be
+  CHANGED ch.monreleve.app.MainActivityKt$$ExternalSyntheticLambda4
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.MainActivityKt$MainShell$1$1
+          REFERENCES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.MainActivityKt$MainShell$2$1
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.notification.EveningActionReceiver
+          CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiAutoKt$$ExternalSyntheticLambda13
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiAutoKt$$ExternalSyntheticLambda14
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreenKt$$ExternalSyntheticLambda15
+          C3
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.ChoiceCardKt$$ExternalSyntheticLambda3
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.ComposableSingletons$AujourdhuiAutoKt
+          REFERENCES-CHANGED x5  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.calendrier.ComposableSingletons$BulkConfirmationDialogKt
+          REFERENCES-CHANGED x3  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.comparison.ComposableSingletons$ComparisonScreenKt
+          OWN-SOURCE x5  -> 32143c0 54c6942
+  CHANGED ch.monreleve.app.ui.screens.disclosure.ComposableSingletons$DisclosureScreenKt
+          OWN-SOURCE  -> c460b8c
+  CHANGED ch.monreleve.app.ui.screens.onboarding.ComposableSingletons$OnboardingScreenKt
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.parametres.ComposableSingletons$LicencesScreenKt
+          REFERENCES-CHANGED x11  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresDeleteSectionKt$$ExternalSyntheticLambda0
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.prevision.PrevisionScreenKt$$ExternalSyntheticLambda1
+          OWN-SOURCE x3  -> 32143c0 54c6942
+  REMOVED ch.monreleve.app.ui.screens.prevision.PrevisionScreenKt$$ExternalSyntheticLambda9
+          OWN-SOURCE  -> 32143c0 54c6942
+  CHANGED ch.monreleve.app.ui.screens.releve.ComposableSingletons$ReleveScreenKt
+          C2 x3
+  CHANGED ch.monreleve.app.ui.screens.releve.ReleveHeaderKt$$ExternalSyntheticLambda7
+          C2
+  CHANGED ch.monreleve.app.ui.screens.rythme.RythmeScreenKt
+          OWN-SOURCE x7  -> 32143c0 54c6942 83599be
+  CHANGED ch.monreleve.app.ui.screens.signin.CallbackScreenKt$$ExternalSyntheticLambda0
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.signin.CodeScreenKt$$ExternalSyntheticLambda1
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.signin.CodeScreenKt$$ExternalSyntheticLambda8
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.signin.ComposableSingletons$CallbackScreenKt
+          C1
+  CHANGED ch.monreleve.app.ui.screens.signin.ComposableSingletons$CallbackScreenKt$$ExternalSyntheticLambda0
+          FRAME-FROM-CHANGED  -> 32143c0 54c6942
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationCardKt$$ExternalSyntheticLambda0
+          OWN-SOURCE  -> 32143c0
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt
+          OWN-SOURCE x7  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda1
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda10
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda15
+          OWN-SOURCE x2  -> 32143c0 83599be f880573
+  ADDED   ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda16
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  REMOVED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda17
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  REMOVED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda18
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda20
+          OWN-SOURCE x9, GROUP-MEMBERSHIP-CHANGED  -> 32143c0 83599be f880573
+  ADDED   ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda21
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  REMOVED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda22
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  ADDED   ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda23
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda3
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda8
+          OWN-SOURCE  -> 32143c0 83599be f880573
+  CHANGED ch.monreleve.app.ui.shell.ComposableSingletons$AppBottomBarKt
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED kotlin.math.MathKt
+          REFERENCES-CHANGED x2, FRAME-FROM-CHANGED x12  -> 32143c0 54c6942 83599be f880573
+  CHANGED kotlinx.datetime.internal.format.parser.NumberSpanParserOperation
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED kotlinx.datetime.LocalDate
+          CALL-SITES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED kotlinx.serialization.json.internal.JsonElementMarker$origin$1
+          REFERENCES-CHANGED  -> 83599be f3b70f6 f880573
+  CHANGED kotlinx.serialization.json.internal.JsonTreeDecoder
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED kotlinx.serialization.json.internal.StreamingJsonDecoder
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+  CHANGED kotlinx.serialization.SealedClassSerializer
+          REFERENCES-CHANGED  -> 32143c0 83599be f880573
+
+PAIR 2 - 19ce23f -> 9a6dd55 (51 classes; 0616b4e is the same bytes as 19ce23f)
+  CHANGED androidx.compose.material3.AlertDialogKt$BasicAlertDialog$2
+          C4 x4, CALL-SITES-CHANGED  -> a78567f d77c74b
+  CHANGED androidx.compose.runtime.internal.ComposableLambdaImpl
+          CALL-SITES-CHANGED x3, C4 x2  -> a78567f d77c74b
+  CHANGED androidx.work.impl.model.RawWorkInfoDao_Impl
+          LAMBDA-CLASS-ID  -> a78567f d77c74b
+  CHANGED ch.monreleve.app.design.LegendKt$$ExternalSyntheticLambda0
+          FRAME-FROM-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.dossier.DossierPayloadKt
+          FRAME-FROM-CHANGED, REFERENCES-CHANGED  -> 9954f39 a78567f b1b8d72 f8a8a7c
+  CHANGED ch.monreleve.app.MainActivityKt$$ExternalSyntheticLambda2
+          C6
+  CHANGED ch.monreleve.app.MainActivityKt$$ExternalSyntheticLambda74
+          C6
+  CHANGED ch.monreleve.app.onboarding.OnboardingController
+          C7
+  CHANGED ch.monreleve.app.parametres.ParametresController
+          OWN-SOURCE x2  -> 9954f39 b1b8d72 f8a8a7c
+  CHANGED ch.monreleve.app.parametres.ParametresController$persist$2
+          OWN-SOURCE  -> 9954f39 b1b8d72 f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiAutoKt$$ExternalSyntheticLambda11
+          REFERENCES-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiAutoKt$$ExternalSyntheticLambda13
+          FRAME-FROM-CHANGED  -> a78567f d77c74b f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiAutoKt$$ExternalSyntheticLambda14
+          FRAME-FROM-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.aujourdhui.HalfDayChoiceCardKt$$ExternalSyntheticLambda5
+          FRAME-FROM-CHANGED  -> a78567f d77c74b f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.onboarding.ComposableSingletons$OnboardingScreenKt
+          CALL-SITES-CHANGED  -> a78567f d77c74b f8a8a7c
+  ADDED   ch.monreleve.app.ui.screens.onboarding.OnboardingStartDatePickerKt$$ExternalSyntheticLambda2
+          CONTRIBUTOR-CHANGED  -> d77c74b
+  ADDED   ch.monreleve.app.ui.screens.onboarding.OnboardingStartDatePickerKt$$ExternalSyntheticLambda5
+          CONTRIBUTOR-CHANGED  -> d77c74b
+  CHANGED ch.monreleve.app.ui.screens.parametres.ComposableSingletons$LicencesScreenKt
+          NAMES-ONLY x2, OWN-SOURCE x29  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ComposableSingletons$ParametresDateFieldKt$$ExternalSyntheticLambda0
+          OWN-SOURCE  -> a78567f d77c74b
+  CHANGED ch.monreleve.app.ui.screens.parametres.ComposableSingletons$ParametresDeleteSectionKt$$ExternalSyntheticLambda2
+          OWN-SOURCE  -> a78567f
+  ADDED   ch.monreleve.app.ui.screens.parametres.ComposableSingletons$ParametresStartDatePickerKt$$ExternalSyntheticLambda0
+          OWN-SOURCE  -> d77c74b
+  CHANGED ch.monreleve.app.ui.screens.parametres.EditSheetFrame
+          OWN-SOURCE x3  -> a78567f d77c74b
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresAccountSectionKt$$ExternalSyntheticLambda1
+          NAMES-ONLY x2, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresAccountSectionKt$$ExternalSyntheticLambda4
+          NAMES-ONLY, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresDeleteSectionKt$$ExternalSyntheticLambda0
+          NAMES-ONLY x2, OWN-SOURCE x3  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresDeleteSectionKt$$ExternalSyntheticLambda1
+          NAMES-ONLY, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresDeleteSectionKt$$ExternalSyntheticLambda11
+          NAMES-ONLY, OWN-SOURCE x3  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresFieldsKt$$ExternalSyntheticLambda10
+          NAMES-ONLY, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresFieldsKt$$ExternalSyntheticLambda18
+          NAMES-ONLY, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresFieldsKt$$ExternalSyntheticLambda22
+          NAMES-ONLY x4, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresInfoContentKt$$ExternalSyntheticLambda2
+          NAMES-ONLY, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresListRowsKt$$ExternalSyntheticLambda2
+          NAMES-ONLY x5, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresListRowsKt$$ExternalSyntheticLambda6
+          NAMES-ONLY x3, OWN-SOURCE x2  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.parametres.ParametresListRowsKt$$ExternalSyntheticLambda7
+          NAMES-ONLY x5, OWN-SOURCE x2  -> a78567f
+  ADDED   ch.monreleve.app.ui.screens.parametres.ParametresScreenKt$$ExternalSyntheticLambda13
+          OWN-SOURCE  -> a78567f d77c74b f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.releve.ComposableSingletons$ReleveScreenKt
+          LAMBDA-CLASS-ID x9  -> a78567f d77c74b f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.rythme.RythmeScreenKt
+          LAMBDA-CLASS-ID x2  -> a78567f d77c74b f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.signin.CallbackScreenKt$$ExternalSyntheticLambda0
+          CALL-SITES-CHANGED x5, REFERENCES-CHANGED  -> 9954f39 a78567f b1b8d72 d77c74b f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.signin.CodeScreenKt$$ExternalSyntheticLambda2
+          CALL-SITES-CHANGED  -> d77c74b
+  CHANGED ch.monreleve.app.ui.screens.signin.CodeScreenKt$$ExternalSyntheticLambda8
+          REFERENCES-CHANGED  -> 9954f39 a78567f b1b8d72 f8a8a7c
+  CHANGED ch.monreleve.app.ui.screens.signin.ComposableSingletons$RequestLinkScreenKt$$ExternalSyntheticLambda0
+          FRAME-FROM-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.signin.WelcomeScreenKt$$ExternalSyntheticLambda0
+          REFERENCES-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationCardKt$$ExternalSyntheticLambda0
+          REFERENCES-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationCardKt$$ExternalSyntheticLambda2
+          FRAME-FROM-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda1
+          CALL-SITES-CHANGED x3, FRAME-FROM-CHANGED  -> a78567f d77c74b
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda23
+          FRAME-FROM-CHANGED  -> a78567f
+  CHANGED ch.monreleve.app.ui.screens.simulation.SimulationScreenKt$$ExternalSyntheticLambda8
+          FRAME-FROM-CHANGED  -> a78567f
+  ADDED   kotlin.jvm.functions.Function5
+          C4
+  CHANGED kotlin.jvm.internal.ClassReference
+          C4
+  CHANGED kotlin.jvm.internal.TypeIntrinsics
+          C4
+  CHANGED kotlin.math.MathKt
+          GROUP-MEMBERSHIP-CHANGED, C5, LAMBDA-CLASS-ID x3  -> a78567f d77c74b f8a8a7c
+
+PAIR 3 - 9a6dd55 -> cf485c4: none (4 334 identical).
+
+--------------------------------------------------------------------------------
+R868 - A REUSABLE COMPARISON
+--------------------------------------------------------------------------------
+EARNS ITS PLACE: android/scripts/apk-diff.mjs (commit f171564), with its
+usage in its header:
+    node android/scripts/apk-diff.mjs <before.apk> <after.apk> [--all]
+It answers, before a release, the question this task exists for: what moved
+inside the APK when its size did not. It uses Node built-ins only, is
+read-only, and adds no dependency. It prints:
+  - every moved entry, with all of its zip fields;
+  - the LEDGER, whose terms are summed and checked against the measured
+    delta;
+  - the padded entries' slack;
+  - each moved dex's map_list sections, R8 marker and, at equal length, its
+    differing byte ranges named by section;
+  - the decoded baseline.prof/.profm, with the embedded dex checksum checked
+    against the dex entry's CRC and the bitmap alignment;
+  - the signing state.
+KNOWN LIMIT, not fixed in f171564: the profile check compares EVERY profile
+line's checksum with classes.dex's CRC. On a multidex APK it would print
+"NOT EQUAL" for classes2.dex and later lines. This app is single-dex.
+It does NOT name classes. That needs both mappings, and the class-level
+attribution of R867 stays a one-off in .apk-diff-evidence/
+(dexclassdiff.mjs, attribute.mjs, profnames.mjs, summarize.mjs). It was
+iterated by hand, and two of its defects were found and fixed this session
+(DEVIATIONS 2).
+TEST: android/scripts/apk-diff.test.mjs (node --test
+android/scripts/apk-diff.test.mjs) builds its zips byte by byte and pins:
+the parser's offsets and padding; the equal-size case (+400 B of dex
+absorbed by -400 B of .so padding, and the ledger sums to 0); the control
+(growth past the padding moves the size by exactly 16 384 B, and the ledger
+still sums); and the moved-entry census.
+  RED first: ERR_MODULE_NOT_FOUND (the script did not exist yet). GREEN 4/4.
+  PLANT: the ledger's padding term forced to 0 (one line; verified landed,
+  sha changed) -> "not ok 2", "not ok 3", 2 of 4 failing. Restored, sha256
+  equal to the original, GREEN 4/4.
+NO GATE RUNS THIS TEST. gate:changed selected the base chain only ("no path
+matched the selector"), gate:clone has no android/scripts step, and no
+Android test scans android/scripts (grep of android/app/src/test and
+android/shared/src/*Test: only web/scripts paths). The same is already true
+of android/scripts/upper-bound.test.mjs.
+RUN ONCE ON A PAIR - 9a6dd55 -> cf485c4, verbatim:
+    ARCHIVE      .apk-diff-evidence/apks/9a6dd55.apk  ->  .apk-diff-evidence/apks/cf485c4.apk
+      before size 1989388  entries 113  CD @1980116 9250 B  EOCD 22 B  gap before CD 0  signing block absent  v1 files none
+      after  size 1989388  entries 113  CD @1980116 9250 B  EOCD 22 B  gap before CD 0  signing block absent  v1 files none
+    ENTRIES      moved 3, identical 110, added 0, removed 0
+      assets/dexopt/baseline.prof
+          m0 3727/3727 crc d04bba86 @256 le 3 ce 0
+       -> m0 3727/3727 crc cb85bcc0 @256 le 3 ce 0   [crc]
+      classes.dex
+          m8 1563754/3277072 crc 116c92bc @4716 le 0 ce 0
+       -> m8 1563752/3277072 crc abf10b79 @4716 le 0 ce 0   [crc,csize]
+      lib/arm64-v8a/libandroidx.graphics.path.so
+          m0 10096/10096 crc 9734baa0 @1568511 le 4281 ce 0
+       -> m0 10096/10096 crc 9734baa0 @1568509 le 4283 ce 0   [lho,le]
+    LEDGER       measured delta 0 B; sum of terms 0 B (EQUAL)
+      classes.dex: header +0, padding +0, data -2
+      lib/arm64-v8a/libandroidx.graphics.path.so: header +0, padding +2, data +0
+      central directory 0, EOCD 0, gaps 0
+      padded: assets/dexopt/baseline.prof  padding 3 -> 3  (data at 316)
+      padded: assets/dexopt/baseline.profm  padding 3 -> 3  (data at 4104)
+      padded: lib/arm64-v8a/libandroidx.graphics.path.so  padding 4281 -> 4283  (data at 1572864)
+      padded: lib/armeabi-v7a/libandroidx.graphics.path.so  padding 6214 -> 6214  (data at 1589248)
+      padded: lib/x86/libandroidx.graphics.path.so  padding 9066 -> 9066  (data at 1605632)
+      padded: lib/x86_64/libandroidx.graphics.path.so  padding 7031 -> 7031  (data at 1622016)
+      padded: resources.arsc  padding 3 -> 3  (data at 1734880)
+    DEX          classes.dex: checksum da1a0869 -> 90f8085b; method ids 21184 -> 21184; type ids 5249 -> 5249; class defs 4334 -> 4334
+      R8 marker before {"backend":"dex","compilation-mode":"release","has-checksums":false,"min-api":26,"pg-map-id":"180618c","r8-mode":"full","version":"8.10.24"}
+      R8 marker after  {"backend":"dex","compilation-mode":"release","has-checksums":false,"min-api":26,"pg-map-id":"eab54c0","r8-mode":"full","version":"8.10.24"}
+      same length: 3 differing byte ranges, 30 bytes
+        8..9 header_item: 69 -> 5b
+        10..32 header_item: 1ada2ecf942b96cb5a7f3a280ec7b83fb1cd3fd8b8d3 -> f89078251e8313549fd463567ec1dba0842f22f966ee
+        3106319..3106326 string_data_item: 31383036313863 -> 65616235346330  ("180618c" -> "eab54c0")
+    PROFILE      assets/dexopt/baseline.prof (prof): body 38629 -> 38629 B, deflated 3710 -> 3710 B; 4 body bytes differ
+      classes.dex: classes 2041 -> 2041; hot 7306 -> 7306; startup 7306 -> 7306; post-startup 7322 -> 7322
+      classes.dex: method ids 21184 (mod 8 = 0) -> 21184 (mod 8 = 0); bitmap 5296 -> 5296 B
+      classes.dex: embedded dex checksum 116c92bc -> abf10b79; the dex entry's zip CRC 116c92bc -> abf10b79 (EQUAL on both sides)
+
+--------------------------------------------------------------------------------
+PARKED
+--------------------------------------------------------------------------------
+Nothing new in parking.md (no park id taken; register-coverage not needed).
+Two items are offered to the orchestrator as QUESTIONS 2 and 3 instead of
+being parked by this session.
+
+--------------------------------------------------------------------------------
+DEVIATIONS
+--------------------------------------------------------------------------------
+1. THE MAPPINGS ARE INPUTS THE LAUNCH MESSAGE DID NOT LIST. R867 needs
+   original names. The four mapping.txt files were copied read-only from
+   C:/wt/ios2c-fix, ios2d, ios2e and ios2e-fix
+   (android/app/build/outputs/mapping/release/). Nothing was written in
+   those worktrees. They are NOT covered by SHA256SUMS.txt; R865 records
+   each one's sha256 and its three-way tie to its APK.
+   52da740's own mapping was overwritten in C:/wt/ios2d by the later
+   0616b4e build. The one used is ios2c-fix's, whose APK is byte-identical
+   to 52da740's (e1cf60f7), and whose body hash matches the marker in
+   52da740's dex.
+   They exist only in worktrees A6 will remove (QUESTION 2).
+2. THE ONE-OFF CLASS DIFF HAD TWO DEFECTS, FOUND AND FIXED BEFORE ANY NUMBER
+   HERE WAS TAKEN.
+   a) A string replacement expanded `$$` and `$1` inside deobfuscated names
+      (Foo$$ExternalSyntheticLambda0, Icon$1 -> "Icong"). My advisor found
+      it from the output. A function replacer and an assertion that the
+      rewritten line ends with the intended name fixed it. Pair 2 went from
+      66 changed classes and 58 NAMES-ONLY rows to 46 and 29.
+   b) An unordered line diff counted every line after an inserted
+      instruction as "differing", inflating the Tier-2 matches. It was
+      replaced by the in-order masked diff described in R867.
+   Pair 3, the zero control, read 0 before and after both fixes. It cannot
+   see a defect that both sides share, which is why it did not catch (a).
+3. R865's "three tables" are given as ONE full 113-row table (52da740) plus,
+   per pair, every row that moved and the count of identical rows, so the
+   report reads. `apk-diff.mjs --all` prints any side's full table.
+4. gate:changed's selection covered neither committed file (android/scripts
+   matches no selector rule), so the script's own test was run separately
+   (R868).
+5. No Gradle build and no :app:gate. The task measured existing APKs and
+   changed no Android code; the memory floor's Gradle line did not apply.
+
+--------------------------------------------------------------------------------
+QUESTIONS
+--------------------------------------------------------------------------------
+1. U1, for the advisor (the queue's C4 gate). Should OnboardingController.next's
+   block-layout change be accepted as it stands, or confirmed by building the
+   release APK at 9954f39^ and 9954f39? That is the candidate input, and a
+   Gradle step at >= 7 000 MB.
+2. This session's copies of the four mapping.txt files are in
+   C:/wt/an-apk-diff/.apk-diff-evidence/map/<sha>.mapping.txt, with their
+   sha256 in R865. Once A6 removes C:/wt/ios2c-fix, ios2d, ios2e and
+   ios2e-fix, they are the only set. They are the only way to read these
+   APKs in original names, and per AN14a the only deobfuscation key for
+   these builds. Should they join C:/wt/queue-evidence before this worktree
+   goes? This session cannot write there.
+3. android/scripts/*.test.mjs are run by no gate: apk-diff.test.mjs from this
+   task, and upper-bound.test.mjs from AN5b. Should they get one?
+
+--------------------------------------------------------------------------------
+NOTICED BUT NOT TOUCHING
+--------------------------------------------------------------------------------
+- META-INF/version-control-info.textproto reads "generate_error_reason:
+  NO_SUPPORTED_VCS_FOUND" in all five APKs. Every worktree-built release
+  carries no commit id. HYPOTHESIS: a worktree's .git is a file, not a
+  directory, and AGP's VCS detection does not follow it. This is also part
+  of why builds of the same tree in different worktrees are byte-identical.
+- The Compose finding (SUMMARY 4a) means a move :app -> :shared with
+  identical content is not a no-op for the release dex. The pixel baselines
+  could not show it: the values are recomposition hints, not pixels.
+- apksigner on JDK 26 prints restricted-method warnings before its verdict.
+  This is harmless, but whoever greps its output must skip them.
+
+--------------------------------------------------------------------------------
+CLEANUP
+--------------------------------------------------------------------------------
+Done before this report was committed:
+- gate:clone dropped its own monreleve_gate_clone_f171564a. Read afterwards
+  with `docker exec frontalier-postgres psql -U frontalier -d postgres
+  -Atc "select datname ..."`, the server lists frontalier, postgres,
+  template0 and template1. Both runs' clones in %TEMP% are "(removed)".
+- Docker: this session created no container. gate:clone's
+  test:container:write re-pointed the PRE-EXISTING tag monreleve:write (now
+  bf2575b97219; its previous id was not recorded by this session), as in
+  every gate:clone. No prune of any kind. frontalier-postgres is up. The
+  four other projects' containers listed by docker ps -a (tizicorp-app-1,
+  tizicorp-postgres-1, counterworthy-postgres, mustapha-postgres; "Exited
+  (0) 27 hours ago") were not touched.
+- Processes: none of this session's remain. A `du` this session started was
+  stopped by its own PID after TaskStop had left it running.
+- Nothing was written in C:/wt/queue-evidence, C:/wt/ios2c-fix, ios2d,
+  ios2e or ios2e-fix (read and copied from only), or in the main checkout
+  (only `git fetch` and `git worktree add` ran there; its untracked files
+  were not touched).
+- LEFT IN PLACE: the worktree C:/wt/an-apk-diff, with web/node_modules (from
+  `pnpm install --frozen-lockfile`, for gate:changed) and
+  .apk-diff-evidence/ (431 MB, gitignored). The evidence holds:
+  - the five APKs, the four mapping.txt copies, and the extracted dexes and
+    profiles;
+  - the dexdump outputs, the aapt2 and apksigner outputs;
+  - the one-off scripts: ziplayout, dexbytes, prof, dexclassdiff,
+    attribute, profnames, sites, protos, summarize;
+  - the attribution outputs and the gate logs with their sampler files.
+  Removing the worktree is the orchestrator's (A6), after this branch is
+  read.
+- The session lock C:/wt/an-apk-diff/.session-lock.json is removed after
+  this report's push. The handback states whether that happened.
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+CODE PUSH, gated on gate:clone's verified exit code, read from its log in its
+own step:
+  HEAD = f171564aeb81b2f29324cf8b25e93b47fb3fe3f0 = the commit gate:clone run 2 named
+  git push -u origin an-apk-diff  ->  * [new branch] an-apk-diff -> an-apk-diff
+  PUSH_EXIT=0
+  git ls-remote origin refs/heads/an-apk-diff
+    f171564aeb81b2f29324cf8b25e93b47fb3fe3f0  refs/heads/an-apk-diff
+Commits on an-apk-diff over ab1a583:
+  f171564  R868  android/scripts/apk-diff.mjs and apk-diff.test.mjs
+RULING NUMBERS: before the push, `git fetch origin`, then every origin head
+was grepped (relay/, REPORT-*.txt, CLAUDE.md, docs), and the main
+checkout's relay/ was grepped read-only, for R865-R870. Only
+relay/AN-APK-DIFF.txt, the prompt itself, carries them. origin/main was
+still ab1a583. R865-R868 are used as the prompt defines them; R869-R870
+are unused.
+register-coverage ON THIS REPORT'S TREE (node web/scripts/register-coverage.mjs;
+gate:changed's base chain does not run it): exit 0, "register coverage: OK -
+221 cited id(s) across 162 report(s), all have headings in parking.md".
+gate:changed ON THIS REPORT'S TREE (f171564 plus this file), under the
+sampler, before it was committed (.apk-diff-evidence/gates/gc-report.log):
+  - selection: "no path matched the selector - base chain only"
+  - typecheck exit 0, lint exit 0, test 3641 passed, build exit 0
+  - "GATE PASSED for the paths changed." STEP_EXIT=0 ABORTED=False
+  - min commit free 6 783 MB, min free physical 1 545 MB
+The lines above were then added to this section, and nothing else changed.
+THIS REPORT'S COMMIT is pushed to an-apk-diff after it is written. Its SHA
+and the push's ls-remote line are in the handback, not here, because a
+report states only what has happened.
+NOT pushed: main, production. NOT merged.
