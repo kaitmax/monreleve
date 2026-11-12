@@ -5663,3 +5663,25 @@ WHY PARKED: Not this task's subject (the guard admitted the database; 691
             Until then README.md's test:db recipe says to generate
             AUTH_SECRET as .env.example already instructs.
 STATE:      OPEN.
+
+## PARK-TG2 - pnpm test:clean-tree is red on main: the harness moves a tracked file aside and writes a root file the closed-world census refuses  [FW-TESTDB-GUARD, 2026-11-12]
+
+RAISED BY:  REPORT-FW-TESTDB-GUARD.txt, GATES (test:clean-tree, branch and
+            base); first seen in REPORT-FW-COMPARATEUR.txt's NOTICED list
+            ("6 failures unrelated to this task") and never registered.
+WHAT:       README.md requires `pnpm test:clean-tree` before any commit that
+            changes how a test reads the filesystem. On 4a65f42 (main) it
+            fails 6 tests in 3 files, identically on the fw-testdb-guard
+            branch: og-image.test.ts (4) and og-metadata.test.ts (1) read
+            public/opengraph-image.png, a TRACKED file, which the script
+            moves aside with the rest of public/; entry-points.test.ts (1)
+            finds `.tree-lock.json`, which the script's own tree lock writes
+            at the package root while the suite runs, and R246's closed-world
+            root census refuses an unclassified root file.
+WHY PARKED: A required check that is red on main cannot tell anyone whether
+            a NEW filesystem dependency arrived: every run says "failed" and a
+            reader learns to skip it. The fix is the harness's or the census's
+            (move the lock outside the package root, or classify it; restore
+            or exempt tracked files under public/), and either changes a gate
+            script, which is not this task.
+STATE:      OPEN.

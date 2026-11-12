@@ -43,9 +43,9 @@ COMPLETE on the code tip d34a007. gate:clone ran on d34a007 in this session
 and PASSED, its "ran" line naming db:deploy, test:db and test:container:write
 (pasted under GATES, STEP_EXIT=0). gate:changed PASSED before each of the
 four code commits.
-This report's own commit adds only this file. Its gate:changed and gate:clone
-run before its push and are in the hand-back: they cannot be in the file
-they verify.
+The report's two commits add only this file and parking.md's PARK-TG2. The
+gate:changed and gate:clone of the last one run before its push and are in
+the hand-back: they cannot be in the file they verify.
 CI: NO RESULT (off, R248). :app:gate not run: nothing under android/ changed.
 
 ====================================================================
@@ -205,6 +205,20 @@ set inside .ps1 scripts; `grep -c postgres *.samples.txt` = 0 for all.
    "Test Files", no tests/db file named; admitted name on db.invalid with a
    no-match filter -> "No test files found", exit 0, no REFUSED.
 
+5. THE README'S ARRANGEMENT, MEASURED: web/.env on one database, the shell
+   on another. The guard reads only the parent's DATABASE_URL, while
+   tests/db spawns children (`prisma db seed` in demo-year and
+   scenario-accounts, `migrate deploy` in fw14-era-migration). By reading,
+   each inherits the parent's environment (one is handed a deliberately
+   non-local URL to test the seed's refusal). Measured with
+   monreleve_testdb_guard (what web/.env names here) standing in for
+   frontalier, around a second full recipe run (r880-recipe-2.log, 714
+   passed on monreleve_test_mine):
+     I-before-recipe-2 04:09:17Z monreleve_testdb_guard sessions=551 xact_commit=19900 tup_inserted=33110 tup_updated=1856 tup_deleted=28482
+     J-after-recipe-2  04:10:58Z monreleve_testdb_guard sessions=551 xact_commit=19902 tup_inserted=33110 tup_updated=1856 tup_deleted=28482
+   No session and no row change on the .env database (the +2 xact_commit is
+   the background drift measured in 2). No child fell back to web/.env.
+
 UNIT TESTS OF THE NAME CHECK, near misses included (all refused):
   frontalier, frontalier_test, monreleve, monreleve_, postgres, MONRELEVE_X,
   monreleve-x, a trailing %20, `;drop`, %66rontalier, monreleve_x%2Ffoo, a
@@ -279,6 +293,23 @@ gate:changed before every commit, under the sampler (logs in
                             GATE PASSED; test 3714, test:db 714; STEP_EXIT=0
   f8a1395  changed-3-ci     base chain only; GATE PASSED; test 3724; STEP_EXIT=0
   d34a007  changed-4-doc    base chain only; GATE PASSED; test 3724; STEP_EXIT=0
+  9154595  changed-5-report base chain only; GATE PASSED; test 3724; STEP_EXIT=0
+           (the report's first commit; this amendment's own gate is in the
+           hand-back)
+test:clean-tree (README: required before a commit adding a walker), run
+after the code commits (DEVIATIONS 6):
+  branch 9154595: Test Files 3 failed | 215 passed (218)
+                  Tests 6 failed | 3718 passed (3724)
+                  test-db-guard.test.ts 56 passed, scratch-database-census
+                  26 passed - the new walker and the nested vitest pass with
+                  public/ moved aside
+  base   4a65f42: Test Files 3 failed | 213 passed (216)
+                  Tests 6 failed | 3635 passed (3641)
+  The SAME three files fail on both, measured: og-image.test.ts (4) and
+  og-metadata.test.ts (1) read public/opengraph-image.png, which the script
+  moves aside; entry-points.test.ts (1) finds `.tree-lock.json`, which the
+  script itself writes at the package root during the run. Pre-existing,
+  first noted in REPORT-FW-COMPARATEUR.txt and never registered: PARK-TG2.
 gate:clone on the code tip d34a007 (clone-d34a007.log):
   commit    d34a007faeb99965295a76ff3e2e0b641deaa4f4
   tree      clean - HEAD is everything you have
@@ -304,6 +335,10 @@ physical MB; floor 5 000; no step aborted, none near the 2 000 kill line):
   changed-4-doc     8824 / 7312 / 2731
   r880-recipe       8819 / 8020 / 3480
   clone-d34a007     8825 / 6816 / 1759
+  changed-5-report  8765 / 7299 / 1767
+  r880-recipe-2     9073 / 8238 / 2589
+  clean-tree        9074 / 7413 / 2019
+  clean-tree-base   9088 / 7536 / 2078
 
 ====================================================================
 GATE:CLONE'S ADMIN CONNECTION (the orchestrator's live-state question)
@@ -335,6 +370,13 @@ verbatim from .env.example fails 23 test:db tests, because the print files'
 `AUTH_SECRET ??=` keeps the placeholder that print-token.ts refuses by
 value. gate:clone never sees it (no .env, AUTH_SECRET scrubbed). OPEN.
 
+PARK-TG2: `pnpm test:clean-tree`, which README.md calls required before a
+commit changing how a test reads the filesystem, is red on main - 6 tests in
+og-image, og-metadata and entry-points, identical on 4a65f42 and on this
+branch. Two failures come from the harness itself: it moves public/ (which
+holds the tracked opengraph-image.png) aside, and it writes .tree-lock.json
+at the package root that R246's closed-world census then refuses. OPEN.
+
 ====================================================================
 DEVIATIONS
 ====================================================================
@@ -359,6 +401,15 @@ DEVIATIONS
    there by construction). That is a scope, not an exemption list: no file is
    named.
 5. The README section links PARK-TG1, which lands in the same commit.
+6. test:clean-tree ran after the code commits, not before 78ce2c5, which
+   added the census walker. It was run at the advisor's prompting, before the
+   push of the report. The census and the guard test pass under it; the
+   run's red is pre-existing (base comparison under GATES, PARK-TG2). The
+   base comparison was run in this worktree on a detached checkout of
+   4a65f42 with a clean tree, then switched back to fw-testdb-guard.
+7. The report is in two commits: 9154595, and an amendment carrying R878
+   point 5, test:clean-tree and PARK-TG2. Neither was pushed before the
+   amendment.
 
 ====================================================================
 QUESTIONS (none blocks this task)
