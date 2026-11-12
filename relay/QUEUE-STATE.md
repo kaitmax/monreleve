@@ -159,6 +159,17 @@ for it.
 
   The task is one docs session. Its gate selection will include the container suite, because of
   container-check.mjs.
+- **The export file's name is the server's, joined unchecked** (C8's N1, Queue Ruling 11).
+  - Android `android/app/src/main/kotlin/ch/monreleve/app/MainActivity.kt:1172`
+    (`java.io.File(dir, event.filename)`) and iOS
+    `android/shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosExportFiles.kt:44` both take the
+    Content-Disposition name exactly as `filenameOf` returns it
+    (`android/shared/src/commonMain/kotlin/ch/monreleve/app/data/remote/AuthApi.kt:473`).
+  - A name holding a path separator or `..` would write outside `exports/`, and would then also
+    escape the sign-out's export clear.
+  - The name comes from our own server, so this is not an incident.
+  - The task is a check in `filenameOf`, which covers both platforms. It changes `:shared`, so it
+    owes the R573 iOS run.
 - **C1b's `r854-fallback.sh` polls health with an unbounded `curl`**, which hung C2's first PDF run when the entrypoint refused. Later PDF proofs use C2's bounded pattern (`C:/wt/fw-secrets/.secrets-evidence/pdf-fallback.sh`: the origin read from the image's `/etc/frontalier-site-origin`, `--max-time` on curl, and a stop if the container exits).
 
 ## HOLDS (until lifted)
@@ -208,6 +219,15 @@ for it.
   - **At cleanup:** `web/.env` is removed and the database dropped, shown by a read-only
     `pg_database` listing in the report.
   - The guard reads the database NAME only, on any host.
+- **THE iOS TWINS (Queue Ruling 11, until PARK-IF4).** Three `:app` files have byte-identical
+  copies at the same relative path under `android/shared/src/iosMain/kotlin/ch/monreleve/app/`:
+  `account/DeviceLocalStore.kt`, `detection/EveningNotificationDecision.kt` and
+  `detection/ThresholdAlertDecision.kt` (the `:app` originals are under
+  `android/app/src/main/kotlin/ch/monreleve/app/`).
+  - An edit to either copy is mirrored in the other in the same commit. `IosAndroidTwinsTest`
+    fails on one byte of drift and is run by fastCheck and `:app:gate`.
+  - Because such an edit changes `:shared`, it owes the R573 iOS run.
+  - **Every Android session prompt includes this rule.**
 - **Next ruling number: R924** (C9 holds R898-R913, C10 R914-R923).
 
 ## PARKED PROMOTIONS (run in this order once the token is back)
@@ -310,11 +330,38 @@ app's uuid. Counts only: never print a history line or a value.
       reminder needs a test device registered in production by a signed-in app (the operator's,
       with the S9), the scheduler running (BLOCKED 6), and a reminder due.
 
+## WAITS ON THE APPLE ACCOUNT (IOS-1b-B)
+
+IOS-1b-B needs an app host: a bundle identifier, entitlements and a window scene, and so the
+Apple account. Its input is REPORT-IOS-2f.txt R894 (R839's list, updated by C8) and parking.md
+PARK-IF1..IF4:
+- **PARK-IF1:** the sync scheduler (BGTaskScheduler).
+- **PARK-IF2:** the share sheet.
+- **PARK-IF3:** posting the evening reminder and the threshold alert, and asking for
+  notification permission.
+- **PARK-IF4:** the move that ends the three copies. It is an `android/app` task, with
+  `:app:gate` and the R573 run.
+
+**To settle before any host calls them** (Queue Ruling 11):
+- **C8's deviation 2:** on iOS, `KeychainAccountStore.setCurrent` THROWS when a Keychain write is
+  refused; Android ignores a failed write.
+- **C8's Q1:** how far ahead the evening reminder is scheduled, and how "already notified" is
+  learnt for a reminder that fired while the app was closed. Android never schedules ahead, so
+  "the same as Android" does not settle either.
+- **C8's Q2:** on iOS the Keychain items (the token pair, the pending address, the account tag)
+  survive a reinstall, unlike everything else. Whether the first launch clears them is open.
+
 ## macOS MINUTES (cap: 60 per step, 200 for the queue)
 
 | step | run | billed min | running total |
 |---|---|---|---|
 | (start) | - | 0 | 0 |
+| C8 IOS-2f | 43174150607 on 2567ceb (the planned RED: 375 tests, 20 failures, all in new classes) | 10 | 10 |
+| C8 IOS-2f | 43177226628 on 39a384e (SUCCESS: 375 tests, 0 failures) | 4 | 14 |
+| C8 IOS-2f | the orchestrator: none. R573 was met by 43177226628 (Queue Ruling 11) | 0 | 14 |
+
+Billed minutes are the job's wall time rounded up to the minute. For every iOS run, the timing
+API reads MACOS `total_ms` 0, so its figure is not taken as the cost (C8's N2).
 
 The 27 minutes of IOS-2d / IOS-2e / IOS-2e-FIX on 2026-11-11 predate the queue.
 
@@ -344,6 +391,16 @@ until the operator's cleanup.
 and `frontalier` snapshots, and the R878 refusal logs. `C:/wt/fw-deploy-doc` (clean, pushed) holds
 C7's `.deploydoc-evidence/`, six gate logs with their sampler files. Both also hold
 web/node_modules and stay until the operator's cleanup.
+
+`C:/wt/ios2f` (clean, pushed, lock removed) holds C8's `.ios2f-evidence/`:
+- gate logs with their sampler files;
+- both iOS runs' job logs and JUnit XML (`run1/`, `run2/`);
+- `run1-expected.txt`, written before run 1 was dispatched;
+- the RED logs of the two twins plants;
+- `park-id-regex.txt`.
+
+It also holds web/node_modules and the Gradle build directories, and stays until the operator's
+cleanup.
 
 ## SERVER ACCESS
 
@@ -404,8 +461,8 @@ writes the chosen option as a task, with its baselines named (R207).
 | C4 AN-APK-DIFF | MERGED - the size explained (16 KiB alignment padding before the first .so); every dex difference tied to a commit; UNEXPLAINED U1 closed as layout-only by reading; NO release hold | branch d9192e8 (code f171564); merge 2732d39 | V1: merge-base ab1a583; 3 files (report, apk-diff.mjs, its test), no Android source. Logs in C:/wt/an-apk-diff/.apk-diff-evidence/gates/: gate:clone PASSED on f171564 with db:deploy, test:db, test:container:write in its "ran" line (run 2; run 1 skipped the database suites and is not of record), STEP_EXIT=0, ABORTED=False, min commit free 6 511 MB; gate:changed base chain 3641 passed on the script and on the report. :app:gate not run (no Android source or build change). V3 (Queue Ruling 6): the mappings saved and hash-verified; apk-diff.mjs only reads; `node --test` 4/4 on the merge tree; U1 read in both dex listings: two v32 = 0 paths share block 0035, the store to v10 is dead at 00aa, the exit is one return-void, and the try range moved with its code. Merge tree == branch tip (6cf4e51). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0); gate:clone PASSED on 12e0e27, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-12e0e27.log: STEP_EXIT=0, ABORTED=False; minimum commit free 6 760 MB, free physical 1 419 MB). main was pushed ab1a583..12e0e27. | Queue Ruling 6 |
 | C5 AN-PARAM-BASELINES | MERGED - **the seven Parametres sheets and the start-date dialog NOT delivered** (PARK-PB1, PB2; and PB3, the delete dialog with its word typed; the seam is BLOCKED 8). Delivered: 17 baselines (the list x5 states, its 11 state-driven dialogs, licences) through :app's public ParametresScreen and LicencesScreen | branch c2ff34d (code f5d39c9); merge 7a5c5a8 | V1: merge-base 12e0e27; 22 files, 17 PNGs all "A", nothing under android/app/src/main, android/shared or web. The list re-issued at d9853f6 (01:40:23Z) precedes record-1 (01:40:42Z) and is mechanically equal to the 17 that landed. Logs in C:/wt/an-param-baselines/.param-evidence/: **`:app:gate --rerun-tasks` ran on f5d39c9**, "test floor OK: 1416", "BUILD SUCCESSFUL in 8m 47s", STEP_EXIT=0. `git diff --quiet f5d39c9 7a5c5a8 -- android` exit 0. gate:clone PASSED on f5d39c9 and c2ff34d, "ran" naming db:deploy, test:db and test:container:write. register-coverage OK (224). Secret scan 0; sampler cmd= lines 0. Deviation 4: web/.env pointed at the maintenance database `postgres`, handed to C6 as live state. V3 (Queue Ruling 8): four reads PASSED. ParametresHost calls the public overload MainActivity calls; maxPercentDifference = 0.0 is read in both classes; the 100 % dates are numeric; N2's missing verticalScroll was read in source. N2 parked as release-relevant, N1/N3 on the S9, Gradle floor 8 000 MB. Merge tree == branch tip (f626a13). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0). gate:clone PASSED on 4a65f42, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-4a65f42.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 153 MB, free physical 2 341 MB; "DIRTY" = the 79 untracked operator files, 0 tracked changes). main was pushed 12e0e27..4a65f42. | Queue Rulings 7-8 |
 | C6 FW-TESTDB-GUARD | MERGED - test:db refuses any database not named `monreleve_*` before a test file loads; CI on `monreleve_ci`; every later session's web/.env changes (HOLDS) | branch 4e0f008 (code d34a007); merge 074680b | V1: merge-base 4a65f42; 13 files +1499/-10. The guard runs while the config is evaluated, after `--env-file` loaded web/.env; every tests/db connection reads DATABASE_URL. Logs in C:/wt/fw-testdb-guard/.testdb-evidence/: R878 refusal on frontalier_guard_sentinel exit 1, its table counts and tup_inserted / tup_deleted unchanged; `frontalier` refusal exit 1, counts before == final. gate:changed passed before each commit (test:db 714; unit 3641 -> 3724). gate:clone PASSED on 4e0f008, "ran" naming db:deploy, test:db and test:container:write. No URL in any sampler cmd=. R879 is shown by the census test only; **CI NO RESULT (off)**. V3 (Queue Ruling 9): three reads PASSED. The guard test's spawns use db.invalid; the census is a scan, not a list (it does not walk tests/unit or android/scripts); production's database "postgres" (docs/deploy.md, 2026-10-14) is refused. **LIMIT: the guard reads the name only, on any host.** Merge tree == branch tip (2814fbb). V2: gate:changed on the record (base chain, 3724 passed, STEP_EXIT=0). gate:clone PASSED on 2accbac, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-2accbac.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 102 MB, free physical 1 068 MB). That run was the first from a checkout whose web/.env names `frontalier`: the guard admitted gate:clone's own monreleve_gate_clone_2accbac6, and pg_database afterwards lists only frontalier, postgres, template0 and template1. main was pushed 4a65f42..2accbac. | Queue Ruling 9 |
-| C7 FW-DEPLOY-DOC | MERGED - docs/deploy.md section 10 (promote, check, roll back) from Coolify v4.5.0's source. **Section 10 has never been run, and no rollback of this app has ever run.** Keep ONE previous image (P2 item 4). Q1 / Q2 -> BLOCKED 9-10; P1 now points at 10.1 | branch 0903701 (code 165cc7b); merge c3638db | V1: merge-base 2accbac; 2 files (docs/deploy.md +471/-13, the report). Logs in C:/wt/fw-deploy-doc/.deploydoc-evidence/: gate:changed passed before each commit (base chain, 3724); gate:clone PASSED on b2ea738, 165cc7b and 0903701, "ran" naming db:deploy, test:db and test:container:write, STEP_EXIT=0. No URL in any sampler cmd=; secret scan 0; report ASCII; R886-R887 unused. V3 (Queue Ruling 10): eleven citations re-read by the orchestrator at 5ca69705 and all match: Rollback.php 59-65, job 255, 1182/1189, 1459, 1530, 3171-3193, 3227-3231, 5276-5284, 5337-5345, applications.php 21, CleanupDocker 335-338, and the API's rollback route (api.php 289, ApplicationsController 6243+). 10.3 matches the orchestrator's 2026-10-28 record. The runbook's paths all exist and its commands select: 52caca8..tip has NO migration, and the PDF check applies. The 13 removed lines are only the curl passage and corrections (a)-(c). Merge tree == branch tip (8cf1e6b). | Queue Ruling 10 |
-| C8 IOS-2f | | | | |
+| C7 FW-DEPLOY-DOC | MERGED - docs/deploy.md section 10 (promote, check, roll back) from Coolify v4.5.0's source. **Section 10 has never been run, and no rollback of this app has ever run.** Keep ONE previous image (P2 item 4). Q1 / Q2 -> BLOCKED 9-10; P1 now points at 10.1 | branch 0903701 (code 165cc7b); merge c3638db | V1: merge-base 2accbac; 2 files (docs/deploy.md +471/-13, the report). Logs in C:/wt/fw-deploy-doc/.deploydoc-evidence/: gate:changed passed before each commit (base chain, 3724); gate:clone PASSED on b2ea738, 165cc7b and 0903701, "ran" naming db:deploy, test:db and test:container:write, STEP_EXIT=0. No URL in any sampler cmd=; secret scan 0; report ASCII; R886-R887 unused. V3 (Queue Ruling 10): eleven citations re-read by the orchestrator at 5ca69705 and all match: Rollback.php 59-65, job 255, 1182/1189, 1459, 1530, 3171-3193, 3227-3231, 5276-5284, 5337-5345, applications.php 21, CleanupDocker 335-338, and the API's rollback route (api.php 289, ApplicationsController 6243+). 10.3 matches the orchestrator's 2026-10-28 record. The runbook's paths all exist and its commands select: 52caca8..tip has NO migration, and the PDF check applies. The 13 removed lines are only the curl passage and corrections (a)-(c). Merge tree == branch tip (8cf1e6b). V2: gate:changed on the record (base chain, 3724 passed, STEP_EXIT=0). gate:clone PASSED on 108af5c, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-108af5c.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 284 MB, free physical 950 MB). main was pushed 2accbac..108af5c. | Queue Ruling 10 |
+| C8 IOS-2f | MERGED - the four iOS pieces that need no app host, green on the CI simulator: KeychainAccountStore and Android's own DeviceLocalStore over the iOS stores (R889); iosSyncDrain, syncFollowUp and IosSyncTrigger.cancel (R890); IosExportFiles (R891); IosNotificationPlan over Android's two decision files (R892). **Their host halves are NOT delivered:** BGTaskScheduler, the share sheet and posting notifications are PARK-IF1..IF3 (WAITS ON THE APPLE ACCOUNT). Three :app files are byte-identical copies in iosMain (PARK-IF4; HOLDS) | branch 7d7edf7 (code 39a384e); merge 5fe042d | V1: merge-base 108af5c; 25 files, +2549/-0. Name-status shows no path under android/app, commonMain or androidMain. The three twins' blobs equal :app's (61a8e7a, b29ec2f, bd51bf8). Both runs were read from their own JUnit XML in C:/wt/ios2f/.ios2f-evidence/: 43174150607 on 2567ceb, 375 tests and 20 failures, every one in a new class that run1-expected.txt (written before dispatch) named; 43177226628 on 39a384e, 375 tests and 0 failures. 14 billed min (job wall time; the timing API reads 0). `:app:gate` on 39a384e: "test floor OK: 1416", "BUILD SUCCESSFUL in 6m 22s", STEP_EXIT=0; it started at 8 443 MB after --stop and bottomed at 3 547 MB commit free and 382 MB free physical. The twins guard is in the gate's graph: `:shared:testDebugUnitTest` UP-TO-DATE, with IosAndroidTwinsTest at 3 tests and 0 failures. gate:clone PASSED on 2567ceb, 39a384e and 7d7edf7: "tree clean", "ran" naming db:deploy, test:db and test:container:write. fastCheck r892 and r892b were NO RESULT (the `&&` pair's log held no output); r892c is green. Secret scan 0; no URL in any sampler cmd=; the report is ASCII; R888-R895 are cited only on ios2f, and R896-R897 are unused; pg_database lists frontalier, postgres, template0 and template1. Deviation 10: every fastCheck started below the Gradle floor (5 483-7 171 MB). Recorded as run: no abort and no worker death. The floor stays. V3 (Queue Ruling 11): R573 is met by 43177226628 with no fresh run. Main had not moved (merge-base == main == 108af5c); the android/ tree is 77aff97 at 39a384e, at 7d7edf7 and at the merge; and 39a384e..7d7edf7 changes only REPORT-IOS-2f.txt and parking.md, both in the workflow's paths-ignore. Merge tree == branch tip (6a224d6). V2: pending | Queue Ruling 11 |
 | C9 FW-WEB-ACCOUNT | | | | |
 | C10 FW-DELAI-RAPPEL | | | | |
 | C11 the guide and the hub | PARKED FOR THE OPERATOR - trigger not fired (REPORT-FW-CALCS-A2 lists no overlap) | - | the options and the operator's action in the C11 section above; no Search Console access here | - |

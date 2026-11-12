@@ -1092,3 +1092,116 @@ APPLIED AND VERIFIED
   production names the serving commit, and DATABASE_URL runtime-only.
 - Q3 (retention beyond one image): recorded as the source's minimum of
   one, a policy for the operator if more are wanted; not a BLOCKED item.
+
+====================================================================
+QUEUE RULING 11 - C8 (IOS-2f) HANDED BACK: MERGE WITH NO FRESH iOS RUN; THE TWINS HOLD
+====================================================================
+
+EVIDENCE (V1, read by the orchestrator from the repository, from GitHub
+and from C:/wt/ios2f/.ios2f-evidence/)
+(1) ls-remote: ios2f 7d7edf7 (code tip 39a384e), main 108af5c (the
+    merge-base), production 52caca8. Nine commits: 43e57f1 (the R888
+    map, before any code), 2567ceb (RED: stubs, plus the three Android
+    files copied), 959957b R889, c6cfe6d R890, 745551f R891, 39a384e
+    R892, and c6c6932, 4124565, 7d7edf7 (the report and parking.md).
+    25 files, +2549/-0. `git diff --stat 108af5c origin/ios2f --
+    android/app` is EMPTY. Name-status has no commonMain or androidMain
+    path: new code is in iosMain/iosTest, plus commonTest's account-store
+    contract, an androidUnitTest guard and two test inputs in
+    shared/build.gradle.kts.
+(2) The three iosMain copies have the same blob as :app's:
+    DeviceLocalStore.kt 61a8e7a, EveningNotificationDecision.kt b29ec2f,
+    ThresholdAlertDecision.kt bd51bf8.
+(3) Both iOS runs were dispatched on ios2f, as `gh run view` shows.
+    Read from their own JUnit XML:
+    - 43174150607 on 2567ceb: 375 tests, 20 failures. The failing
+      classes are exactly the eight new ones that run1-expected.txt
+      (written before dispatch) named.
+    - 43177226628 on 39a384e: 375 tests, 0 failures.
+    The timing API reads MACOS total_ms 0 for both. Job wall time:
+    9m51s and 3m53s, so 10 + 4 = 14 billed minutes, 2 of the 4 runs
+    allowed.
+(4) `:app:gate` on 39a384e: "test floor OK: 1416 unit tests observed",
+    "BUILD SUCCESSFUL in 6m 22s", STEP_EXIT=0. It started at 8 443 MB
+    after --stop; its minimum was 3 547 MB commit free and 382 MB free
+    physical.
+    gate:clone PASSED on 2567ceb, 39a384e and 7d7edf7, each with "tree
+    clean" and a "ran" line naming db:deploy, test:db and
+    test:container:write, STEP_EXIT=0.
+(5) fastCheck r892 and r892b logs read only "STEP_EXIT=1": NO RESULT
+    (an `&&` pair under the sampler); r892c is "BUILD SUCCESSFUL".
+    Every fastCheck started below the 8 000 MB Gradle floor (deviation
+    10).
+(6) Routine checks:
+    - secret scan of the diff: 0;
+    - sampler cmd= lines: no credential;
+    - the report: 0 non-ASCII bytes;
+    - R888-R895 are cited only on ios2f, R896-R897 unused;
+    - pg_database lists frontalier, postgres, template0 and template1;
+    - the worktree is clean, the lock is removed, web/.env and
+      android/local.properties are absent.
+(7) ios-shared.yml runs on workflow_dispatch and on pushes to 'ios-*'
+    branches only, never main. Its paths-ignore holds 'REPORT-*.txt'
+    and 'parking.md'.
+QUESTION: does R573 need the merge-result run the orchestrator reserved
+minutes for? And what follows from the deviations and the questions?
+
+ANSWER (the advisor, verbatim in substance)
+Merge C8, with no fresh iOS run if three reads pass. R573 asks for a
+separate merge-result run only when main has moved since the cut, and
+it has not. A --no-ff merge of a branch cut from main's tip has the
+branch tip's tree, so run 43177226628 covers it if:
+(a) `git diff --name-only 39a384e 7d7edf7` is exactly REPORT-IOS-2f.txt
+    and parking.md;
+(b) parking.md is in the workflow's paths-ignore;
+(c) a re-fetch just before the merge still shows main at 108af5c.
+The run id and the tree fact go in the merge message. If a read fails,
+spend one run with --ref ios2f at 7d7edf7, not --ref main.
+One blocking read: the copies are safe only if the twins guard runs in
+Android's gate of record. Find `:shared`'s JVM unit-test task in
+appgate-39a384e.log, or IosAndroidTwinsTest's result XML with
+tests >= 1; if it is absent, do not merge.
+Nothing else blocks. The name-status list is a stronger basis for
+"Android unchanged" than the empty android/app diff, so say so. No own
+:app:gate is needed; tree identity carries the session's.
+To record:
+- Deviation 1 (the copies): accepted as parked. It departs from R206,
+  forced by the 0-files boundary; PARK-IF4 is the operator's.
+- A HOLD: until PARK-IF4, an edit to the three :app files is mirrored
+  in iosMain and owes an R573 run. Every Android prompt carries it.
+- Deviation 2 (setCurrent throws where Android ignores the failure):
+  neither "the same" nor a STOP. No host calls it yet, so it goes to
+  IOS-1b-B's input with Q1 and Q2, settled before a host wires it.
+- N1 (the server's export filename joined unchecked, on Android too):
+  out of the report and into PARKED TASKS with file and line. Not an
+  incident; a file written outside exports/ would also escape the
+  sign-out's clear.
+- Deviation 10: recorded as run. The gate's own 382 MB free physical
+  says the floor stays.
+- Minutes: 14 for C8, labelled "job wall time, API reads 0"; 0 for
+  the orchestrator.
+
+APPLIED AND VERIFIED
+- (a) `git diff --name-only 39a384e 7d7edf7` prints REPORT-IOS-2f.txt
+  and parking.md. (b) paths-ignore holds 'REPORT-*.txt' and
+  'parking.md'. (c) After the re-fetch, origin/main is still 108af5c.
+  `git rev-parse 39a384e:android 7d7edf7:android` both print 77aff97.
+  PASS. No fresh run spent.
+- The blocking read: appgate-39a384e.log line 430, "> Task
+  :shared:testDebugUnitTest UP-TO-DATE" (in the gate's graph; its
+  declared inputs include iosMain and :app's main sources, so
+  UP-TO-DATE certifies identical inputs). Its result,
+  TEST-ch.monreleve.app.shared.IosAndroidTwinsTest.xml, reads tests="3"
+  failures="0" errors="0" (07:22:17Z, fastcheck-r892c). PASS.
+- Merged: 5fe042d (--no-ff origin/ios2f), its message carrying run
+  43177226628 and the tree fact. Merge tree == 7d7edf7's tree (6a224d6).
+- QUEUE-STATE:
+  - the C8 row MERGED;
+  - HOLDS gains THE iOS TWINS;
+  - PARKED TASKS gains the export filename (MainActivity.kt:1172,
+    IosExportFiles.kt:44, AuthApi.kt:473 filenameOf);
+  - a new section, WAITS ON THE APPLE ACCOUNT (IOS-1b-B), holds
+    PARK-IF1..IF4, deviation 2, Q1 and Q2;
+  - the minutes table has the two runs (10, 4) and the orchestrator's
+    0, total 14;
+  - EVIDENCE gains C:/wt/ios2f.

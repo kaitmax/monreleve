@@ -65,8 +65,8 @@ register-coverage.mjs (R456).
 HARD BOUNDARIES: 0 files under android/app (asserted in the report with
 `git diff --stat BASE_SHA -- android/app`). New code in iosMain/iosTest.
 A commonMain change only where an interface must be shared, with Android's
-behaviour unchanged - the full :app:gate green and the 142 Paparazzi
-baselines byte-identical at 0.0 prove it. No new dependency (Ask first).
+behaviour unchanged - the full :app:gate green and the 159 Paparazzi
+baselines (142, plus C5's 17 since 7a5c5a8) byte-identical at 0.0 prove it. No new dependency (Ask first).
 No product decision: where R839 says "an iOS implementation must decide
 the same or say otherwise", it decides THE SAME as Android, or STOPs.
 
