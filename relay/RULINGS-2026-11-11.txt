@@ -686,3 +686,182 @@ APPLIED AND VERIFIED
 - Q3 and NO_SUPPORTED_VCS_FOUND are PARKED TASKS in QUEUE-STATE. The
   gate-of-record and credential rules are in QUEUE-STATE HOLDS, where
   the C5-C10 briefs point.
+
+====================================================================
+QUEUE RULING 7 - C5 (AN-PARAM-BASELINES) ASKS: PARK THE SHEETS, OR A SEAM?
+====================================================================
+(2026-11-12 by the clock.)
+EVIDENCE (C5's message, mid-session)
+(1) Every sheet the title names is `internal` in :shared, so :app's
+    Paparazzi cannot call it: CantonSheetContent, RateSheetContent,
+    MethodSheetContent, GranularitySheetContent, StartDateSheetContent,
+    LearnMoreSheetContent, ExportChooserContent (ui/screens/parametres).
+    Each opens only on a tap, through rememberSaveable `editing` /
+    `showLearnMore` / `showExport` inside ParametresScreen, and draws in a
+    ModalBottomSheet.
+(2) The wired date dialog is `private` in :app (MaterialStartDateDialog),
+    opened only through that sheet's own `pickerOpen` state.
+(3) The R872 probe (testDebugUnitTest, STEP_EXIT=0 ABORTED=False):
+    Paparazzi 1.3.5 DOES draw a dialog window - RateChangeDialog came out
+    whole, with its scrim, over the list - so the state-driven dialogs
+    (rate change, sign-out x3, delete x2, delete outcome x4) are
+    recordable through the public ParametresScreen.
+(4) Material3's DatePickerDialog draws but is clipped at the right edge at
+    PIXEL_5 (the Saturday column and the "Choisir une date" button cut);
+    the session proposed the DatePicker content as the date baseline.
+QUESTION: park the seven sheets (PARK-PB1, the session's default), or
+authorise a visibility-only seam in :shared (internal -> public, R832's
+RateRow / CalendarEditSheetContent shape), which needs the iOS run?
+The queue's own C5 text (ORCH-NO-PHONE-QUEUE.txt 141-143) reads: "...
+each named before recording; no product change; every other baseline
+untouched." - the boundary is the operator's words.
+
+ANSWER (the advisor, verbatim in substance)
+Reply now: park all seven as PARK-PB1, no seam inside C5. The prompt's
+HARD BOUNDARY already decides it and the session shouldn't wait; C5
+stays test-only, which keeps R874's claim simple. Same message, three
+things its question skipped:
+1. Ask what the date baseline actually invokes. The wired dialog is
+   private and the session says a Material3 DatePickerDialog "also
+   draws" - if the test builds its own picker, the image is a baseline
+   of the library plus a copy of the product's setup, and stays green
+   when the product's dialog changes. Require the product symbol the
+   test calls; if none is reachable, the date dialog is parked too (PB2),
+   not recorded as a stand-in.
+2. The clipped dialog is a finding, not a fallback trigger. R872's
+   fallback is for a dialog that doesn't appear; this one appeared with
+   a column and button cut. Keep the probe image, list it under what the
+   content baseline does NOT show and in NOTICED (R873); one more probe
+   at a wider device config separates a window artefact from a width
+   problem, and if it's width-dependent it joins what waits on the S9.
+3. Re-issue the R871 list - screen, state-driven dialogs, the date item,
+   and the seven sheets marked parked - before the first record, so the
+   recorded set equals the list.
+Any test-only route to the sheets is acceptable only if it calls the
+product's composables through a visible entry point and depends on
+nothing private to the screen; otherwise parked.
+At hand-back: C5's row says the sheets were NOT delivered (as C1's did
+for readiness). Who decides the seam turns on one fact: whether "no
+product change" is in the queue's own C5 text. If it is the operator's
+words, it is a BLOCKED item naming both routes - the visibility-only
+change in R832's shape, or a Paparazzi test inside :shared's own test
+set, where internal is visible (needs a build change). If it was added
+in the drafting, I'd rule a C5b after C5 merges: visibility only for
+the seven names, R832's shape, one iOS run on the branch plus the
+merge-result run, ledgered.
+
+APPLIED
+- Replied to C5 at once (SendMessage): park the seven sheets as
+  PARK-PB1, letter confirmed free with register-coverage (R456); a
+  test-only route only through a visible product entry point, nothing
+  keyed to the screen's private state; the date baseline names the
+  product symbol it calls, or is parked as PARK-PB2, never a stand-in;
+  the clipping kept as a finding with one wider-config probe and listed
+  under NOT SHOWN and NOTICED; the R871 list re-issued as its own commit
+  before the first recordPaparazzi; SUMMARY and STATUS say the sheets
+  were NOT delivered.
+- The boundary IS the operator's words (queue lines 141-143), so the
+  seam is NOT ruled here: at C5's hand-back it becomes a BLOCKED item in
+  QUEUE-STATE naming both routes, for the operator.
+
+====================================================================
+QUEUE RULING 8 - C5 (AN-PARAM-BASELINES) HANDED BACK: MERGE, AND HOW IT IS RECORDED
+====================================================================
+
+EVIDENCE (V1, read by the orchestrator from the repository and from
+C:/wt/an-param-baselines/.param-evidence/)
+(1) Tips by ls-remote: an-param-baselines c2ff34d, main 12e0e27 (the
+    merge-base). Four commits: 3c2a074 (list 1, probe 1, PB1-PB3),
+    d9853f6 (list re-issued under Ruling 7, probe 2), f5d39c9 (tests and
+    baselines), c2ff34d (report only).
+(2) Diff 12e0e27..c2ff34d: 22 files - 17 PNGs all "A", three test files
+    under android/app/src/test, parking.md, the report. Nothing under
+    android/app/src/main, android/shared or web.
+(3) The list re-issued at d9853f6 names 17 states; mechanically equal to
+    the 17 PNG names that landed in f5d39c9; d9853f6 is an ancestor of
+    f5d39c9 and adds no PNG; expected.txt = produced.txt.
+(4) Gates read from the logs: app-gate-f5d39c9.log "test floor OK: 1416
+    unit tests observed", "BUILD SUCCESSFUL in 8m 47s", STEP_EXIT=0
+    ABORTED=False. gclone-f5d39c9.log and gclone-c2ff34d.log: "tree clean",
+    GATE:CLONE PASSED, "ran" naming db:deploy, test:db,
+    test:container:write, STEP_EXIT=0. register-coverage on the branch:
+    OK, 224 ids, PARK-PB1/PB2/PB3 headings present.
+(5) No credential in any sampler cmd= line (0 matches); secret-shape scan
+    of the non-PNG diff: 0.
+(6) Memory, the queue's first Gradle step measured: app-gate-f5d39c9
+    started at 8 195 MB commit free (after gradlew --stop) and bottomed
+    at 3 115 MB (free physical 228 MB), about 5 080 MB used; no step
+    aborted. Started at the provisional 7 000 MB it would have bottomed
+    near 1 920 MB, under the sampler's 2 000 MB kill line.
+(7) Opened by the orchestrator: signOutPendingDialogLarge (200 %) stops at
+    "2 journees n'ont pas pu etre envoyees :" - the two dates and the
+    loss sentence are cut; deleteDialogUnsynced whole.
+QUESTION: merge, and how is it recorded?
+
+ANSWER (the advisor, verbatim in substance)
+Merge C5 - nothing in the evidence blocks it. Before the merge, four
+cheap reads, each closing a claim held only secondhand:
+1. Open the three Kotlin test files: what ParametresHost calls, any
+   @Composable drawing dialog or list content itself (a stand-in is a
+   Ruling 7 breach and a round 2); maxPercentDifference = 0.0 read
+   literally in both classes.
+2. "Named before recording" is a claim about time, not ancestry: the
+   commit time of d9853f6 against record-1.samples.txt's start line.
+3. Open signOutPendingDialog at 100 %: the one delivered image with
+   formatted dates, and probe 2 found a locale giving English dates. If
+   English, a test-config fix and a round 2, not a label.
+4. Grep :shared for verticalScroll in SignOutStillPendingDialog and
+   DeleteDialog; until then N2 is "shown in the renderer, cause read in
+   source, device not consulted", not flatly real.
+How it is recorded:
+- C5's row leads with what the queue named and did not get - the sheets
+  AND the date dialog - then the 17.
+- R391 on the Android side: ":app:gate ran on f5d39c9" with `git diff
+  --quiet f5d39c9 <merge> -- android` exit 0, not "ran on the merge
+  commit". No rerun is needed.
+- The seam BLOCKED item: naming two routes alone misleads. Either route
+  reaches the sheets only if Paparazzi 1.3.5 draws a modal sheet whole,
+  which is not established. Neither route delivers the date picker:
+  probe 2 shows it clipped at a fixed 320 dp window whatever the screen
+  width, which needs a device capture or a renderer answer. Say so, so
+  an iOS run is not bought expecting C5 closed.
+- N2 parked as RELEASE-RELEVANT, not cosmetic: the dialog offers "Se
+  deconnecter quand meme" while hiding which days will be lost. The fix
+  is in :shared (the R573 iOS run); name now the one baseline that must
+  move, signOutPendingDialogLarge. Not a queue step (C5 said no product
+  change).
+- N1/N3 wait on the S9.
+- Gradle floor 8 000 MB, stated as one --rerun-tasks run (8 195 -> 3 115).
+  This session's ceiling after --stop was 8 195-8 376, so C8's brief says
+  a lower read means wait, never run.
+- Deviation 4 (web/.env pointed at the maintenance database `postgres`):
+  HOLDS unchanged; record it in the row; hand it to C6 as live state -
+  it looks like C6's subject.
+
+APPLIED AND VERIFIED
+- Read 1: ParametresScreenshotFixtures.kt:59-63 ParametresHost calls
+  ParametresScreen(state, actions, appVersion) - the three-argument
+  overload, which is :app's PUBLIC one
+  (android/app/src/main/.../ParametresStartDatePicker.kt:34), the one
+  MainActivity.kt:1042 calls; the only other composable reached is
+  :shared's public LicencesScreen (LicencesScreen.kt:24). No @Composable
+  in the tests draws dialog or list content. maxPercentDifference = 0.0
+  read at ParametresListScreenshotTest.kt:31 and
+  ParametresScreenScreenshotTest.kt:37. PASS.
+- Read 2: d9853f6 committed 2026-11-12T01:40:23Z; record-1 started
+  2026-11-12T01:40:42Z (cmd = recordPaparazziDebug filtered to the two
+  classes). The list precedes the recording by 19 s. PASS.
+- Read 3: signOutPendingDialog at 100 % reads "02.06.2026, 03.06.2026" -
+  numeric dd.MM.yyyy, not English. PASS.
+- Read 4: ParametresAccountSection.kt (SignOutStillPendingDialog, line
+  99) has no verticalScroll and no rememberScrollState anywhere in the
+  file; ParametresDeleteSection.kt DeleteDialog (line 33) scrolls at line
+  46. N2: shown in the renderer, cause read in source, device not
+  consulted.
+- Merged: 7a5c5a8 (--no-ff origin/an-param-baselines); merge tree ==
+  c2ff34d's tree (f626a13); `git diff --quiet f5d39c9 7a5c5a8 -- android`
+  exit 0.
+- QUEUE-STATE: C5 row MERGED (sheets and date dialog NOT delivered
+  first); BLOCKED 8 (the seam, with both caveats); PARKED TASKS: N2
+  release-relevant, N1/N3 waiting on the S9; HOLDS: the Gradle floor
+  8 000 MB, measured; C6's brief carries deviation 4.

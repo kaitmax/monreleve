@@ -62,6 +62,27 @@ for it.
    unwrapping one pair of outer quotes, widens what counts as a credential. **The operator's
    action:** none needed. Say so only if the quoted form should be accepted.
 
+8. **C5's SEAM - the seven Parametres sheets and the start-date dialog have NO baseline**
+   (PARK-PB1, PARK-PB2; Queue Rulings 7-8). The queue's C5 text says "no product change", and
+   the sheets are `internal` in `:shared` and open only on a tap, so C5 could not reach them.
+   There are two routes:
+   - (a) a visibility-only change in `:shared`, `internal` -> `public` for the seven names, in
+     R832's shape (RateRow / CalendarEditSheetContent). It needs the R573 iOS run on the branch
+     and on the merge result.
+   - (b) a Paparazzi test inside `:shared`'s own test set, where `internal` is visible. It needs
+     a build change (Paparazzi on `:shared`).
+
+   **Two caveats, before buying an iOS run:**
+   - **Either route reaches the sheets only if Paparazzi 1.3.5 draws a modal bottom sheet
+     whole.** That is NOT ESTABLISHED. C5's probes drew an AlertDialog whole but never a
+     ModalBottomSheet.
+   - **Neither route delivers the date picker.** Probe 2 measured Material 3's DatePickerDialog
+     clipped in a fixed 320 dp window at a 392.7 dp and a 523.6 dp screen alike. A baseline of
+     it needs a device capture (the S9) or a renderer answer.
+
+   **The operator's action:** choose (a), (b), or leave PB1/PB2 parked. Whichever is chosen, its
+   first increment is a throwaway probe that a ModalBottomSheet draws whole.
+
 ## PARKED TASKS (outside this queue - Queue Ruling 4)
 
 - **e2e/home.spec.ts:197 against the image.** test:container:e2e stops there (`database?.ok` expected null, received true), so it never reaches its PDF step. It was REPORT-FW-CHROMIUM-PIN.txt's QUESTION 1 and never ruled. The task first establishes which side is wrong. If the image's `/api/health` touches the database, that is an R375 question to hand back, not a test edit. Until then, the PDF proof for a Dockerfile change is C1b's fallback (REPORT-FW-CHROMIUM-PIN-2.txt R854).
@@ -69,6 +90,23 @@ for it.
 - **The annual PDF went from 9 to 10 pages between C1b and C2, cause NOT ESTABLISHED** (Queue Ruling 5). C1b: "image: 162997 bytes, 9 pages; here: 197462 bytes, 9 pages"; C2: "image: 163847 bytes, 10 pages; here: 199305 bytes, 10 pages". Both sides moved, and "here" renders the HTML served by the same container, so the change is in the served page, not in a renderer. C2's diff touches no renderer or dossier path. The baked-origin explanation is refuted by reading: the print page's only origin input is `MONRELEVE_VERIFICATION_ORIGIN`, which neither fallback set. **Until this is closed, every PDF proof records:** its page count, the image's baked origin, whether `MONRELEVE_VERIFICATION_ORIGIN` was set, and the render's UTC time.
 - **`android/scripts/*.test.mjs` are run by no gate** (C4's Q3, Queue Ruling 6): apk-diff and upper-bound. The task is a suite selected on `android/scripts/**` that runs `node --test`, added through its own gated task, not in a record commit. Until then, V1 runs them by hand (apk-diff: 4/4 on 2732d39).
 - **A RELEASE PREREQUISITE: worktree builds carry no commit id** (C4's NOTICED, Queue Ruling 6). All five release APKs carry `META-INF/version-control-info.textproto` = `NO_SUPPORTED_VCS_FOUND`. The likely reason, a hypothesis, is that a worktree's `.git` is a file. Every session builds in a worktree, so no release APK would carry its commit. This must be resolved, or the release built outside a worktree, before an APK is built for distribution.
+- **RELEASE-RELEVANT: at 200 % font, the sign-out dialog hides the days it is about to lose**
+  (C5's N2, Queue Ruling 8). `signOutPendingDialogLarge` stops at "2 journees n'ont pas pu etre
+  envoyees :", and the dates and the loss sentence are cut, while the dialog still offers "Se
+  deconnecter quand meme".
+  - Cause read in source: `SignOutStillPendingDialog` (`:shared`,
+    ParametresAccountSection.kt:99) has no `verticalScroll`, while `DeleteDialog`
+    (ParametresDeleteSection.kt:46) has one. Shown in the renderer; the device was not
+    consulted.
+  - The fix is a product change in `:shared`, so it needs the R573 iOS run. It must move exactly
+    one baseline: `ParametresScreenScreenshotTest_signOutPendingDialogLarge`, and that one is
+    named now.
+  - It is not a queue step, because C5 said no product change. It is a task of its own, before
+    a release.
+- **Paparazzi's dialog window is a fixed 320 dp** (C5's N1/N3, R872 probe 2: 319.5-320.0 dp at
+  every screen width). Every recorded dialog baseline certifies the renderer's dialog width, not
+  the phone's. **Waits on the S9:** is the DatePickerDialog whole on the device, and how wide is
+  the AlertDialog?
 - **C1b's `r854-fallback.sh` polls health with an unbounded `curl`**, which hung C2's first PDF run when the entrypoint refused. Later PDF proofs use C2's bounded pattern (`C:/wt/fw-secrets/.secrets-evidence/pdf-fallback.sh`: the origin read from the image's `/etc/frontalier-site-origin`, `--max-time` on curl, and a stop if the container exits).
 
 ## HOLDS (until lifted)
@@ -90,9 +128,12 @@ for it.
   - **Web heavy steps** (test:e2e, test:visual, test:container:e2e, gate:clone): commit free
     **>= 5 000 MB** before the step. Measured by C1b: gate:clone bottomed at 4 589 MB commit
     free and 261 MB free physical, with no deaths.
-  - **Gradle heavy steps** (`:app:gate`, recordPaparazzi, assembleRelease): **>= 7 000 MB** after
-    `./gradlew --stop`. This is provisional and unmeasured; the first Gradle step's minimum
-    replaces it.
+  - **Gradle heavy steps** (`:app:gate`, recordPaparazzi, assembleRelease): **>= 8 000 MB** after
+    `./gradlew --stop`. Measured by C5 (Queue Ruling 8), one run: `:app:gate --rerun-tasks` went
+    from 8 195 MB down to 3 115 MB commit free (free physical 228 MB), about 5 080 MB used, with no
+    deaths. From the old provisional 7 000 MB it would have bottomed near 1 920 MB, under the
+    sampler's kill line. On this machine the read after `--stop` was 8 195-8 376 MB that day.
+    **A lower read means wait, never run.**
   - **Every heavy step** runs under `C:/wt/queue-evidence/run-sampled.ps1 -Label <name> -WorkDir
     <dir> -Command "<cmd>" -EvidenceDir <your evidence dir>`. It samples every 10 s and, below
     2 000 MB commit free, kills ONLY the tree it started; that is NO RESULT. The step's minimum
@@ -215,6 +256,11 @@ ios2d, ios2e and ios2e-fix loses nothing that is recorded. `C:/wt/an-apk-diff` (
 about 431 MB of evidence plus web/node_modules) stays until the operator's cleanup; nothing in it
 is needed by a later step.
 
+`C:/wt/an-param-baselines` (clean, pushed) holds C5's evidence in `.param-evidence/`: gate logs
+with sampler files, both R872 probes' images and crops, `expected.txt` / `produced.txt`, and
+`r874-diffstat.txt`. It also holds web/node_modules and the Gradle build directories. It stays
+until the operator's cleanup.
+
 ## SERVER ACCESS
 
 SSH `monreleve-vps` (root on the shared VPS 164.132.85.231, key `id_ed25519_monreleve_vps`). Within
@@ -271,8 +317,8 @@ writes the chosen option as a task, with its baselines named (R207).
 | C1b FW-CHROMIUM-PIN-2 (Queue Ruling 2, before C2) | MERGED - the pin is 156.0.8078.79-1~deb12u1; no promotion of its own (it rides P1, item 0) | branch 0df4463 (code 8559d89); merge 7065b1b | V1 checks: diff bf2b77b..8559d89 = web/Dockerfile 1+/1-. R852: madison 18:06:22Z offered .79 and 150.0.7871.100; the R249 refusal on bf2b77b is "#14 6.960 R249: ... .73 ... not installable". gate:changed on 8559d89: 3622 passed, test:container 22, chromium "#12 DONE 132.0s" from the archive, live binary 156.0.8078.79. gate:clone PASSED on 8559d89 (STEP_EXIT=0, ABORTED=False); its normalized log has every step tail identical to clone-bf2b77b.log. R854: container:e2e 352 passed, 1 failed at home.spec.ts:197 (parked task); the fallback container-auth + container-pdf on the .79 image gave 9 passed, "[pdf] image: 162997 bytes, 9 pages". R855: visual 168 passed, none moved; three warm starts 2.31 / 2.29 / 2.33 s, not comparable with C1's. Memory minimums: commit free 4 589 MB, free physical 219 MB, no deaths. Merge tree == branch on web/docs/report. V2: gate:clone PASSED on f0ff349, the commit carrying this row (scratchpad clone-f0ff349.log: GATE:CLONE PASSED, STEP_EXIT=0, ABORTED=False; minimum commit free 6 932 MB, free physical 243 MB). main was pushed bf2b77b..f0ff349. | Queue Rulings 3-4 |
 | C2 FW-SECRETS | MERGED - R858-R862 in; the Coolify setting, deploy, image count, image hygiene and key rotation PARKED as P2 | branch 82bdc17 (code 8c27bb9); merge d036e67 | V1: merge-base f0ff349; 12 files +1193/-18; web/Dockerfile comment only, ARG set NODE_IMAGE / CHROMIUM_VERSION / NEXT_PUBLIC_SITE_URL. Logs read from C:/wt/fw-secrets/.secrets-evidence/: gate:clone PASSED on 8c27bb9 ("tree clean", STEP_EXIT=0, ABORTED=False, min commit free 6 775 MB); gate:changed GATE PASSED before each commit (3624 / 3626 / 3641; test:container 28; test:db 714); session minimum commit free 4 945 MB, no deaths. PDF fallback 9 passed, "image ... 10 pages; here ... 10 pages" (the 9 -> 10 move is a parked task). Secret-shape scan of the diff: 0. V3 (Queue Ruling 5): three reads PASSED - history printed as names and counts only; the refusal detail reaches no route; the twice-escaped key throws ERR_OSSL_UNSUPPORTED at signing while the control signs, so deviation 1 stands. Merge tree == branch tip (b104a05). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0); gate:clone PASSED on ab1a583, the commit carrying this row (scratchpad clone-ab1a583.log: GATE:CLONE PASSED, STEP_EXIT=0, ABORTED=False; minimum commit free 6 698 MB, free physical 926 MB). main was pushed f0ff349..ab1a583. | Queue Ruling 5 |
 | C3 DB password rotation (prepare) | PARKED FOR THE OPERATOR (prepared, never executed) | - | relay/DB-ROTATION-PLAN.md: inventory, backup, stage env, ALTER ROLE, restart, align Coolify record, verify both directions (old password refused, new accepted), backups, rollback. Option B struck by C1's R844 (Queue Ruling 2): the release gate is the image's `/api/health`, which a container with a wrong password passes. Basis: relay/QUEUE-2026-10-28.txt "A Coolify restart applies env (measured)" - not re-run (no token). **Operator action:** authorise the rotation with a time; then the plan runs as written. | - |
-| C4 AN-APK-DIFF | MERGED - the size explained (16 KiB alignment padding before the first .so); every dex difference tied to a commit; UNEXPLAINED U1 closed as layout-only by reading; NO release hold | branch d9192e8 (code f171564); merge 2732d39 | V1: merge-base ab1a583; 3 files (report, apk-diff.mjs, its test), no Android source. Logs in C:/wt/an-apk-diff/.apk-diff-evidence/gates/: gate:clone PASSED on f171564 with db:deploy, test:db, test:container:write in its "ran" line (run 2; run 1 skipped the database suites and is not of record), STEP_EXIT=0, ABORTED=False, min commit free 6 511 MB; gate:changed base chain 3641 passed on the script and on the report. :app:gate not run (no Android source or build change). V3 (Queue Ruling 6): the mappings saved and hash-verified; apk-diff.mjs only reads; `node --test` 4/4 on the merge tree; U1 read in both dex listings: two v32 = 0 paths share block 0035, the store to v10 is dead at 00aa, the exit is one return-void, and the try range moved with its code. Merge tree == branch tip (6cf4e51). | Queue Ruling 6 |
-| C5 AN-PARAM-BASELINES | | | | |
+| C4 AN-APK-DIFF | MERGED - the size explained (16 KiB alignment padding before the first .so); every dex difference tied to a commit; UNEXPLAINED U1 closed as layout-only by reading; NO release hold | branch d9192e8 (code f171564); merge 2732d39 | V1: merge-base ab1a583; 3 files (report, apk-diff.mjs, its test), no Android source. Logs in C:/wt/an-apk-diff/.apk-diff-evidence/gates/: gate:clone PASSED on f171564 with db:deploy, test:db, test:container:write in its "ran" line (run 2; run 1 skipped the database suites and is not of record), STEP_EXIT=0, ABORTED=False, min commit free 6 511 MB; gate:changed base chain 3641 passed on the script and on the report. :app:gate not run (no Android source or build change). V3 (Queue Ruling 6): the mappings saved and hash-verified; apk-diff.mjs only reads; `node --test` 4/4 on the merge tree; U1 read in both dex listings: two v32 = 0 paths share block 0035, the store to v10 is dead at 00aa, the exit is one return-void, and the try range moved with its code. Merge tree == branch tip (6cf4e51). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0); gate:clone PASSED on 12e0e27, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-12e0e27.log: STEP_EXIT=0, ABORTED=False; minimum commit free 6 760 MB, free physical 1 419 MB). main was pushed ab1a583..12e0e27. | Queue Ruling 6 |
+| C5 AN-PARAM-BASELINES | MERGED - **the seven Parametres sheets and the start-date dialog NOT delivered** (PARK-PB1, PB2; and PB3, the delete dialog with its word typed; the seam is BLOCKED 8). Delivered: 17 baselines (the list x5 states, its 11 state-driven dialogs, licences) through :app's public ParametresScreen and LicencesScreen | branch c2ff34d (code f5d39c9); merge 7a5c5a8 | V1: merge-base 12e0e27; 22 files, 17 PNGs all "A", nothing under android/app/src/main, android/shared or web. The list re-issued at d9853f6 (01:40:23Z) precedes record-1 (01:40:42Z) and is mechanically equal to the 17 that landed. Logs in C:/wt/an-param-baselines/.param-evidence/: **`:app:gate --rerun-tasks` ran on f5d39c9**, "test floor OK: 1416", "BUILD SUCCESSFUL in 8m 47s", STEP_EXIT=0. `git diff --quiet f5d39c9 7a5c5a8 -- android` exit 0. gate:clone PASSED on f5d39c9 and c2ff34d, "ran" naming db:deploy, test:db and test:container:write. register-coverage OK (224). Secret scan 0; sampler cmd= lines 0. Deviation 4: web/.env pointed at the maintenance database `postgres`, handed to C6 as live state. V3 (Queue Ruling 8): four reads PASSED. ParametresHost calls the public overload MainActivity calls; maxPercentDifference = 0.0 is read in both classes; the 100 % dates are numeric; N2's missing verticalScroll was read in source. N2 parked as release-relevant, N1/N3 on the S9, Gradle floor 8 000 MB. Merge tree == branch tip (f626a13). | Queue Rulings 7-8 |
 | C6 FW-TESTDB-GUARD | | | | |
 | C7 FW-DEPLOY-DOC | | | | |
 | C8 IOS-2f | | | | |
