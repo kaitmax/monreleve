@@ -7,6 +7,13 @@
 # PostgreSQL, and asserting them against a fake would assert my model of
 # PostgreSQL rather than PostgreSQL.
 #
+# THE TESTS RUN IN THIS CONTAINER, NEVER IN THE `frontalier` DATABASE (R877).
+# Every test:db file empties the table it owns, so the suite refuses any
+# database whose name is not a scratch name (`monreleve_*`, defined in
+# web/lib/db/scratch-database.mjs). `frontalier`, created below, is the
+# development database `pnpm dev` uses. README.md has the recipe for a scratch
+# database next to it.
+#
 # THE PORT IS NOT 5432, AND THAT IS DELIBERATE. This machine already runs two
 # other projects' database containers on 5434 and 5435, and the default port is
 # the one most likely to be occupied by something a developer cares about.

@@ -5640,3 +5640,48 @@ WHY PARKED: `typed` is rememberSaveable state local to DeleteDialog (an
             (deleteDialog, deleteDialogUnsynced).
 STATE:      OPEN - with PARK-PB1's seam (DeleteDialog public), or an initial-word
             parameter (a product change).
+
+## PARK-TG1 - a web/.env copied verbatim from .env.example fails 23 test:db tests: the print surfaces keep the AUTH_SECRET placeholder  [FW-TESTDB-GUARD, 2026-11-12]
+
+RAISED BY:  REPORT-FW-TESTDB-GUARD.txt, DEVIATIONS 1 (the first gate:changed
+            run of increment 1, log changed-1-r877).
+WHAT:       With web/.env copied from web/.env.example, `pnpm test:db`
+            reported 3 failed files and 23 failed tests (print-route 19,
+            dossier-route 3, export-pdf 1), all on the print surfaces. Those
+            files set `process.env.AUTH_SECRET ??= '<test secret>'`, and `??=`
+            keeps the placeholder `change-me-local-only-not-for-deployment`
+            the file supplies; lib/export/print-token.ts then refuses it BY
+            VALUE (correctly) and the print route answers notFound. With a
+            generated AUTH_SECRET in the same web/.env: 714 passed.
+            gate:clone never sees it: the clone has no .env and scrubs
+            AUTH_SECRET, so `??=` assigns the test's own secret.
+WHY PARKED: Not this task's subject (the guard admitted the database; 691
+            tests ran on it), and the fix is a choice between two shapes that
+            each touch tests/db or the env contract: the tests assign their
+            secret unconditionally (`=` rather than `??=`, restoring it after),
+            or they treat the placeholder as unset. Either selects test:db.
+            Until then README.md's test:db recipe says to generate
+            AUTH_SECRET as .env.example already instructs.
+STATE:      OPEN.
+
+## PARK-TG2 - pnpm test:clean-tree is red on main: the harness moves a tracked file aside and writes a root file the closed-world census refuses  [FW-TESTDB-GUARD, 2026-11-12]
+
+RAISED BY:  REPORT-FW-TESTDB-GUARD.txt, GATES (test:clean-tree, branch and
+            base); first seen in REPORT-FW-COMPARATEUR.txt's NOTICED list
+            ("6 failures unrelated to this task") and never registered.
+WHAT:       README.md requires `pnpm test:clean-tree` before any commit that
+            changes how a test reads the filesystem. On 4a65f42 (main) it
+            fails 6 tests in 3 files, identically on the fw-testdb-guard
+            branch: og-image.test.ts (4) and og-metadata.test.ts (1) read
+            public/opengraph-image.png, a TRACKED file, which the script
+            moves aside with the rest of public/; entry-points.test.ts (1)
+            finds `.tree-lock.json`, which the script's own tree lock writes
+            at the package root while the suite runs, and R246's closed-world
+            root census refuses an unclassified root file.
+WHY PARKED: A required check that is red on main cannot tell anyone whether
+            a NEW filesystem dependency arrived: every run says "failed" and a
+            reader learns to skip it. The fix is the harness's or the census's
+            (move the lock outside the package root, or classify it; restore
+            or exempt tracked files under public/), and either changes a gate
+            script, which is not this task.
+STATE:      OPEN.

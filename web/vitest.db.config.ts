@@ -16,8 +16,30 @@
 // ONE FILE AT A TIME, ONE WORKER. These tests share a database and each one
 // starts by emptying the table it owns. Run in parallel, "exactly one row"
 // would be a statement about scheduling rather than about the constraint.
+//
+// ============================================================================
+// R877: AND BECAUSE EACH ONE EMPTIES A TABLE, THE SUITE REFUSES ANY DATABASE
+// THAT IS NOT A SCRATCH ONE - BEFORE A SINGLE TEST FILE IS LOADED
+// ============================================================================
+//
+// web/.env points DATABASE_URL at the shared development database, so
+// `pnpm test:db` from a checkout holding that file used to empty the
+// developer's data. The check runs HERE, while this file is evaluated, which
+// is earlier than any globalSetup and earlier than test-file collection: a
+// refused URL ends the process with the refusal text and no test file is ever
+// imported. It is in the config rather than in package.json's script because
+// the config is the one door: scripts/container-e2e.mjs runs vitest with this
+// config directly, never through `pnpm test:db`.
+//
+// The pattern and the refusal text live in lib/db/scratch-database.mjs, the
+// one home (R206). tests/unit/meta/test-db-guard.test.ts drives this file in a
+// real vitest process in both directions.
 
 import { defineConfig } from 'vitest/config';
+
+import { assertScratchTestDatabase } from './lib/db/scratch-database.mjs';
+
+assertScratchTestDatabase(process.env.DATABASE_URL);
 
 export default defineConfig({
   resolve: {
