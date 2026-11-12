@@ -11,15 +11,18 @@ SSH, no :shared change. Evidence: C:/wt/an-param-baselines/.param-evidence/
 --------------------------------------------------------------------------------
 SUMMARY
 --------------------------------------------------------------------------------
-IN PROGRESS. This commit re-issues the R871 list under Queue Ruling 7 and records
-R872's second probe. Nothing is recorded yet.
-THE SEVEN SHEETS AND THE START-DATE DIALOG WILL NOT BE DELIVERED: they are PARKED
+IN PROGRESS. This commit adds the 17 baselines named in the re-issued R871 list,
+their three test files, and R873's look at every image.
+  - recordPaparazziDebug ran filtered to the two new classes.
+  - It produced exactly the 17 named files and touched no existing one: git status
+    showed 17 "??" lines and no "M".
+THE SEVEN SHEETS AND THE START-DATE DIALOG ARE NOT DELIVERED: they are PARKED
 (PARK-PB1, PARK-PB2).
 
 --------------------------------------------------------------------------------
 STATUS (R391)
 --------------------------------------------------------------------------------
-List re-issued, nothing recorded. FULL GATE NOT RUN.
+Increments green under fast check. FULL GATE NOT RUN on this commit.
 
 --------------------------------------------------------------------------------
 R871 - THE STATES, NAMED BEFORE ANY RECORDING
@@ -200,6 +203,100 @@ CONSEQUENCE
   state-driven AlertDialogs are recorded as composed, window and scrim included.
 
 --------------------------------------------------------------------------------
+R873 - EVERY IMAGE LOOKED AT (one line per image)
+--------------------------------------------------------------------------------
+How each image was read:
+  - The dialog images (461 x 1000, Paparazzi's scaled size) were opened whole.
+  - The list images (1 080 px wide, device resolution) were opened whole. The 200 %
+    one was also cropped into three 2 600 px bands and read at full size
+    (.param-evidence/crops/).
+  - "Whole" for a list means its last content row was measured above the image's
+    bottom edge, with blank background below it (System.Drawing, the background
+    pixel against every sixth column).
+  - Copy was compared against the ParametresCopy / OnboardingCopy / LicencesCopy
+    constants. The French is not retyped here (R168): constants are named instead.
+Prefix: ch.monreleve.app.ui.screens.parametres_. Each line names the class and the
+test.
+
+ 1. List/parametresList.
+    - The whole list: TITLE; four section headings; SITUATION rows reading Geneve /
+      "100 %" / METHOD_SIMPLIFIED / GRANULARITY_DAY / START_DATE_EMPTY; the rhythm row;
+      detection and alert switches off, no evening row; the sign-out, export and
+      red delete rows with DELETE_ROW_HELPER; seven A propos rows ending "Version
+      1.0.0"; both disclaimers.
+    - Content ends at row 4 699 of 5 800. Nothing clipped.
+ 2. List/parametresListFilled.
+    - "80 %", METHOD_EXACT, GRANULARITY_HALF_DAY, 02.03.2026.
+    - Three switches on, and the EVENING row present between "En savoir plus" and
+      the alert.
+    - Ends at 5 227 of 5 800. Nothing clipped.
+ 3. List/parametresListEmpty.
+    - CANTON_PLACEHOLDER under the canton label.
+    - The rate row shows its label over an EMPTY value line; the row keeps its height
+      (rateValue returns the raw empty string).
+    - Ends at 4 699. Nothing clipped.
+ 4. List/parametresListSaving.
+    - All three switches drawn disabled. Detection's ON thumb and track are greyed.
+    - The chevron rows are unchanged: SAVING disables only the switches.
+    - Ends at 5 227. Nothing clipped.
+ 5. List/parametresListLarge (200 %).
+    - Labels wrap onto two lines (e.g. "Decompte des journees", "Debut d'activite
+      (facultatif)", "Supprimer mon compte").
+    - The switches stay beside their first line, and the chevrons stay
+      right-aligned.
+    - Ends at 7 539 of 12 000. Nothing clipped (read band by band).
+ 6. Screen/rateChangeDialog.
+    - RATE_CHANGE_TITLE, RATE_CHANGE_BODY, the RateRows "0,41 %" / "0,83 %",
+      RATE_CHANGE_CONFIRM filled and RATE_CHANGE_CANCEL as text.
+    - Centred and whole, the list dimmed by the scrim.
+ 7. Screen/signOutSendingDialog.
+    - SIGN_OUT_CONFIRM_TITLE and SIGN_OUT_SENDING, no button.
+    - Whole.
+ 8. Screen/signOutDialog.
+    - SIGN_OUT_CONFIRM_BODY; SIGN_OUT_CANCEL and SIGN_OUT side by side.
+    - Whole.
+ 9. Screen/signOutPendingDialog.
+    - The body, then stillPendingWarning in the error colour, naming "2" days and
+      both dates as 02.06.2026, 03.06.2026.
+    - SIGN_OUT_RETRY / SIGN_OUT_ANYWAY / SIGN_OUT_CANCEL stacked.
+    - Whole.
+10. Screen/signOutPendingDialogLarge (200 %). LABELLED: SEE N2.
+    - The dialog fills the screen's height.
+    - Its text stops after the warning's first clause: the two dates and the "lost
+      if you sign out" sentence are cut off, and that text does not scroll.
+    - The three actions are whole. Recorded as-is.
+11. Screen/deleteDialog.
+    - DELETE_TITLE, DELETE_INTRO, the four destruction lines (42 entries first),
+      DELETE_IRREVERSIBLE in red, DELETE_EXPORT_OFFER and its two export buttons,
+      deleteTypePrompt, an empty field, DELETE_CONFIRM disabled (grey),
+      DELETE_CANCEL.
+    - Whole.
+12. Screen/deleteDialogUnsynced.
+    - As 11, plus unsyncedWarning for "3" days in red, before the irreversible line.
+    - It nearly fills the height, with nothing cut.
+13. Screen/deleteDoneDialog.
+    - DELETE_DONE_TITLE, deleteDoneBody(42), DELETE_DONE_ACK.
+    - Whole.
+14. Screen/deleteDoneAlertDialog.
+    - As 13, plus DELETE_ALERT_REMAINS as a second paragraph.
+    - Whole.
+15. Screen/deleteRefusedDialog.
+    - DELETE_TITLE, DELETE_REFUSED, DELETE_ACK.
+    - Whole.
+16. Screen/deleteUnknownDialog.
+    - DELETE_TITLE, DELETE_UNKNOWN, DELETE_ACK.
+    - Whole.
+17. Screen/licences.
+    - BACK; TITLE; DATA_HEADING; OSM_ATTRIBUTION; ODBL_BODY; ODBL_LINK;
+      OSS_HEADING; OSS_BODY; APACHE_LINK.
+    - Whole, on one screen with room below.
+Context the images cannot carry:
+  - On the device, the rate-change dialog normally appears over an OPEN EDIT SHEET
+    (the save flow), not over the bare list.
+  - The sheets themselves are PARK-PB1, so these baselines show the dialog over the
+    list.
+
+--------------------------------------------------------------------------------
 NOTICED BUT NOT TOUCHING
 --------------------------------------------------------------------------------
 N1. Material 3's DatePickerDialog, as MaterialStartDateDialog composes it, is drawn
@@ -207,3 +304,15 @@ N1. Material 3's DatePickerDialog, as MaterialStartDateDialog composes it, is dr
     shows this does not depend on the screen width (above). Whether a phone shows it
     whole is the S9's to answer (the orchestrator parks it); on a phone narrower than
     360 dp it cannot fit.
+N2. At 200 % on a PIXEL_5, SignOutStillPendingDialog cuts off the very text it exists
+    to show (signOutPendingDialogLarge).
+    - What is cut: the two dates and the sentence saying they are lost if the person
+      signs out (R440).
+    - Why, as read from the code:
+      - the warning sits in AlertDialog's `text` slot inside a plain Column with no
+        verticalScroll (DeleteDialog's has one);
+      - the stacked confirm column takes its full height;
+      - so the text slot is squeezed and its end clipped.
+    - The phone was not consulted.
+    - Recorded as-is and labelled. The fix (a scroll, or a different layout at large
+      font) is a product change, so it is not this task's.
