@@ -112,6 +112,21 @@ for it.
     - fix forward only;
     - or require additive, backward-compatible migrations.
 
+11. **THE CALCULATOR PAGE CANNOT CARRY THE HEADER'S SIGN-IN LINK UNDER GATE A** (C9, Queue
+    Rulings 21-22). Every figure is gzip-9 bytes from a fresh build, as check-budgets measures it.
+    - `/calculateur-teletravail-frontalier` reads **127 946 B against 128 000 B on db68601**: 54 B
+      spare.
+    - **The link costs about 97 B on every shell page, even rendered on the server**: the class
+      map, the copy, the product-state read and lucide's client reference.
+    - With the server link the calculator reads **128 042 B, 42 B over**.
+    - C9's leanest candidate (no class, a wrapper element, the copy split out) reads 128 002 B,
+      still 2 B over, with the header's HTML changed.
+    - **C9 is PARKED on this alone.** **The operator's action, one of:**
+      - free bytes on that route (42 B lets the server link pass) - a refactor of the calculator's
+        client code, as its own gated task;
+      - or set GATE A to a STATED value, for that route or for all (R2; Ask-first).
+    - C9's report carries the per-route byte table and the calculator's route-only chunks.
+
 ## PARKED TASKS (outside this queue - Queue Ruling 4)
 
 - **e2e/home.spec.ts:197 against the image.** test:container:e2e stops there (`database?.ok` expected null, received true), so it never reaches its PDF step. It was REPORT-FW-CHROMIUM-PIN.txt's QUESTION 1 and never ruled. The task first establishes which side is wrong. If the image's `/api/health` touches the database, that is an R375 question to hand back, not a test edit. Until then, the PDF proof for a Dockerfile change is C1b's fallback (REPORT-FW-CHROMIUM-PIN-2.txt R854).
@@ -170,6 +185,64 @@ for it.
   - The name comes from our own server, so this is not an incident.
   - The task is a check in `filenameOf`, which covers both platforms. It changes `:shared`, so it
     owes the R573 iOS run.
+- **`web/scripts/visual.mjs` cannot run one spec, and reinstalls node_modules on every run**
+  (C9, Queue Ruling 16).
+  - Its container command is fixed (line 171), and `--update` is its only argument.
+  - The install into an anonymous volume takes 10.5 of the run's ~25 minutes.
+  - The task is a filter pass-through and/or a cached install, as a gated change of its own with
+    a test. Until then, a visual proof runs the full suite.
+- **The calculator's error-state capture did not repeat; FIXED on C9's branch by R912 (db68601),
+  in force on main when C9 merges** (Queue Rulings 15-20).
+  - **The frequent drift's trigger: a FOCUSED INVALID FIELD under FULL-PAGE capture.** Whether
+    the fractional geometry contributes is NOT established (see "Still open").
+    - Measured on Windows (r18-diagnosis-windows.txt): the vide and rempli states give one hash;
+      a viewport clip of the error state gives one hash; a blurred invalid field gives one; focus
+      on a valid field gives one. Only focus in the invalid field, with full-page capture, drifts.
+    - No DOM mutation occurs; after 10 s of idle the first capture is unchanged, so it is a
+      capture artefact.
+    - Why main passed: the comparison accepts a first capture equal to the baseline, and main's
+      baseline (2622489) is the usual first capture. A regeneration writes the settled image,
+      which under the gate's load never settled (gate-changed-inc23-2.log: 167 passed, 1 failed).
+  - **The fix (R912, e2e/calculateur.visual.spec.ts, the erreur state only):** blur
+    `#taux-activite` after the fill, then assert `aria-invalid="true"`.
+    - Focus draws nothing on that field: outline, box-shadow and border are computed identical
+      focused and blurred, and the field crop differs by 0 of 21 744 px.
+    - The page-wide bytes do change: 158 251 px, largest channel difference 127, box x 151-1285
+      y 501-3470. C9 reads it as rasterisation, not visible. **The orchestrator crops and looks at
+      V1 (R135).**
+    - Proof (container, real visual.mjs): fixed arm 5/5 contexts with first = settled = e02bff;
+      unfixed arm 3 settled hashes.
+    - The gate on db68601: test:visual 168 passed, 0 failed, 0 flaky, both erreur tests on
+      attempt 1. Regenerated: calculateur-erreur-desktop.png only; mobile was unchanged.
+  - **Still open (Queue Ruling 20): a rarer, fainter variant remains.**
+    - In ONE of three regenerations of the same code (visual-update-3.log),
+      calculateur-panneau-avis-provisoire-desktop.png differed by 28 px, every channel within 1-4,
+      at x 1285-1287 y 1819-2007: the result column's right edge. The first erreur compare reached
+      the same edge.
+    - That state ends with focus in a VALID field (#total-jours). Its cause is not established.
+    - C9 commits the image update-1 and update-2 wrote identically; the gate must reproduce it.
+    - The comparator's erreur test clicks submit, so its focus is on a button, and its baselines
+      were stable (R267 checked).
+  - Evidence: C:/wt/fw-web-account/.webaccount-evidence/ (r16-evidence-run/, r18-diagnosis*,
+    r19-item1-*, r910-avis/).
+- **The calculator page has 54 B of GATE A headroom** (Queue Rulings 21-22; BLOCKED 11).
+  - `/calculateur-teletravail-frontalier` reads 127 946 B against 128 000 B on db68601, measured
+    by C9 from a fresh build. The figure is not in gate:clone's log, whose 14-line tail cuts it
+    off.
+  - Any client code that the route loads, including a string in a shared copy or routes module,
+    can breach GATE A.
+  - `gate:changed` does not run `size`; gate:clone does. So a session touching `app/**`,
+    `lib/ui/**`, `lib/fr/**` or `lib/content/**` runs build and size, from a fresh `.next`, before
+    committing.
+- **Two retries behind the zero tolerance** (Queue Ruling 17). `scripts/visual.mjs` passes
+  `CI=true` into the container (line 318). The comment beside it is about pnpm and the
+  node_modules mount, not about retries. playwright.config.ts line 26 gives `retries: 2` when CI is
+  set, so a visual baseline may pass on its third attempt: R345's zero tolerance currently means
+  zero tolerance over up to three captures.
+  - The retries did NOT keep the drift green on main (Queue Ruling 18). In C9's flag-off run the
+    error page passed on attempt 1 with no retry; the first-capture comparison is what passes it.
+    The retries question stands on its own.
+  - Whether the retries stay is the operator's call (R345). It is not changed in this queue.
 - **C1b's `r854-fallback.sh` polls health with an unbounded `curl`**, which hung C2's first PDF run when the entrypoint refused. Later PDF proofs use C2's bounded pattern (`C:/wt/fw-secrets/.secrets-evidence/pdf-fallback.sh`: the origin read from the image's `/etc/frontalier-site-origin`, `--max-time` on curl, and a stop if the container exits).
 
 ## HOLDS (until lifted)
@@ -402,6 +475,19 @@ web/node_modules and stay until the operator's cleanup.
 It also holds web/node_modules and the Gradle build directories, and stays until the operator's
 cleanup.
 
+**`C:/wt/fw-web-account` MUST NOT BE REMOVED** (Queue Ruling 22).
+- C9's increment exists only in its gitignored `.webaccount-evidence/`, so `git status` there
+  reads clean and nothing else protects it. It holds:
+  - `gated-tree-1/` (164 files, MANIFEST.txt);
+  - `refactor-tree/` (diff sha 7cd5727e33d4d125);
+  - `inc4-tree-2/`;
+  - the regenerated 109 baselines, with their provenance.
+- It also holds every diagnosis and gate log of Rulings 12-22.
+- The orchestrator copies the saved trees and the patch to `C:/wt/queue-evidence/fw-web-account/`,
+  with checksums, once C9 hands back.
+- **Resume cost:** if C10 lands first, C9's privacy files and baselines need a rebase and a fresh
+  regeneration.
+
 ## SERVER ACCESS
 
 SSH `monreleve-vps` (root on the shared VPS 164.132.85.231, key `id_ed25519_monreleve_vps`). Within
@@ -462,7 +548,7 @@ writes the chosen option as a task, with its baselines named (R207).
 | C5 AN-PARAM-BASELINES | MERGED - **the seven Parametres sheets and the start-date dialog NOT delivered** (PARK-PB1, PB2; and PB3, the delete dialog with its word typed; the seam is BLOCKED 8). Delivered: 17 baselines (the list x5 states, its 11 state-driven dialogs, licences) through :app's public ParametresScreen and LicencesScreen | branch c2ff34d (code f5d39c9); merge 7a5c5a8 | V1: merge-base 12e0e27; 22 files, 17 PNGs all "A", nothing under android/app/src/main, android/shared or web. The list re-issued at d9853f6 (01:40:23Z) precedes record-1 (01:40:42Z) and is mechanically equal to the 17 that landed. Logs in C:/wt/an-param-baselines/.param-evidence/: **`:app:gate --rerun-tasks` ran on f5d39c9**, "test floor OK: 1416", "BUILD SUCCESSFUL in 8m 47s", STEP_EXIT=0. `git diff --quiet f5d39c9 7a5c5a8 -- android` exit 0. gate:clone PASSED on f5d39c9 and c2ff34d, "ran" naming db:deploy, test:db and test:container:write. register-coverage OK (224). Secret scan 0; sampler cmd= lines 0. Deviation 4: web/.env pointed at the maintenance database `postgres`, handed to C6 as live state. V3 (Queue Ruling 8): four reads PASSED. ParametresHost calls the public overload MainActivity calls; maxPercentDifference = 0.0 is read in both classes; the 100 % dates are numeric; N2's missing verticalScroll was read in source. N2 parked as release-relevant, N1/N3 on the S9, Gradle floor 8 000 MB. Merge tree == branch tip (f626a13). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0). gate:clone PASSED on 4a65f42, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-4a65f42.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 153 MB, free physical 2 341 MB; "DIRTY" = the 79 untracked operator files, 0 tracked changes). main was pushed 12e0e27..4a65f42. | Queue Rulings 7-8 |
 | C6 FW-TESTDB-GUARD | MERGED - test:db refuses any database not named `monreleve_*` before a test file loads; CI on `monreleve_ci`; every later session's web/.env changes (HOLDS) | branch 4e0f008 (code d34a007); merge 074680b | V1: merge-base 4a65f42; 13 files +1499/-10. The guard runs while the config is evaluated, after `--env-file` loaded web/.env; every tests/db connection reads DATABASE_URL. Logs in C:/wt/fw-testdb-guard/.testdb-evidence/: R878 refusal on frontalier_guard_sentinel exit 1, its table counts and tup_inserted / tup_deleted unchanged; `frontalier` refusal exit 1, counts before == final. gate:changed passed before each commit (test:db 714; unit 3641 -> 3724). gate:clone PASSED on 4e0f008, "ran" naming db:deploy, test:db and test:container:write. No URL in any sampler cmd=. R879 is shown by the census test only; **CI NO RESULT (off)**. V3 (Queue Ruling 9): three reads PASSED. The guard test's spawns use db.invalid; the census is a scan, not a list (it does not walk tests/unit or android/scripts); production's database "postgres" (docs/deploy.md, 2026-10-14) is refused. **LIMIT: the guard reads the name only, on any host.** Merge tree == branch tip (2814fbb). V2: gate:changed on the record (base chain, 3724 passed, STEP_EXIT=0). gate:clone PASSED on 2accbac, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-2accbac.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 102 MB, free physical 1 068 MB). That run was the first from a checkout whose web/.env names `frontalier`: the guard admitted gate:clone's own monreleve_gate_clone_2accbac6, and pg_database afterwards lists only frontalier, postgres, template0 and template1. main was pushed 4a65f42..2accbac. | Queue Ruling 9 |
 | C7 FW-DEPLOY-DOC | MERGED - docs/deploy.md section 10 (promote, check, roll back) from Coolify v4.5.0's source. **Section 10 has never been run, and no rollback of this app has ever run.** Keep ONE previous image (P2 item 4). Q1 / Q2 -> BLOCKED 9-10; P1 now points at 10.1 | branch 0903701 (code 165cc7b); merge c3638db | V1: merge-base 2accbac; 2 files (docs/deploy.md +471/-13, the report). Logs in C:/wt/fw-deploy-doc/.deploydoc-evidence/: gate:changed passed before each commit (base chain, 3724); gate:clone PASSED on b2ea738, 165cc7b and 0903701, "ran" naming db:deploy, test:db and test:container:write, STEP_EXIT=0. No URL in any sampler cmd=; secret scan 0; report ASCII; R886-R887 unused. V3 (Queue Ruling 10): eleven citations re-read by the orchestrator at 5ca69705 and all match: Rollback.php 59-65, job 255, 1182/1189, 1459, 1530, 3171-3193, 3227-3231, 5276-5284, 5337-5345, applications.php 21, CleanupDocker 335-338, and the API's rollback route (api.php 289, ApplicationsController 6243+). 10.3 matches the orchestrator's 2026-10-28 record. The runbook's paths all exist and its commands select: 52caca8..tip has NO migration, and the PDF check applies. The 13 removed lines are only the curl passage and corrections (a)-(c). Merge tree == branch tip (8cf1e6b). V2: gate:changed on the record (base chain, 3724 passed, STEP_EXIT=0). gate:clone PASSED on 108af5c, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-108af5c.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 284 MB, free physical 950 MB). main was pushed 2accbac..108af5c. | Queue Ruling 10 |
-| C8 IOS-2f | MERGED - the four iOS pieces that need no app host, green on the CI simulator: KeychainAccountStore and Android's own DeviceLocalStore over the iOS stores (R889); iosSyncDrain, syncFollowUp and IosSyncTrigger.cancel (R890); IosExportFiles (R891); IosNotificationPlan over Android's two decision files (R892). **Their host halves are NOT delivered:** BGTaskScheduler, the share sheet and posting notifications are PARK-IF1..IF3 (WAITS ON THE APPLE ACCOUNT). Three :app files are byte-identical copies in iosMain (PARK-IF4; HOLDS) | branch 7d7edf7 (code 39a384e); merge 5fe042d | V1: merge-base 108af5c; 25 files, +2549/-0. Name-status shows no path under android/app, commonMain or androidMain. The three twins' blobs equal :app's (61a8e7a, b29ec2f, bd51bf8). Both runs were read from their own JUnit XML in C:/wt/ios2f/.ios2f-evidence/: 43174150607 on 2567ceb, 375 tests and 20 failures, every one in a new class that run1-expected.txt (written before dispatch) named; 43177226628 on 39a384e, 375 tests and 0 failures. 14 billed min (job wall time; the timing API reads 0). `:app:gate` on 39a384e: "test floor OK: 1416", "BUILD SUCCESSFUL in 6m 22s", STEP_EXIT=0; it started at 8 443 MB after --stop and bottomed at 3 547 MB commit free and 382 MB free physical. The twins guard is in the gate's graph: `:shared:testDebugUnitTest` UP-TO-DATE, with IosAndroidTwinsTest at 3 tests and 0 failures. gate:clone PASSED on 2567ceb, 39a384e and 7d7edf7: "tree clean", "ran" naming db:deploy, test:db and test:container:write. fastCheck r892 and r892b were NO RESULT (the `&&` pair's log held no output); r892c is green. Secret scan 0; no URL in any sampler cmd=; the report is ASCII; R888-R895 are cited only on ios2f, and R896-R897 are unused; pg_database lists frontalier, postgres, template0 and template1. Deviation 10: every fastCheck started below the Gradle floor (5 483-7 171 MB). Recorded as run: no abort and no worker death. The floor stays. V3 (Queue Ruling 11): R573 is met by 43177226628 with no fresh run. Main had not moved (merge-base == main == 108af5c); the android/ tree is 77aff97 at 39a384e, at 7d7edf7 and at the merge; and 39a384e..7d7edf7 changes only REPORT-IOS-2f.txt and parking.md, both in the workflow's paths-ignore. Merge tree == branch tip (6a224d6). V2: pending | Queue Ruling 11 |
-| C9 FW-WEB-ACCOUNT | | | | |
+| C8 IOS-2f | MERGED - the four iOS pieces that need no app host, green on the CI simulator: KeychainAccountStore and Android's own DeviceLocalStore over the iOS stores (R889); iosSyncDrain, syncFollowUp and IosSyncTrigger.cancel (R890); IosExportFiles (R891); IosNotificationPlan over Android's two decision files (R892). **Their host halves are NOT delivered:** BGTaskScheduler, the share sheet and posting notifications are PARK-IF1..IF3 (WAITS ON THE APPLE ACCOUNT). Three :app files are byte-identical copies in iosMain (PARK-IF4; HOLDS) | branch 7d7edf7 (code 39a384e); merge 5fe042d | V1: merge-base 108af5c; 25 files, +2549/-0. Name-status shows no path under android/app, commonMain or androidMain. The three twins' blobs equal :app's (61a8e7a, b29ec2f, bd51bf8). Both runs were read from their own JUnit XML in C:/wt/ios2f/.ios2f-evidence/: 43174150607 on 2567ceb, 375 tests and 20 failures, every one in a new class that run1-expected.txt (written before dispatch) named; 43177226628 on 39a384e, 375 tests and 0 failures. 14 billed min (job wall time; the timing API reads 0). `:app:gate` on 39a384e: "test floor OK: 1416", "BUILD SUCCESSFUL in 6m 22s", STEP_EXIT=0; it started at 8 443 MB after --stop and bottomed at 3 547 MB commit free and 382 MB free physical. The twins guard is in the gate's graph: `:shared:testDebugUnitTest` UP-TO-DATE, with IosAndroidTwinsTest at 3 tests and 0 failures. gate:clone PASSED on 2567ceb, 39a384e and 7d7edf7: "tree clean", "ran" naming db:deploy, test:db and test:container:write. fastCheck r892 and r892b were NO RESULT (the `&&` pair's log held no output); r892c is green. Secret scan 0; no URL in any sampler cmd=; the report is ASCII; R888-R895 are cited only on ios2f, and R896-R897 are unused; pg_database lists frontalier, postgres, template0 and template1. Deviation 10: every fastCheck started below the Gradle floor (5 483-7 171 MB). Recorded as run: no abort and no worker death. The floor stays. V3 (Queue Ruling 11): R573 is met by 43177226628 with no fresh run. Main had not moved (merge-base == main == 108af5c); the android/ tree is 77aff97 at 39a384e, at 7d7edf7 and at the merge; and 39a384e..7d7edf7 changes only REPORT-IOS-2f.txt and parking.md, both in the workflow's paths-ignore. Merge tree == branch tip (6a224d6). V2: gate:changed on the record (base chain, 3724 passed, STEP_EXIT=0). gate:clone PASSED on 863edb0, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-863edb0.log: STEP_EXIT=0, ABORTED=False; minimum commit free 6 711 MB, free physical 2 200 MB; "DIRTY" = the 79 untracked operator files, 0 tracked changes). main was pushed 108af5c..863edb0. | Queue Ruling 11 |
+| C9 FW-WEB-ACCOUNT | **PARKING - told to park whole (Queue Ruling 22); its PARKED report, gate:clone and push are pending.** On BLOCKED 11 alone: the header link costs about 97 B on every page, and the calculator page has 54 B. Branch tip db68601 (R898 7af6a06, handoffs c2f5cd3 and 18882cf, R912 db68601), NOT to be merged: R898 amends SPEC for an area main would not have. The increment is saved unpushed in C:/wt/fw-web-account/.webaccount-evidence/ (EVIDENCE). Ran from 863edb0 (worktree C:/wt/fw-web-account, branch fw-web-account); deploy PARKED (R911). Queue Ruling 12: the privacy notice changes for R899 (WEB_STATEMENTS.noCookies names the account area's one cookie; a webSession disclosure line), and page-confidentialite-desktop.png and page-confidentialite-mobile.png move. Queue Ruling 13: those two and the header link land in ONE regeneration of 109 baselines, which are not committed until (1) an independent shell-derived expectation equals them, (2) 168 - 109 is reconciled, and (3) every diff's bounding box except the two privacy files sits in the header band. **The promotion gains one item: the operator reads the new notice sentences (the account cookie, the webSession disclosure, the neutral sign-in purpose) and the sign-in mail's code sentence before it ships** (it does not block the merge). **Owed at V1:** rerun Ruling 12's condition 2 grep (cookie, no-account and app-only claims in lib/fr and content/guides); crop the header at the narrowest phone width (R135); check the privacy claim is tied to R900's cookie tests; open erreur-diff-crop.png (Queue Ruling 14). Queue Ruling 14: calculateur-erreur-desktop.png changes about 20 anti-aliased pixels outside the header. It stays in the regeneration, which waits on a cmp of all 109 files against the compare run, the branch's style changes, and one render with the flag off against the old baseline. Queue Ruling 15: the cmp found that capture does NOT repeat (47 px at the stepper groups' corners, between two runs of one tree); 108 of 109 are byte-identical. Ruling 14's flag-off render is withdrawn for this file (NO RESULT). **Authorised deviation from C9's scope:** C9 makes the error-state capture repeat, with no threshold, mask, retry or sleep (R345), proven by at least two distinct hashes unfixed and five identical fixed; at most two fix attempts, then a STOP. Queue Ruling 16: the proof runs through the real visual.mjs, unchanged, with a temporary spec of two arms (current and fixed steps, five fresh contexts each), removed before the clean-tree regeneration. Queue Ruling 17 (withdrawn by 18): park the drift and ship the regenerated baseline. Queue Ruling 18: the gate failed that file after both retries (the page never settles under load), so the baseline cannot ship. C9 has one diagnosis, one fix (its own commit, R912) and one container run; otherwise C9 is PARKED whole at c2f5cd3 and C10 starts. Queue Ruling 19: the cause is a FOCUSED INVALID FIELD under full-page capture (other states, viewport clips and a blurred field each give one hash). The fix blurs the field in the erreur spec (R912, its own commit on 18882cf), blocked on two reads (focus draws nothing visible, or a clipped baseline keeps it; the field stays invalid after the blur). The proof counts every capture, first included; any later container failure on this file is the fallback, not a rerun. R912 landed as db68601 (gate: test:visual 168 passed, 0 flaky). Queue Ruling 20, the last on its baselines: calculateur-panneau-avis-provisoire-desktop.png comes from the twice-written regeneration (update-1 = update-2), not update-3; the increment ships on ONE gate or C9 parks. **At V1 also open r910-avis/.** Queue Ruling 21: the header link breached GATE A on the calculator (125.3 KiB against 125.0), so the link moves to a SERVER component passed into PublicShell. The budget stays. Before the gate: the route table unchanged, the header byte-identical per call site, a calibrated size reading, the prop required. **At V1, open the new image's whole body**, not only the crop. **Owed at C9's record commit (blocks it):** P1's "main's tip" and "empty migration list" become false once C9 merges, so either pin P1's NEW to 863edb0 with C9 as its own promotion after it, or restate P1 with the migration and R911's checks - the operator's choice | | | Queue Rulings 12-22 |
 | C10 FW-DELAI-RAPPEL | | | | |
 | C11 the guide and the hub | PARKED FOR THE OPERATOR - trigger not fired (REPORT-FW-CALCS-A2 lists no overlap) | - | the options and the operator's action in the C11 section above; no Search Console access here | - |
