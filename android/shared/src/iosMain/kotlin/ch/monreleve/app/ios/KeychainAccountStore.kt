@@ -13,6 +13,7 @@ import platform.Foundation.CFBridgingRelease
 import platform.Foundation.NSData
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
+import platform.Security.SecItemDelete
 import platform.Security.SecItemUpdate
 import platform.Security.errSecItemNotFound
 import platform.Security.errSecSuccess
@@ -69,6 +70,10 @@ class KeychainAccountStore(
         if (addStatus != errSecSuccess) throw KeychainException(addStatus)
     }
 
-    // RED STUB (IOS-2f run 1): clear() forgets nothing. Replaced by SecItemDelete at the R889 code step.
-    override fun clear() = Unit
+    // errSecItemNotFound is success here: clearing an empty store is a no-op (the contract).
+    override fun clear() {
+        val identity = KeychainQueries.identity(service, account)
+        SecItemDelete(identity)
+        CFRelease(identity)
+    }
 }

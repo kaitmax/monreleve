@@ -1,5 +1,9 @@
 package ch.monreleve.app.ios
 
+import androidx.room.PooledConnection
+import androidx.room.Transactor
+import androidx.room.execSQL
+import androidx.room.useReaderConnection
 import androidx.room.useWriterConnection
 import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.DeviceLocalStore
@@ -74,13 +78,12 @@ private const val RECORD_TABLES_SQL =
  * schema adds is swept without a list to update (clearAllTables is derived from @Database for the same reason).
  */
 internal suspend fun recordTables(database: MonReleveDatabase): List<String> =
-    database.useWriterConnection { connection ->
-        connection.usePrepared(RECORD_TABLES_SQL) { statement ->
-            buildList { while (statement.step()) add(statement.getText(0)) }
-        }
-    }
+    database.useReaderConnection { connection -> connection.recordTableNames() }
 
-// RED STUB (IOS-2f run 1): clears nothing. Replaced by the sweep at the R889 code step.
+private suspend fun PooledConnection.recordTableNames(): List<String> =
+    usePrepared(RECORD_TABLES_SQL) { statement ->
+        buildList { while (statement.step()) add(statement.getText(0)) }
+    }
 
 /**
  * Android's MonReleveDatabase.clearAllTables() on iOS. Room 2.7.2 offers clearAllTables on Android only
@@ -89,5 +92,12 @@ internal suspend fun recordTables(database: MonReleveDatabase): List<String> =
  * VACUUM, so the deleted rows do not linger in the file's free pages - the person's record must not outlive the
  * sign-out in any form (R295).
  */
-@Suppress("UnusedParameter")
-suspend fun clearIosRecord(database: MonReleveDatabase) = Unit
+suspend fun clearIosRecord(database: MonReleveDatabase) {
+    database.useWriterConnection { connection ->
+        connection.withTransaction(Transactor.SQLiteTransactionType.IMMEDIATE) {
+            recordTableNames().forEach { table -> execSQL("DELETE FROM `$table`") }
+        }
+        connection.execSQL("PRAGMA wal_checkpoint(FULL)")
+        connection.execSQL("VACUUM")
+    }
+}
