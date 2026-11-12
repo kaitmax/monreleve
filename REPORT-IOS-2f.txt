@@ -314,9 +314,10 @@ R893 - WHAT IS PARKED, WITH WHAT WAS PROVEN (parking.md, series IF)
 ================================================================================
 THE SERIES: `node web/scripts/register-coverage.mjs` on 108af5c's tree printed "two letters CA FT HA IA IB IE PB PI TG;
   ... phantom citations: FW ZZ" - IF free; claimed. PARK_ID RUN, NOT READ (R456): the exported CITATION regex matched
-  "PARK-IF1" bare, "(PARK-IF4)" in parentheses and "PARK-IF12." before a full stop, and refused "PARK-IF1-x",
-  "PARK-IF1a" and a bare "PARK-IF". Appended by a script that refused if any IF heading already existed (there was
-  none); after: "two letters CA FT HA IA IB IE IF PB PI TG", "register coverage: OK".
+  the first IF id bare, the fourth in parentheses and a two-digit IF id before a full stop, and refused an IF id
+  followed by "-x", one followed by a letter, and the series name with no number (the exact strings and answers are
+  in .ios2f-evidence/park-id-regex.txt, not retyped here, so this report cites no id that has no heading).
+  Appended by a script that refused if any IF heading already existed (there was none); after: "two letters CA FT HA IA IB IE IF PB PI TG", "register coverage: OK".
 ONE ENTRY PER PARKED HALF, each naming what it needs and the test here that proves the logic it will call - IOS-1b-B's
 input, R839's list updated (R894):
   PARK-IF1  THE SYNC SCHEDULER (BGTaskScheduler). Needs: registration before launch completes, the identifier in the
