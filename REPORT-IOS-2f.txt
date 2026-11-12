@@ -1,0 +1,136 @@
+REPORT-IOS-2f - THE iOS PIECES THAT NEED NO APP HOST (queue step C8)
+TASK     relay/IOS-2f.txt (tracked at BASE_SHA; the orchestrator's launch message corrects its baseline count to 159),
+         rulings R888-R895 (R896-R897 spare). Branch ios2f, worktree C:/wt/ios2f, cut from origin/main
+         108af5c41963e0c98a2b94be22e85b9cb61fef56.
+STATUS   IN PROGRESS - this commit carries R888 (the map) ONLY, committed before any code (R888). The sections
+         below it are written as the work lands.
+
+================================================================================
+R888 - THE MAP (committed before any code)
+================================================================================
+Inputs read: REPORT-IOS-2e.txt R839 whole; relay/QUEUE-STATE.md (HOLDS, macOS MINUTES); every file in
+android/shared/src/iosMain and iosTest; the Android twins named below. The last iOS run of record on this :shared
+tree is 43004639615 (IOS-2e-FIX, cf485c4, SUCCESS, "iOS SIMULATOR TESTS EXECUTED: 316"); `git log cf485c4..108af5c
+-- android/shared .github/workflows/ios-shared.yml .github/scripts` is EMPTY, so it is this base's run too.
+
+THE HOST QUESTION, AND HOW IT IS ANSWERED. "Needs an app host" is labelled MEASURED where a test on the CI simulator
+decides it, ARGUED where Apple's documented requirements decide it. The test binary is a bare Kotlin/Native
+executable spawned by `simctl spawn` (non-standalone since IOS-1a R565, so securityd and the Keychain answer): it has
+no app bundle, no Info.plist of its own, no UIApplication, no scene. ONE PROBE (AppHostProbeIosTest, in the first
+run) prints NSBundle.mainBundle's bundleIdentifier, bundlePath and its BGTaskSchedulerPermittedIdentifiers entry
+WITHOUT calling any host API - it never touches UNUserNotificationCenter, BGTaskScheduler or UIActivityViewController,
+because a host API that raises an Objective-C exception in a bundle-less process would take the paid run with it. Each
+ARGUED row below names the requirement; the probe's line turns "no bundle identifier / no permitted identifiers" from
+ARGUED into MEASURED with a run id (R895).
+
+THE CONSTRAINT THAT SHAPES TWO PIECES. 0 files under android/app. Three Android files hold logic iOS needs and R839
+classifies as "NO BLOCKER FOUND" (pure over shared interfaces): account/DeviceLocalStore.kt,
+detection/EveningNotificationDecision.kt, detection/ThresholdAlertDecision.kt (blocked only by EveningNotice, which is
+in the first). They cannot MOVE to commonMain here (a move deletes them from android/app). So iOS gets each as a
+BYTE-IDENTICAL COPY at the same package and file name in iosMain (same declarations, so the iOS code calls exactly
+what Android calls), held equal by a JVM guard in :shared's androidUnitTest that derives the twins from the file
+tree (every iosMain file whose relative path also exists under app/src/main/kotlin must be byte-identical to it) and
+fails on drift. The real fix - move the three to commonMain and delete the copies - is PARKED (R893). A later move
+also FAILS iOS compilation with a redeclaration until the copy is deleted, which is the copy's own end-of-life alarm.
+The guard is recorded as a DEVIATION from R206's one-home rule, forced by the 0-files boundary.
+
+PIECE 1 - THE ACCOUNT STORE (R889)
+  R839 lines covered: "an AccountStore for iOS" (EVERY iOS PIECE STILL MISSING, line 1); "an iOS LocalStore that
+    clears the record, the tokens, the cached releve, the exports and the settings exactly as DeviceLocalStore does
+    (R295/R297/R289) - plus R521's session-end scope" (iOS PERSISTENCE FOR THE STORES).
+  EXISTS: the contracts AccountStore and LocalStore (commonMain account/), NoOpLocalStore; iOS stores
+    KeychainTokenStore (KeychainTokenStoreContractTest, KeychainQueriesTest), KeychainPendingSignInStore
+    (KeychainPendingSignInStoreTest), UserDefaultsSettingsStore (UserDefaultsSettingsStoreContractTest),
+    FileDossierCache (FileDossierCacheContractTest), buildIosDatabase (IosDatabaseTest). Android twin:
+    SharedPrefsAccountStore (file monreleve.account, key tag; excluded from backup), DeviceLocalStore +
+    deviceLocalStore(context) (LocalStoreTest, ForcedSignOutTest).
+  MISSING: (a) an iOS AccountStore - a Keychain item through the SAME KeychainQueries builder as the token and
+    pending stores (never synchronised, ThisDeviceOnly, AfterFirstUnlock: excluded from backup as Android's file
+    is), its own service name, one value: the tag; (b) DeviceLocalStore on iOS (the byte-identical copy) and the iOS
+    composition of its seams - the five iOS stores, the account store, clearRecord, cancelSync (R890's cancel),
+    clearExports (R891's directory); (c) clearRecord on iOS: Room 2.7.2's native RoomDatabase has NO clearAllTables
+    (read in room-runtime-2.7.2-sources.jar: it is android-only, performClear in RoomDatabase.android.kt), so the
+    sweep is derived from sqlite_master (every table but Room's own and sqlite_*), in one IMMEDIATE transaction,
+    then PRAGMA wal_checkpoint(FULL) and VACUUM - Android's performClear sequence; (d) an AccountStore contract in
+    commonTest, run on the JVM against a reference and on the simulator against the Keychain store.
+  NOT IN THIS PIECE (stays in R894's list): an iOS DetectionModeStore and the rest of the detection file
+    (evening/alert opt-ins, crossing, near-border, employer figures) - InMemoryDetectionModeStore is injected, as
+    Android's LocalStoreTest does; the year-downloads stop that precedes Android's clearRecord (AN-PULL).
+  NEEDS AN APP HOST: NO. MEASURED: the Keychain answers on the booted CI simulator (KeychainTokenStoreContractTest
+    green in 43004639615); Room over the bundled driver and the temporary directory likewise (IosDatabaseTest,
+    FileDossierCacheContractTest green there).
+
+PIECE 2 - THE SYNC TRIGGER LOGIC (R890)
+  R839 lines covered: "syncNow / a composed iOS SyncEngine" (line 1); "THE ACCOUNT SEAMS ON iOS: ... syncNow (the
+    R440 bounded drain)".
+  EXISTS: IosSyncTrigger (iosMain: one drain per write, coalescing, a failure leaves days PENDING and is not looped,
+    cancelling the scope cancels the drain) + IosSyncTriggerTest (4 tests, the failure case over the REAL SyncEngine
+    and the real iOS database); SyncEngine (commonMain). Android twins: SyncWorker.buildSyncEngine (the account read
+    AT DRAIN TIME, R303; the process's one session, R507; the cache marked stale, R559), SyncWorker.doWork's outcome
+    mapping (Settled -> success, Retryable -> retry, Unauthenticated -> success, never retried),
+    SyncScheduler.cancel (the sign-out's cancelSync), syncNow = { buildSyncEngine(context).sync() } (Parametres'
+    bounded R440 send, the callback's held-days send).
+  MISSING: (a) the composed iOS drain - SyncEngine over the iOS dao, the ONE session passed in (never built inside),
+    the account read from the AccountStore at each drain, the iOS DossierCache; (b) syncNow = that drain called
+    directly, as Android's is (the caller's bound cancels it); (c) IosSyncTrigger.cancel() for the sign-out scope:
+    stops the running drain and drops a coalesced one; (d) the outcome -> follow-up decision as a pure function, the
+    one a scheduler will call (done / retry later), SyncWorker's mapping.
+  NEEDS AN APP HOST: the SCHEDULING half - BGTaskScheduler.register (before the app finishes launching), submit (a
+    BGAppRefresh/BGProcessing request), the network precondition and the backoff. ARGUED: Apple requires every
+    task identifier in the app's Info.plist BGTaskSchedulerPermittedIdentifiers and registration from the app
+    delegate; the test binary has neither (the probe MEASURES the missing identifiers). PARKED to IOS-1b-B (R893).
+    The logic it will call is (a)-(d), tested here.
+
+PIECE 3 - THE EXPORT FILE (R891)
+  R839 lines covered: "the dossier share/export (UIActivityViewController) ... and exportBytes"; "THE ACCOUNT SEAMS
+    ON iOS: exportBytes (the authenticated binary GET) and the share hand-off for the account export".
+  EXISTS: SessionManager.authenticatedGetBytes (commonMain; Android's exportBytes IS session::authenticatedGetBytes),
+    NsUrlSessionTransport.executeForBytes (NsUrlSessionTransportWireTest.bytesComeBackUnalteredWithTheirHeaders, the
+    wire server's /__bytes: 256 bytes 0..255, Content-Disposition filename="releve-2026.pdf"), the controllers'
+    ExportEvent.Ready (ReleveController, ParametresController; commonMain). Android twin: MainActivity.shareFile
+    (cacheDir/exports/<event.filename>, the event's bytes) and deviceLocalStore's clearExports (the same directory,
+    EXPORTS_DIR = "exports", deleted recursively).
+  MISSING: the file the share sheet would hand over: an ExportEvent.Ready written to <app temporary
+    directory>/exports/<filename>, bytes verbatim, and the clear of that one directory (the LocalStore's
+    clearExports - one path for writer and clear). Tested with the Android path's own fixture (ReleveControllerTest's
+    %PDF bytes and "releve-2026-camille-rey.pdf", through the shared controller) and end to end over the REAL iOS
+    transport (the session's binary GET of /__bytes through ReleveController's export to the file: 0..255 intact).
+  NEEDS AN APP HOST: the SHARE SHEET - UIActivityViewController must be presented from a view controller in a window
+    scene; ARGUED (UIKit presentation needs a UIApplication with a key window; the test binary has none). PARKED to
+    IOS-1b-B. The file it will hand over is produced and tested here.
+
+PIECE 4 - THE NOTIFICATION SCHEDULING LOGIC (R892)
+  R839 lines covered: "the bell (UNUserNotificationCenter permission, an alert store, the evening/threshold
+    notification itself)"; "THE TOGGLES' HOST: ... the evening/alert toggles' notification permission (R323)".
+  EXISTS: commonMain - EveningNotificationStore / ThresholdAlertStore + in-memory (InMemoryAlertStoresTest),
+    ThresholdCrossing, AlertThreshold, projectedThresholdCrossing, detectionOutcome, CHECK_WINDOWS and
+    afterLastCheckWindow. Android twins: detection/EveningNotificationDecision.kt (eveningDecision, EveningConditions,
+    EveningNotice, isWorkingDay) and detection/ThresholdAlertDecision.kt (decideThresholdAlert, composeDaily,
+    DailyNotification) - pure, tested by EveningNotificationDecisionTest / ThresholdAlertDecisionTest; the glue
+    EveningNotifier.kt (maybeNotifyEvening / maybeAlertThreshold: posting, channels, PendingIntents, the store
+    writes) - Android-only.
+  MISSING: (a) the two decisions on iOS - the byte-identical copies (see THE CONSTRAINT) - with Android's own cases
+    run against them on the simulator; (b) the WHEN for a scheduler that, unlike Android's 15-minute wakes, schedules
+    AHEAD: the evening reminder at the first moment Android's dayConcluded gate opens, i.e. the Paris wall-clock
+    minute CHECK_WINDOWS.last().endMinuteOfDay on the day (derived, never typed), or immediately once past it; the
+    threshold alert immediately, merged with the evening reminder when it is due (composeDaily). Pure, value in /
+    value out, no clock read and no kotlin.time type (the :app ExperimentalTime allowlist scans iosMain and cannot
+    be edited here). The wall-clock answer is what UNCalendarNotificationTrigger takes, so DST is the OS's.
+  NOT DECIDED HERE (R839 does not settle them "the same as Android"; parked, not invented): how far ahead iOS
+    pre-schedules (today only, or the next working days); whether recording a day cancels the pending request (the
+    Android notification is cancelled on record - EveningNotifier.cancel); how "already notified" is known for a
+    request scheduled ahead (Android marks at post; an ahead-scheduled request fires while the app is not running).
+  NEEDS AN APP HOST: posting and its permission - UNUserNotificationCenter (requestAuthorization, add,
+    getDelivered..., the delegate) and the notification copy/presentation. ARGUED: the notification center is tied to
+    the app bundle (authorization is per bundle identifier; a process with no bundle has none), and the probe
+    MEASURES the missing bundle identifier. PARKED to IOS-1b-B with the store-write ordering of maybeNotifyEvening /
+    maybeAlertThreshold listed as glue to port (R893).
+
+LOCATION AND DETECTION: OUT (the queue's words). Nothing here reads a coordinate or builds a detection outcome; the
+planner takes the outcome as an input.
+
+THE RUN PLAN (R895, budget FOUR runs): run 1 carries every new test against stubs that return WRONG VALUES (never a
+throw, never an unbounded wait), so each new class fails by assertion while every existing class stays at 0
+failures - the RED run for R889-R892 at once; run 2 is the GREEN run on the code tip; runs 3-4 are spares. Each is
+preceded by the Windows compile-only check (`:shared:compileTestKotlinIosSimulatorArm64
+-Pkotlin.native.enableKlibsCrossCompilation=true --offline`, compile evidence only).
