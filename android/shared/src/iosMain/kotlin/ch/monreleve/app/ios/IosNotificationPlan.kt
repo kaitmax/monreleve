@@ -3,9 +3,16 @@ package ch.monreleve.app.ios
 import ch.monreleve.app.detection.CHECK_WINDOWS
 import ch.monreleve.app.detection.DailyNotification
 import ch.monreleve.app.detection.DetectionOutcome
+import ch.monreleve.app.detection.EveningConditions
 import ch.monreleve.app.detection.ThresholdAlertDecision
+import ch.monreleve.app.detection.composeDaily
+import ch.monreleve.app.detection.decideThresholdAlert
+import ch.monreleve.app.detection.eveningDecision
+import ch.monreleve.app.detection.isWorkingDay
 import ch.monreleve.app.settings.AlertThreshold
 import ch.monreleve.app.settings.ThresholdCrossing
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 
 // IOS-2f R892. WHAT iOS SCHEDULES, AND WHEN - the evening reminder and the threshold alert, decided by ANDROID'S OWN
 // FUNCTIONS. eveningDecision, isWorkingDay, decideThresholdAlert and composeDaily are the byte-identical iosMain copies
@@ -68,31 +75,44 @@ data class ThresholdAlertPlan(
 /** The Paris minute-of-day at which a day concludes: the end of the last check window (afterLastCheckWindow's line). */
 val DAY_CONCLUSION_MINUTE: Int get() = CHECK_WINDOWS.last().endMinuteOfDay
 
-// RED STUB (IOS-2f run 1): plans nothing. Replaced at the R892 code step.
-
 /**
  * The evening reminder for [today] (ISO, Europe/Paris): Android's eveningDecision asked as at the first moment its
  * dayConcluded gate opens, and composed with a threshold already alerted today ([alertedToday], the same-day merge).
  * [dayConcluded] is afterLastCheckWindow now. Null when any rule says no - the host then removes today's request.
  */
-@Suppress("UnusedParameter", "FunctionOnlyReturningConstant")
 fun planEveningReminder(
     today: String,
     dayConcluded: Boolean,
     state: EveningState,
     outcome: DetectionOutcome,
     alertedToday: AlertThreshold?,
-): PlannedNotification? = null
-
-// RED STUB (IOS-2f run 1): never alerts and keeps nothing. Replaced at the R892 code step.
+): PlannedNotification? {
+    val notice =
+        eveningDecision(
+            EveningConditions(
+                optedIn = state.optedIn,
+                autoMode = state.autoMode,
+                workingDay = isWorkingDay(isoDayOfWeek(today)),
+                hasEntryToday = state.hasEntryToday,
+                // Asked as at the delivery time, which is never before DAY_CONCLUSION_MINUTE - the minute from which
+                // afterLastCheckWindow is true by its own definition. So the gate is open THEN, whatever it is now.
+                dayConcluded = true,
+                alreadyNotified = state.alreadyNotified,
+            ),
+            outcome,
+        ) ?: return null
+    val time = if (dayConcluded) NotificationTime.Now else NotificationTime.ParisWallClock(today, DAY_CONCLUSION_MINUTE)
+    return PlannedNotification(composeDaily(notice, alertedToday), time)
+}
 
 /**
  * One threshold-alert evaluation (Android's maybeAlertThreshold without the posting): decideThresholdAlert, and -
  * when it announces a NEW crossing - one notification NOW, the evening reminder joined if it is due now
  * (alreadyNotified is ignored for the merge, as Android's merge ignores it). [current] is null when there is no
- * projection (no rhythm).
+ * projection (no rhythm). The seven parameters are Android's inputs to the same two calls - the alert's three and the
+ * reminder's four - not loose data.
  */
-@Suppress("UnusedParameter", "LongParameterList")
+@Suppress("LongParameterList")
 fun planThresholdAlert(
     optedIn: Boolean,
     current: ThresholdCrossing?,
@@ -101,4 +121,25 @@ fun planThresholdAlert(
     dayConcluded: Boolean,
     evening: EveningState,
     outcome: DetectionOutcome,
-): ThresholdAlertPlan = ThresholdAlertPlan(ThresholdAlertDecision(null, previous), null)
+): ThresholdAlertPlan {
+    val decision = decideThresholdAlert(optedIn, current, previous)
+    val threshold = decision.alert ?: return ThresholdAlertPlan(decision, null)
+    // Android's merge (maybeAlertThreshold -> gatherEveningConditions(alreadyNotified = false)): the reminder as it
+    // stands NOW, so a reminder already shown is replaced by the merged one with its record buttons kept.
+    val eveningNow =
+        eveningDecision(
+            EveningConditions(
+                optedIn = evening.optedIn,
+                autoMode = evening.autoMode,
+                workingDay = isWorkingDay(isoDayOfWeek(today)),
+                hasEntryToday = evening.hasEntryToday,
+                dayConcluded = dayConcluded,
+                alreadyNotified = false,
+            ),
+            outcome,
+        )
+    return ThresholdAlertPlan(decision, PlannedNotification(composeDaily(eveningNow, threshold), NotificationTime.Now))
+}
+
+/** The ISO day-of-week (1 = Monday .. 7 = Sunday) of an ISO day - the Int Android's isWorkingDay takes. */
+private fun isoDayOfWeek(isoDay: String): Int = LocalDate.parse(isoDay).dayOfWeek.isoDayNumber
