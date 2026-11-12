@@ -559,3 +559,130 @@ APPLIED AND VERIFIED
   and the render's UTC time.
 - Merged; P2, the operator items, the parked tasks and C7's prompt
   carry the rest (QUEUE-STATE, relay/FW-DEPLOY-DOC.txt).
+
+====================================================================
+QUEUE RULING 6 - C4 (AN-APK-DIFF) HANDED BACK: MERGE, U1, THREE QUESTIONS
+====================================================================
+(Dated 2026-11-12 by the clock; kept in this file because it is the
+queue's one RULINGS file, named by QUEUE-STATE.)
+EVIDENCE (V1, read by the orchestrator)
+- origin/an-apk-diff = d9192e8 (report), code tip f171564; merge-base
+  ab1a583 = origin/main. 3 files, +1555: REPORT-AN-APK-DIFF.txt,
+  android/scripts/apk-diff.mjs, android/scripts/apk-diff.test.mjs. No
+  Android source or build file.
+- Logs in C:/wt/an-apk-diff/.apk-diff-evidence/gates/: gclone2-f171564.log
+  "commit f171564a...", "tree clean", "scratch database
+  monreleve_gate_clone_f171564a created", "GATE:CLONE PASSED", ran
+  "... db:deploy, test:db, test:container:write", STEP_EXIT=0
+  ABORTED=False, min commit free 6511 MB. gate:changed on the script
+  and on the report: base chain, 3641 passed, GATE PASSED, STEP_EXIT=0.
+  Run 1 of gate:clone (no web/.env) skipped the database suites and is
+  not the gate of record.
+- gclone2's samples file carries a database URL with a password in its
+  "cmd=" line (the sampler records -Command). It is the local
+  frontalier-postgres on localhost:5436, database `postgres`, and the
+  password is the committed local-dev default (found in
+  web/.env.example, docker-compose.yml, README.md). Not a secret; no
+  incident.
+- The "PARK-33 is a new plain-number heading" lines in the gate logs are
+  register-coverage's planted-fixture tests printing on stderr; they
+  appear identically in the orchestrator's own gate log on main.
+QUESTIONS
+  U1  OnboardingController.next() changed in IOS-2e with its source
+      untouched: accept as block layout, or build release APKs at
+      9954f39^ and 9954f39 (two Gradle steps)?
+  Q2  the four mapping.txt files: join C:/wt/queue-evidence?
+  Q3  android/scripts/*.test.mjs are run by no gate: give them one?
+  V3  merge?
+
+ANSWER (the advisor, verbatim in substance)
+Verdict: merge C4. U1 doesn't block the merge - it's honestly listed -
+but it blocks a release, and it can likely be closed without Gradle. Do
+these first, none heavy:
+1. Preserve the mappings now (Q2: yes). A6 may remove those worktrees
+   at any moment and they are those builds' only deobfuscation key. Copy
+   the four mapping.txt from the original worktrees (not C4's copies)
+   into C:/wt/queue-evidence/mappings/, verify each sha256 against C4's
+   four hashes - a match also verifies its deviation 1 - add them to
+   SHA256SUMS, and note it beside A6 in QUEUE-STATE.
+2. Check the committed script yourself, since no gate covers it: `node
+   --test android/scripts/apk-diff.test.mjs` on the merge tree, record
+   the count; and grep apk-diff.mjs for writeFile / child_process /
+   spawn / exec / fetch / http - a tool people run before a release
+   should only read.
+3. U1 - decide equivalence, not attribution. The two release builds
+   would tell you WHICH commit, not WHETHER behaviour changed, and the
+   release question is the second - don't spend them now. Get the
+   unmasked listing of OnboardingController.next() for 0616b4e and
+   9a6dd55 from the dexdumps already in C4's evidence folder, and read
+   the region yourself: in 0616b4e follow the `const/4 v, 0` path into
+   the shared block. If the block's only use of v on that path is a test
+   whose zero arm reaches return-void, with no invoke, field write or
+   throw between, the two are equivalent - record the excerpt and close
+   U1 as layout-only (cause still hypothesis). Anything else, or not
+   decidable by reading: U1 stays open; put the hold in QUEUE-STATE
+   HOLDS and park the two-build confirmation as its own task.
+Rulings:
+- Release hold scope: a release built for distribution (signed, to a
+  store or a device), not an unsigned artefact a gate builds - so C5's
+  :app:gate is not held.
+- Q3: park as a task outside the queue (a suite selected on
+  android/scripts/** that runs node --test); don't add a gate in a
+  record commit.
+- NO_SUPPORTED_VCS_FOUND: park as a release prerequisite - every
+  session builds in a worktree, so no release APK would carry its
+  commit id.
+Carry into the C5-C10 briefs: a fresh worktree has no web/.env, and
+gate:clone then prints PASSED with the database suites skipped - the
+gate of record is the run whose "ran" line names db:deploy, test:db
+and test:container:write; keep reading that line in V1. The sampler
+writes its -Command string into the samples file - C4's database URL
+landed there (the committed dev default, so no harm), but a credential
+never goes in -Command: a gitignored web/.env copied from .env.example,
+removed at cleanup.
+
+APPLIED AND VERIFIED
+- 1. The four mapping.txt copied from the ORIGINAL worktrees into
+  C:/wt/queue-evidence/mappings/<sha>.mapping.txt: 52da740 (from
+  ios2c-fix) 78f21997..., 0616b4e (ios2d) adbefe12..., 9a6dd55 (ios2e)
+  0bef2e02..., cf485c4 (ios2e-fix) fb0731de... - each equal in full to
+  C4's copy. Appended to SHA256SUMS.txt; `sha256sum -c` all OK.
+- 2. apk-diff.mjs imports only readFileSync (node:fs), inflateRawSync /
+  inflateSync (node:zlib) and pathToFileURL (node:url); no write, exec,
+  spawn, fetch or http. The test imports node:test, node:assert,
+  crc32 / deflateRawSync and the script; it builds its APKs in memory.
+  `node --test android/scripts/apk-diff.test.mjs` on the merge tree
+  (2732d39): "# tests 4", "# pass 4", "# fail 0".
+- 3. U1 CLOSED AS LAYOUT-ONLY, by reading (cause still HYPOTHESIS: the
+  isIsoDay inlining C4 named). next() is m2.e.b()V on both sides
+  (each build's own mapping.txt). Excerpts, with addresses stripped and
+  diffed: C:/wt/queue-evidence/u1/u1-next-0616b4e.txt and
+  u1-next-9a6dd55.txt (in SHA256SUMS). The differences, all of them:
+  (a) Two paths set v32 to 0 and go to 00aa. 0616b4e: 003b "const/4
+      v10, #int 0; goto 0063" then 0063 "move-object/from16 v32, v10;
+      goto 00aa", reached from 0039 (v9 != 0) and from 0061 (the date
+      parse NOT a failure). 9a6dd55: 003b "goto 0035" and 0063 "if-eqz
+      v0, 0035", where the SHARED 0035 is "const/16 v32, #int 0;
+      goto/16 00aa" (unchanged on both sides). Same v32, same target;
+      the only lost effect is v10 = 0. v10 is DEAD at 00aa: the v32 != 0
+      arm (00ac-00da) reads only v2, v0, v3 and the invoke range
+      v18..v33; the v32 == 0 arm writes v10 at 00e7 ("move-result v10")
+      before any read (00dc-00e4 read v3, v6, v0).
+  (b) The other v32 = v10 paths (0045, 0071, 00a9) moved from "goto
+      0063" to "goto 0044", whose block is the same "move-object/from16
+      v32, v10; goto/16 00aa".
+  (c) The exit. 0616b4e: 00da and 0122 "goto/16 024d", and 0210 "goto
+      024d", where 024d is "return-void". 9a6dd55: 00da and 0122
+      "goto/16 0210", where 0210 is "return-void". 0211-024d are
+      instruction-identical on both sides.
+  (d) The try range moved with the code: 0x0053-0x0059 -> 0x005a
+      becomes 0x0055-0x005b -> 0x005c, covering the same three
+      instructions (sget Lo3/p;.Companion, invoke Lo3/n;.a, move-result)
+      and the same handler (move-exception; invoke LE2/a;.b).
+  Everything else that differs is a method@/type@/string@ index. No
+  invoke, field access, throw or live constant differs. The UNEXPLAINED
+  list is therefore empty for release purposes, and NO release hold is
+  added to HOLDS. The two-build attribution is not run.
+- Q3 and NO_SUPPORTED_VCS_FOUND are PARKED TASKS in QUEUE-STATE. The
+  gate-of-record and credential rules are in QUEUE-STATE HOLDS, where
+  the C5-C10 briefs point.
