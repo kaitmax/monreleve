@@ -27,18 +27,13 @@ import ch.monreleve.app.data.sync.SyncOutcome
 // The SCHEDULING itself (BGTaskScheduler: registration, the request, the network precondition, the backoff) needs the
 // app host and is PARKED to IOS-1b-B (R893); it calls these two.
 
-// RED STUB (IOS-2f run 1): reads the account ONCE, when the drain is built - the R303 defect the test exists to catch.
-
 /** One drain of the account signed in WHEN IT RUNS - Android's buildSyncEngine(context).sync(), and iOS's syncNow. */
 fun iosSyncDrain(
     dao: EntryDao,
     session: AuthenticatedPoster,
     accountStore: AccountStore,
     dossierCache: DossierCache,
-): suspend () -> SyncOutcome {
-    val accountAtBuild = accountStore.current()
-    return { SyncEngine(dao, session, accountAtBuild, dossierCache).sync() }
-}
+): suspend () -> SyncOutcome = { SyncEngine(dao, session, accountStore.current(), dossierCache).sync() }
 
 /** What a scheduler does once a drain has returned. */
 enum class SyncFollowUp {
@@ -49,8 +44,10 @@ enum class SyncFollowUp {
     RETRY_LATER,
 }
 
-// RED STUB (IOS-2f run 1): never asks for a retry.
-
 /** SyncWorker.doWork's mapping (Settled -> success, Retryable -> retry, Unauthenticated -> success, never retried). */
-@Suppress("UnusedParameter")
-fun syncFollowUp(outcome: SyncOutcome): SyncFollowUp = SyncFollowUp.DONE
+fun syncFollowUp(outcome: SyncOutcome): SyncFollowUp =
+    when (outcome) {
+        is SyncOutcome.Settled -> SyncFollowUp.DONE
+        SyncOutcome.Retryable -> SyncFollowUp.RETRY_LATER
+        SyncOutcome.Unauthenticated -> SyncFollowUp.DONE
+    }
