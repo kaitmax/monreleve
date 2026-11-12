@@ -84,6 +84,61 @@ something the others do not — the Playwright container (R37) and a served
 build. Run `pnpm test:visual` after **any** change to markup, copy or tokens:
 a copy edit is a visual change, and so is a metric one.
 
+### `pnpm test:db` runs only on a scratch database (rulings R877-R880)
+
+Every `web/tests/db` file starts by **emptying the table it owns**, and
+`web/.env` points `DATABASE_URL` at the shared development database
+`frontalier`, which is what `pnpm dev` needs. So `vitest.db.config.ts` reads the
+database name out of `DATABASE_URL` while it loads, before a single test file is
+collected, and **refuses** with a non-zero exit unless the name matches
+
+```
+^monreleve_[a-z0-9_]{1,53}$
+```
+
+- **One home:** `web/lib/db/scratch-database.mjs` holds the pattern and the
+  refusal text.
+  - gate:clone names its `monreleve_gate_clone_<sha8>` through it.
+  - Every other script that creates a throwaway database is asserted against it
+    by `web/tests/unit/meta/scratch-database-census.test.ts`.
+  - CI's service database is `monreleve_ci`.
+- **No opt-out variable.**
+- **Read as the driver reads it:** the database is the URL's path. The user,
+  host, password, `schema` parameter and fragment never count. An empty path, a
+  `?database=` / `?dbname=` / `?db=` parameter and the socket forms are refused.
+
+To run the suite locally, make a database for it, migrate it, run, and drop it.
+`docker compose` runs from the repository root; the `pnpm` commands run from
+`web/`. A value set in the shell wins over `web/.env`, because
+`node --env-file-if-exists` never overrides the environment.
+
+```
+# bash
+docker compose up -d
+docker exec frontalier-postgres psql -U frontalier -d postgres -c "CREATE DATABASE monreleve_test_mine"
+export DATABASE_URL="postgresql://frontalier:frontalier@localhost:5436/monreleve_test_mine?schema=public"
+pnpm db:deploy && pnpm test:db
+unset DATABASE_URL
+docker exec frontalier-postgres psql -U frontalier -d postgres -c "DROP DATABASE monreleve_test_mine WITH (FORCE)"
+```
+
+```
+# PowerShell
+docker compose up -d
+docker exec frontalier-postgres psql -U frontalier -d postgres -c "CREATE DATABASE monreleve_test_mine"
+$env:DATABASE_URL = "postgresql://frontalier:frontalier@localhost:5436/monreleve_test_mine?schema=public"
+pnpm db:deploy; if ($?) { pnpm test:db }
+Remove-Item Env:DATABASE_URL
+docker exec frontalier-postgres psql -U frontalier -d postgres -c "DROP DATABASE monreleve_test_mine WITH (FORCE)"
+```
+
+`web/.env` still supplies the other variables. Its `AUTH_SECRET` must be a
+generated one, as `.env.example` says: the print tests keep whatever value is
+set, and the placeholder is refused by value (PARK-TG1).
+
+`pnpm gate:clone` needs none of this. It creates, migrates and drops its own
+scratch database, and uses `DATABASE_URL` only to reach the server.
+
 ---
 
 ## Non-negotiables to carry in your head
@@ -179,6 +234,7 @@ pnpm build          # Next.js production build
 pnpm typecheck      # tsc --noEmit, strict + noUncheckedIndexedAccess
 pnpm lint           # eslint (boundaries, jsx-no-literals) + stylelint (tokens only)
 pnpm test           # vitest — unit + property
+pnpm test:db        # vitest on PostgreSQL — a monreleve_* scratch database only (R877)
 pnpm test:e2e       # playwright
 pnpm test:visual    # screenshot baselines
 pnpm test:a11y      # jest-axe

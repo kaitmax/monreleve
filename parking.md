@@ -5640,3 +5640,26 @@ WHY PARKED: `typed` is rememberSaveable state local to DeleteDialog (an
             (deleteDialog, deleteDialogUnsynced).
 STATE:      OPEN - with PARK-PB1's seam (DeleteDialog public), or an initial-word
             parameter (a product change).
+
+## PARK-TG1 - a web/.env copied verbatim from .env.example fails 23 test:db tests: the print surfaces keep the AUTH_SECRET placeholder  [FW-TESTDB-GUARD, 2026-11-12]
+
+RAISED BY:  REPORT-FW-TESTDB-GUARD.txt, DEVIATIONS 1 (the first gate:changed
+            run of increment 1, log changed-1-r877).
+WHAT:       With web/.env copied from web/.env.example, `pnpm test:db`
+            reported 3 failed files and 23 failed tests (print-route 19,
+            dossier-route 3, export-pdf 1), all on the print surfaces. Those
+            files set `process.env.AUTH_SECRET ??= '<test secret>'`, and `??=`
+            keeps the placeholder `change-me-local-only-not-for-deployment`
+            the file supplies; lib/export/print-token.ts then refuses it BY
+            VALUE (correctly) and the print route answers notFound. With a
+            generated AUTH_SECRET in the same web/.env: 714 passed.
+            gate:clone never sees it: the clone has no .env and scrubs
+            AUTH_SECRET, so `??=` assigns the test's own secret.
+WHY PARKED: Not this task's subject (the guard admitted the database; 691
+            tests ran on it), and the fix is a choice between two shapes that
+            each touch tests/db or the env contract: the tests assign their
+            secret unconditionally (`=` rather than `??=`, restoring it after),
+            or they treat the placeholder as unset. Either selects test:db.
+            Until then README.md's test:db recipe says to generate
+            AUTH_SECRET as .env.example already instructs.
+STATE:      OPEN.
