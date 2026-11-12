@@ -28,13 +28,18 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from 'pg';
 
+import { scratchDatabaseName } from '@/lib/db/scratch-database.mjs';
+
 /** FW14's two migrations, in the order Prisma applied them. */
 const FW14_MIGRATIONS = [
   '20260913075645_alert_subscriber',
   '20260913120000_unsubscribe_token',
 ] as const;
 
-const SCRATCH_DATABASE = 'frontalier_fw14_era_probe';
+// R877: named through the scratch pattern's one home. It used to be
+// `frontalier_fw14_era_probe` - the `frontalier_test` near miss, living inside
+// the suite the guard protects.
+const SCRATCH_DATABASE = scratchDatabaseName('fw14_era_probe');
 
 /**
  * Every state an AlertSubscriber row can be in, because the one that gets

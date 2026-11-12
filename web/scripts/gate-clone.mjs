@@ -52,6 +52,7 @@
 
 import { ciReadiness, describeReadiness } from './ci-readiness.mjs';
 import { stripAnsi } from './gate-selection.mjs';
+import { scratchDatabaseName } from '../lib/db/scratch-database.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -667,7 +668,9 @@ try {
     console.log('  `docker compose up -d` starts the one web/.env.example points at.');
     console.log('  THIS RUN DOES NOT COVER prisma/**, lib/db/** or tests/db/**.');
   } else {
-    scratchDatabase = `monreleve_gate_clone_${head.slice(0, 8)}`;
+    // R877: the name comes from the pattern's one home, so test:db's guard -
+    // which runs on exactly this database below - admits it by construction.
+    scratchDatabase = scratchDatabaseName(`gate_clone_${head.slice(0, 8)}`);
     admin = local;
 
     const { Client } = await import('pg');
