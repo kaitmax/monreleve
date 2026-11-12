@@ -1,5 +1,6 @@
 package ch.monreleve.app.contracts
 
+import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
@@ -84,6 +85,21 @@ class MemoryTokenStore(
     }
 
     override fun load(): TokenPair? = holder[0]
+
+    override fun clear() {
+        holder[0] = null
+    }
+}
+
+/** IOS-2f R889: the AccountStore reference - one tag in a shared holder, so another instance sees it. */
+class MemoryAccountStore(
+    private val holder: Array<String?>,
+) : AccountStore {
+    override fun current(): String? = holder[0]
+
+    override fun setCurrent(tag: String) {
+        holder[0] = tag
+    }
 
     override fun clear() {
         holder[0] = null

@@ -1,0 +1,549 @@
+REPORT-IOS-2f - THE iOS PIECES THAT NEED NO APP HOST (queue step C8)
+TASK     relay/IOS-2f.txt (tracked at BASE_SHA; the orchestrator's launch message corrects its baseline count to 159),
+         rulings R888-R895 (R896-R897 spare, unused). Branch ios2f, worktree C:/wt/ios2f, cut from origin/main
+         108af5c41963e0c98a2b94be22e85b9cb61fef56.
+
+================================================================================
+SUMMARY
+================================================================================
+The queue's four pieces, built and tested on the CI simulator without an app host:
+  R889 THE ACCOUNT STORE - KeychainAccountStore, and Android's own DeviceLocalStore over iOS's stores
+       (iosDeviceLocalStore), with clearIosRecord for the clearAllTables Room does not offer on iOS. Sign-out and
+       deletion clear the tag (a test each, over the real stores); a server-ended session keeps it.
+  R890 THE SYNC TRIGGER LOGIC - iosSyncDrain (the account read when the drain runs; also syncNow), syncFollowUp
+       (SyncWorker's mapping), IosSyncTrigger.cancel (the sign-out's cancelSync). BGTaskScheduler PARKED (PARK-IF1).
+  R891 THE EXPORT FILE - IosExportFiles: the shared export's bytes verbatim in <tmp>/exports/<filename>, proven with
+       the Android path's own fixture and end to end over the real iOS transport; its clear is the LocalStore's.
+       The share sheet PARKED (PARK-IF2).
+  R892 THE NOTIFICATION SCHEDULING LOGIC - Android's two decision files, byte-identical in iosMain and run against
+       Android's own cases on the simulator; IosNotificationPlan adds the WHEN. Posting PARKED (PARK-IF3).
+Android unchanged: 0 files under android/app; the 159 Paparazzi baselines verified at zero tolerance by the full gate
+and untouched (empty diffs below). Two cloud runs of the four allowed: RED on the stubs, GREEN on the code tip.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE on the code tip 39a384ef92d0c0381440224d6241be576299d8ff:
+  FULL :app:gate (`gradlew.bat :app:gate`, under the sampler, this session, on 39a384e):
+    "test floor OK: 1416 unit tests observed (>= 10)"; "BUILD SUCCESSFUL in 6m 22s"; STEP_EXIT=0 ABORTED=False.
+    verifyPaparazziDebug: the 159 screenshot tests, failures 0, errors 0 (the ScreenshotTest classes' JUnit XML).
+  gate:clone on 39a384e: "commit 39a384ef92d0c0381440224d6241be576299d8ff", "tree clean - HEAD is everything you
+    have", "GATE:CLONE PASSED", "ran register-coverage, fixture-coverage, install, typecheck, lint, test, build, size,
+    db:deploy, test:db, test:container:write"; STEP_EXIT=0 ABORTED=False.
+  The last iOS run: 43177226628 on 39a384e - SUCCESS, "iOS SIMULATOR TESTS EXECUTED: 375", 0 failures, the device
+    compile (compileKotlinIosArm64) executed, "BUILD SUCCESSFUL in 1m 54s".
+The report commit after it changes REPORT-IOS-2f.txt and parking.md only (no Android, no web); gate:clone runs on it
+before its push (PUSH PROOF).
+`git diff --stat 108af5c41963e0c98a2b94be22e85b9cb61fef56 -- android/app` -> EMPTY.
+`git diff --stat 108af5c41963e0c98a2b94be22e85b9cb61fef56 -- android/app/src/test/snapshots` -> EMPTY (159 PNGs).
+
+================================================================================
+R888 - THE MAP (committed before any code)
+================================================================================
+Inputs read: REPORT-IOS-2e.txt R839 whole; relay/QUEUE-STATE.md (HOLDS, macOS MINUTES); every file in
+android/shared/src/iosMain and iosTest; the Android twins named below. The last iOS run of record on this :shared
+tree is 43004639615 (IOS-2e-FIX, cf485c4, SUCCESS, "iOS SIMULATOR TESTS EXECUTED: 316"); `git log cf485c4..108af5c
+-- android/shared .github/workflows/ios-shared.yml .github/scripts` is EMPTY, so it is this base's run too.
+
+THE HOST QUESTION, AND HOW IT IS ANSWERED. "Needs an app host" is labelled MEASURED where a test on the CI simulator
+decides it, ARGUED where Apple's documented requirements decide it. The test binary is a bare Kotlin/Native
+executable spawned by `simctl spawn` (non-standalone since IOS-1a R565, so securityd and the Keychain answer): it has
+no app bundle, no Info.plist of its own, no UIApplication, no scene. ONE PROBE (AppHostProbeIosTest, in the first
+run) prints NSBundle.mainBundle's bundleIdentifier, bundlePath and its BGTaskSchedulerPermittedIdentifiers entry
+WITHOUT calling any host API - it never touches UNUserNotificationCenter, BGTaskScheduler or UIActivityViewController,
+because a host API that raises an Objective-C exception in a bundle-less process would take the paid run with it. Each
+ARGUED row below names the requirement; the probe's line turns "no bundle identifier / no permitted identifiers" from
+ARGUED into MEASURED with a run id (R895).
+
+THE CONSTRAINT THAT SHAPES TWO PIECES. 0 files under android/app. Three Android files hold logic iOS needs and R839
+classifies as "NO BLOCKER FOUND" (pure over shared interfaces): account/DeviceLocalStore.kt,
+detection/EveningNotificationDecision.kt, detection/ThresholdAlertDecision.kt (blocked only by EveningNotice, which is
+in the first). They cannot MOVE to commonMain here (a move deletes them from android/app). So iOS gets each as a
+BYTE-IDENTICAL COPY at the same package and file name in iosMain (same declarations, so the iOS code calls exactly
+what Android calls), held equal by a JVM guard in :shared's androidUnitTest that derives the twins from the file
+tree (every iosMain file whose relative path also exists under app/src/main/kotlin must be byte-identical to it) and
+fails on drift. The real fix - move the three to commonMain and delete the copies - is PARKED (R893). A later move
+also FAILS iOS compilation with a redeclaration until the copy is deleted, which is the copy's own end-of-life alarm.
+The guard is recorded as a DEVIATION from R206's one-home rule, forced by the 0-files boundary.
+
+PIECE 1 - THE ACCOUNT STORE (R889)
+  R839 lines covered: "an AccountStore for iOS" (EVERY iOS PIECE STILL MISSING, line 1); "an iOS LocalStore that
+    clears the record, the tokens, the cached releve, the exports and the settings exactly as DeviceLocalStore does
+    (R295/R297/R289) - plus R521's session-end scope" (iOS PERSISTENCE FOR THE STORES).
+  EXISTS: the contracts AccountStore and LocalStore (commonMain account/), NoOpLocalStore; iOS stores
+    KeychainTokenStore (KeychainTokenStoreContractTest, KeychainQueriesTest), KeychainPendingSignInStore
+    (KeychainPendingSignInStoreTest), UserDefaultsSettingsStore (UserDefaultsSettingsStoreContractTest),
+    FileDossierCache (FileDossierCacheContractTest), buildIosDatabase (IosDatabaseTest). Android twin:
+    SharedPrefsAccountStore (file monreleve.account, key tag; excluded from backup), DeviceLocalStore +
+    deviceLocalStore(context) (LocalStoreTest, ForcedSignOutTest).
+  MISSING: (a) an iOS AccountStore - a Keychain item through the SAME KeychainQueries builder as the token and
+    pending stores (never synchronised, ThisDeviceOnly, AfterFirstUnlock: excluded from backup as Android's file
+    is), its own service name, one value: the tag; (b) DeviceLocalStore on iOS (the byte-identical copy) and the iOS
+    composition of its seams - the five iOS stores, the account store, clearRecord, cancelSync (R890's cancel),
+    clearExports (R891's directory); (c) clearRecord on iOS: Room 2.7.2's native RoomDatabase has NO clearAllTables
+    (read in room-runtime-2.7.2-sources.jar: it is android-only, performClear in RoomDatabase.android.kt), so the
+    sweep is derived from sqlite_master (every table but Room's own and sqlite_*), in one IMMEDIATE transaction,
+    then PRAGMA wal_checkpoint(FULL) and VACUUM - Android's performClear sequence; (d) an AccountStore contract in
+    commonTest, run on the JVM against a reference and on the simulator against the Keychain store.
+  NOT IN THIS PIECE (stays in R894's list): an iOS DetectionModeStore and the rest of the detection file
+    (evening/alert opt-ins, crossing, near-border, employer figures) - InMemoryDetectionModeStore is injected, as
+    Android's LocalStoreTest does; the year-downloads stop that precedes Android's clearRecord (AN-PULL).
+  NEEDS AN APP HOST: NO. MEASURED: the Keychain answers on the booted CI simulator (KeychainTokenStoreContractTest
+    green in 43004639615); Room over the bundled driver and the temporary directory likewise (IosDatabaseTest,
+    FileDossierCacheContractTest green there).
+
+PIECE 2 - THE SYNC TRIGGER LOGIC (R890)
+  R839 lines covered: "syncNow / a composed iOS SyncEngine" (line 1); "THE ACCOUNT SEAMS ON iOS: ... syncNow (the
+    R440 bounded drain)".
+  EXISTS: IosSyncTrigger (iosMain: one drain per write, coalescing, a failure leaves days PENDING and is not looped,
+    cancelling the scope cancels the drain) + IosSyncTriggerTest (4 tests, the failure case over the REAL SyncEngine
+    and the real iOS database); SyncEngine (commonMain). Android twins: SyncWorker.buildSyncEngine (the account read
+    AT DRAIN TIME, R303; the process's one session, R507; the cache marked stale, R559), SyncWorker.doWork's outcome
+    mapping (Settled -> success, Retryable -> retry, Unauthenticated -> success, never retried),
+    SyncScheduler.cancel (the sign-out's cancelSync), syncNow = { buildSyncEngine(context).sync() } (Parametres'
+    bounded R440 send, the callback's held-days send).
+  MISSING: (a) the composed iOS drain - SyncEngine over the iOS dao, the ONE session passed in (never built inside),
+    the account read from the AccountStore at each drain, the iOS DossierCache; (b) syncNow = that drain called
+    directly, as Android's is (the caller's bound cancels it); (c) IosSyncTrigger.cancel() for the sign-out scope:
+    stops the running drain and drops a coalesced one; (d) the outcome -> follow-up decision as a pure function, the
+    one a scheduler will call (done / retry later), SyncWorker's mapping.
+  NEEDS AN APP HOST: the SCHEDULING half - BGTaskScheduler.register (before the app finishes launching), submit (a
+    BGAppRefresh/BGProcessing request), the network precondition and the backoff. ARGUED: Apple requires every
+    task identifier in the app's Info.plist BGTaskSchedulerPermittedIdentifiers and registration from the app
+    delegate; the test binary has neither (the probe MEASURES the missing identifiers). PARKED to IOS-1b-B (R893).
+    The logic it will call is (a)-(d), tested here.
+
+PIECE 3 - THE EXPORT FILE (R891)
+  R839 lines covered: "the dossier share/export (UIActivityViewController) ... and exportBytes"; "THE ACCOUNT SEAMS
+    ON iOS: exportBytes (the authenticated binary GET) and the share hand-off for the account export".
+  EXISTS: SessionManager.authenticatedGetBytes (commonMain; Android's exportBytes IS session::authenticatedGetBytes),
+    NsUrlSessionTransport.executeForBytes (NsUrlSessionTransportWireTest.bytesComeBackUnalteredWithTheirHeaders, the
+    wire server's /__bytes: 256 bytes 0..255, Content-Disposition filename="releve-2026.pdf"), the controllers'
+    ExportEvent.Ready (ReleveController, ParametresController; commonMain). Android twin: MainActivity.shareFile
+    (cacheDir/exports/<event.filename>, the event's bytes) and deviceLocalStore's clearExports (the same directory,
+    EXPORTS_DIR = "exports", deleted recursively).
+  MISSING: the file the share sheet would hand over: an ExportEvent.Ready written to <app temporary
+    directory>/exports/<filename>, bytes verbatim, and the clear of that one directory (the LocalStore's
+    clearExports - one path for writer and clear). Tested with the Android path's own fixture (ReleveControllerTest's
+    %PDF bytes and "releve-2026-camille-rey.pdf", through the shared controller) and end to end over the REAL iOS
+    transport (the session's binary GET of /__bytes through ReleveController's export to the file: 0..255 intact).
+  NEEDS AN APP HOST: the SHARE SHEET - UIActivityViewController must be presented from a view controller in a window
+    scene; ARGUED (UIKit presentation needs a UIApplication with a key window; the test binary has none). PARKED to
+    IOS-1b-B. The file it will hand over is produced and tested here.
+
+PIECE 4 - THE NOTIFICATION SCHEDULING LOGIC (R892)
+  R839 lines covered: "the bell (UNUserNotificationCenter permission, an alert store, the evening/threshold
+    notification itself)"; "THE TOGGLES' HOST: ... the evening/alert toggles' notification permission (R323)".
+  EXISTS: commonMain - EveningNotificationStore / ThresholdAlertStore + in-memory (InMemoryAlertStoresTest),
+    ThresholdCrossing, AlertThreshold, projectedThresholdCrossing, detectionOutcome, CHECK_WINDOWS and
+    afterLastCheckWindow. Android twins: detection/EveningNotificationDecision.kt (eveningDecision, EveningConditions,
+    EveningNotice, isWorkingDay) and detection/ThresholdAlertDecision.kt (decideThresholdAlert, composeDaily,
+    DailyNotification) - pure, tested by EveningNotificationDecisionTest / ThresholdAlertDecisionTest; the glue
+    EveningNotifier.kt (maybeNotifyEvening / maybeAlertThreshold: posting, channels, PendingIntents, the store
+    writes) - Android-only.
+  MISSING: (a) the two decisions on iOS - the byte-identical copies (see THE CONSTRAINT) - with Android's own cases
+    run against them on the simulator; (b) the WHEN for a scheduler that, unlike Android's 15-minute wakes, schedules
+    AHEAD: the evening reminder at the first moment Android's dayConcluded gate opens, i.e. the Paris wall-clock
+    minute CHECK_WINDOWS.last().endMinuteOfDay on the day (derived, never typed), or immediately once past it; the
+    threshold alert immediately, merged with the evening reminder when it is due (composeDaily). Pure, value in /
+    value out, no clock read and no kotlin.time type (the :app ExperimentalTime allowlist scans iosMain and cannot
+    be edited here). The wall-clock answer is what UNCalendarNotificationTrigger takes, so DST is the OS's.
+  NOT DECIDED HERE (R839 does not settle them "the same as Android"; parked, not invented): how far ahead iOS
+    pre-schedules (today only, or the next working days); whether recording a day cancels the pending request (the
+    Android notification is cancelled on record - EveningNotifier.cancel); how "already notified" is known for a
+    request scheduled ahead (Android marks at post; an ahead-scheduled request fires while the app is not running).
+  NEEDS AN APP HOST: posting and its permission - UNUserNotificationCenter (requestAuthorization, add,
+    getDelivered..., the delegate) and the notification copy/presentation. ARGUED: the notification center is tied to
+    the app bundle (authorization is per bundle identifier; a process with no bundle has none), and the probe
+    MEASURES the missing bundle identifier. PARKED to IOS-1b-B with the store-write ordering of maybeNotifyEvening /
+    maybeAlertThreshold listed as glue to port (R893).
+
+LOCATION AND DETECTION: OUT (the queue's words). Nothing here reads a coordinate or builds a detection outcome; the
+planner takes the outcome as an input.
+
+THE RUN PLAN (R895, budget FOUR runs): run 1 carries every new test against stubs that return WRONG VALUES (never a
+throw, never an unbounded wait), so each new class fails by assertion while every existing class stays at 0
+failures - the RED run for R889-R892 at once; run 2 is the GREEN run on the code tip; runs 3-4 are spares. Each is
+preceded by the Windows compile-only check (`:shared:compileTestKotlinIosSimulatorArm64
+-Pkotlin.native.enableKlibsCrossCompilation=true --offline`, compile evidence only).
+
+R888 AMENDED BY RUN 1 (the probe's line, from 43174150607's results, AppHostProbeIosTest's captured output):
+  "APP HOST PROBE: bundleIdentifier=null bundlePath=/Users/runner/work/monreleve/monreleve/android/shared/build/bin/
+  iosSimulatorArm64/debugTest BGTaskSchedulerPermittedIdentifiers=null"
+  So the premise is MEASURED: the simulator test binary has no bundle identifier and no permitted background-task
+  identifiers. What remains ARGUED is Apple's side: that UNUserNotificationCenter needs a bundle identifier, that
+  BGTaskScheduler refuses an identifier not listed in the app's Info.plist, and that UIActivityViewController needs a
+  presenting view controller in a window scene. No host API was called to find out.
+
+================================================================================
+R889 - THE ACCOUNT STORE (and the iOS LocalStore that clears it)
+================================================================================
+BUILT (iosMain unless named):
+  ios/KeychainAccountStore.kt   the tag in ONE Keychain item, service ch.monreleve.app.account, account "tag", built from
+                                KeychainQueries like the token and pending stores: never synchronised, ThisDeviceOnly,
+                                AfterFirstUnlock - excluded from backup as Android's monreleve.account file is; its own
+                                item, so clearing it never touches the session or the pending address.
+  account/DeviceLocalStore.kt   ANDROID'S CLASS, BYTE-IDENTICAL (IosAndroidTwinsTest): the three scopes - sign-out
+                                (R295/R297/R303), deletion (R289), the server-ended session (R521/R527) - by the same lines.
+  ios/IosLocalStores.kt         iosDeviceLocalStore(...): Android's deviceLocalStore(context) with iOS's seams (Keychain
+                                tokens / pending / account, UserDefaults settings, FileDossierCache, clearIosRecord,
+                                IosSyncTrigger.cancel, IosExportFiles.clear; the DetectionModeStore injected - iOS has no
+                                persistent one yet, R894). clearIosRecord(database): Room 2.7.2's native RoomDatabase has
+                                NO clearAllTables (read in room-runtime-2.7.2-sources.jar: performClear is in
+                                RoomDatabase.android.kt only), so its sequence is reproduced - the record tables DERIVED
+                                from sqlite_master (never room_master_table, sqlite_* or android_metadata), emptied in ONE
+                                IMMEDIATE transaction, then PRAGMA wal_checkpoint(FULL) and VACUUM outside it.
+  commonTest                    contracts/AccountStoreContract.kt (six tests: no account until set; through ANOTHER
+                                instance; a second sign-in replaces; clear for every instance; clear of nothing; kept
+                                verbatim, never UNOWNED) + MemoryAccountStore, the JVM's reference.
+"KEYED AND CLEARED AS ANDROID'S IS; SIGN-OUT AND DELETION CLEAR IT, WITH A TEST FOR EACH" - over the REAL iOS stores
+(unique Keychain service, UserDefaults suite, temporary directory, real Room database), each seeded and asserted
+seeded before anything is asserted cleared:
+  sign-out   IosLocalStoreIosTest.signOutClearsTheAccountTagWithTheRestOfR295sSetAndKeepsThePendingSignIn
+             (the tag, the record and the tally, the tokens, the cached releve, the export file, the running drain
+             cancelled with no outcome recorded, the settings, the mode reset; the pending sign-in KEPT)
+  deletion   IosLocalStoreIosTest.deletionClearsTheAccountTagAndThePendingSignInToo
+  control    IosLocalStoreIosTest.aServerEndedSessionKeepsTheRecordAndItsAccountTag (R521 keeps the record, the tag,
+             the queued drain and the pending sign-in; clears tokens, settings, cache, exports, mode)
+  the store  KeychainAccountStoreContractTest (the contract, 6) + KeychainAccountStoreItemTest (2: its identity is
+             neither the token pair's nor the pending address's; clearing it leaves them and the reverse)
+  the sweep  IosRecordClearIosTest (2: entry, daily_tally and weekly_rhythm emptied; still writable; reopens at its
+             version with the row written after the clear; the derived list holds the three entity tables and never
+             Room's or SQLite's own)
+RED: on the JVM, the reference stub that forgot every tag - "6 tests completed, 5 failed" (r889-jvm-red.log). On the
+  simulator, run 43174150607 on 2567ceb: KeychainAccountStoreContractTest.clearLeavesNoAccountForAnyInstance
+  ("Expected value to be null, but was: <aaaa...cdef>"), KeychainAccountStoreItemTest ("the tag is cleared. Expected
+  value to be null"), IosLocalStoreIosTest sign-out ("R303: sign-out clears the account tag. Expected value to be
+  null, but was: <d0d0...>") and deletion ("R289: deletion clears the account tag"), session end ("R521: the export
+  is deleted" - R891's stub, the cross-piece check), IosRecordClearIosTest ("the entries (the record and the mutation
+  queue) are gone"). REASON: the stubs - clear() forgot nothing, clearIosRecord was a no-op.
+GREEN: R895's run on the code tip.
+
+================================================================================
+R890 - THE SYNC TRIGGER LOGIC
+================================================================================
+BUILT (iosMain):
+  ios/IosSyncComposition.kt  iosSyncDrain(dao, session, accountStore, dossierCache) - Android's
+                             buildSyncEngine(context).sync(): the shared SyncEngine; the AccountStore read WHEN THE DRAIN
+                             RUNS (R303), never when it is built; the ONE session passed in (R507); the Releve's cache
+                             (R559). It is also iOS's syncNow, called directly as Android's is, so its caller's bound
+                             (Parametres' eight-second R440 send) cancels it. syncFollowUp(outcome) - SyncWorker.doWork's
+                             mapping, the one decision a scheduler makes after a drain: Settled DONE, Retryable
+                             RETRY_LATER, Unauthenticated DONE and never a retry (R509).
+  ios/IosSyncTrigger.kt      + cancel(): the sign-out's cancelSync (Android's SyncScheduler.cancel) - the running drain
+                             cancelled, a coalesced request dropped, the trigger usable afterwards.
+TESTED (simulator; IosSyncTriggerTest's four, IOS-1a's, unchanged and still run):
+  IosSyncCompositionIosTest.theDrainSendsTheQueueOfTheAccountSignedInWhenItRunsNotWhenItWasBuilt (real database, A's
+    and B's pending days, the drain built under A and run after B signed in: one post, B's day in it, A's not)
+  .noAccountSignedInSendsNothing (Unauthenticated, no post)
+  .syncNowIsCancelledByItsCallersBoundAndLeavesTheDayPending (a hung send, withTimeoutOrNull(300): null, the send
+    cancelled, the day still PENDING)
+  .theFollowUpIsSyncWorkersMapping
+  IosSyncTriggerCancelIosTest.cancelStopsTheRunningDrainDropsTheCoalescedOneAndLeavesTheTriggerUsable
+RED (43174150607): "B's day goes up under B's session" and "Expected <Unauthenticated>, actual <Retryable>" (the stub
+  read the account when the drain was built - the R303 defect itself), "Expected <RETRY_LATER>, actual <DONE>", "did
+  not finish within 5000 ms: the cancelled drain stopping" (cancel was a no-op; the bounded wait turned a would-be
+  hang into a named failure). The bound test passed in RED, as written down before the run: it tests the call-through,
+  which the stub had.
+PARKED: the scheduling half (BGTaskScheduler) - PARK-IF1.
+
+================================================================================
+R891 - THE EXPORT FILE
+================================================================================
+BUILT (iosMain): ios/IosExportFiles.kt - write(event: ExportEvent.Ready) puts the event's bytes, verbatim, at <the app's
+  temporary directory>/exports/<event.filename> (Android's EXPORTS_DIR name; the filename is the shared controller's -
+  the server's Content-Disposition name, or the R237 fallback) and returns that path - Android's shareFile minus the
+  share; it throws when the file cannot be written, as Android's writeBytes does. clear() deletes that one directory and
+  IS the LocalStore's clearExports, so writer and erasure share one path. iOS's exportBytes is
+  session::authenticatedGetBytes over NsUrlSessionTransport, as Android's is - no new code; proven below.
+TESTED (simulator):
+  IosExportFilesIosTest.theAndroidPathsFixtureBecomesTheFileUnderItsServerName - ReleveControllerTest's own fixture
+    (the "%PDF" bytes 37 80 68 70, "releve-2026-camille-rey.pdf") through the SHARED ReleveController (which asked its
+    own path, /api/v1/export/pdf?year=2026) to ExportEvent.Ready, and the file at exports/releve-2026-camille-rey.pdf
+    holds exactly those bytes; type application/pdf.
+  .theRealTransportsBytesReachTheFileUnaltered - END TO END: SessionManager over AuthApi over the REAL
+    NsUrlSessionTransport fetches the CI wire server's /__bytes (256 bytes, every value 0..255, Content-Disposition
+    filename="releve-2026.pdf") as the controller's exportBytes; the event names releve-2026.pdf; the file is the 256
+    bytes. (The wire server has one binary route, so the test's exportBytes records the controller's path and fetches
+    that route in its place - stated in the test.)
+  .theClearDeletesTheOneDirectoryAndIsANoOpWhenThereIsNone; .theDefaultDirectoryIsTheAppsTemporaryDirectorysExports
+  and the cross-piece check in R889: a written export is gone after sign-out, deletion and a server-ended session.
+RED (43174150607): "Array sizes differ. Expected size is 4, actual size is 0" and "... 256, actual size is 0" (the stub
+  wrote an empty file), "the JSON export is gone" (clear was a no-op).
+PARKED: the share sheet (UIActivityViewController) and the export failures' presentation - PARK-IF2.
+
+================================================================================
+R892 - THE NOTIFICATION SCHEDULING LOGIC
+================================================================================
+DECIDING THE SAME AS ANDROID - BY ANDROID'S CODE: detection/EveningNotificationDecision.kt and ThresholdAlertDecision.kt
+  are copied byte-identical into iosMain (same package and declarations), held equal by IosAndroidTwinsTest. Android's
+  own cases run on the simulator against the copies: EveningNotificationDecisionTwinIosTest (9, one per
+  EveningNotificationDecisionTest case) and ThresholdAlertDecisionTwinIosTest (11, one per ThresholdAlertDecisionTest
+  case), transcribed Kotest/JUnit -> kotlin.test with values and expectations unchanged.
+THE WHEN (iosMain ios/IosNotificationPlan.kt - pure, no clock read, no kotlin.time type):
+  planEveningReminder(today, dayConcluded, state, outcome, alertedToday): Android's eveningDecision asked as at the
+    delivery time, composed with a threshold alerted today (composeDaily); delivered at
+    NotificationTime.ParisWallClock(today, DAY_CONCLUSION_MINUTE) - DAY_CONCLUSION_MINUTE = CHECK_WINDOWS.last()
+    .endMinuteOfDay (1020 today, derived), the minute afterLastCheckWindow turns true - or NotificationTime.Now once
+    the day has concluded; null when any of Android's rules says no.
+  planThresholdAlert(optedIn, current, previous, today, dayConcluded, evening, outcome): maybeAlertThreshold without the
+    posting - decideThresholdAlert (whose newState the caller keeps), and on a NEW crossing one notification Now,
+    merged with the reminder as it stands now, alreadyNotified ignored as Android's merge ignores it.
+  A wall-clock minute in Europe/Paris is what UNCalendarNotificationTrigger takes (with the zone in its date
+  components), so DST is the operating system's.
+TESTED: IosNotificationPlanIosTest (10): the conclusion minute is the last window's end and no window ends later;
+  before the conclusion -> ParisWallClock(2026-11-12, 1020); after -> Now; what it says by mode (auto HIGH ->
+  Proposed(HOME), auto not-sure -> NotSure, manual -> Manual whatever the outcome); nothing on Saturday 2026-11-14, opted
+  out, a recorded day, an already-notified day; an alert already given today -> Merged; a first crossing before the
+  conclusion -> Alert(FISCAL) Now and newState kept; once the reminder is due -> Merged even if it already fired; both
+  at once -> SOCIAL; staying crossed / opted out / no projection -> nothing, state untouched.
+RED (43174150607): seven tests - "Expected <PlannedNotification(notification=Evening(notice=Manual),
+  time=ParisWallClock(day=2026-11-12, minuteOfDay=1020))>, actual <null>" and its six siblings: the stubs planned
+  nothing. The three tests expecting nothing or a constant passed in RED, as written down before the run. The twin
+  cases passed in RED by design - they run Android's real code; the copies' RED is the twins guard's (below).
+THE TWINS GUARD (androidUnitTest shared/IosAndroidTwinsTest, run by fastCheck and :app:gate on the JVM): RED on two
+  VERIFIED plants (R180) - one line of the iOS ThresholdAlertDecision.kt changed (SOCIAL -> FISCAL at line 50,
+  confirmed by cmp/diff before the run): "the iosMain copy differs from :app's file at line 50"; a fourth twin
+  (DetectionPlaceholder.kt copied, byte-identical, confirmed): the exact-set assertion failed naming it. Both removed,
+  identity re-confirmed by cmp. The plant that changed only iosMain re-ran the test task: the declared inputs work.
+PARKED: posting, permission, copy, lock-screen form, record buttons, store writes, how far ahead, cancel on record,
+  "already notified" for an ahead request - PARK-IF3.
+
+================================================================================
+R893 - WHAT IS PARKED, WITH WHAT WAS PROVEN (parking.md, series IF)
+================================================================================
+THE SERIES: `node web/scripts/register-coverage.mjs` on 108af5c's tree printed "two letters CA FT HA IA IB IE PB PI TG;
+  ... phantom citations: FW ZZ" - IF free; claimed. PARK_ID RUN, NOT READ (R456): the exported CITATION regex matched
+  the first IF id bare, the fourth in parentheses and a two-digit IF id before a full stop, and refused an IF id
+  followed by "-x", one followed by a letter, and the series name with no number (the exact strings and answers are
+  in .ios2f-evidence/park-id-regex.txt, not retyped here, so this report cites no id that has no heading).
+  Appended by a script that refused if any IF heading already existed (there was none); after: "two letters CA FT HA IA IB IE IF PB PI TG", "register coverage: OK".
+ONE ENTRY PER PARKED HALF, each naming what it needs and the test here that proves the logic it will call - IOS-1b-B's
+input, R839's list updated (R894):
+  PARK-IF1  THE SYNC SCHEDULER (BGTaskScheduler). Needs: registration before launch completes, the identifier in the
+            app's Info.plist BGTaskSchedulerPermittedIdentifiers, the background-mode capability, a request after a
+            write and on foreground with requiresNetworkConnectivity, the backoff on RETRY_LATER, the write path
+            calling afterWrite. Proven: IosSyncCompositionIosTest (4), IosSyncTriggerCancelIosTest, IosSyncTriggerTest.
+  PARK-IF2  THE SHARE SHEET (UIActivityViewController) and the two export failures' presentation. Needs: a presenting
+            view controller in a window scene; the file URL IosExportFiles.write returns. Proven:
+            IosExportFilesIosTest (4), and the clear in IosLocalStoreIosTest.
+  PARK-IF3  POSTING the evening reminder and the threshold alert (UNUserNotificationCenter): authorization at the
+            toggles (R323), the calendar trigger in Europe/Paris, one identifier per day, removal on a null plan and on
+            record, the store writes in Android's order, the copy, the lock-screen form, the record buttons (the
+            authenticationRequired option), and two choices R839 does not settle (how far ahead; how "already
+            notified" is learnt for an ahead request). Needs: the bundle identifier and the app's notification
+            entitlement/authorization. Proven: IosNotificationPlanIosTest (10), the two twin classes (20).
+  PARK-IF4  THE MOVE that ends the copies: the three :app files to commonMain, the iosMain copies deleted, the twins
+            guard's set emptied. Needs: a task allowed to change android/app, the full :app:gate and the R573 run.
+            Guarded until then by IosAndroidTwinsTest (byte drift, a fourth copy) and by iOS compilation (a move that
+            forgets the copy is a redeclaration).
+
+================================================================================
+R894 - R839 UPDATED: EVERY iOS PIECE STILL MISSING (the input to IOS-1b-B and after)
+================================================================================
+R839's list re-stated, with this task's pieces MOVED OUT (marked DONE IN IOS-2f, with where) and what remains of
+each split item kept. Nothing else in R839 changed; its other sections (SHARED ENTRY POINTS, THEIR HOSTS, EVERY :app
+FILE THAT REMAINS) stand, with two notes: the three :app files R839 classed "NO BLOCKER FOUND" that iOS needed now
+have byte-identical iosMain copies (account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt,
+detection/ThresholdAlertDecision.kt - PARK-IF4 moves them), and :shared gains the iOS-only declarations listed in
+R889-R892.
+
+MOVED OUT BY IOS-2f (DONE, tested on the simulator - R895's green run):
+  - "an AccountStore for iOS" -> KeychainAccountStore (R889).
+  - "an iOS LocalStore that clears the record, the tokens, the cached releve, the exports and the settings exactly as
+    DeviceLocalStore does (R295/R297/R289) - plus R521's session-end scope" -> DeviceLocalStore itself (the copy) over
+    iosDeviceLocalStore's iOS seams, with clearIosRecord for Room's missing clearAllTables (R889).
+  - "syncNow / a composed iOS SyncEngine" and "syncNow (the R440 bounded drain)" -> iosSyncDrain, which is also
+    syncNow; syncFollowUp; IosSyncTrigger.cancel as cancelSync (R890).
+  - "exportBytes" (the dossier's and the account export's) -> session::authenticatedGetBytes over the iOS transport,
+    proven end to end into the file; "the share hand-off ... the file" -> IosExportFiles (R891).
+  - "the evening/threshold notification itself" - its DECISION and WHEN -> the iosMain copies of :app's two decision
+    files and IosNotificationPlan (R892).
+
+STILL MISSING (R839's lines, each with what is left of it):
+  - the universal-link receipt (R770); the transport's base URL; the iOS framework declaration and bundled Compose
+    resources; the iOS /me codec (OnboardingController's patchBody, StartupDecider's parseMeView); onboarding's
+    evening-reminder and location halves and its restore;
+  - THE SYNC SCHEDULER (BGTaskScheduler; who calls afterWrite / requestDrain) - PARK-IF1;
+  - THE SHARE SHEET (UIActivityViewController) and the export failures' presentation - PARK-IF2; the dossier fetch
+    (an iOS DossierApi over the shared transport; FileDossierCache exists); the calendar's restore; R811(b) - whether a
+    phone-sized window opens a sheet with its Save visible;
+  - a forecast clock and host (an iOS composition of the Room rhythm DAO and entries into the repositories, a host
+    owning the scope and the forecast route); the simulator's restore; THE BELL: UNUserNotificationCenter permission,
+    POSTING the planned notification, its copy and lock-screen form, the record buttons - PARK-IF3; the location
+    disclosure's host (Core Location, the on-device border check) and its ANDROID_TEN_WARNING copy decision; the
+    comparison's data (the Releve's document, an employer-figure store); the forecast route itself;
+  - AN iOS ParametresWire (the four bodies and the receipt parse in iOS's JSON, byte-compatible; R448's mixed rule; a
+    malformed receipt THROWS on Android - an iOS implementation must decide the same or say otherwise) - unchanged;
+  - A NATIVE iOS DATE PICKER in ParametresScreen's and OnboardingScreen's startDatePicker slot - unchanged;
+  - iOS PERSISTENCE FOR THE STORES: ThresholdAlertStore and EveningNotificationStore (NSUserDefaults, keyed and
+    cleared as Android's detection file is - R303/R527), a DetectionModeStore (and the near-border flag and employer
+    figures that share Android's detection file) - STILL MISSING; the LocalStore takes the DetectionModeStore as a
+    parameter until it exists. The SettingsStore exists (UserDefaultsSettingsStore, IOS-1a). The year-downloads stop
+    that precedes Android's clearRecord (AN-PULL) is owed by the iOS host that adds year downloads;
+  - THE ACCOUNT SEAMS ON iOS: revokeServer and authenticatedPost (SessionManager over the iOS transport - one-line
+    compositions, not yet wired by any host) - unchanged; exportBytes and syncNow MOVED OUT above;
+  - THE TOGGLES' HOST: the detection toggle's disclosure + permission flow (R316), the evening/alert toggles'
+    notification permission (R323 - PARK-IF3 item 1), startSampling / stopSampling (iOS has no sampler);
+  - LEGAL LINKS: an iOS openLegal with R299's no-handler fallback; Site's origin is :app's - unchanged;
+  - THE PARAMETRES RESTORE (PlatformSerializable is an empty marker on iOS) - unchanged;
+  - THE APP VERSION LINE (the bundle's version) - unchanged;
+  - NEW, NOTICED HERE: a first launch after a REINSTALL. The Keychain items (the token pair, the pending address, and
+    now the account tag) survive an app's deletion on iOS while the database, the UserDefaults and the files do not;
+    Android's equivalents all go with the app. Whether the host clears the Keychain items on a first launch is the
+    host's decision (IOS-1b-B), not taken here.
+
+================================================================================
+R895 - THE RUNS (`gh workflow run ios-shared.yml --ref ios2f`; budget FOUR, TWO used)
+================================================================================
+  run          commit    result                                   job wall                       billed  cumulative
+  43174150607  2567ceb   failure - the RED run, as expected:      07:22:25Z-07:32:16Z (9m51s)    10 min  10 min
+                         375 executed, 20 failed, all 20 in new
+                         classes, 0 in the 316 existing
+  43177226628  39a384e   SUCCESS - 375 executed, 0 failed         07:42:26Z-07:46:19Z (3m53s)     4 min  14 min
+                         (THE CODE TIP)
+BILLED: the job's wall time rounded up to the minute (IOS-2e-FIX's convention), because the timing API's billing field
+  reads 0: `gh api repos/{owner}/{repo}/actions/runs/<id>/timing` -> 43174150607: billable MACOS total_ms 0,
+  run_duration_ms 895000; 43177226628: billable MACOS total_ms 0, run_duration_ms 237000. Values as read, not taken as
+  the cost (N2). Run 2 was faster because run 1 saved the Kotlin/Native toolchain cache ("Save the Kotlin/Native
+  toolchain" skipped on run 2: cache hit).
+EACH RUN STARTED STEPS (no billing refusal): run 1's job started 07:22:25Z and every step but the test step succeeded;
+  run 2's job every step succeeded (the toolchain save skipped on a cache hit).
+RUN 1, THE EXPECTATION WRITTEN BEFORE THE DISPATCH (.ios2f-evidence/run1-expected.txt): 375 executed (316 + 59 new),
+  20 failures, every one an assertion in a new class - MET EXACTLY, class by class: IosExportFilesIosTest 3,
+  IosLocalStoreIosTest 3, IosNotificationPlanIosTest 7, IosRecordClearIosTest 1, IosSyncCompositionIosTest 3,
+  IosSyncTriggerCancelIosTest 1, KeychainAccountStoreContractTest 1, KeychainAccountStoreItemTest 1. No hang: the one
+  would-be hang (cancel as a no-op) failed by name in 5 s through the bounded wait.
+RUN 2 per new class (tests / failures): KeychainAccountStoreContractTest 6/0, KeychainAccountStoreItemTest 2/0,
+  MemoryAccountStoreContractTest 6/0, IosLocalStoreIosTest 3/0, IosRecordClearIosTest 2/0, IosSyncCompositionIosTest
+  4/0, IosSyncTriggerCancelIosTest 1/0, IosExportFilesIosTest 4/0, IosNotificationPlanIosTest 10/0,
+  EveningNotificationDecisionTwinIosTest 9/0, ThresholdAlertDecisionTwinIosTest 11/0, AppHostProbeIosTest 1/0; the
+  existing IosSyncTriggerTest 4/0. Device: "iPhone 17 Pro (2FEACF5E-...) (Booted)", "-- iOS 26.2 --", Xcode 26.0.1.
+THE MINUTES: 14 of the step's 60; the orchestrator's merge-result run (R573) is not this session's.
+
+================================================================================
+MEMORY (commit free / free physical, MB; every Gradle and web step under run-sampled.ps1)
+================================================================================
+  step                                    on        start commit free   min commit free   min free physical   result
+  JVM RED (AccountStore reference)        stub      8 577               6 338             836                 exit 1 (RED)
+  JVM GREEN (contract + twins guard)      -         6 544               6 083             577                 exit 0
+  twins plant 1 / plant 2 (RED)           plants    6 131 / 6 082       6 131 / 6 082     704 / 668           exit 1 / 1
+  iOS compile-only #1 / #2 / #3           RED/RED/  8 531 / 8 611 /     7 117 / 7 053 /   1 566 / 2 940 /     exit 0 x3
+                                          39a384e   7 016               6 986             4 154
+  fastCheck (RED tree)                    2567ceb   5 483               3 672             546                 exit 0
+  gate:clone                              2567ceb   6 933               5 309             971                 PASSED
+  fastCheck R889 / R890 / R891 / R892     each      6 936 / 6 657 /     6 388 / 6 387 /   2 082 / 2 088 /     exit 0 x4
+                                          commit    6 726 / 6 686       6 251 / 6 347     2 058 / 2 500
+  FULL :app:gate                          39a384e   8 201 (8 443 read   3 547             382                 BUILD
+                                                    after --stop)                                             SUCCESSFUL
+  gate:clone                              39a384e   8 567               6 737             2 615               PASSED
+No sampler abort; no worker death. `./gradlew --stop` RAN: before compile-only check #1, before #2, before the full
+gate, after the gate (before #3) and after #3 - NOT between the JVM runs, the RED-tree fastChecks or the four
+per-piece fastChecks. The full gate started above the 8 000 MB floor (8 443 MB read after --stop, in its own step).
+Every OTHER Gradle step started below it - DEVIATION 10.
+
+================================================================================
+PARKED
+================================================================================
+PARK-IF1..PARK-IF4 - R893 above (parking.md). Nothing else parked.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. THREE BYTE-IDENTICAL COPIES OF :app FILES (R206's one home). account/DeviceLocalStore.kt and the two detection decision
+   files live in :app and, identically, in :shared's iosMain. Forced by the hard boundary (0 files under android/app: a
+   move deletes them from :app). Mitigated, not removed: IosAndroidTwinsTest derives the twins from the tree and fails
+   on any byte of drift and on any fourth copy; a later move fails iOS compilation until the copy goes. PARK-IF4 is
+   the removal.
+2. KeychainAccountStore.setCurrent THROWS KeychainException on a refused Keychain write - the idiom of the two other
+   Keychain stores - where Android's SharedPreferences commit() result is ignored. A refused READ is "no account"
+   (fail closed, R303), as an unreadable preference is null on Android. Not a product decision R839 names; stated here.
+3. ONE RED RUN FOR FOUR PIECES. Test-first was kept per piece (each piece's tests ran RED against its own stub before
+   its code), but the four REDs share one cloud run (43174150607) for the minutes budget. The JVM halves were shown RED
+   locally (the reference store; the twins guard on two plants).
+4. THE COPIED DECISIONS' iOS CASES PASSED IN RUN 1 - they run Android's real code, so a RED would have needed a planted
+   wrong copy, which the twins guard forbids by construction. Their RED is the guard's (two verified plants, JVM).
+5. PER-PIECE fastCheck RAN WITH THE LATER PIECES SET ASIDE: the four GREEN edits were written together while gate:clone
+   ran on the RED commit, backed up to .ios2f-evidence/green-backup, and the later pieces' files restored from HEAD,
+   so each code commit's fastCheck ran on exactly that commit's tree (959957b, c6cfe6d, 745551f, 39a384e).
+6. shared/build.gradle.kts GAINS TWO TEST INPUTS (iosMain and :app's main sources) for IosAndroidTwinsTest - no
+   dependency, no task, no Android behaviour; the KMP-0 R369 fence's discipline for a second text-reading test.
+7. syncNow ON iOS IS THE DRAIN CALLED DIRECTLY, outside IosSyncTrigger's single flight - the same as Android, whose
+   syncNow runs outside WorkManager's unique work. Recorded because the trigger exists and could have been used.
+8. THE WINDOWS COMPILE-ONLY CHECK (`:shared:compileTestKotlinIosSimulatorArm64
+   -Pkotlin.native.enableKlibsCrossCompilation=true --offline`, the property on the command line, no file changed) ran
+   three times (2567ceb's tree twice, 39a384e once), compile evidence only, never cited as a run result. Classed as not
+   a HOLDS heavy step (it is not on the list: :app:gate, recordPaparazzi, assembleRelease) and run under the sampler;
+   its minimum was 7 053 MB commit free. Its starting reads are in DEVIATION 10.
+9. STYLE REDS BEFORE EACH GREEN fastCheck, all fixed before the commit they precede, none in a committed tree:
+   fastcheck-red-1 (detekt: 18 MaxLineLength, 1 FunctionOnlyReturningConstant on a stub), fastcheck-red-2 (ktlint: an
+   EOL comment after a KDoc; a first scripted move of those comments overreached - its lazy pattern spanned two KDocs -
+   and was corrected by hand, each comment re-placed above its own declaration and checked by grep before the next
+   run), fastcheck-r891 (detekt: one long line), fastcheck-r892 / r892b (ktlintFormat refused an EOL comment after a
+   KDoc; the sampler's log held no output because only the second command of the `&&` pair was redirected - NO RESULT,
+   re-run directly to read the message). Each green run after them is the one cited.
+10. GRADLE STEPS BELOW THE 8 000 MB FLOOR. The launch message counts "a fastCheck under pressure" as a heavy step at
+   commit free >= 8 000 MB after --stop. Only the FULL :app:gate met it (8 443 MB). Every fastCheck started at 5 483 -
+   7 171 MB commit free (the RED-tree one bottomed at 3 672 MB, 546 MB free physical), the JVM test runs at 6 082 -
+   8 577 MB, the compile-only checks at 7 016 - 8 611 MB at the sampler's first read (one read after --stop was
+   4 666 MB, before #3); several without a --stop before them. All ran under the sampler: no abort, no worker death,
+   every test count as expected. Recorded as run, not explained away.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (IOS-1b-B's or the operator's, not blocking): THE iOS SCHEDULING MODEL'S TWO OPEN CHOICES (PARK-IF3 item 5) - how far
+   ahead the evening reminder is scheduled (planEveningReminder plans today only), and how "already notified" is learnt
+   for a request that fired while the app was not running (Android marks it when it posts). Neither is "the same as
+   Android" because Android never schedules ahead.
+Q2 (IOS-1b-B's, not blocking): A REINSTALL. The Keychain items (token pair, pending address, and now the account tag)
+   survive an app's deletion on iOS while the database, UserDefaults and files do not; on Android all of them go with
+   the app. Whether the host clears the Keychain items on a first launch is a host decision; nothing here takes it.
+No question blocks.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+N1 THE EXPORT FILENAME IS JOINED UNCHECKED on both platforms: Android's File(dir, event.filename) and iOS's
+   "$dir/$filename" both take the server's Content-Disposition name as given (filenameOf strips nothing). Server-
+   controlled; iOS decides the same as Android; recorded in PARK-IF2.
+N2 THE TIMING API'S BILLING FIELD READS 0 for every iOS run (this task's and IOS-2e-FIX's 43004639615 alike), so the
+   billed minutes in R895 are the job's wall time rounded up per minute, IOS-2e-FIX's convention.
+N3 R839 lists "an iOS DossierCache" among the missing dossier pieces; FileDossierCache has existed since IOS-1a. R894
+   restates the line without it.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch ios2f only (never main, never production). gate:clone ran before each push, on the commit pushed.
+  push  range                     commits                                         check before it
+  1     * [new branch] 2567ceb    43e57f1 R888 (the map, before any code)         gate:clone PASSED on 2567ceb ("tree clean",
+                                  2567ceb R889-R892 RED                           ran ... db:deploy, test:db,
+                                                                                  test:container:write); STEP_EXIT=0
+        then: `gh run list --workflow ios-shared.yml --branch ios2f` -> [] ; dispatch -> 43174150607, headSha 2567ceb.
+  2     2567ceb..39a384e          959957b R889, c6cfe6d R890, 745551f R891,       fastCheck per commit; FULL :app:gate on
+                                  39a384e R892 - THE CODE TIP                     39a384e; compile-only check; gate:clone
+                                                                                  PASSED on 39a384e; STEP_EXIT=0
+        `git ls-remote origin refs/heads/ios2f` -> 39a384ef92d0c0381440224d6241be576299d8ff = HEAD (MATCH); then one
+        dispatch -> 43177226628, headSha 39a384e. ios2f does not match the workflow's push filter ('ios-*'), so no push
+        started a run: the branch's runs are exactly the two dispatches.
+  3     39a384e..<the report tip>   c6c6932 the report + parking.md (PARK-IF1..IF4); gate:clone on the report tip - PENDING
+                                    4124565 R893 reworded (register-coverage     at the time of writing; the hand-back
+                                    refused a headless id the first report       states its lines, the push and the
+                                    commit cited); the commit carrying this      ls-remote.
+                                    paragraph (DEVIATION 10, CLEANUP pending)
+`git diff --stat 39a384e <the report tip>` touches REPORT-IOS-2f.txt and parking.md only (the hand-back shows it).
+Ruling numbers: before this commit `grep -rlE '\bR8(8[89]|9[0-7])\b' relay/ REPORT-*.txt CLAUDE.md docs` -> the worktree:
+  relay/IOS-2f.txt and this report only; the main checkout: relay/IOS-2f.txt only. R896-R897 unused.
+Not pushed, not touched: main, production. No merge.
+
+================================================================================
+CLEANUP - PENDING at the time of writing (it follows the last gate:clone and push; the hand-back states each as done)
+================================================================================
+To do: remove web/.env; drop the monreleve_ios2f database and read pg_database (no monreleve_gate_clone_* left either);
+remove android/local.properties; `./gradlew --stop`; remove the lock .session-lock.json last. Evidence stays in
+C:/wt/ios2f/.ios2f-evidence/ (ignored): every step's log and samples, run1/ and run2/ (both runs' downloaded results
+and job logs), run1-expected.txt, green-backup/. The worktree C:/wt/ios2f stays (R392). No phone, no adb, no server
+started, no container touched, no prune.
+
+END OF REPORT-IOS-2f

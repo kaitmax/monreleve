@@ -238,6 +238,14 @@ tasks.withType<Test>().configureEach {
     inputs.dir(layout.projectDirectory.dir("src/commonMain/kotlin"))
         .withPropertyName("commonMainSourceForFence")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // IOS-2f R889/R892: IosAndroidTwinsTest compares iosMain's copies of :app files with the files themselves, byte for
+    // byte, so an edit on EITHER side must re-run it - the same R283 discipline, for both trees it reads.
+    inputs.dir(layout.projectDirectory.dir("src/iosMain/kotlin"))
+        .withPropertyName("iosMainSourceForTwins")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("app/src/main/kotlin"))
+        .withPropertyName("appMainSourceForTwins")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 android {

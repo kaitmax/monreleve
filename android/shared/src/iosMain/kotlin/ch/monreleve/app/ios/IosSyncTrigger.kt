@@ -55,4 +55,15 @@ class IosSyncTrigger(
         running = job
         return job
     }
+
+    /**
+     * IOS-2f R890: the sign-out's cancelSync (Android's SyncScheduler.cancel). Stops the running drain and drops a
+     * request coalesced behind it, so a drain cannot repopulate the queue the sign-out or the deletion is clearing.
+     * The trigger stays usable: the next request starts a fresh drain.
+     */
+    fun cancel() {
+        again = false
+        running?.cancel()
+        running = null
+    }
 }
