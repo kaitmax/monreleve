@@ -46,7 +46,7 @@ for it.
    measured. **The operator's action:** keep 60 s, or allow a shorter start period (the
    2 s start interval makes the container healthy on its first passing probe either way).
 
-5. **C1b's QUESTION 2 - the Chromium pin cadence.** The pin has broken twice in nine days (.47 -> .73 on 2026-11-02, .73 -> .79 on 2026-11-11): Debian keeps only the newest point release. **In force: option (a)**, an exact pin bumped by a one-line commit on each release, with a same-day madison read before every promotion (P1 item 0). The other options are in REPORT-FW-CHROMIUM-PIN-2.txt's NOTICED section: (b) a scheduled read-only drift check; (c) the .deb from snapshot.debian.org; (d) a prebuilt base image by digest; (e) pin the major only; (f) Playwright's Chromium. Options (c)-(f) change R249 or add infrastructure. **The operator's action:** keep (a), or choose another.
+5. **C1b's QUESTION 2 - the Chromium pin cadence.** The pin has broken twice in nine days (.47 -> .73 on 2026-11-02, .73 -> .79 on 2026-11-11): Debian keeps only the newest point release. **In force: option (a)**, an exact pin bumped by a one-line commit on each release, with a same-day madison read before every promotion (docs/deploy.md 10.1 step 2). The other options are in REPORT-FW-CHROMIUM-PIN-2.txt's NOTICED section: (b) a scheduled read-only drift check; (c) the .deb from snapshot.debian.org; (d) a prebuilt base image by digest; (e) pin the major only; (f) Playwright's Chromium. Options (c)-(f) change R249 or add infrastructure. **The operator's action:** keep (a), or choose another.
 
 6. **REMINDERS NEED `FRONTALIER_SCHEDULER`, NOT ONLY A KEY** (C2's NOTICED, Queue Ruling 5).
    Production's startup log in October said `[scheduler] not started (non_local_database)`
@@ -82,6 +82,35 @@ for it.
 
    **The operator's action:** choose (a), (b), or leave PB1/PB2 parked. Whichever is chosen, its
    first increment is a throwaway probe that a ModalBottomSheet draws whole.
+
+9. **AFTER A ROLLBACK, `production` STILL NAMES THE FAILED COMMIT** (C7's Q1, Queue Ruling 10;
+   docs/deploy.md 10.1 "After a rollback").
+   - Neither Coolify's Rollback nor its own "rolling back to the old container" moves the branch.
+   - A deployment queued without a commit takes the "Commit SHA" setting, which defaults to
+     `HEAD` and is resolved to the branch head (Coolify v4.5.0 applications.php 21;
+     ApplicationDeploymentJob.php 3171-3193, 3227-3231; read by the orchestrator at the tag). A
+     dockerfile app's Restart is such a deployment (job 255).
+   - So the next Restart, or the next push, puts the failed commit back, with no build.
+
+   **In force:** no restart and no variable change unless 10.1 step 0's two reads agree (the
+   serving image's SHA and `production`'s head). They agreed at C0 (52caca8). This is now a
+   precondition of the rotation plan and of P2 item 5b.
+
+   **The operator's action:** decide how `production` is realigned after a rollback:
+   - (a) force-push PREVIOUS to `production`. This is not a fast-forward, so it is the
+     operator's alone, and its auto-deploy is another swap.
+   - (b) fix forward with a new promotion from 10.1 step 0, with no restart before it.
+   - (c) another rule.
+
+10. **A ROLLBACK UNDER AN APPLIED MIGRATION** (C7's Q2, Queue Ruling 10). A rollback restores an
+    image, never a schema. The previous code then runs on the migrated schema, and `/api/ready`
+    cannot tell (docs/deploy.md 10.2). Nothing in the repository establishes old code against a
+    new schema, and nothing reverses a migration. Not live for P1: there is no migration between
+    52caca8 and the tip (read 2026-11-12). **The operator's action:** choose a rule before the
+    first promotion that carries a migration:
+    - roll back by image anyway;
+    - fix forward only;
+    - or require additive, backward-compatible migrations.
 
 ## PARKED TASKS (outside this queue - Queue Ruling 4)
 
@@ -121,6 +150,15 @@ for it.
   - The shared `frontalier` dev database is at 14 of the repository's 15 migrations. That is
     the operator's; no session migrates it.
   - PARK-TG2: `pnpm test:clean-tree` is red on main 4a65f42, identically before and after C6.
+- **Docs still naming `EMAIL_FROM` as a setting, or the disputed 2026-10-14 date** (C7's
+  NOTICED 1-4, Queue Ruling 10, R267):
+  - docs/domain-checklist.md 130-132 ("deploy.md section 8 N2 lists EMAIL_FROM", stale since C7);
+  - the comment at web/scripts/container-check.mjs 657 ("deleted on 2026-10-14", now marked
+    disputed in docs/deploy.md section 1; the assertion does not depend on it);
+  - SPEC-frontalier-web.md 1009 and tasks/todo.md 693 (EMAIL_FROM as an env setting).
+
+  The task is one docs session. Its gate selection will include the container suite, because of
+  container-check.mjs.
 - **C1b's `r854-fallback.sh` polls health with an unbounded `curl`**, which hung C2's first PDF run when the entrypoint refused. Later PDF proofs use C2's bounded pattern (`C:/wt/fw-secrets/.secrets-evidence/pdf-fallback.sh`: the origin read from the image's `/etc/frontalier-site-origin`, `--max-time` on curl, and a stop if the container exits).
 
 ## HOLDS (until lifted)
@@ -130,7 +168,7 @@ for it.
   (`#12 DONE 132.0s`), so a cold build passes today. The hold stays for a new reason: Debian
   keeps only the newest point release, so this cache is what keeps gates green between a Debian
   release and the next one-line bump. Cadence option (a) is in force; options (c)-(f) are the
-  operator's. On the server, C2's image prune keeps the rollback images that C7 names.
+  operator's. On the server, C2's image removal (P2 item 4) keeps the serving image and ONE previous image (C7, docs/deploy.md 10.2), and never 52caca8's while it is PREVIOUS, because it cannot be rebuilt.
 - **No privileged containers**, and nothing written to the shared Docker VM's kernel tunables:
   C1 dropped the page cache twice that way (Queue Ruling 2, deviation 5). No Docker Desktop / WSL
   restart either (it can start other projects' stopped containers through their restart
@@ -174,36 +212,39 @@ for it.
 
 ## PARKED PROMOTIONS (run in this order once the token is back)
 
-### P1 - C1 FW-READY-GATE (main b4df928 or later)
+### P1 - ONE PROMOTION OF MAIN'S TIP, carrying C1 FW-READY-GATE and P2 item 2 (Queue Ruling 10)
 
-From REPORT-FW-READY-GATE.txt's R849, with the PDF line added (Queue Ruling 2):
+**Run docs/deploy.md section 10.1 (R883) top to bottom.** It is the one home of the steps:
+PREVIOUS recorded, gate:clone, the madison read, the migration check, the fast-forward push, the
+deploy followed by reading, the after-deploy checks, and the rollback. This list holds only what
+is specific to this promotion.
 
-- [ ] 0. On the day of the promotion, run `apt-cache madison chromium` in `node:22-bookworm-slim`
-      and check that it still offers the pinned `CHROMIUM_VERSION` (web/Dockerfile). If it does
-      not, bump the pin first, as a one-line commit through its own gate (Queue Ruling 4). The
-      server cannot build a version the archive no longer has.
-- [ ] 1. QUESTION 1 stays open: Coolify's deploy check stays OFF.
-- [ ] 2. gate:clone alone on the exact SHA promoted. No migration in this change.
-- [ ] 3. `git push origin <sha>:production`, fast-forward. Watch Coolify's deployment list
-      read-only; never trigger a deploy through the API.
-- [ ] 4. The deploy log, in order: "Rolling update started." / "Custom healthcheck found in
-      Dockerfile." / "Waiting for the start period (60 seconds) before starting healthcheck." /
-      "Attempt 1 of 3 | Healthcheck status: "healthy"" / "New container is healthy." / "Rolling
-      update completed."
-- [ ] 5. `curl -fsS https://monreleve.ch/api/health` -> 200, body names "monreleve".
-- [ ] 6. `curl -sS -w '\nHTTP %{http_code}\n' https://monreleve.ch/api/ready` -> HTTP 200.
-- [ ] 7. `ssh monreleve-vps "docker inspect --format '{{json .Config.Healthcheck}} {{json
-      .State.Health.Status}}' \$(docker ps -q --filter name=pkptabevr1nhtyygrq0mc8qx)"` ->
-      Interval 10000000000, Timeout 5000000000, StartPeriod 60000000000, StartInterval
-      2000000000, Retries 3, the `/api/health` command, "healthy". (Coolify's parser has never
-      met `--start-interval` in production: this item is where that is proven.)
-- [ ] 8. `docker exec <that container> curl -sS -o /dev/null -w '%{http_code}\n'
-      http://localhost:3000/api/ready` -> 200.
-- [ ] 9. **The PDF**, because the Dockerfile changed (Part B): one annual dossier PDF generated
-      on production for a `@monreleve.test` account, opened, its pages and timestamps read.
-- [ ] 10. Any failed item: restore the previous deployment from Coolify at once, then fix.
+- [ ] **Order.** P2 item 1 (the Coolify settings visit) comes FIRST, so this promotion's build
+      absorbs it (docs/deploy.md 10.3). After the push, change no variable until step 6's checks
+      pass (10.1 step 4).
+- [ ] **NEW is main's tip on the day, never b4df928 itself.** b4df928 and 52caca8 pin Chromium
+      `.73`, which the archive no longer offers. The pin is `.79` from 7065b1b, so any SHA at or
+      after d036e67 carries C1, C1b and C2 together. 10.1 step 2's madison read still runs the same
+      day.
+- [ ] **PREVIOUS is expected to be 52caca8** (C0). If step 0 reads otherwise, stop.
+      **52caca8's image cannot be rebuilt** (its `.73` pin), so a rollback is possible only while
+      that image is on the server. Its row must appear under Rollback images before the push.
+- [ ] **Step 3, migrations:** `git diff --name-only 52caca8 <tip> -- web/prisma/migrations` was
+      EMPTY on 2026-11-12 (read on fw-deploy-doc's tip 0903701). Re-run it on NEW.
+- [ ] **QUESTION 1 stays open** (BLOCKED 3): Coolify's deploy check stays OFF.
+- [ ] **Step 6.6, the PDF, applies:** `web/Dockerfile` changed between 52caca8 and the tip. Record
+      the page count, the image's baked origin, `MONRELEVE_VERIFICATION_ORIGIN` set or not (by
+      name), and the UTC time (PARKED TASKS, 9 -> 10 pages).
+- [ ] **The rollback call.** It is the UI's Rollback page (10.1 step 7), or the API's own endpoint
+      `POST /api/v1/applications/pkptabevr1nhtyygrq0mc8qx/rollback` with `{"commit": "<PREVIOUS>"}`
+      (Coolify v4.5.0 routes/api.php 289; ApplicationsController.php 6243-6310). That endpoint
+      queues the same `rollback: true, force_rebuild: false` deployment as the button. It is not
+      the deploy endpoint the standing rule forbids. **The operator says which of the two may be
+      used BEFORE the promotion**, not during a failed one (Queue Ruling 10).
+- [ ] **After any rollback: BLOCKED 9.** `production` still names NEW, so no restart and no
+      variable change until it is realigned.
 
-### P2 - C2 FW-SECRETS (main d036e67 or later; after P1; needs the token back, and A5's keys for item 5)
+### P2 - C2 FW-SECRETS (item 1 BEFORE P1's promotion, item 2 IS that promotion, items 3-7 after it; needs the token back, and A5's keys for item 5)
 
 From REPORT-FW-SECRETS.txt's R862, amended by Queue Ruling 5. Every server command names this
 app's uuid. Counts only: never print a history line or a value.
@@ -217,17 +258,27 @@ app's uuid. Counts only: never print a history line or a value.
       during build" (Runtime stays "Available in the container") -> "Update variable".
       In the same visit: **EMAIL_FROM** is read by nothing (Queue Ruling 5's grep), so delete it
       or keep it, the operator's call (C2's Q4). **FRONTALIER_SCHEDULER** is BLOCKED 6.
-- [ ] 2. **THE DEPLOY** rides the next promotion: P1's checklist, run on a SHA at or after
-      d036e67 (madison item 0, gate:clone on the exact SHA, the fast-forward push, Coolify's list
-      watched read-only, the after-deploy checks, and the PDF, because web/Dockerfile changed,
-      comment only). Item 2 comes before item 5, so R861's detail is live when the new key is
-      pasted.
+      **Also read in this visit, by name and setting (Queue Ruling 10):**
+      - the application's "Commit SHA" setting (default `HEAD`; BLOCKED 9 rests on it);
+      - its "Images to keep" setting, and the server's Docker cleanup settings;
+      - `DATABASE_URL`'s "Build time" (the rotation plan's precondition).
+
+      Deleting `EMAIL_FROM` or a leftover `CHROMIUM_VERSION` (both build-time) makes the next
+      deployment of any kind a build (docs/deploy.md 10.3). So this visit comes immediately before
+      P1's promotion, whose build absorbs it, and never between a push and its checks.
+- [ ] 2. **THE DEPLOY IS P1's PROMOTION** (Queue Ruling 10): docs/deploy.md 10.1 on main's tip,
+      which carries d036e67. Item 2 comes before item 5, so R861's detail is live when the new key
+      is pasted.
 - [ ] 3. **THE NEW IMAGE'S HISTORY, counted per name**, on the server:
       `ssh monreleve-vps 'C=$(docker ps -q --filter name=pkptabevr1nhtyygrq0mc8qx | head -1); I=$(docker inspect --format "{{.Image}}" "$C"); echo "image $I"; for n in NEXT_PUBLIC_SITE_URL DATABASE_URL AUTH_SECRET RESEND_API_KEY FCM_PRIVATE_KEY FCM_CLIENT_EMAIL FCM_PROJECT_ID EMAIL_FROM ANDROID_PACKAGE_NAME; do printf "%s %s\n" "$n" "$(docker history --no-trunc --format "{{.CreatedBy}}" "$I" | grep -cw "$n")"; done'`
       Expected: NEXT_PUBLIC_SITE_URL above 0 (the presence control, R169), every other name 0.
       The secret names are the `secret: true` entries of web/lib/deploy/placeholders.mjs.
 - [ ] 4. **THIS APP'S OLD IMAGES (hygiene, not containment).** Only after P1 has put the .79 pin
-      in production, and keeping the rollback images that C7 (FW-DEPLOY-DOC, R884) names. List
+      in production. **KEEP the serving image and ONE previous image, PREVIOUS** (docs/deploy.md
+      10.2, R884: Coolify rolls back only to an image still on the server; each further step back
+      needs one more image). **52caca8's image is never removed while it is PREVIOUS**: it cannot
+      be rebuilt (its `.73` pin). Coolify's own cleanup keeps 2 by default, which for this app's
+      naming is read as serving plus one, so the list may already show only those. List
       first: `ssh monreleve-vps "docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}
       {{.CreatedAt}}' pkptabevr1nhtyygrq0mc8qx"` and the serving image's id. Then remove, one tag
       per command, each tag that is neither serving nor a rollback image: `ssh monreleve-vps
@@ -241,7 +292,9 @@ app's uuid. Counts only: never print a history line or a value.
          FCM_PRIVATE_KEY is the JSON file's "private_key" value without its surrounding quotation
          marks, on one line, with its newlines left as the two characters \n.
       b. Restart the application from Coolify (a restart applies changed env, measured
-         2026-10-28).
+         2026-10-28). **Precondition, for this restart and item 6's** (Queue Ruling 10, BLOCKED
+         9): docs/deploy.md 10.1 step 0's two reads agree, the serving image's SHA and
+         `production`'s head. Otherwise the restart redeploys `production`'s head.
       c. Item 6 must pass before item d.
       d. **MANDATORY - THIS IS THE CONTAINMENT** (Queue Ruling 5): revoke the old keys. Resend ->
          API Keys -> the old key -> delete. Google Cloud console -> IAM & Admin -> Service
@@ -286,6 +339,11 @@ is needed by a later step.
 with sampler files, both R872 probes' images and crops, `expected.txt` / `produced.txt`, and
 `r874-diffstat.txt`. It also holds web/node_modules and the Gradle build directories. It stays
 until the operator's cleanup.
+
+`C:/wt/fw-testdb-guard` (clean, pushed) holds C6's `.testdb-evidence/`: gate logs, the sentinel
+and `frontalier` snapshots, and the R878 refusal logs. `C:/wt/fw-deploy-doc` (clean, pushed) holds
+C7's `.deploydoc-evidence/`, six gate logs with their sampler files. Both also hold
+web/node_modules and stay until the operator's cleanup.
 
 ## SERVER ACCESS
 
@@ -345,8 +403,8 @@ writes the chosen option as a task, with its baselines named (R207).
 | C3 DB password rotation (prepare) | PARKED FOR THE OPERATOR (prepared, never executed) | - | relay/DB-ROTATION-PLAN.md: inventory, backup, stage env, ALTER ROLE, restart, align Coolify record, verify both directions (old password refused, new accepted), backups, rollback. Option B struck by C1's R844 (Queue Ruling 2): the release gate is the image's `/api/health`, which a container with a wrong password passes. Basis: relay/QUEUE-2026-10-28.txt "A Coolify restart applies env (measured)" - not re-run (no token). **Operator action:** authorise the rotation with a time; then the plan runs as written. | - |
 | C4 AN-APK-DIFF | MERGED - the size explained (16 KiB alignment padding before the first .so); every dex difference tied to a commit; UNEXPLAINED U1 closed as layout-only by reading; NO release hold | branch d9192e8 (code f171564); merge 2732d39 | V1: merge-base ab1a583; 3 files (report, apk-diff.mjs, its test), no Android source. Logs in C:/wt/an-apk-diff/.apk-diff-evidence/gates/: gate:clone PASSED on f171564 with db:deploy, test:db, test:container:write in its "ran" line (run 2; run 1 skipped the database suites and is not of record), STEP_EXIT=0, ABORTED=False, min commit free 6 511 MB; gate:changed base chain 3641 passed on the script and on the report. :app:gate not run (no Android source or build change). V3 (Queue Ruling 6): the mappings saved and hash-verified; apk-diff.mjs only reads; `node --test` 4/4 on the merge tree; U1 read in both dex listings: two v32 = 0 paths share block 0035, the store to v10 is dead at 00aa, the exit is one return-void, and the try range moved with its code. Merge tree == branch tip (6cf4e51). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0); gate:clone PASSED on 12e0e27, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-12e0e27.log: STEP_EXIT=0, ABORTED=False; minimum commit free 6 760 MB, free physical 1 419 MB). main was pushed ab1a583..12e0e27. | Queue Ruling 6 |
 | C5 AN-PARAM-BASELINES | MERGED - **the seven Parametres sheets and the start-date dialog NOT delivered** (PARK-PB1, PB2; and PB3, the delete dialog with its word typed; the seam is BLOCKED 8). Delivered: 17 baselines (the list x5 states, its 11 state-driven dialogs, licences) through :app's public ParametresScreen and LicencesScreen | branch c2ff34d (code f5d39c9); merge 7a5c5a8 | V1: merge-base 12e0e27; 22 files, 17 PNGs all "A", nothing under android/app/src/main, android/shared or web. The list re-issued at d9853f6 (01:40:23Z) precedes record-1 (01:40:42Z) and is mechanically equal to the 17 that landed. Logs in C:/wt/an-param-baselines/.param-evidence/: **`:app:gate --rerun-tasks` ran on f5d39c9**, "test floor OK: 1416", "BUILD SUCCESSFUL in 8m 47s", STEP_EXIT=0. `git diff --quiet f5d39c9 7a5c5a8 -- android` exit 0. gate:clone PASSED on f5d39c9 and c2ff34d, "ran" naming db:deploy, test:db and test:container:write. register-coverage OK (224). Secret scan 0; sampler cmd= lines 0. Deviation 4: web/.env pointed at the maintenance database `postgres`, handed to C6 as live state. V3 (Queue Ruling 8): four reads PASSED. ParametresHost calls the public overload MainActivity calls; maxPercentDifference = 0.0 is read in both classes; the 100 % dates are numeric; N2's missing verticalScroll was read in source. N2 parked as release-relevant, N1/N3 on the S9, Gradle floor 8 000 MB. Merge tree == branch tip (f626a13). V2: gate:changed on the record (base chain, 3641 passed, STEP_EXIT=0). gate:clone PASSED on 4a65f42, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-4a65f42.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 153 MB, free physical 2 341 MB; "DIRTY" = the 79 untracked operator files, 0 tracked changes). main was pushed 12e0e27..4a65f42. | Queue Rulings 7-8 |
-| C6 FW-TESTDB-GUARD | MERGED - test:db refuses any database not named `monreleve_*` before a test file loads; CI on `monreleve_ci`; every later session's web/.env changes (HOLDS) | branch 4e0f008 (code d34a007); merge 074680b | V1: merge-base 4a65f42; 13 files +1499/-10. The guard runs while the config is evaluated, after `--env-file` loaded web/.env; every tests/db connection reads DATABASE_URL. Logs in C:/wt/fw-testdb-guard/.testdb-evidence/: R878 refusal on frontalier_guard_sentinel exit 1, its table counts and tup_inserted / tup_deleted unchanged; `frontalier` refusal exit 1, counts before == final. gate:changed passed before each commit (test:db 714; unit 3641 -> 3724). gate:clone PASSED on 4e0f008, "ran" naming db:deploy, test:db and test:container:write. No URL in any sampler cmd=. R879 is shown by the census test only; **CI NO RESULT (off)**. V3 (Queue Ruling 9): three reads PASSED. The guard test's spawns use db.invalid; the census is a scan, not a list (it does not walk tests/unit or android/scripts); production's database "postgres" (docs/deploy.md, 2026-10-14) is refused. **LIMIT: the guard reads the name only, on any host.** Merge tree == branch tip (2814fbb). | Queue Ruling 9 |
-| C7 FW-DEPLOY-DOC | | | | |
+| C6 FW-TESTDB-GUARD | MERGED - test:db refuses any database not named `monreleve_*` before a test file loads; CI on `monreleve_ci`; every later session's web/.env changes (HOLDS) | branch 4e0f008 (code d34a007); merge 074680b | V1: merge-base 4a65f42; 13 files +1499/-10. The guard runs while the config is evaluated, after `--env-file` loaded web/.env; every tests/db connection reads DATABASE_URL. Logs in C:/wt/fw-testdb-guard/.testdb-evidence/: R878 refusal on frontalier_guard_sentinel exit 1, its table counts and tup_inserted / tup_deleted unchanged; `frontalier` refusal exit 1, counts before == final. gate:changed passed before each commit (test:db 714; unit 3641 -> 3724). gate:clone PASSED on 4e0f008, "ran" naming db:deploy, test:db and test:container:write. No URL in any sampler cmd=. R879 is shown by the census test only; **CI NO RESULT (off)**. V3 (Queue Ruling 9): three reads PASSED. The guard test's spawns use db.invalid; the census is a scan, not a list (it does not walk tests/unit or android/scripts); production's database "postgres" (docs/deploy.md, 2026-10-14) is refused. **LIMIT: the guard reads the name only, on any host.** Merge tree == branch tip (2814fbb). V2: gate:changed on the record (base chain, 3724 passed, STEP_EXIT=0). gate:clone PASSED on 2accbac, the commit carrying this row, its "ran" line naming db:deploy, test:db and test:container:write (scratchpad clone-2accbac.log: STEP_EXIT=0, ABORTED=False; minimum commit free 7 102 MB, free physical 1 068 MB). That run was the first from a checkout whose web/.env names `frontalier`: the guard admitted gate:clone's own monreleve_gate_clone_2accbac6, and pg_database afterwards lists only frontalier, postgres, template0 and template1. main was pushed 4a65f42..2accbac. | Queue Ruling 9 |
+| C7 FW-DEPLOY-DOC | MERGED - docs/deploy.md section 10 (promote, check, roll back) from Coolify v4.5.0's source. **Section 10 has never been run, and no rollback of this app has ever run.** Keep ONE previous image (P2 item 4). Q1 / Q2 -> BLOCKED 9-10; P1 now points at 10.1 | branch 0903701 (code 165cc7b); merge c3638db | V1: merge-base 2accbac; 2 files (docs/deploy.md +471/-13, the report). Logs in C:/wt/fw-deploy-doc/.deploydoc-evidence/: gate:changed passed before each commit (base chain, 3724); gate:clone PASSED on b2ea738, 165cc7b and 0903701, "ran" naming db:deploy, test:db and test:container:write, STEP_EXIT=0. No URL in any sampler cmd=; secret scan 0; report ASCII; R886-R887 unused. V3 (Queue Ruling 10): eleven citations re-read by the orchestrator at 5ca69705 and all match: Rollback.php 59-65, job 255, 1182/1189, 1459, 1530, 3171-3193, 3227-3231, 5276-5284, 5337-5345, applications.php 21, CleanupDocker 335-338, and the API's rollback route (api.php 289, ApplicationsController 6243+). 10.3 matches the orchestrator's 2026-10-28 record. The runbook's paths all exist and its commands select: 52caca8..tip has NO migration, and the PDF check applies. The 13 removed lines are only the curl passage and corrections (a)-(c). Merge tree == branch tip (8cf1e6b). | Queue Ruling 10 |
 | C8 IOS-2f | | | | |
 | C9 FW-WEB-ACCOUNT | | | | |
 | C10 FW-DELAI-RAPPEL | | | | |

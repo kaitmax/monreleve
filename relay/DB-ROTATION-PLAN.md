@@ -40,7 +40,17 @@ operator's own, separate authorisation; this file is what that authorisation wou
 - SSH `monreleve-vps`. Every docker command names this app's uuids, nothing else (CLAUDE.md).
 - A low-traffic hour. The expected cost is up to about 4 minutes in which requests that need a NEW
   database connection fail (the restart's measured length). Option B below, which was to remove
-  it, is struck.
+  it, is struck. C7 read that the 4 minutes may include a build (docs/deploy.md 10.3), since a
+  runtime-only change re-uses the image; read, not measured.
+- **`production` names the serving commit** (Queue Ruling 10). Before step 3, run docs/deploy.md
+  10.1 step 0's two reads: the serving image's SHA and `git ls-remote origin
+  refs/heads/production`. They must agree. After a rollback they do not, and a restart then
+  redeploys `production`'s head, the failed commit (BLOCKED 9 in QUEUE-STATE). They agreed at C0
+  (52caca8).
+- **`DATABASE_URL` is runtime-only.** Its "Build time" reads "Not available during build", read in
+  Coolify by name and setting, never the value. If it is still build-time, step 5's restart
+  rebuilds `production`'s head through the R249 guard (docs/deploy.md 10.3) instead of re-using
+  the image. P2 item 1 sets it.
 
 ## The steps (option A - works today)
 

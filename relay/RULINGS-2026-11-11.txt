@@ -972,3 +972,123 @@ APPLIED AND VERIFIED
   migrations recorded. relay/FW-WEB-ACCOUNT.txt and FW-DELAI-RAPPEL.txt:
   "scratch databases only" gains the monreleve_<task> name and the
   pointer to HOLDS. FW-DEPLOY-DOC.txt and IOS-2f.txt name no database.
+
+====================================================================
+QUEUE RULING 10 - C7 (FW-DEPLOY-DOC) HANDED BACK: MERGE; ONE PROMOTION; TWO QUESTIONS BLOCKED
+====================================================================
+
+EVIDENCE (V1, read by the orchestrator from the repository and from
+C:/wt/fw-deploy-doc/.deploydoc-evidence/)
+(1) Tips by ls-remote: fw-deploy-doc 0903701, main 2accbac (the
+    merge-base), production 52caca8. Three commits: b2ea738 (R883-R885,
+    docs/deploy.md section 10, the curl passage and corrections a-c),
+    165cc7b (R884/R885 amended), 0903701 (report). 2 files:
+    docs/deploy.md +471/-13, REPORT-FW-DEPLOY-DOC.txt +468.
+(2) gate:changed passed before each commit (base chain, 3724); gate:clone
+    PASSED on all three, "tree clean", "ran" naming db:deploy, test:db,
+    test:container:write, STEP_EXIT=0. No URL in any sampler cmd= line.
+(3) 10.1 read whole: step 0 records PREVIOUS (serving image SHA ==
+    production's head), then gate:clone, madison, migrations by section
+    4's route with migrate status first, the fast-forward push, the deploy
+    followed by reading, six after-deploy checks pointing at sections 1, 3
+    and R847 for their values, and step 7's rollback by tag.
+(4) Six citations re-read at Coolify 5ca69705 (fetched as data into the
+    scratchpad): Rollback.php 59-65 queues commit / rollback:true /
+    force_rebuild:false; job 1530 the "Build step skipped" line verbatim;
+    job 1459 <uuid>:<tag>; applications.php 21 the HEAD default;
+    CleanupDocker 335-338 keep "?? 2", the running image found by a
+    container named exactly the uuid; job 1182 build before 1189 swap.
+QUESTIONS (C7's): Q1 how production is realigned after a rollback (a
+Restart or the next push redeploys its head); Q2 a rollback under an
+applied migration; Q3 a retention policy beyond the one image the source
+requires.
+
+ANSWER (the advisor, verbatim in substance)
+Merge C7 once these reads pass - nothing read so far blocks it; a failed
+read is a small docs round 2 on the branch, not a park.
+1. Read 10.2 and 10.3, not only 10.1: 10.3 relays the orchestrator's own
+   2026-10-28 measurement, and only the orchestrator can confirm it says
+   what happened. Step 7 gives the UI path only, with no UI here: find the
+   API rollback call (routes/api.php 289) and what it is.
+2. Check the runbook's commands select something - a path that does not
+   exist makes `git diff --name-only` print nothing and the PDF check
+   reads "does not apply": ls-tree every path in steps 3 and 6.6; step 2's
+   ARG grep prints one line; run steps 3 and 6.6 with PREVIOUS = 52caca8
+   and NEW = the tip - the PDF list must include web/Dockerfile, and the
+   migration list is a fact P1 needs.
+3. Three citations in the job file already fetched: 255 (a dockerfile
+   restart takes the deploy path), 3171-3193 / 3227-3231 (HEAD resolves to
+   the branch head - Q1 rests on it), 5276-5284 / 5337-5345 (correction a).
+4. The 13 removed lines are only the curl passage and corrections a-c.
+5. Routine: secret scan of the diff, the report ASCII, R886-R887 unused,
+   your own pg_database listing.
+In the record commit: P1 and P2 item 2 point at 10.1, keeping only what
+is specific, with read 2's migration list in place of "no migration in
+this change". P2 item 4 and HOLDS: keep the serving image plus one
+previous; list first (Coolify's cleanup may have left only those);
+52caca8's image is never removed while it is PREVIOUS - it cannot be
+rebuilt. BLOCKED, Q1: in force, no restart and no variable change unless
+step 0's two reads agree (they agreed at C0); add that precondition to the
+rotation plan's restart and to P2 item 5b; realigning by force-push is not
+a fast-forward, so it is the operator's. BLOCKED, Q2. The rollback call:
+P1 names the exact API call; if it is the deploy endpoint with a tag it
+meets the standing rule against calling deploy - the operator's to
+settle BEFORE a promotion, not during a failed one. P2 item 1 also reads
+"Commit SHA" and "Images to keep". NOTICED 1-4: one parked docs task with
+file and line. D3's erratum goes in the ruling. The row says section 10
+has never been run, and no rollback of this app has. C8: the 60-minute
+cap includes the orchestrator's own merge-result run - give the session
+the remainder.
+
+APPLIED AND VERIFIED
+- Read 1: 10.3 matches the orchestrator's 2026-10-28 record point for
+  point (probe absent first; restart through the API; a queued deployment
+  of about 4 minutes; a new container with the variable, length 16; 1
+  timeout in 251 s, 0 in 163 s on a second restart; masked logs; the
+  preview copy). The API rollback is its OWN endpoint, POST
+  /applications/{uuid}/rollback (routes/api.php 289, ability "deploy"),
+  handled by rollback_by_uuid (ApplicationsController.php 6243), which
+  calls queue_application_deployment with the given commit, rollback:
+  true, force_rebuild: false - the button's call, not the deploy
+  endpoint. Which of the two may be used is recorded in P1 as the
+  operator's, before the promotion.
+- Read 2: web/prisma/migrations, web/Dockerfile, web/lib/export,
+  web/lib/dossier and web/app/releve/print all exist at the tip; step 2's
+  grep prints one line, "ARG CHROMIUM_VERSION=156.0.8078.79-1~deb12u1";
+  `git diff --name-only 52caca8 <tip> -- web/prisma/migrations` is EMPTY;
+  the PDF list is "web/Dockerfile". PASS.
+- Read 3: job 254-255 turns restart_only off for build_pack dockerfile;
+  3171 resolves the ls-remote SHA only when not a rollback and the commit
+  is empty or HEAD (shouldResolveBranchHeadCommit, 3227-3231); 5276-5284
+  the is_buildtime ARG list, 5337-5345 the insertion after each FROM.
+  PASS.
+- Read 4: the removed lines are section 1's date sentence (c), section 2's
+  citation (a) and CHROMIUM_VERSION row (aligned to c), N2's row (b), the
+  curl passage, and two lines kept verbatim with a sentence appended
+  (section 2's R862 pointer; the intro's NEEDS sentence). PASS.
+- Read 5: secret scan 0; the report has 0 non-ASCII bytes; R886-R887
+  appear only in relay/FW-DEPLOY-DOC.txt on every origin head;
+  pg_database lists frontalier, postgres, template0, template1.
+- D3's ERRATUM (C7's hand-back): REPORT-FW-DEPLOY-DOC.txt D3 lists
+  relay/DB-ROTATION-PLAN.md among the files citing deploy.md sections
+  2-4; it cites section 5. The conclusion (append section 10 rather than
+  renumber) is unchanged. Recorded here, not re-committed to the report.
+- Merged: c3638db (--no-ff origin/fw-deploy-doc); merge tree == 0903701's
+  tree (8cf1e6b).
+- One fact the reads add, applied in the record: b4df928 and 52caca8 pin
+  Chromium .73, which the archive no longer offers, so P1 cannot ship at
+  b4df928; any buildable SHA is at or after 7065b1b, and main's tip
+  carries C1, C1b and C2 together. P1 and P2 item 2 are therefore ONE
+  promotion of main's tip, and P2 item 1 (the settings visit) comes
+  immediately before it so its build absorbs the build-time deletions
+  (10.3). Orchestrator's sequencing, reversible.
+- QUEUE-STATE: P1 rewritten as a pointer to 10.1 plus its specific items
+  (order, NEW, PREVIOUS = 52caca8 unrebuildable, the empty migration
+  list, QUESTION 1 off, the PDF applies, the rollback call for the
+  operator, BLOCKED 9 after any rollback); P2 items 1, 2, 4, 5b amended;
+  HOLDS' server-image line; BLOCKED 9 (Q1) and 10 (Q2); BLOCKED 5's
+  madison pointer to 10.1 step 2; PARKED TASKS: the docs task (NOTICED
+  1-4); C7 row MERGED. relay/DB-ROTATION-PLAN.md: two preconditions -
+  production names the serving commit, and DATABASE_URL runtime-only.
+- Q3 (retention beyond one image): recorded as the source's minimum of
+  one, a policy for the operator if more are wanted; not a BLOCKED item.
