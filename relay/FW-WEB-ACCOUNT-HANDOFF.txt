@@ -1,47 +1,38 @@
-FW-WEB-ACCOUNT HANDOFF - queue step C9 (rewritten 2026-11-12, Queue Ruling 18 item 1)
+FW-WEB-ACCOUNT HANDOFF - queue step C9 (rewritten 2026-11-12, Queue Ruling 22)
 
-WHERE THINGS ARE. Everything past R898 is UNCOMMITTED and SET ASIDE: the
-worktree C:/wt/fw-web-account (branch fw-web-account) is CLEAN at this
-commit. Nothing of the area, the link, the notice or the baselines is on the
-branch. Two saved trees hold it, both in the worktree's gitignored evidence
-directory C:/wt/fw-web-account/.webaccount-evidence/:
+C9 IS PARKED WHOLE. Read REPORT-FW-WEB-ACCOUNT.txt at the repository root.
+It is the record: what is on the branch, what is saved, the byte figures that
+stopped it, each suite that ran and on which tree, the security table, and
+Queue Rulings 12-22.
 
-  gated-tree-1/   THE INCREMENT THAT WAS GATED (R899-R902 + Rulings 12-17):
-                  164 files (MANIFEST.txt: sha256 prefix and path of each;
-                  paths.txt). It is the exact tree gate-changed-inc23-2
-                  photographed ("c2f5cd3 plus 147 uncommitted path(s)"). Also
-                  as gated-tree/tracked.diff + untracked.tar (git diff sha256
-                  prefix 19496667f0e2e3ab). Its 109 regenerated baselines MUST
-                  NOT SHIP (Queue Ruling 18): the gate's compare failed
-                  calculateur-erreur-desktop.png after both retries ("Failed to
-                  take two consecutive stable screenshots").
-  inc4-tree-2/    INCREMENT 4 ON TOP OF IT (R903 page figures, downloads through
-                  lib/export/respond.ts, R906 round trip): tracked.diff +
-                  untracked.tar. Not gated. Per Queue Ruling 18, increment 4 is
-                  NOT continued unless the fix below is proven.
+WHY IT STOPPED. GATE A (R2). The header's "Se connecter" link costs client
+JavaScript on every public page. The calculator route had 54 B of spare at
+db68601, and the server-rendered link measured +96 B (128042 B against
+128000 B). Unblocking it is the operator's choice: find bytes elsewhere on
+the calculator route, or rule on the budget.
 
-  To restore gated-tree-1 onto this commit:
-    git apply --binary .webaccount-evidence/gated-tree/tracked.diff
-    tar -xf .webaccount-evidence/gated-tree/untracked.tar
-  (then `git diff --binary | sha256sum` starts 19496667f0e2e3ab and
-  `git status --porcelain` has 147 lines).
+ON THE BRANCH: 7af6a06 R898 (SPEC), c2f5cd3 and 18882cf (handoffs), db68601
+R912 (the calculator error-state capture), and the report's commit.
 
-WHAT GATED GREEN ON THAT TREE (gate-changed-inc23-2.log): typecheck, lint,
-test 3803 passed, build, test:e2e 369 passed; test:visual 167 passed, 1 failed
-(the erreur capture above); test:db did not run in that gate (the chain stops)
-and was green on the same code by hand earlier.
+SAVED, UNPUSHED, in C:/wt/fw-web-account/.webaccount-evidence/ (gitignored;
+full sha256 of every file in saved-trees-sha.txt):
+  refactor-tree/   The increment at the park, base db68601. Restore:
+                   git apply --binary tracked.diff && tar -xf untracked.tar
+                   Then `git diff --binary | sha256sum` starts
+                   7cd5727e33d4d125.
+  pre-gate-tree/   The same before the SignInLink refactor, base db68601,
+                   diff sha 30e0d295266412ca.
+  gated-tree-1/    The tree gate-changed-inc23-2 photographed, base c2f5cd3
+                   (also stored as gated-tree/, diff sha 19496667f0e2e3ab).
+                   Its baselines must not ship.
+  inc4-tree-2/     Increment 4, base c2f5cd3, NOT gated.
+                   inc4-wip/restore-plan.txt says what to carry onto
+                   refactor-tree.
+  switch-tree.sh   Switches this worktree between CLEAN and a saved tree,
+                   checking the diff sha.
 
-WHAT IS OPEN (Queue Ruling 18): one diagnosis of why the calculator's error
-state keeps changing after its first capture, one fix as its own commit on
-c2f5cd3 (R912), proven by one container run (five fresh loads, one hash).
-If that is not proven within the bound, C9 is PARKED WHOLE at this commit.
-
-PUSHED: 7af6a06 R898 (SPEC D14 + section 10); c2f5cd3 and this commit (the
-handoff). Each gate:clone PASSED with db:deploy, test:db, test:container:write.
-
-STATE OUTSIDE GIT: web/.env (gitignored; scratch database
-monreleve_fw_web_account on frontalier-postgres :5436, migrated to 16
-migrations INCLUDING the uncommitted 20261112090000_web_session; generated
-AUTH_SECRET); .session-lock.json; .webaccount-evidence/ (all logs, REDs,
-plants, crops, the r16 evidence run, the two saved trees). At cleanup: remove
-web/.env, drop monreleve_fw_web_account, remove the lock, free port 3400.
+CLEANUP, DUE AFTER THIS COMMIT (pending when written; the proof is in the
+hand-back): remove web/.env, drop the scratch database
+monreleve_fw_web_account, remove the session lock, and check that port 3400
+is free. The worktree and the evidence directory are KEPT for the coordinator
+to copy out (Queue Ruling 22).

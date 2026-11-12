@@ -1,0 +1,541 @@
+REPORT-FW-WEB-ACCOUNT - queue step C9, a read-only signed-in area on the website
+Session: C9 FW-WEB-ACCOUNT. Worktree C:/wt/fw-web-account, branch fw-web-account,
+cut from 863edb02e1f6b2693620f77090019dfdd5d6c003. Written 2026-11-12, under
+Queue Ruling 22 (PARK C9 WHOLE). Evidence directory (gitignored, kept):
+C:/wt/fw-web-account/.webaccount-evidence/
+
+SUMMARY
+  C9 IS PARKED WHOLE (Queue Ruling 22). The account area (R899-R911) is built
+  and saved but is NOT on the branch. On the branch: R898 (the SPEC amendment),
+  R912 (the calculator's error-state capture made repeatable), two handoff
+  commits, and this report.
+  Why it stopped: GATE A (R2). The header's "Se connecter" link costs client
+  JavaScript on every public page, and the calculator route had 54 B of
+  spare at db68601. Queue Ruling 21 approved a server-rendered link on
+  condition that it read exactly what db68601 read. Measured, it does not:
+  +96 B on the calculator (128042 B against 128000 B) and +97 B on every
+  shell-only page. Rendering the link on the server does not make it free:
+  a CSS module or a lucide icon that a server component uses still ships a
+  client reference, and the shell's class map grows. Byte figures below.
+  Queue Ruling 22 records the operator's choice, find bytes elsewhere on the
+  calculator route or rule on the budget, as a BLOCKED item.
+
+STATUS (R391)
+  PARKED. FULL GATE NOT RUN on the increment (refactor-tree: git diff --binary
+  sha256 7cd5727e33d4d125bb8ad648aef2c450eab0a2cceb69cccf09307aaadbc9016f
+  over db68601).
+  On that tree: build + size RED (GATE A, calculator 128042 B). Every other
+  suite: see SUITES THAT RAN.
+  Each commit ON the branch passed gate:changed, and then gate:clone, before
+  it was pushed. The gate logs are named in PUSH PROOF.
+  This report's own commit: gate:changed, gate:clone and push were pending
+  when it was written. The hand-back carries their verdicts.
+
+ON THE BRANCH (863edb0..HEAD before this report; all four pushed,
+ls-remote refs/heads/fw-web-account = db68601072e6f7e4556702fa7d305a0c2dbf5a35)
+  7af6a06  R898: SPEC D14 amended in one sentence; section 10's zero-cookie
+           guarantee restated as every public page.
+  c2f5cd3  Handoff (Queue Ruling 16 item 5).
+  18882cf  Handoff rewritten (Queue Ruling 18 item 1).
+  db68601  R912: e2e/calculateur.visual.spec.ts (the error state is
+           photographed with no field focused) and
+           tests/visual/baselines/calculateur-erreur-desktop.png.
+  git diff --stat 863edb0 db68601: 4 files changed, 67 insertions(+),
+  2 deletions(-). Files: SPEC-frontalier-web.md,
+  relay/FW-WEB-ACCOUNT-HANDOFF.txt, web/e2e/calculateur.visual.spec.ts,
+  web/tests/visual/baselines/calculateur-erreur-desktop.png.
+  No migration is on the branch.
+
+SAVED, UNPUSHED (all under C:/wt/fw-web-account/.webaccount-evidence/; the full
+sha256 of every file is in saved-trees-sha.txt)
+  refactor-tree/   THE INCREMENT AS IT STOOD AT THE PARK. R899-R902 + Queue
+                   Rulings 12-21, the 109 baselines, and the server-rendered
+                   SignInLink.
+                   Base db68601. 150 tracked diffs + 33 untracked files.
+                   Hashes (sha256):
+                     tracked.diff   7cd5727e33d4d125bb8ad648aef2c450eab0a2cceb69cccf09307aaadbc9016f
+                     untracked.tar  117d904e2c60518aa6ccf3452c83188c279b57a7b5c04db46acb3a20d85a3713
+                   Restore onto db68601: `git apply --binary tracked.diff &&
+                   tar -xf untracked.tar`, or `switch-tree.sh refactor-tree`,
+                   which checks the diff sha.
+                   Migration: web/prisma/migrations/20261112090000_web_session/
+                   migration.sql (additive: CREATE TABLE "WebSession", unique
+                   index on tokenHash, indexes on userId and expiresAt, FK
+                   ON DELETE CASCADE, four CHECKs).
+  pre-gate-tree/   the same increment BEFORE the SignInLink refactor. Base db68601.
+                     tracked.diff   30e0d295266412ca731dc8019a7dbdc9b0d1a61d4ab800fbf71d612d9508a8f3
+                     untracked.tar  aa4f1c5ec951f2983f75afc31ac453b5aadb726278e6956d72bbed376787b912
+  gated-tree-1/    THE TREE gate-changed-inc23-2 PHOTOGRAPHED ("c2f5cd3 plus
+                   147 uncommitted path(s)"). Base c2f5cd3, 164 files under
+                   files/.
+                     MANIFEST.txt   43ab21c8b061dac1016588fc63df14b9e42f8561188de0e561ce78f4c1bd0fd1
+                   The same tree is also stored as gated-tree/:
+                     tracked.diff   19496667f0e2e3aba9bc6625482c283e7a617a1f0732ababd506399f91640a1d
+                     untracked.tar  82abff7981050c83dea2dcb60bf7654b08dd8392e10c71fe3dcbdd5ced30ddc2
+                   Its 109 baselines are the Ruling-17 regeneration and must
+                   not ship (Queue Ruling 18).
+  inc4-tree-2/     increment 4 (R903 page figures, the downloads through
+                   lib/export/respond.ts, R906's round trip) on top of the
+                   gated tree. Saved against c2f5cd3. 134 tracked diffs
+                   (109 of them baselines) + 42 untracked files.
+                     tracked.diff   ceafd8626894929395fd423c57bf218ff40212ffd9df3d4cd1a6f826926f3858
+                     untracked.tar  79248d9dcd4216ac750d499f40b94c3606314181e32a515e0507d877e556436a
+                   NOT gated. It carries fix attempt 1 in
+                   e2e/calculateur.visual.spec.ts, withdrawn by Ruling 17, and
+                   the Ruling-17 baselines. inc4-wip/restore-plan.txt lists
+                   what must be re-applied by hand on top of refactor-tree.
+  regenerated-update-3/, regenerated-dirty-1/, r910-avis/: the photographs
+                   behind the 109 (next section).
+
+THE 109 REGENERATED BASELINES (in refactor-tree; R910 and Queue Rulings 13-21)
+  Named BEFORE the run, in r910-expected-2.txt. Derived independently by
+  derive-shell-set.cjs (r13-item1.txt): a baseline shows the header if and
+  only if it is a full-page capture of a non-/dev route, or an element
+  capture of a workbench specimen that wraps PublicShell. Derived 109, moved
+  109; the two set differences are both empty.
+  Regenerated by visual-update-3 ("photographed: db68601 plus 38 uncommitted
+  path(s)", 168 passed; the produced set equals the named 109).
+  What refactor-tree holds (refactor-tree-baseline-provenance.txt):
+   - 108 of 109 equal update-3's output;
+   - 107 also equal gated-tree-1's;
+   - calculateur-erreur-desktop.png is update-3's (719a5622...): R912's body,
+     identical below the header band to db68601's committed file;
+   - calculateur-panneau-avis-provisoire-desktop.png is the update-1/update-2
+     copy (fb43956a...), substituted under Queue Ruling 20 because update-3's
+     capture (e341385a...) was odd: 28 px at x1285-1287 y1819-2007, channel
+     delta at most 2.
+  Why each moved:
+   - 106 moved for the header link only;
+   - page-confidentialite-desktop.png and -mobile.png moved for the link AND
+     the notice (Queue Ruling 12);
+   - calculateur-erreur-desktop.png moved for the link on R912's body.
+  The 109 were photographed BEFORE the SignInLink refactor. Queue Ruling 21
+  item 3 shows the refactor changes no pixel and no header HTML at the four
+  call sites. The one-shot gate that would have re-compared all 109 on the
+  refactor was NOT run (Queue Ruling 22).
+  The 14 new account-area baselines were named, as mon-releve-entete-*,
+  mon-releve-connexion-* and 5 specimens x desktop/mobile. NEVER PHOTOGRAPHED.
+
+BYTE FIGURES (gzip level 9, summed per route the way web/scripts/check-budgets.mjs
+sums it; bytes/all-routes.cjs, cross-checked against four live readings)
+  db68601, every page route (bytes/db68601-all-routes.txt):
+    route                                        files  gzip B   KiB      A spare B
+    /                                               11  116730  113.994    11270
+    /_not-found                                     10  111009  108.407    16991
+    /a-propos                                       10  111068  108.465    16932
+    /alertes                                        10  111067  108.464    16933
+    /alertes/confirmation/[etat]                    10  110885  108.286    17115
+    /alertes/desinscription/[etat]                  10  110885  108.286    17115
+    /application                                    10  111016  108.414    16984
+    /calculateur-lamal-cmu                          10  125598  122.654     2402
+    /calculateur-teletravail-frontalier             11  127946  124.947       54
+    /calculateur-teletravail-frontalier/resultat    10  112387  109.753    15613
+    /cgu                                            10  110963  108.362    17037
+    /confidentialite                                10  110963  108.362    17037
+    /guides                                         10  110938  108.338    17062
+    /guides/[slug]                                  10  112302  109.670    15698
+    /mentions-legales                               10  110963  108.362    17037
+    /releve-annuel                                  10  111068  108.465    16932
+    /releve/print                                    6  104420  101.973    23580
+    /sources                                        10  111068  108.465    16932
+    /tarifs                                         10  111068  108.465    16932
+    /verifier/[code]                                10  110870  108.271    17130
+  GATE A = 128000 B. GATE B = 25600 B over the 103028 B floor.
+  The calculator route at db68601 (bytes/db68601-calculator-route-only.txt):
+    11 first-load files. ONE is route-only:
+      app/(public)/calculateur-teletravail-frontalier/page-4d05084b7bd39b19.js,
+      13827 B, 19 modules.
+    Largest modules, gzip of the module's own source:
+      1856  11709 B  CalculatorForm (client): the form logic and the canton
+                     list ("Argovie", "Appenzell Rhodes-Interieures", ...)
+      9424    643 B  CalculatorForm's CSS-module class map
+      7005    477 B  lucide circle-alert icon
+      5395    259 B  ResultPanel class map
+      4351    209 B  comparator "calculated" constants
+      1147    203 B  lucide triangle-alert icon
+      4805    197 B  calculateur page class map
+      5846    147 B  SegmentedChoice class map
+      9386    139 B  lucide icon (M5 12h14)
+      7574    134 B  FieldGroup class map
+      the rest are under 125 B each.
+    The other 10 files are shared:
+      webpack 1832; 07a4fdd4 54243; 5355 46529; main-app 229;
+      app/layout 171; 6146 3599; 9879 2100; 9267 1690;
+      (public)/layout 173; 5224 3553.
+  Queue Ruling 21 measurements (r21-record.txt):
+    refactor build:
+      calculator 128042 B, FAIL GATE A by 42 B. GATE B delta 25028 B, passes.
+      /tarifs and /sources 111165 B (108.560 KiB, printed 108.6).
+      /_not-found 111495 B (+486).
+      / 116827 B.
+    Where the +97 B on /tarifs comes from:
+      9267 (the shell) +50: three class-map keys (39 B by cut) plus the slot.
+      9879->4814 (copy and routes) +35: SHELL_COPY.signIn 13 B; a leftover
+        PRODUCT_STATE.webAccountExists read from ACCOUNT_ROUTE 10 B;
+        webAccountExists:!0.
+      (public)/layout entry +21: client references to CSS module 6402 and
+        lucide Icon 3035.
+      webpack runtime -9.
+    /_not-found: the whole shell class map is copied into its page chunk.
+    One measurement-only candidate, with no gate and not kept
+    (bytes/candidate-a.diff):
+      What it changed: a display: contents slot wrapper; SignInLink with no
+      class; SIGN_IN_COPY.label; a pure-annotated status.
+      Result: calculator 128002 B, FAIL by 2 B. /tarifs 111125 B.
+      /_not-found 111062 B.
+      Remaining on /tarifs: 9267 +29, layout +11 (Icon 3035), 4814 +17.
+      The string-cut estimate had been 19 B optimistic.
+
+QUEUE RULING 21 ITEMS (before the gate)
+  1. The route table is identical. The 53 routes db68601 has keep their
+     markers unchanged; the only difference is 6 added dynamic routes under
+     /mon-releve (item1-route-diff.txt).
+  2. The client version had no click handler and no aria-current. Never
+     present.
+  3. Identity. Pages: /, /mon-releve/connexion, the 404, and the workbench
+     shell-desktop specimen. Sizes: 1440x900, 390x800, and 390x800 with the
+     menu open.
+     Result: 12 page PNGs, 12 header PNGs and 12 header outerHTML strings are
+     byte-identical, gated-tree-1's code against the refactor. The pre side
+     repeated identically on a second run. The link's href was present in
+     12 of 12 headers on both sides.
+     Evidence: r21-identity/, r21-capture.cjs.
+  4. FAILED, as measured above.
+  5. The signIn prop is REQUIRED.
+
+SUITES THAT RAN, AND ON WHICH TREE (logs + .samples.txt in the evidence dir)
+  gate-changed-spec     863edb0 + SPEC              typecheck lint test(3724) build: PASSED
+  gate-clone-r898       7af6a06                     PASSED
+  gate-changed-handoff  c2f5cd3 pre-commit          FAILED at typecheck: a stale
+                                                    web/.next/types from an
+                                                    account-route build
+  gate-changed-handoff-2  same, .next removed       PASSED, test 3724
+  gate-clone-handoff    c2f5cd3                     PASSED
+  gate-changed-inc23    c2f5cd3 + increment 2/3     test 3802 passed; test:e2e
+                                                    365 passed / 4 failed
+                                                    (fixed below); later suites
+                                                    did not run
+  e2e-inc23-fix         the same, after the fixes   test:e2e 369 passed
+  testdb-pre-gate       the increment               test:db 3 failed / 770 passed (fixed)
+  testdb-pre-gate-2     the increment               test:db 774 passed, 26 skipped
+  visual-compare-1      7af6a06 + 36 paths          109 failed (the header) / 59 passed
+  visual-update-1       7af6a06 + 36 paths          regeneration, 168 passed
+  visual-evidence-erreur  c2f5cd3 + 39 paths        flag OFF: 2 failed (the privacy
+                                                    pair) / 168 passed
+  visual-update-2       c2f5cd3 + 37 paths          regeneration (Ruling 17), 168 passed
+  gate-changed-inc23-2  gated-tree-1                test 3803, test:e2e 369, test:visual
+                                                    167 passed / 1 failed
+                                                    (calculateur-erreur-desktop:
+                                                    "Failed to take two
+                                                    consecutive stable
+                                                    screenshots"); test:db did
+                                                    not run (the chain stops)
+  gate-changed-handoff-3  18882cf pre-commit        FAILED at typecheck (stale .next)
+  gate-changed-handoff-4  same, .next removed       PASSED, test 3724
+  gate-clone-handoff-2  18882cf                     PASSED
+  visual-r912-proof     18882cf + 2 paths           temp spec: fixed arm 5 contexts, one hash;
+                                                    1 failed (the unfixed arm, as designed)
+  visual-r912-update    18882cf + 1 path            regeneration of the one R912 file, 168 passed
+  gate-changed-r912     db68601 pre-commit          typecheck lint test(3724) build
+                                                    test:visual(168) test:late(10): PASSED
+  gate-clone-r912       db68601                     PASSED
+  visual-update-3       db68601 + 38 paths          regeneration (Ruling 20), 168 passed
+  build-size-inc23      pre-gate-tree               size: calculator 125.3 KiB, FAIL GATE A
+  b0/b0b                db68601 (fresh)             build + size: all pass (calculator 127946 B)
+  b3/b3b                refactor-tree (fresh)       build + size: FAIL GATE A (128042 B)
+  b1/b2                 pre-gate / refactor, dev    builds for Ruling 21 item 3's captures
+  The unit suite on refactor-tree ran by hand, with no log kept. Its last
+  full run had 1 failure: the shell-reachable census, which did not yet list
+  SignInLink.tsx. The census was then fixed. A FULL re-run after the fix:
+  NOT done.
+  The one-shot gate on refactor-tree: NOT run.
+  gate:clone on any increment tree: NOT run.
+
+R898 - THE SPEC (on the branch, 7af6a06)
+  D14's row gains ONE sentence: the operator's ruling of 2026-11-11 reverses
+  D14 in part, for one read-only signed-in area at /mon-releve, entered by a
+  code sent by e-mail and held by a session cookie scoped to that path.
+  Section 10's "Web never authenticates" paragraph is restated: no cookie on
+  any PUBLIC page; the account area is the one exception, bounded by a test.
+  Note for the operator: the branch now carries a SPEC amendment for an area
+  that is parked. Reverting it, or keeping it as the decision of record, is
+  the operator's call.
+  RED: none (a document change).
+
+R899 - THE WEB SESSION (saved, not landed)
+  WebSession is an additive migration. Its columns:
+    id; userId; tokenHash (the SHA-256 hex of the cookie value);
+    createdAt and expiresAt (from ONE server instant); revokedAt;
+    revokedReason (the existing SessionRevocation enum).
+  Its four CHECKs are asserted both ways, by name:
+    WebSession_short_life (expiresAt > createdAt AND <= createdAt + 30 min);
+    WebSession_revoked_pair; WebSession_revoked_after_created;
+    WebSession_token_hash_shape.
+  The life is stated as WEB_SESSION_TTL_MS = 30 min, and asserted equal to
+  the cookie's Max-Age (1800) and to the CHECK interval read from pg_constraint.
+  Sign-out revokes server-side. Revoke-all ends web sessions in the same
+  transaction. Account deletion cascades.
+  Disclosed as DISCLOSED_RECORDS.webSession. Exported as webSessions, without
+  the hash.
+  RED:
+    red-r899-personal-data.log: 7 columns undisclosed.
+    red-r899-web-session.log: 21 failed, "The table public.WebSession does
+      not exist".
+  GREEN: 23/23.
+
+R900 - COOKIE SCOPE (saved, not landed)
+  One cookie, monreleve_session:
+    HttpOnly; Secure; SameSite=Lax; Path=/mon-releve; Max-Age=1800; no Domain.
+  The account area is outside PUBLIC_ROUTES. The downloads share the
+  existing routes' IMPLEMENTATION (lib/export/respond.ts, in increment 4).
+  The alternative was Path=/, which would put the cookie on every public page.
+  Tests: account-path (RFC 6265 path-match over every discovered route);
+  account-cookie-scope (import and read census, presence first); the no-JS
+  browser crawl; CLAIM 1.
+  RED: Ruling 12 condition 1, red-condition1-privacy-claims.log (5 failed).
+
+R901 - SIGN-IN BY CODE (saved, not landed)
+  Two steps, as plain POST forms answered by 303s, with no client script:
+    step one, /mon-releve/connexion: the address;
+    step two, /mon-releve/connexion/code: the code.
+  It goes through the existing implementation and its budgets:
+    requestMagicLink (same buckets, same mail);
+    codeExchangeAllowed (moved out of /api/v1/auth/code, same keys);
+    consumeCode (FW-CODE-CAP's daily budget).
+  The address is carried by an AES-256-GCM seal under an HKDF key from
+  AUTH_SECRET, never in clear. The website creates no account.
+  RED: the first slice was written before its tests (DEVIATION D1). Its proof
+  is the designated REDs plus 5 verified plants (plants-increment2.log).
+
+R902 - CSRF (saved, not landed)
+  Every POST checks Sec-Fetch-Site (when sent) and Origin against Host or
+  X-Forwarded-Host, before it reads or spends anything. A refusal is a 403.
+  SameSite=Lax is the second layer.
+  RED: plant 1 (accept everything) turned 4 route tests red.
+
+R903 - THE PAGE (increment 4, saved in inc4-tree-2, NOT gated)
+  The year's figures come from buildDossierFor, with the PDF and CSV
+  downloads through lib/export/respond.ts and sign-out.
+  R225 render test: 11 pass, and 2 plants bit (plants-increment4.log).
+  Never run in any gate.
+
+R904 - NO RECORDING ON THE WEB - PARKED (described; no register id was claimed
+  because C9 itself is parked). If it is ever asked for, it needs:
+   - a write path behind the same CSRF check;
+   - server-assigned timestamps and the append-only EntryEvent trail;
+   - the no-coordinate refusal and the no-future-day rule;
+   - a conflict rule against the app's offline queue;
+   - the notice's wording about days recorded by the phone;
+   - the account-creation question;
+   - its own threat model.
+
+R905 - THE MAIL (saved, not landed)
+  A web sign-in sends the same transactional mail, with no List-Unsubscribe
+  pair (3 tests). Ruling 13 item 6: the mail's code line had named the
+  application, which is false for a reader on the website. It is now one
+  generic line for both clients.
+  RED: red-r13-item6-mail.log.
+
+R906 - THE ROUND TRIP (inc4-tree-2: e2e/mon-releve.spec.ts and
+  tests/db/web-round-trip.test.ts written)
+  NOT PROVEN: never run in a gate, never on the branch.
+
+R907 - THE SECURITY TABLE
+  Every row describes code that is NOT on the branch. "Tested" means a test
+  ran green on a saved tree (gated-tree-1, or the increment under
+  testdb-pre-gate-2), never in a gate on the branch.
+
+  SESSION FIXATION
+    Mechanism: every sign-in inserts a new row with a server-minted value;
+      nothing a browser presents is adopted; step one sets no cookie.
+    Tested: web-session "session fixation" (2); web-sign-in "opens a NEW
+      session on every sign-in"; the no-JS spec. Plant 5 bit.
+    Status: tested on a saved tree. NOT PROVEN on the branch.
+
+  ENUMERATION
+    Mechanism: step one gives the same 303 and a sealed step for known,
+      unknown and rate-limited addresses, and when the provider is down.
+      "No account" is said only after a correct code.
+    Tested: web-sign-in "R901: step one answers the same" (6) and "a proven
+      address with no account".
+    Status: tested on a saved tree. Equal TIMING: NOT PROVEN (not measured).
+
+  RATE LIMITS
+    Mechanism: the same functions and keys as the existing routes. One
+      budget, two doors.
+    Tested: web-sign-in "one budget, two doors" (4), "a request spent by
+      the per-request limit", "a string that cannot be a code". Plant 2 bit.
+    Status: tested on a saved tree. Bucket reset on a restart: NOT PROVEN
+      (pre-existing behaviour).
+
+  COOKIE SCOPE
+    Mechanism: Path=/mon-releve, no Domain; only the area imports the
+      cookie module.
+    Tested: account-path, account-cookie-scope, the no-JS crawl, CLAIM 1.
+    Status: tested on a saved tree. NOT PROVEN on the branch.
+
+  CSRF
+    Mechanism: the Origin and fetch-metadata check comes first on every POST.
+    Tested: csrf.test.ts in both directions; web-sign-in "R902" (5).
+      Plant 1 bit.
+    Status: sign-in and sign-out tested on a saved tree. The DOWNLOADS'
+      CSRF: NOT PROVEN (increment 4 never gated).
+
+  REVOCATION
+    Mechanism: sign-out revokes the row before clearing the cookie;
+      revoke-all and cascade; one sentence for a dead session (R210).
+    Tested: web-session (revoked, expired, revoke-all, cascade);
+      web-sign-in (sign-out, "R210"). Plant 3 bit.
+    Status: tested on a saved tree. NOT PROVEN on the branch.
+
+  COOKIE ATTRIBUTES
+    Mechanism: one writer, values stated (R345).
+    Tested: cookie.test.ts; web-sign-in "exactly the attributes"; the life
+      equals Max-Age and the CHECK; the no-JS spec on the stored cookie.
+      Plant 4 bit.
+    Status: tested on a saved tree. Secure over the production HTTPS origin:
+      NOT PROVEN.
+
+  DOWNLOADS
+    Mechanism: PDF and CSV through lib/export/respond.ts.
+    Status: NOT PROVEN (increment 4, never gated; no PDF proof run).
+
+  CLIENT COST OF THE LINK
+    Status: measured, FAILS GATE A (BYTE FIGURES above).
+
+R908 - COPY (saved, not landed)
+  lib/fr/mon-releve.ts (new). Changed: lib/fr/shell.ts (signIn),
+  lib/fr/confidentialite.ts (webSession, accountCookie, webFor, the sign-in
+  purpose), and lib/fr/auth.ts (codeInstruction).
+  Codepoint registry: confidentialite 23 -> 24, total 44 -> 45.
+  No figure is typed (R153).
+
+R909 - WALKTHROUGH: NOT RUN. The area never reached the stage at which
+  pnpm dev was to be driven.
+
+R910 - BASELINES: the 109 are regenerated and saved (above). The 14 new
+  account baselines were NEVER photographed. Nothing of R910 is on the branch.
+  R912's one file is on the branch: calculateur-erreur-desktop.png, the
+  error state with no field focused, named before recording in
+  r912-named.txt and amended before the regeneration in
+  r912-named-amended.txt.
+
+R911 - THE PROMOTION CHECKLIST: STILL OWED. It applies only once the area
+  lands. Drafted items, to carry forward:
+   - BLOCKED 10 is decided before the first migration ships;
+   - the operator reads the two new notice sentences and the changed
+     sign-in purpose (Queue Ruling 12);
+   - gate:clone on the SHA to promote;
+   - migrate status, then deploy, then status;
+   - after the deploy: public pages carry no Set-Cookie; the header link;
+     a full sign-in with the cookie's attributes over HTTPS; both
+     downloads, including the PDF page count; sign-out revokes; a
+     cross-origin POST is refused;
+   - the rollback route.
+
+QUEUE RULINGS 12-22
+  12  The privacy notice change was approved with five conditions:
+      CLAIM 1 RED first; the claims grepped; R207 naming; one source
+      (PRODUCT_STATE.webAccountExists); the webSession disclosure. Done on
+      the saved trees; condition2-grep.txt.
+  13  One regeneration, six items: an independent expectation; reconcile
+      168 - 109; header-band boxes; photograph a committed clean tree;
+      flag off gives a 404 with a test; the mail line made generic with a
+      RED. Done.
+  14  cmp all 109; list the style changes; causal flag-off; crops. Done.
+      108 of 109 identical; the erreur file spilled into the body.
+  15  Make the erreur capture repeat: locate, fix, prove both ways, bound
+      it. Fix attempt 1 (wait for the URL) did NOT prove.
+  16  Proof through the real visual.mjs with a temp spec; locator only; the
+      handoff committed alone. Done: c2f5cd3.
+  17  Park the paint defect, revert fix attempt 1, regenerate. Done, then
+      WITHDRAWN by 18.
+  18  Save the gated tree; diagnose; fix as its own commit (R912); or park
+      C9 whole. The diagnosis: focus left in the invalid field. R912
+      landed as db68601.
+  19  The blur must not drop state; assert aria-invalid after the blur; prove
+      by every capture. Done: the fixed arm gave one hash in 5 of 5
+      contexts.
+  20  The last word on baselines: substitute avis-provisoire; run the gate
+      ONCE. The substitution was done. The gate was not reached: the size
+      breach came first.
+  21  A server-rendered link, approved; six items before the gate. Items 1,
+      2, 3 and 5 hold; item 4 FAILED.
+  22  PARK C9 WHOLE: this report, gate:clone alone, push, cleanup.
+
+PDF PROOF
+  `git diff --name-only 863edb0 -- web/Dockerfile web/lib/export web/lib/dossier
+  web/app/releve/print` on the branch prints nothing. No PDF path is on the
+  branch. lib/export changes exist only in the saved trees: print-token.ts's
+  authSecret export, and respond.ts in increment 4. The PDF proof is owed when
+  they land.
+
+NOTICED BUT NOT TOUCHING
+  N1. SPEC lines that still describe the pre-amendment D14 (R898 allowed one
+      sentence): section 9 (~660, ~680), section 3's R209 note, section 14
+      (~940), section 19 (~1036). Comments in lib/auth/magic-link.ts and
+      app/api/v1/auth/magic-link/route.ts say the same.
+  N2. The sign-in mail's LINK points at the app's callback and spends the
+      same request as the code. A reader on a computer who taps it gets JSON.
+  N3. Second instance (R267). R912's diagnosis measured "focus on a valid
+      field: one hash" on Windows. In the container, the avis-provisoire
+      state, which ends with focus in a VALID field, produced one odd
+      capture in update-3. That one-hash result holds on Windows only.
+  N4. A CSS module or lucide icon used by a server component is not free on
+      the client in this Next.js build. Any future server-rendered shell
+      element meets the same arithmetic.
+  N5. With 54 B spare at db68601, the calculator route cannot take any shell
+      addition. Its one route-only module, CalculatorForm, is 11709 B of the
+      13827 B page chunk.
+
+DEVIATIONS
+  D1. Test-first was not followed for the first slice of increment 2 (the
+      session, cookie, CSRF and step-seal modules and the three handlers).
+      The REDs are the designated ones plus 5 verified plants.
+  D2. Increments 2 and 3 were planned as one commit. It never landed.
+  D3. A commit and push of the handoff alone (c2f5cd3), with the work set
+      aside by `git stash` in my own worktree, backed up first and restored
+      byte-identical.
+  D4. Four pixel-free e2e fixes were made after the Ruling-17 regeneration
+      and before gate-changed-inc23-2.
+  D5. Pushes were bundled with verdict reads in earlier steps. Commit-free
+      reads were bundled into the launch of gate-clone-handoff-2,
+      gate-changed-r912 and gate-clone-r912; their first samples read 7526,
+      6993 and 6472 MB.
+  D6. Minimum commit free during a run went below 5 000 MB twice, after
+      starts above it:
+        gate-changed-r912: 4856 MB minimum (start 6993 MB);
+        visual-r912-proof: 4951 MB minimum (start 6940 MB).
+  D7. After reporting Ruling 21 item 4's failure, I built ONE
+      measurement-only candidate while waiting, told main first, and then
+      restored refactor-tree (sha verified).
+  D8. The full unit suite was not re-run on refactor-tree after the census
+      fix (SUITES THAT RAN).
+
+QUESTIONS
+  Q1. Should a web sign-in create the account as the app's code route does?
+      Today the website creates none.
+  Q2. The area shows the current tax year and the one before. More years, or
+      a selector?
+  Q3. Find bytes elsewhere on the calculator route, or rule on the budget?
+      Main records this as BLOCKED for the operator.
+  Q4. The SPEC amendment (R898) is on the branch for a parked area. Keep it
+      or revert it?
+
+PUSH PROOF
+  Before this report: 7af6a06, c2f5cd3, 18882cf and db68601, each pushed
+  after its gate:clone PASSED, with "ran" naming db:deploy, test:db and
+  test:container:write. The logs: gate-clone-r898, gate-clone-handoff,
+  gate-clone-handoff-2, gate-clone-r912.
+  ls-remote refs/heads/fw-web-account = db68601 when this was written.
+  This report's commit, its gate:clone and its push: pending when written.
+  The hand-back carries them.
+
+CLEANUP (pending when written; the hand-back carries the proof)
+  Due:
+   - remove web/.env;
+   - drop monreleve_fw_web_account and paste the pg_database listing;
+   - port 3400 free;
+   - remove the session lock.
+  KEPT, on Queue Ruling 22's instruction: .webaccount-evidence/, the worktree,
+  and every saved tree.
