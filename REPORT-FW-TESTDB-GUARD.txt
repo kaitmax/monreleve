@@ -1,0 +1,419 @@
+REPORT-FW-TESTDB-GUARD - Mon Releve
+test:db REFUSES A DATABASE THAT IS NOT A SCRATCH ONE (queue step C6)
+Session of 2026-11-12. Prompt: relay/FW-TESTDB-GUARD.txt. Rulings R877-R880
+(spares R881-R882 unused). Branch fw-testdb-guard, worktree
+C:/wt/fw-testdb-guard, cut from origin/main 4a65f42. NOT MERGED.
+
+====================================================================
+SUMMARY
+====================================================================
+`pnpm test:db` now refuses, before a single test file is collected, any
+DATABASE_URL whose database is not a scratch name. vitest.db.config.ts calls
+assertScratchTestDatabase(process.env.DATABASE_URL) while it is evaluated;
+a refused URL ends vitest with exit 1 and a message naming the database, the
+pattern, its home and how to make a scratch database (never the URL).
+
+  pattern  ^monreleve_[a-z0-9_]{1,53}$
+  home     web/lib/db/scratch-database.mjs (+ .d.mts, asserted by
+           tests/unit/meta/declaration-parity.test.ts)
+
+The guard sits in the config, not in package.json's script, because the
+config is the one door: scripts/container-e2e.mjs:421 runs vitest with this
+config directly. (A package.json edit would also select EVERY_SUITE,
+test:container:e2e among them, which is red on a parked task.)
+
+Every CREATE DATABASE site in web/ is resolved by a census test; gate:clone
+and the fw14 migration probe take their names from the home; CI's database
+is renamed monreleve_ci; README.md, web/.env.example and docker-compose.yml
+say what the guard does and how to make a scratch database.
+
+Commits (code tip d34a007):
+  8b9c3b3  R877/R878  the guard, its home, 56 unit tests incl. the real config
+                      driven in a real vitest process both ways
+  78ce2c5  R877       the census of CREATE DATABASE sites; gate-clone and the
+                      fw14 probe name through the home
+  f8a1395  R879       ci.yml -> monreleve_ci (8 occurrences), asserted
+  d34a007  R880       README section + recipe, .env.example line,
+                      docker-compose header, PARK-TG1
+
+====================================================================
+STATUS
+====================================================================
+COMPLETE on the code tip d34a007. gate:clone ran on d34a007 in this session
+and PASSED, its "ran" line naming db:deploy, test:db and test:container:write
+(pasted under GATES, STEP_EXIT=0). gate:changed PASSED before each of the
+four code commits.
+This report's own commit adds only this file. Its gate:changed and gate:clone
+run before its push and are in the hand-back: they cannot be in the file
+they verify.
+CI: NO RESULT (off, R248). :app:gate not run: nothing under android/ changed.
+
+====================================================================
+R877 - THE REFUSAL HAPPENS BEFORE ANY TEST FILE RUNS
+====================================================================
+WHAT IS READ AS THE DATABASE: the URL's path, decodeURI'd - the way
+node-postgres (pg-connection-string 2.14.0, read in node_modules) reads it,
+which is what the Prisma adapter and every tests/db file use. The user, host,
+password, `schema` parameter and fragment never count. Refused outright: an
+unset/empty URL, an unparseable one, any protocol but postgresql:/postgres:,
+pg's socket and unix-path forms, an empty path (the driver would fall back to
+PGDATABASE or the user name), and a `database` / `dbname` / `db` query
+parameter in any case (pg lets the path win; libpq-style clients read
+?dbname=). Names over 63 bytes are refused (PostgreSQL truncates them).
+
+RED (test first): tests/unit/meta/test-db-guard.test.ts against a stub that
+admitted everything (.testdb-evidence/r877-red.log):
+   Test Files  1 failed (1)
+        Tests  52 failed | 4 passed (56)
+  The wiring test - the real vitest.db.config.ts in a real vitest process,
+  DATABASE_URL naming `frontalier` on the unresolvable host db.invalid - saw
+  the unguarded config load every db file:
+   Test Files  47 failed | 3 skipped (50)
+        Tests  637 failed | 10 passed | 93 skipped (740)
+  (connection failures against db.invalid; no database was reachable).
+  A second RED, unplanned: my first edit wiring the config did not apply
+  (file not yet read), and the wiring test stayed red - it catches a missing
+  call, not only a stubbed one.
+GREEN: Tests 56 passed (56) (r877-green.log).
+
+THE MESSAGE (r878-neg-pnpm.log, through `pnpm test:db`; vitest's own
+"failed to load config" line and stack frames above and below it):
+  test:db REFUSED (R877): DATABASE_URL does not name a scratch database.
+
+    pointed at  "frontalier_guard_sentinel"
+    why         "frontalier_guard_sentinel" is not a scratch database name
+    requires    ^monreleve_[a-z0-9_]{1,53}$
+    defined in  web/lib/db/scratch-database.mjs
+
+  Every test:db file starts by EMPTYING the table it owns, so the suite runs only
+  on a database made for it. To make one on the local PostgreSQL (docker compose up -d):
+
+    docker exec frontalier-postgres psql -U frontalier -d postgres -c "CREATE DATABASE monreleve_test_mine"
+
+  then point DATABASE_URL at it - a value set in the shell wins over web/.env - and run
+
+    pnpm db:deploy
+    pnpm test:db
+
+  Drop it when done: ... -c "DROP DATABASE monreleve_test_mine WITH (FORCE)". README.md has the recipe.
+
+  [ELIFECYCLE] Command failed with exit code 1.
+  PNPM_TEST_DB_EXIT=1
+
+THE SCRIPTS THAT CREATE SCRATCH DATABASES (R181: derived from the code). The
+prompt named five; the code has NINE CREATE DATABASE sites in web/:
+  scripts/gate-clone.mjs:678           monreleve_gate_clone_<sha8>  FROM THE HOME (changed)
+  tests/db/fw14-era-migration.test.ts  monreleve_fw14_era_probe     FROM THE HOME (changed;
+                                       was `frontalier_fw14_era_probe` - outside the
+                                       pattern, the frontalier_test near miss inside
+                                       the suite itself)
+  scripts/backup-restore.mjs:116,194   monreleve_restore_probe      literal, asserted
+  scripts/container-e2e.mjs:224        monreleve_container_e2e      literal, asserted
+  scripts/container-scheduler.mjs:128  monreleve_scheduler_probe    literal, asserted
+  scripts/container-write.mjs:281      monreleve_container_write    literal, asserted
+  scripts/fw30-dataset.mjs:62          monreleve_fw30               literal, asserted
+  lib/db/scratch-database.mjs:182      monreleve_test_mine          the home's recipe line
+tests/unit/meta/scratch-database-census.test.ts walks the package (skipping
+tests/unit, which has no database by construction - its CREATE DATABASE text
+is about creation) and accepts a site only as "assigned from
+scratchDatabaseName() imported from the home" or "a string literal matching
+the pattern"; anything else fails by file and line. The resolver is itself
+tested to refuse a template with a substitution, an unreadable reassignment,
+and scratchDatabaseName() without the import (R180).
+Census RED before the two creators changed (census-red.log):
+  Tests  3 failed | 13 passed (16)
+  - scratchDatabase is assigned a value this cannot resolve:
+    `monreleve_gate_clone_${head.slice(0, 8)}`
+  - frontalier_fw14_era_probe is outside ^monreleve_[a-z0-9_]{1,53}$
+  - gate:clone not from the home
+GREEN: 16 passed.
+The four harnesses and fw30-dataset were ASSERTED, NOT EDITED: each selects
+its own container suite in gate:changed (R247), and test:container:e2e is red
+at home.spec.ts:197 (parked task), so an edit would buy an unpassable gate for
+no change in behaviour. R877 allows either shape.
+
+====================================================================
+R878 - BOTH DIRECTIONS, PROVEN
+====================================================================
+Evidence directory: C:/wt/fw-testdb-guard/.testdb-evidence (gitignored by
+/.*-evidence/). No URL or credential in any sampler -Command: the URLs were
+set inside .ps1 scripts; `grep -c postgres *.samples.txt` = 0 for all.
+
+1. THE SENTINEL CAN DIE (R180: a plant proven before its survival is read).
+   Two rows (AlertSubscriber 'r878-sentinel-sub', User 'r878-sentinel-user')
+   planted in MY in-pattern scratch database monreleve_testdb_guard, then
+   gate:changed's test:db ran on it:
+     before  AlertSubscriber sentinel 1 / User sentinel 1
+     after   AlertSubscriber sentinel 0 / User sentinel 0
+
+2. NEGATIVE - a copy of the situation: frontalier_guard_sentinel, a database
+   deliberately named OUTSIDE the pattern, migrated (15 migrations), the same
+   two rows planted. pg_stat_database read from the maintenance database
+   (opens no session to the sentinel), 2 s after each step:
+     A-before-pnpm   03:27:12Z sessions=6 xact_commit=217 tup_inserted=3091 tup_updated=382 tup_deleted=11
+     (pnpm test:db -> REFUSED, PNPM_TEST_DB_EXIT=1 - the message above)
+     B-after-pnpm    03:27:40Z sessions=6 xact_commit=217 tup_inserted=3091 tup_updated=382 tup_deleted=11
+   Not one client session: the whole `pnpm test:db` chain, db:generate
+   included, opened no connection. Rows: AlertSubscriber sentinel 1, User
+   sentinel 1.
+   container-e2e's door, `node node_modules/vitest/vitest.mjs run --config
+   vitest.db.config.ts tests/db/container-auth.test.ts
+   tests/db/container-pdf.test.ts` (r878-neg-direct.log):
+     test:db REFUSED (R877): DATABASE_URL does not name a scratch database.
+       pointed at  "frontalier_guard_sentinel"
+     DIRECT_VITEST_EXIT=1
+     lines naming container-auth/-pdf or "Test Files" in its output: 0
+     C-before-direct 03:27:48Z sessions=7 xact_commit=219 ... tup_deleted=11
+     D-after-direct  03:28:11Z sessions=7 xact_commit=221 ... tup_deleted=11
+   xact_commit +2 with no session is background drift, MEASURED: with no
+   client activity at all, E-quiet 03:28:50Z / 03:29:28Z / 03:30:05Z read
+   sessions=11/11/11 and xact_commit=229/231/233 (+2 per ~37 s; sessions
+   count client backends only). All 15 tables' counts identical before and
+   after both refusals (snap-frontalier_guard_sentinel-0-before vs 1-after:
+   "TABLE COUNTS IDENTICAL"); sentinel rows 1 and 1.
+   THE SHELL BEATS web/.env, measured: my web/.env names the in-pattern
+   monreleve_testdb_guard; the refusal names the shell's database.
+
+3. THE QUEUE'S CONTROL - `frontalier` itself, run only after 2:
+     test:db REFUSED (R877): DATABASE_URL does not name a scratch database.
+       pointed at  "frontalier"
+       why         "frontalier" is not a scratch database name
+     PNPM_TEST_DB_EXIT=1   (r878-frontalier.log)
+   frontalier's per-table counts, read-only, at 03:04:37Z (before this
+   session ran anything against the server) and after the refusal:
+     Account 0, AlertSubscriber 3, CodeAttempt 9, Device 0, DeviceSession 12,
+     Entry 24, EntryEvent 25, IssuanceRecord 2, NameChange 0, ReminderSent 0,
+     Session 0, SessionToken 44, User 9, VerificationToken 1,
+     _prisma_migrations 14  -> "FRONTALIER COUNTS IDENTICAL TO 03:04:37Z BASELINE"
+   No sentinel was ever put in frontalier. Its session counter is not a clean
+   instrument: the compose healthcheck `pg_isready -U frontalier -d
+   frontalier` runs every 2 s. Measured: the 24 s window containing the
+   refusal moved sessions 30016 -> 30028 (+12); a quiet 24 s window moved
+   30037 -> 30049 (+12). The refusal added nothing above that rate. That is
+   why the sentinel database, which nothing else touches, carries the proof.
+
+4. POSITIVE - pointed at a scratch database, test:db runs, count non-zero:
+     gate:changed on 8b9c3b3 (monreleve_testdb_guard via web/.env):
+       Test Files  47 passed | 3 skipped (50)
+            Tests  714 passed | 26 skipped (740)
+     README.md's PowerShell recipe, run as written (r880-recipe.log):
+       Datasource "db": PostgreSQL database "monreleve_test_mine" ...
+       Tests  714 passed | 26 skipped (740)   RECIPE_TEST_DB_EXIT=0
+       DROP DATABASE
+   In tests/unit/meta/test-db-guard.test.ts the real config is also driven
+   both ways with no database: refused name -> non-zero, refusal printed, no
+   "Test Files", no tests/db file named; admitted name on db.invalid with a
+   no-match filter -> "No test files found", exit 0, no REFUSED.
+
+UNIT TESTS OF THE NAME CHECK, near misses included (all refused):
+  frontalier, frontalier_test, monreleve, monreleve_, postgres, MONRELEVE_X,
+  monreleve-x, a trailing %20, `;drop`, %66rontalier, monreleve_x%2Ffoo, a
+  second segment, monreleve_x/../frontalier (dot segment -> frontalier),
+  64 bytes; a scratch name in the USER, HOST, SCHEMA parameter, FRAGMENT and
+  PASSWORD with frontalier in the path; ?database= (both ways), ?dbname=,
+  ?DBNAME=, ?db=; no path / bare slash / bare slash + schema; unset, null,
+  empty, not a URL, mysql://, socket:, unix-path form. Admitted: the five
+  harness shapes, monreleve_test_mine, postgres:// and postgresql://, and
+  monreleve%5Fx read as monreleve_x (what the driver sends).
+
+====================================================================
+R879 - CI NAMES ITS DATABASE BY THE PATTERN
+====================================================================
+.github/workflows/ci.yml, before (4a65f42) -> after (f8a1395):
+  102  POSTGRES_DB: frontalier                         -> 111 POSTGRES_DB: monreleve_ci
+  109  pg_isready -U frontalier -d frontalier          -> 118 ... -d monreleve_ci
+  115  DATABASE_URL .../5432/frontalier?schema=public  -> 124 .../monreleve_ci?...
+  548  POSTGRES_DB: frontalier                         -> 560 POSTGRES_DB: monreleve_ci
+  576  CONTAINER_E2E_DATABASE_URL .../frontalier       -> 588 .../monreleve_ci
+  586  CONTAINER_SCHEDULER_DATABASE_URL .../frontalier -> 598 .../monreleve_ci
+  604  CONTAINER_WRITE_DATABASE_URL .../frontalier     -> 616 .../monreleve_ci
+  618  RESTORE_DATABASE_URL .../frontalier             -> 630 .../monreleve_ci
+  Unchanged by role: POSTGRES_USER / POSTGRES_PASSWORD `frontalier` (not the
+  database) and the container job's `pg_isready -U frontalier` (552 -> 564),
+  which names no database; pg_isready reports server status without a valid
+  database name. `frontalier` as a database in any workflow now: 0.
+No escape-hatch variable; no case that could not be renamed. The restore
+probe uses its supplied URL only to reach the server (it strips the database
+and works in `postgres` and monreleve_restore_probe), so the rename is
+transparent to it; container-e2e hands CONTAINER_E2E_DATABASE_URL to
+vitest.db.config.ts, so without the rename CI's container job would now be
+refused.
+Asserted (scratch-database-census.test.ts, R879 block): every POSTGRES_DB,
+every pg_isready -d and every connection string in .github/workflows passes
+the predicate test:db applies, and each connection string names a database a
+service in the same workflow creates (a half-applied rename fails here).
+RED on 4a65f42's ci.yml: Tests 8 failed | 18 passed (26) - exactly the eight
+lines above. GREEN: 26 passed (108 with gate-covers-ci).
+CI ITSELF: NO RESULT. CI is OFF (R248: private repository, CI_FULL unset).
+
+====================================================================
+R880 - THE DOC
+====================================================================
+- README.md (the contributing notes; test:db was described in none of
+  them): "`pnpm test:db` runs only on a scratch database" after the R94 gate
+  section - the refusal, the pattern, its home, the census, monreleve_ci, no
+  opt-out, what counts as the database - and the recipe in bash and
+  PowerShell (create, db:deploy, test:db, drop). The commands block gains
+  `pnpm test:db`. docs/deploy.md does not describe test:db (it is the
+  deployment document) and was not touched.
+- web/.env.example keeps DATABASE_URL on frontalier and gains one line:
+  "# pnpm test:db REFUSES this database (R877): its files empty tables, so it
+  runs only on a monreleve_* scratch one - see README.md."
+- docker-compose.yml's header said the container exists so test:db has
+  something to run against; it now says the tests run in this container,
+  never in the `frontalier` database.
+- The recipe was run as written (R878 point 4), minus `docker compose up -d`
+  (DEVIATIONS 2).
+
+====================================================================
+GATES
+====================================================================
+gate:changed before every commit, under the sampler (logs in
+.testdb-evidence/):
+  8b9c3b3  changed-1-r877   typecheck, lint, test, build, test:db -
+                            GATE FAILED at pnpm test:db (exit 1): 3 files /
+                            23 tests failed (DEVIATIONS 1). Not committed.
+           changed-1b-r877  same selection; GATE PASSED; test 3698,
+                            test:db 714; STEP_EXIT=0
+  78ce2c5  changed-2-census typecheck, lint, test, build, test:db;
+                            GATE PASSED; test 3714, test:db 714; STEP_EXIT=0
+  f8a1395  changed-3-ci     base chain only; GATE PASSED; test 3724; STEP_EXIT=0
+  d34a007  changed-4-doc    base chain only; GATE PASSED; test 3724; STEP_EXIT=0
+gate:clone on the code tip d34a007 (clone-d34a007.log):
+  commit    d34a007faeb99965295a76ff3e2e0b641deaa4f4
+  tree      clean - HEAD is everything you have
+  --- database: scratch database monreleve_gate_clone_d34a007f created ---
+  GATE:CLONE PASSED
+  ran     register-coverage, fixture-coverage, install, typecheck, lint,
+          test, build, size, db:deploy, test:db, test:container:write
+  STEP_EXIT=0 ABORTED=False
+  The guard admitted monreleve_gate_clone_d34a007f; the database was dropped
+  afterwards (absent from pg_database). test:db's count is not in the
+  14-line step tail (the parked gate:clone condition); the step's own
+  positive pattern /Test Files\s+\d+ passed/ had to match for it to pass.
+
+MEMORY (commit free MB before the step / minimum during / minimum free
+physical MB; floor 5 000; no step aborted, none near the 2 000 kill line):
+  changed-1-r877    8795 / 7255 / 2612
+  changed-1b-r877   8942 / 7321 / 3070
+  r878-neg-pnpm     8919 / 8732 / 4026
+  r878-neg-direct   8926 / 8807 / 4044
+  r878-frontalier   8911 / 8808 / 4010
+  changed-2-census  8939 / 7372 / 2715
+  changed-3-ci      8847 / 7361 / 2677
+  changed-4-doc     8824 / 7312 / 2731
+  r880-recipe       8819 / 8020 / 3480
+  clone-d34a007     8825 / 6816 / 1759
+
+====================================================================
+GATE:CLONE'S ADMIN CONNECTION (the orchestrator's live-state question)
+====================================================================
+Read in web/scripts/gate-clone.mjs: postgres() takes DATABASE_URL from the
+environment or web/.env, requires a local host, and uses the URL AS IS -
+database path included - as the admin connection that runs DROP/CREATE
+DATABASE for monreleve_gate_clone_<sha8> and drops it at cleanup. The clone's
+own steps get a URL with the path replaced by the scratch name. So:
+- From a checkout whose web/.env names `frontalier`, the admin connection
+  OPENS a session on `frontalier`. It runs only CREATE/DROP DATABASE of the
+  scratch name; it reads and writes no table there.
+- Nothing in gate:clone's route NEEDS `frontalier`: any database on the
+  server serves as the admin connection. C5 used `postgres`; this session
+  used its own in-pattern monreleve_testdb_guard, so `frontalier` was never
+  opened by gate:clone here.
+- The guard admits gate:clone's database by construction: the name now comes
+  from scratchDatabaseName(); the census asserts it.
+- The admin connection itself is not guarded and does not need to be. Making
+  it always use `postgres` is a change to the push gate this task was not
+  asked for (QUESTION 1).
+
+====================================================================
+PARKED
+====================================================================
+PARK-TG1 (parking.md; series TG confirmed free - register coverage OK, 224
+cited ids across 163 reports; PARK_ID matches PARK-TG1): a web/.env copied
+verbatim from .env.example fails 23 test:db tests, because the print files'
+`AUTH_SECRET ??=` keeps the placeholder that print-token.ts refuses by
+value. gate:clone never sees it (no .env, AUTH_SECRET scrubbed). OPEN.
+
+====================================================================
+DEVIATIONS
+====================================================================
+1. web/.env as the launch brief said ("from web/.env.example", DATABASE_URL
+   on my own scratch database) was not enough for test:db: the first
+   gate:changed failed 23 tests on the AUTH_SECRET placeholder (PARK-TG1).
+   I generated an AUTH_SECRET into the gitignored web/.env, as .env.example's
+   own comment instructs; the re-run passed 714. Nothing committed changed
+   for it. The failing run is kept (changed-1-r877.log). That run is also
+   where the sentinel was proven killable: the guard admitted the database
+   and 691 tests ran.
+2. The R880 recipe run skipped `docker compose up -d`. Run from a worktree,
+   compose takes the directory name as the project name and would collide
+   with the existing frontalier-postgres container_name. The container was
+   already up and healthy, so not starting it changed nothing. README says
+   compose runs from the repository root.
+3. The prompt's five names were not the whole list: nine CREATE DATABASE
+   sites (R181). The fw14 migration probe was renamed (frontalier_ prefix ->
+   monreleve_, through the home), which is a tests/db change the prompt did
+   not name. It selects test:db only, which ran (714).
+4. The census does not walk tests/unit (stated in its header: no database
+   there by construction). That is a scope, not an exemption list: no file is
+   named.
+5. The README section links PARK-TG1, which lands in the same commit.
+
+====================================================================
+QUESTIONS (none blocks this task)
+====================================================================
+1. gate:clone's admin connection opens whatever database DATABASE_URL names,
+   `frontalier` from the main checkout's web/.env. It is harmless to data.
+   Should it connect to `postgres` instead, in its own task?
+2. monreleve_fw30 (FW30's deterministic fixture, kept on purpose per
+   PARK-27) matches the pattern, so test:db pointed at it would empty its
+   tables. scripts/fw30-dataset.mjs rebuilds it exactly. In force: accepted.
+   The other choice is to narrow the pattern, which the operator would decide.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- frontalier's _prisma_migrations has 14 rows; the repository ships 15
+  migrations. The shared dev database is one migration behind (read-only
+  count, 03:04:37Z).
+- web/scripts/_wt-setup.mjs and _mint-readback.mjs are TRACKED (since
+  65c0af6, FW-SHELL-BURGER), although headed "THROWAWAY - NOT committed".
+  They write to whatever DATABASE_URL names (deleteMany by email, rows
+  created), with no guard.
+- android/scripts create monreleve_an5c and monreleve_anaudit on the same
+  server for walkthroughs. They match the pattern, never run test:db, and are
+  outside the census walk (stated in its header).
+- `pnpm test:db` runs `pnpm db:generate` before the guard. Measured: it
+  opens no connection (sentinel sessions 6 -> 6).
+- The compose healthcheck opens a session on `frontalier` every 2 s (about
+  30 000 since the container started), so session counts on that database
+  prove nothing about a test run.
+
+====================================================================
+CLEANUP
+====================================================================
+What has happened at the time of this commit:
+- frontalier_guard_sentinel dropped after the code push. pg_database (read
+  only) then held: frontalier monreleve_testdb_guard postgres template0
+  template1.
+- monreleve_gate_clone_d34a007f, monreleve_test_mine and
+  monreleve_fw14_era_probe were each dropped by the run that created them.
+- frontalier: never written by this session; counts identical to the
+  03:04:37Z baseline.
+- STILL PRESENT, ON PURPOSE: web/.env (gitignored) and
+  monreleve_testdb_guard. The report commit's gate:clone needs them to run
+  its database suites (Queue Ruling 6). Their removal, and the lock's, are
+  in the hand-back after they happen.
+- No prune of any kind; no other project's container touched.
+
+====================================================================
+PUSH PROOF
+====================================================================
+The code tip is pushed. `git ls-remote origin` after the push:
+  d34a007faeb99965295a76ff3e2e0b641deaa4f4  refs/heads/fw-testdb-guard
+  4a65f426691a44daac94a551ad9a5f28e09a5fe7  refs/heads/main  (untouched)
+This report's commit is pushed after its own gate:clone. Its sha cannot be
+in this file; it is in the hand-back. Nothing was merged.
+
+END OF REPORT
