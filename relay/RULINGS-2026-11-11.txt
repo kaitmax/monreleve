@@ -2385,3 +2385,95 @@ APPLIED AND VERIFIED
   - C10's row PARKED WHOLE, with V1, owed at resume and the resume note;
   - the C9 row's P1 item, the paint entry, the floor bullet with its
     erratum, and the EVIDENCE entry.
+
+====================================================================
+QUEUE RULING 27 - THE QUEUE'S END: a0c1cb4 STANDS; THE EVIDENCE LEAVES TEMP; THE CLOSING RECORD
+====================================================================
+
+EVIDENCE (the orchestrator's reads after the push)
+(1) a0c1cb4 (C10's park, Queue Rulings 24-26):
+    - gate:changed, base chain: 3 724 passed, STEP_EXIT=0, from 4 014
+      down to 2 733 MB commit free;
+    - gate:clone PASSED on a0c1cb4, "ran" naming db:deploy, test:db and
+      test:container:write, STEP_EXIT=0 and ABORTED=False; from a
+      4 200 MB read down to 2 311 MB, with 322 MB free physical;
+    - pushed 17270f3..a0c1cb4 as a fast-forward.
+(2) Production re-read at 17:3x UTC: the server serves 52caca8 ("Up 10
+    days (healthy)"); /api/health names monreleve; /api/ready is 200.
+(3) tizicorp-app-1 and tizicorp-postgres-1 exited 0 at 16:55:51 UTC,
+    not out-of-memory killed. C10's transcript holds 5 docker commands,
+    4 exec and 1 ps.
+QUESTION: is the queue done, and what does the summary need?
+
+ANSWER (the advisor, verbatim in substance)
+a0c1cb4 is sound as pushed; nothing needs undoing.
+Before the summary, no gate needed:
+1. Copy the evidence out of Temp. The rows cite scratchpad logs as V2
+   evidence, and this machine's Temp has already lost a file with no
+   known cause (the token). Copy the logs, samples, qr*.txt and scripts
+   to C:/wt/queue-evidence/orchestrator/, with a SHA256SUMS from the
+   source, and verify.
+2. Close the tizicorp search. The "6 commands" pattern stops at the
+   first escaped quote, so it misses some commands. Print all six wider
+   hits; if all are CLAUDE.md's text, the summary can say no session of
+   this queue stopped them.
+3. Read, don't recall: gh run list for ios-shared.yml, git worktree
+   list, and docker ps -a for the five A1 containers.
+The closing commit (QUEUE-STATE's tail):
+- V2 for the C9 and C10 rows: dd5231a passed but did not run alone;
+  17270f3 ran solo; a0c1cb4 passed both gates and was pushed.
+- The floor bullet: the first runs under 5 000 and their minimums.
+- Also: the evidence path, the tizicorp read, today's live re-read,
+  this review as Queue Ruling 27, and a line that the queue ended.
+- A report file only if the queue prompt or an earlier orchestrator run
+  asks for one; otherwise QUEUE-STATE is the record.
+- Read memory in its own step and edit nothing until it clears; allow
+  one 15-minute watch. If it never clears, make no edit, put the tail in
+  the evidence folder, and say so in the summary.
+In the summary:
+- No after-deploy check ran, because nothing was deployed; give today's
+  re-read.
+- Nothing this queue merged is live.
+- Line two: the lost token and the presumed build-time key exposure.
+- Deviations as they happened: dd5231a's clone did not run alone, and
+  the last two gates started under 5 000.
+- Each task from its STEPS row, with its NOT delivered clause.
+Remove the lock after the last push.
+
+APPLIED AND VERIFIED
+- 1: C:/wt/queue-evidence/orchestrator/ holds the scratchpad, 2 536
+  files: 2 536 OK and 0 failed against orchestrator.SHA256SUMS, which
+  was taken from the source. The secret scan matched only:
+  - generators that write a random AUTH_SECRET at run time;
+  - the local development URL committed in web/.env.example;
+  - a key-format check (startsWith "-----BEGIN PRIVATE KEY-----");
+  - the Coolify source's own strings.
+- 2: docker-cmds.cjs parses each transcript as JSON.
+  - C10: 339 commands, 5 mention docker (4 exec, 1 ps), and 0 stop,
+    kill, rm, restart, pause or down. The six wider hits are CLAUDE.md's
+    text, 3 + 3.
+  - The orchestrator's only stop of a tizicorp container is on
+    2026-11-10 at 21:44:06 UTC, on the operator's words that day.
+  - So no session of this queue stopped tizicorp today.
+- 3, read at 17:55 UTC:
+  - ios-shared.yml shows no run after 43177226628, so the queue spent
+    14 minutes.
+  - git worktree list shows 73 worktrees, including fw-delai-rappel
+    (764ef54) and fw-web-account (00e2d17), neither to be removed.
+  - The five A1 containers are all Exited (0): tizicorp's two 59 minutes
+    ago, the other three 44 hours ago.
+- Commit free read 5 190 MB at 17:54:36 UTC before any edit, so it
+  cleared both tests.
+- Live re-read at 17:55:36-17:55:41 UTC: image
+  pkptabevr1nhtyygrq0mc8qx:52caca8cf6388cb596c9a074175756d16a867858
+  "Up 10 days (healthy)"; /api/health {"service":"monreleve", "status":"ok"};
+  /api/ready 200; origin's production is 52caca8.
+- No report file is asked for: grep REPORT in ORCH-NO-PHONE-QUEUE.txt
+  names only the sessions' reports, and there is no REPORT-ORCH* file.
+- QUEUE-STATE now carries:
+  - the queue-ended block, with the live re-read;
+  - the C9 and C10 rows' V2;
+  - the floor bullet's first runs under 5 000;
+  - the A1 read;
+  - the orchestrator's evidence copy;
+  - the final minutes.
