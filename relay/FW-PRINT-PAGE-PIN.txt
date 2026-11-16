@@ -1,0 +1,68 @@
+FW-PRINT-PAGE-PIN SESSION PROMPT - Mon Releve
+EVERY PDF INPUT SELECTS THE CONTAINER STEP; THE CSS PAGE SIZE IS PINNED (web run step W3d)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W3d (Web Ruling 5). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Parts A-B (with the CLEANUP rule);
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-print-page-pin, branch
+  fw-print-page-pin, report REPORT-FW-PRINT-PAGE-PIN.txt;
+- REPORT-FW-PDF-A4.txt and REPORT-FW-PDF-RENDER-GATE.txt;
+- CLAUDE.md (R251, R267, R345, R181, R180).
+Ruling numbers for this task: R990-R994.
+
+====================================================================
+THE TASK
+====================================================================
+Sources: REPORT-FW-PDF-RENDER-GATE.txt QUESTIONS 1-2. The advisor's
+ruling (Web Ruling 5), verbatim in substance:
+- Q1: yes (R267, the same call as W2's Q1).
+- Q2: yes, but pin the VALUE, not a page count, which follows content.
+
+R990. R267's SECOND SITE. The files that decide what the 17 render tests
+    and container-pdf render or read now select test:container:e2e
+    through the selector rule W2 and W3b built. At least:
+    - app/releve/print/page.tsx (and any module it alone renders through);
+    - the export route;
+    - tests/db/support/live-server.ts, pdf-text.ts and pdf-image.ts.
+    Establish the full list by reading imports, not by guessing. A test
+    asserts each match (both directions: matched here, and not matched
+    for an unrelated path).
+
+R991. THE CSS PAGE SIZE IS PINNED BY VALUE. On the stylesheet the SERVER
+    SERVES (the compiled CSS the print route links, fetched, not the
+    .scss source), assert that the @page rule's size equals the paper the
+    renderer asks for, taken from lib/export/pdf.ts's own format value
+    (export it if needed), never retyped (R181). The comparison of 'A4'
+    with `size: a4` is stated and asserted (R345). It runs in the
+    container step, against the image.
+
+R992. A VERIFIED PLANT (R180): `size: letter` in print.module.scss (a
+    scratch edit, verified to have landed, through a rebuilt image) goes
+    RED naming the rule and both values; then revert. W3b measured that
+    this plant passes every gate today: show the before.
+
+R993. NOTICED, NOT TOUCHED: the page size now has two homes (the
+    renderer's format and the @page rule). Removing one is a renderer
+    change and is not this task. Say so in the report.
+
+R994. NOTHING ELSE MOVES. No renderer, page or route change.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock, from the BASE_SHA in the launch message.
+1. R990: read.
+2. R990-R992, test-first.
+3. gate:changed. Read memory first: test:container:e2e alone starts at
+   >= 5 440 MB, and with test:db at >= 6 745 (WEB-QUEUE-STATE MEMORY).
+   Commit, push the branch.
+4. gate:clone ALONE on the tip (>= 4 676 MB); push.
+5. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-PRINT-PAGE-PIN.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R990-R994 with evidence and the plant /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-PRINT-PAGE-PIN PROMPT

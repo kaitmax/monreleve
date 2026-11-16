@@ -110,3 +110,128 @@ APPLIED:
   print.module.scss's @page as a page-size input, for the selector
   (inert while preferCSSPageSize is unset, but it decides the CSS page).
 - ORCH-WEB-COMPLETE Part B carries the image-tag cleanup.
+
+====================================================================
+WEB RULING 4 - W3 FW-DOSSIER-ENGINE VERIFIED; ITS TWO QUESTIONS; ORDER
+====================================================================
+EVIDENCE: branch fw-dossier-engine 23d780b (code 846bc19), based on
+fc446b5.
+- The diff is web/tests/db/dossier-engine.test.ts and the report. The
+  test imports GET from app/api/v1/dossier/route and lib/calc-engine.
+- gate:changed: test 3 752, test:db 719 (+26 skipped).
+- The session's gate:clone ALONE on 846bc19: exit 0.
+- 22 figures match exactly; 9 verified plants went RED.
+- W2's merge gate: the orchestrator's gate:clone ALONE on fc446b5 PASSED,
+  and main was pushed 589d0e8..fc446b5.
+- Memory: W3's test:db selection dropped 2 542 (line 4 542). Commit free
+  then read 6 933.
+- The served zone.fiscalCeilingDays is 76.80000000000001, named only in
+  the report's R941 table, not in its NOTICED.
+- periodFractionOf (lib/dossier/aggregate.ts:219) derives the period
+  fraction from the stored activityStartDate.
+QUESTIONS (the session's):
+1. No gated test reads each rendered annex row's provenance words and
+   stamp back from the page. Should a task add it?
+2. Proration is not covered (no activityStartDate). Should a mid-year
+   person be seeded?
+ANSWER (the advisor, verbatim in substance):
+- W3 can merge; nothing needs re-running.
+- Close W2's pending merge gate in the record.
+- Record the test:db line, 4 542.
+- W3's row gets a NOT delivered clause.
+- The float gets no task, since rounding is Ask-first; it goes in the
+  row.
+- Q1 is not optional. Checkpoint D item 2 puts "the annex expanded and
+  provenance per row" on the PDF, and W3 proved them in the payload only,
+  so the item stays PARTIAL. The task asserts, on the print route's
+  rendered HTML for the same seeded year, that the row count equals the
+  seeded days and that every row carries its provenance words and stamp.
+  W3's seed is shared through one support module, not copied.
+  print-route.test.ts must first be confirmed NOT among the 26 skipped,
+  or the assertion lands in no gate. It is its own small task, not a
+  rider on W3b: it runs in test:db (4 542), while W3b needs 6 745.
+- Q2: a full-year seed holds the fraction at 1, so a broken derivation
+  is invisible. Read whether the route derives it from a stored start
+  date, and whether any gated test checks a part-year's served figures
+  independently of lib/dossier.
+  - No stored start date: record only.
+  - Derived and uncovered: add one seeded person in the Q1 task. The
+    expected fraction comes from the SPEC's stated rule, cited. If the
+    SPEC does not state the day-count basis, that is a question, never
+    the route's own answer typed in.
+- Order by a fresh memory reading: W3b and W4 start at 6 745; below it,
+  run the Q1 task first. Confirm with an R-number scan that its range is
+  free.
+APPLIED:
+- Commit free read 6 933 (>= 6 745), so W3b launched first, from W3's tip
+  23d780b. W3 and W3b merge together under one record commit and one
+  gate:clone; two separate merge gates would have overlapped W3b's runs.
+- The fraction IS derived from a stored date
+  (lib/dossier/aggregate.ts:219-223), so Q2 goes into the new task W3c
+  FW-ANNEX-RENDERED (relay/FW-ANNEX-RENDERED.txt), which establishes the
+  coverage first.
+- The R scan found R985-R989 free for W3c.
+
+====================================================================
+WEB RULING 5 - W3 AND W3b MERGED TOGETHER; THE ORIGIN RULE; AN ERRATUM
+====================================================================
+EVIDENCE: branch fw-pdf-render-gate 94bb8ff (code cf64929), cut from W3's
+23d780b, so it carries W3.
+- gate:changed: test 3 765, test:container:e2e (e2e 354; vitest pass 1
+  32 passed + 1 skipped; pass 2 1 passed + 1 skipped; verdict 33 tests,
+  0 refusals), exit 0.
+- The session's gate:clone ALONE on cf64929: exit 0.
+- 17 of 17 render tests now run and pass in the container step.
+- Pass 2 restarts the image with
+  MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.example
+  (container-e2e.mjs:417, :627).
+- The @page rule measured NOT inert: `a4 landscape` turned every
+  MediaBox landscape; `letter` paginated 9 -> 10 with no red.
+- container-render-verdict.d.mts is covered by declaration-parity.test.ts,
+  which walks every .d.mts beside a .mjs (R185).
+QUESTIONS (the session's):
+1. R267's second site: page.tsx, the export route and
+   tests/db/support/{live-server,pdf-text,pdf-image}.ts select only suites
+   where the 17 skip. Should they select test:container:e2e?
+2. Nothing pins the CSS page size. Assert a page count or the @page
+   value?
+ANSWER (the advisor, verbatim in substance):
+- One check first blocks the joint merge: pass 2 sets
+  MONRELEVE_VERIFICATION_ORIGIN, which the standing list says never to
+  set. Find the rule's source and read the value. If the rule is scoped
+  to the deployed app or Coolify, a throwaway local container with a
+  reserved-domain value is outside it, so quote the source and merge. If
+  it is unqualified or not found, it is the operator's limit: merge W3
+  alone, send W3b back without pass 2, and park the QR test.
+- The record carries an erratum (Web Ruling 3 and the W3b prompt called
+  @page inert); a NOT delivered clause (the 17 use this machine's
+  Chromium); criterion 12's rail tied to a test, or PARTIAL; and the new
+  memory line (container e2e alone 3 440 drop, line 5 440).
+- Q1: yes (R267; the same call as W2's Q1).
+- Q2: yes, but pin the VALUE, not a page count, which follows content.
+  Assert the @page size on the stylesheet the server serves, with the
+  expected paper taken from the renderer's own format, never retyped,
+  and plant `letter`. Record the page size's two homes as noticed;
+  removing one is a renderer change.
+- Q1 and Q2 go into one small task after W3c, not inside it, so W3c
+  stays on the test:db line. Scan for a free R range.
+- Launch W3c from the new main. It cites W3b's R980 (the 26 skipped
+  named; print-route.test.ts is not among them) instead of redoing it.
+APPLIED:
+- THE SOURCE, FOUND: relay/RULINGS-2026-11-03.txt, Advisor Ruling 4: "Do
+  NOT set the env in Coolify: R332 reserves it to the operator's decision
+  on the permanent domain." Its own positive control started a local
+  image with MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.example
+  (RFC 2606). The rule is scoped to Coolify, and pass 2 uses the same
+  reserved value on a throwaway local container. W3 and W3b MERGE
+  together.
+- ERRATUM to Web Ruling 3: the @page rule is NOT inert. It decides the CSS
+  page box and pagination, and an orientation change reaches the paper.
+  The W3b prompt's "inert" premise was wrong, as measured. What the user
+  was told on 2026-11-16 (that the @page size would only take over if
+  preferCSSPageSize were set) is corrected in the next summary.
+- Criterion 12's "same rail": export-pdf:425 (AC2), now gated.
+  "Formatters" is not tied to one test beyond that, so criterion 12 stays
+  PARTIAL (monochrome print too).
+- W3d FW-PRINT-PAGE-PIN (relay/FW-PRINT-PAGE-PIN.txt, R990-R994, free by
+  the scan) carries Q1 and Q2. W3c's prompt now cites W3b's R980.
