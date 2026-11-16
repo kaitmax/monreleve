@@ -379,3 +379,17 @@ Cleanup (Web Ruling 3), 21:12:50Z-21:13:04Z, before this report commit:
 - No container of mine; frontalier-postgres is the only one running and
   was not touched. :3300 refuses (curl exit 7).
 - The lock is removed last, after this report is pushed.
+
+Report commits: d8074c4 adds this file on top of 0d2339f; the commit
+after it adds only this paragraph (it was meant for d8074c4 and missed it).
+Neither goes through a gate: gate:clone vouches for 0d2339f. The
+gate:clone steps that read files outside the code were run standalone
+with this report in place, before d8074c4 (logs in .annex-evidence/):
+  node scripts/register-coverage.mjs: exit 0, "register coverage: OK - 230
+    cited id(s) across 171 report(s), all have headings in parking.md"
+  node scripts/fixture-coverage.mjs: exit 0, "fixture coverage: OK - 7
+    section(s) across 6 file(s), each consumed by every engine that reads
+    its file"
+  vitest tests/unit/meta/register-coverage.test.ts: 27 passed
+origin/main read b6f3295 at the report commit, so the branch is still a
+fast-forward from main.
