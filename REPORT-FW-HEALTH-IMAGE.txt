@@ -1,0 +1,407 @@
+REPORT-FW-HEALTH-IMAGE
+======================
+
+Web run step W1 (relay/ORCH-WEB-COMPLETE.txt Part C), prompt
+relay/FW-HEALTH-IMAGE.txt, rulings R930-R933. Branch fw-health-image in
+worktree C:/wt/fw-health-image, cut from origin/main
+1a4136fcdbbe06abebce11174f09da36a3d4e798. The lock .session-lock.json was
+written at the start and is gitignored. Code commit
+1bacd2f6847c97cd42a29b9019257727640c7549, pushed. This report is the commit
+on top of it.
+
+Evidence is in C:/wt/fw-health-image/.health-evidence/ (gitignored): the
+build log, both gate:changed logs, the gate:clone log, the sampler files,
+the RED and green runs, and the PDF count run.
+
+SUMMARY
+-------
+- The TEST was wrong, not the route.
+  - The image sets FRONTALIER_RUNTIME=1, and the entrypoint passes it to
+    server.js unchanged.
+  - lib/content/readiness.ts evaluates the database check exactly when that
+    marker is set, so in the image /api/ready correctly answers
+    `database ok: true`.
+  - e2e/home.spec.ts:197 asserted `ok: null`, which is the not-serving state.
+  - /api/health reaches no database code, so there is no R375 question.
+- The /api/health sibling (runtime false) never failed in the container
+  because container-e2e.mjs excluded it by title (dbd2057). The /api/ready
+  assertion came later (0ddc646) and was never excluded.
+- The fix: both tests read the serving role from the server.
+  - The launcher declares the role; only container-e2e.mjs sets it.
+  - /api/health's `runtime` must equal the declaration.
+  - /api/ready is then asserted for the state the server reports.
+  - The title exclusion is gone.
+- Both directions are exercised:
+  - host test:e2e: 367 passed, not-serving direction;
+  - container: 354 passed, serving direction.
+- test:container:e2e ran to its end: auth round trip and PDF step 9 passed,
+  CONTAINER E2E PASSED.
+  - PDF: 10 pages from the image, 10 from this machine.
+  - Baked origin https://monreleve.example.
+  - MONRELEVE_VERIFICATION_ORIGIN not set.
+- gate:clone PASSED on 1bacd2f, run ALONE, exit 0.
+
+STATUS (R391)
+-------------
+COMPLETE for the web gate this task owns.
+- gate:clone ran ALONE on the code tip 1bacd2f, in this session, exit 0
+  (claim line under PUSH PROOF).
+- gate:changed ran on the same content before the commit, exit 0.
+- This report commit adds only REPORT-FW-HEALTH-IMAGE.txt on top of 1bacd2f.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+
+R930. WHICH SIDE IS WRONG, ESTABLISHED
+--------------------------------------
+Verdict: the TEST's premise is wrong under the image. The route is right.
+/api/health reads no database in any path, so this is not an R375 question.
+
+1. What the image sets.
+   web/Dockerfile, runner stage:
+     ENV NODE_ENV=production ... FRONTALIER_RUNTIME=1 ...
+   docker inspect of monreleve:fw-health-image, built from 1a4136f with
+   --build-arg NEXT_PUBLIC_SITE_URL=https://monreleve.example
+   (15:35:58Z-15:42:47Z, exit 0). Config.Env:
+     NODE_ENV=production
+     NEXT_TELEMETRY_DISABLED=1
+     HOSTNAME=0.0.0.0
+     PORT=3000
+     TZ=Europe/Paris
+     FRONTALIER_RUNTIME=1
+     FRONTALIER_CHROMIUM_PATH=/usr/bin/chromium
+   scripts/entrypoint.mjs passes the marker on unchanged:
+     spawn(process.execPath, ['server.js'], { stdio: 'inherit' })
+   has no `env` option, so server.js inherits process.env. Inside the
+   running container, `FRONTALIER_RUNTIME=1`.
+   scripts/container-e2e.mjs adds DATABASE_URL (a migrated scratch
+   database), AUTH_SECRET, NEXT_PUBLIC_SITE_URL and FRONTALIER_INSTANCE_ID.
+   It never unsets the marker.
+
+2. What the running image answers. My container monreleve-fw-health-image
+   on :3300, against my migrated scratch database monreleve_fw_health_image:
+     2026-11-16T15:43:18Z GET /api/health
+     HTTP/1.1 200 OK
+     {"service":"monreleve","instance":null,"status":"ok","reasons":[],
+      "origin":"https://monreleve.example","runtime":true}
+     2026-11-16T15:43:18Z GET /api/ready
+     HTTP/1.1 200 OK
+     {"ready":true,"checks":[{"name":"site-origin","ok":true},
+      {"name":"database","ok":true}]}
+
+3. The line that decides it, in web/lib/content/readiness.ts:
+     if (process.env.FRONTALIER_RUNTIME === '1') {
+       const result = await probe();
+   In the image the database check is therefore EVALUATED, and it passes.
+   e2e/home.spec.ts:197, `expect(database?.ok).toBeNull()`, asserted the
+   not-serving state against a server that is serving. The route answered
+   correctly: ready true, every check passed.
+
+4. /api/health reads no database. Its import closure:
+   - app/api/health/route.ts imports only lib/content/identity and
+     lib/content/site;
+   - lib/content/site.ts has no imports;
+   - lib/content/identity.ts imports only APP_NAME from lib/fr;
+   - lib/fr/index.ts has no imports.
+   Nothing reaches lib/db or prisma. isRuntime() is
+   `process.env.FRONTALIER_RUNTIME === '1'`.
+
+5. Why the /api/health test above it (old :158, runtime false) did not
+   fail in the same run: it never ran there.
+   - dbd2057 (FW28, 2026-09-23): scripts/container-e2e.mjs excluded that
+     test by title (NON_SERVING_TITLE, passed as --grep-invert). At the
+     time, the /api/ready test asserted only that every check was truthy,
+     which held in the image.
+   - 0ddc646 (FW-READY, R353-R357, 2026-10-15): added the database check
+     and the `ok: null` assertion. The exclusion was not extended to it.
+   - From that commit on, test:container:e2e stopped at :197 on every run.
+
+   RED: the old spec, unfiltered, against the live image (15:43:28Z,
+   .health-evidence/red-before.log):
+     ok 1  home.spec.ts:144 /sitemap.xml is served normally when the
+           process is not marked as serving
+     x  3  home.spec.ts:158 /api/health reports ok when the process is not
+           marked as serving
+           Expected: false   Received: true      (home.spec.ts:165)
+     x  2  home.spec.ts:168 /api/ready is 200 and ready when the process
+           is not marked as serving
+           Received: true                         (home.spec.ts:197)
+     2 failed, 1 passed
+
+R931. THE FIX NAMES A ROLE, NOT A COINCIDENCE
+---------------------------------------------
+web/e2e/home.spec.ts:
+- SERVING_DECLARATION = 'FRONTALIER_SERVER_IS_SERVING' (line 189).
+  declaredServing() is true only when that variable is '1'.
+- :195, "/api/health reports ok, and its runtime marker is the one its
+  launcher declared":
+  - status 200, status ok and reasons [], as before;
+  - `runtime` toBe(declaredServing()), with both values in the message.
+- :211, "/api/ready is 200 and ready, and evaluates the database exactly
+  when serving":
+  - reads `runtime` from /api/health: the role, from the server itself
+    (R171);
+  - asserts 200, ready true, and every ok !== false;
+  - asserts the database check is listed and `ok` toBe(serving ? true :
+    null). Not serving: listed with ok null. Serving: evaluated, ok true,
+    and ready true.
+
+web/scripts/container-e2e.mjs:
+- sets FRONTALIER_SERVER_IS_SERVING=1 in the suite's environment, beside
+  FRONTALIER_SERVER_IS_OURS. No other launcher sets it.
+- The NON_SERVING_TITLE exclusion is removed: the constant, the
+  --grep-invert, its printed lines and its comment. The comment block now
+  says why. The /dev/** exclusion is unchanged.
+
+Why a declaration, and not a branch on `runtime` alone:
+- A spec that branches on `runtime` cannot also assert `runtime`.
+- The host run would then pass with a marked server exactly as quietly as
+  the image does, which would loosen it.
+- With the declaration:
+  - the host run still asserts runtime false, as before;
+  - the container run asserts runtime true;
+  - each fails if its server is in the other state (R196's shape).
+
+RED then green, the four runs (.health-evidence/fixed-*.log):
+  A 15:44:33Z, fixed spec, image, NO declaration:
+    x  :195  "FRONTALIER_SERVER_IS_SERVING is (unset), so the launcher
+             declared this server not serving"  Expected: false
+             Received: true
+    ok :211
+    The pin bites in the serving direction.
+  B 15:44:37Z, fixed spec, image, FRONTALIER_SERVER_IS_SERVING=1:
+    ok :195, ok :211 - 2 passed. Passing where the old spec failed.
+  C 15:45:29Z, fixed spec, pnpm dev on :3310, no declaration:
+    ok :195, ok :211 - 2 passed.
+  D 15:45:43Z, fixed spec, pnpm dev, a WRONG declaration =1:
+    x  :195  "...declared this server serving"  Expected: true
+             Received: false
+    ok :211
+    The pin bites in the not-serving direction.
+
+Both directions in the gate run (gate-changed-2.log):
+  host test:e2e        ok home.spec.ts:195, ok :211   367 passed
+  container test:e2e   ok home.spec.ts:195, ok :211   354 passed
+
+- The sibling with the same premise was the /api/health test. It got the
+  same treatment and now runs in the container. That is why the container
+  count rose by one: C1b's run was 352 passed + 1 failed with the title
+  excluded; this run is 354 passed.
+- Nothing is skipped and nothing is loosened. The e2e test count is
+  unchanged (367 on the host; floor 103).
+- The sitemap test (:144) was left alone; see NOTICED 1.
+
+R932. THE CONTAINER SUITE REACHES ITS PDF STEP
+----------------------------------------------
+test:container:e2e ran as part of gate:changed (FRONTALIER_PORT=3300,
+CONTAINER_IMAGE=monreleve:fw-health-image), on the content committed as
+1bacd2f. From .health-evidence/gate-changed-2.log:
+
+  --- building monreleve:fw-health-image for origin https://monreleve.example ---
+  --- starting monreleve:fw-health-image on 3300 ---
+  /api/health names: monreleve (status ok)
+  --- excluded, with the reason (R133) ---
+    e2e/composants.spec.ts  reaches /dev/**, which R129 keeps OUT of the production build
+    e2e/rail-parity.spec.ts  reaches /dev/**, which R129 keeps OUT of the production build
+  --- pnpm test:e2e against the container: 27 spec files ---
+    354 passed (1.7m)
+  --- the auth round trip, over HTTP, against the container ---
+   Test Files  2 passed (2)
+        Tests  9 passed (9)
+     Start at  17:10:33          (Europe/Paris; 16:10:33Z)
+     Duration  11.13s
+  auth round trip: 9 passed, over HTTP, against the image.
+  scratch database monreleve_container_e2e dropped
+  CONTAINER E2E PASSED - the deployed artefact served the whole suite (R249).
+
+The 9 are container-auth's 7 and container-pdf's 2.
+
+The harness's vitest output carries no per-test lines, so it does not print
+the `[pdf]` line. The page count was read by running the same two files
+once more, with --reporter=verbose, against a container of the SAME image
+(59c7adc44026, built by that run at 16:08:35Z), in C1b's fallback shape:
+  2026-11-16T16:12:08Z-16:12:14Z, VITEST_EXIT=0 (.health-evidence/pdf-count.log)
+  ok container-pdf > the IMAGE renders a real PDF, with its own Chromium 1243ms
+  [pdf] image: 164001 bytes, 10 pages; here: 198628 bytes, 10 pages
+  ok container-pdf > BOTH renderers produce a document, and their difference is the finding 2142ms
+  Test Files 2 passed (2), Tests 9 passed (9)
+
+The record that PARKED TASKS asks for (9 -> 10 pages; not investigated):
+- Page count: 10 from the image, 10 from this machine.
+- The image's baked origin: https://monreleve.example
+  (/etc/frontalier-site-origin, read from the image).
+  Chromium pin: 156.0.8078.79-1~deb12u1.
+- MONRELEVE_VERIFICATION_ORIGIN: NOT set.
+  - It is not in the image's Config.Env.
+  - The harness's `docker run -e` list does not include it.
+  - It was unset inside the container (checked by `docker exec`) and in
+    this shell.
+- The render's UTC time:
+  - the harness's PDF step ran 16:10:33Z-16:10:44Z;
+  - the counted render ran 16:12:08Z-16:12:14Z.
+
+R933. NOTHING ELSE MOVES
+------------------------
+Two files changed: web/e2e/home.spec.ts and web/scripts/container-e2e.mjs.
+No route, readiness code, Dockerfile or config changed. R930 found the test
+side wrong, so there was nothing to hand back.
+
+WALKTHROUGH
+-----------
+pnpm dev (PORT=3310, no web/.env, so not serving):
+  2026-11-16T15:45:19Z GET /api/health
+  HTTP/1.1 200 OK
+  {"service":"monreleve","instance":null,"status":"ok","reasons":[],"origin":null,"runtime":false}
+  2026-11-16T15:45:21Z GET /api/ready
+  HTTP/1.1 200 OK
+  {"ready":true,"checks":[{"name":"site-origin","ok":true},{"name":"database","ok":null,
+   "detail":"Not evaluated: this process is not serving (FRONTALIER_RUNTIME is unset), so no
+   database is required. `pnpm build` and CI run here. Ruling R355."}]}
+
+The image, on :3300:
+  2026-11-16T15:43:18Z GET /api/health
+  HTTP/1.1 200 OK
+  {"service":"monreleve","instance":null,"status":"ok","reasons":[],
+   "origin":"https://monreleve.example","runtime":true}
+  2026-11-16T15:43:18Z GET /api/ready
+  HTTP/1.1 200 OK
+  {"ready":true,"checks":[{"name":"site-origin","ok":true},{"name":"database","ok":true}]}
+
+The harness's image (59c7adc44026) at 16:12Z, /api/health:
+  {"service":"monreleve","instance":"fw-health-image-pdf-16ca2ff1eeb84c71","status":"ok",
+   "reasons":[],"origin":"https://monreleve.example","runtime":true}
+
+What this shows:
+- The two pages agree with the two directions the spec now asserts.
+- Neither page contradicts itself: in the dev answer, a null check carries
+  the detail saying why.
+- In the image, the evaluated check carries no detail.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. The sitemap test e2e/home.spec.ts:144 and the comment block above it
+   ("This suite runs WITHOUT FRONTALIER_RUNTIME") describe only the host
+   run.
+   - The test now also runs against the image, where its title's premise
+     is false.
+   - It passes there because the origin is configured. Its assertions are
+     true in both states, so it was left.
+   - It does not isolate "quiet because not serving" from "quiet because
+     the origin is set" even on the host, because playwright.config.ts
+     sets the origin.
+2. container-e2e.mjs runs vitest with the default reporter, so its PDF step
+   prints no `[pdf]` line. Every PDF proof's page count needs a separate
+   verbose run, as here.
+3. e2e/guard.runtime.spec.ts ("/api/ready names the failing check")
+   expects exactly one failed check, site-origin. Under its config
+   (FRONTALIER_RUNTIME=1) the database check is evaluated. That test
+   therefore depends on whatever database DATABASE_URL reaches.
+   test:runtime was not run here.
+4. Images left in place: monreleve:fw-health-image (59c7adc44026, mine)
+   and the earlier tags, none of which I made. No container is left; the
+   scratch databases are dropped.
+
+DEVIATIONS
+----------
+1. Logs went to a SHARED scratchpad at first. My first logs went to the
+   session scratchpad directory
+   (C:\Users\KAMXKAM\AppData\Local\Temp\claude\9dd46a6ee4d596f7\7e10453a-...\scratchpad).
+   It is the orchestrator's conversation scratchpad (same id as its
+   lock).
+   - Files I wrote there: install.log, r930-build.log, dev.log,
+     red-before.log, fixed-image-nodecl.log, fixed-image-decl.log,
+     fixed-dev-nodecl.log, fixed-dev-decl.log, r930-evidence.txt,
+     gate-changed-1.log.
+   - Each was copied into .health-evidence/, compared byte for byte, and
+     then removed from the scratchpad.
+   - I also copied the whole scratchpad into .health-evidence/ once by
+     mistake, then deleted those copies. The orchestrator's originals were
+     not touched.
+   - I cannot prove that none of my ten names already existed there.
+     Their names are task-specific except dev.log and install.log.
+2. gate:changed run 1 was NOT under run-sampled.ps1 and is NOT the gate of
+   record.
+   - It started at 10 327 MB commit free. A passive sampler, started
+     mid-run, read a minimum of 7 730 MB.
+   - It went red at test:e2e: 364 passed, 3 failed. The failures were
+     calculateur.spec.ts:691 and :727 and calculateur.nojs.spec.ts:182,
+     all `#alerte-ok` hidden while the page showed "Le service est
+     momentanement indisponible".
+   - Cause: the fresh worktree had no web/.env, so the subscription had no
+     database. This is the environment, not the change.
+   - Run 2, the gate of record, ran under the sampler with a session web/.env
+     made by QUEUE-STATE's recipe: DATABASE_URL named my
+     monreleve_fw_health_image, and AUTH_SECRET was generated inside a
+     script and never printed. It passed. The .env was removed at the end.
+3. The PDF page count comes from a second, verbose run of the harness's
+   two vitest files, as described under R932. The harness did not change.
+4. CONTAINER_IMAGE=monreleve:fw-health-image was passed to
+   test:container:e2e and gate:clone, so no tag another session made
+   (monreleve:e2e, monreleve:write) was rebuilt over.
+5. UNNUMBERED-1 (R156): the harness's title exclusion is reversed.
+   - FW28 (dbd2057) added it.
+   - R931's "never skip the test in the container" and "the same treatment
+     applies to any sibling" cannot both hold while it stays, because the
+     serving direction of the /api/health test would never run.
+   - Reversible: restore the constant and the two --grep-invert arguments.
+6. UNNUMBERED-2 (R156): a new name, FRONTALIER_SERVER_IS_SERVING.
+   - It carries the launcher's declaration and is written in two places,
+     like FRONTALIER_SERVER_IS_OURS.
+   - Drift between the two is loud: the container run fails at :195 with
+     both values.
+
+QUESTIONS
+---------
+1. Should container-e2e.mjs run its vitest step with --reporter=verbose,
+   so the `[pdf]` line and the page count come from the harness run
+   itself? This is a one-line harness change, not made under R933.
+   W2 (FW-PDF-A4) asserts on the same PDF and may be the natural home.
+2. The sitemap test's title and comment (NOTICED 1). Rename them to the
+   role, or leave them as host-run documentation?
+
+PUSH PROOF
+----------
+Branch: fw-health-image (pushed; not merged).
+Code tip: 1bacd2f6847c97cd42a29b9019257727640c7549. The report commit is on
+top of it.
+
+gate:changed, run 2, the gate of record:
+- Under run-sampled.ps1, FRONTALIER_PORT=3300.
+- 15:57:51Z-16:10:49Z, exit 0, aborted False.
+- Minimum commit free 6 339 MB, free physical 367 MB.
+- Printed selection:
+  gate selection (R132):
+    2 path(s) matched:
+      web/e2e/home.spec.ts  ->  a spec file, which selects the suite it belongs to (R144)
+      web/scripts/container-e2e.mjs  ->  the container e2e harness, which defines that suite (R247)
+    suites: typecheck, lint, test, build, test:e2e, test:container:e2e
+    a11y: covered by pnpm test - test:a11y's three files are a subset of
+          its globs, so requiring it separately is a second run
+    measured:
+      test: 3724 passed
+      test:e2e: 367 passed
+      test:container:e2e: exit 0 (no count to check)
+  GATE PASSED for the paths changed.
+
+gate:clone, ALONE, on 1bacd2f:
+- Under run-sampled.ps1. Commit free read 9 007 MB before the start.
+- 16:12:43Z-16:25:27Z, exit 0, aborted False.
+- Minimum commit free 5 126 MB, free physical 292 MB.
+- DATABASE_URL came from the session web/.env and was used only to reach
+  the server. gate:clone made and dropped its own
+  monreleve_gate_clone_1bacd2f6.
+
+  GATE:CLONE PASSED
+  commit  1bacd2f6847c97cd42a29b9019257727640c7549
+  ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+  claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+          a machine with no .env, no prior node_modules and no generated
+          file this run did not produce itself.
+  STEP_EXIT=0
+
+Cleanup:
+- web/.env removed.
+- monreleve_fw_health_image dropped.
+- pg_database now lists: frontalier, monreleve_fw_delai_rappel, postgres,
+  template0, template1.
+- No monreleve container remains.
+- The lock is removed last, after this report is pushed.
