@@ -66,12 +66,19 @@ const DB = `monreleve_container_e2e`;
 const INSTANCE_ID = `container-e2e-${randomBytes(8).toString('hex')}`;
 
 /**
- * The one spec whose premise the image contradicts by design.
+ * THIS LAUNCHER STARTS A SERVING SERVER, AND SAYS SO (R931).
  *
- * Matched by TITLE rather than by file, because the rest of home.spec.ts is
- * exactly the kind of thing that should run against a deployed artefact.
+ * The image sets FRONTALIER_RUNTIME=1 by design (R81). The suite reads whether
+ * the server under test is serving from /api/health's `runtime`, and
+ * e2e/home.spec.ts requires that answer to equal this declaration - so the
+ * container run proves the SERVING direction of /api/health and /api/ready,
+ * and the host run, which declares nothing, the other. An image that stopped
+ * being marked fails here by name instead of quietly switching directions.
+ *
+ * The name is written here and in home.spec.ts; if they drift, the run fails
+ * on the /api/health test with both values in its message.
  */
-const NON_SERVING_TITLE = '/api/health reports ok when the process is not marked as serving';
+const SERVING_DECLARATION = 'FRONTALIER_SERVER_IS_SERVING';
 
 // The local compose database. Credentials are the ones docker-compose.yml
 // publishes and are not secret.
@@ -303,12 +310,12 @@ try {
   console.log(`\n/api/health names: ${health.service} (status ${health.status ?? 'n/a'})`);
 
   // ==========================================================================
-  // TWO DESIGNED DIFFERENCES, DERIVED AND NAMED - NEVER TOLERATED (R133)
+  // ONE DESIGNED DIFFERENCE, DERIVED AND NAMED - NEVER TOLERATED (R133)
   // ==========================================================================
   //
   // The suite as configured describes a TEST server, not a DEPLOYED one, and
-  // playwright.config.ts says so in its own comment. Two specs cannot pass
-  // against the image and MUST NOT:
+  // playwright.config.ts says so in its own comment. One kind of spec cannot
+  // pass against the image and MUST NOT:
   //
   //   /dev/** SPECS. R129: "the test build keeps /dev/**, the production
   //   build does not." The workbench, the rail gallery and the parity harness
@@ -316,15 +323,18 @@ try {
   //   was costing the calculator 1,6 KiB. An image that could serve them
   //   would be the defect.
   //
-  //   THE NON-SERVING HEALTH SPEC. It asserts `runtime: false` - the state of
-  //   a process NOT marked as serving. The image sets FRONTALIER_RUNTIME=1 by
-  //   design (R81), so its premise is false here. The marked case has an
-  //   owner already: playwright.runtime.config.ts.
+  // THERE USED TO BE TWO. The /api/health spec asserting `runtime: false` was
+  // excluded here by title, because the image is marked as serving (R81). Its
+  // /api/ready sibling carried the same premise from R355 on and was never
+  // excluded, so this run stopped at it on every commit and never reached the
+  // PDF step below. R931 made both read the role instead - the server reports
+  // it, SERVING_DECLARATION above pins it - so both run here, in the serving
+  // direction, and nothing is excluded for its premise.
   //
   // THE DEV LIST IS DERIVED, not written down: any spec that mentions a /dev/
-  // path is excluded, so a new one is covered the day it is written. Both
-  // lists are PRINTED, because an exclusion nobody reads is an exclusion
-  // nobody can challenge.
+  // path is excluded, so a new one is covered the day it is written. It is
+  // PRINTED, because an exclusion nobody reads is an exclusion nobody can
+  // challenge.
   const specs = readdirSync('e2e')
     .filter((name) => name.endsWith('.spec.ts'))
     .filter((name) => !name.endsWith('.visual.spec.ts') && !name.endsWith('.runtime.spec.ts'));
@@ -338,16 +348,13 @@ try {
 
   console.log(`\n--- excluded, with the reason (R133) ---`);
   for (const name of devSpecs) console.log(`  e2e/${name}  reaches /dev/**, which R129 keeps OUT of the production build`);
-  console.log(`  "${NON_SERVING_TITLE}"`);
-  console.log('      asserts runtime:false; the image is marked as serving (R81),');
-  console.log('      and playwright.runtime.config.ts owns the marked case');
 
   console.log(`\n--- pnpm test:e2e against the container: ${runSpecs.length} spec files ---\n`);
 
   // ONE QUOTED COMMAND STRING, NOT AN ARGUMENT ARRAY. With `shell: true` node
-  // joins an array with spaces and quotes nothing, so the excluded TITLE -
-  // which contains spaces - arrived as eight separate arguments and Playwright
-  // silently ran the whole suite. The symptom was a filter that printed
+  // joins an array with spaces and quotes nothing, so a title filter this
+  // harness once passed - which contained spaces - arrived as eight separate
+  // arguments and Playwright silently ran the whole suite. The symptom was a filter that printed
   // correctly and did nothing: 284 tests, the same 10 failures, and an
   // exclusion list that read as if it had been applied.
   //
@@ -370,8 +377,6 @@ try {
     'exec',
     testE2e,
     ...runSpecs.map((name) => JSON.stringify(`e2e/${name}`)),
-    '--grep-invert',
-    JSON.stringify(NON_SERVING_TITLE),
   ].join(' ');
 
   const suite = spawn(command, {
@@ -384,7 +389,16 @@ try {
     // died before a spec ran - every time, since the suite was written (F-CI).
     // R169's global setup still refuses anything that does not name this
     // product, so the claim is checked rather than trusted.
-    env: { ...process.env, FRONTALIER_PORT: PORT, FRONTALIER_SERVER_IS_OURS: '1' },
+    //
+    // SERVING_DECLARATION is the same kind of claim (R931): this process
+    // started an image marked as serving, and home.spec.ts checks the server
+    // agrees before asserting the serving state of /api/ready.
+    env: {
+      ...process.env,
+      FRONTALIER_PORT: PORT,
+      FRONTALIER_SERVER_IS_OURS: '1',
+      [SERVING_DECLARATION]: '1',
+    },
   });
 
   const code = await new Promise((resolve) => suite.on('exit', resolve));

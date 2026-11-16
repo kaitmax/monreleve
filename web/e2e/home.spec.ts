@@ -155,23 +155,73 @@ test('/sitemap.xml is served normally when the process is not marked as serving'
   expect(body).toContain('<loc>');
 });
 
-test('/api/health reports ok when the process is not marked as serving', async ({ request }) => {
+// ---------------------------------------------------------------------------
+// R931: WHETHER THE SERVER UNDER TEST IS SERVING IS A ROLE, NOT A PREMISE.
+//
+// The two tests below used to ASSUME the server was not marked as serving.
+// That is true of the host run - playwright.config.ts starts `next start`
+// without FRONTALIER_RUNTIME - and false of the image, which sets
+// FRONTALIER_RUNTIME=1 by design (R81, web/Dockerfile). The container harness
+// excluded the /api/health test by title (FW28); the /api/ready test gained
+// its `ok: null` assertion later (R355) and was never excluded, so
+// test:container:e2e stopped there on every commit and never reached its PDF
+// step (FW-HEALTH-IMAGE, R930).
+//
+// THE LAUNCHER DECLARES, THE SERVER CONFIRMS. scripts/container-e2e.mjs, the
+// one launcher that starts a SERVING server for this suite, says so in
+// SERVING_DECLARATION; every other launcher leaves it unset, which declares
+// the ordinary case. /api/health's `runtime` must agree with the declaration,
+// and /api/ready is then asserted for the state the server reports.
+//
+// BRANCHING ON `runtime` ALONE WOULD HAVE LOOSENED THE HOST RUN: a host
+// server that became marked would pass as quietly as the image does, and the
+// not-serving direction would stop being exercised with nothing red. With the
+// declaration, the host run proves one direction and the container run the
+// other, and each fails if its server is in the other state (R196's shape).
+//
+// THE NAME IS WRITTEN TWICE, here and in the harness, and the run enforces
+// it rather than a comparison: if the two drift, the container run declares
+// nothing, its server answers runtime: true, and the /api/health test fails
+// with both values in its message.
+// ---------------------------------------------------------------------------
+
+/** '1' when the process that started the server under test marked it as serving. */
+const SERVING_DECLARATION = 'FRONTALIER_SERVER_IS_SERVING';
+
+function declaredServing(): boolean {
+  return process.env[SERVING_DECLARATION] === '1';
+}
+
+test('/api/health reports ok, and its runtime marker is the one its launcher declared', async ({
+  request,
+}) => {
   const response = await request.get('/api/health');
   const body = (await response.json()) as { status: string; reasons: string[]; runtime: boolean };
 
   expect(response.status()).toBe(200);
   expect(body.status).toBe('ok');
   expect(body.reasons).toEqual([]);
-  expect(body.runtime).toBe(false);
+  expect(
+    body.runtime,
+    `${SERVING_DECLARATION} is ${process.env[SERVING_DECLARATION] ?? '(unset)'}, so the ` +
+      `launcher declared this server ${declaredServing() ? 'serving' : 'not serving'}`,
+  ).toBe(declaredServing());
 });
 
-test('/api/ready is 200 and ready when the process is not marked as serving', async ({
+test('/api/ready is 200 and ready, and evaluates the database exactly when serving', async ({
   request,
 }) => {
   // The counter-direction for ruling R83. Readiness must NOT fail in a local
   // build or in CI - that is the same mistake the NODE_ENV guard made, one
   // endpoint over, and it would block the pipeline for a condition that
-  // publishes nothing.
+  // publishes nothing. Nor may it fail in a correctly configured image.
+
+  // THE ROLE, READ FROM THE SERVER ITSELF (R171) - never from a literal that
+  // happens to match one of the two runs. The test above pins it to the
+  // launcher's declaration.
+  const health = (await (await request.get('/api/health')).json()) as { runtime: boolean };
+  const serving = health.runtime;
+
   const response = await request.get('/api/ready');
   const body = (await response.json()) as {
     ready: boolean;
@@ -183,18 +233,25 @@ test('/api/ready is 200 and ready when the process is not marked as serving', as
 
   // NOTHING FAILED - but a plain truthiness check over every ok is no
   // longer the way to say so.
-  // R353 added the database check and R355 gives it a third state: this
-  // server is NOT marked as serving, so the check is NOT EVALUATED and
-  // reports ok: null. Null must not block (a build needs no database) and
-  // must not read as a pass (a check that stopped running would hide).
+  // R353 added the database check and R355 gives it a third state: a server
+  // NOT marked as serving does not evaluate it and reports ok: null. Null
+  // must not block (a build needs no database) and must not read as a pass
+  // (a check that stopped running would hide).
   expect(body.checks.every((check) => check.ok !== false)).toBe(true);
 
-  // And that is asserted directly, because it is the property R355 exists
-  // for: present in the list, explicitly not evaluated.
+  // And the database check is asserted directly, in the state that matches:
+  //   not serving  present in the list, explicitly NOT EVALUATED (R355);
+  //   serving      EVALUATED, and passed - the harness migrated the scratch
+  //                database the image points at (R353).
   const database = body.checks.find((check) => check.name === 'database');
 
   expect(database, 'the check stays listed so its absence is visible').toBeDefined();
-  expect(database?.ok).toBeNull();
+  expect(
+    database?.ok,
+    serving
+      ? 'a serving server evaluates its database check (R353)'
+      : 'a server not marked as serving leaves its database check unevaluated (R355)',
+  ).toBe(serving ? true : null);
 });
 
 test('the meta description delivers both thresholds, formatted (R147, R154)', async ({ page }) => {
