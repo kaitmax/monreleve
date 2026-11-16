@@ -1,0 +1,107 @@
+FW-PERIOD-FRACTION SESSION PROMPT - Mon Releve
+THE PART-YEAR FRACTION: STATED AS THE PRODUCT'S CONVENTION, THEN PINNED (web run step W3e)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W3e (Web Ruling 6). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Parts A-B, including the CLEANUP rule;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-period-fraction, branch
+  fw-period-fraction, report REPORT-FW-PERIOD-FRACTION.txt;
+- REPORT-FW-ANNEX-RENDERED.txt (R988, QUESTION 1) and
+  relay/RULINGS-2026-11-16.txt Web Ruling 6;
+- SPEC-frontalier-web.md 7.2 step 2 (about line 365), 7.4, 8, 9.3 and 9.4;
+- docs/regulatory-sources.md: rows 1-6, P3, the accord quotations 1(c)
+  and 1(d), and row L9;
+- CLAUDE.md (R153, R155, R163, R181).
+Ruling numbers for this task: R995-R999.
+
+====================================================================
+THE TASK
+====================================================================
+Source: REPORT-FW-ANNEX-RENDERED.txt QUESTION 1. SPEC says only "a
+fraction of the calendar year" (7.2 step 2) and "0 < f <= 1" (7.4).
+lib/ui/core/period.ts remainingYearFraction counts calendar days from the
+start day to 31 December, both ends included, over the days in the year:
+2026-07-01 gives 184/365. That rule is the code's own reasoning, and no
+source states one. The accord's 1(d) says only "ajustee
+proportionnellement" (the accented original is in regulatory-sources.md).
+
+The advisor's ruling (Web Ruling 6, verbatim in substance):
+- This is a regulatory reading, not a product preference. "Advisor
+  decides" covers how the product RECORDS the rule, not what the
+  authority's rule is.
+- No source states a basis, so: one sentence in SPEC 7.2 step 2 giving the
+  convention the product applies, worded as the PRODUCT'S OWN and pending
+  expert review.
+- Add an unchecked row, with its own id, in docs/regulatory-sources.md.
+- Do NOT cite L9: it is a different instrument, and its / 365 differs from
+  days-in-year in a leap year.
+- Check that no user-facing copy presents the basis as official.
+- The part-year test is a PIN of the stated convention, not a
+  verification. Pick its date by computation, so that an off-by-one moves
+  a served figure.
+
+R995. THE SPEC SENTENCE. In 7.2 step 2, one sentence: the period fraction
+    is the number of calendar days from the activity start date to 31
+    December, both included, divided by the number of days in that
+    calendar year. This is the product's convention, pending expert
+    review (the row from R996). In English, in the SPEC's voice. It
+    changes no constant, rounding or engine API.
+    - If you find that the code does NOT do exactly this (a leap year, a
+      start of 1 January, a start in a later year), STOP and hand back:
+      a calculation rule is the operator's (Ask-first).
+
+R996. THE REGISTER ROW. A new row in docs/regulatory-sources.md's
+    constants table, with its own id. Take the next free id, and confirm
+    it is free with the register's own check (web/scripts/
+    register-coverage.mjs) and any fixture-coverage rule that reads the
+    table. Mark it UNCHECKED (the table's own unchecked mark), name the
+    convention as the product's, and point at SPEC 7.2. Cite no
+    instrument as stating it, because none does. If a coverage check
+    requires a fixture or a source for every row, follow what that check
+    asks, and report it.
+
+R997. NO COPY CLAIMS IT. grep lib/fr and content/guides for any sentence
+    that presents the day-count basis (prorata, proportion, "au prorata
+    des jours", a figure like 184/365) as official or sourced. List the
+    hits. Change nothing user-facing in this task: a hit that overclaims
+    is a QUESTION, handed back with its file:line.
+
+R998. THE PIN. Through the dossier route (as W3 and W3c did, with the
+    shared seed in tests/support/seeded-year.ts, extended rather than
+    copied), add one seeded person with an activityStartDate.
+    - The date is chosen BY COMPUTATION in the test: the first date in the
+      year for which an off-by-one in the fraction changes at least one
+      served engine figure at the seeded employment rate. W3c measured
+      that 1 July at 80 % does not, while 2026-08-01 does (81 vs 80).
+    - The expected fraction is computed in the test from the SPEC
+      sentence's rule, not by calling remainingYearFraction.
+    - The served figures are compared exactly with the engine called on
+      that fraction.
+    - The test's header says it PINS the product's stated convention and
+      does not verify a regulatory rule.
+
+R999. A VERIFIED PLANT (R180): an off-by-one in remainingYearFraction (a
+    scratch edit, verified to have landed) goes RED naming the figure;
+    then revert. NOTHING ELSE MOVES. No code change in lib/ or app/.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock, from the BASE_SHA in the launch message.
+1. Read; R995's check of the code.
+2. R995-R997.
+3. R998-R999, test-first. The pin passes on its first run against
+   unchanged code, so its RED is the plant.
+4. gate:changed. Read memory first. A test:db selection starts at
+   >= 4 542 MB; a SPEC or docs edit may add the register suites. Commit,
+   push the branch.
+5. gate:clone ALONE on the tip (>= 4 676 MB); push.
+6. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-PERIOD-FRACTION.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R995-R999 with evidence and the plant /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-PERIOD-FRACTION PROMPT

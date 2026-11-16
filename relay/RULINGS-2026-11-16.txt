@@ -235,3 +235,51 @@ APPLIED:
   PARTIAL (monochrome print too).
 - W3d FW-PRINT-PAGE-PIN (relay/FW-PRINT-PAGE-PIN.txt, R990-R994, free by
   the scan) carries Q1 and Q2. W3c's prompt now cites W3b's R980.
+
+====================================================================
+WEB RULING 6 - W3c MERGED; THE PART-YEAR FRACTION IS A REGULATORY READING
+====================================================================
+EVIDENCE: branch fw-annex-rendered 7bbdebc (code 0d2339f), based on
+b6f3295.
+- gate:changed: test 3 765, test:db 722 (+26 skipped, the same 26).
+- The session's gate:clone ALONE on 0d2339f: exit 0.
+- Its only changed line in dossier-engine.test.ts matching "expect" is a
+  comment.
+- The joint W3+W3b merge gate: gate:clone ALONE on b6f3295 PASSED,
+  pushed fc446b5..b6f3295.
+- R988 stopped: SPEC 7.2 step 2 says only "a fraction of the calendar
+  year". lib/ui/core/period.ts counts days from the start to 31 December,
+  both ends included, over the days in the year.
+- docs/regulatory-sources.md: the accord's 1(d) says the 10-day limit is
+  "ajustee proportionnellement et arrondie a l'unite superieure", with no
+  basis (the accented original is there). Row 3 has no basis either. L9
+  (CSS art. D380-2 II, the comparator) is days / 365, a different
+  instrument. The engine tests' arbitraries use months / 12.
+QUESTION (the session's): should SPEC state the code's rule, or another?
+ANSWER (the advisor, verbatim in substance):
+- W3c can merge once the unchanged expect lines are confirmed.
+- Close the joint gate, word W3c's own as pending, and say where each
+  half of Checkpoint D item 2 is proven: provenance per row on the page
+  the PDF prints from, not in the PDF bytes.
+- The fraction is a regulatory reading, not a product preference: it
+  feeds the fiscal denominator and the mission cap. "Advisor decides"
+  covers how the product records the rule, not what the authority's rule
+  is.
+  - If a source states the basis and the code matches: cite it in SPEC.
+  - If a source states a basis and the code differs: stop. A calculation
+    rule is the operator's (Ask-first).
+  - If no source states it: one sentence in SPEC 7.2 step 2 giving the
+    convention the product applies, worded as the product's own, pending
+    expert review. Add an unchecked row with its own id in
+    regulatory-sources.md. Do not cite L9. Check that no user-facing copy
+    presents the basis as official.
+- The part-year test is one small test:db task with its fraction plant,
+  recorded as a pin of the stated convention, not a verification. Its
+  date is picked by computation.
+- Put Q1 near the top of the operator's list.
+APPLIED:
+- No source states a basis (1(d), row 3, P3 read), so the third branch
+  applies: W3e FW-PERIOD-FRACTION (relay/FW-PERIOD-FRACTION.txt,
+  R995-R999).
+- The operator's list gains: "the part-year day-count basis is the
+  product's convention, pending the expert reviewer".
