@@ -37,13 +37,25 @@
 // (RendererFontlessError), and a byte difference between the two renderers
 // can be attributed rather than argued about: if the image's render succeeds
 // at all, its font loaded.
+//
+// ============================================================================
+// THE CSS PAGE SIZE, PINNED BY VALUE (R991)
+// ============================================================================
+//
+// The page size has two homes (R993): lib/export/pdf.ts's PDF_FORMAT and the
+// `@page` rule the print stylesheet declares. FW-PDF-RENDER-GATE measured that
+// `size: letter` kept A4 paper and changed the pagination with no assertion
+// failing, because both renderers read the same CSS and agree with each other.
+// So the rule the IMAGE SERVES is compared with the renderer's own value -
+// not a page count, which follows content.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueMagicLink } from '@/lib/auth/magic-link';
 import { instanceRefusal } from '@/lib/content/identity';
 import { mintPrintToken } from '@/lib/export/print-token';
-import { renderPdf } from '@/lib/export/pdf';
+import { PDF_FORMAT, renderPdf } from '@/lib/export/pdf';
+import { atPageSizes, pageSizeRefusal, stylesheetHrefs } from '@/tests/support/css-page';
 import { a4Violations, describeSizes, pageBoxes, type PageBox } from '@/tests/support/pdf-pages';
 
 const BASE = process.env.CONTAINER_BASE_URL;
@@ -261,4 +273,59 @@ describe.skipIf(BASE === undefined)('R249: the PDF, in the image and here', () =
         `here ${fromHere.byteLength}) - one of them is missing something`,
     ).toBe(true);
   }, 120_000);
+
+  it('R991: the @page size the image SERVES is the paper the renderer asks for', async () => {
+    // THE STYLESHEET THE SERVER SERVES, NOT print.module.scss: the SCSS
+    // compiler and the minifier stand between the source line and what a
+    // renderer lays the document on. The print page is fetched with a print
+    // token, as both renderers fetch it, and every sheet it links is read
+    // from the image.
+    const printToken = mintPrintToken(userId, YEAR);
+
+    expect(printToken, 'AUTH_SECRET is unset or is the placeholder here').not.toBeNull();
+
+    const printPage = await fetch(
+      `${String(BASE)}/releve/print?year=${YEAR}&token=${encodeURIComponent(String(printToken))}`,
+    );
+
+    expect(printPage.status, 'the image did not serve the print page').toBe(200);
+
+    const hrefs = stylesheetHrefs(await printPage.text());
+
+    // PRESENCE FIRST (R169, R177): with no stylesheet there is no @page rule
+    // to find, and "no rule" would then be refused for the wrong reason.
+    expect(hrefs, 'the print page links no stylesheet').not.toEqual([]);
+
+    const sizes: (string | null)[] = [];
+    const found: string[] = [];
+
+    for (const href of hrefs) {
+      const sheet = await fetch(new URL(href, String(BASE)));
+
+      expect(sheet.status, `the image did not serve ${href}`).toBe(200);
+
+      const css = await sheet.text();
+
+      expect(css.length, `the image served ${href} empty`).toBeGreaterThan(0);
+
+      for (const size of atPageSizes(css)) {
+        sizes.push(size);
+        found.push(`${href} @page ${size === null ? '(no size)' : `size: ${size}`}`);
+      }
+    }
+
+    // WHAT WAS READ, PRINTED BEFORE IT IS ASSERTED, so a failing run still
+    // says which sheet held which rule.
+    console.log(
+      `[page] R991: the renderer asks for format ${JSON.stringify(PDF_FORMAT)}; ` +
+        `the print page links ${hrefs.length} stylesheet(s); ` +
+        `${found.length === 0 ? 'no @page rule' : found.join('; ')}`,
+    );
+
+    // THE RENDERER'S OWN VALUE, NEVER RETYPED (R181); the pairing of its
+    // name with the CSS keyword is stated in tests/support/css-page.ts and
+    // asserted in tests/unit/export/css-page.test.ts (R345). A refusal names
+    // R991, the served value and the renderer's.
+    expect(pageSizeRefusal(PDF_FORMAT, sizes)).toBeNull();
+  });
 });

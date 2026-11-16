@@ -25,7 +25,16 @@
 // suite that caught half the failure. a11y is still NAMED in the printed
 // selection so that its absence reads as considered rather than forgotten.
 
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -41,6 +50,8 @@ import {
   changedPaths,
   SELECTOR_PATTERNS,
   SUITE_COUNTS,
+  containerHarnessFiles,
+  containerPdfClosure,
   databaseClosure,
   describeSelection,
   readCount,
@@ -434,7 +445,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'playwright.config.ts, which defines both browser projects (R247)',
       'playwright.runtime.config.ts, which is the runtime project (R247)',
       'pnpm-workspace.yaml and tsconfig.json, which decide whether anything compiles (R416)',
-      'the container PDF step: its vitest files, the renderer, the page reader and the @page rule (R936, R982)',
+      'the container PDF step: its vitest files and what they read, the print page, the export route and what those alone render through (R936, R982, R990)',
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
@@ -940,10 +951,10 @@ describe('R936: the files that decide the container PDF step select the suite th
 
   // THE HARNESS'S OWN LIST, read from the harness (R206): a file it starts
   // running tomorrow is covered here the day it is added, or this fails.
-  const harness = readFileSync(join(PACKAGE_ROOT, 'scripts', 'container-e2e.mjs'), 'utf8');
-  const harnessFiles = [...harness.matchAll(/'(tests\/db\/[\w.-]+\.test\.ts)'/gu)].map(
-    (match) => match[1]!,
-  );
+  // FW-PRINT-PAGE-PIN (R990): the pattern that reads it moved into the
+  // selector, which seeds the container PDF closure from the same list, so
+  // there is one reader of the harness rather than two that can drift (R206).
+  const harnessFiles = containerHarnessFiles(PACKAGE_ROOT);
 
   it('reads the harness vitest files from the harness, and finds the PDF one', () => {
     // PRESENCE FIRST (R169): an empty list would make the next test vacuous.
@@ -1007,6 +1018,143 @@ describe('R936: the files that decide the container PDF step select the suite th
     // that renders nothing.
     for (const path of ['web/lib/export/csv.ts', 'web/tests/db/export-csv.test.ts', 'web/app/page.tsx']) {
       expect(suitesFor([path]), path).not.toContain('test:container:e2e');
+    }
+  });
+});
+
+describe("R990: what the container PDF step renders and reads selects it (R267's second site)", () => {
+  // MEASURED BEFORE THIS RULE (FW-PDF-RENDER-GATE QUESTION 1): the print page
+  // and the export route selected test:e2e, test:visual, test:db and
+  // test:late; live-server.ts, pdf-text.ts and pdf-image.ts the base chain and
+  // test:db. None of those renders a PDF - no e2e spec touches /releve/print
+  // or the export route, and in test:db the 17 render tests skip - so a
+  // page.tsx edit that dropped the rail passed every gate.
+  //
+  // THE SET IS DERIVED FROM IMPORTS (scripts/gate-selection.mjs,
+  // containerPdfClosure) and PINNED HERE AS A CENSUS: the graph decides what
+  // selects, and this list is how a module joining or leaving is noticed as a
+  // deliberate act rather than absorbed (the shape of the 27-name census).
+  const closure = containerPdfClosure(PACKAGE_ROOT);
+
+  it('is exactly what the import graph gives today', () => {
+    expect([...closure].sort()).toEqual([
+      // What the print page and the export route ALONE render through: every
+      // product importer of each is already in this list.
+      'app/api/v1/export/pdf/route.ts',
+      'app/releve/print/page.tsx',
+      'app/releve/print/print.module.scss',
+      'lib/export/pdf.ts',
+      'lib/export/print-token.ts',
+      'lib/export/render-queue.ts',
+      'lib/issuance/record.ts',
+      'lib/ui/react/index.ts',
+      'lib/verification/origin.ts',
+      // The harness's vitest files, and every tests/ file they reach.
+      'tests/db/container-auth.test.ts',
+      'tests/db/container-pdf.test.ts',
+      'tests/db/export-pdf.test.ts',
+      'tests/db/support/live-server.ts',
+      'tests/db/support/pdf-image.ts',
+      'tests/db/support/pdf-text.ts',
+      'tests/db/verification-qr.test.ts',
+      'tests/support/css-page.ts',
+      'tests/support/pdf-pages.ts',
+    ]);
+  });
+
+  it('selects test:container:e2e for every file in it', () => {
+    const missing = [...closure].filter(
+      (path) => !suitesFor([`web/${path}`]).includes('test:container:e2e'),
+    );
+
+    expect(missing, 'a file the container PDF step renders or reads, not selecting it').toEqual([]);
+  });
+
+  it.each([
+    // THE THREE THE PROMPT NAMED FIRST, AND THE THREE SUPPORT FILES.
+    ['the print page the 17 and container-pdf render', 'web/app/releve/print/page.tsx'],
+    ['the export route they call', 'web/app/api/v1/export/pdf/route.ts'],
+    ['the reader that decides whether the 17 run at all', 'web/tests/db/support/live-server.ts'],
+    ['the reader every text assertion goes through', 'web/tests/db/support/pdf-text.ts'],
+    ['the reader the QR is decoded from', 'web/tests/db/support/pdf-image.ts'],
+    // AND WHAT THE GRAPH ADDED, each imported by the page or the route alone.
+    ['the print token the route mints and the page reads', 'web/lib/export/print-token.ts'],
+    ['the render queue AC3 asserts the bound of', 'web/lib/export/render-queue.ts'],
+    ['the issuance record R329 asserts', 'web/lib/issuance/record.ts'],
+    ['the verification origin the QR block is printed from', 'web/lib/verification/origin.ts'],
+    ['the barrel the page takes its rail from', 'web/lib/ui/react/index.ts'],
+    // R991's reader of the served @page rule.
+    ['the served @page reader R991 compares with', 'web/tests/support/css-page.ts'],
+  ])('selects test:container:e2e for %s', (_label, path) => {
+    expect(suitesFor([path])).toContain('test:container:e2e');
+  });
+
+  it.each([
+    // THE OTHER DIRECTION, on the sharpest neighbours. "Alone" is the rule: a
+    // module the page or route SHARES keeps the suites it selected, and
+    // test:db renders the same page through its handler without a browser.
+    ["the CSV route, the export route's neighbour", 'web/app/api/v1/export/csv/route.ts'],
+    ['the dossier loader, shared with the dossier and CSV routes', 'web/lib/dossier/load.ts'],
+    ['the dossier copy, which the verification page renders too', 'web/lib/fr/dossier.ts'],
+    ['the rail component, which the calculator renders too', 'web/lib/ui/react/ThresholdRail/ThresholdRail.tsx'],
+    // A TEST IS NOT AN IMPORTER: the queue's unit test imports it and selects
+    // only what a unit test selects.
+    ["the render queue's unit test", 'web/tests/unit/export/render-queue.test.ts'],
+    ['the CSV export test, which renders nothing', 'web/tests/db/export-csv.test.ts'],
+  ])('does NOT select test:container:e2e for %s', (_label, path) => {
+    expect(suitesFor([path])).not.toContain('test:container:e2e');
+  });
+
+  it('keeps what those files selected before (a union, R234)', () => {
+    expect(suitesFor(['web/app/releve/print/page.tsx'])).toEqual(
+      expect.arrayContaining(['test:e2e', 'test:visual', 'test:db']),
+    );
+    expect(suitesFor(['web/app/api/v1/export/pdf/route.ts'])).toContain('test:db');
+    expect(suitesFor(['web/tests/db/support/live-server.ts'])).toContain('test:db');
+  });
+
+  it('grows by exclusivity, proven on a graph whose every edge this test controls', () => {
+    // R154: the mechanism is proven to deliver, in both directions, on a
+    // fixture - not only on today's graph, where a wrong rule could still
+    // happen to give the census above.
+    const root = mkdtempSync(join(tmpdir(), 'container-pdf-closure-'));
+    const write = (path: string, source: string): void => {
+      mkdirSync(join(root, ...path.split(SLASH).slice(0, -1)), { recursive: true });
+      writeFileSync(join(root, ...path.split(SLASH)), source);
+    };
+
+    try {
+      write('scripts/container-e2e.mjs', "const FILES = ['tests/db/fixture.test.ts'];\n");
+      write('tests/db/fixture.test.ts', "import { r } from './support/reader';\nimport { s } from '@/lib/shared';\n");
+      write('tests/db/support/reader.ts', 'export const r = 1;\n');
+      write('tests/db/unrelated.test.ts', "import { u } from './support/unrelated';\n");
+      write('tests/db/support/unrelated.ts', 'export const u = 1;\n');
+      write(
+        'app/releve/print/page.tsx',
+        "import styles from './print.module.scss';\nimport { a } from '@/lib/only-print';\nimport { s } from '@/lib/shared';\n",
+      );
+      write('app/releve/print/print.module.scss', '@page { size: a4; }\n');
+      write('app/api/v1/export/pdf/route.ts', "import { q } from '@/lib/only-route';\n");
+      write('lib/only-print.ts', "import { d } from './deep-only';\nexport const a = d;\n");
+      write('lib/deep-only.ts', 'export const d = 1;\n');
+      write('lib/only-route.ts', 'export const q = 1;\n');
+      write('lib/shared.ts', 'export const s = 1;\n');
+      write('app/page.tsx', "import { s } from '@/lib/shared';\n");
+      // A unit test importing a page-only module does not make it shared.
+      write('tests/unit/only-print.test.ts', "import { a } from '@/lib/only-print';\n");
+
+      expect([...containerPdfClosure(root)].sort()).toEqual([
+        'app/api/v1/export/pdf/route.ts',
+        'app/releve/print/page.tsx',
+        'app/releve/print/print.module.scss',
+        'lib/deep-only.ts',
+        'lib/only-print.ts',
+        'lib/only-route.ts',
+        'tests/db/fixture.test.ts',
+        'tests/db/support/reader.ts',
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

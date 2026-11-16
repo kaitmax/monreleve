@@ -144,6 +144,17 @@ async function launch(): Promise<Browser> {
 }
 
 /**
+ * The paper this renderer asks Chromium for.
+ *
+ * EXPORTED FOR ONE READER (R991): tests/db/container-pdf.test.ts compares the
+ * `@page` size the print route SERVES with this value, so the paper is not
+ * retyped in a test (R181). The page size still has two homes - this, and the
+ * `@page` rule in app/releve/print/print.module.scss (R993) - and that test is
+ * what keeps them agreeing. Removing one home is a renderer change.
+ */
+export const PDF_FORMAT = 'A4';
+
+/**
  * One URL, printed to A4.
  *
  * The caller owns the URL, including its credential - see the route, which
@@ -240,7 +251,7 @@ export async function renderPdf(url: string): Promise<Uint8Array> {
     await page.emulateMedia({ media: 'print' });
 
     return await page.pdf({
-      format: 'A4',
+      format: PDF_FORMAT,
       printBackground: true,
       // The sheet owns its own margins in millimetres, so the page adds none.
       // Two margin systems would fight, and the visible symptom would be a

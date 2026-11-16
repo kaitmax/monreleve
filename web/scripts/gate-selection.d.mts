@@ -117,6 +117,16 @@ export declare const SUITE_COUNTS: Readonly<Record<string, RegExp>>;
  */
 export declare function databaseClosure(root: string): ReadonlySet<string>;
 
+/** The vitest files scripts/container-e2e.mjs runs, read from the harness (R990, R206). */
+export declare function containerHarnessFiles(root: string): string[];
+
+/**
+ * What the container PDF step renders and reads (R990): what the print page
+ * and the export route ALONE render through, and every tests/ file the
+ * harness's vitest files reach. Package-relative POSIX paths. Memoised per root.
+ */
+export declare function containerPdfClosure(root: string): ReadonlySet<string>;
+
 /**
  * R246: the framework's entry points, which no import graph can reach.
  *

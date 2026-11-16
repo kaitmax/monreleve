@@ -390,6 +390,178 @@ export function databaseClosure(root) {
 }
 
 // ============================================================================
+// R990: WHAT THE CONTAINER PDF STEP RENDERS AND READS, FROM THE IMPORT GRAPH
+// ============================================================================
+//
+// R267's SECOND SITE (FW-PDF-RENDER-GATE QUESTION 1). The R936/R982 rule named
+// the step's vitest files, the renderer, the page reader and the @page rule.
+// It did not name the print page those tests render, the export route they
+// call, or the support files they read the result with - so a page.tsx edit
+// that dropped the rail ran test:e2e, test:visual and test:db, where the 15
+// render tests SKIP, and passed every gate (no e2e spec touches /releve/print
+// or the export route).
+//
+// THE SET IS READ FROM IMPORTS, NOT TYPED (R218's lesson, on a second suite).
+// Two halves:
+//
+// 1. WHAT THE PRINT PAGE AND THE EXPORT ROUTE *ALONE* RENDER THROUGH. Seeded
+//    from the two framework entry points, which no import reaches (R246, so
+//    they are enumerated), and grown by EXCLUSIVITY: a module joins when every
+//    product file importing it is already in the set. lib/export/render-queue
+//    joins (only the route imports it); lib/dossier/load does not (the dossier
+//    and CSV routes import it too).
+//
+//    WHY "ALONE" AND NOT THE WHOLE REACH. The route imports the database
+//    client, the dossier and the calculation engine, so its full reach is half
+//    the product, and every edit to it would pay a Docker build - a gate people
+//    route around (R251). A shared module keeps the suites it already selects:
+//    test:db renders the same page through its handler, without a browser
+//    (print-route.test.ts, annex-rendered.test.ts).
+//
+//    A TEST IS NOT AN IMPORTER here. tests/unit/export/render-queue.test.ts
+//    imports the queue to prove it; that does not make the queue shared.
+//
+//    OVER-MATCHING IS THE UNSAFE DIRECTION HERE, unlike in databaseClosure: a
+//    specifier in another file's comment would make a module look shared and
+//    drop it. gate-selection.test.ts pins the result as a census, so a module
+//    leaving fails by name instead of quietly.
+//
+// 2. EVERY tests/ FILE THE HARNESS'S VITEST FILES REACH. Seeded from the
+//    harness's own list (R206: read from container-e2e.mjs, its one home), so
+//    live-server.ts - which decides whether the 17 run at all - pdf-text.ts
+//    and pdf-image.ts are in because the tests import them, and the next
+//    reader is in the day it is imported.
+
+/** The step's framework entry points (R246: enumerated, since no import reaches them). */
+const PRINT_ENTRY_POINTS = Object.freeze([
+  'app/releve/print/page.tsx',
+  'app/api/v1/export/pdf/route.ts',
+]);
+
+/** The package's test directories. Nothing in them makes a module shared. */
+const TEST_ROOTS = Object.freeze(['tests', 'e2e']);
+
+const isTestPath = (path) =>
+  TEST_ROOTS.some((dir) => path.startsWith(`${dir}/`)) || /\.(test|spec)\.tsx?$/u.test(path);
+
+const packagePath = (root, file) => relative(root, file).split('\\').join('/');
+
+/**
+ * The vitest files scripts/container-e2e.mjs runs, read from the harness.
+ *
+ * ONE READER (R206). The harness keeps them as single-quoted literals so this
+ * pattern can read them; gate-selection.test.ts requires the PDF file among
+ * them, so a harness this cannot read fails there by name rather than seeding
+ * an empty closure.
+ */
+export function containerHarnessFiles(root) {
+  const harness = join(root, 'scripts', 'container-e2e.mjs');
+
+  if (!existsSync(harness)) return [];
+
+  const listed = [...readFileSync(harness, 'utf8').matchAll(/'(tests\/db\/[\w.-]+\.test\.ts)'/gu)];
+
+  return [...new Set(listed.map((match) => match[1]))];
+}
+
+const PRINT_CACHE = new Map();
+
+/**
+ * What the container PDF step renders and reads (R990), as package-relative
+ * POSIX paths. Memoised per root, as databaseClosure is.
+ */
+export function containerPdfClosure(root) {
+  const cached = PRINT_CACHE.get(root);
+
+  if (cached !== undefined) return cached;
+
+  // Every product code file, and the package files it imports.
+  const edges = new Map();
+  const stack = [root];
+
+  while (stack.length > 0) {
+    const dir = stack.pop();
+
+    if (dir === undefined) continue;
+
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      // node_modules and every dot-directory (.next, .next-visual-*, a
+      // session's evidence folder): none of them is product source.
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+
+      const full = join(dir, entry.name);
+      const path = packagePath(root, full);
+
+      if (entry.isDirectory()) {
+        if (!TEST_ROOTS.includes(path)) stack.push(full);
+        continue;
+      }
+
+      if (!/\.(ts|tsx|mts|mjs)$/u.test(entry.name) || isTestPath(path)) continue;
+
+      edges.set(
+        path,
+        specifiersOf(readFileSync(full, 'utf8'))
+          .map((specifier) => resolve(root, full, specifier))
+          .filter((target) => target !== null)
+          .map((target) => packagePath(root, target)),
+      );
+    }
+  }
+
+  const importers = new Map();
+
+  for (const [from, targets] of edges) {
+    for (const target of targets) {
+      if (!importers.has(target)) importers.set(target, new Set());
+
+      importers.get(target).add(from);
+    }
+  }
+
+  // 1. The exclusive closure of the two entry points.
+  const closure = new Set(PRINT_ENTRY_POINTS.filter((path) => existsSync(join(root, path))));
+
+  for (let grew = true; grew; ) {
+    grew = false;
+
+    for (const member of [...closure]) {
+      for (const target of edges.get(member) ?? []) {
+        if (closure.has(target) || isTestPath(target)) continue;
+
+        if ([...(importers.get(target) ?? [])].every((from) => closure.has(from))) {
+          closure.add(target);
+          grew = true;
+        }
+      }
+    }
+  }
+
+  // 2. The harness's vitest files and every tests/ file they reach.
+  const queue = containerHarnessFiles(root).map((path) => join(root, path));
+  const seen = new Set();
+
+  while (queue.length > 0) {
+    const file = queue.pop();
+
+    if (file === undefined || seen.has(file) || !existsSync(file)) continue;
+
+    seen.add(file);
+    closure.add(packagePath(root, file));
+
+    for (const specifier of specifiersOf(readFileSync(file, 'utf8'))) {
+      const target = resolve(root, file, specifier);
+
+      if (target !== null && packagePath(root, target).startsWith('tests/')) queue.push(target);
+    }
+  }
+
+  PRINT_CACHE.set(root, closure);
+
+  return closure;
+}
+
+// ============================================================================
 // RULING R246: THE FRAMEWORK'S ENTRY POINTS ARE ENUMERATED, AND EACH ONE IS
 // ASSERTED TO BE COVERED BY A SELECTOR RULE
 // ============================================================================
@@ -1101,8 +1273,15 @@ export const SELECTOR_PATTERNS = Object.freeze([
     //   landscape` turned every page's MediaBox landscape (the A4 assertion
     //   refuses it), and `size: letter` kept A4 paper but paginated 9 pages
     //   as 10. It decides the CSS page the renderer lays the document on.
+    //
+    // FW-PRINT-PAGE-PIN (R990), R267's second site: the print page, the export
+    // route, what those two alone render through, and every tests/ file the
+    // harness's vitest files read - derived by containerPdfClosure above. The
+    // named paths stay as the FLOOR (R218's shape): the verdict module is
+    // reachable through no import, and the rest are what W2 and W3b proved by
+    // name.
     label:
-      'the container PDF step: its vitest files, the renderer, the page reader and the @page rule (R936, R982)',
+      'the container PDF step: its vitest files and what they read, the print page, the export route and what those alone render through (R936, R982, R990)',
     suites: Object.freeze(['test:container:e2e']),
     matches: (path) =>
       path === 'tests/db/container-auth.test.ts' ||
@@ -1112,7 +1291,8 @@ export const SELECTOR_PATTERNS = Object.freeze([
       path === 'scripts/container-render-verdict.mjs' ||
       path === 'lib/export/pdf.ts' ||
       path === 'tests/support/pdf-pages.ts' ||
-      path === 'app/releve/print/print.module.scss',
+      path === 'app/releve/print/print.module.scss' ||
+      containerPdfClosure(PACKAGE_ROOT).has(path),
   },
   {
     label: 'the scheduler probe, which defines that suite (R247)',
