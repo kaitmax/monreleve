@@ -1,0 +1,381 @@
+REPORT-FW-ANNEX-RENDERED
+========================
+
+Web run step W3c (relay/ORCH-WEB-COMPLETE.txt, Web Ruling 4), prompt
+relay/FW-ANNEX-RENDERED.txt, rulings R985-R989.
+- Branch fw-annex-rendered, in worktree C:/wt/fw-annex-rendered, cut from
+  origin/main b6f32957c8e8da81938846de471f7ab2fe9abe1d (W1-W3b).
+- The lock .session-lock.json was written at 20:37:32Z and is gitignored.
+- Evidence is in C:/wt/fw-annex-rendered/.annex-evidence/ (gitignored):
+  every log named below, the plant runner and its per-plant logs, the move
+  proof, the selection probe and the sampler files.
+- Scratch database: monreleve_fw_annex_rendered on frontalier-postgres.
+
+SUMMARY
+-------
+- R985: the new test runs in test:db with NO skip condition; R980's 26
+  skipped tests are cited, not redone. test:db went 719 -> 722 passed (+3,
+  this file), files 48 -> 49, the 26 skipped unchanged.
+- R986: W3's seeded year has one home, web/tests/support/seeded-year.ts.
+  dossier-engine.test.ts imports it; no assertion line changed; 5 passed
+  before and after.
+- R987: web/tests/db/annex-rendered.test.ts renders the print route's page
+  for the same year and reads the annex BY COLUMN: 59 recorded rows for 59
+  seeded rows, every unlogged weekday printed (264 rows), and each row's
+  provenance words (lib/fr constants) and server stamp (formatDateTime of
+  the seeded firstRecordedAt). No DEFECT: the rendered annex matched.
+- R988: STOPPED at its gate, as the prompt directs. First half: NO gated
+  test checks a part-year's served figures independently of lib/dossier.
+  Second half: SPEC does not state the period fraction's day-count basis
+  or whether the start day counts, so no part-year test was added and the
+  rule is handed back as QUESTION 1.
+- R989: four verified plants on app/releve/print/page.tsx (R989's one
+  required plant and three more), each RED naming the day, each reverted
+  to HEAD's blob. The fraction plant is NOT
+  RUN (R988 stopped).
+- Nothing else moved: web/lib, web/app, web/prisma and web/scripts are
+  identical to b6f3295.
+
+STATUS (R391)
+-------------
+COMPLETE for R985, R986, R987 and R989's required missing-stamp plant
+(plus three more plants). R988 is NOT delivered: STOPPED at its gate, QUESTION 1; its
+fraction plant is NOT RUN. Both web gates ran in this session, on the code
+commit 0d2339fd8265422c9e6e0bfd4955af1b3df1a9d7:
+- gate:changed: exit 0, ABORTED False, on the working tree whose content
+  is that commit (the committed test blob 8e425daf is the one the plants
+  ran on). test 3 765 passed; test:db 722 passed | 26 skipped.
+- gate:clone ALONE on 0d2339f itself: STEP_EXIT=0, ABORTED=False.
+- The report commit adds only this file on top of 0d2339f.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+
+R985. IT LANDS IN A GATE
+------------------------
+- Cited, not redone (Web Ruling 5): REPORT-FW-PDF-RENDER-GATE.txt R980
+  names test:db's 26 skipped tests by file - export-pdf 15,
+  verification-qr 2, container-auth 7, container-pdf 2. print-route.test.ts
+  is not among them.
+- R987's test is a NEW file, tests/db/annex-rendered.test.ts (DEVIATIONS 2
+  says why it does not extend print-route.test.ts). Its skip conditions:
+  NONE. It holds no skip, skipIf, runIf or todo (grep: the only hits are
+  the words in its header comment, lines 16-17), it needs no live server
+  (it renders the page component, as print-route.test.ts:38-49 does), and
+  vitest.db.config.ts:49 collects tests/db/**/*.test.ts into test:db.
+- The evidence that it RAN in the gate is the count (vitest's default
+  reporter names no file in a non-TTY capture, as W2 and W3 found):
+  gate:changed's test:db read 722 passed | 26 skipped (748), Test Files
+  49 passed | 3 skipped (52). W3b's own measured no-server test:db run on
+  the base content (its R980) read 719 passed | 26 skipped and 48 passed |
+  3 skipped (51). So +3 tests and +1 file: this file's three tests. The 26 are unchanged, and export-pdf and verification-qr
+  printed their R133 lines (gate-changed-1.log:257, :263).
+
+R986. ONE SEED, ONE HOME
+------------------------
+- New: web/tests/support/seeded-year.ts. It holds YEAR, PERSON, the row
+  types, row(), ordinaryWeeks(), SEED, weekdaysOfYear() and seedYear() (the
+  user + entry + MODIFIED-event inserts, moved from dossier-engine's
+  beforeAll). It deletes nothing; each caller empties its tables first.
+- Both tests import it: dossier-engine.test.ts and annex-rendered.test.ts.
+  Nothing is copied: the move was made by an anchored script
+  (.annex-evidence/r986-move.mjs, each cut range's first and last line
+  asserted before writing, R211).
+- The move proof (.annex-evidence/r986-diff-proof.txt): of the 223 lines
+  removed from dossier-engine.test.ts, every one is in the support module
+  verbatim except: `export` added to YEAR, the three types the tests use
+  (Kind, Portion, Provenance; Reason stays private), PERSON, SeedRow, SEED
+  and weekdaysOfYear; two comments that pointed at "this
+  file"/"below"; and one header line. 17 lines were added (the import, the
+  seedYear() call, a header paragraph). The one removed or added line that
+  matches expect|toBe|toEqual|toStrictEqual is a comment (" * THE SEEDED
+  YEAR - the one source of every expectation in this file."). NO assertion
+  line changed.
+- Still passes, same count: dossier-engine.test.ts 5 passed at BASE
+  (baseline-dossier-engine.log) and 5 passed after the move (run1.log,
+  run2.log), the same five test names.
+- The SAME SEED, not only the same count (every expectation derives from
+  SEED, so a row lost in the move could still give 5 passed): the test's
+  printed "[dossier-engine] 22 figures, served | engine" block is
+  byte-identical at BASE and after the move (fig-base.txt = fig-run1.txt =
+  fig-run2.txt, diff empty), and it carries W3's hand-checked values:
+  workedDays 192, declarableRate 15.1, rawRate 16.2, rateWithoutMissions
+  10.93, January to March cumulative 2.34, 6.77, 11.97.
+- The selector: the support path ALONE selects test:db through R218's
+  import closure (selection-probe.txt: "web/tests/support/seeded-year.ts =>
+  the database layer ... and anything test:db imports").
+
+R987. THE RENDERED ANNEX
+------------------------
+web/tests/db/annex-rendered.test.ts, 3 tests. beforeAll empties users,
+seeds the year (seedYear()), mints a print token for (person, 2026), and
+renders app/releve/print/page.tsx's default export with
+renderToStaticMarkup - the print route's real handler, the page the PDF
+route points Chromium at.
+- How it reads: the annex table is the ONE table whose headings include
+  COPY.annex.firstRecordedAt (asserted exactly one, with one tbody). Each
+  column is found from its heading constant (date, portion, provenance,
+  first recorded), each heading asserted present once. Cells are read BY
+  COLUMN, so a value in the wrong column fails (31 March's row prints two
+  instants: the receipt and the client's claim). Rows are keyed by
+  formatDate(day) + the portion's lib/fr word.
+- PRESENCE FIRST: the document title is present and the empty-year
+  sentence absent; the four columns exist; the 59 expected stamps are 59
+  distinct strings AS PRINTED (to the minute); the three provenance words
+  are three distinct strings and all three provenances are seeded; the
+  offline row's two instants print differently; every seeded row has a key
+  of its own.
+- The count: rendered recorded rows = SEED.length = 59. The count is of
+  ROWS, not distinct days: 59 rows over 57 days, because the two split
+  days (01-08, 02-03) print a morning and an afternoon row. The missing and
+  unexpected key lists are each asserted empty, and the count asserted (a
+  duplicate passes a set comparison). Every other row is the "not
+  recorded" shape (date + one spanning cell = COPY.annex.notRecorded); no
+  third shape; their dates equal 2026's weekdays minus the seeded days, in
+  order; total rows = 59 + 205 = 264.
+- Per row, for each of the 59 seeded rows, soft, labelled "annex <ISO day>
+  <portion>": the provenance cell equals PROVENANCE_WORDS[seeded.provenance]
+  and the first-recorded cell equals formatDateTime(seeded.firstRecordedAt).
+- R181: the words are COPY.annex.provenanceManual / provenanceConfirmed /
+  provenanceCorrected, reached from the seeded enum by a map the test owns;
+  page.tsx's PROVENANCE_LABEL is NOT imported (that would compare the page
+  with itself). No French is typed in the test.
+- The stamp: formatDateTime from lib/ui/core, the formatter page.tsx:113-115
+  calls, on the SEEDED firstRecordedAt. Its Paris wall clock is typed and
+  pinned across a DST change in print-route.test.ts:371-405 (R586), which
+  is why it is not re-typed here.
+
+R988. THE PART YEAR
+-------------------
+FIRST HALF - IS THERE ONE? NONE. No gated test checks a part-year's SERVED
+figures independently of lib/dossier. The nearest, in W3's kinds (THROUGH =
+the expected value comes through lib/dossier; INDEPENDENT = typed; UNIT =
+below the route):
+  - tests/db/dossier-route.test.ts:217 (activityStartDate 2026-07-01):
+    through the route, but only period.fraction < 1 and startDate. A
+    bound, no figure.
+  - tests/db/dossier-route.test.ts:377 (start 2026-03-02, year 2026): 200,
+    recordedEntries 0, period.fraction > 0. A bound.
+  - tests/db/print-route.test.ts:231: the header's words (fromDate) only.
+  - tests/db/scenario-accounts.test.ts:347: THROUGH buildDossierFor,
+    fraction < 1, startDate not null.
+  - tests/unit/dossier/service.test.ts:418, :430: UNIT, bounds (fraction
+    in (0,1); the part-year basis below the whole year's).
+  - tests/unit/dossier/aggregate.test.ts:164: UNIT, bounds on the input.
+  - tests/unit/dossier/aggregation-fixture.test.ts:108 with
+    fixtures/aggregation-cases.json:152 ("partial-year-midyear-start"):
+    a TYPED periodFraction 0.5041095890410959 (= 184/365) - but UNIT, of
+    the engine INPUT (toTeleworkInput), and the fixture's own comment says
+    it is "the remainingYearFraction output, pinned".
+  - tests/unit/ui-core/period.test.ts:53 (184/365) and siblings: UNIT, of
+    remainingYearFraction itself.
+  - The calculator's debut= path (e2e/calculateur.spec.ts:571,
+    tests/unit/pages/calculateur-accordion.test.tsx:299) is the calculator,
+    not the dossier; the e2e one asserts only head tags.
+
+SECOND HALF - THE RULE SPEC STATES. It does not state one I can compute
+from. Everything SPEC says about the fraction (SPEC-frontalier-web.md):
+  - section 7.2 step 2 (line 365): "periodFraction covers mid-year starts
+    as a fraction of the calendar year";
+  - section 7.4 (line 438): "0 < f <= 1";
+  - section 8 (line 567): activityStartDate "sets periodFraction for the
+    year";
+  - sections 9.3 (line 719) and 9.4 (line 766): the start date / debut
+    "sets periodFraction, prorates the mission cap".
+None names the unit (calendar days over the days of the year? whole
+months? something else) or whether the start day is counted. A bounded
+last read of SPEC sections 2 and 22, docs/api-v1.md (every "fraction"
+line) and docs/regulatory-sources.md:216 found no statement either. The
+rule that IS implemented is lib/ui/core/period.ts remainingYearFraction:
+calendar days from the start day to 31 December, both ends counted, over
+the days in the year. Its "inclusive" is the code's own reasoning
+(period.ts, period.test.ts:6-12), not SPEC. Typing it into the test would
+be typing the route's own answer, which the prompt forbids. So R988
+STOPPED here: no part-year person was seeded, and the rule is QUESTION 1.
+
+For whoever picks it up after a ruling, measured here (arithmetic, not a
+test): an off-by-one in the start day moves a served ENGINE figure only
+for some dates. At 80 % (basis 192, cap 8), 2026-07-01 gives
+ceil(192 x 184/365) = ceil(192 x 183/365) = 97 workdays and a cap of 5
+either way, so only period.fraction itself would move. The first of each
+month from August to December moves tiles.workedDays by one (2026-08-01:
+81 vs 80). The test should pick its date by computation and assert that
+discrimination presence-first.
+
+R989. VERIFIED PLANTS
+---------------------
+The runner is .annex-evidence/plant.mjs (W3's discipline). For each plant
+it checks the target's blob equals HEAD's; asserts EXACTLY ONE match of
+the original line before writing (R211); writes; checks "git diff -U0"
+shows exactly that line out and the planted line in (R180); runs
+tests/db/annex-rendered.test.ts alone against the scratch database;
+restores the bytes; checks the blob equals HEAD's again and "git diff
+--quiet" exits 0. The test file's blob in every run was 8e425daf, which is
+the committed blob (git rev-parse HEAD:web/tests/db/annex-rendered.test.ts).
+In every planted run the PRESENCE test passed, so no RED is a refused or
+empty page. P1-P3 20:49:52Z-20:50:00Z, P4 21:12:24Z; logs in
+.annex-evidence/plants/.
+
+  P1 (R989's required plant), page.tsx:509, the receipt cell prints
+     nothing on ONE row:
+       stamp(entry.dayDate === '2026-03-31' ? null : entry.firstRecordedAt)
+     RED (1 failed | 2 passed; the count test passed, as it must - the
+     row is still there):
+       "annex 2026-03-31 FULL: the server stamp (first recorded): expected
+       '' to be '01.04.2026 a 09:12'"
+  P2, page.tsx:508, ONE row (2026-01-07) prints its enum, not its words.
+     RED (1 failed | 2 passed):
+       "annex 2026-01-07 FULL: the provenance words: expected
+       'DETECTED_CORRECTED' to be '<COPY.annex.provenanceCorrected>'"
+  P3, page.tsx:496, the renderer drops every afternoon row (a split day
+     collapsed). RED (2 failed | 1 passed):
+       "seeded rows the rendered annex does not print: 08.01.2026
+       <portionAfternoon>; 03.02.2026 <portionAfternoon>" and "seeded rows
+       with no rendered row to read: 2026-01-08 PM; 2026-02-03 PM"
+The French words are verbatim in the logs; this report is ASCII, so they
+are named by their lib/fr keys, and "a 09:12" stands for the accented a
+that formatDateTime binds with no-break spaces. 07:12Z on 1 April is 09:12
+in Paris (summer time from 29 March).
+  P4, page.tsx:509, the receipt cell prints the client's claim where there
+     is one: stamp(entry.clientClaimedAt ?? entry.firstRecordedAt).
+     RED (1 failed | 2 passed):
+       "annex 2026-03-31 FULL: the server stamp (first recorded): expected
+       '31.03.2026 a 19:45' to be '01.04.2026 a 09:12'"
+P2, P3 and P4 are beyond R989's one required plant: R987 claims "either",
+the count assertion would otherwise never have been red, and the header's
+claim that a stamp from the wrong instant fails needed its own red.
+
+THE FRACTION PLANT (an off-by-one in the fraction): NOT RUN. There is no
+R988 test for it to turn red (R988 STOPPED, QUESTION 1).
+
+NOTHING ELSE MOVES: no mismatch was found, so there is no DEFECT.
+"git diff --quiet b6f3295 HEAD -- web/lib web/app web/prisma web/scripts"
+exits 0.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. The PDF itself is still read back only for its DAYS. This task reads
+   provenance and stamps from the HTML the print page renders, which is
+   what Chromium prints. export-pdf.test.ts:437 ("prints every day the
+   payload carries", gated in test:container:e2e since W3b) extracts the
+   PDF's text but checks days, not each row's words and stamp. Whether the
+   same per-row reading should run on the extracted PDF text is not this
+   task's; it would sit with W3d or a task of its own.
+2. Checkpoint D item 2 ("payload ... matches a direct engine computation
+   exactly; PDF is A4 with the annex expanded and provenance per row") now
+   has A4 from the bytes (W2), the payload on a full year (W3), and the
+   rendered annex per row (this task). The part-year half of the payload
+   claim waits on QUESTION 1.
+
+DEVIATIONS
+----------
+1. NOT TEST-FIRST, as W3's DEVIATION 7. The new test passed on its first
+   run (run1.log, 20:48:08Z, 3 passed): R989 allows no change of
+   behaviour, so there was no code for a failing test to precede. The
+   REDs are the plants (R989). One typecheck error was fixed before the
+   plants: mintPrintToken returns string | null, so the test now refuses
+   with a setup error when no token can be minted.
+2. R987 is a NEW file, not an extension of print-route.test.ts. That
+   file's top-level beforeEach (print-route.test.ts:64-73) deletes every
+   user before each test, so a year seeded once would not survive to the
+   second test, and reseeding 59 rows per test repeats the seed rather
+   than sharing it. The new file states its skip conditions (none, R985).
+3. R988 was not delivered: stopped at its gate by the prompt's own rule
+   (QUESTION 1), so R989's fraction plant was not run either.
+4. Scratch-database administration: the create and drop ran through a
+   one-command temporary copy of .annex-evidence/db-admin.mjs inside web/
+   (so pg resolves), deleted in the same command. Credentials were read
+   from the main checkout's web/.env by script and never printed; the
+   sampler's cmd= lines read "pnpm gate:changed" and "pnpm gate:clone".
+5. Nothing was written to the orchestrator's scratchpad or any other
+   worktree. C:/wt/queue-evidence/run-sampled.ps1 was run in place, read
+   only, with its evidence directory set to .annex-evidence.
+
+WALKTHROUGH (R176)
+------------------
+No page, route or rendered surface changed (two test files and a test
+support module), so no server was started or driven. The print route was
+exercised through its page component inside test:db, and the dossier route
+through its handler, as R204 asks.
+
+QUESTIONS
+---------
+1. R988 (a product rule, SPEC 7.2 step 2). SPEC says periodFraction is "a
+   fraction of the calendar year" but states neither its day-count basis
+   nor whether the start day counts. The code computes calendar days from
+   the start day to 31 December, both ends counted, over the days in the
+   year (lib/ui/core/period.ts; 2026-07-01 -> 184/365), pinned only at unit
+   level (period.test.ts:53, aggregation-cases.json:152). Should SPEC 7.2
+   state that rule, or another? Until a rule is stated, a part-year test
+   through the dossier route cannot compute its expectation from SPEC, and
+   R988 and its plant stay open.
+
+PUSH PROOF
+----------
+Branch: fw-annex-rendered (pushed; not merged). Base b6f3295 = origin/main
+at launch and at the code commit.
+Code commit: 0d2339fd8265422c9e6e0bfd4955af1b3df1a9d7, pushed; ls-remote
+showed refs/heads/fw-annex-rendered at 0d2339f before gate:clone ran. This
+report is the commit on top of it.
+
+gate:changed, the gate of record for the commit:
+- Under run-sampled.ps1, cmd=pnpm gate:changed. DATABASE_URL (the scratch
+  database monreleve_fw_annex_rendered) and FRONTALIER_PORT=3300 were
+  inherited from the parent shell.
+- Commit free read 7 545 MB at 20:50:26Z (start line 4 542).
+- 20:50:33Z-20:57:09Z, exit 0, aborted False. First sample 7 309 MB,
+  minimum commit free 5 787 MB (drop 1 522), minimum free physical 960 MB.
+- Printed selection:
+  gate selection (R132):
+    3 path(s) matched:
+      web/tests/db/annex-rendered.test.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/tests/db/dossier-engine.test.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/tests/support/seeded-year.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+    suites: typecheck, lint, test, build, test:db
+    a11y: covered by pnpm test - test:a11y's three files are a subset of
+          its globs, so requiring it separately is a second run
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3765 passed
+      build: exit 0 (no count to check)
+      test:db: 722 passed
+  GATE PASSED for the paths changed.
+  - test 3 765 (220 files) = main's (W3b's gate read 3 765).
+  - test:db: 722 passed | 26 skipped (748); Test Files 49 passed | 3
+    skipped (52). W3: 719 | 26 and 48 | 3. +3 tests, +1 file: this task's.
+
+gate:clone, ALONE, on 0d2339f:
+- Under run-sampled.ps1, cmd=pnpm gate:clone. CONTAINER_IMAGE=
+  monreleve:fw-annex-rendered and FRONTALIER_PORT=3300 were set;
+  DATABASE_URL was removed from the shell, so gate:clone read web/.env,
+  written by script to name the local server's postgres database and used
+  only to reach the server. It created its own monreleve_gate_clone_0d2339fd.
+- The only session locks under C:/wt were mine and the orchestrator's.
+  Commit free read 7 706 MB at 20:57:42Z (start line 4 676).
+- 20:57:48Z-21:09:39Z, exit 0, aborted False. First sample 7 654 MB,
+  minimum commit free 6 129 MB (drop 1 525), minimum free physical 767 MB.
+- "tree clean - HEAD is everything you have"; "swept no stale clones".
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  0d2339fd8265422c9e6e0bfd4955af1b3df1a9d7
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  STEP_EXIT=0 ABORTED=False
+
+Cleanup (Web Ruling 3), 21:12:50Z-21:13:04Z, before this report commit:
+- pg_database listed first: frontalier, monreleve_fw_annex_rendered,
+  monreleve_fw_delai_rappel, postgres, template0, template1. gate:clone's
+  monreleve_gate_clone_0d2339fd was already gone (dropped by gate:clone).
+- monreleve_fw_annex_rendered dropped. pg_database then: frontalier,
+  monreleve_fw_delai_rappel, postgres, template0, template1
+  (monreleve_fw_delai_rappel is C10's, not touched).
+- web/.env removed (ls: No such file).
+- monreleve:fw-annex-rendered, built by gate:clone's test:container:write,
+  removed by exact name (docker image rm: untagged, deleted e9835873691e).
+  No other image touched; no prune.
+- No container of mine; frontalier-postgres is the only one running and
+  was not touched. :3300 refuses (curl exit 7).
+- The lock is removed last, after this report is pushed.
