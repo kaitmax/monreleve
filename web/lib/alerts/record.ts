@@ -16,10 +16,11 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db/client';
+import { CONFIRMATION_TTL_DAYS } from '@/lib/alerts/lifetimes';
 import type { Subscription } from '@/lib/alerts/subscribe';
 
-/** Seven days, in milliseconds. The schema explains the seven. */
-const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** Seven days, in milliseconds. The schema explains the seven; lib/alerts/lifetimes.ts holds it. */
+const TOKEN_TTL_MS = CONFIRMATION_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 /** 32 bytes of randomness, hex-encoded: 64 characters in the link. */
 const TOKEN_BYTES = 32;

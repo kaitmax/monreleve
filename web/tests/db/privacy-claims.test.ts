@@ -154,8 +154,13 @@ describe('CLAIM 2: an address is recorded only if the reader gives it', () => {
     // names each. The claim is unchanged and is made in two places, so it is
     // asserted in two places rather than loosened to match whichever half
     // still happens to contain the old phrase.
-    expect(WEB_STATEMENTS.twoCases).toContain('jamais');
-    expect(WEB_STATEMENTS.twoCases).toContain('sans une action de votre part');
+    // FW-DELAI-RAPPEL renamed the key: « deux cas » went false by count when a
+    // third case was stored, and the count is now derived and asserted by
+    // tests/unit/content/privacy-cases.test.ts. The claim asserted here is
+    // unchanged - never without an action of yours - and the third case keeps
+    // it: the reminder is stored only when somebody submits the form.
+    expect(WEB_STATEMENTS.emailCases).toContain('jamais');
+    expect(WEB_STATEMENTS.emailCases).toContain('sans une action de votre part');
     expect(DISCLOSED_RECORDS.alertList).toContain('si vous donnez votre adresse');
   });
 
@@ -409,11 +414,12 @@ describe('the map covers the page rather than a chosen part of it', () => {
 
       // FW22. The filter below catches any sentence mentioning "e-mail", and
       // the split introduced two more. Both are owned:
-      //   twoCases    asserted by CLAIM 2 above, in its two halves.
+      //   emailCases  asserted by CLAIM 2 above, in its two halves (twoCases
+      //               until FW-DELAI-RAPPEL counted it).
       //   signInLink  asserted by tests/unit/content/personal-data.test.ts,
       //               which maps VerificationToken's three columns to it and
       //               requires it rendered.
-      WEB_STATEMENTS.twoCases,
+      WEB_STATEMENTS.emailCases,
       DISCLOSED_RECORDS.signInLink,
     ];
 

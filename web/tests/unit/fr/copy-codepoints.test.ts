@@ -169,7 +169,11 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // the semicolon that ends the bullet.
       // 22 -> 23 in FW-VERIFY: DISCLOSED_RECORDS.nameChange added one, before
       // the semicolon that ends the name-change-dates bullet (R331).
-      'lib/fr/confidentialite.ts': 23,
+      // 23 -> 25 in FW-DELAI-RAPPEL: DISCLOSED_RECORDS.deadlineReminder (R919)
+      // added two, both R91 no-break spaces in new copy - one before the colon
+      // that opens what the service keeps, one before the semicolon that
+      // introduces the purge of an unconfirmed request.
+      'lib/fr/confidentialite.ts': 25,
       'lib/fr/errors.ts': 2,
       // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
       // now reaches lib/fr, so the home description no longer types "40 %"
@@ -226,7 +230,10 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     // FW34: 46 -> 44. index.ts lost its two no-break spaces when the home copy
     // moved to home.ts, which builds them with n() (runtime, not source). The
     // per-file map above dropped index.ts in step - two numbers, one change.
-    expect(occurrences).toHaveLength(44);
+    // FW-DELAI-RAPPEL: 44 -> 46. DISCLOSED_RECORDS.deadlineReminder carries
+    // two, the colon and the semicolon of the third case, and the per-file
+    // map above moved in step.
+    expect(occurrences).toHaveLength(46);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {
