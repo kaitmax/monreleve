@@ -435,6 +435,13 @@ try {
           'vitest.db.config.ts',
           'tests/db/container-auth.test.ts',
           'tests/db/container-pdf.test.ts',
+          // VERBOSE, SO THE PDF'S PAGE FACTS COME FROM THIS RUN (R936). The
+          // default reporter printed no console output for a passing test, so
+          // the `[pdf]` line - each render's page count and page sizes - was
+          // visible only in a second, separate verbose run (W1's QUESTION 1).
+          // The line is REQUIRED below, so a reporter that drops it fails
+          // the run rather than going quiet.
+          '--reporter=verbose',
         ],
         {
           env: {
@@ -480,6 +487,24 @@ try {
         '(R133), so the count is the signal rather than the exit code.';
     } else if (failure === null) {
       console.log(`auth round trip: ${passed} passed, over HTTP, against the image.`);
+    }
+
+    // THE PDF'S PAGE FACTS, FROM THIS RUN (R936). container-pdf.test.ts
+    // prints one `[pdf]` line - bytes, page count and page sizes for the
+    // image's render and this machine's - before it asserts that every page
+    // is A4. A pass without that line is a pass nobody can read the document
+    // from, so its absence fails the run the way a zero count does (R133).
+    const pdfLines = stripAnsi(authOutput)
+      .split(/\r?\n/u)
+      .filter((line) => line.startsWith('[pdf] '));
+
+    console.log('\n--- the PDF, from this run: page count and page size (R936) ---');
+    for (const line of pdfLines) console.log(`  ${line}`);
+
+    if (failure === null && pdfLines.length === 0) {
+      failure =
+        'the PDF step printed no `[pdf]` line, so this run cannot say how many ' +
+        'pages the document has or what size they are (R936)';
     }
   }
 } catch (cause) {

@@ -1079,6 +1079,27 @@ export const SELECTOR_PATTERNS = Object.freeze([
     matches: (path) => path === 'scripts/container-e2e.mjs',
   },
   {
+    // FW-PDF-A4 (R936). test:container:e2e is the ONLY suite any gate runs in
+    // which a PDF is rendered: its vitest step sets CONTAINER_BASE_URL, and
+    // test:db's render tests skip without a live server, which neither
+    // gate:changed, gate:clone nor CI starts. Before this rule the renderer
+    // and the container PDF test selected test:db alone, so `format:
+    // 'Letter'` passed every gate with the A4 assertion never executed.
+    //
+    // R144's shape for the harness's own vitest files (a test file selects
+    // the suite it belongs to), and R256's for the renderer and the reader
+    // the A4 verdict goes through (the file whose defect a suite catches
+    // selects that suite). tests/unit/meta/gate-selection.test.ts reads the
+    // harness's file list from the harness, so a third file is caught there.
+    label: 'the container PDF step: its vitest files, the renderer and the page reader (R936)',
+    suites: Object.freeze(['test:container:e2e']),
+    matches: (path) =>
+      path === 'tests/db/container-auth.test.ts' ||
+      path === 'tests/db/container-pdf.test.ts' ||
+      path === 'lib/export/pdf.ts' ||
+      path === 'tests/support/pdf-pages.ts',
+  },
+  {
     label: 'the scheduler probe, which defines that suite (R247)',
     suites: Object.freeze(['test:container:scheduler']),
     matches: (path) => path === 'scripts/container-scheduler.mjs',

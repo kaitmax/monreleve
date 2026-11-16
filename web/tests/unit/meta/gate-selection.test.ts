@@ -408,14 +408,14 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the twenty-six names R132 now carries', () => {
+  it('is exactly the twenty-seven names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
-    // R246 ADDED THE LAST TWO, and this census is how they were noticed as a
+    // R246 ADDED TWO, and this census is how they were noticed as a
     // deliberate act rather than absorbed: middleware.ts and next.config.ts
     // are invoked by Next, reachable from no import, and until FW28 matched
-    // by nothing at all.
+    // by nothing at all. R936 added the container PDF step's rule.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
       '**/*.module.scss',
       'a baseline, which is the record test:visual compares against (R144)',
@@ -434,6 +434,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'playwright.config.ts, which defines both browser projects (R247)',
       'playwright.runtime.config.ts, which is the runtime project (R247)',
       'pnpm-workspace.yaml and tsconfig.json, which decide whether anything compiles (R416)',
+      'the container PDF step: its vitest files, the renderer and the page reader (R936)',
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
@@ -921,5 +922,63 @@ describe('EVERY_SUITE is asserted complete, not argued (R414)', () => {
       EVERY_SUITE.filter((suite) => !scripts[suite]),
       'EVERY_SUITE names a suite pnpm cannot run',
     ).toEqual([]);
+  });
+});
+
+describe('R936: the files that decide the container PDF step select the suite that runs it', () => {
+  // MEASURED BEFORE THIS RULE EXISTED (FW-PDF-A4): lib/export/pdf.ts and
+  // tests/db/container-pdf.test.ts selected the base chain and test:db only.
+  // In test:db the PDF tests SKIP - container-pdf.test.ts needs
+  // CONTAINER_BASE_URL, which only scripts/container-e2e.mjs sets, and
+  // export-pdf.test.ts's render blocks need a live server, which neither
+  // gate:changed, gate:clone nor CI starts before test:db. So `format:
+  // 'Letter'` in the renderer would have passed every gate this repository
+  // runs, with the A4 assertion green because it never executed.
+  //
+  // R256's shape: the file whose defect a suite catches selects that suite.
+  // R144's shape: a test file selects the suite it belongs to.
+
+  // THE HARNESS'S OWN LIST, read from the harness (R206): a file it starts
+  // running tomorrow is covered here the day it is added, or this fails.
+  const harness = readFileSync(join(PACKAGE_ROOT, 'scripts', 'container-e2e.mjs'), 'utf8');
+  const harnessFiles = [...harness.matchAll(/'(tests\/db\/[\w.-]+\.test\.ts)'/gu)].map(
+    (match) => match[1]!,
+  );
+
+  it('reads the harness vitest files from the harness, and finds the PDF one', () => {
+    // PRESENCE FIRST (R169): an empty list would make the next test vacuous.
+    expect(harnessFiles).toContain('tests/db/container-pdf.test.ts');
+    expect(harnessFiles).toContain('tests/db/container-auth.test.ts');
+  });
+
+  it('selects test:container:e2e for every file the harness runs with vitest', () => {
+    const missing = harnessFiles.filter(
+      (path) => !suitesFor([`web/${path}`]).includes('test:container:e2e'),
+    );
+
+    expect(missing, 'a container-e2e vitest file that does not select its own suite').toEqual([]);
+  });
+
+  it.each([
+    ['the renderer, whose format is what R935 asserts', 'web/lib/export/pdf.ts'],
+    ['the page-size reader the assertion trusts', 'web/tests/support/pdf-pages.ts'],
+  ])('selects test:container:e2e for %s', (_label, path) => {
+    expect(suitesFor([path])).toContain('test:container:e2e');
+  });
+
+  it('keeps what those files selected before', () => {
+    // A union, never a replacement (R234): the renderer still runs test:db,
+    // where its refusals are proven without a browser.
+    expect(suitesFor(['web/lib/export/pdf.ts'])).toContain('test:db');
+    expect(suitesFor(['web/tests/db/container-pdf.test.ts'])).toContain('test:db');
+  });
+
+  it('does not select the container for the rest of the export code', () => {
+    // NON-VACUITY: a rule that fired on everything would make every export
+    // edit a Docker build, and the first person to wait for one would take it
+    // back out.
+    for (const path of ['web/lib/export/csv.ts', 'web/tests/db/export-pdf.test.ts', 'web/app/page.tsx']) {
+      expect(suitesFor([path]), path).not.toContain('test:container:e2e');
+    }
   });
 });

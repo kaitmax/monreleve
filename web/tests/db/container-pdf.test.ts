@@ -44,6 +44,7 @@ import { issueMagicLink } from '@/lib/auth/magic-link';
 import { instanceRefusal } from '@/lib/content/identity';
 import { mintPrintToken } from '@/lib/export/print-token';
 import { renderPdf } from '@/lib/export/pdf';
+import { a4Violations, describeSizes, pageBoxes, type PageBox } from '@/tests/support/pdf-pages';
 
 const BASE = process.env.CONTAINER_BASE_URL;
 const EMAIL = 'container-pdf@example.com';
@@ -64,6 +65,30 @@ function pageCount(bytes: Uint8Array): number {
   const text = Buffer.from(bytes).toString('latin1');
 
   return (text.match(/\/Type\s*\/Page[^s]/gu) ?? []).length;
+}
+
+/**
+ * EVERY PAGE IS A4, READ FROM THE BYTES (R935).
+ *
+ * lib/export/pdf.ts asks Chromium for `format: 'A4'`; that is configuration,
+ * and configured is not delivered (R154). SPEC 21 criterion 12 is about the
+ * document, so this reads each page's box out of the file the renderer
+ * produced. The size and the tolerance live in tests/support/pdf-pages.ts,
+ * stated and asserted there.
+ *
+ * The page tree's count must equal pageCount()'s, so the count the harness
+ * prints and the pages measured here are the same pages.
+ */
+function expectA4(bytes: Uint8Array, renderer: string): PageBox[] {
+  const boxes = pageBoxes(bytes);
+
+  expect(
+    boxes.length,
+    `${renderer}: the page tree holds ${boxes.length} pages, the page objects ${pageCount(bytes)}`,
+  ).toBe(pageCount(bytes));
+  expect(a4Violations(boxes), `${renderer}: pages that are not A4`).toEqual([]);
+
+  return boxes;
 }
 
 describe.skipIf(BASE === undefined)('R249: the PDF, in the image and here', () => {
@@ -156,6 +181,7 @@ describe.skipIf(BASE === undefined)('R249: the PDF, in the image and here', () =
     // will not open" - is about as far from its cause as a symptom gets.
     expect(bytes.byteLength, 'the PDF is implausibly small').toBeGreaterThan(5000);
     expect(pageCount(bytes), 'no page objects in the PDF').toBeGreaterThan(0);
+    expectA4(bytes, 'the image');
   });
 
   it('BOTH renderers produce a document, and their difference is the finding', async () => {
@@ -197,10 +223,25 @@ describe.skipIf(BASE === undefined)('R249: the PDF, in the image and here', () =
     const imagePages = pageCount(fromImage);
     const herePages = pageCount(fromHere);
 
+    // THE PAGE FACTS, PRINTED BEFORE ANY OF THEM IS ASSERTED, so a failing
+    // run still says what it measured. scripts/container-e2e.mjs requires this
+    // line in its own output (R936). The sizes are read with the same reader
+    // the assertions below use; a file it cannot read prints the refusal.
+    const sizes = (bytes: Uint8Array): string => {
+      try {
+        return describeSizes(pageBoxes(bytes));
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+      }
+    };
+
     console.log(
-      `[pdf] image: ${fromImage.byteLength} bytes, ${imagePages} pages; ` +
-        `here: ${fromHere.byteLength} bytes, ${herePages} pages`,
+      `[pdf] image: ${fromImage.byteLength} bytes, ${imagePages} pages, ${sizes(fromImage)}; ` +
+        `here: ${fromHere.byteLength} bytes, ${herePages} pages, ${sizes(fromHere)}`,
     );
+
+    expectA4(fromImage, 'the image');
+    expectA4(fromHere, 'here');
 
     expect(
       imagePages,
