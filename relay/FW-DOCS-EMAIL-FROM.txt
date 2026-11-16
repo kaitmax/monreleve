@@ -1,0 +1,63 @@
+FW-DOCS-EMAIL-FROM SESSION PROMPT - Mon Releve
+THE DOCS THAT STILL NAME EMAIL_FROM OR THE DISPUTED DATE (web run step W9)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W9. Read relay/ORCH-WEB-COMPLETE.txt
+(Parts A-B), relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" (it
+applies here with this task's names: worktree C:/wt/fw-docs-email-from,
+branch fw-docs-email-from, report REPORT-FW-DOCS-EMAIL-FROM.txt),
+relay/QUEUE-STATE.md's PARKED TASKS, and CLAUDE.md first. Ruling numbers
+for this task: R970-R974.
+
+====================================================================
+THE TASK
+====================================================================
+Parked, verbatim in substance (QUEUE-STATE PARKED TASKS; C7's NOTICED
+1-4, Queue Ruling 10, R267). These places still name EMAIL_FROM as a
+setting, or the disputed 2026-10-14 date:
+- docs/domain-checklist.md 130-132 ("deploy.md section 8 N2 lists
+  EMAIL_FROM"), stale since C7;
+- the comment at web/scripts/container-check.mjs 657 ("deleted on
+  2026-10-14"). docs/deploy.md section 1 now marks that date disputed,
+  and the assertion does not depend on it;
+- SPEC-frontalier-web.md 1009 and tasks/todo.md 693, which name
+  EMAIL_FROM as an env setting.
+"The task is one docs session. Its gate selection will include the
+container suite, because of container-check.mjs."
+
+R970. THE CURRENT TRUTH, ESTABLISHED FIRST. Read docs/deploy.md sections 1
+    and 8, and the code that sets the sender. Is EMAIL_FROM read anywhere
+    at runtime? Quote the file and line. Every edit states what the code
+    does, and points at deploy.md rather than retyping it (R206).
+
+R971. EVERY SITE IS FOUND, NOT ONLY THE FOUR LISTED (R267). grep the whole
+    repository for EMAIL_FROM and 2026-10-14, excluding node_modules,
+    reports and relay history. Classify each hit:
+    - current claim: fix it;
+    - history: leave it;
+    - test: cite it.
+
+R972. THE EDITS. Minimal, in place, in the house's own voice. A report
+    (REPORT-*.txt) is history and is never edited.
+
+R973. THE GATE THE DIFF SELECTS, run in full. container-check.mjs is in
+    it, so the container suite runs. Read memory first.
+
+R974. NOTHING ELSE MOVES.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R970-R971.
+2. R972.
+3. gate:changed, commit, push the branch.
+4. gate:clone ALONE on the tip; push.
+5. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-DOCS-EMAIL-FROM.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R970-R974 with the hit table / NOTICED
+BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-DOCS-EMAIL-FROM PROMPT

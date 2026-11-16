@@ -1,0 +1,102 @@
+FW-CALC-BYTES SESSION PROMPT - Mon Releve
+THE ROUTE REGISTRY STOPS SHIPPING TO THE BROWSER (web run step W10)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W10. Read first:
+- relay/ORCH-WEB-COMPLETE.txt (Parts A-B);
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-calc-bytes, branch
+  fw-calc-bytes, report REPORT-FW-CALC-BYTES.txt;
+- relay/QUEUE-STATE.md: BLOCKED 11, and the PARKED TASKS bullet "The
+  calculator page has 54 B of GATE A headroom";
+- CLAUDE.md: R2 (the budgets), R85 and R172.
+Ruling numbers for this task: R975-R979.
+
+====================================================================
+THE TASK
+====================================================================
+BLOCKED 11, verbatim in substance:
+- /calculateur-teletravail-frontalier reads 127 946 B against 128 000 B
+  on db68601 (54 B spare). C9's header sign-in link costs about 97 B.
+- "Every registered route ships to this page ... The registry in
+  lib/content/routes.ts ships whole, so ANY new route entry costs bytes
+  here."
+- The operator's first option: "free bytes on that route (42 B lets the
+  server link pass) - a refactor of the calculator's client code, as its
+  own gated task".
+- The second option, changing GATE A, is NOT this task, and it stays
+  forbidden here.
+
+The orchestrator's read (pointers, not verdicts):
+- lib/ui/react/PublicShell/PublicShell.tsx is 'use client'. It imports
+  visibleNav, visibleFooterColumns, ctaHrefIfOffered and
+  collapseLoneDisclosures from lib/content/routes. Those decide R85's
+  liveness against the whole registry, so the registry ships to EVERY
+  page through the shell.
+- app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx
+  ('use client') imports RESULT_PATH from the same module.
+- C9's evidence is at C:/wt/fw-web-account/.webaccount-evidence/ and
+  includes bytes/, the chunk dumps and check-budgets-bytes.mjs. It is
+  READ-ONLY: never write in that worktree (R392).
+
+R975. THE BYTES, MEASURED BEFORE. From a fresh build of BASE_SHA, as
+    check-budgets measures them (gzip-9), record the per-route first-load
+    JS for every public route. Name the modules from routes.ts in the
+    calculator's client chunks.
+
+R976. THE REGISTRY IS RESOLVED ON THE SERVER. Liveness and visibility
+    (R85) are decided where the registry lives: a server component, or a
+    server-only module. The client shell receives the RESOLVED entries as
+    props, plain data only. Client modules that need a path import it
+    from a leaf module that holds no registry.
+    - routes.ts stays the one source (R206). The leaf's constants are
+      derived from it or it derives from the leaf, never retyped. A test
+      asserts it.
+    - Mark the registry module server-only if the framework offers it
+      with no new dependency (Next's 'server-only' import counts as a
+      dependency: check package.json first, and Ask-first if absent).
+      Otherwise use a test that no client chunk contains a known registry
+      string.
+
+R977. BEHAVIOUR DOES NOT MOVE.
+    - Every existing test passes unchanged, and every visual baseline
+      passes with ZERO regenerated: the header, footer and nav render the
+      same pixels.
+    - The aria-current test, R85's liveness tests and R172's product-state
+      tests stay green with no edit to their assertions.
+    - If a baseline moves, STOP and hand back the diff. A refactor that
+      changes pixels is not this task.
+
+R978. THE BYTES, MEASURED AFTER, from a fresh build on the same machine:
+    the per-route table before and after. The calculator must gain at
+    least 42 B of headroom; the target is "every registered route no
+    longer ships", proven by reading the chunks.
+    - GATE A and every other budget stay UNCHANGED (R2).
+    - Say how many bytes C9's 97 B link would now leave spare.
+
+R979. A VERIFIED PLANT (R180) for the guard in R976: import the registry
+    into a client module in a scratch edit, verified, and show the guard
+    fails. Then revert.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R975.
+2. R976 and R979, test-first.
+3. R977: the full e2e and visual suites. Read memory first; this needs
+   about 5 045 MB.
+4. R978.
+5. gate:changed, commit, push the branch.
+6. gate:clone ALONE on the tip (it runs size); push.
+7. Report; commit; push; remove the lock last.
+Push the branch after every green increment.
+
+====================================================================
+REPORT - REPORT-FW-CALC-BYTES.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R975-R979 with evidence and the byte
+tables / WALKTHROUGH (R176: pnpm dev, the shell on four pages, the menu
+open and closed, the footer) / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF FW-CALC-BYTES PROMPT

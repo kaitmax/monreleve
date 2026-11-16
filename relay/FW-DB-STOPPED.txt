@@ -1,0 +1,80 @@
+FW-DB-STOPPED SESSION PROMPT - Mon Releve
+THE PUBLIC SITE KEEPS SERVING WITH THE DATABASE STOPPED (web run step W4)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W4. Read relay/ORCH-WEB-COMPLETE.txt
+(Parts A-B), relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" (it
+applies here with this task's names: worktree C:/wt/fw-db-stopped, branch
+fw-db-stopped, report REPORT-FW-DB-STOPPED.txt), REPORT-FW-HEALTH-IMAGE.txt
+(W1's findings about the image), and CLAUDE.md first. Ruling numbers for
+this task: R945-R949.
+
+====================================================================
+THE TASK
+====================================================================
+Source, verbatim (tasks/plan.md, Checkpoint D item 5): "Deployed to
+staging; the public site keeps serving with the database stopped". No
+staging exists (it needs Coolify and the token), so that half stays NOT
+MET. This task is the second half, proven against the production IMAGE on
+this machine.
+
+R945. THE SCENARIO IS THE REAL ONE. The database goes away AFTER the
+    container has started and served. A database that was never there
+    tests the entrypoint's refusal instead, which test:container already
+    covers (scripts/container-check.mjs). So:
+    - the run starts its OWN throwaway Postgres container, uniquely named
+      and on a free port;
+    - it migrates that database, starts the image against it, and proves
+      a page served;
+    - it STOPS ITS OWN database container;
+    - then it measures.
+    Never stop frontalier-postgres or any other container: other
+    worktrees' scratch databases live there.
+
+R946. WHAT "KEEPS SERVING" MEANS, ASSERTED. With the database stopped:
+    - every public route in the sitemap answers 200 with its own content
+      (a known heading, not merely a 200; R169's shape);
+    - /api/health is 200 (liveness, R375);
+    - /api/ready is NOT ready and names the database (the deploy gate
+      would refuse);
+    - one database-backed route (e.g. /api/v1/...) answers its documented
+      error status with no stack trace and no connection string in the
+      body;
+    - after the database is started again, readiness recovers without a
+      container restart.
+    Whatever the product actually does differently from this list is a
+    FINDING to hand back, not an assertion to adjust.
+
+R947. WHERE IT RUNS (R251). Establish whether an existing container
+    script owns this claim (container-e2e.mjs? container-write.mjs?) and
+    extend it, or add one script registered with the gate selector, with
+    a test that the selector picks it. test:container is deliberately
+    narrow (R251), so do not put a database there. The run cleans up its
+    own containers in a finally, including on failure. Give proof of the
+    cleanup: docker ps -a after a run that you made fail on purpose.
+
+R948. A VERIFIED PLANT (R180). Make one public route read the database
+    (a scratch edit, verified to have landed), and show the suite fails
+    naming that route. Then revert.
+
+R949. NOTHING ELSE MOVES. No route, readiness or entrypoint change. A
+    public page that does NOT survive is a defect: stop and hand it back.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R947: read.
+2. R945, R946 and R948: RED (the plant), then green.
+3. gate:changed (read memory first), commit, push the branch.
+4. Run the container script to its end, and paste its summary.
+5. gate:clone ALONE on the tip; push.
+6. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-DB-STOPPED.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R945-R949 with evidence / the cleanup
+proof / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF.
+D5's staging half is recorded as NOT MET, with the reason.
+
+END OF FW-DB-STOPPED PROMPT

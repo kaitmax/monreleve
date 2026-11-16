@@ -1,0 +1,76 @@
+FW-DOSSIER-ENGINE SESSION PROMPT - Mon Releve
+THE DOSSIER FOR A SEEDED YEAR EQUALS A DIRECT ENGINE COMPUTATION (web run step W3)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W3. Read relay/ORCH-WEB-COMPLETE.txt
+(Parts A-B), relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" (it
+applies here with this task's names: worktree C:/wt/fw-dossier-engine,
+branch fw-dossier-engine, report REPORT-FW-DOSSIER-ENGINE.txt), and
+CLAUDE.md first. Ruling numbers for this task: R940-R944.
+
+====================================================================
+THE TASK
+====================================================================
+Source, verbatim (tasks/plan.md, Checkpoint D item 2): "Dossier payload
+for a seeded year matches a direct engine computation exactly; PDF is A4
+with the annex expanded and provenance per row". The A4 half is W2's. This
+task is the payload half, plus "annex expanded" and "provenance per row".
+
+The orchestrator's read (pointers, not verdicts):
+- lib/dossier/{aggregate,load,monthly,service}.ts build the dossier;
+  annualResult (monthly.ts:153) calls the engine.
+- tests/unit/dossier/* and tests/db/dossier-route.test.ts exist. Whether
+  any of them compares a seeded year's PAYLOAD, through the real entry
+  point, with an INDEPENDENT engine call on the same inputs is NOT
+  established.
+
+R940. WHAT EXISTS, ESTABLISHED. For each of the three properties, name
+    the test that proves it today (file:line), or say "none":
+    (a) payload = engine;
+    (b) the annex expanded: one row per recorded day, none collapsed;
+    (c) provenance per row (SPEC 12).
+    A test that computes the expected value THROUGH the module under test
+    proves nothing about (a). Say which kind each test is.
+
+R941. (a), IF MISSING: THROUGH THE ENTRY POINT (R204). Seed a year in a
+    scratch database:
+    - mixed kinds;
+    - a mission day;
+    - an absence;
+    - a day on each side of a month boundary.
+    Then call the route that serves the dossier (the route handler, not
+    buildDossier). Compare every figure the engine produces with a direct
+    call to lib/calc-engine on inputs derived from the SEEDED ROWS by the
+    test itself. Do not use toTeleworkInput, because that is the code
+    under test. Exactly, to the engine's own rounding.
+
+R942. (b) AND (c), IF MISSING: on the same seeded year, the annex holds
+    exactly the seeded days, and each row carries its provenance fields
+    (the server timestamp, the source). Fail on one row missing either.
+
+R943. A VERIFIED PLANT (R180) for each new assertion: perturb the
+    dossier's computation (in a scratch edit, verified to have landed),
+    show the RED naming the figure, and revert.
+
+R944. NOTHING ELSE MOVES. No dossier or engine change. A mismatch the
+    test finds is a DEFECT: stop and hand it back with both numbers. It
+    is never a test adjustment.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock, and a scratch database of your own. Never the shared
+   `frontalier` database; see how test:db names and guards its database.
+1. R940.
+2. R941-R943, test-first.
+3. gate:changed (memory read first), commit, push the branch.
+4. gate:clone ALONE on the tip; push.
+5. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-DOSSIER-ENGINE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R940 (the table) / R941-R944 with
+evidence, REDs and plants / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+
+END OF FW-DOSSIER-ENGINE PROMPT

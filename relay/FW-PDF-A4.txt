@@ -1,0 +1,91 @@
+FW-PDF-A4 SESSION PROMPT - Mon Releve
+THE PDF IS A4, ASSERTED FROM THE PDF ITSELF (web run step W2)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W2. Read relay/ORCH-WEB-COMPLETE.txt
+(Parts A-B), relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" (it
+applies here with this task's names: worktree C:/wt/fw-pdf-a4, branch
+fw-pdf-a4, report REPORT-FW-PDF-A4.txt), and CLAUDE.md first. Ruling
+numbers for this task: R935-R939.
+
+====================================================================
+THE TASK
+====================================================================
+Sources, verbatim:
+- SPEC 21 criterion 12: "PDF renders A4 with the same rail and formatters
+  as the web; CSV schema exact".
+- Plan Checkpoint D item 2: "... PDF is A4 with the annex expanded and
+  provenance per row".
+- Checkpoint E item 3 names the PDF A4, the CSV and monochrome print.
+The orchestrator's read: lib/export/pdf.ts:243 passes `format: 'A4'`, but
+no test reads the page size back from a rendered PDF. A4 appears in
+tests/db/container-pdf.test.ts only in comments (lines 195 and 209).
+Configured is not delivered (R154).
+
+R935. THE PAGE SIZE IS READ FROM THE BYTES. A test parses every page's
+    MediaBox (or the effective page box) from a PDF the product actually
+    rendered, and asserts each page is A4.
+    - The expected size and any tolerance are STATED VALUES with their
+      reason, and asserted (R345). For example: ISO 216's 210 x 297 mm in
+      points, and the rounding Chromium applies, measured.
+    - No new dependency (Ask-first): parse the bytes, as pageCount()
+      already does.
+    - If a page box lives in a compressed object stream, say so and handle
+      it, or prove it does not happen in this renderer's output.
+
+R936. IT RUNS IN A GATE. Establish which suites render a PDF today:
+    - the local renderPdf path (test:db?);
+    - the image (the container-pdf test, skipped unless BASE is set; which
+      script sets it?).
+    Put the assertion where a gate runs it. Name the gate and the suite
+    in the report. If the only renderer a gate reaches is local, the
+    assertion lands there AND in the image test.
+    - W1's QUESTION 1 (Web Ruling 2) is part of this: the container
+      harness (scripts/container-e2e.mjs) prints, from its own run, each
+      PDF's page count and page size. Use a verbose reporter, or a
+      print-out in the test, whichever is smaller. Today the count is
+      visible only in a separate verbose run.
+
+R937. A VERIFIED PLANT (R180). Plant a non-A4 page (for example, render
+    with format 'Letter' in a scratch copy, or rewrite the MediaBox in a
+    copy of the bytes). Verify the plant landed where intended (the
+    changed bytes, shown), and show that the test fails naming the page
+    and the size. Then revert, and show the revert.
+
+R938. THE CSV SCHEMA (criterion 12's second half). Establish whether a
+    test asserts the CSV's exact header and column order against the SPEC
+    (12 or wherever SPEC defines it).
+    - If one exists, cite it (file:line) and do nothing.
+    - If not, add it, test-first, with the schema derived from the
+      module's own constant, not retyped (R181).
+    Monochrome print is NOT in this task: record it as open.
+
+R939. NOTHING ELSE MOVES. No renderer change. If the PDF is NOT A4, stop
+    at R935 and hand back with the measured size; that is a defect for a
+    task of its own.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R936: read.
+2. R935 and R937: RED via the plant, then green.
+3. R938.
+4. gate:changed (read memory first), commit, push the branch.
+5. If the image test changed, run the container run that exercises it, to
+   its end.
+6. gate:clone ALONE on the tip; push.
+7. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-PDF-A4.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R935-R939 with evidence and the plant /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF.
+For every PDF rendered, record (QUEUE-STATE PARKED TASKS, the
+9-to-10-page note):
+- the page count;
+- the baked origin;
+- whether MONRELEVE_VERIFICATION_ORIGIN was set;
+- the render's UTC time.
+
+END OF FW-PDF-A4 PROMPT

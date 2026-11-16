@@ -1,0 +1,72 @@
+FW-GATE-CLONE-ADMIN SESSION PROMPT - Mon Releve
+gate:clone SHOWS EVERY SUITE'S COUNT AND ADMINISTERS ITS DATABASE THROUGH postgres (web run step W6)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W6. Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Parts A-B;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-gate-clone-admin, branch
+  fw-gate-clone-admin, report REPORT-FW-GATE-CLONE-ADMIN.txt;
+- relay/QUEUE-STATE.md's PARKED TASKS;
+- CLAUDE.md.
+Ruling numbers for this task: R955-R959.
+
+====================================================================
+THE TASK (two parked findings, both in web/scripts/gate-clone.mjs)
+====================================================================
+Parked, verbatim in substance (QUEUE-STATE PARKED TASKS):
+(1) "gate:clone keeps a 14-line tail per step, so a short unit count is
+    invisible in its log. The step still fails on a red suite, but a run
+    with fewer tests than before reads the same." This was C1b's
+    deviation 6. Queue Rulings 21-22 add a second instance: the size
+    figures were cut off by the same tail.
+(2) "gate:clone administers its scratch database through whatever
+    DATABASE_URL names" (C6's Q1). "From a checkout whose web/.env names
+    frontalier, it opens a session there, but only to CREATE and DROP its
+    own monreleve_gate_clone_<sha8>; no table is touched. The task is a
+    fixed postgres admin connection."
+
+R955. EVERY TEST STEP'S COUNT IS PRINTED IN FULL. For each step that runs
+    a suite, gate:clone prints that suite's own summary lines (files and
+    tests: passed, failed, skipped). It prints the size step's per-route
+    table too, whatever the tail keeps.
+    - The lines are parsed after stripAnsi (R206, R266).
+    - A step whose summary cannot be found FAILS, naming the step. A
+      missing count is NO RESULT, never a pass (R391).
+
+R956. THE CLAIM LINE CARRIES THE COUNTS. The sentence "this commit builds
+    and passes X, Y, Z from a clean checkout" is built from the same
+    parsed counts, so the claim and the counts cannot drift (R206).
+
+R957. THE ADMIN CONNECTION IS postgres. CREATE DATABASE and DROP DATABASE
+    for the scratch database go through a connection to the server's
+    `postgres` database. That connection takes DATABASE_URL's host, port
+    and credentials; it never uses the database DATABASE_URL names.
+    - A test asserts the derived admin URL for a DATABASE_URL naming
+      `frontalier`.
+    - A test asserts that no admin statement is sent to the named
+      database. Use an injected client at unit level, or read the URL the
+      code opens.
+
+R958. A VERIFIED PLANT (R180) for each of R955 and R957, then revert.
+
+R959. NOTHING ELSE MOVES. The steps, their order (R182), the sweep (R266)
+    and the selection are unchanged.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. Read.
+2. R955-R958, test-first.
+3. gate:changed (read memory first), commit, push the branch.
+4. gate:clone ALONE on the tip, which now tests itself. Paste its new
+   output in full.
+5. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-GATE-CLONE-ADMIN.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R955-R959 with evidence / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-GATE-CLONE-ADMIN PROMPT

@@ -1,0 +1,108 @@
+ORCHESTRATION PROMPT - Mon Releve
+THE WEB RUN: CLOSE EVERY WEB ITEM A SESSION CAN CLOSE, THEN ANDROID, THEN iOS
+Written by the orchestrating session on 2026-11-16, on the operator's words
+that day: "complete the web first then android then ios". It follows
+relay/ORCH-NO-PHONE-QUEUE.txt, which ended on 2026-11-12 (Queue Ruling 27).
+State: relay/WEB-QUEUE-STATE.md. Rulings: relay/RULINGS-2026-11-16.txt
+(numbered "Web Ruling <n>"). Ruling numbers for this run: R930-R999.
+
+====================================================================
+PART A - THE OPERATOR'S ANSWERS (2026-11-16, recorded verbatim)
+====================================================================
+A-1. Memory. Asked whether they could free memory (commit free read
+     3 389 MB; the holders were their own apps). Answer: "close them".
+     The orchestrator closed brave, Z-Library, jetbrains-toolbox and
+     WhatsApp.Root (CloseMainWindow, then Stop-Process). CCleaner refused
+     with "Acces refuse" (it runs elevated) and was left alone. VS Code,
+     Claude and ms-teams were not touched. Commit free then read
+     10 200 MB.
+A-2. Merging. Answer: "Merge to main when gated". A web task's branch is
+     fast-forwarded onto main by the orchestrator ONLY after gate:clone
+     ran ALONE and passed on that exact tip (V2). Nothing is deployed:
+     every promotion stays parked on the Coolify token (QUEUE-STATE.md
+     BLOCKED 1, PARKED PROMOTIONS P1-P2).
+A-3. Product decisions. Answer: "Advisor decides". A product question a
+     session raises is put to the advisor; the answer is recorded
+     verbatim as a Web Ruling and the run moves on. The operator may
+     overturn any of them later. Not covered, because it is not a product
+     decision: money, credentials, a GATE A or other budget change (R2,
+     Ask-first), a third-party script, production, Coolify, the server.
+
+====================================================================
+PART B - HOW THE RUN WORKS
+====================================================================
+- Part B of relay/ORCH-NO-PHONE-QUEUE.txt applies unchanged: the
+  verification loop V1-V5, at most three rounds, and THE LIMITS THE
+  ADVISOR CANNOT LIFT (production data, the password rotation, the
+  incident rule, permission refusals, macOS minutes, other projects'
+  containers, databases, volumes and processes).
+- ONE TASK PER SESSION. Each W-task runs as its own session in its own
+  worktree C:/wt/<task> with its own .session-lock.json, from a prompt
+  relay/<TASK>.txt written by the orchestrator just before launch. The
+  session pushes its BRANCH; the orchestrator verifies and merges.
+- SEQUENTIAL. One gate-running session at a time: the memory floor
+  (QUEUE-STATE.md's floor bullet) still binds. Commit free is read in its
+  own step before every gate; a selection starts only at >= its worst
+  solo drop + 2 000 MB (gate:changed with e2e and visual 5 045;
+  gate:clone 3 958; base gate:changed 3 954). A sampler abort or a red
+  shaped like dead workers is NO RESULT, never a verdict.
+- MERGE. Fast-forward only. If main moved, the branch is rebased by its
+  session (or the orchestrator, in its own worktree) and gated again.
+  Every merge to main runs gate:clone ALONE on the exact tip first.
+- RECORDS. relay/WEB-QUEUE-STATE.md is this run's memory; QUEUE-STATE.md
+  is the previous queue's closed record, and its BLOCKED 1-12, PARKED
+  TASKS and PARKED PROMOTIONS still stand. Record commits ride with a
+  merge, so one gate:clone covers both.
+
+====================================================================
+PART C - THE WEB TASKS, IN ORDER (each from a written source)
+====================================================================
+W1  FW-HEALTH-IMAGE. QUEUE-STATE PARKED TASKS, first bullet (PARK-S3,
+    REPORT-FW-CHROMIUM-PIN.txt QUESTION 1): test:container:e2e stops at
+    e2e/home.spec.ts:197. Establish which side is wrong; fix that side;
+    test:container:e2e reaches and passes its PDF step.
+W2  FW-PDF-A4. SPEC 21 criterion 12, plan Checkpoint D item 2 and E item
+    3: the PDF is A4. Assert the page size from the rendered PDF itself,
+    proven by a verified plant (R180).
+W3  FW-DOSSIER-ENGINE. Plan Checkpoint D item 2: the dossier payload for
+    a seeded year matches a direct engine computation exactly, with the
+    annex expanded and provenance per row.
+W4  FW-DB-STOPPED. Plan Checkpoint D item 5, second half: the public site
+    keeps serving with the database stopped. Local proof in the
+    container suite; the staging half stays NOT MET (no staging exists).
+W5  FW-LIGHTHOUSE-CALC. Plan Checkpoint C item 2 and SPEC 21 criterion 8
+    (LCP < 2.5 s slow 4G on the calculator): Lighthouse covers the
+    calculator. A floor it cannot reach is a QUESTION, never a looser
+    gate (R174).
+W6  FW-GATE-CLONE-ADMIN. QUEUE-STATE PARKED TASKS: gate:clone's 14-line
+    tail hides a short unit count; gate:clone administers its scratch
+    database through whatever DATABASE_URL names.
+W7  FW-VISUAL-FILTER. QUEUE-STATE PARKED TASKS: visual.mjs cannot run
+    one spec and reinstalls node_modules on every run.
+W8  FW-WT-SETUP-GUARD. QUEUE-STATE PARKED TASKS: web/scripts/_wt-setup.mjs
+    and _mint-readback.mjs are tracked despite "NOT committed" and write
+    to whatever DATABASE_URL names.
+W9  FW-DOCS-EMAIL-FROM. QUEUE-STATE PARKED TASKS: the docs still naming
+    EMAIL_FROM as a setting or the disputed 2026-10-14 date.
+W10 FW-CALC-BYTES. QUEUE-STATE BLOCKED 11, its first option: free >= 42 B
+    on /calculateur-teletravail-frontalier WITHOUT changing GATE A.
+W11 FW-DELAI-RAPPEL resumed (QUEUE-STATE BLOCKED 12, C10's handoff).
+    Q1-Q7 go to the advisor (A-3).
+W12 FW-WEB-ACCOUNT resumed (QUEUE-STATE BLOCKED 11), after W10. Its three
+    questions go to the advisor (A-3). The second of W11/W12 to merge
+    rebases and regenerates; R912 lands with whichever merges first.
+
+WHAT NO SESSION CAN CLOSE ON THE WEB (stated so "complete" is not read as
+100 %): the promotion of anything to production (the Coolify token);
+analytics (FW15: a third-party script and a host); staging; the expert
+reviewer; the keyword research; the 200 px thumbnail approval; the
+scheduler switch (BLOCKED 6); a GATE A change.
+
+====================================================================
+PART D - ANDROID, THEN iOS
+====================================================================
+Started only when every W-task is merged, or parked with its reason. They
+are re-planned then, from tasks/todo.md AN4/AN6/AN13/AN14/AN15, plan
+Checkpoints F/G/E, parking.md, and the S9, Play and Apple dependencies.
+
+END OF ORCH-WEB-COMPLETE PROMPT

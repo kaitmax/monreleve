@@ -1,0 +1,71 @@
+FW-VISUAL-FILTER SESSION PROMPT - Mon Releve
+visual.mjs RUNS ONE SPEC AND REUSES ITS INSTALL (web run step W7)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W7. Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Parts A-B;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-visual-filter, branch
+  fw-visual-filter, report REPORT-FW-VISUAL-FILTER.txt;
+- relay/QUEUE-STATE.md's PARKED TASKS;
+- CLAUDE.md.
+Ruling numbers for this task: R960-R964.
+
+====================================================================
+THE TASK
+====================================================================
+The parked task, verbatim in substance (QUEUE-STATE PARKED TASKS; C9,
+Queue Ruling 16):
+- web/scripts/visual.mjs cannot run one spec, and reinstalls node_modules
+  on every run.
+- Its container command is fixed (line 171), and --update is its only
+  argument.
+- The install into an anonymous volume takes 10.5 of the run's ~25
+  minutes.
+- The task is a filter pass-through and/or a cached install, as a gated
+  change of its own with a test. Until then, a visual proof runs the full
+  suite.
+
+R960. A FILTER PASS-THROUGH. `pnpm test:visual -- <spec or --grep>` runs
+    only what was named.
+    - Arguments travel as an argv array, never through a shell string.
+    - A test asserts that the container command carries the filter, and
+      that no filter means the full suite.
+
+R961. A CACHED INSTALL. node_modules lives in a NAMED volume, named from
+    the lockfile's hash: a changed lockfile gets a fresh install, an
+    unchanged one reuses it.
+    - Volumes this script creates carry a label naming the product.
+    - It touches no other volume. Never list, prune or remove another
+      project's volume.
+    - Measure the run time before and after, cold and warm.
+
+R962. THE GATE STILL RUNS THE FULL SUITE. gate:changed and gate:clone pass
+    no filter. A test asserts it, so a filter cannot leak into a gate.
+
+R963. A VERIFIED PLANT (R180) for R960 and R962.
+
+R964. NOTHING ELSE MOVES.
+    - The retries are the operator's call under R345 and are NOT changed
+      (CI=true gives retries 2; Queue Ruling 17).
+    - The zero tolerance stays as it is (R345).
+    - No baseline is regenerated.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. Read.
+2. R960-R963, test-first.
+3. gate:changed, then commit and push the branch. Read memory first: this
+   selection probably includes the visual suite, so check its floor.
+4. One filtered run and one full run of test:visual, summaries pasted.
+5. gate:clone ALONE on the tip; push.
+6. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-VISUAL-FILTER.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R960-R964 with evidence and timings /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-VISUAL-FILTER PROMPT

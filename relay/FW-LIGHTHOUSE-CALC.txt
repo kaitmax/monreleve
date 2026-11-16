@@ -1,0 +1,73 @@
+FW-LIGHTHOUSE-CALC SESSION PROMPT - Mon Releve
+LIGHTHOUSE MEASURES THE CALCULATOR, AND ITS LCP ON SLOW 4G (web run step W5)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W5. Read relay/ORCH-WEB-COMPLETE.txt
+(Parts A-B), relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" (it
+applies here with this task's names: worktree C:/wt/fw-lighthouse-calc,
+branch fw-lighthouse-calc, report REPORT-FW-LIGHTHOUSE-CALC.txt), and
+CLAUDE.md (R169, R174, R177) first. Ruling numbers for this task:
+R950-R954.
+
+====================================================================
+THE TASK
+====================================================================
+Sources, verbatim:
+- SPEC 21 criterion 8: "Budgets in 17 green in CI; LCP < 2.5s slow 4G on
+  the calculator; zero third-party requests; zero cookies on public
+  routes".
+- tasks/plan.md, Checkpoint C item 2: Lighthouse, plus the sitemap,
+  robots, canonicals and hreflang.
+
+The orchestrator's read: web/scripts/lighthouse.mjs:99 measures four
+routes, '/', '/guides', the pillar and '/guides/geneve', with the desktop
+preset (lighthouserc.json). Neither the calculator nor the comparator is
+measured, and no run uses slow 4G.
+
+R950. WHY THE CALCULATOR IS ABSENT, ESTABLISHED. Search the reports and
+    rulings (R152, R174, FW20's report, git log -S on the ROUTES line). If
+    a ruling excluded it, quote it and stop at R950 with the question.
+    Otherwise continue.
+
+R951. THE DESKTOP FLOOR COVERS EVERY PUBLIC ROUTE OF ITS KIND. Add
+    /calculateur-teletravail-frontalier and /calculateur-lamal-cmu to the
+    measured routes at the UNCHANGED floor (100, three runs, median;
+    R174). If either cannot reach the floor, the floor does not move:
+    stop at R951 and hand back the failing audits, with their numbers.
+
+R952. CRITERION 8's LCP, MEASURED AS STATED. One mobile collection of the
+    calculator under Lighthouse's slow-4G throttling, asserting
+    largest-contentful-paint < 2500 ms as a STATED value (R345), median of
+    three runs, with the same identity check (R169) and the same styles
+    check (R177) as the desktop run.
+    - If the calculator misses 2.5 s, that is a QUESTION with the numbers,
+      never a looser value.
+    - Report both medians and the three samples.
+
+R953. IT RUNS IN A GATE. Establish which gate runs `pnpm lighthouse`, by
+    reading scripts/gate-selection.mjs and gate-clone.mjs. If none does,
+    say so plainly, and add it where the selector's own rules say it
+    belongs, with a test that the selector picks it. If adding it would
+    break the budget rules (R2), say so and stop.
+
+R954. NOTHING ELSE MOVES. No product code is changed to pass a score. A
+    miss is handed back.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R950 and R953: read.
+2. R951 and R952. RED first: show the new assertion failing on a planted
+   regression, verified (R180). For example, a scratch 3-second blocking
+   script on the calculator for the LCP check. Then revert and go green.
+3. gate:changed (read memory first), commit, push the branch.
+4. gate:clone ALONE on the tip; push.
+5. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-LIGHTHOUSE-CALC.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R950-R954 with evidence (every score and
+sample) / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-LIGHTHOUSE-CALC PROMPT

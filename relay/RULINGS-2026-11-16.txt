@@ -1,0 +1,60 @@
+RULINGS - the web run (relay/ORCH-WEB-COMPLETE.txt), from 2026-11-16
+Each ruling: the evidence, the question, the advisor's answer (verbatim in
+substance), and what was applied and verified.
+
+====================================================================
+WEB RULING 1 - THE RUN'S SHAPE
+====================================================================
+EVIDENCE: main 1a4136f, production 52caca8. Commit free read 3 389 MB;
+docker ps lists only frontalier-postgres. The holders were the user's own
+apps: brave 3 375 MB, Code 2 239 MB, vmmemWSL 1 664 MB and msedgewebview2
+947 MB. QUEUE-STATE's BLOCKED 1-12 and PARKED TASKS stand.
+QUESTION: how does "complete the web first then android then ios" run?
+ANSWER (the advisor, verbatim in substance):
+- Nothing can be gated at 3 389 MB. The holders are the user's own apps,
+  so give them the table and the target, and kill nothing yourself.
+- "Complete the web" lifts no rule. Close every web item a session can
+  close, and park the rest with the operator's action. Each task is one
+  session: its own worktree and lock, test-first, gated, with a report.
+- Ask once whether the run may merge gated branches. Promotion, any
+  GATE A change, Umami, the scheduler and staging stay parked. Start a
+  new state file rather than reopening QUEUE-STATE.
+- Take tasks only from a written source, and order them lightest first:
+  1. home.spec.ts:197; establish which side is wrong. If the image's
+     health touches the database, that is an R375 question.
+  2. The PDF A4 assertion, with a verified plant.
+  3. Dossier = engine (D2).
+  4. The database-stopped proof, local only; D5's staging stays NOT MET.
+  5. Lighthouse on the calculator; a missed floor is a question.
+  6. The tooling parks.
+  7. Free >= 42 B on the calculator, with no budget ruling.
+  8. Resume C10 (never restore scratch-final wholesale).
+  9. Resume C9 after 7 and its answers.
+- Tell the user what code cannot close. Start neither Android nor iOS
+  until every web item is merged, pushed or parked.
+APPLIED: the operator's answers are A-1 to A-3 in relay/ORCH-WEB-COMPLETE.txt.
+The tasks are W1-W12 there. The orchestrator's worktree is C:/wt/web-orch
+(branch web-orch, cut from origin/main 1a4136f), with its lock.
+
+====================================================================
+WEB RULING 2 - W1 FW-HEALTH-IMAGE MERGED; ITS TWO QUESTIONS
+====================================================================
+EVIDENCE: branch fw-health-image b12f518 (code 1bacd2f), based on
+1a4136f. Diff: e2e/home.spec.ts, scripts/container-e2e.mjs, and
+REPORT-FW-HEALTH-IMAGE.txt.
+- gate:changed: test 3 724, test:e2e 367, test:container:e2e exit 0.
+- gate:clone ALONE on 1bacd2f: exit 0. Minimum commit free 5 126 MB.
+- playwright.runtime.config.ts matches only **/*.runtime.spec.ts, so the
+  changed spec has no third runner.
+QUESTIONS (the session's):
+1. Should container-e2e.mjs print each PDF's page count from its own run?
+2. Should the sitemap test at home.spec.ts:144, still titled "not marked
+   as serving", be renamed to name the role?
+ANSWER (the orchestrator; engineering scope, not product):
+1. Yes. It is folded into W2 (FW-PDF-A4, R936), the task that owns the
+   PDF's page facts.
+2. Recorded only. That test asserts the sitemap, not the serving role,
+   and passes in both directions. A title is not a defect under R171; no
+   task.
+APPLIED: relay/FW-PDF-A4.txt R936 carries item 1. The merge is a fast-
+forward of 1a4136f to b12f518, plus the orchestrator's record commit.

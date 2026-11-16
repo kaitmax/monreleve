@@ -1,0 +1,129 @@
+FW-HEALTH-IMAGE SESSION PROMPT - Mon Releve
+test:container:e2e STOPS AT e2e/home.spec.ts:197 (web run step W1)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W1. Read relay/ORCH-WEB-COMPLETE.txt
+(Parts A-B), relay/QUEUE-STATE.md's PARKED TASKS (first bullet), and
+CLAUDE.md first. Your own advisor may advise you. Reserved items come back
+to the orchestrator: dependencies, production, Coolify and the server.
+Ruling numbers for this task: R930-R934.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+R241: the only thing that ends this session is REPORT-FW-HEALTH-IMAGE.txt,
+committed and pushed on your branch. If something is unclear, R156 applies:
+take the conservative, reversible choice, record it as an UNNUMBERED-n
+entry, and continue.
+
+Worktree and lock (R334, R349, R392):
+- Work in your OWN worktree at C:/wt/fw-health-image, on a NEW branch
+  fw-health-image cut from origin/main at BASE_SHA (the orchestrator's
+  launch message).
+- Put your .session-lock.json in it.
+- In the main checkout you may run `git fetch` and `git worktree add`, and
+  nothing else.
+
+Commits and pushes:
+- Stage files BY NAME. `git add -A` is repo-wide.
+- Push fw-health-image ONLY. DO NOT MERGE: the orchestrator merges after
+  its own checks.
+- Test-first: show a RED run, with its reason, before each change of
+  behaviour.
+- gate:changed before every commit, and gate:clone ALONE before the final
+  push (R199).
+
+Memory floor (relay/ORCH-WEB-COMPLETE.txt Part B):
+- Read commit free in its own step before every gate:
+  `[math]::Round((Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory/1024)`.
+- A selection with e2e and visual starts only at >= 5 045 MB, gate:clone
+  at >= 3 958.
+- A sampler abort, or a red shaped like dead workers, is NO RESULT.
+
+Ports and databases:
+- Ports 3000, 3100 and 3200 belong to another project. Use
+  FRONTALIER_PORT=3300 (or higher) where a port is needed.
+- Never run test:db against the shared `frontalier` database.
+- Never `migrate reset` it.
+- Never touch another project's container.
+
+====================================================================
+THE TASK
+====================================================================
+The parked finding, verbatim in substance (QUEUE-STATE PARKED TASKS):
+test:container:e2e stops at e2e/home.spec.ts:197 against the image
+(`database?.ok` expected null, received true), so it never reaches its PDF
+step. It was REPORT-FW-CHROMIUM-PIN.txt's QUESTION 1 and was never ruled.
+The task first establishes which side is wrong. If the image's /api/health
+touches the database, that is an R375 question to hand back, not a test
+edit.
+
+The orchestrator's first read (a pointer, not a verdict; verify it):
+- line 197 is in the /api/ready test "... when the process is not marked
+  as serving";
+- app/api/health/route.ts reads only environment and site state;
+- lib/content/readiness.ts evaluates the database check only when
+  FRONTALIER_RUNTIME is set.
+So the likely defect is the test's PREMISE under the container (the image
+is marked as serving), not the route. Establish it from the Dockerfile,
+scripts/entrypoint.mjs and scripts/container-e2e.mjs. Also establish why the
+/api/health test above it (`runtime` false) does or does not fail in the
+same run.
+
+R930. WHICH SIDE IS WRONG, ESTABLISHED. In the report, give the evidence
+    for each step: what the image sets, what /api/health and /api/ready
+    return from the running image (pasted, with the time), and the line
+    that decides it. If /api/health reads the database in any path, STOP
+    at R930 and hand back the R375 question.
+
+R931. THE FIX NAMES A ROLE, NOT A COINCIDENCE (R171). If the test is wrong:
+    - the spec reads whether the server under test is serving (from the
+      server itself, e.g. /api/health's `runtime`) and asserts the state
+      that matches;
+    - not serving: the database check is listed with ok null;
+    - serving: it is evaluated and ok true, and ready is true;
+    - BOTH directions are exercised: the host e2e run covers one, the
+      container run the other (R196's shape);
+    - the same treatment applies to any sibling assertion that has the
+      same premise.
+    Never skip the test in the container, and never loosen it.
+
+R932. THE CONTAINER SUITE REACHES ITS PDF STEP. `pnpm test:container:e2e`
+    runs to its end: paste its summary and the PDF step's lines. For the
+    unexplained 9-to-10-page change (QUEUE-STATE PARKED TASKS), record:
+    - the page count;
+    - the image's baked origin;
+    - whether MONRELEVE_VERIFICATION_ORIGIN was set;
+    - the render's UTC time.
+    Do not investigate the page count in this task.
+
+R933. NOTHING ELSE MOVES. No route, readiness or Dockerfile change unless
+    R930 proves the route side wrong. If it does, stop and hand back.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree, lock.
+1. R930: read, then run the image and paste the answers.
+2. R931: RED first (the spec as fixed, against the side it was wrong
+   for, failing for the stated reason or passing where it previously
+   failed; say which), then green.
+3. gate:changed (memory read first), commit, push the branch.
+4. R932: test:container:e2e to its end.
+5. gate:clone ALONE on the tip; push.
+6. The report; commit; push. Remove your lock last.
+
+====================================================================
+REPORT - REPORT-FW-HEALTH-IMAGE.txt (ASCII, committed and pushed)
+====================================================================
+- SUMMARY
+- STATUS (R391 shape)
+- R930-R933, each with its evidence and its RED
+- WALKTHROUGH: /api/health and /api/ready from `pnpm dev` and from the
+  image, pasted
+- NOTICED BUT NOT TOUCHING
+- DEVIATIONS
+- QUESTIONS
+- PUSH PROOF: the branch, the tip SHA, gate:changed's printed selection,
+  gate:clone's claim line and exit code
+
+END OF FW-HEALTH-IMAGE PROMPT

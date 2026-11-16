@@ -1,0 +1,64 @@
+FW-WT-SETUP-GUARD SESSION PROMPT - Mon Releve
+THE TWO TRACKED "NOT committed" SCRIPTS: REMOVED OR GUARDED (web run step W8)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W8. Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Parts A-B;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-wt-setup-guard, branch
+  fw-wt-setup-guard, report REPORT-FW-WT-SETUP-GUARD.txt;
+- relay/QUEUE-STATE.md's PARKED TASKS;
+- CLAUDE.md.
+Ruling numbers for this task: R965-R969.
+
+====================================================================
+THE TASK
+====================================================================
+The parked task, verbatim in substance (QUEUE-STATE PARKED TASKS; C6's
+NOTICED, Queue Ruling 9):
+- web/scripts/_wt-setup.mjs and _mint-readback.mjs are tracked despite
+  their "NOT committed" header.
+- They write to whatever DATABASE_URL names, outside test:db's guard.
+- The task is to remove them or guard them. Sessions do not run them.
+
+R965. WHO USES THEM, ESTABLISHED. Find every reference: scripts,
+    package.json, docs, relay prompts and reports. Use git log for when
+    and why each was committed, and quote the commit.
+
+R966. THE CHOICE, BY THE EVIDENCE.
+    - If nothing references a script and its purpose is spent, remove it
+      in a commit that names R965's evidence.
+    - Otherwise guard it. It refuses (non-zero, naming the reason) unless
+      DATABASE_URL names a database matching test:db's scratch pattern.
+      Read that pattern from the guard's own module (R206), never
+      retyped.
+    Removal is a code change on your branch: reversible, recorded, and
+    sanctioned by the parked task's own words. It touches no one else's
+    working files (R334).
+
+R967. A TEST FOR WHAT REMAINS.
+    - If guarded: a test proves it refuses for a `frontalier` URL and
+      proceeds for a scratch one (both directions, R196).
+    - If removed: a test, or the R246/R251 census, proves no reference is
+      left dangling.
+
+R968. A VERIFIED PLANT (R180) for the guard, if there is one.
+
+R969. NOTHING ELSE MOVES.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R965.
+2. R966-R968, test-first.
+3. gate:changed (read memory first), commit, push the branch.
+4. gate:clone ALONE on the tip; push.
+5. Report; commit; push; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-WT-SETUP-GUARD.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R965-R969 with evidence / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-WT-SETUP-GUARD PROMPT
