@@ -113,17 +113,28 @@ The PDF IS A4. R939's stop condition did not arise.
 R936. IT RUNS IN A GATE
 -----------------------
 Which suites render a PDF today, established:
-1. The local renderPdf path through the route: tests/db/export-pdf.test.ts,
-   under test:db. Its render blocks (AC1, AC2, AC3, R329, R516; 17 tests) are
-   skipIf('skip' in LIVE), and LIVE needs a server naming this product on
-   FRONTALIER_PORT, PORT or 3000.
+1. The local renderPdf path through the route, under test:db. Every file
+   that imports the PDF route or lib/export/pdf (CORRECTED; the first search
+   matched strings like renderPdf and %PDF and missed route importers):
+   - tests/db/export-pdf.test.ts: 15 render tests (AC1 3, AC3 2, R329 2,
+     AC2 7, R516 1), each skipIf('skip' in LIVE);
+   - tests/db/verification-qr.test.ts: 2 render tests (the QR block and its
+     absence), skipped on the same condition, with their own R133 line;
+   - tests/db/dossier-route.test.ts: the PDF route's REFUSALS only (400
+     year_before_activity, 422 dossier_incomplete), with no render;
+   - tests/db/container-pdf.test.ts: item 2 below.
+   LIVE needs a server naming this product on FRONTALIER_PORT, PORT or 3000.
    - gate:changed's test:db starts none.
    - gate:clone's test:db starts none.
    - CI's web job runs test:db before `pnpm build` (ci.yml:285).
-   - Measured, no server (16:57:52Z, r936-testdb-noserver.log):
+   - Measured, no server, export-pdf and container-pdf only (16:57:52Z,
+     r936-testdb-noserver.log):
        [export-pdf] R133: the render tests did not run - no server answered
        http://localhost:3300/api/health ...
        Test Files 1 passed | 1 skipped (2); Tests 7 passed | 17 skipped (24)
+     The 17 skips are export-pdf's 15 and container-pdf's 2.
+   - In the gate (gate-changed-2.log:964) verification-qr printed its R133
+     skip line as well.
    So no gate renders through this path. Nothing was added to it.
 2. The image: tests/db/container-pdf.test.ts, skipIf(CONTAINER_BASE_URL
    unset). ONLY scripts/container-e2e.mjs sets it (pnpm test:container:e2e).
@@ -173,8 +184,10 @@ W1's QUESTION 1 (Web Ruling 2), the harness prints the page facts:
   argument).
 - It prints every `[pdf]` line under "--- the PDF, from this run: page count
   and page size (R936) ---".
-- It FAILS when no `[pdf]` line is present, as it already does for a zero
-  pass count.
+- It is written to FAIL when no `[pdf]` line is present, as it already
+  does for a zero pass count. That branch is shown BY READING, NOT
+  EXERCISED: no run has removed the line and watched the harness refuse.
+  capture-check.mjs below is a copy of the filter, not the harness.
 - Measured in the harness's own capture shape (execFileSync, non-TTY,
   .pdf-evidence/capture-check.mjs against pnpm dev, 17:09:54Z):
     reporter=default: [pdf] lines 0; Tests passed parsed: 9
@@ -224,7 +237,9 @@ PLANT A - one NON-FIRST page's /MediaBox rewritten in a copy of the bytes.
     + "page 5 (object 32) is 612.00 x 792.00 pt = 215.9 x 279.4 mm; A4 is
        210 x 297 mm portrait, +/- 1 mm per side"
   The page and object the test names are the ones the plant script chose
-  independently. The unplanted "here" side passed.
+  independently. The unplanted "here" side was NOT asserted in this run,
+  because expectA4(fromImage) threw first. What the run shows for "here" is
+  the `[pdf]` line: 10 pages, all 595.92 x 842.88 pt.
 - Unplanted, the same test at 17:07:17Z (r935-green-dev.log): 2 passed,
     [pdf] image: 198493 bytes, 10 pages, 595.92x842.88pt x10;
           here: 198493 bytes, 10 pages, 595.92x842.88pt x10
@@ -335,12 +350,13 @@ monreleve_fw_pdf_a4), driven through the export route:
 
 NOTICED BUT NOT TOUCHING
 ------------------------
-1. tests/db/export-pdf.test.ts's 17 render tests run in NO gate. These are
-   AC1, AC2 (banned words, rail, annex rows, fonts, French decimals), AC3,
-   R329 and R516. They need a live server, and gate:changed, gate:clone and
-   CI's test:db start none (R936 item 1). Their claims hold only when
-   somebody runs them by hand against `pnpm dev`. Not this task's
-   (R939); see QUESTION 2.
+1. 17 render tests run in NO gate.
+   - tests/db/export-pdf.test.ts's 15: AC1, AC2 (banned words, rail, annex
+     rows, fonts, French decimals), AC3, R329 and R516.
+   - tests/db/verification-qr.test.ts's 2: the QR block, and its absence.
+   They need a live server, and gate:changed, gate:clone and CI's test:db
+   start none (R936 item 1). Their claims hold only when somebody runs them
+   by hand against `pnpm dev`. Not this task's (R939); see QUESTION 2.
 2. The dev server's first render can exceed the db suite's 10 s timeout:
    the cold compile of /releve/print took 10.1 s. A retry passes. Anyone
    running export-pdf.test.ts against a fresh `pnpm dev` meets it.
@@ -414,10 +430,10 @@ QUESTIONS
      6 minutes with a warm Docker cache. Its memory floor is the e2e one.
    - The alternative is a narrower claim: "A4 is asserted when the container
      suite runs".
-2. export-pdf.test.ts's 17 render tests (NOTICED 1) run in no gate. Should
-   test:db get a live server in gate:changed, gate:clone and CI? Or should
-   their assertions join the container step, which already renders? That is
-   a task of its own.
+2. 17 render tests run in no gate: export-pdf.test.ts's 15 and
+   verification-qr.test.ts's 2 (NOTICED 1). Should test:db get a live server
+   in gate:changed, gate:clone and CI? Or should their assertions join the
+   container step, which already renders? That is a task of its own.
 3. Monochrome print (Checkpoint E item 3) remains open, as the prompt
    directs.
 
@@ -469,8 +485,15 @@ gate:changed, run 2, the gate of record:
         [pdf] image: 163859 bytes, 10 pages, 595.92x842.88pt x10; here: 198316 bytes, 10 pages, 595.92x842.88pt x10
       scratch database monreleve_container_e2e dropped
       CONTAINER E2E PASSED - the deployed artefact served the whole suite (R249).
-  - test:db: 714 passed | 26 skipped. The skips are export-pdf.test.ts's
-    17 (its R133 line printed), container-pdf's 2 and container-auth's 7.
+  - test:db: 714 passed | 26 skipped; Test Files 47 passed | 3 skipped.
+    - The 26 (CORRECTED from "17 + 2 + 7" in the first push of this
+      report) are export-pdf's 15, verification-qr's 2, container-pdf's 2
+      and container-auth's 7.
+    - The 3 skipped files are verification-qr, container-pdf and
+      container-auth. export-pdf has passing refusal tests, so it is not
+      one of them.
+    - export-pdf (:958) and verification-qr (:964) each printed their R133
+      line.
 
 gate:clone, ALONE, on e5bc035:
 - Under run-sampled.ps1, cmd=pnpm gate:clone. FRONTALIER_PORT=3300 and
@@ -506,5 +529,20 @@ Cleanup (17:43:14Z):
   15917a169dbf, the image the gate:changed PDF facts above came from, is no
   longer tagged; its facts were read at 17:27:38-17:27:58Z, before gate:clone
   started. monreleve:write and the other monreleve:* tags are not mine.
-- :3300 and :3301 have no listener. The lock is removed last, after this
-  report is pushed.
+- :3300 and :3301 have no listener, re-read after both gates at 17:46:53Z:
+  netstat shows no LISTENING entry, and curl exits 7 on each. The lock is
+  removed last, after this report is pushed.
+
+CORRECTIONS (the second report commit, after an advisor read of the first)
+------------------------------------------------------------------------
+- R936 item 1, NOTICED 1, QUESTION 2 and the test:db breakdown in PUSH PROOF
+  said export-pdf.test.ts had 17 render tests. It has 15; the 17 in the
+  no-server run included container-pdf's 2. verification-qr.test.ts (2
+  render tests) and dossier-route.test.ts (refusals only) were missing from
+  the inventory. The conclusion is unchanged: only test:container:e2e renders
+  in a gate.
+- Plant A: "the unplanted here side passed" overstated the run. The "here"
+  assertion was not reached; the `[pdf]` line is what shows its size.
+- The harness's missing-`[pdf]` refusal is now marked as shown by reading,
+  not exercised.
+- No code changed; the code commit is still e5bc035.
