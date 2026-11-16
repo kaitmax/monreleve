@@ -1,0 +1,380 @@
+REPORT-FW-DOSSIER-ENGINE
+========================
+
+Web run step W3 (relay/ORCH-WEB-COMPLETE.txt Part C), prompt
+relay/FW-DOSSIER-ENGINE.txt, rulings R940-R944. Branch fw-dossier-engine in
+worktree C:/wt/fw-dossier-engine, cut from origin/main
+fc446b5701ce128171e118abee58e480fb97e192. The lock .session-lock.json was
+written at the start and is gitignored. Evidence is in
+C:/wt/fw-dossier-engine/.dossier-evidence/ (gitignored): every log named
+below, the plant runner and its per-plant logs, and the sampler files.
+Scratch database: monreleve_fw_dossier_engine on frontalier-postgres.
+
+SUMMARY
+-------
+- PAYLOAD = ENGINE HELD, EXACTLY. No DEFECT. On a seeded year, GET
+  /api/v1/dossier (the route handler) serves 22 engine figures, and every
+  one equals a direct calculateTelework call on inputs this test derives
+  from its own seed table, compared in wire form with toStrictEqual.
+- R940: before this task NO test proved (a), (b) or (c) through the entry
+  point on a seeded year. Every existing (a) check takes its expected value
+  through lib/dossier; (b) and (c) were covered only partly, at unit level
+  or on one rendered cell.
+- R941-R942: one new file, web/tests/db/dossier-engine.test.ts (5 tests,
+  in test:db). It imports prisma, issueTokenPair, the route's GET and the
+  engine - nothing from lib/dossier.
+- R943: nine verified plants, one per source line the assertions guard.
+  Each went RED naming the figure or row with both values, and each file
+  was restored to HEAD's blob.
+- R944: nothing else moved. lib/dossier/* and lib/calc-engine/* are
+  byte-identical to main.
+
+STATUS (R391)
+-------------
+COMPLETE for the web gates this task owns.
+- gate:clone ran ALONE on the code tip 846bc19, in this session: STEP_EXIT=0,
+  ABORTED=False. Its "ran" line names db:deploy, test:db and
+  test:container:write (claim block under PUSH PROOF).
+- gate:changed ran on the same content before the commit: STEP_EXIT=0,
+  ABORTED=False, test 3 752 passed, test:db 719 passed.
+- The report commit adds only REPORT-FW-DOSSIER-ENGINE.txt on top of
+  846bc19.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+
+R940. WHAT EXISTS, ESTABLISHED
+------------------------------
+Kinds: THROUGH = the expected value comes from the module under test, which
+proves nothing about (a). INDEPENDENT = typed by the test or read from a
+fixture. UNIT = buildDossier or lower, not the route, not a seeded DB.
+
+(a) payload = engine: NONE before this task.
+  - tests/db/dossier-route.test.ts:191 "matches buildDossierFor field for
+    field". Route vs buildDossierFor. THROUGH. Proves the route
+    serialises; a wrong figure in lib/dossier passes it.
+  - tests/unit/dossier/service.test.ts:283 (December = annual),
+    :226 (creditedMissionDays = dossier.result's), :246 (rateWithoutMissions
+    = buildDossier on the filtered rows). THROUGH, UNIT.
+  - tests/unit/dossier/monthly.test.ts:53 (December = annualResult). THROUGH,
+    UNIT.
+  - tests/unit/dossier/aggregate.test.ts:99 (engine result identical with and
+    without absences, both via toTeleworkInput). THROUGH, UNIT.
+  - Closest INDEPENDENT ones, none of them (a):
+    - service.test.ts:104 workedDays toBe(240) and :226 toBe(5): typed, one
+      figure each, UNIT, default settings.
+    - tests/unit/dossier/aggregation-fixture.test.ts:97: toTeleworkInput
+      against fixtures/aggregation-cases.json. INDEPENDENT, but of the engine
+      INPUT, UNIT.
+    - tests/db/scenario-accounts.test.ts:277: 20 < declarableRate < 40 on a
+      seeded account. A bound, not an equality, THROUGH buildDossierFor.
+
+(b) the annex expanded, one row per recorded day, none collapsed: NONE
+    through the entry point on a seeded year. Partial:
+  - tests/db/print-route.test.ts:149 "expands the annex - there is no
+    <details>": INDEPENDENT, on rendered HTML, an absence assertion. It does
+    not count rows.
+  - service.test.ts:141 (three logged rows incl. an AM/PM pair, typed list),
+    :175 (two logged rows), :352 (261 weekdays, empty year), :302/:316/:341
+    (gap and weekend rows): INDEPENDENT, UNIT.
+  - tests/db/dossier-route.test.ts:231: route, but an EMPTY year (no
+    recorded row).
+  - tests/db/export-csv.test.ts:147: CSV days = buildDossierFor's annex days.
+    THROUGH.
+  - tests/db/export-pdf.test.ts:437: PDF text holds every annex day, expected
+    THROUGH buildDossierFor, and a render test that skips in every gate
+    (REPORT-FW-PDF-A4 NOTICED 1).
+  - tests/db/scenario-accounts.test.ts:239, :383: counts gaps / half rows >=
+    N, THROUGH buildDossierFor.
+
+(c) provenance per row (SPEC 12 item 5): NONE per row.
+  - service.test.ts:191 (lastModifiedAt), :159 (late), :302 (a gap row's
+    null stamp): INDEPENDENT, UNIT, one field each. No test asserted that a
+    recorded row's provenance or firstRecordedAt reach the payload.
+  - tests/db/print-route.test.ts:379, :397 (R586): ONE row's receipt stamp
+    in the rendered HTML, as Paris time. INDEPENDENT, one row, one field.
+  - tests/db/account-export.test.ts:370: provenanceLabel, but on
+    /api/v1/account/export, another route.
+  - tests/unit/export/csv.test.ts:37: the CSV header (column names), not
+    values.
+
+R941. (a) THROUGH THE ENTRY POINT
+---------------------------------
+web/tests/db/dossier-engine.test.ts. One beforeAll seeds the year and
+calls GET /api/v1/dossier?year=2026 with a bearer token (R204).
+
+The seed (the SEED table in the file, 59 rows, all of 2026):
+- The person: canton GE, employmentRate 80, granularity HALF_DAY,
+  SIMPLIFIED240, no activityStartDate. Non-default on purpose: a dossier that
+  ignored the rate or the granularity would agree with an engine called on
+  the defaults. 80 % makes the basis 192 and the mission cap 8.
+- Mixed kinds: CH 23.5 days, HOME 21, MISSION_FR 6, MISSION_THIRD 4, ABSENT
+  2.5. Ten missions against a cap of eight, so credited (8) differs from
+  logged (10) and the engine warns MISSION_CAP_EXCEEDED.
+- A mission day: 2026-01-09 MISSION_FR (and nine more).
+- An absence: 2026-02-02 CONGE, 2026-02-03 AM MALADIE, 2026-04-03 FERIE.
+- The month boundary: HOME on 30 and 31 March and on 1 April.
+- For the annex: two half-day pairs of DIFFERENT kinds (01-08 AM HOME / PM
+  CH; 02-03 AM ABSENT / PM HOME), a logged Saturday (01-10), all three
+  provenances, one late row (02-05, stamped 15 days later), one
+  offline-synced row (03-31, clientClaimedAt 17:45Z, stamped 04-01 07:12Z),
+  one modified row (01-07, a MODIFIED EntryEvent at 19:40Z).
+
+The test's own derivation, with no lib/dossier code:
+- FULL = 1 day, AM/PM = 0.5 (SPEC 8). HOME is telework, MISSION_FR and
+  MISSION_THIRD are missions, CH and ABSENT reach no engine input (D28).
+- No activityStartDate, so periodFraction 1 (SPEC 7.4). Months are read
+  from the ISO strings of the seed table, never from a Date getter.
+- 14 engine calls: the year, the year with the mission rows removed, and
+  January-to-month for each of the 12 months.
+
+PRESENCE FIRST (its own test), before any comparison: status 200; database
+rows = seed rows (59); a non-zero rate; credited missions > 0 and != logged;
+warnings non-empty; rawRate != declarableRate; rate without missions !=
+rate; March's cumulative != April's, and != March without 31 March; all three
+provenances; 59 distinct stamps; each split day split between two kinds.
+
+THE COMPARISON: 22 engine figures, each with its own label, expect.soft,
+toStrictEqual against the engine value in wire form
+(JSON.parse(JSON.stringify(...))). Printed before asserting
+(run2-unplanted.log), served | engine:
+  tiles.workedDays: 192 | 192
+  zone.declarableRate: 15.1 | 15.1
+  zone.rawRate: 16.2 | 16.2
+  zone.ratesDiffer: true | true
+  zone.fiscalCeilingDays: 76.80000000000001 | 76.80000000000001
+  zone.remainingToFiscal: 47.5 | 47.5
+  zone.remainingToSocial: 66.5 | 66.5
+  zone.warnings: [{"code":"MISSION_CAP_EXCEEDED","cap":8,"excess":2}] | (same)
+  creditedMissionDays: 8 | 8
+  rateWithoutMissions: 10.93 | 10.93
+  months[0..11].cumulativeDeclarableRate: 2.34, 6.77, 11.97, 15.1, then
+    15.1 to December | identical, month by month
+- Checked by hand from the seed: (21 + 8) / 192 = 15.104 truncated 15.10;
+  (21 + 10) / 192 = 16.146 rounded up 16.2; 21 / 192 = 10.9375 truncated
+  10.93; January (2.5 + 2) / 192 = 2.34.
+- The engine's TeleworkResult fields that are NOT on the wire, so nothing
+  can compare them: regime, regimeApplies, missionCap, swissTaxedDays,
+  frenchTaxedDays (`result` is deliberately not serialised; service.ts
+  DOSSIER_RESPONSE_FIELDS).
+- A second test compares the payload's ROW COUNTS with the test's own count
+  of the seed (68 values: tiles.swissDays, teleworkDays, missionDays,
+  absenceDays, recordedEntries, employmentRate, period.fraction,
+  period.startDate, and five counts per month). They are row counts, never
+  compared with the engine's taxed-day or credited figures.
+
+R942. (b) AND (c), SAME SEEDED YEAR
+-----------------------------------
+(b) The recorded annex rows, described as "day portion kind [reason]", equal
+    the seed's 59 exactly: the missing list and the unexpected list are each
+    asserted empty with the rows named in the label, and the count is
+    asserted (a duplicate passes a set comparison). Every other row is an
+    unlogged weekday of 2026 (the test walks the calendar itself) with no
+    stamp and no source. Annex length = 59 + 205 unlogged weekdays = 264
+    (2026 has 261 weekdays; 56 are seeded, and one Saturday is logged).
+(c) For each of the 59 seeded rows, matched by (dayDate, portion):
+    firstRecordedAt (the server stamp) and provenance (the source) are each
+    asserted against the seed, so one row missing either fails by name. Also
+    asserted per row: detectedKind, clientClaimedAt, lastModifiedAt, late,
+    note. Each optional field occurs in both states in the seed.
+
+R943. VERIFIED PLANTS (R180)
+----------------------------
+The runner is .dossier-evidence/plant.mjs. For each plant it:
+- checks the target file's blob equals HEAD's;
+- asserts EXACTLY ONE match of the original line before writing (R211);
+- writes the plant and checks `git diff -U0` shows exactly one line out and
+  one line in, and that they are these (R180: verified landed);
+- runs the new test file alone against the scratch database;
+- restores the original bytes and checks the blob equals HEAD's again and
+  `git diff --quiet` exits 0.
+In every planted run the PRESENCE test passed (status 200), so no RED is a
+500 (NO RESULT).
+
+The plants of record ran on the COMMITTED test (846bc19), 18:41:46-18:42:13Z,
+before gate:clone started; logs in
+.dossier-evidence/plants-final/. (A first round at 18:28-18:29Z, in
+plants/, gave the same REDs; P1-P4 of it predate a label-only edit to the
+(b) and (c) assertions, which is why the round was repeated.)
+
+  plant  source line changed (lib/dossier)                     RED, verbatim
+  P1  service.ts  zone declarableRate: result.declarableRate
+      -> result.rawRate
+      "zone.declarableRate: expected 16.2 to strictly equal 15.1"
+  P2  aggregate.ts  employmentRate: user.employmentRate -> 100 (the
+      person's settings ignored)
+      21 figures, from "tiles.workedDays: expected 240 to strictly equal
+      192" and "zone.warnings: expected [] ..." to every month's cumulative
+  P3  monthly.ts  the cumulative slice `<= month` -> `=== month` (a
+      per-month rate wearing the cumulative label)
+      "months[1].cumulativeDeclarableRate (January to month 2): expected
+      4.42 to strictly equal 6.77" and every later month; January holds,
+      as it must
+  P4  service.ts  the rate-without-missions filter drops only MISSION_FR
+      "rateWithoutMissions: expected 13.02 to strictly equal 10.93"
+  P5  service.ts  buildAnnex keeps one entry per day (a split day collapsed)
+      (b) "seeded rows the annex does not carry: 2026-01-08 PM CH;
+      2026-02-03 PM HOME"; (c) "seeded rows with no annex row to read:
+      2026-01-08 PM; 2026-02-03 PM"
+  P6  service.ts  provenance -> null on the one modified row
+      "annex 2026-01-07 FULL: provenance (the source): expected null to be
+      'DETECTED_CORRECTED'"
+  P7  service.ts  firstRecordedAt -> clientClaimedAt ?? firstRecordedAt (the
+      client clock wins, on the one offline row)
+      "annex 2026-03-31 FULL: firstRecordedAt (the server stamp): expected
+      '2026-03-31T17:45:00.000Z' to be '2026-04-01T07:12:00.000Z'"
+  P8  service.ts  firstRecordedAt -> null on the one modified row
+      "annex 2026-01-07 FULL: firstRecordedAt (the server stamp): expected
+      null to be '2026-01-07T18:05:00.000Z'"
+  P9  service.ts  the missions tile drops MISSION_THIRD (the counts test)
+      "tiles.missionDays: expected 6 to strictly equal 10"
+In each message the first value is the served one and the second the
+expected one (the engine's, or the seed's).
+
+The PRESENCE test is a precondition, not a property of the dossier: its
+own checks are about the seed (each one is what makes a later assertion
+discriminate). It has no plant; a plant that made the route fail would be
+a 500, which is NO RESULT.
+
+After the second round: lib/ == HEAD (`git diff --quiet HEAD -- lib` exit
+0), `git status --porcelain` empty, and the unplanted file 5 passed.
+
+R944. NOTHING ELSE MOVES
+------------------------
+- Changed: one new file, web/tests/db/dossier-engine.test.ts. No dossier,
+  engine, route, schema or config change.
+- `git diff --quiet fc446b5 HEAD -- web/lib web/app web/prisma` exit 0
+  (checked at 18:58:33Z, on 846bc19, with web/scripts too).
+- The test found no mismatch, so there is no DEFECT to hand back.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. "provenance per row" on the RENDERED document is asserted nowhere that a
+   gate runs. app/releve/print/page.tsx:508 maps provenance to its words
+   (Saisie manuelle / Detection confirmee / corrigee), and no test reads
+   those words row by row: print-route.test.ts checks the headings and one
+   stamp cell; export-pdf.test.ts:437 checks every DAY is printed but skips
+   in every gate. This task proves the payload carries it; whether every
+   rendered row prints it is QUESTION 1.
+2. Proration is not covered by the new test: activityStartDate is null, so
+   periodFraction is 1. A mid-year person would need the test to derive the
+   fraction itself, and the only home of that arithmetic
+   (remainingYearFraction, lib/ui/core/period.ts) is what aggregate.ts
+   calls - using it would compare the code with itself. QUESTION 2.
+3. The EXACT denominator path and DAY granularity are not in this seed (one
+   person, one year). The engine fixtures cover EXACT; the payload path for
+   it is covered only THROUGH lib/dossier.
+
+DEVIATIONS
+----------
+1. UNNUMBERED-1 (R156): gate:changed's selection (base chain + test:db)
+   has no measured start line. WEB-QUEUE-STATE's "base 3 954" was measured
+   without test:db. I held it to gate:clone's 4 676, a superset of its
+   suites. It did not bind: the read was 6 974 MB (18:31:25Z). The measured
+   drop is under PUSH PROOF, so the queue has a line for this selection.
+2. The first plant round's P1-P4 ran before a label-only edit to the (b)
+   and (c) assertions. All nine were rerun on the committed file; those are
+   the plants of record.
+3. The test's `[dossier-engine]` figure print is absent from the gate log:
+   vitest's default reporter drops console output in a non-TTY capture (W2
+   found the same). The evidence that the file ran in the gate is the count:
+   test:db 714 -> 719 passed (+5, this file's five tests), test files 47 ->
+   48 passed. The print is in the verbose runs (run2-unplanted.log).
+4. The seed writes each row's firstRecordedAt explicitly rather than taking
+   the column default now(). That makes every expected stamp known and
+   distinct, so a swapped or substituted stamp fails by row. What it proves
+   is that the stored server stamp reaches the payload unchanged; the
+   default and the immutability trigger are append-only.test.ts's.
+5. The scratch database was created through a one-command temporary copy
+   of .dossier-evidence/db-admin.mjs inside web/ (so `pg` resolves),
+   deleted in the same command. Credentials were read from the main
+   checkout's web/.env by script and never printed; no command line carried
+   one, and the sampler's cmd= lines read "pnpm gate:changed" and "pnpm
+   gate:clone".
+6. Nothing was written to the orchestrator's scratchpad or to any other
+   worktree. C:/wt/queue-evidence/run-sampled.ps1 was run in place, reading
+   only.
+
+QUESTIONS
+---------
+1. Should a gated test assert every rendered annex row's provenance words
+   and stamp (print-route.test.ts renders without a live server, so it would
+   run in test:db)? Today the payload carries both (this task) and the
+   renderer maps them (page.tsx:508), but no gated test reads them back
+   from the page, row by row. It fits W3b (FW-PDF-RENDER-GATE) or a task of
+   its own.
+2. Should proration be covered by a seeded mid-year person? The expected
+   fraction would have to be typed (e.g. from SPEC 7.4's own example) rather
+   than computed, because the one implementation is the code under test.
+
+PUSH PROOF
+----------
+Branch: fw-dossier-engine (pushed; not merged).
+Code commit: 846bc19db09e488454fcd54ed9cb865f55d46f88, pushed; ls-remote
+showed refs/heads/fw-dossier-engine at 846bc19 before gate:clone ran. This
+report is the commit on top of it.
+
+gate:changed, the gate of record for the commit:
+- Under run-sampled.ps1, cmd=pnpm gate:changed. DATABASE_URL (the scratch
+  database monreleve_fw_dossier_engine) and FRONTALIER_PORT=3300 were
+  inherited from the parent shell.
+- Commit free read 6 974 MB at 18:31:25Z (start line held at 4 676,
+  DEVIATIONS 1).
+- 18:31:44Z-18:41:06Z, exit 0, aborted False. First sample 6 781 MB,
+  minimum commit free 4 239 MB (drop 2 542), minimum free physical 1 093 MB.
+  For WEB-QUEUE-STATE: base chain + test:db, drop 2 542, so its start line
+  by the +2 000 rule is 4 542.
+- Printed selection:
+  gate selection (R132):
+    1 path(s) matched:
+      web/tests/db/dossier-engine.test.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+    suites: typecheck, lint, test, build, test:db
+    a11y: covered by pnpm test - test:a11y's three files are a subset of
+          its globs, so requiring it separately is a second run
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3752 passed
+      build: exit 0 (no count to check)
+      test:db: 719 passed
+  GATE PASSED for the paths changed.
+  - test 3 752 = main's (W2's gate read 3 752 on the same base content).
+  - test:db: 719 passed | 26 skipped (745); Test Files 48 passed | 3
+    skipped (51). W2's gate read 714 | 26 and 47 | 3: +5 tests and +1 file,
+    this file. The 26 skips are W2's (export-pdf 15, verification-qr 2,
+    container-pdf 2, container-auth 7); export-pdf and verification-qr
+    printed their R133 lines.
+
+gate:clone, ALONE, on 846bc19:
+- Under run-sampled.ps1, cmd=pnpm gate:clone. CONTAINER_IMAGE=
+  monreleve:fw-dossier-engine and FRONTALIER_PORT=3300 were inherited;
+  DATABASE_URL was removed from the shell, so gate:clone read web/.env,
+  which named the local server's `postgres` database and was used only to
+  reach the server. It created and dropped its own monreleve_gate_clone_846bc19d.
+- The only session locks under C:/wt were mine and the orchestrator's.
+  Commit free read 6 828 MB at 18:42:49Z (start line 4 676).
+- 18:42:56Z-18:57:43Z, exit 0, aborted False. First sample 6 632 MB,
+  minimum commit free 5 054 MB (drop 1 578), minimum free physical 839 MB.
+- "tree clean - HEAD is everything you have"; "swept no stale clones".
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  846bc19db09e488454fcd54ed9cb865f55d46f88
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  STEP_EXIT=0 ABORTED=False
+  - Its step tails print no test:db count (WEB-QUEUE-STATE W6's parked
+    item); the count of record is gate:changed's 719.
+
+Cleanup (18:58:24Z):
+- monreleve_fw_dossier_engine dropped. pg_database then listed: frontalier,
+  monreleve_fw_delai_rappel, postgres, template0, template1 (no
+  monreleve_gate_clone_*; monreleve_fw_delai_rappel is C10's).
+- web/.env removed (ls: No such file).
+- monreleve:fw-dossier-engine, built by gate:clone's test:container:write,
+  removed by exact name (docker image rm: untagged, deleted e2f9ff2f305a).
+  No other image touched; no prune.
+- No container of mine; frontalier-postgres is the only one running and
+  was not touched. :3300 refuses (curl exit 7), no listener.
+- The lock is removed last, after this report is pushed.
