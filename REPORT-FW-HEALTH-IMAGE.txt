@@ -296,9 +296,14 @@ NOTICED BUT NOT TOUCHING
    (FRONTALIER_RUNTIME=1) the database check is evaluated. That test
    therefore depends on whatever database DATABASE_URL reaches.
    test:runtime was not run here.
-4. Images left in place: monreleve:fw-health-image (59c7adc44026, mine)
-   and the earlier tags, none of which I made. No container is left; the
-   scratch databases are dropped.
+4. One image of mine is left: monreleve:fw-health-image, now b19dba32f4ea.
+   gate:clone's test:container:write rebuilt that tag from the clone
+   (CONTAINER_IMAGE), also with baked origin https://monreleve.example.
+   - 59c7adc44026, the image R932's PDF count and origin read used, is no
+     longer tagged.
+   - Those R932 reads happened before gate:clone started.
+   - The other monreleve:* tags are not mine and were not touched.
+   No container is left, and the scratch databases are dropped.
 
 DEVIATIONS
 ----------
