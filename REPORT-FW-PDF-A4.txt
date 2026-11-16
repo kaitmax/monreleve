@@ -1,0 +1,510 @@
+REPORT-FW-PDF-A4
+================
+
+Web run step W2 (relay/ORCH-WEB-COMPLETE.txt Part C), prompt
+relay/FW-PDF-A4.txt, rulings R935-R939. Branch fw-pdf-a4 in worktree
+C:/wt/fw-pdf-a4, cut from origin/main
+589d0e8a462684986cee4d0102c09c474d9643d2. The lock .session-lock.json was
+written at the start (16:51:04Z) and is gitignored. Evidence is in
+C:/wt/fw-pdf-a4/.pdf-evidence/ (gitignored): every log named below, the
+plant script and its log, the planted and original PDFs, and the sampler
+files.
+
+SUMMARY
+-------
+- The PDF IS A4, read from the bytes, on both renderers.
+  - This machine's Chromium (Playwright 1.63.0's revision 1243, Chromium
+    153.0.8010.12, per its browsers.json): every page /MediaBox
+    [0 0 595.91998 842.88] = 210.2 x 297.3 mm.
+  - The image's Chromium (Debian 156.0.8078.79, image 15917a169dbf): every
+    page 595.92 x 842.88 pt, the same box, read in the harness's own run.
+  - ISO 216 A4 is 595.28 x 841.89 pt. Tolerance 1 mm per side, stated and
+    asserted (R345); the largest measured deviation is 0.35 mm.
+- R935: a new reader, web/tests/support/pdf-pages.ts, follows the file the
+  way a viewer does (startxref -> xref table -> /Root -> page tree, walked in
+  order, inherited /MediaBox honoured) and REFUSES BY NAME what it does not
+  interpret: /ObjStm, cross-reference streams, /Prev, /XRefStm, /CropBox,
+  /Rotate, /UserUnit, a /Count mismatch, a page with no box, no pages.
+  Chromium's output has none of them (measured: PDF 1.4, classic xref table,
+  0 /ObjStm, 0 /XRef). 22 unit cases in pnpm test.
+- R936: the ONLY gated suite that renders a PDF is test:container:e2e (its
+  vitest step sets CONTAINER_BASE_URL). test:db's render tests skip with no
+  live server, and no gate starts one. The assertion is in
+  tests/db/container-pdf.test.ts, for the image's render AND this machine's.
+  - The selector did not run that suite for the renderer or for the test
+    itself: `format: 'Letter'` would have passed every gate. A selector rule
+    now does (UNNUMBERED-1).
+  - The harness prints the page count and size from its own run (W1's
+    QUESTION 1), and fails if the line is missing.
+- R937: two verified plants, both RED naming the page and size, both
+  reverted.
+- R938: the CSV test exists; cited, nothing changed. Monochrome print is open.
+- R939: no renderer change; lib/export/pdf.ts is byte-identical to main.
+
+STATUS (R391)
+-------------
+COMPLETE for the web gates this task owns.
+- gate:clone ran ALONE on the code tip e5bc035, in this session: exit 0,
+  ABORTED False. Its "ran" line names db:deploy, test:db and
+  test:container:write (claim line under PUSH PROOF).
+- gate:changed (run 2, the gate of record) ran on the same content before
+  the commit: exit 0. It included test:container:e2e to its end
+  (CONTAINER E2E PASSED), which is the run that exercises the changed image
+  test (step 5).
+- The report commit adds only REPORT-FW-PDF-A4.txt on top of e5bc035.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+
+R935. THE PAGE SIZE IS READ FROM THE BYTES
+------------------------------------------
+The reader: web/tests/support/pdf-pages.ts. No new dependency: it reads the
+bytes as pageCount() does.
+- pageBoxes(bytes): every page's effective box, in page-tree order.
+  - It reads startxref, then the classic xref table (object -> offset), then
+    the trailer's /Root, the catalog's /Pages, and the page tree in order.
+  - "page 5" therefore means the fifth page a reader sees.
+  - An inherited /MediaBox (ISO 32000-1 7.7.3.4) is honoured.
+  - Leaves must equal the root's direct /Count.
+  - In the test, the page-tree count must equal pageCount()'s, so the count
+    the harness prints and the pages measured are the same pages.
+- isA4 / a4Violations: one sentence per non-A4 page, naming the page, its
+  object, its size in pt and in mm, and the expectation.
+
+The stated values, asserted in tests/unit/export/pdf-pages.test.ts (R345):
+- A4_MM = 210 x 297, portrait (ISO 216). Points are DERIVED: mm x 72 / 25.4
+  (595.2756 x 841.8898 pt). No point value is typed.
+- A4_TOLERANCE_MM = 1 per side. The reason, measured:
+  - Playwright's own paper table asks for A4 as 8.27 x 11.7 in (read from
+    node_modules/playwright-core 1.63.0, lib/coreBundle.js:36680), i.e.
+    595.44 x 842.40 pt: +0.06 / +0.18 mm over ISO.
+  - Chromium then writes 595.92 x 842.88 pt: +0.48 pt on each side over the
+    request. For Letter (8.5 x 11 in, integral points) it wrote exactly
+    612 x 792 (plant B), so the extra is a rounding of the non-integral A4
+    request.
+  - Total measured deviation: +0.23 mm wide, +0.35 mm tall. 1 mm is about
+    three times the larger.
+  - The test also asserts the tolerance CANNOT admit US Letter, US Legal,
+    A5, A3 or B5, and DOES admit Playwright's 8.27 x 11.7 in. A4 turned
+    landscape is refused.
+- The tolerance was chosen after measuring this machine's render and BEFORE
+  the image's render was read (the image figure came from gate:changed).
+
+Compressed object streams: proven absent and handled.
+- Measured on this machine's render (.pdf-evidence/survey.mjs on
+  measure-here-dev.pdf, 195 639 bytes):
+    header "%PDF-1.4"; /ObjStm 0; /Type /XRef 0; one xref table, one trailer
+    9 /Type /Page, 2 /Type /Pages (root /Count 9 over an intermediate
+    /Pages /Count 8 and one page)
+    /MediaBox 9 (one per page); /CropBox, /Rotate, /UserUnit, /TrimBox,
+    /BleedBox, /ArtBox 0
+- The reader refuses /ObjStm anywhere in the file, a startxref that points
+  at a cross-reference stream, and a trailer with /Prev or /XRefStm, each by
+  name. Unit cases prove each refusal fires.
+
+The assertion on the rendered bytes, web/tests/db/container-pdf.test.ts:
+- expectA4(bytes, renderer) runs on the image's render in "the IMAGE
+  renders a real PDF" and on BOTH renders (image and here) in "BOTH
+  renderers produce a document".
+- The `[pdf]` line now carries each render's page sizes. It is printed
+  before any assertion, so a failing run still says what it measured.
+
+The PDF IS A4. R939's stop condition did not arise.
+
+R936. IT RUNS IN A GATE
+-----------------------
+Which suites render a PDF today, established:
+1. The local renderPdf path through the route: tests/db/export-pdf.test.ts,
+   under test:db. Its render blocks (AC1, AC2, AC3, R329, R516; 17 tests) are
+   skipIf('skip' in LIVE), and LIVE needs a server naming this product on
+   FRONTALIER_PORT, PORT or 3000.
+   - gate:changed's test:db starts none.
+   - gate:clone's test:db starts none.
+   - CI's web job runs test:db before `pnpm build` (ci.yml:285).
+   - Measured, no server (16:57:52Z, r936-testdb-noserver.log):
+       [export-pdf] R133: the render tests did not run - no server answered
+       http://localhost:3300/api/health ...
+       Test Files 1 passed | 1 skipped (2); Tests 7 passed | 17 skipped (24)
+   So no gate renders through this path. Nothing was added to it.
+2. The image: tests/db/container-pdf.test.ts, skipIf(CONTAINER_BASE_URL
+   unset). ONLY scripts/container-e2e.mjs sets it (pnpm test:container:e2e).
+   That one test file renders BOTH:
+   - fromImage: the image's Chromium, through the image's
+     /api/v1/export/pdf;
+   - fromHere: this machine's renderPdf (Playwright's Chromium, in the
+     vitest process) against the image's print route.
+   Gates that run it: gate:changed when the selector picks test:container:e2e,
+   and CI's container job (CI is OFF, R248). gate:clone does not (its "ran"
+   line ends at test:container:write).
+
+So the assertion lands in container-pdf.test.ts, on both renders: GATE
+gate:changed, SUITE test:container:e2e.
+
+THE SELECTION GAP, measured with the unchanged selector
+(.pdf-evidence/select-probe-before.log):
+  web/lib/export/pdf.ts               -> typecheck, lint, test, build, test:db
+  web/tests/db/container-pdf.test.ts  -> typecheck, lint, test, build, test:db
+  web/scripts/container-e2e.mjs       -> typecheck, lint, test, build, test:container:e2e
+A `format: 'Letter'` edit to the renderer, or an edit to the container test
+itself, ran test:db, where both PDF files skip. It would pass gate:changed and
+gate:clone with the A4 assertion never executed.
+- The fix is a rule in web/scripts/gate-selection.mjs, on R144's shape (a
+  test file selects its suite) and R256's (the file whose defect a suite
+  catches selects it). label: "the container PDF step: its vitest files, the
+  renderer and the page reader (R936)", matching:
+    tests/db/container-auth.test.ts, tests/db/container-pdf.test.ts,
+    lib/export/pdf.ts, tests/support/pdf-pages.ts
+- After (.pdf-evidence/select-probe-after.log), each of the four selects
+  test:container:e2e AND keeps test:db. lib/export/csv.ts is unchanged
+  (test:db only).
+- Tests (gate-selection.test.ts, "R936: ..."): the harness's vitest file
+  list is READ from container-e2e.mjs, so a third file is caught there.
+  Each selects the suite; the union keeps test:db; the rest of the export
+  code does not select the container. The 27-name census is updated.
+- RED first (17:08:46Z, red-selector.log): 3 failed, naming
+  "tests/db/container-auth.test.ts" and "tests/db/container-pdf.test.ts", and
+  "expected [typecheck, lint, test, ...] to include test:container:e2e".
+  Green: 87 passed.
+- container-auth.test.ts is in the rule because it is the second site of
+  the same finding (R267). It is the other file the harness runs, and it
+  selected only test:db, where it skips.
+
+W1's QUESTION 1 (Web Ruling 2), the harness prints the page facts:
+- container-e2e.mjs runs its vitest step with --reporter=verbose (one
+  argument).
+- It prints every `[pdf]` line under "--- the PDF, from this run: page count
+  and page size (R936) ---".
+- It FAILS when no `[pdf]` line is present, as it already does for a zero
+  pass count.
+- Measured in the harness's own capture shape (execFileSync, non-TTY,
+  .pdf-evidence/capture-check.mjs against pnpm dev, 17:09:54Z):
+    reporter=default: [pdf] lines 0; Tests passed parsed: 9
+    reporter=verbose: [pdf] lines 1; Tests passed parsed: 9
+  The default reporter really does drop the line (W1's finding,
+  reproduced). Under verbose the existing "Tests  N passed" pattern still
+  reads 9.
+
+R937. A VERIFIED PLANT (R180)
+-----------------------------
+Both plants were run on the committed test file, unmodified. CONTAINER_BASE_URL
+pointed at `pnpm dev` (PORT=3300, scratch database monreleve_fw_pdf_a4), so
+"the image" in these runs is the dev server's render. The image itself is
+covered by the gate run (PUSH PROOF).
+
+RED came first, as test-first asks:
+- The reader's unit test failed for want of the module (17:03:16Z,
+  red-unit-1.log: "Cannot find package '@/tests/support/pdf-pages'").
+- Then plant A was the RED for the rendered-bytes assertion.
+
+PLANT A - one NON-FIRST page's /MediaBox rewritten in a copy of the bytes.
+- .pdf-evidence/plant-proxy.mjs is a forwarding proxy on :3301 in front of
+  :3300. In every PDF the export route returns, it rewrites page 5's box.
+  - Page 5 is counted in FILE order, found by its own regex, independently
+    of the reader under test.
+  - The rewrite is same-length, so every xref offset stays valid.
+  - Before writing, it asserts exactly one match in that object (R211).
+  - After writing, it verifies every changed byte lies inside the match.
+- First attempt: NO RESULT, not a RED. The proxy's page regex expected a
+  space after "/Type /Page" and Chromium writes a newline. It found 0 pages,
+  refused, and answered 599. The test failed on the status, not on a size
+  (plant-proxy-attempt1-NO-RESULT.log, r937-plantA-attempt1-NO-RESULT.log).
+  Fixed in the plant script only.
+- Second attempt (plant/plant-proxy.log, 17:07:02Z):
+    pdf #1: 198549 bytes, 10 page objects (file order: 2,19,28,30,32,34,36,38,40,42)
+      planted page 5 in file order = object 32, at byte 32246; matches in that object: 1
+      before: "0 R\n/F26 26 0 R>>>>\n/MediaBox [0 0 595.91998 842.88]"
+      after:  "0 R\n/F26 26 0 R>>>>\n/MediaBox [0 0 612 792         ]"
+      changed bytes: 15, first 32261, last 32276, all inside [32246, 32278): true
+      A4 boxes in file: before 10, after 9; length before 198549, after 198549
+  The original and planted files are plant/original-1.pdf and
+  plant/planted-1.pdf.
+- RED (17:06:58Z-17:07:06Z, r937-plantA-red.log), both tests:
+    [pdf] image: 198549 bytes, 10 pages, 595.92x842.88pt x9, 612.00x792.00pt x1;
+          here: 198549 bytes, 10 pages, 595.92x842.88pt x10
+    AssertionError: the image: pages that are not A4
+    + "page 5 (object 32) is 612.00 x 792.00 pt = 215.9 x 279.4 mm; A4 is
+       210 x 297 mm portrait, +/- 1 mm per side"
+  The page and object the test names are the ones the plant script chose
+  independently. The unplanted "here" side passed.
+- Unplanted, the same test at 17:07:17Z (r935-green-dev.log): 2 passed,
+    [pdf] image: 198493 bytes, 10 pages, 595.92x842.88pt x10;
+          here: 198493 bytes, 10 pages, 595.92x842.88pt x10
+- The proxy was stopped. :3301 refused a connection afterwards.
+
+PLANT B - the renderer asked for Letter (a scratch edit in this worktree).
+- Before: lib/export/pdf.ts blob 5f204a49, equal to HEAD's. One match of
+  "format: 'A4'," was asserted before the sed.
+    -      format: 'A4',
+    +      format: 'Letter',
+- RED (17:07:38Z, r937-plantB-red.log), both tests:
+    [pdf] image: 198140 bytes, 10 pages, 612.00x792.00pt x10;
+          here: 198140 bytes, 10 pages, 612.00x792.00pt x10
+    the image: pages that are not A4: 10 entries, from
+    "page 1 (object 2) is 612.00 x 792.00 pt = 215.9 x 279.4 mm; ..."
+- Revert (r937-plantB-revert.txt): one match of 'Letter' asserted, then
+  sed back. `git diff --quiet -- web/lib/export/pdf.ts` exit 0; blob
+  5f204a49 again, equal to HEAD's; line 243 reads "format: 'A4',".
+- After the revert, the same test at 17:08:04Z
+  (r937-after-revert-green.log): 2 passed, 595.92x842.88pt x10 on both.
+
+The unit test carries the plant's shape permanently: "names a non-first
+page that is not A4, with its size" (page 2 of 3, Letter).
+
+R938. THE CSV SCHEMA
+--------------------
+It exists, so it is cited and nothing was changed.
+- SPEC-frontalier-web.md:890: "CSV columns, exact and stable: `dayDate,
+  portion, kind, absenceReason, provenance, detectedKind, note,
+  firstRecordedAt, lastModifiedAt, clientClaimedAt, late`."
+- web/tests/unit/export/csv.test.ts:37-49 asserts the header line exactly,
+  in SPEC order: toBe('dayDate,portion,kind,absenceReason,provenance,
+  detectedKind,note,firstRecordedAt,lastModifiedAt,clientClaimedAt,late').
+- web/tests/unit/export/csv.test.ts:51-56 asserts the header is written
+  from CSV_COLUMNS, the module's own constant (11 names).
+- web/tests/db/export-csv.test.ts:318-339 asserts it through the route: the
+  served file's header equals CSV_COLUMNS.join(','), for an empty year as
+  for a year with days. Every record has CSV_COLUMNS.length fields.
+- Checked by script, reading both files (17:18:46Z,
+  r938-csv-spec-compare.log; first run before any code change): SPEC:890's
+  list and the literal in csv.test.ts are equal, element for element:
+  "equal true count 11".
+- Monochrome print (Checkpoint E item 3) is NOT in this task and stays OPEN.
+
+R939. NOTHING ELSE MOVES
+------------------------
+- lib/export/pdf.ts is byte-identical to main (blob 5f204a49). No renderer,
+  route, print page, Dockerfile or config changed.
+- The PDF is A4, so the stop condition did not arise.
+- Changed (6 files):
+  - web/tests/support/pdf-pages.ts (new): the reader.
+  - web/tests/unit/export/pdf-pages.test.ts (new): its 22 cases.
+  - web/tests/db/container-pdf.test.ts: expectA4 on both renders, and sizes
+    in the `[pdf]` line.
+  - web/scripts/container-e2e.mjs: verbose reporter, the `[pdf]` print, and
+    its requirement.
+  - web/scripts/gate-selection.mjs: the R936 rule (UNNUMBERED-1).
+  - web/tests/unit/meta/gate-selection.test.ts: the rule's tests and the
+    27-name census.
+
+EVERY PDF RENDERED (QUEUE-STATE PARKED TASKS, the 9-to-10-page note)
+--------------------------------------------------------------------
+MONRELEVE_VERIFICATION_ORIGIN was NOT set for any render. It is unset in
+the Git Bash shell and in PowerShell (process, User and Machine scopes). It
+is not in web/.env, not in the image's Config.Env (0 matches), not in
+container-e2e.mjs's `docker run -e` list, and unset inside the running
+container (docker exec, 17:27:38Z).
+
+The image (gate:changed run 2): monreleve:fw-pdf-a4, sha256:15917a169dbf...
+(built 17:27:14Z from the tree committed as e5bc035). Baked origin
+https://monreleve.example (/etc/frontalier-site-origin, 17:27:58Z).
+Chromium 156.0.8078.79 built on Debian 12.
+
+  when (UTC)           server                pages image/here  sizes                          log
+  16:59:50-16:59:55Z   pnpm dev              9 (one render)    595.92x842.88 all              measure-here-dev.log
+  17:06:02-17:06:14Z   dev via plant proxy   NO RESULT (proxy refused, 599)                   r937-plantA-attempt1-NO-RESULT.log
+  17:06:58-17:07:06Z   dev via plant proxy   10 / 10           image page 5 612x792 (planted) r937-plantA-red.log
+  17:07:17-17:07:25Z   pnpm dev              10 / 10           595.92x842.88 all              r935-green-dev.log
+  17:07:38-17:07:50Z   pnpm dev, plant B     10 / 10           612x792 all (Letter planted)   r937-plantB-red.log
+  17:08:04-17:08:12Z   pnpm dev, reverted    10 / 10           595.92x842.88 all              r937-after-revert-green.log
+  17:09:54-17:10:20Z   pnpm dev, two runs    10 / 10           595.92x842.88 all              r936-capture-check.log
+  17:29:01-17:29:14Z   the IMAGE on :3300    10 / 10           595.92x842.88 all              gate-changed-2.log:894,914
+
+- Dev renders have no baked origin: no image is involved, and /api/health
+  answered "origin":null.
+- The 9 is a different fixture (one day) from the 10 (five days); see
+  NOTICED 3.
+- Byte sizes for the image run: image 163 859, here 198 316. W1 measured
+  164 001 / 198 628, 10 / 10.
+
+WALKTHROUGH (R176)
+------------------
+pnpm dev on :3300 (no FRONTALIER_RUNTIME, scratch database
+monreleve_fw_pdf_a4), driven through the export route:
+- 16:59:21Z GET /api/health:
+  {"service":"monreleve","instance":null,"status":"ok","reasons":[],
+   "origin":null,"runtime":false}
+- The first render timed out at the 10 s test timeout. Next was compiling
+  /releve/print cold ("Compiled /releve/print in 10.1s", dev.log). The retry
+  rendered (16:59:50Z): measure-here-dev.pdf, 195 639 bytes, 9 pages, every
+  one 595.92 x 842.88 pt (the R935 survey above).
+- container-pdf.test.ts against the same server rendered the document four
+  more times unplanted: 10 pages each, all 595.92 x 842.88 pt (17:07:17Z,
+  17:08:04Z, and twice in the capture check at 17:09:54Z).
+- What it shows: the page facts the test prints agree with the survey's
+  independent count of the same kind of file. No page contradicts another
+  in size.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. tests/db/export-pdf.test.ts's 17 render tests run in NO gate. These are
+   AC1, AC2 (banned words, rail, annex rows, fonts, French decimals), AC3,
+   R329 and R516. They need a live server, and gate:changed, gate:clone and
+   CI's test:db start none (R936 item 1). Their claims hold only when
+   somebody runs them by hand against `pnpm dev`. Not this task's
+   (R939); see QUESTION 2.
+2. The dev server's first render can exceed the db suite's 10 s timeout:
+   the cold compile of /releve/print took 10.1 s. A retry passes. Anyone
+   running export-pdf.test.ts against a fresh `pnpm dev` meets it.
+3. Page counts differ by FIXTURE in this session's renders. They are the
+   same Chromium (this machine's) and the same tree (589d0e8 plus test-only
+   changes).
+   - export-pdf.test.ts's user (one day, 2026-03-02): 9 pages.
+   - container-pdf.test.ts's user (five days, 6-10 January): 10 pages.
+   Recorded for the parked 9-to-10 question only; not investigated.
+4. Chromium writes A4 as 595.92 x 842.88 pt and Letter as exactly 612 x
+   792. The +0.48 pt is its rounding of the non-integral A4 request, inside
+   the stated tolerance. Not a defect; recorded so the next reader of a
+   MediaBox does not re-derive it.
+5. TaskStop stopped the shell around `pnpm dev`, not the server. PID 30168
+   (next start-server.js under C:/wt/fw-pdf-a4) still held :3300. Its tree
+   (parent 23292, `next dev` from this worktree) was killed by PID after the
+   command lines were read. :3300 then refused a connection and had no
+   listener. This is the known memory note, met again.
+
+DEVIATIONS
+----------
+1. gate:changed run 1 is NO RESULT for its container step, and is not the
+   gate of record.
+   - The sampler's -Command was `set "FRONTALIER_PORT=3300" && set
+     "CONTAINER_IMAGE=monreleve:fw-pdf-a4" && pnpm gate:changed`. The quotes
+     were stripped on the way through `powershell -File`; the samples file
+     recorded `cmd=set FRONTALIER_PORT=3300 && set CONTAINER_IMAGE=...`. So
+     cmd kept the space before `&&`, and the tag became "monreleve:fw-pdf-a4 ".
+   - docker refused it: `invalid tag "monreleve:fw-pdf-a4 ": invalid
+     reference format`. GATE FAILED at test:container:e2e, before any build
+     or spec.
+   - Its typecheck, lint, test (3 752 passed) and build passed. test:db did
+     not run.
+   - The harness tore down cleanly: no container, and monreleve_container_e2e
+     dropped.
+   - Run 2 sets both variables in the parent PowerShell, so they are
+     inherited, and -Command is the bare `pnpm gate:changed`. Logs:
+     gate-changed-1-NO-RESULT.{log,samples.txt}.
+2. Plant A's first attempt is NO RESULT (R937 above). The fix was in the
+   plant script only.
+3. UNNUMBERED-1 (R156): a selector rule, outside R935's letter, made so
+   R936 holds for the change it exists to catch.
+   - The renderer, the two harness vitest files and the reader now select
+     test:container:e2e. Every edit to lib/export/pdf.ts now pays a Docker
+     build and the container suite (QUESTION 1).
+   - Reversible: delete the rule's entry in gate-selection.mjs and its
+     describe block, and restore the census to 26 names.
+4. The plants ran against `pnpm dev` as CONTAINER_BASE_URL, not against an
+   image.
+   - The reader and assertion are the same code on both sides: plant A
+     rewrote "the image" side and plant B both.
+   - The image's own render is proven A4 by the gate's container run
+     (PUSH PROOF). No plant was built into an image, to avoid a second
+     Docker build at the memory floor.
+5. The reader lives in tests/support/ (the shared test home), not
+   tests/db/support/, because pnpm test's unit file and the db test both
+   import it.
+6. Nothing was written to the orchestrator's scratchpad. Every log is in
+   .pdf-evidence/. The tool harness itself writes background-task output
+   files under the session temp directory; I neither read nor relied on them.
+
+QUESTIONS
+---------
+1. UNNUMBERED-1: should an edit to lib/export/pdf.ts (and to the two
+   container vitest files and the reader) keep selecting test:container:e2e?
+   - It is the only gated suite that renders a PDF, so without it a non-A4
+     renderer passes every gate (measured, R936).
+   - The cost is a Docker build plus the container suite on each such edit:
+     in gate:changed run 2 the container step began between 17:23:08Z and
+     17:24:25Z and ended before test:db started at 17:29:22Z, so about 5 to
+     6 minutes with a warm Docker cache. Its memory floor is the e2e one.
+   - The alternative is a narrower claim: "A4 is asserted when the container
+     suite runs".
+2. export-pdf.test.ts's 17 render tests (NOTICED 1) run in no gate. Should
+   test:db get a live server in gate:changed, gate:clone and CI? Or should
+   their assertions join the container step, which already renders? That is
+   a task of its own.
+3. Monochrome print (Checkpoint E item 3) remains open, as the prompt
+   directs.
+
+PUSH PROOF
+----------
+Branch: fw-pdf-a4 (pushed; not merged).
+Code commit: e5bc0350676608f713300cf65f65edfb3233b2c2, pushed; ls-remote
+showed refs/heads/fw-pdf-a4 at e5bc035 before gate:clone ran. This report
+is the commit on top of it.
+
+gate:changed, run 2, the gate of record:
+- Under run-sampled.ps1, cmd=pnpm gate:changed. FRONTALIER_PORT=3300 and
+  CONTAINER_IMAGE=monreleve:fw-pdf-a4 were inherited from the parent shell.
+- Commit free read 7 802 MB before the start.
+- 17:18:00Z-17:30:57Z, exit 0, aborted False. Minimum commit free 3 057 MB,
+  free physical 247 MB. vmmemWSL, the Docker VM, held 7 450 MB mid-run.
+- Printed selection:
+  gate selection (R132):
+    5 path(s) matched:
+      web/scripts/container-e2e.mjs  ->  the container e2e harness, which defines that suite (R247)
+      web/tests/db/container-pdf.test.ts  ->  the container PDF step: its vitest files, the renderer and the page reader (R936)
+      web/tests/db/container-pdf.test.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/tests/support/pdf-pages.ts  ->  the container PDF step: its vitest files, the renderer and the page reader (R936)
+      web/tests/support/pdf-pages.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+    suites: typecheck, lint, test, build, test:container:e2e, test:db
+    a11y: covered by pnpm test - test:a11y's three files are a subset of
+          its globs, so requiring it separately is a second run
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3752 passed
+      build: exit 0 (no count to check)
+      test:container:e2e: exit 0 (no count to check)
+      test:db: 714 passed
+  GATE PASSED for the paths changed.
+  - "5 path(s) matched" counts matched-rule lines; gate-selection.mjs and
+    the two unit test files match no rule and run in the base chain.
+  - test is 3 752 = main's 3 724, plus 22 reader cases and 6 selector cases.
+  - The container step, from the same log:
+      --- starting monreleve:fw-pdf-a4 on 3300 ---
+      /api/health names: monreleve (status ok)
+      --- pnpm test:e2e against the container: 27 spec files ---
+        354 passed (1.5m)
+      ok container-pdf > the IMAGE renders a real PDF, with its own Chromium 3754ms
+      [pdf] image: 163859 bytes, 10 pages, 595.92x842.88pt x10; here: 198316 bytes, 10 pages, 595.92x842.88pt x10
+      ok container-pdf > BOTH renderers produce a document, and their difference is the finding 4932ms
+      auth round trip: 9 passed, over HTTP, against the image.
+      --- the PDF, from this run: page count and page size (R936) ---
+        [pdf] image: 163859 bytes, 10 pages, 595.92x842.88pt x10; here: 198316 bytes, 10 pages, 595.92x842.88pt x10
+      scratch database monreleve_container_e2e dropped
+      CONTAINER E2E PASSED - the deployed artefact served the whole suite (R249).
+  - test:db: 714 passed | 26 skipped. The skips are export-pdf.test.ts's
+    17 (its R133 line printed), container-pdf's 2 and container-auth's 7.
+
+gate:clone, ALONE, on e5bc035:
+- Under run-sampled.ps1, cmd=pnpm gate:clone. FRONTALIER_PORT=3300 and
+  CONTAINER_IMAGE=monreleve:fw-pdf-a4 were inherited.
+- Commit free read 6 317 MB before the start. The only session locks under
+  C:/wt were mine and the orchestrator's.
+- 17:32Z-17:43:04Z, exit 0, aborted False. Minimum commit free 3 641 MB,
+  free physical 289 MB.
+- DATABASE_URL came from the session web/.env. It named the local server's
+  `postgres` database, as the launch message directs, and was used only to
+  reach the server. gate:clone made and dropped its own
+  monreleve_gate_clone_e5bc0350.
+- "tree DIRTY, 1 path(s) NOT in this run: ?? REPORT-FW-PDF-A4.txt" - this
+  report, then uncommitted. The clone is of HEAD.
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  e5bc0350676608f713300cf65f65edfb3233b2c2
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  STEP_EXIT=0 ABORTED=False
+
+Cleanup (17:43:14Z):
+- web/.env removed (ls: No such file).
+- monreleve_fw_pdf_a4 dropped. pg_database now lists: frontalier,
+  monreleve_fw_delai_rappel, postgres, template0, template1.
+- No monreleve container remains. The exited tizicorp, mustapha and zagora
+  containers are other projects'; they were not touched.
+- One image of mine is left: monreleve:fw-pdf-a4, now 221fbe6297f2.
+  gate:clone's test:container:write rebuilt that tag from the clone.
+  15917a169dbf, the image the gate:changed PDF facts above came from, is no
+  longer tagged; its facts were read at 17:27:38-17:27:58Z, before gate:clone
+  started. monreleve:write and the other monreleve:* tags are not mine.
+- :3300 and :3301 have no listener. The lock is removed last, after this
+  report is pushed.
