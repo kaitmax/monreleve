@@ -40,10 +40,13 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 // ONE HOME FOR THE STRIPPING, not a second copy of the regex (R206). The
 // count patterns and the thing that makes them readable belong together.
 import { stripAnsi } from './gate-selection.mjs';
+import { renderVerdict } from './container-render-verdict.mjs';
 
 const PORT = process.env.FRONTALIER_PORT ?? '3100';
 const IMAGE = process.env.CONTAINER_IMAGE ?? 'monreleve:e2e';
@@ -79,6 +82,39 @@ const INSTANCE_ID = `container-e2e-${randomBytes(8).toString('hex')}`;
  * on the /api/health test with both values in its message.
  */
 const SERVING_DECLARATION = 'FRONTALIER_SERVER_IS_SERVING';
+
+// ============================================================================
+// FW-PDF-RENDER-GATE (R981): THE VITEST STEP RUNS THE RENDER TESTS TOO
+// ============================================================================
+//
+// export-pdf.test.ts (15 render tests) and verification-qr.test.ts (2) need a
+// live server naming this product, and no gate's test:db starts one - so
+// until R981 they ran only by hand. This step already serves the image, so
+// they run here, through the same vitest call as container-auth/container-pdf.
+//
+// WHAT THEY PROVE, PRECISELY. They import the export route's handler, so the
+// handler and the renderer run in THIS process, with this machine's Chromium,
+// and the browser fetches the IMAGE's print route - which reads the scratch
+// database and signs nothing it did not verify. The image's own Chromium is
+// container-pdf.test.ts's subject, not theirs.
+//
+// TWO PASSES, BECAUSE A SERVER HOLDS ONE VERIFICATION STATE (R332). The
+// verification block prints only when MONRELEVE_VERIFICATION_ORIGIN is set on
+// the SERVER, and verification-qr.test.ts reads the same setting in its own
+// process to know which state to assert. So the first pass starts the image
+// without it, the second restarts the same image with it, and the setting is
+// set or removed on BOTH sides explicitly, never inherited.
+//
+// THE FILE NAMES STAY SINGLE-QUOTED LITERALS: the selector test reads this
+// harness's list with a pattern, so a file added here is covered there (R936).
+const FIRST_PASS_FILES = Object.freeze([
+  'tests/db/container-auth.test.ts',
+  'tests/db/container-pdf.test.ts',
+  'tests/db/export-pdf.test.ts',
+  'tests/db/verification-qr.test.ts',
+]);
+const SECOND_PASS_FILES = Object.freeze(['tests/db/verification-qr.test.ts']);
+const VERIFICATION_ORIGIN_ENV = 'MONRELEVE_VERIFICATION_ORIGIN';
 
 // The local compose database. Credentials are the ones docker-compose.yml
 // publishes and are not secret.
@@ -207,6 +243,115 @@ async function waitForOurProduct() {
   throw new Error(`the container did not answer /api/health on ${PORT} within 120s`);
 }
 
+/**
+ * Start the image on PORT. `extraEnv` carries the one setting the second
+ * vitest pass varies (R981); everything else is the same start every time.
+ */
+function startContainer(siteOrigin, extraEnv = []) {
+  run('docker', [
+    'run',
+    '-d',
+    '--name',
+    NAME,
+    '--add-host',
+    'host.docker.internal:host-gateway',
+    '-p',
+    `${PORT}:3000`,
+    '-e',
+    `DATABASE_URL=${containerUrl}`,
+    '-e',
+    'AUTH_SECRET=container-e2e-not-a-deployment-secret',
+    '-e',
+    `NEXT_PUBLIC_SITE_URL=${siteOrigin}`,
+    // R301: the per-run marker this container echoes from /api/health, so the
+    // live suites can tell it from a sibling of the same product.
+    '-e',
+    `FRONTALIER_INSTANCE_ID=${INSTANCE_ID}`,
+    ...extraEnv.flatMap((setting) => ['-e', setting]),
+    IMAGE,
+  ]);
+}
+
+/** Where each vitest pass writes its JSON report; removed at teardown. */
+const reportDir = mkdtempSync(join(tmpdir(), 'container-e2e-vitest-'));
+
+/**
+ * One vitest pass against the running container (R981).
+ *
+ * `verificationOrigin` is what the container was started with, or null when
+ * it was started without one; this process gets the same, set or REMOVED,
+ * because verification-qr.test.ts decides what to assert from its own copy.
+ */
+function vitestPass(slug, files, verificationOrigin) {
+  const reportFile = join(reportDir, `${slug}.json`);
+  const env = {
+    ...process.env,
+    DATABASE_URL: toolUrl,
+    CONTAINER_BASE_URL: `http://127.0.0.1:${PORT}`,
+    // export-pdf.test.ts and verification-qr.test.ts find the server through
+    // tests/db/support/live-server.ts, which reads FRONTALIER_PORT - not
+    // CONTAINER_BASE_URL - and requires /api/health to name this product.
+    FRONTALIER_PORT: PORT,
+    // R301: the SAME value the container was started with, so the two
+    // tests can refuse any server that does not echo it. A sibling that
+    // passed R169 (same product) fails here by name.
+    FRONTALIER_INSTANCE_ID: INSTANCE_ID,
+    // THE SAME SECRET THE CONTAINER HOLDS. container-pdf.test.ts and the
+    // export route mint a print token HERE and hand it to the CONTAINER's
+    // print route, so the two processes must sign with the same key. The
+    // developer .env carries the placeholder, which print-token.ts refuses
+    // by value - correctly, and that refusal is what this discovered:
+    // mintPrintToken returned null and the comparison could not run.
+    AUTH_SECRET: 'container-e2e-not-a-deployment-secret',
+  };
+
+  if (verificationOrigin === null) delete env[VERIFICATION_ORIGIN_ENV];
+  else env[VERIFICATION_ORIGIN_ENV] = verificationOrigin;
+
+  let output = '';
+  let threw = false;
+
+  try {
+    output = run(
+      'node',
+      [
+        'node_modules/vitest/vitest.mjs',
+        'run',
+        '--config',
+        'vitest.db.config.ts',
+        ...files,
+        // VERBOSE, SO THE PDF'S PAGE FACTS COME FROM THIS RUN (R936). The
+        // default reporter printed no console output for a passing test, so
+        // the `[pdf]` line - each render's page count and page sizes - was
+        // visible only in a second, separate verbose run (W1's QUESTION 1).
+        // The line is REQUIRED below, so a reporter that drops it fails
+        // the run rather than going quiet.
+        '--reporter=verbose',
+        // AND JSON, for the per-test verdict (R981): a count cannot tell
+        // fifteen skipped render tests from fifteen that passed.
+        '--reporter=json',
+        `--outputFile.json=${reportFile}`,
+      ],
+      { env },
+    );
+  } catch (cause) {
+    output = `${cause.stdout ?? ''}${cause.stderr ?? ''}`;
+    threw = true;
+  }
+
+  console.log(output);
+
+  let report = null;
+
+  try {
+    report = JSON.parse(readFileSync(reportFile, 'utf8'));
+  } catch {
+    // No report: the verdict below names it.
+  }
+
+  return { output, threw, report };
+}
+
 let failure = null;
 
 try {
@@ -283,27 +428,7 @@ try {
   });
 
   console.log(`\n--- starting ${IMAGE} on ${PORT} ---`);
-  run('docker', [
-    'run',
-    '-d',
-    '--name',
-    NAME,
-    '--add-host',
-    'host.docker.internal:host-gateway',
-    '-p',
-    `${PORT}:3000`,
-    '-e',
-    `DATABASE_URL=${containerUrl}`,
-    '-e',
-    'AUTH_SECRET=container-e2e-not-a-deployment-secret',
-    '-e',
-    `NEXT_PUBLIC_SITE_URL=${origin}`,
-    // R301: the per-run marker this container echoes from /api/health, so the
-    // live suites can tell it from a sibling of the same product.
-    '-e',
-    `FRONTALIER_INSTANCE_ID=${INSTANCE_ID}`,
-    IMAGE,
-  ]);
+  startContainer(origin);
 
   const health = await waitForOurProduct();
 
@@ -420,54 +545,30 @@ try {
   // like a suite that passed everything. Asserting a non-zero pass count is
   // what makes the skip safe, which is R169's presence-before-absence
   // corollary applied to a test file rather than to a server.
+  //
+  // THE COUNT STOPPED BEING ENOUGH AT R981. export-pdf.test.ts has seven
+  // handler-only tests that pass with no server, so a non-zero count no longer
+  // proves its render tests ran. The per-test verdict below is what does.
   if (failure === null) {
-    console.log('\n--- the auth round trip, over HTTP, against the container ---\n');
+    console.log(
+      '\n--- the vitest step, pass 1 (no verification origin): the auth round trip, ' +
+        'the PDF, and the render tests (R981) ---\n',
+    );
 
-    let authOutput = '';
+    const passes = [];
+    const first = vitestPass('pass-1', FIRST_PASS_FILES, null);
+    const authOutput = first.output;
 
-    try {
-      authOutput = run(
-        'node',
-        [
-          'node_modules/vitest/vitest.mjs',
-          'run',
-          '--config',
-          'vitest.db.config.ts',
-          'tests/db/container-auth.test.ts',
-          'tests/db/container-pdf.test.ts',
-          // VERBOSE, SO THE PDF'S PAGE FACTS COME FROM THIS RUN (R936). The
-          // default reporter printed no console output for a passing test, so
-          // the `[pdf]` line - each render's page count and page sizes - was
-          // visible only in a second, separate verbose run (W1's QUESTION 1).
-          // The line is REQUIRED below, so a reporter that drops it fails
-          // the run rather than going quiet.
-          '--reporter=verbose',
-        ],
-        {
-          env: {
-            ...process.env,
-            DATABASE_URL: toolUrl,
-            CONTAINER_BASE_URL: `http://127.0.0.1:${PORT}`,
-            // R301: the SAME value the container was started with, so the two
-            // tests can refuse any server that does not echo it. A sibling that
-            // passed R169 (same product) fails here by name.
-            FRONTALIER_INSTANCE_ID: INSTANCE_ID,
-            // THE SAME SECRET THE CONTAINER HOLDS. container-pdf.test.ts
-            // mints a print token HERE and hands it to the CONTAINER's print
-            // route, so the two processes must sign with the same key. The
-            // developer .env carries the placeholder, which print-token.ts
-            // refuses by value - correctly, and that refusal is what this
-            // discovered: mintPrintToken returned null and the comparison
-            // could not run.
-            AUTH_SECRET: 'container-e2e-not-a-deployment-secret',
-          },
-        },
-      );
-      console.log(authOutput);
-    } catch (cause) {
-      authOutput = `${cause.stdout ?? ''}${cause.stderr ?? ''}`;
-      console.log(authOutput);
-      failure = 'the auth round trip failed against the container';
+    passes.push({ label: 'pass 1 (no verification origin)', report: first.report });
+
+    if (first.threw) {
+      // NAMED, not merely "it failed": the tests that failed, from the run's
+      // own report, so the last line of a red run says which (R983).
+      const failed = renderVerdict(passes, []).refusals.filter((refusal) => refusal.includes(' FAILED in '));
+
+      failure =
+        'the vitest step (pass 1) failed against the container' +
+        (failed.length === 0 ? '' : `: ${failed.join('; ')}`);
     }
 
     // STRIPPED FIRST, AND CI IS WHAT TAUGHT THIS. vitest colourises when it
@@ -482,11 +583,11 @@ try {
 
     if (failure === null && passed < 1) {
       failure =
-        'the auth round trip reported no passing tests. A file that SKIPPED ' +
+        'the vitest step (pass 1) reported no passing tests. A file that SKIPPED ' +
         'everything exits 0 and reads exactly like one that passed everything ' +
         '(R133), so the count is the signal rather than the exit code.';
     } else if (failure === null) {
-      console.log(`auth round trip: ${passed} passed, over HTTP, against the image.`);
+      console.log(`vitest step, pass 1: ${passed} passed, over HTTP, against the image.`);
     }
 
     // THE PDF'S PAGE FACTS, FROM THIS RUN (R936). container-pdf.test.ts
@@ -505,6 +606,55 @@ try {
       failure =
         'the PDF step printed no `[pdf]` line, so this run cannot say how many ' +
         'pages the document has or what size they are (R936)';
+    }
+
+    // ========================================================================
+    // PASS 2: THE SAME IMAGE, RESTARTED WITH A VERIFICATION ORIGIN (R981)
+    // ========================================================================
+    //
+    // Only after pass 1 is green: teardown prints the LAST container's log,
+    // so a pass-1 failure must not be followed by a restart that hides it.
+    //
+    // The origin is the image's own baked origin - https, not local, a bare
+    // origin - which is what lib/verification/origin.ts accepts (R332).
+    if (failure === null) {
+      console.log(
+        `\n--- the vitest step, pass 2: ${IMAGE} restarted with ${VERIFICATION_ORIGIN_ENV}=${origin} (R332) ---`,
+      );
+
+      removeContainer();
+      await assertPortFree();
+      startContainer(origin, [`${VERIFICATION_ORIGIN_ENV}=${origin}`]);
+
+      const restarted = await waitForOurProduct();
+
+      console.log(`/api/health names: ${restarted.service} (status ${restarted.status ?? 'n/a'})\n`);
+
+      const second = vitestPass('pass-2', SECOND_PASS_FILES, origin);
+
+      passes.push({ label: 'pass 2 (verification origin set)', report: second.report });
+
+      if (second.threw) failure = 'the vitest step (pass 2, verification origin set) failed against the container';
+    }
+
+    // ========================================================================
+    // THE VERDICT, PER TEST (R981, R133)
+    // ========================================================================
+    //
+    // Every test of every file the step runs passed in at least one pass, and
+    // none failed in any. Printed whether or not the run is already red, so a
+    // failing run still says which tests ran and where.
+    const verdict = renderVerdict(passes, [...new Set([...FIRST_PASS_FILES, ...SECOND_PASS_FILES])]);
+
+    console.log('\n--- every test the vitest step ran, and the pass it passed in (R981) ---');
+    for (const row of verdict.rows) {
+      console.log(`  ${row.passedIn.length === 0 ? 'NOT PASSED' : 'passed'}  ${row.file} > ${row.name}  [${row.statuses.join('; ')}]`);
+    }
+    console.log(`  ${verdict.rows.length} tests; refusals: ${verdict.refusals.length}`);
+    for (const refusal of verdict.refusals) console.log(`  REFUSED: ${refusal}`);
+
+    if (failure === null && verdict.refusals.length > 0) {
+      failure = `the vitest step's per-test verdict refused ${verdict.refusals.length}: ${verdict.refusals.join('; ')}`;
     }
   }
 } catch (cause) {
@@ -536,6 +686,8 @@ try {
   } else {
     console.log('the supplied database is left alone - this script did not create it');
   }
+
+  rmSync(reportDir, { recursive: true, force: true });
 }
 
 if (failure !== null) {

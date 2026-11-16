@@ -1091,13 +1091,28 @@ export const SELECTOR_PATTERNS = Object.freeze([
     // the A4 verdict goes through (the file whose defect a suite catches
     // selects that suite). tests/unit/meta/gate-selection.test.ts reads the
     // harness's file list from the harness, so a third file is caught there.
-    label: 'the container PDF step: its vitest files, the renderer and the page reader (R936)',
+    //
+    // FW-PDF-RENDER-GATE (R981, R982) added four:
+    // - export-pdf.test.ts and verification-qr.test.ts, whose 17 render tests
+    //   ran only by hand until the harness ran them against the image;
+    // - the verdict module the harness reads those runs with;
+    // - print.module.scss, for its `@page` rule. MEASURED, it is not inert
+    //   while lib/export/pdf.ts sets no preferCSSPageSize: `size: a4
+    //   landscape` turned every page's MediaBox landscape (the A4 assertion
+    //   refuses it), and `size: letter` kept A4 paper but paginated 9 pages
+    //   as 10. It decides the CSS page the renderer lays the document on.
+    label:
+      'the container PDF step: its vitest files, the renderer, the page reader and the @page rule (R936, R982)',
     suites: Object.freeze(['test:container:e2e']),
     matches: (path) =>
       path === 'tests/db/container-auth.test.ts' ||
       path === 'tests/db/container-pdf.test.ts' ||
+      path === 'tests/db/export-pdf.test.ts' ||
+      path === 'tests/db/verification-qr.test.ts' ||
+      path === 'scripts/container-render-verdict.mjs' ||
       path === 'lib/export/pdf.ts' ||
-      path === 'tests/support/pdf-pages.ts',
+      path === 'tests/support/pdf-pages.ts' ||
+      path === 'app/releve/print/print.module.scss',
   },
   {
     label: 'the scheduler probe, which defines that suite (R247)',

@@ -434,7 +434,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'playwright.config.ts, which defines both browser projects (R247)',
       'playwright.runtime.config.ts, which is the runtime project (R247)',
       'pnpm-workspace.yaml and tsconfig.json, which decide whether anything compiles (R416)',
-      'the container PDF step: its vitest files, the renderer and the page reader (R936)',
+      'the container PDF step: its vitest files, the renderer, the page reader and the @page rule (R936, R982)',
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
@@ -949,6 +949,11 @@ describe('R936: the files that decide the container PDF step select the suite th
     // PRESENCE FIRST (R169): an empty list would make the next test vacuous.
     expect(harnessFiles).toContain('tests/db/container-pdf.test.ts');
     expect(harnessFiles).toContain('tests/db/container-auth.test.ts');
+    // FW-PDF-RENDER-GATE (R981): the 17 render tests that ran only by hand
+    // run in the harness now, so both files are in its list - and, through
+    // the next test, each selects the suite that runs it (R982).
+    expect(harnessFiles).toContain('tests/db/export-pdf.test.ts');
+    expect(harnessFiles).toContain('tests/db/verification-qr.test.ts');
   });
 
   it('selects test:container:e2e for every file the harness runs with vitest', () => {
@@ -962,6 +967,17 @@ describe('R936: the files that decide the container PDF step select the suite th
   it.each([
     ['the renderer, whose format is what R935 asserts', 'web/lib/export/pdf.ts'],
     ['the page-size reader the assertion trusts', 'web/tests/support/pdf-pages.ts'],
+    // R982, MEASURED (FW-PDF-RENDER-GATE): with no preferCSSPageSize the
+    // `@page` rule is not inert. `size: a4 landscape` turned all 14 pages'
+    // MediaBox landscape, which the A4 assertion refuses; `size: letter` kept
+    // A4 paper and paginated 9 pages as 10. It decides the CSS page.
+    ["the print page's @page rule, which decides the CSS page", 'web/app/releve/print/print.module.scss'],
+    // R981: the files the harness now runs, named here as well as read from
+    // the harness above, so dropping one from the rule fails by name.
+    ['the render tests, through the route', 'web/tests/db/export-pdf.test.ts'],
+    ['the verification block on the render', 'web/tests/db/verification-qr.test.ts'],
+    // R981: the step's per-test verdict decides whether the step passes.
+    ['the verdict the harness reads its passes with', 'web/scripts/container-render-verdict.mjs'],
   ])('selects test:container:e2e for %s', (_label, path) => {
     expect(suitesFor([path])).toContain('test:container:e2e');
   });
@@ -971,13 +987,25 @@ describe('R936: the files that decide the container PDF step select the suite th
     // where its refusals are proven without a browser.
     expect(suitesFor(['web/lib/export/pdf.ts'])).toContain('test:db');
     expect(suitesFor(['web/tests/db/container-pdf.test.ts'])).toContain('test:db');
+    // R981: their refusal tests still run in test:db, with no server.
+    expect(suitesFor(['web/tests/db/export-pdf.test.ts'])).toContain('test:db');
+    expect(suitesFor(['web/tests/db/verification-qr.test.ts'])).toContain('test:db');
+    // R982: the stylesheet keeps the browser suites it selected before.
+    expect(suitesFor(['web/app/releve/print/print.module.scss'])).toEqual(
+      expect.arrayContaining(['test:e2e', 'test:visual']),
+    );
   });
 
   it('does not select the container for the rest of the export code', () => {
     // NON-VACUITY: a rule that fired on everything would make every export
     // edit a Docker build, and the first person to wait for one would take it
     // back out.
-    for (const path of ['web/lib/export/csv.ts', 'web/tests/db/export-pdf.test.ts', 'web/app/page.tsx']) {
+    //
+    // export-pdf.test.ts USED TO BE IN THIS LIST. FW-PDF-RENDER-GATE (R981)
+    // moved it: its render tests run in the harness now, so it selects the
+    // harness's suite. export-csv.test.ts takes its place as the export test
+    // that renders nothing.
+    for (const path of ['web/lib/export/csv.ts', 'web/tests/db/export-csv.test.ts', 'web/app/page.tsx']) {
       expect(suitesFor([path]), path).not.toContain('test:container:e2e');
     }
   });
