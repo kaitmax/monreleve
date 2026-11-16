@@ -1,0 +1,512 @@
+REPORT-FW-PDF-RENDER-GATE
+=========================
+
+Web run step W3b (relay/ORCH-WEB-COMPLETE.txt, Web Ruling 3), prompt
+relay/FW-PDF-RENDER-GATE.txt, rulings R980-R984.
+- Branch fw-pdf-render-gate, in worktree C:/wt/fw-pdf-render-gate.
+- Cut from 23d780bc7df5dd2c1909ed7b5c8bdbc4a68df452 (origin/fw-dossier-engine,
+  W3's verified tip). The orchestrator merges W3 and this branch together.
+- The lock .session-lock.json was written at 19:07:53Z and is gitignored.
+- Evidence is in C:/wt/fw-pdf-render-gate/.pdf-render-gate-evidence/
+  (gitignored): every log named below, the vitest JSON reports, the R982
+  renders, the plant script and the memory sampler.
+
+SUMMARY
+-------
+- R980: all 17 render tests skip in every gate. No gate starts a server
+  before test:db, and the container step never collected the two files.
+  - A no-server test:db (19:14Z) gives 719 passed | 26 skipped.
+  - The 26, by name: export-pdf 15 + verification-qr 2 (the 17),
+    container-auth 7 and container-pdf 2.
+  - The QR-set test also needs MONRELEVE_VERIFICATION_ORIGIN, which no gate
+    sets.
+- R981: ALL 17 NOW RUN AND PASS in test:container:e2e's existing vitest step,
+  against the image, in the gate of record (gate:changed, exit 0).
+  - Pass 1, the image as started: 32 passed | 1 skipped.
+  - Pass 2, the same image restarted with a verification origin: 1 passed |
+    1 skipped.
+  - The per-test verdict: 33 tests, 0 refusals. It replaces the pass count
+    as the signal for these files.
+- R982: the R936 selector rule now also matches:
+  - export-pdf.test.ts and verification-qr.test.ts;
+  - the new verdict module;
+  - app/releve/print/print.module.scss.
+  The @page rule is NOT inert without preferCSSPageSize. Measured:
+  `a4 landscape` turned every MediaBox landscape, and `letter` kept A4 paper
+  but paginated 9 pages as 10.
+- R983: two verified plants, both reverted.
+  - The missing `[pdf]` line: the harness refused by name.
+  - A failing export-pdf render test: the harness went red naming it.
+- R984: no renderer, route or print-page change.
+
+STATUS (R391)
+-------------
+COMPLETE for the web gates this task owns. Both gates ran in this session on
+the code tip cf649298b820f9317d168cab04202645f5a4b3be:
+- gate:changed: exit 0, ABORTED False. It ran test:container:e2e to its end:
+  "CONTAINER E2E PASSED".
+- gate:clone ALONE: exit 0, ABORTED False.
+- The report commit adds only this file on top of cf64929.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+
+R980. THE SKIP, PROVEN
+----------------------
+The skip machinery, shared by all 17:
+- LIVE = await liveOrigin(): export-pdf.test.ts:42, verification-qr.test.ts:36.
+- tests/db/support/live-server.ts decides it:
+  - the port is FRONTALIER_PORT ?? PORT ?? 3000 (:36-38);
+  - no answer within 2 s -> skip (:49-57);
+  - a non-OK answer -> skip (:59-61);
+  - an answer that does not name this product -> skip (:75-79).
+- verification-qr.test.ts also reads ORIGIN = verificationOrigin() (:37),
+  i.e. MONRELEVE_VERIFICATION_ORIGIN in the TEST process. Its two blocks are
+  two states: :83 runs only with ORIGIN unset, :104 only with ORIGIN set.
+
+  #  test (file:line of the it)                                  skip condition
+  1  export-pdf:204 returns REAL PDF BYTES                         :201 'skip' in LIVE
+  2  export-pdf:231 names the year in the filename                 :201 'skip' in LIVE
+  3  export-pdf:239 never caches                                   :201 'skip' in LIVE
+  4  export-pdf:251 serves TWO concurrent exports (AC3)            :248 'skip' in LIVE
+  5  export-pdf:273 refuses past the bound, renderer_busy (AC3)    :248 'skip' in LIVE
+  6  export-pdf:305 records the issuance with the hash (R329)      :298 'skip' in LIVE
+  7  export-pdf:328 regenerating creates version 2 (R329)          :298 'skip' in LIVE
+  8  export-pdf:393 carries the document (AC2)                     :372 'skip' in LIVE
+  9  export-pdf:404 uses NO banned word (AC2)                      :372 'skip' in LIVE
+ 10  export-pdf:415 names the titulaire and the date (AC2)         :372 'skip' in LIVE
+ 11  export-pdf:425 prints the rail (AC2)                          :372 'skip' in LIVE
+ 12  export-pdf:437 prints every day the payload carries (AC2)     :372 'skip' in LIVE
+ 13  export-pdf:463 embeds every font, all Inter (AC2)             :372 'skip' in LIVE
+ 14  export-pdf:479 writes French decimals (AC2)                   :372 'skip' in LIVE
+ 15  export-pdf:519 an empty year is a document (R516)             :503 'skip' in LIVE
+ 16  verification-qr:88 no origin: no verification block           :83 base!==null || ORIGIN!==null
+ 17  verification-qr:110 origin set: the QR decodes                 :104 base!==null || ORIGIN===null
+
+Whether any gate sets the condition. The answer is the same for all 17
+rows, so it is given once.
+  gate                          live server?                       result for the 17
+  test:db in gate:changed       no - gate-for-changes.mjs spawns   SKIPPED
+                                `pnpm test:db` alone; the
+                                container step before it has
+                                already torn down
+  gate:clone's test:db          no - gate-clone.mjs:714 runs       SKIPPED; this session's
+                                `pnpm test:db`, no server          gate:clone printed both R133
+                                                                   lines (gate-clone-1.log)
+  test:container:e2e (base)     YES, the image is up on            NOT COLLECTED - the base
+                                FRONTALIER_PORT during its         harness's vitest call named
+                                vitest step                        only container-auth and
+                                                                   container-pdf (:436-437)
+  CI web job                    no - ci.yml:285 runs test:db       SKIPPED (and CI is OFF, R248)
+                                before `pnpm build` (:287);
+                                FRONTALIER_PORT unset, so
+                                :3000 on the runner, empty
+  CI container job              as test:container:e2e (:586)       NOT COLLECTED (CI is OFF)
+- Row 17 needs MONRELEVE_VERIFICATION_ORIGIN in the test process too. It
+  skips WITH a server when that is unset, and no gate sets it. W2 found it
+  unset in the shells, web/.env, the image's Config.Env and the harness's
+  `docker run`.
+- The claim is "no gate starts a server for them", not "they can never
+  run". By hand against `pnpm dev` they ran and passed (WALKTHROUGH).
+
+The skipped count, by name. The run: test:db with no listener on
+FRONTALIER_PORT=3300, 19:14:06Z-19:16:05Z, scratch database
+monreleve_fw_pdf_render_gate.
+  Test Files  48 passed | 3 skipped (51)
+  Tests  719 passed | 26 skipped (745)
+  [export-pdf] R133: the render tests did not run - no server answered http://localhost:3300/api/health ...
+  [verification-qr] R133: the render tests did not run - no live server - ...
+The JSON report (r980-testdb-noserver.json, listed in r980-skipped-list.txt)
+names all 26:
+- tests/db/container-auth.test.ts 7;
+- tests/db/container-pdf.test.ts 2;
+- tests/db/export-pdf.test.ts 15 (rows 1-15);
+- tests/db/verification-qr.test.ts 2 (rows 16-17).
+W2's "714 passed, 26 skipped" is the same 26: W2's report gives the same
+breakdown (export-pdf 15, verification-qr 2, container-pdf 2, container-auth
+7). 719 - 714 = 5 is W3's tests/db/dossier-engine.test.ts, all 5 passed. Of
+the 26, the 17 are export-pdf's 15 and verification-qr's 2. The other 9
+(container-auth 7, container-pdf 2) are the container step's own, which skip
+in test:db by design (CONTAINER_BASE_URL unset).
+
+R981. THEY RUN IN THE CONTAINER STEP
+------------------------------------
+web/scripts/container-e2e.mjs: the existing vitest step, the same call that
+ran container-auth and container-pdf, now runs in two passes against the
+image it has already built and served.
+- Pass 1: the image as started before. Files: container-auth,
+  container-pdf, export-pdf, verification-qr.
+- Pass 2, only when pass 1 is green:
+  - the SAME image is removed and restarted with
+    MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.example, its own baked
+    origin;
+  - file: verification-qr.
+  - Teardown prints the last container's log, so a pass-1 failure is never
+    followed by a restart that would hide it.
+- The setting is set or REMOVED on both sides explicitly, never inherited.
+  The print page reads it on the server (app/releve/print/page.tsx:221).
+  verification-qr.test.ts reads its own copy to choose which state to
+  assert.
+- FRONTALIER_PORT is now passed to vitest. export-pdf and verification-qr
+  find the server through live-server.ts, which reads that port and needs
+  /api/health to name this product (R169). They do not read
+  CONTAINER_BASE_URL.
+- Each pass writes vitest's JSON report beside its verbose output.
+  - The verdict, web/scripts/container-render-verdict.mjs, is a pure
+    function: every file collected with at least one test, every test
+    passed in at least one pass, none failed in any.
+  - The harness prints one line per test with its status in each pass, then
+    the refusals.
+  - The verdict covers every file the step runs, container-auth and
+    container-pdf included.
+- Why the count was not enough: export-pdf has 7 handler-only tests that
+  pass with no server. If its 15 render tests skipped, "Tests N passed"
+  would still be non-zero.
+  - Measured on real reports (verdict-on-real-reports.log): the verdict
+    refuses all 26 skips of the no-server test:db report.
+  - On dev pass 1 alone, it refuses by naming the QR test.
+  - On both dev passes it refuses nothing.
+- Its unit test came first. RED at 19:26:50Z (red-verdict-unit.log):
+  "Cannot find module '../../../scripts/container-render-verdict.mjs'".
+  Green: 8 cases, and declaration parity covers the new .d.mts (R185).
+
+WHAT IS PROVEN, PRECISELY.
+- export-pdf and verification-qr import the export route's handler. So the
+  handler and the renderer run in the harness's vitest process, with this
+  machine's Chromium (Playwright's).
+- That browser fetches the IMAGE's /releve/print, which:
+  - reads the scratch database the image uses;
+  - verifies the print token with the image's AUTH_SECRET;
+  - serves the image's CSS and fonts.
+- The image's own Chromium remains container-pdf.test.ts's subject, as
+  before.
+
+From the gate of record (gate-changed-1.log), against
+monreleve:fw-pdf-render-gate. These are the 17, with durations:
+  pass 1  AC1 returns REAL PDF BYTES 1647ms; names the year 1647ms;
+          never caches 1771ms
+  pass 1  AC3 two concurrent 3087ms; refuses past the bound 4405ms
+  pass 1  R329 records the issuance 1814ms; version 2 3679ms
+  pass 1  AC2 carries the document 1866ms; banned words 1707ms;
+          titulaire/date 1681ms; rail 1530ms; every day 1737ms;
+          fonts Inter 1728ms; French decimals 1575ms
+  pass 1  R516 empty year 1554ms
+  pass 1  verification-qr, no origin: no block 3711ms
+  pass 2  verification-qr, origin set: the QR decodes 3185ms
+  - Vitest: pass 1 "Tests 32 passed | 1 skipped (33)"; pass 2 "Tests 1
+    passed | 1 skipped (2)".
+  - The verdict printed "33 tests; refusals: 0". The QR test's row reads
+    "skipped in pass 1 (no verification origin); passed in pass 2", and the
+    no-origin test's the reverse.
+  - The `[pdf]` line (R936): image 163905 bytes, 10 pages, 595.92x842.88pt
+    x10; here 198353 bytes, 10 pages, 595.92x842.88pt x10.
+No test needed a premise changed. Nothing was skipped or loosened. No
+product-side defect was found.
+
+R982. THE SELECTOR KNOWS (R251)
+-------------------------------
+The rule W2 added (web/scripts/gate-selection.mjs, "the container PDF step")
+now also matches:
+- tests/db/export-pdf.test.ts and tests/db/verification-qr.test.ts. R144: a
+  test file selects the suite it runs in. Each keeps test:db, where its
+  refusal tests still run with no server.
+- scripts/container-render-verdict.mjs. R251: it decides whether the step
+  passes.
+- app/releve/print/print.module.scss, for its @page rule.
+- The label became "... the renderer, the page reader and the @page rule
+  (R936, R982)", and the 27-name census follows it.
+
+THE @page RULE BELONGS, AND "INERT" WAS MEASURED WRONG.
+The prompt's premise was that `@page { size: a4 }` is inert while
+lib/export/pdf.ts sets no preferCSSPageSize. The measurement:
+- Against `pnpm dev` (:3400, scratch database), each render is export-pdf's
+  own fixture through the route, saved with FRONTALIER_PDF_OUT.
+- One scratch edit at a time, each asserted to one match before writing,
+  then reverted.
+- Read with the repository's own reader, tests/support/pdf-pages.ts
+  (r982/survey.log).
+  render (UTC)  @page size         pages  MediaBox (pt)          non-A4
+  19:24:48Z     a4 (HEAD)           9     595.92 x 842.88 x9       0
+  19:25:02Z     letter             10     595.92 x 842.88 x10      0
+  19:25:17Z     a4 landscape       14     842.88 x 595.92 x14     14
+  19:25:25Z     a4 (reverted)       9     595.92 x 842.88 x9       0
+- Orientation: Chromium takes the PAPER's orientation from the CSS page
+  even without preferCSSPageSize. `a4 landscape` made every page landscape,
+  and container-pdf's A4 assertion refuses that. So the step catches a
+  defect in this file, which is R256's test for belonging.
+- Size: `letter` kept A4 paper, because format wins, but changed the
+  pagination from 9 to 10 pages. No assertion in the step catches that:
+  both renderers read the same CSS, so their page counts still agree
+  (QUESTION 2).
+- Revert: `git diff --quiet` exit 0, and blob 4247449b equals HEAD's.
+
+Tests (tests/unit/meta/gate-selection.test.ts, the R936 block):
+- The harness's file list is read from the harness and must contain both
+  new files, each selecting test:container:e2e.
+- A named case for each added match: print.module.scss, export-pdf,
+  verification-qr and the verdict module.
+- The union keeps test:db for the two test files, and test:e2e plus
+  test:visual for the stylesheet.
+- export-pdf.test.ts WAS in the "does not select the container" list. It
+  flipped by design, and export-csv.test.ts takes its place.
+- RED first (19:29:42Z, red-selector.log): 6 failed. They were the census;
+  "expected [...] to include 'tests/db/export-pdf.test.ts'"; and four cases
+  of "expected [...] to include 'test:container:e2e'".
+- Green: 107 passed (selector, verdict, declaration parity).
+
+The probe (select-probe-before.log / select-probe-after.log):
+  path                                       before                        after adds
+  tests/db/export-pdf.test.ts                base, test:db                 test:container:e2e
+  tests/db/verification-qr.test.ts           base, test:db                 test:container:e2e
+  app/releve/print/print.module.scss         base, e2e, visual, db, late   test:container:e2e
+  scripts/container-render-verdict.mjs       base (new file)               test:container:e2e
+  app/releve/print/page.tsx                  base, e2e, visual, db, late   (unchanged - QUESTION 1)
+  app/api/v1/export/pdf/route.ts             base, e2e, visual, db, late   (unchanged - QUESTION 1)
+  lib/export/csv.ts, tests/db/export-csv     base, test:db                 (unchanged)
+
+R983. THE OWED PLANTS (R180)
+----------------------------
+Both plants went through `pnpm test:container:e2e` itself, the harness and
+not a copy of its filter, on the committed tree plus one edit.
+- .pdf-render-gate-evidence/scripts/plant.mjs makes the edit:
+  - before writing, it asserts exactly one match (R211);
+  - after writing, it prints the diff and asserts one line changed and the
+    new text present once;
+  - on revert, it asserts `git diff --quiet` and that the blob equals
+    HEAD's.
+- Memory was read in its own step before each run.
+
+PLANT 1 - the `[pdf]` line absent (W2's NOT delivered).
+- The producer was changed, not the harness. tests/db/container-pdf.test.ts
+  :239 now prints `[pdX] image: ` instead of `[pdf] image: ` (19:59:08Z,
+  plants/plant1-apply.txt):
+    -      `[pdf] image: ${fromImage.byteLength} bytes, ...
+    +      `[pdX] image: ${fromImage.byteLength} bytes, ...
+    changed lines: 2; blob 43fb92ac, HEAD 01951f06
+- The run (19:59:14Z-20:03:56Z, plants/plant1-run.log), STEP_EXIT=1:
+    354 passed (1.6m)                          [the e2e specs]
+    [pdX] image: 163872 bytes, 10 pages, 595.92x842.88pt x10; here: ...
+    Tests  32 passed | 1 skipped (33)          [pass 1, all green]
+    vitest step, pass 1: 32 passed, over HTTP, against the image.
+    --- the PDF, from this run: page count and page size (R936) ---
+                                               [no line under it]
+    CONTAINER E2E FAILED: the PDF step printed no `[pdf]` line, so this run
+    cannot say how many pages the document has or what size they are (R936)
+  - Both container-pdf tests passed, and the renamed line is in the output,
+    so the refusal is the missing line and nothing else.
+  - Pass 2 did not start, by design. The verdict still printed: it listed
+    the QR test as not passed. But the first failure is what the run
+    reports.
+- Revert (20:04:08Z, plants/plant1-revert.txt): git diff --quiet exit 0;
+  blob 01951f06, equal to HEAD's.
+
+PLANT 2 - one failure in a newly run export-pdf render test.
+- tests/db/export-pdf.test.ts:236, inside the live-gated block at :201
+  (row 2, "names the year in the filename"), not in one of the 7
+  handler-only tests (20:04:18Z, plants/plant2-apply.txt):
+    -    expect(response.headers.get('content-disposition')).toContain('releve-2026.pdf');
+    +    expect(response.headers.get('content-disposition')).toContain('releve-2027.pdf');
+    changed lines: 2; blob 873a061c, HEAD e68be599
+- The run (20:04:24Z-20:08:44Z, plants/plant2-run.log), STEP_EXIT=1:
+    354 passed (1.5m)                          [the e2e specs]
+    x tests/db/export-pdf.test.ts > AC1: a real render, against a real server
+      > names the year in the filename, so three exports are three files 1332ms
+      -> expected 'attachment; filename="releve-2026.pdf"' to contain 'releve-2027.pdf'
+    Tests  1 failed | 31 passed | 1 skipped (33)
+    REFUSED: tests/db/export-pdf.test.ts > AC1: a real render, against a real
+      server > names the year in the filename, ... FAILED in pass 1 (no
+      verification origin)
+    CONTAINER E2E FAILED: the vitest step (pass 1) failed against the
+      container: tests/db/export-pdf.test.ts > AC1: a real render, against a
+      real server > names the year in the filename, so three exports are three
+      files FAILED in pass 1 (no verification origin)
+  - The suite name "AC1: a real render, against a real server" is the LIVE
+    name. Under test:db it reads "... - SKIPPED, no server answered ...". So
+    the planted test executed against the image, and its failure is the
+    run's.
+  - Every other test in pass 1 passed (31), including the other 14 render
+    tests.
+- Revert (20:08:54Z, plants/plant2-revert.txt): git diff --quiet exit 0;
+  blob e68be599, equal to HEAD's.
+
+Memory for the two plant runs, each read in its own step first:
+- plant 1: start 7 469 (19:59:02Z), minimum 4 555;
+- plant 2: start 7 514 (20:04:14Z), minimum 4 737.
+Both runs were STEP_EXIT=1, ABORTED False. Each tore down its container and
+dropped monreleve_container_e2e.
+
+R984. NOTHING ELSE MOVES
+------------------------
+- No renderer, route, print-page, Dockerfile or config change.
+  lib/export/pdf.ts, app/releve/print/* and app/api/** are byte-identical to
+  the base (`git diff --stat 23d780b -- web/lib web/app` is empty).
+- Changed (6 files, commit cf64929):
+  - web/scripts/container-e2e.mjs: the two passes, the JSON reports, the
+    verdict; the `docker run` and the vitest call moved into functions.
+  - web/scripts/container-render-verdict.mjs (new): the verdict.
+  - web/scripts/container-render-verdict.d.mts (new): its declaration (R185).
+  - web/tests/unit/meta/container-render-verdict.test.ts (new): 8 cases.
+  - web/scripts/gate-selection.mjs: the R936 rule's four added matches and
+    its label.
+  - web/tests/unit/meta/gate-selection.test.ts: the R982 cases and the
+    census.
+
+WALKTHROUGH (R176)
+------------------
+`pnpm dev` from this worktree on :3400, with the scratch database and a
+non-placeholder AUTH_SECRET in both the server's and the test's
+environment. The print route was warmed first: its cold compile took 13.9 s
+(W2's NOTICED 2).
+- 19:23:02Z GET /api/health:
+  {"service":"monreleve","instance":null,"status":"ok","reasons":[],
+   "origin":null,"runtime":false}
+- Origin unset, 19:23:26Z-19:24:30Z (baseline-dev-pass1.log): both files,
+  "Tests 23 passed | 1 skipped (24)".
+  - All 15 export-pdf render tests and the no-origin QR test passed.
+  - The slowest was the queue-bound test, at 7746 ms against dev. Against
+    the image it took 4405 ms; the default timeout is 10 s.
+- Dev was restarted with MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.example.
+  19:27:33Z-19:27:41Z (baseline-dev-pass2.log): verification-qr, "Tests 1
+  passed | 1 skipped (2)". The QR decoded to the issued URL (5077 ms).
+- So all 17 pass by hand against dev, and all 17 against the image. No side
+  is wrong.
+- Both dev trees were killed by PID: next dev 29320/27612, then
+  33572/12128. Each time :3400 then had no listener.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. The prompt's premise that print.module.scss's @page is "inert" while
+   preferCSSPageSize is unset is false, measured (R982). @page decides the
+   paper orientation and the pagination.
+2. live-server.ts checks `service`, not R301's instance id. In the harness
+   that is safe: the harness asserts the port free (R179), then holds it with
+   its own container, so a sibling cannot answer on it. Elsewhere it is the
+   same R169 check as before.
+3. The harness's success line was "auth round trip: N passed". It now reads
+   "vitest step, pass 1: N passed", because the pass is no longer only the
+   auth round trip. Anyone grepping the old string needs the new one.
+4. Free physical memory fell to 38 MB during gate:changed (commit free stayed
+   >= 3 979). This was the browser and other apps, measured, not closed.
+5. curl to a port with no listener timed out (exit 28) rather than being
+   refused: the interceptor this machine is known for. live-server.ts's 2 s
+   timeout reports "no server answered" either way.
+
+DEVIATIONS
+----------
+1. gate:changed did not select test:db; the launch message expected
+   "test:container:e2e + test:db". The diff touches nothing in test:db's
+   closure: the two harness scripts select the base chain and
+   test:container:e2e only. So R980's skipped count comes from this
+   session's own no-server test:db run (19:14Z) and the R133 lines in its
+   gate:clone, plus W2's gate log as reported.
+2. The step starts the image twice (pass 2). This is inside the existing
+   step, not a new suite: one server holds one verification state (R332),
+   and row 17 can run no other way.
+3. A new script module and declaration (the verdict). It is a pure function,
+   so its refusals are proven in `pnpm test` without a Docker build. It
+   selects test:container:e2e through the R936 rule (R251).
+4. The plants ran after the gate of record and gate:clone, at the memory
+   windows that followed. They changed no committed file; each revert is
+   verified against HEAD.
+5. Nothing was written to the orchestrator's scratchpad. The tool harness
+   writes its own background-task output under the session temp directory;
+   nothing here relies on it.
+
+QUESTIONS
+---------
+1. R267, the second site. app/releve/print/page.tsx and
+   app/api/v1/export/pdf/route.ts are what export-pdf's 15 assert on: the
+   title, titulaire, annex rows, rail, fonts, decimals, verification block
+   and issuance. They still select only test:e2e, test:visual, test:db and
+   test:late, and none of those renders a PDF:
+   - no e2e spec touches /releve/print or the export route (grep, 0 hits);
+   - in test:db the 15 skip.
+   A page.tsx edit that dropped the rail would pass every gate. Should both
+   select test:container:e2e?
+   - The cost: every print-page or route edit pays a Docker build and the
+     container suite (here 19:34Z-19:47Z for the whole gate:changed, with
+     the 6 745 MB start line).
+   - Not done here. R982 names page-size inputs, and this is the same cost
+     decision as W2's QUESTION 1, so it is the orchestrator's.
+2. The CSS page SIZE is unasserted. `@page { size: letter }` keeps A4 paper
+   and changes the pagination, 9 -> 10 pages, and no assertion anywhere
+   fails. Both renderers read the same CSS, so container-pdf's
+   page-count comparison agrees with itself. Should something pin it? For
+   example, a page count for a fixed fixture, or the print stylesheet's
+   @page read as a4. R984 kept this task from adding it.
+
+DEFECTS
+-------
+None product-side. All 17 pass against the image and against `pnpm dev`.
+
+PUSH PROOF
+----------
+Branch: fw-pdf-render-gate (pushed; not merged).
+Code commit: cf649298b820f9317d168cab04202645f5a4b3be, pushed. ls-remote
+showed refs/heads/fw-pdf-render-gate at cf64929 before gate:clone ran. This
+report is the commit on top of it.
+
+gate:changed, the gate of record:
+- Under the sampler (.pdf-render-gate-evidence/scripts/run-sampled.ps1),
+  cmd=pnpm gate:changed.
+  - FRONTALIER_PORT=3300, CONTAINER_IMAGE=monreleve:fw-pdf-render-gate and
+    DATABASE_URL (the scratch database) were set in the parent PowerShell
+    and inherited. MONRELEVE_VERIFICATION_ORIGIN was removed.
+- Commit free read 7 419 MB in its own step (19:34:01Z), against a start
+  line of 6 745. The sampler's own start reading was 7 351.
+- 19:34:10Z-19:47:02Z, STEP_EXIT=0, ABORTED False. Minimum commit free
+  3 979 MB at 19:45:33Z: a drop of 3 372. Minimum free physical 38 MB.
+- Printed selection:
+  gate selection (R132):
+    2 path(s) matched:
+      web/scripts/container-e2e.mjs  ->  the container e2e harness, which defines that suite (R247)
+      web/scripts/container-render-verdict.mjs  ->  the container PDF step: its vitest files, the renderer, the page reader and the @page rule (R936, R982)
+    suites: typecheck, lint, test, build, test:container:e2e
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3765 passed
+      build: exit 0 (no count to check)
+      test:container:e2e: exit 0 (no count to check)
+  GATE PASSED for the paths changed.
+  - test: 3 765 = W2's 3 752 + 8 verdict cases + 4 selector cases + 1
+    declaration-parity case.
+  - The container step: "354 passed (1.8m)" for the e2e specs. Vitest pass
+    1: 32 passed | 1 skipped. Pass 2: 1 passed | 1 skipped. "33 tests;
+    refusals: 0". Then "scratch database monreleve_container_e2e dropped"
+    and "CONTAINER E2E PASSED - the deployed artefact served the whole
+    suite (R249)."
+
+gate:clone, ALONE, on cf64929:
+- Under the sampler, cmd=pnpm gate:clone, with FRONTALIER_PORT=3300 and
+  CONTAINER_IMAGE=monreleve:fw-pdf-render-gate inherited and DATABASE_URL
+  removed from the shell.
+- DATABASE_URL came from the session web/.env, which named the local
+  server's `postgres` database. It was copied by script from the main
+  checkout's host, port and credentials, without printing them.
+- Commit free read 7 163 MB in its own step (19:47:52Z), against a start
+  line of 4 676. The only session locks under C:/wt were this session's and
+  the orchestrator's.
+- 19:47:59Z-19:58:50Z, STEP_EXIT=0, ABORTED False. Minimum commit free
+  5 587 MB; minimum free physical 1 091 MB.
+- It made and dropped its own monreleve_gate_clone_cf649298.
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  cf649298b820f9317d168cab04202645f5a4b3be
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  STEP_EXIT=0 ABORTED=False
+
+Cleanup (20:09:23Z), per ORCH-WEB-COMPLETE Part B:
+- docker image rm monreleve:fw-pdf-render-gate: "Untagged ... Deleted
+  sha256:f1703017...". No other tag was built: monreleve:write is still
+  02aa63946f54, as at launch.
+- monreleve_fw_pdf_render_gate dropped. pg_database now lists frontalier,
+  monreleve_fw_delai_rappel, postgres, template0 and template1. The
+  delai-rappel database is not this session's, and was left alone.
+- web/.env removed (ls: No such file).
+- No monreleve container remains; frontalier-postgres was never stopped.
+- :3300 and :3400 have no listener.
+- The lock is removed last, after this report is pushed.
