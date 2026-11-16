@@ -34,18 +34,24 @@ SUMMARY
   The @page rule is NOT inert without preferCSSPageSize. Measured:
   `a4 landscape` turned every MediaBox landscape, and `letter` kept A4 paper
   but paginated 9 pages as 10.
-- R983: two verified plants, both reverted.
+- R983: three verified plants, all reverted.
   - The missing `[pdf]` line: the harness refused by name.
   - A failing export-pdf render test: the harness went red naming it.
+  - The render tests SKIPPING with vitest green: the per-test verdict alone
+    refused all 17 by name.
 - R984: no renderer, route or print-page change.
 
 STATUS (R391)
 -------------
-COMPLETE for the web gates this task owns. Both gates ran in this session on
-the code tip cf649298b820f9317d168cab04202645f5a4b3be:
-- gate:changed: exit 0, ABORTED False. It ran test:container:e2e to its end:
-  "CONTAINER E2E PASSED".
-- gate:clone ALONE: exit 0, ABORTED False.
+COMPLETE for the web gates this task owns. Both gates ran in this session:
+- gate:changed: exit 0, ABORTED False. It ran on the working tree just
+  before the commit, which is the same content as the code commit
+  cf649298b820f9317d168cab04202645f5a4b3be. It ran test:container:e2e to its
+  end: "CONTAINER E2E PASSED".
+- test:db was NOT in gate:changed's selection (DEVIATION 1). It ran only in
+  gate:clone, and in this session's standalone R980 run.
+- gate:clone ALONE, on cf649298b820f9317d168cab04202645f5a4b3be itself:
+  exit 0, ABORTED False.
 - The report commit adds only this file on top of cf64929.
 - No Android code changed, so there is no :app:gate.
 - Not merged: the orchestrator merges.
@@ -194,9 +200,10 @@ monreleve:fw-pdf-render-gate. These are the 17, with durations:
   pass 2  verification-qr, origin set: the QR decodes 3185ms
   - Vitest: pass 1 "Tests 32 passed | 1 skipped (33)"; pass 2 "Tests 1
     passed | 1 skipped (2)".
-  - The verdict printed "33 tests; refusals: 0". The QR test's row reads
-    "skipped in pass 1 (no verification origin); passed in pass 2", and the
-    no-origin test's the reverse.
+  - The verdict printed "33 tests; refusals: 0". The status brackets of the
+    two verification-qr rows, read from the log in full:
+      no origin:  [passed in pass 1 (no verification origin); skipped in pass 2 (verification origin set)]
+      origin set: [skipped in pass 1 (no verification origin); passed in pass 2 (verification origin set)]
   - The `[pdf]` line (R936): image 163905 bytes, 10 pages, 595.92x842.88pt
     x10; here 198353 bytes, 10 pages, 595.92x842.88pt x10.
 No test needed a premise changed. Nothing was skipped or loosened. No
@@ -328,11 +335,41 @@ PLANT 2 - one failure in a newly run export-pdf render test.
 - Revert (20:08:54Z, plants/plant2-revert.txt): git diff --quiet exit 0;
   blob e68be599, equal to HEAD's.
 
-Memory for the two plant runs, each read in its own step first:
+PLANT 3 - the render tests SKIP while vitest stays green. This is the case
+the verdict exists for. In plants 1 and 2 an earlier failure won, so the
+verdict's own branch had not yet turned a harness run red.
+- tests/db/support/live-server.ts:37, the port the 17 look for, pointed at
+  a dead port (20:11:59Z, plants/plant3-apply.txt). `curl :1` exit 7.
+    -  return process.env.FRONTALIER_PORT ?? process.env.PORT ?? '3000';
+    +  return '1';
+    changed lines: 2; blob d605dbb1, HEAD 9e70f0c1
+- Checked before reading the verdict (plants/plant3-run.log, 20:12:07Z-
+  20:15:57Z, STEP_EXIT=1):
+  - pass 1 vitest EXITED 0. "Test Files 3 passed | 1 skipped (4)", "Tests
+    16 passed | 17 skipped (33)".
+  - The count was non-zero: "vitest step, pass 1: 16 passed, over HTTP,
+    against the image."
+  - The `[pdf]` line was present.
+  - Both R133 lines printed: "[export-pdf] R133: the render tests did not
+    run - no server answered http://localhost:1/api/health ...".
+  - Pass 2 STARTED: "Tests 2 skipped (2)".
+  So nothing else failed. The old checks (count >= 1, `[pdf]` present) were
+  all satisfied, which is the blind spot.
+- The verdict: "33 tests; refusals: 17", one REFUSED line per row 1-17,
+  each "never passed (skipped in pass 1 ...)". The last line:
+    CONTAINER E2E FAILED: the vitest step's per-test verdict refused 17:
+    tests/db/export-pdf.test.ts > AC1: a real render - SKIPPED, no server
+    answered http://localhost:1/api/health ... > returns REAL PDF BYTES, not
+    merely a pdf content-type never passed (skipped in pass 1 ...); ...
+- Revert (20:16:10Z, plants/plant3-revert.txt): git diff --quiet exit 0;
+  blob 9e70f0c1, equal to HEAD's.
+
+Memory for the three plant runs, each read in its own step first:
 - plant 1: start 7 469 (19:59:02Z), minimum 4 555;
-- plant 2: start 7 514 (20:04:14Z), minimum 4 737.
-Both runs were STEP_EXIT=1, ABORTED False. Each tore down its container and
-dropped monreleve_container_e2e.
+- plant 2: start 7 514 (20:04:14Z), minimum 4 737;
+- plant 3: start 7 744 (20:11:52Z), minimum 5 198.
+All three were STEP_EXIT=1 (the intended red), ABORTED False. Each tore down
+its container and dropped monreleve_container_e2e.
 
 R984. NOTHING ELSE MOVES
 ------------------------
@@ -384,8 +421,9 @@ NOTICED BUT NOT TOUCHING
 3. The harness's success line was "auth round trip: N passed". It now reads
    "vitest step, pass 1: N passed", because the pass is no longer only the
    auth round trip. Anyone grepping the old string needs the new one.
-4. Free physical memory fell to 38 MB during gate:changed (commit free stayed
-   >= 3 979). This was the browser and other apps, measured, not closed.
+4. Free physical memory fell to 38 MB during gate:changed, while commit
+   free stayed >= 3 979. The memory holders were not listed, and no
+   application was closed.
 5. curl to a port with no listener timed out (exit 28) rather than being
    refused: the interceptor this machine is known for. live-server.ts's 2 s
    timeout reports "no server answered" either way.
@@ -406,7 +444,10 @@ DEVIATIONS
    selects test:container:e2e through the R936 rule (R251).
 4. The plants ran after the gate of record and gate:clone, at the memory
    windows that followed. They changed no committed file; each revert is
-   verified against HEAD.
+   verified against HEAD. Plant 3 was added after an advisor read of the
+   first report commit (7d60a09): plants 1 and 2 had left the verdict's own
+   refusal branch unexercised. The STATUS, R981 and NOTICED 4 wording and
+   QUESTION 1's support files were corrected in the same pass.
 5. Nothing was written to the orchestrator's scratchpad. The tool harness
    writes its own background-task output under the session temp directory;
    nothing here relies on it.
@@ -427,6 +468,13 @@ QUESTIONS
      the 6 745 MB start line).
    - Not done here. R982 names page-size inputs, and this is the same cost
      decision as W2's QUESTION 1, so it is the orchestrator's.
+   - The same holds for the test support the 17 go through
+     (select-probe-support.log). Each of these selects only the base chain
+     and test:db, where the 17 skip:
+     - tests/db/support/live-server.ts, which decides whether they run at
+       all (plant 3 below changed it and only the harness noticed);
+     - tests/db/support/pdf-text.ts, which reads every text assertion;
+     - tests/db/support/pdf-image.ts, which reads the QR.
 2. The CSS page SIZE is unasserted. `@page { size: letter }` keeps A4 paper
    and changes the pagination, 9 -> 10 pages, and no assertion anywhere
    fails. Both renderers read the same CSS, so container-pdf's
@@ -499,10 +547,15 @@ gate:clone, ALONE, on cf64929:
             file this run did not produce itself.
   STEP_EXIT=0 ABORTED=False
 
-Cleanup (20:09:23Z), per ORCH-WEB-COMPLETE Part B:
-- docker image rm monreleve:fw-pdf-render-gate: "Untagged ... Deleted
-  sha256:f1703017...". No other tag was built: monreleve:write is still
-  02aa63946f54, as at launch.
+Cleanup (20:09:23Z, and again after plant 3 at 20:16:10Z), per
+ORCH-WEB-COMPLETE Part B:
+- docker image rm monreleve:fw-pdf-render-gate, by exact name, twice:
+  - "Deleted sha256:f1703017..." (the plant-2 build);
+  - "Deleted sha256:c5f697a1..." (the plant-3 build).
+- No other tag was built: monreleve:write is still 02aa63946f54, as at
+  launch.
+- `docker images -f dangling=true` lists nothing, so no untagged build of
+  mine is left.
 - monreleve_fw_pdf_render_gate dropped. pg_database now lists frontalier,
   monreleve_fw_delai_rappel, postgres, template0 and template1. The
   delai-rappel database is not this session's, and was left alone.
