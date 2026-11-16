@@ -15,6 +15,13 @@
 // It deletes nothing. Each caller empties the tables it owns before seeding,
 // as every tests/db file does.
 //
+// FW-PERIOD-FRACTION (R998) EXTENDS IT with a second person rather than a
+// second seed: PART_YEAR_PERSON has PERSON's settings, its own address and an
+// activity start date, and its rows are SEED's own from that date on
+// (rowsFrom). It is written by the same inserts as PERSON (writePerson), so the
+// two cannot drift in how a row is stored. seedYear() writes exactly what it
+// wrote before.
+//
 // It is not a .test.ts file, so no include glob collects it. It imports the
 // Prisma client, so R218's import closure selects test:db when it changes.
 
@@ -44,6 +51,28 @@ export const PERSON = {
   granularity: 'HALF_DAY',
   denominatorKind: 'SIMPLIFIED240',
 } as const;
+
+/** The settings a seeded person is written with. */
+export interface SeededPerson {
+  readonly email: string;
+  readonly name: string;
+  readonly canton: string;
+  readonly employmentRate: number;
+  readonly granularity: 'DAY' | 'HALF_DAY';
+  readonly denominatorKind: 'SIMPLIFIED240';
+}
+
+/**
+ * THE PART-YEAR PERSON (FW-PERIOD-FRACTION, R998). PERSON's settings under
+ * another address: the activity start date is the one input the part-year
+ * test is about, so every other input is the full-year person's - the same
+ * 80 %, HALF_DAY, GE and simplified basis. The start date is not here: the
+ * test computes it, and seedPartYear takes it.
+ */
+export const PART_YEAR_PERSON = {
+  ...PERSON,
+  email: 'period-fraction@example.com',
+} as const satisfies SeededPerson;
 
 /** One seeded row, and everything the annex must say back about it. */
 export interface SeedRow {
@@ -195,26 +224,60 @@ export function weekdaysOfYear(): string[] {
 }
 
 /**
- * Write PERSON and the SEED rows, and return the person's id.
+ * The SEED rows a person who began on `startDay` can have logged: those on or
+ * after it. The dossier selects rows by year, not by start date, so a row
+ * before the start would still be counted - which is why a person who began
+ * that day is not given one.
+ */
+export function rowsFrom(startDay: string): readonly SeedRow[] {
+  return SEED.filter((seeded) => seeded.day >= startDay);
+}
+
+/** Write PERSON and the SEED rows, and return the person's id. */
+export async function seedYear(): Promise<string> {
+  return writePerson(PERSON, SEED, null);
+}
+
+/**
+ * Write PART_YEAR_PERSON, active from `startDay` (an ISO day), with
+ * rowsFrom(startDay), and return the person's id.
+ */
+export async function seedPartYear(startDay: string): Promise<string> {
+  return writePerson(PART_YEAR_PERSON, rowsFrom(startDay), startDay);
+}
+
+/**
+ * Write one person and their rows, and return the person's id.
  *
  * Every row's firstRecordedAt is written explicitly rather than taken from
  * the column default, so every expected stamp is known and distinct.
+ *
+ * The start day is stored the way the API's one writer stores it
+ * (app/api/v1/me/route.ts): the UTC midnight of the ISO day. Null for PERSON,
+ * which is the column's own default, so seedYear() writes the row it always
+ * wrote.
  */
-export async function seedYear(): Promise<string> {
+async function writePerson(
+  person: SeededPerson,
+  rows: readonly SeedRow[],
+  activityStartDay: string | null,
+): Promise<string> {
   const { id: userId } = await prisma.user.create({
     data: {
-      email: PERSON.email,
-      name: PERSON.name,
-      canton: PERSON.canton,
-      employmentRate: PERSON.employmentRate,
-      granularity: PERSON.granularity,
-      denominatorKind: PERSON.denominatorKind,
+      email: person.email,
+      name: person.name,
+      canton: person.canton,
+      employmentRate: person.employmentRate,
+      granularity: person.granularity,
+      denominatorKind: person.denominatorKind,
+      activityStartDate:
+        activityStartDay === null ? null : new Date(`${activityStartDay}T00:00:00.000Z`),
     },
   });
 
   let mutation = 0;
 
-  for (const seeded of SEED) {
+  for (const seeded of rows) {
     mutation += 1;
 
     const entry = await prisma.entry.create({

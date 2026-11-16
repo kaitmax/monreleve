@@ -362,7 +362,7 @@ Same 40% ceiling either way; different consequence on breach. Under `'source'`: 
 'exact':         totalWorkDays = suppliedByUser   // validated, not derived
 ```
 
-Under `simplified240` there is no calendar arithmetic and no holiday table — leave, holidays, and sickness are absorbed into the 240. `periodFraction` covers mid-year starts as a fraction of the calendar year.
+Under `simplified240` there is no calendar arithmetic and no holiday table — leave, holidays, and sickness are absorbed into the 240. `periodFraction` covers mid-year starts as a fraction of the calendar year. `periodFraction` is the number of calendar days from the activity start date to 31 December, both included, divided by the number of days in that calendar year; no source states a basis, so this is the product's own convention, pending expert review (`docs/regulatory-sources.md`, constants row 9).
 
 **Step 3 — Granularity.** Converting hours into countable days; the rule lives here so it exists once.
 
