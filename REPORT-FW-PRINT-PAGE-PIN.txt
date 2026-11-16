@@ -47,7 +47,8 @@ COMPLETE for the web gates this task owns. Both ran in this session:
   test:container:e2e and test:db; both ran to their ends.
 - gate:clone ALONE, on f7be4fe8e8102cad3d59209fab06e2c107fa69e5 itself:
   exit 0, ABORTED False ("GATE:CLONE PASSED").
-- The report commit adds only this file on top of f7be4fe.
+- The report commits (two: the report, then its WALKTHROUGH and
+  corrections after review) add only this file on top of f7be4fe.
 - No Android code changed, so there is no :app:gate.
 - Not merged: the orchestrator merges.
 
@@ -175,9 +176,17 @@ R991. THE CSS PAGE SIZE IS PINNED BY VALUE
   - atPageSizes(css): each @page rule's size, lowercased, whitespace
     collapsed; null for a rule with no size; comments removed first.
   - CSS_PAGE_SIZE_FOR_FORMAT = { A4: 'a4' }: THE STATED PAIRING (R345). No
-    "lowercase it" rule is assumed, because the two vocabularies differ
-    (Playwright's Ledger is 17 x 11 in, CSS's ledger 11 x 17; Tabloid has no
-    CSS keyword). A format with no entry is refused by name.
+    "lowercase it" rule is assumed, because the two vocabularies differ.
+    The Playwright half is read from its own paper table
+    (playwright-core 1.63.0, lib/coreBundle.js:36672-36682: ledger
+    17 x 11, tabloid 11 x 17, a4 8.27 x 11.7 in). The CSS half is CSS
+    Paged Media Module Level 3's page-size keyword list (A5, A4, A3, B5,
+    B4, JIS-B5, JIS-B4, letter, legal, ledger, with ledger 11 x 17 in),
+    named here from the spec and NOT read from a local copy in this
+    session; a later draft adding sizes would make css-page.ts's "A6 has
+    no CSS keyword" comment version-dependent. No behaviour rests on it:
+    the table states A4 alone, and a format with no entry is refused by
+    name.
   - pageSizeRefusal(format, sizes): null, or one sentence naming R991, the
     served value and the renderer's. The WHOLE value is compared: `a4
     landscape`, `a4 portrait` and `210mm 297mm` are refused. Zero @page
@@ -323,6 +332,36 @@ R994. NOTHING ELSE MOVES
   - web/tests/unit/meta/gate-selection.test.ts: the R990 block (21), the
     census label, and the harness list read through the new export.
 
+WALKTHROUGH (R176, R177)
+------------------------
+What was driven is the one thing this task built: the R991 check, which
+fetches the print page with a print token, follows every stylesheet it
+links and reads the @page rule. It ran against both servers.
+- The image, inside the container step (above): 3 stylesheets linked, the
+  rule in the minified /_next/static/css/<hash>.css, read as `size: letter`
+  under the plant (RED) and `size: a4` on the reverted tree (green).
+- `pnpm dev` from this worktree on :3300, after the gates (22:34:52Z),
+  with a freshly created and migrated scratch database and a throwaway
+  non-placeholder AUTH_SECRET in both the server's and the test's
+  environment:
+  - 22:35:09Z GET /api/health:
+    {"service":"monreleve","instance":null,"status":"ok","reasons":[],
+     "origin":null,"runtime":false}
+  - the print route warmed first (a 404 for a bad token, 7 s cold compile);
+  - container-pdf.test.ts pointed at dev (CONTAINER_BASE_URL and
+    FRONTALIER_PORT = :3300), 22:35:30Z-22:35:43Z, exit 0, "Tests 3 passed
+    (3)" (walkthrough-dev-r991.log):
+      [page] R991: the renderer asks for format "A4"; the print page links 2
+        stylesheet(s); /_next/static/css/app/releve/print/page.css?v=1794868543123
+        @page size: a4
+  - So the reader handles the dev shape too (a per-route sheet path with
+    a query string, not a hashed file), and dev and the image agree on the
+    rule (R177). Against dev, "the image" in the other two tests' names is
+    the dev server, rendered with this machine's Chromium (the [pdf] line
+    shows the same 199 189 bytes twice).
+  - The dev tree was killed by PID (shell 27236, listener 12072); :3300 then
+    had no listener. `next dev` changed no tracked file (git status empty).
+
 NOTICED BUT NOT TOUCHING
 ------------------------
 1. R993: the page size has two homes (above).
@@ -358,9 +397,21 @@ NOTICED BUT NOT TOUCHING
    Two such runs at once would collide: each harness runs
    `docker rm -f` on its fixed name at start and teardown
    (container-e2e.mjs:185, container-write.mjs:170), so one would remove
-   the other's container. Not hit here: no other gate ran during
-   mine. Not touched (R994).
-7. The tool harness writes its own background-task output under the
+   the other's container. What was sampled: one process listing at
+   22:14:33Z (no gate running) and three `docker ps` during gate:clone
+   (only frontalier-postgres); W3e's scratch database
+   monreleve_fw_period_fraction appeared meanwhile, so the siblings were
+   working. Not observed to collide; not touched (R994).
+   gate:changed's minimum (22:09:00Z) predates their locks.
+7. MERGE ORDER. This branch renames a census-pinned selector label and
+   adds a census of the whole closure. W3e, W10 and W6 are cut from the
+   same base (56b7116). A sibling that edits gate-selection.mjs or
+   gate-selection.test.ts will conflict, and one that adds a product
+   importer of print-token, render-queue, issuance/record,
+   verification/origin or lib/ui/react/index.ts (or a new module only the
+   page or route imports) turns the R990 census red after both merge.
+   That is the census doing its job; whichever merges second re-runs it.
+8. The tool harness writes its own background-task output under the
    session temp directory; nothing here relies on it, and nothing of mine
    was written to the orchestrator's scratchpad.
 
@@ -381,6 +432,10 @@ DEVIATIONS
    lib/issuance/record.ts, lib/verification/origin.ts and
    lib/ui/react/index.ts, each with its only product importer named in R990.
 4. The BEFORE ran the container step only (R992).
+5. The prompt's report list has no WALKTHROUGH; one is added because
+   CLAUDE.md's R176/R177 bind every task. It was driven after both gates,
+   on the committed code (the tree was clean), so it is evidence beside the
+   gates, not part of either.
 
 QUESTIONS
 ---------
@@ -459,9 +514,14 @@ gate:clone, ALONE, on f7be4fe (gate-clone.log):
 - DATABASE_URL came from a session web/.env naming the local server's
   `postgres` database, copied by script (scripts/db-env.ps1) from the main
   checkout's host, port and credentials without printing them.
-- ALONE: at 22:14:33Z no gate process ran anywhere (node processes
-  listed: only Playwright MCP helpers) and only frontalier-postgres was up.
-  Three other sessions' locks had appeared at 22:12 (NOTICED 6).
+- ALONE AT ITS START: at 22:14:33Z no gate process ran anywhere (node
+  processes listed once: only Playwright MCP helpers) and only
+  frontalier-postgres was up. Three sibling sessions' locks had appeared at
+  22:12 and they were live during the run (NOTICED 6); their processes were
+  not sampled again. `docker ps` at 22:20:59Z, 22:23:57Z and 22:26:23Z
+  showed only frontalier-postgres, and the write probe, the step whose
+  fixed container name a sibling could share, passed. The 1 835 MB drop
+  may include the siblings' load; it moves no start line.
 - Commit free read 7 897 MB in its own step (22:14:33Z), against the 4 676
   line. Sampler start 7 868.
 - 22:14:41Z-22:26:18Z, STEP_EXIT=0, ABORTED False. Minimum commit free
@@ -488,7 +548,9 @@ Memory, every run of this session, each read in its own step first:
   (drop = the read minus the minimum)
 
 Cleanup (22:27Z), per ORCH-WEB-COMPLETE Part B:
-- monreleve_fw_print_page_pin dropped (exit 0). pg_database now lists
+- monreleve_fw_print_page_pin dropped (exit 0) at 22:27Z; recreated and
+  migrated for the dev walkthrough at 22:34Z, and dropped again at
+  22:36:14Z (exit 0). pg_database now lists
   frontalier, monreleve_fw_delai_rappel, monreleve_fw_period_fraction,
   postgres, template0, template1. The two monreleve_ ones are other
   sessions' and were left alone. monreleve_container_e2e and
@@ -503,5 +565,6 @@ Cleanup (22:27Z), per ORCH-WEB-COMPLETE Part B:
 - monreleve:write is d1c7c2e483d5 before and after gate:clone (the write
   probe built this session's tag, as CONTAINER_IMAGE named it).
 - No monreleve container remains; frontalier-postgres was never stopped.
-- :3300 has no listener.
+- :3300 has no listener (after gate:clone, and again after the dev
+  walkthrough).
 - The lock is removed last, after this report is pushed.
