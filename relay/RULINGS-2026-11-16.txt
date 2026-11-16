@@ -283,3 +283,196 @@ APPLIED:
   R995-R999).
 - The operator's list gains: "the part-year day-count basis is the
   product's convention, pending the expert reviewer".
+
+====================================================================
+WEB RULING 7 - PARALLEL MODE (the operator: "accelerate this run
+multiple agents if ncessery")
+====================================================================
+EVIDENCE: memory has been the binding constraint. W2's solo
+gate:changed with container e2e and test:db dropped 4 745 MB, bottoming
+at 3 057 with 247 MB physical free. Every session's time is mostly light
+work (reading, writing tests, plants on single files); its gates are a
+fraction. changedPaths (web/scripts/gate-selection.mjs:244) reads
+`git diff --name-only HEAD` plus untracked files, so a staged
+`git merge --no-commit` selects exactly the merged branch's paths.
+QUESTION: how to run several sessions without overlapping heavy runs?
+ANSWER (the advisor, verbatim in substance):
+- The design is sound: parallel sessions, one machine-wide lock for heavy
+  runs, merge commits for branches behind main.
+- W3d was launched without the lock: hold it in W3d's name until it hands
+  back, rather than messaging it mid-run.
+- Prove the lock before anything depends on it (R154):
+  - two simultaneous acquires give exactly one winner;
+  - a non-holder's release is refused;
+  - the memory line is read after acquiring, and the lock is released
+    while waiting if the line is unmet;
+  - only the orchestrator breaks a stale lock, after checking the
+    holder's session lock and log.
+- Put the live roster on disk before any launch.
+- Only one selector-touching task at a time: W3d, then W4, then W5.
+  Check W7's R962.
+- First batch: W3e, W10 and W6, making four live with W3d. Add more only
+  once a heavy run's minimum holds above the abort line. The long poles
+  are W10 -> W12 and W11; bring W11's Q1-Q7 with its report open.
+- The lock covers anything whole-project, Docker or browser: both gates,
+  build, the full test and test:* suites, Lighthouse, and any image
+  build or run, plants included. Single test files stay outside.
+- A stated allowance per other live session on every start line. Drops
+  measured in parallel never lower a line. The orchestrator's merge gates
+  get priority.
+- Merge: a base equal to main fast-forwards. A base behind main gets a
+  merge commit, by a ruling amending Part B. A conflict goes back to its
+  session. One gate:changed per merge, on the merged tree with the
+  record edits present; then commit the merge, then the records, then
+  gate:clone once on the tip.
+- Session briefs gain a port block, a stated wait bound for the lock, no
+  parking.md entries (R456's letter series collide across branches), and
+  a git lock error retried, never deleted.
+- Record how ALONE now reads, and tell the user the gain is bounded,
+  since heavy runs still go one at a time.
+APPLIED:
+- C:/wt/.run-tools/heavy-lock.mjs (outside the repository) was written
+  and PROVEN on 2026-11-16 22:07-22:08Z:
+  - two simultaneous acquires (probe-A, probe-B): A "ACQUIRED", B "NOT
+    ACQUIRED ... exit 2";
+  - probe-B's release of A's lock: "REFUSED ... exit 1";
+  - --min-free 999999: "memory 5590 MB < line 999999 MB: released,
+    waiting", then NOT ACQUIRED, with the lock FREE afterwards;
+  - priority: probe-B "yielding to the orchestrator's priority marker",
+    the orchestrator ACQUIRED when A released, B NOT ACQUIRED, and no
+    marker left;
+  - `break` by a non-orchestrator: REFUSED.
+- The orchestrator holds the lock as "W3d-held-by-orchestrator" (min-free
+  0, a hold, no run) from 22:09:07Z until W3d hands back.
+- The allowance is +300 MB per other live session; heavy work in
+  sessions runs under the lock.
+- Part B carries PARALLEL MODE. WEB-QUEUE-STATE carries LIVE SESSIONS
+  (the roster, the port blocks).
+
+====================================================================
+WEB RULING 8 - C10's SEVEN QUESTIONS (FOR W11, THE RESUME)
+====================================================================
+EVIDENCE: C:/wt/fw-delai-rappel/REPORT-FW-DELAI-RAPPEL.txt QUESTIONS
+Q1-Q7 and DEVIATIONS D1-D3; relay/FW-DELAI-RAPPEL.txt R914-R921; the
+operator's own C10 text (relay/ORCH-NO-PHONE-QUEUE.txt:182-191): a
+confirmation first, one reminder two weeks before, then the address and
+date DELETED, and the privacy notice says what is kept, why and until
+when. That text settles none of Q1-Q7 in its own words.
+QUESTION: Q1-Q7 under A-3 ("Advisor decides").
+ANSWER (the advisor, verbatim in substance):
+- Five are the advisor's; Q6 and Q7 are the operator's. The operator's
+  own C10 text wins wherever it settles one.
+- Q1 KEEP. No mail for a date under fourteen days; it would only repeat
+  what the page showed. Condition (R225): the helper says why no reminder
+  is offered, and the "trop-tard" page says nothing was kept, both
+  asserted on the rendered surface.
+- Q2 KEEP. A confirmed row changes only through its owner's link. Name
+  the gap as NOT delivered (a re-submitted date keeps the old one, and
+  the person is not told). Check the confirmation mail says how to change
+  the date.
+- Q3 CHANGE. The link opens a page with one button, and the POST deletes.
+  An unseen delete loses the only mail, and the confirmation carries both
+  links, so a link scanner can remove the request before it is read. A
+  plain form, no JS, no cookie. Test-first with a real RED: a GET leaves
+  the row, the POST removes it, R920's round trip presses the button. The
+  confirm link stays as the alert flow has it. R267's second site, the
+  alert unsubscribe, is recorded as checked, not changed.
+- Q4 KEEP, plus one rule: a delete link works while its row exists. After
+  a failed send attempt the person holds no working link today. If the
+  fix needs more than the branch's own unmerged migration, hand back. The
+  "no row" landing reads the same as "deleted now".
+- Q5 BOUND IT: refuse a date more than twelve months ahead. One stated
+  constant, tested both sides, enforced in the database (R196). If the
+  helper already bounds its input, derive from it (R206). Copy names the
+  rule, not the figure (R153).
+- Q6 (legal basis): the operator's wording. It blocks promotion, not the
+  merge; report how basis[1] covers the existing alerts.
+- Q7 (inbox): the operator's, and promotion only.
+- Promotion: check whether the form renders unconditionally; if it does,
+  main's tip takes sign-ups production cannot honour until the scheduler
+  and mail key are set. That does not block the merge. At the merge,
+  record the last SHA before W11 as the promotable tip, and why.
+- Launch: after W3d's handback and one heavy run measured in parallel
+  mode. Resume IN PLACE from the handoff; the stale base is merged by
+  Web Ruling 7's merge commit, so don't rebuild the worktree. D1-D3 are
+  owed; scratch-final is never restored wholesale. Built increments
+  first, then Q3, Q4 and Q5 as increments; increments with the same gate
+  selection may share one gated commit. Regenerate the privacy baselines
+  once, after the last notice change, naming the set first (R207),
+  including the new delete page's. R245: both messages are transactional;
+  confirm the header test enumerates them. The brief carries a port
+  block, the lock, no selector edits and no parking.md.
+APPLIED: relay/FW-DELAI-RAPPEL-RESUME.txt (R1000-R1009; R1000+ free by
+the scan). Q6 and Q7 go on WEB-QUEUE-STATE's operator list. W11 is not
+launched yet.
+
+====================================================================
+WEB RULING 9 - W3d MERGED; ITS QUESTIONS; R1002 AMENDED; THE PDF THREAD STOPS
+====================================================================
+EVIDENCE: branch fw-print-page-pin 0630977 (code f7be4fe), based on
+56b7116 = main, so a fast-forward.
+- gate:changed: test 3 811, test:db 722 (+27 skipped), container e2e
+  (354, pass 1 33, pass 2 1, verdict 34 tests, 0 refusals), exit 0.
+- gate:clone on f7be4fe: exit 0, inside the orchestrator's hold of the
+  lock in W3d's name (22:09:07Z-22:38:10Z).
+- lib/export/pdf.ts changed only by exporting PDF_FORMAT = 'A4'.
+- The plant `size: letter`: CONTAINER E2E PASSED before, and exactly the
+  R991 test failed after.
+- W3c's merge gate: gate:clone ALONE on 56b7116 PASSED, pushed
+  b6f3295..56b7116.
+- selectSuites today:
+  - ThresholdRail.tsx and lib/fr/dossier.ts select typecheck, lint, test,
+    build, test:e2e, test:visual, test:db and test:late;
+  - lib/dossier/service.ts and aggregate.ts select the base chain and
+    test:db;
+  - none selects test:container:e2e.
+- container-render-verdict.mjs refuses any test that "never passed" in
+  either pass.
+QUESTIONS (the session's):
+1. Should ThresholdRail.tsx, lib/fr/dossier.ts and lib/dossier/* select
+   the container step?
+2. Should the harness echo and require the new [page] line?
+ANSWER (the advisor, verbatim in substance):
+- W3d merges by fast-forward; nothing needs re-running.
+- R1002 collides with BLOCKED 11 and is amended before W11 launches.
+  - C10 landed its links on the comparator's fragment to keep routes.ts
+    untouched, because the calculator has 55 B spare.
+  - A new page that adds a registry entry would fail size in W11's own
+    gate:clone.
+  - So the page adds no registry entry that reaches client code, and
+    C10's byte probe is re-run. If an entry is unavoidable, W11 hands
+    back and merges after W10.
+- web-orch cannot yet gate a merge commit: its .env names postgres, and
+  W1's first run went red on a missing database. Create and migrate an
+  own scratch database, take a port block, and prove it with one test:db
+  file.
+- The record:
+  - close W3c's gate;
+  - record that W3d's gate:clone ran inside the hold, and its drops
+    (3 324, 1 835), without lowering a line;
+  - take W3d off the roster;
+  - write the fixed container names into Part B as the reason the Docker
+    clause has no exceptions;
+  - commit Rulings 7-8 and the resume prompt.
+- Q1: no selector change now. They select test:db, which covers the
+  print page's content. Record the PDF's paint of shared styles as NOT
+  delivered.
+- Q2: no task if the verdict already refuses a skipped R991 test; a
+  required [page] line would be a second mechanism for the same claim.
+- Stop growing the PDF thread: five sessions, and W4-W12 untouched. Until
+  W12 merges, a session's questions are recorded, not tasked, unless they
+  show a defect.
+- Launches: W11 now, after the R1002 amendment. W4 takes the next free
+  slot once W3d is on main. Keep four live.
+- Merges: if W10 edits lib/ui/react/index.ts, its merged-tree gate
+  selects the container step too. When two verified branches are waiting,
+  merge them in one staged merge: one gate:changed on the union, one
+  gate:clone.
+APPLIED:
+- monreleve_web_orch was created on frontalier-postgres and migrated (15
+  migrations). web-orch's web/.env names it. Proof: schema-constraints.
+  test.ts 31 passed. The orchestrator's port block is 3900-3999.
+- Q1 is recorded as NOT delivered in W3d's row. Q2 is confirmed by
+  reading container-render-verdict.mjs: "never passed" is a refusal.
+- R1002 is amended in relay/FW-DELAI-RAPPEL-RESUME.txt. Part B carries
+  the container names and the stop rule. The roster is updated.

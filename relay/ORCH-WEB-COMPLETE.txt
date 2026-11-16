@@ -59,6 +59,42 @@ PART B - HOW THE RUN WORKS
   TASKS and PARKED PROMOTIONS still stand. Record commits ride with a
   merge, so one gate:clone covers both.
 
+PARALLEL MODE (Web Ruling 7, on the operator's words of 2026-11-16:
+"accelerate this run multiple agents if ncessery"). It AMENDS the bullets
+above where they differ:
+- Several sessions run at once. HEAVY runs go one at a time through the
+  machine-wide lock C:/wt/.heavy-run.lock (C:/wt/.run-tools/heavy-lock.mjs).
+  Heavy means anything whole-project, Docker or browser: both gates,
+  build, size, the full test and every test:* suite, typecheck and lint
+  of the whole project, Lighthouse, any image build or container run,
+  plants included. Single test files are not heavy.
+- The lock reads commit free right after it is taken, and releases while
+  waiting if the line is unmet. Every start line gains +300 MB per OTHER
+  live session. A drop measured in parallel mode never lowers a line.
+- "ALONE" now reads: no other HEAVY run at the same time (the lock); light
+  work in other sessions is allowed and is recorded as such.
+- Only the orchestrator breaks a lock, after checking the holder's session
+  lock and log. The orchestrator's merge gates take the lock with
+  --priority, so they cannot starve.
+- Each session has its own port block. It never writes parking.md (R456's
+  letter series collide across branches): findings go in its report's
+  NOTICED. It retries a git lock error and never deletes a lock file.
+- Only one task that touches gate-selection.mjs or its test is live at a
+  time.
+- WHY THE DOCKER CLAUSE HAS NO EXCEPTIONS (Web Ruling 9): the harnesses use
+  FIXED container names (monreleve-e2e, monreleve-write) and `docker rm -f`
+  them on start. Two container runs at once would remove each other's
+  container.
+- Until W12 merges, a session's questions are RECORDED, not turned into
+  tasks, unless they show a defect (Web Ruling 9).
+- MERGE: a branch whose base equals main is fast-forwarded, as before. A
+  branch whose base is BEHIND main is merged with a merge commit (no
+  rebase, so the session's gated SHAs stay in history; R573 already
+  speaks of "the merge result"). gate:changed runs once on the merged
+  tree, with the orchestrator's record edits present. Then: commit the
+  merge, commit the records, and run gate:clone ALONE on the tip. A
+  conflict goes back to its session.
+
 ====================================================================
 PART C - THE WEB TASKS, IN ORDER (each from a written source)
 ====================================================================

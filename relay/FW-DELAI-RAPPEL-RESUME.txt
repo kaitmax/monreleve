@@ -1,0 +1,174 @@
+FW-DELAI-RAPPEL-RESUME SESSION PROMPT - Mon Releve
+C10 RESUMED IN PLACE: THE DROIT D'OPTION REMINDER, FINISHED UNDER WEB RULING 8 (web run step W11)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W11. This RESUMES queue step C10, which
+was parked on the memory floor (QUEUE-STATE BLOCKED 12). Read first, in
+this order:
+1. relay/FW-DELAI-RAPPEL.txt, C10's original prompt. R914-R923 stay its
+   numbers.
+2. C:/wt/fw-delai-rappel/relay/FW-DELAI-RAPPEL-HANDOFF.txt, the CURRENT
+   handoff.
+3. C:/wt/fw-delai-rappel/REPORT-FW-DELAI-RAPPEL.txt (uncommitted).
+4. relay/QUEUE-STATE.md: BLOCKED 12, and C10's row with its "Owed at
+   C10's RESUME" and "Resume note".
+5. relay/ORCH-WEB-COMPLETE.txt, all of Part B, including PARALLEL MODE.
+6. relay/RULINGS-2026-11-16.txt: Web Rulings 7 and 8.
+7. CLAUDE.md.
+The orchestrator's copies under C:/wt/web-orch/relay/ are the newest; read
+those where they differ from main's. New ruling numbers for this task:
+R1000-R1009.
+
+====================================================================
+HOW THIS SESSION RUNS
+====================================================================
+- R241: the only thing that ends this session is a committed and pushed
+  REPORT-FW-DELAI-RAPPEL.txt. C10's uncommitted report is rewritten into
+  it, and C10's park record is kept as its first section.
+- IN PLACE. Work in the EXISTING worktree C:/wt/fw-delai-rappel on its
+  branch fw-delai-rappel (base 17270f3; commit 764ef54 = R912).
+  - Its lock was removed at the park, and it is left dirty on purpose:
+    increment 1 is uncommitted.
+  - Write your own .session-lock.json there first. This resume is
+    sanctioned by BLOCKED 12's action, so you are the continuation of C10.
+  - Do NOT rebuild the worktree. Do NOT rebase: the stale base is merged
+    by a merge commit (Web Ruling 7).
+- The saved trees are the record (C:/wt/queue-evidence/fw-delai-rappel/).
+  NEVER restore scratch-final over the worktree wholesale. For
+  web/tests/unit/pages/confidentialite.test.tsx, inc1-R914's copy WINS
+  (D3).
+- The scratch database monreleve_fw_delai_rappel exists (16 migrations).
+  Recreate web/.env naming it. For gate:clone the URL names the local
+  server's `postgres` database instead. Copy host, port and credentials
+  from the main checkout's web/.env by script, never printed.
+- PARALLEL MODE (Part B), your rules:
+  - Port block 3800-3899.
+  - Every heavy run goes through C:/wt/.run-tools/heavy-lock.mjs as the
+    launch message shows; waiting is not a reason to hand back.
+  - Never touch gate-selection.mjs or its test. If you need them, hand
+    back the question.
+  - Never write parking.md.
+  - On a git lock error, retry; never delete a git lock file.
+  - Push your branch after every green increment.
+- Test-first, gate:changed before every commit, gate:clone ALONE (under
+  the lock) before the final push. Do not merge.
+
+====================================================================
+WEB RULING 8 - C10's QUESTIONS, DECIDED (verbatim in substance;
+overturnable by the operator; A-3)
+====================================================================
+R1000. Q1 KEPT. A date fewer than fourteen days away: no form, the server
+    refuses it, and nothing is stored or sent. A confirmation after the
+    due day deletes the request and lands on "trop-tard". The condition
+    (R225), asserted on the RENDERED surface:
+    - the helper says why no reminder is offered for such a date;
+    - the "trop-tard" page says nothing was kept.
+
+R1001. Q2 KEPT. A confirmed row changes only through its owner's link.
+    - Recorded as NOT delivered: a person who re-submits a corrected date
+      keeps the old one, and is not told.
+    - Check that the confirmation mail says how to change the date (by the
+      delete link, then a new request). Assert it on the rendered message.
+
+R1002. Q3 CHANGED. The delete link opens a page with ONE button, and the
+    POST deletes.
+    - Reason: the confirmation carries both links, so a link-scanning
+      client could remove the request before it is read, and lose the only
+      mail.
+    - A plain form: no JavaScript, no cookie.
+    - Test-first with a real RED: a GET leaves the row; the POST removes
+      it; R920's round trip presses the button.
+    - The confirm link stays as the alert flow has it.
+    - R267's second site is the alert unsubscribe: record it as checked,
+      not changed.
+    - THE PAGE ADDS NO REGISTRY ENTRY THAT REACHES CLIENT CODE (Web
+      Ruling 9). C10 landed its links on the comparator's fragment so that
+      routes.ts stayed untouched, because the calculator page has about
+      55 B of GATE A headroom (QUEUE-STATE BLOCKED 11). Re-run C10's byte
+      probe after the page exists, and paste it.
+    - If a registry entry is unavoidable, STOP and hand back: W11 then
+      merges after W10 (FW-CALC-BYTES), which removes the registry from
+      client code.
+
+R1003. Q4 KEPT, WITH ONE RULE ADDED. A delete link works for as long as
+    its row exists.
+    - After a failed send attempt, the person holds no working link today.
+      Make the reminder's link work while the row exists.
+    - If the fix needs more than this branch's own unmerged migration
+      (20261112120000_deadline_reminder), stop and hand back.
+    - The "no row" landing reads the same as "deleted now".
+
+R1004. Q5 BOUNDED. A date more than twelve months ahead is refused.
+    - One stated constant, tested on both sides, and enforced in the
+      database too (R196).
+    - If the helper already bounds its own input, derive the bound from
+      that instead (R206).
+    - Copy names the rule, never the figure (R153).
+
+R1005. Q6 (the legal basis, CONFIDENTIALITE_COPY.basis[1]) is the
+    OPERATOR'S wording. It blocks promotion, not the merge. Report how
+    basis[1] covers the existing alerts today, quoted from lib/fr. Do not
+    change it.
+
+R1006. Q7 (which inbox for R921's real sign-up) is the OPERATOR'S, and
+    concerns promotion only. Nothing to do here.
+
+R1007. PROMOTION FACT. Establish whether the form renders
+    UNCONDITIONALLY: is it gated by product-state.ts or a flag?
+    - If it renders always, main's tip will take sign-ups production
+      cannot honour until FRONTALIER_SCHEDULER and RESEND_API_KEY are set
+      (BLOCKED 6).
+    - Say so plainly; it does not block the merge.
+
+R1008. R245. Both messages are TRANSACTIONAL. Confirm the header test
+    enumerates the confirmation and the reminder, asserting NO
+    List-Unsubscribe pair on either. Add them if missing, test-first.
+
+R1009. THE BASELINES, ONCE. Regenerate the privacy page baselines once,
+    after the last change that touches the notice, and the new delete
+    page's baselines.
+    - Name the full set FIRST (R207), and the run's output must equal it.
+    - Only test:visual:update writes them; it is heavy (under the lock).
+    - Crop and look at every regenerated image (R135), and list each with
+      why.
+
+====================================================================
+THE WORK
+====================================================================
+0. Lock in place; .env; read the handoff; re-verify the saved trees
+   against the worktree (sha256sum -c).
+1. Commit increment 1, gated.
+2. Increments 2-6 from the saved trees, file by file (not wholesale),
+   each gated. Increments with the SAME gate selection may share one gated
+   commit, named in its body, to save lock time.
+3. D1: the scratch database suites run TOGETHER once.
+   D2: record which REDs are plants.
+4. R1002, R1003 and R1004 as increments of their own, test-first.
+5. R1000, R1001, R1007 and R1008.
+6. R1009: the baselines, once.
+7. The walkthrough (R176) against `pnpm dev` on your port block:
+   - the form;
+   - the confirmation, read from the outbox;
+   - the delete page, then its button;
+   - the trop-tard page;
+   - a date more than twelve months ahead, refused.
+8. gate:clone ALONE on the tip (under the lock); push the branch.
+9. Report; commit; push; cleanup (Part B). Remove the lock last. KEEP the
+   scratch database only if the report says why.
+
+====================================================================
+REPORT - REPORT-FW-DELAI-RAPPEL.txt (ASCII, committed and pushed)
+====================================================================
+- C10's PARK RECORD (kept)
+- SUMMARY
+- STATUS (R391 shape)
+- R914-R923 and R1000-R1009, each with its RED or plant
+- D1-D3 discharged
+- WALKTHROUGH
+- BASELINES (named, then regenerated)
+- PROMOTION FACTS (R1005-R1007)
+- NOTICED BUT NOT TOUCHING
+- DEVIATIONS
+- QUESTIONS
+- PUSH PROOF
+
+END OF FW-DELAI-RAPPEL-RESUME PROMPT
