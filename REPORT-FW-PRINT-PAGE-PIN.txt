@@ -1,0 +1,507 @@
+REPORT-FW-PRINT-PAGE-PIN
+========================
+
+Web run step W3d (relay/ORCH-WEB-COMPLETE.txt, Web Ruling 5), prompt
+relay/FW-PRINT-PAGE-PIN.txt, rulings R990-R994.
+- Branch fw-print-page-pin, in worktree C:/wt/fw-print-page-pin, cut from
+  origin/main 56b71166db7fe86f39c125075cbcbde70e718bc1 (W1-W3c merged).
+- The lock .session-lock.json was written at 21:32:50Z and is gitignored.
+- Evidence is in C:/wt/fw-print-page-pin/.print-page-pin-evidence/
+  (gitignored): every log named below, the derivation, plant and probe
+  scripts, the memory sampler and its samples.
+
+SUMMARY
+-------
+- R990: what the 17 render tests and container-pdf render or read now
+  selects test:container:e2e. The set is DERIVED from imports by a new
+  selector function, containerPdfClosure, and pinned by a census test.
+  - The print page and the export route, and what those two ALONE render
+    through: print-token, render-queue, issuance/record,
+    verification/origin, lib/ui/react/index.ts, plus the renderer and the
+    stylesheet that were already named.
+  - Every tests/ file the harness's vitest files reach: live-server,
+    pdf-text, pdf-image, pdf-pages, and the new css-page.
+  - Shared modules (lib/dossier/*, lib/fr/dossier, lib/db/client, the rail
+    component ...) are NOT selected, by the "alone" rule; listed below.
+- R991: a new test in tests/db/container-pdf.test.ts fetches the print
+  page FROM THE IMAGE, follows its stylesheet links, reads the @page rule
+  out of the served CSS, and requires its size to be the keyword stated for
+  lib/export/pdf.ts's own PDF_FORMAT (now exported and used by page.pdf).
+  The pairing 'A4' -> `a4` is stated in tests/support/css-page.ts and
+  asserted in tests/unit/export/css-page.test.ts (R345).
+- R992: `size: letter`, verified in the image's own CSS, PASSED the
+  container step before this change (CONTAINER E2E PASSED) and goes RED
+  after it, naming R991, `size: letter`, "A4" and `size: a4`. Reverted,
+  verified against HEAD's blob.
+- R993: the page size still has two homes; noticed, not touched.
+- R994: no renderer, page or route behaviour changed. lib/export/pdf.ts
+  gains one exported constant, which the page.pdf call uses (R991 licenses
+  it).
+
+STATUS (R391)
+-------------
+COMPLETE for the web gates this task owns. Both ran in this session:
+- gate:changed: exit 0, ABORTED False, on the working tree that became the
+  code commit f7be4fe8e8102cad3d59209fab06e2c107fa69e5 (git diff was empty
+  between the gate and the commit). Its selection included
+  test:container:e2e and test:db; both ran to their ends.
+- gate:clone ALONE, on f7be4fe8e8102cad3d59209fab06e2c107fa69e5 itself:
+  exit 0, ABORTED False ("GATE:CLONE PASSED").
+- The report commit adds only this file on top of f7be4fe.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+
+R990. R267'S SECOND SITE: THE SELECTOR KNOWS WHAT THE STEP RENDERS
+-----------------------------------------------------------------
+The list was established by reading imports, with a script over the whole
+package (.print-page-pin-evidence/scripts/r990-derive.mjs, output
+r990-derive.log), before any code was written. The rule it found:
+- PRODUCT SIDE. Seed: app/releve/print/page.tsx and
+  app/api/v1/export/pdf/route.ts (framework entry points: no import reaches
+  them, R246). A module joins when EVERY product file importing it is
+  already in the set ("it alone renders through"). Tests do not count as
+  importers. Fixpoint:
+    app/releve/print/print.module.scss   <- page.tsx only
+    lib/export/pdf.ts                    <- route.ts only
+    lib/export/print-token.ts            <- route.ts and page.tsx only
+    lib/export/render-queue.ts           <- route.ts only (AC3's bound)
+    lib/issuance/record.ts               <- route.ts only (R329's record)
+    lib/verification/origin.ts           <- page.tsx only (the QR block)
+    lib/ui/react/index.ts                <- page.tsx only
+- TEST SIDE. Seed: the harness's vitest files, read from
+  scripts/container-e2e.mjs. Every tests/ file they reach:
+    tests/db/support/live-server.ts  <- export-pdf, verification-qr
+    tests/db/support/pdf-text.ts     <- export-pdf, verification-qr
+    tests/db/support/pdf-image.ts    <- verification-qr
+    tests/support/pdf-pages.ts       <- container-pdf (already named, W2)
+    tests/support/css-page.ts        <- container-pdf (new, R991)
+- No framework file sits above the print route alone: app/releve/ holds
+  only print/page.tsx and print.module.scss, and app/layout.tsx and
+  app/not-found.tsx serve every route.
+- Why lib/issuance/record.ts is in: its only product importer is the export
+  route, and export-pdf's two R329 tests assert what it records.
+- Why lib/ui/react/index.ts is in: its only product importer is the print
+  page (every other page deep-imports the components), and it decides
+  which rail the page prints (AC2, "prints the rail"). It is a 4-export
+  barrel, so the Docker build it now costs is rare. The two components
+  it re-exports are shared and stay out.
+
+NOT SELECTED, by the "alone" rule (shared with other product code; each
+keeps what it selected, and test:db renders the same page through its
+handler without a browser in print-route.test.ts and annex-rendered.test.ts):
+  lib/dossier/{load,service,aggregate}.ts, lib/fr/dossier.ts,
+  lib/fr/auth-api.ts, lib/db/client.ts, lib/auth/bearer.ts,
+  lib/entries/{no-coordinates,read-query}.ts, lib/calc-engine/index.ts,
+  lib/ui/core/index.ts, lib/ui/react/ThresholdRail/ThresholdRail.tsx,
+  lib/ui/react/ZoneBadge/ZoneBadge.tsx, lib/deploy/placeholders.mjs.
+  An edit to one of these that breaks the PDF is still invisible to every
+  gate but the container step; see NOTICED 2.
+
+THE MECHANISM (web/scripts/gate-selection.mjs):
+- containerPdfClosure(root): the two halves above, memoised per root, as
+  databaseClosure is. It reuses that function's specifiersOf/resolve.
+- containerHarnessFiles(root): the harness's vitest list. The regex that
+  read it lived in gate-selection.test.ts; it moved here so the selector
+  and the test read the harness one way (R206).
+- The R936/R982 rule keeps its eight named paths as the floor and adds
+  `|| containerPdfClosure(PACKAGE_ROOT).has(path)`. Its label now reads
+  "the container PDF step: its vitest files and what they read, the print
+  page, the export route and what those alone render through (R936, R982,
+  R990)". The census of pattern names is still 27.
+- gate-selection.d.mts declares both new exports (R185; the
+  declaration-parity test passed with them).
+
+THE TESTS (tests/unit/meta/gate-selection.test.ts, new "R990" block, 21):
+- A census: the closure equals the 18 paths above, sorted. A module joining
+  or leaving fails by name. This also guards the one unsafe direction:
+  over-matching a specifier in a comment would make a module look shared.
+- Every file in the closure selects test:container:e2e.
+- 11 named matches: page.tsx, the export route, live-server, pdf-text,
+  pdf-image, print-token, render-queue, issuance/record,
+  verification/origin, lib/ui/react/index.ts and css-page.
+- 6 named NON-matches: the CSV route, lib/dossier/load.ts,
+  lib/fr/dossier.ts, ThresholdRail.tsx, the render queue's unit test, and
+  export-csv.test.ts.
+- The union is kept (R234): page.tsx still selects test:e2e, test:visual
+  and test:db; the route and live-server still select test:db.
+- The mechanism on a fixture whose every edge the test writes (R154): a
+  page-only module and its own import join; a module the page shares with
+  app/page.tsx does not; a unit test importing a page-only module does not
+  make it shared; a db test the harness does not run, and its support file,
+  stay out.
+- RED first, twice:
+  - 21:47:45Z (red-unit.log): "TypeError: containerHarnessFiles is not a
+    function", and "Cannot find package '@/tests/support/css-page'".
+  - 21:48:32Z, with the function exported but the rule not yet wired
+    (red-selector.log): "Tests 14 failed | 98 passed (112)". The census of
+    names; the closure lacking css-page.ts (not yet imported); "a file the
+    container PDF step renders or reads, not selecting it" listing 10
+    paths; and 11 named cases "expected [...] to include
+    'test:container:e2e'". The fixture and the 6 non-matches already
+    passed.
+- Green 21:49:42Z (green-unit.log): css-page, gate-selection and
+  declaration-parity, 145 passed.
+
+The probe (select-probe-before.log / select-probe-after.log), one path at
+a time through selectSuites:
+  path                                    before                          after
+  app/releve/print/page.tsx               base, e2e, visual, db, late     + test:container:e2e
+  app/api/v1/export/pdf/route.ts          base, e2e, visual, db, late     + test:container:e2e
+  lib/export/print-token.ts               base, db                        + test:container:e2e
+  lib/export/render-queue.ts              base, db                        + test:container:e2e
+  lib/issuance/record.ts                  base, db                        + test:container:e2e
+  lib/verification/origin.ts              base, db                        + test:container:e2e
+  lib/ui/react/index.ts                   base, e2e, visual, db, late     + test:container:e2e
+  tests/db/support/live-server.ts         base, db                        + test:container:e2e
+  tests/db/support/pdf-text.ts            base, db                        + test:container:e2e
+  tests/db/support/pdf-image.ts           base, db                        + test:container:e2e
+  tests/support/css-page.ts               (new) base                      base, test:container:e2e, db
+  app/api/v1/export/csv/route.ts          base, e2e, visual, db, late     (unchanged)
+  lib/dossier/load.ts                     base, db                        (unchanged)
+  lib/fr/dossier.ts                       base, e2e, visual, db, late     (unchanged)
+  lib/ui/react/ThresholdRail/...tsx       base, e2e, visual, db, late     (unchanged)
+  tests/unit/export/render-queue.test.ts  base                            (unchanged)
+  tests/db/export-csv.test.ts             base, db                        (unchanged)
+
+R991. THE CSS PAGE SIZE IS PINNED BY VALUE
+------------------------------------------
+- lib/export/pdf.ts: `export const PDF_FORMAT = 'A4';`, and page.pdf now
+  passes `format: PDF_FORMAT`. One constant, used by the call itself, not
+  an export beside a literal. The PDF it produces is unchanged: the [pdf]
+  line still reads 595.92x842.88pt on every page (PUSH PROOF).
+- tests/support/css-page.ts (new, pure):
+  - stylesheetHrefs(html): every <link rel=stylesheet> href, attributes read
+    separately, so their order does not matter.
+  - atPageSizes(css): each @page rule's size, lowercased, whitespace
+    collapsed; null for a rule with no size; comments removed first.
+  - CSS_PAGE_SIZE_FOR_FORMAT = { A4: 'a4' }: THE STATED PAIRING (R345). No
+    "lowercase it" rule is assumed, because the two vocabularies differ
+    (Playwright's Ledger is 17 x 11 in, CSS's ledger 11 x 17; Tabloid has no
+    CSS keyword). A format with no entry is refused by name.
+  - pageSizeRefusal(format, sizes): null, or one sentence naming R991, the
+    served value and the renderer's. The WHOLE value is compared: `a4
+    landscape`, `a4 portrait` and `210mm 297mm` are refused. Zero @page
+    rules, a rule with no size, and two rules are each a refusal of their
+    own, distinct from a mismatch.
+- tests/unit/export/css-page.test.ts (new, 25 tests, in pnpm test): the
+  stated value `cssPageSizeFor('A4') === 'a4'`; the table holds nothing
+  else; lib/export/pdf.ts's PDF_FORMAT has an entry (a renderer moved to an
+  unstated paper fails here, in every gate); unstated formats refused by
+  name (Letter, Ledger, Tabloid, and 'a4' in lower case); six refused
+  values; the three distinct refusals; the reader on minified CSS, on the
+  source shape, on !important, on a selector, on a comment; the link
+  reader in both attribute orders and on a page with none.
+- tests/db/container-pdf.test.ts, new test "R991: the @page size the image
+  SERVES is the paper the renderer asks for", in the existing describe
+  (so it runs in the container step's pass 1, against the image):
+  - mints a print token, GETs the IMAGE's /releve/print, requires 200;
+  - presence first (R169, R177): at least one stylesheet linked, each
+    fetched from the image with 200 and non-empty;
+  - prints `[page] R991: ...` with every @page rule and the sheet it came
+    from, before asserting;
+  - expect(pageSizeRefusal(PDF_FORMAT, sizes)).toBeNull().
+- The served shape, measured on the image (plant-before-image-css.txt):
+  one minified rule, `@page{size:letter;margin:0}` under the plant, in
+  /_next/static/css/7175dd589a8fc0d0.css, one of the three sheets the
+  print page links.
+- THE GREEN DIRECTION, from gate:changed's own container run on the
+  reverted tree (gate-changed.log:910-912):
+    [page] R991: the renderer asks for format "A4"; the print page links 3
+      stylesheet(s); /_next/static/css/3d03cba8d42c9062.css @page size: a4
+    v tests/db/container-pdf.test.ts > R249: the PDF, in the image and here
+      > R991: the @page size the image SERVES is the paper the renderer
+      asks for 218ms
+  The RED alone would prove the check strict; this proves it right: the
+  same reader finds exactly one @page rule in the served CSS, `a4`, in a
+  different hashed file than under the plant, and accepts it.
+
+R992. THE VERIFIED PLANT (R180): BEFORE PASSES, AFTER IS RED
+-----------------------------------------------------------
+The edit: .print-page-pin-evidence/scripts/plant.mjs. Before writing it
+asserts exactly one `  size: a4;` (R211). After writing it prints the diff
+and asserts the new text present once, the old text gone, and that the
+@page rule itself reads `size: letter`. On revert it asserts
+`git diff --quiet` and that the blob equals HEAD's.
+
+  @page {
+ -  size: a4;
+ +  size: letter;
+    margin: 0;
+  }
+  changed lines: 1 1; blob f2e7fd0a, HEAD 4247449b
+
+BEFORE: the base tree (56b7116) plus the plant, with no change of mine.
+- Applied 21:41:02Z (plant-before-apply.txt).
+- `pnpm test:container:e2e`, CONTAINER_IMAGE=monreleve:fw-print-page-pin,
+  FRONTALIER_PORT=3300, under the sampler (plant-before-run.log).
+  21:41:38Z-21:45:52Z, STEP_EXIT=0, ABORTED False. Commit free 7 786 at
+  start (7 792 read in its own step at 21:41:32Z), minimum 4 578.
+- next build ran uncached in the image build (#13 DONE 93.1s), so the
+  plant was compiled.
+- THE PLANT REACHED THE IMAGE, read from the image itself at 21:46:43Z
+  (plant-before-image-css.txt, `docker run --rm` on the image). This was
+  read AFTER the run's verdict below, not before it; the green run and
+  the image's CSS are both recorded, so the order changes no conclusion:
+    FILE ./css/7175dd589a8fc0d0.css
+    @page{size:letter;margin:0}
+- The verdict, in full green:
+    354 passed (1.4m)                      [the e2e specs]
+    [pdf] image: 164955 bytes, 10 pages, 595.92x842.88pt x10;
+          here: 199396 bytes, 10 pages, 595.92x842.88pt x10
+    Tests  32 passed | 1 skipped (33)      [pass 1]
+    Tests  1 passed | 1 skipped (2)        [pass 2]
+    33 tests; refusals: 0
+    CONTAINER E2E PASSED - the deployed artefact served the whole suite (R249).
+  Under `letter`, container-pdf's fixture printed 10 pages, the same as
+  under `a4` (W1, W2, W3b). That is the evidence for pinning the VALUE:
+  for this fixture a page count would not have moved.
+- What "every gate" means here: the BEFORE ran the container step, the only
+  suite that renders a PDF. The other suites the stylesheet selects (e2e,
+  visual, db, late) were not run under the plant. None of them renders a
+  PDF (W3b's grep), and none read the @page rule: before this task a grep
+  for `@page`, `size: a4` and 'A4' over tests, e2e, scripts, lib and app
+  found only comments and one selector-test label.
+- Reverted 21:46:49Z: git diff --quiet exit 0; blob 4247449b, HEAD's.
+
+AFTER: this branch's code plus the same plant, image rebuilt.
+- Applied 21:50:52Z (plant-after-apply.txt), the same diff and blob.
+- Commit free read 7 542 in its own step (21:50:46Z); line 5 440.
+- 21:50:58Z-21:55:02Z, STEP_EXIT=1, ABORTED False, minimum 5 254
+  (plant-after-run.log):
+    354 passed (1.4m)                      [the e2e specs]
+    [pdf] image: 164962 bytes, 10 pages, ...x10; here: 199404 bytes, 10 pages, ...x10
+    [page] R991: the renderer asks for format "A4"; the print page links 3
+      stylesheet(s); /_next/static/css/7175dd589a8fc0d0.css @page size: letter
+    FAIL  tests/db/container-pdf.test.ts > R249: the PDF, in the image and
+      here > R991: the @page size the image SERVES is the paper the
+      renderer asks for
+    + Received:
+    "R991: the served @page rule says `size: letter`, but the renderer asks
+     for format \"A4\", which is `size: a4`"
+    Tests  1 failed | 32 passed | 1 skipped (34)
+    34 tests; refusals: 2
+    CONTAINER E2E FAILED: the vitest step (pass 1) failed against the
+      container: tests/db/container-pdf.test.ts > ... > R991: the @page
+      size the image SERVES is the paper the renderer asks for FAILED in
+      pass 1 (no verification origin)
+  - Exactly one test failed, and for the stated reason. The other 32 in
+    pass 1 passed, including both earlier container-pdf tests and all 15
+    export-pdf render tests.
+  - The verdict's second refusal is the QR-origin test, "never passed
+    (skipped in pass 1)": pass 2 does not start after a red pass 1, by
+    design (W3b).
+  - vitest's headline truncates the sentence; the full sentence, with both
+    values, is the "+ Received" block above.
+- Reverted 21:55:24Z (plant-after-revert.txt): git diff --quiet exit 0;
+  blob 4247449b, equal to HEAD's. Every gate below ran on the reverted
+  tree.
+
+R993. NOTICED, NOT TOUCHED: THE PAGE SIZE HAS TWO HOMES
+-------------------------------------------------------
+lib/export/pdf.ts's PDF_FORMAT ('A4', which Chromium uses for the paper)
+and app/releve/print/print.module.scss's `@page { size: a4 }` (which
+decides the CSS page and the pagination, W3b R982). R991 makes them agree
+by test; it does not make them one. Removing either home is a renderer or
+stylesheet change (for example preferCSSPageSize, or deriving one from the
+other) and is not this task.
+
+R994. NOTHING ELSE MOVES
+------------------------
+- No route, page, stylesheet, Dockerfile or harness change.
+  `git diff 56b7116 -- web/app web/scripts/container-e2e.mjs web/Dockerfile`
+  is empty.
+- lib/export/pdf.ts: one exported constant and the call that uses it
+  (R991's "export it if needed"). The rendered paper is unchanged.
+- Changed (7 files):
+  - web/lib/export/pdf.ts: PDF_FORMAT.
+  - web/scripts/gate-selection.mjs: containerHarnessFiles,
+    containerPdfClosure, the R936/R982/R990 rule.
+  - web/scripts/gate-selection.d.mts: their declarations (R185).
+  - web/tests/db/container-pdf.test.ts: the R991 test.
+  - web/tests/support/css-page.ts (new): the reader and the stated pairing.
+  - web/tests/unit/export/css-page.test.ts (new): 25 cases.
+  - web/tests/unit/meta/gate-selection.test.ts: the R990 block (21), the
+    census label, and the harness list read through the new export.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. R993: the page size has two homes (above).
+2. The "alone" rule leaves out what the PDF prints through but shares:
+   ThresholdRail.tsx (the rail AC2 asserts), lib/fr/dossier.ts (the copy
+   AC2 reads), lib/dossier/*. An edit there that breaks only the printed
+   document still runs test:db (the page handler, no browser), test:e2e
+   and test:visual (the calculator's rail), and not the container step.
+   QUESTION 1.
+3. The counts that move, so a check against the old ones does not trip:
+   - test:db skips 27, not 26: the new container-pdf test skips there with
+     CONTAINER_BASE_URL unset, like its two siblings;
+   - container pass 1 reads "33 passed | 1 skipped (34)", and the verdict
+     "34 tests";
+   - pnpm test: 3 811 = 3 765 + 25 (css-page) + 21 (R990).
+4. vitest's headline truncates a long `toBeNull` subject, and the harness's
+   REFUSED line names the test, not the sentence; the sentence with both
+   values is in the "+ Received" block. Passing it as the assertion message
+   would put it on the headline. Not changed after the RED, so the
+   committed test is the one that went RED.
+5. containerPdfClosure walks every product file once per selector run:
+   147-340 ms for the first call in a fresh process, measured idle
+   (closure-timing-idle.log); 2 348 ms while gate:changed was loading the
+   machine (closure-timing.log). databaseClosure, for comparison, 253 ms
+   under the same load. It is memoised, so a run pays it once.
+6. PARALLEL SESSIONS. At 22:12Z three more sessions took locks (W3e
+   fw-period-fraction, W10 fw-calc-bytes, W6 fw-gate-clone-admin), each
+   with its own port range (3500-3799). The harnesses use FIXED names a
+   concurrent pair would share: container-e2e.mjs runs container
+   monreleve-e2e on scratch database monreleve_container_e2e, and
+   container-write.mjs runs monreleve-write on monreleve_container_write
+   (gate:clone hands it its own database, but the container name stays).
+   Two such runs at once would collide: each harness runs
+   `docker rm -f` on its fixed name at start and teardown
+   (container-e2e.mjs:185, container-write.mjs:170), so one would remove
+   the other's container. Not hit here: no other gate ran during
+   mine. Not touched (R994).
+7. The tool harness writes its own background-task output under the
+   session temp directory; nothing here relies on it, and nothing of mine
+   was written to the orchestrator's scratchpad.
+
+DEVIATIONS
+----------
+1. The R990 set is DERIVED by the selector (containerPdfClosure), not typed
+   into the rule, and pinned by a census test. The prompt asked for the list
+   to be established by reading imports and a test to assert each match;
+   both hold, and a module the page or route alone imports tomorrow is
+   selected the day it is written and fails the census until a person
+   names it. The named floor of eight paths from W2/W3b is kept.
+2. The harness-list regex moved from gate-selection.test.ts into the
+   selector (containerHarnessFiles), because the closure seeds from the
+   same list (R206). The R936 test block reads it through the export; its
+   assertions are unchanged.
+3. Beyond the prompt's "at least" list, the graph added
+   lib/export/print-token.ts, lib/export/render-queue.ts,
+   lib/issuance/record.ts, lib/verification/origin.ts and
+   lib/ui/react/index.ts, each with its only product importer named in R990.
+4. The BEFORE ran the container step only (R992).
+
+QUESTIONS
+---------
+1. The shared modules the PDF prints through: should they select the
+   container step too? R990's prompt said "any module it alone renders
+   through", so they do not. The candidates are
+   lib/ui/react/ThresholdRail/ThresholdRail.tsx (export-pdf's "prints the
+   rail"), lib/fr/dossier.ts (the words AC2 reads) and lib/dossier/*. The
+   cost is a Docker build and the container suite on every edit to them:
+   measured here, the container suite alone took 4m14s and 4m04s (the two
+   plant runs), and the whole gate:changed with test:db 12m47s, from the
+   6 745 MB line. This is the same cost call as W2's and W3b's QUESTION 1, so it
+   is the orchestrator's.
+2. The harness echoes each `[pdf]` line under its own header and fails when
+   none is present (R936). The new `[page]` line is printed only in the
+   verbose output. Should the harness echo and require it the same way?
+   That is a harness change, which R994 kept out of this task.
+
+DEFECTS
+-------
+None product-side. The @page rule the image serves reads `size: a4`, and
+the renderer asks for "A4".
+
+PUSH PROOF
+----------
+Branch: fw-print-page-pin (pushed; not merged).
+Code commit: f7be4fe8e8102cad3d59209fab06e2c107fa69e5, pushed before
+gate:clone ran (ls-remote: refs/heads/fw-print-page-pin at f7be4fe).
+origin/main was still 56b7116 at that push. This report is the commit on
+top of it.
+
+gate:changed, the gate of record (gate-changed.log):
+- Under the sampler (scripts/run-sampled.ps1), cmd=pnpm gate:changed, with
+  FRONTALIER_PORT=3300, CONTAINER_IMAGE=monreleve:fw-print-page-pin and
+  DATABASE_URL (the scratch database monreleve_fw_print_page_pin, migrated
+  and proven first with print-route.test.ts, 21 passed) set in the parent
+  shell; MONRELEVE_VERIFICATION_ORIGIN removed; no web/.env present.
+- Commit free read 7 673 MB in its own step (21:59:43Z), against the
+  6 745 line (container e2e + test:db). Sampler start 7 606.
+- 21:59:51Z-22:12:38Z, STEP_EXIT=0, ABORTED False. Minimum commit free
+  4 349 MB at 22:09:00Z (in the container step): a drop of 3 324 from the
+  read, 3 257 from the sampler's start. Minimum free physical 191 MB.
+- Printed selection:
+  gate selection (R132):
+    6 path(s) matched:
+      web/lib/export/pdf.ts  ->  the container PDF step: its vitest files and what they read, the print page, the export route and what those alone render through (R936, R982, R990)
+      web/lib/export/pdf.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/tests/db/container-pdf.test.ts  ->  the container PDF step: ... (R936, R982, R990)
+      web/tests/db/container-pdf.test.ts  ->  the database layer (...)
+      web/tests/support/css-page.ts  ->  the container PDF step: ... (R936, R982, R990)
+      web/tests/support/css-page.ts  ->  the database layer (...)
+    suites: typecheck, lint, test, build, test:container:e2e, test:db
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3811 passed
+      build: exit 0 (no count to check)
+      test:container:e2e: exit 0 (no count to check)
+      test:db: 722 passed
+  GATE PASSED for the paths changed.
+  - test: 3 811 = 3 765 (W3c) + 25 css-page + 21 R990.
+  - The container step: image build #13 DONE 119.2s; "354 passed (1.7m)";
+    pass 1 "Tests 33 passed | 1 skipped (34)"; pass 2 "Tests 1 passed | 1
+    skipped (2)"; "34 tests; refusals: 0"; [pdf] image: 163876 bytes, 10
+    pages, 595.92x842.88pt x10; here: 199162 bytes, 10 pages,
+    595.92x842.88pt x10; the [page] line under R991 above;
+    "scratch database monreleve_container_e2e dropped"; "CONTAINER E2E
+    PASSED - the deployed artefact served the whole suite (R249)."
+  - test:db: "Tests 722 passed | 27 skipped (749)". The 27 are W3b's 26
+    and the new R991 test, which skips there without CONTAINER_BASE_URL.
+
+gate:clone, ALONE, on f7be4fe (gate-clone.log):
+- Under the sampler, cmd=pnpm gate:clone, with FRONTALIER_PORT=3300 and
+  CONTAINER_IMAGE=monreleve:fw-print-page-pin inherited, DATABASE_URL and
+  MONRELEVE_VERIFICATION_ORIGIN removed from the shell.
+- DATABASE_URL came from a session web/.env naming the local server's
+  `postgres` database, copied by script (scripts/db-env.ps1) from the main
+  checkout's host, port and credentials without printing them.
+- ALONE: at 22:14:33Z no gate process ran anywhere (node processes
+  listed: only Playwright MCP helpers) and only frontalier-postgres was up.
+  Three other sessions' locks had appeared at 22:12 (NOTICED 6).
+- Commit free read 7 897 MB in its own step (22:14:33Z), against the 4 676
+  line. Sampler start 7 868.
+- 22:14:41Z-22:26:18Z, STEP_EXIT=0, ABORTED False. Minimum commit free
+  6 062 MB (a drop of 1 835 from the read); minimum free physical 1 512.
+- It made and dropped its own monreleve_gate_clone_f7be4fe8; its swept
+  line read "no stale clones (older than 4h) found"; its clone directory
+  was removed.
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  f7be4fe8e8102cad3d59209fab06e2c107fa69e5
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  STEP_EXIT=0 ABORTED=False
+
+Memory, every run of this session, each read in its own step first:
+  run                          read    line    sampler start  minimum  drop
+  before plant (container)     7 792   5 440   7 786          4 578    3 214
+  after plant, RED (container) 7 542   5 440   7 494          5 254    2 288
+  gate:changed (+container,db) 7 673   6 745   7 606          4 349    3 324
+  gate:clone                   7 897   4 676   7 868          6 062    1 835
+  (drop = the read minus the minimum)
+
+Cleanup (22:27Z), per ORCH-WEB-COMPLETE Part B:
+- monreleve_fw_print_page_pin dropped (exit 0). pg_database now lists
+  frontalier, monreleve_fw_delai_rappel, monreleve_fw_period_fraction,
+  postgres, template0, template1. The two monreleve_ ones are other
+  sessions' and were left alone. monreleve_container_e2e and
+  monreleve_gate_clone_f7be4fe8 were dropped by their own harnesses.
+- web/.env removed (ls: No such file or directory).
+- docker image rm monreleve:fw-print-page-pin, by exact name:
+  "Untagged: monreleve:fw-print-page-pin", "Deleted:
+  sha256:d0acb374...". Every build of that tag is gone: e4e76e7e2361
+  (before plant), b2949e484b8c (after plant), 60d5798d822b and d0acb374ba48
+  (gate:changed and gate:clone's cached rebuild) are each "absent" to
+  docker image inspect, and no untagged image exists.
+- monreleve:write is d1c7c2e483d5 before and after gate:clone (the write
+  probe built this session's tag, as CONTAINER_IMAGE named it).
+- No monreleve container remains; frontalier-postgres was never stopped.
+- :3300 has no listener.
+- The lock is removed last, after this report is pushed.
