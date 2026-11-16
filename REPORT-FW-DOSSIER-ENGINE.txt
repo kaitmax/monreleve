@@ -37,8 +37,8 @@ COMPLETE for the web gates this task owns.
   test:container:write (claim block under PUSH PROOF).
 - gate:changed ran on the same content before the commit: STEP_EXIT=0,
   ABORTED=False, test 3 752 passed, test:db 719 passed.
-- The report commit adds only REPORT-FW-DOSSIER-ENGINE.txt on top of
-  846bc19.
+- The two report commits add only REPORT-FW-DOSSIER-ENGINE.txt on top of
+  846bc19 (see CORRECTIONS for the coverage steps run on the report).
 - No Android code changed, so there is no :app:gate.
 - Not merged: the orchestrator merges.
 
@@ -67,6 +67,11 @@ fixture. UNIT = buildDossier or lower, not the route, not a seeded DB.
       INPUT, UNIT.
     - tests/db/scenario-accounts.test.ts:277: 20 < declarableRate < 40 on a
       seeded account. A bound, not an equality, THROUGH buildDossierFor.
+    - tests/unit/forecast/imagined-fixture.test.ts:99 (added in the
+      corrections commit): the forecast contract, calculateTelework over
+      toTeleworkInput against fixtures/forecast-cases.json. It reads no
+      dossier payload, so it is not (a); its engine input comes THROUGH
+      toTeleworkInput.
 
 (b) the annex expanded, one row per recorded day, none collapsed: NONE
     through the entry point on a seeded year. Partial:
@@ -263,6 +268,14 @@ NOTICED BUT NOT TOUCHING
 3. The EXACT denominator path and DAY granularity are not in this seed (one
    person, one year). The engine fixtures cover EXACT; the payload path for
    it is covered only THROUGH lib/dossier.
+4. The year window is not tested here: every seeded row is inside 2026, so
+   a loader that let a neighbouring year in would pass this file. It is
+   covered on the same loader by tests/db/export-csv.test.ts:170 ("excludes
+   the neighbouring years, each PROVEN to exist"): the CSV route
+   (app/api/v1/export/csv/route.ts:35 imports buildDossierFor, the loader
+   GET /api/v1/dossier uses) is seeded with 2025-12-31, 2026-01-01,
+   2026-12-31 and 2027-01-01, and the expected days are typed. It runs in
+   test:db.
 
 DEVIATIONS
 ----------
@@ -293,6 +306,20 @@ DEVIATIONS
 6. Nothing was written to the orchestrator's scratchpad or to any other
    worktree. C:/wt/queue-evidence/run-sampled.ps1 was run in place, reading
    only.
+7. NOT TEST-FIRST (added in the corrections commit). The new test PASSED on
+   its first run (run1-unplanted.log, 18:26:52Z-18:26:57Z, 5 passed), and
+   every RED in this report is a plant. The reason: R944 allowed no change
+   of behaviour, so there was no code for a failing test to precede; the
+   test characterises code that already exists. A first green proves
+   nothing on its own (CLAUDE.md, test-first), which is why each of the
+   five assertions carries a verified plant (R943) and the first test
+   proves the seed discriminates before anything is compared.
+
+WALKTHROUGH (R176)
+------------------
+No page, route or rendered surface changed (one test file), so no server
+was started or driven for this task. The route was exercised only through
+its handler inside test:db, as R204 asks.
 
 QUESTIONS
 ---------
@@ -378,3 +405,22 @@ Cleanup (18:58:24Z):
 - No container of mine; frontalier-postgres is the only one running and
   was not touched. :3300 refuses (curl exit 7), no listener.
 - The lock is removed last, after this report is pushed.
+
+CORRECTIONS (the second report commit, after an advisor read of the first)
+------------------------------------------------------------------------
+- The report commit a08613d went through no gate: gate:clone ran on 846bc19
+  with a clean tree. So the two gate:clone steps that read files outside
+  the code were run standalone on a08613d (logs in .dossier-evidence/):
+    node scripts/register-coverage.mjs: exit 0, "register coverage: OK -
+      230 cited id(s) across 169 report(s), all have headings in parking.md"
+    node scripts/fixture-coverage.mjs: exit 0, "fixture coverage: OK - 7
+      section(s) across 6 file(s), each consumed by every engine that reads
+      its file"
+    vitest tests/unit/meta/register-coverage.test.ts: 27 passed
+  Nothing else in web/tests/unit or web/scripts enumerates REPORT-*.txt
+  (searched: only scripts/register-coverage.mjs:223 does).
+- Added: imagined-fixture.test.ts:99 to R940 (a) (unchanged: none);
+  NOTICED 4 (the year window); DEVIATIONS 7 (not test-first); WALKTHROUGH.
+- origin/main read fc446b5 at the corrections commit, so the branch is still
+  a fast-forward. gate:clone vouches for 846bc19; the commits above it change
+  only this report. No code changed; the code commit is still 846bc19.
