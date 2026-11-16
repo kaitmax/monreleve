@@ -58,3 +58,55 @@ ANSWER (the orchestrator; engineering scope, not product):
    task.
 APPLIED: relay/FW-PDF-A4.txt R936 carries item 1. The merge is a fast-
 forward of 1a4136f to b12f518, plus the orchestrator's record commit.
+
+====================================================================
+WEB RULING 3 - W2 FW-PDF-A4 MERGED; ITS TWO QUESTIONS; MEMORY; IMAGES
+====================================================================
+EVIDENCE: branch fw-pdf-a4 0f69539 (code e5bc035), based on 589d0e8.
+- gate:changed: test 3 752, test:db 714, and test:container:e2e (354,
+  plus the PDF step 9), exit 0.
+- The session's gate:clone ALONE on e5bc035: exit 0.
+- Every page measures 595.92 x 842.88 pt on both renderers. Plants went
+  RED (page 5 rewritten to 612x792; a Letter render).
+- W1's merge gate: the orchestrator's gate:clone ALONE on 589d0e8
+  PASSED, STEP_EXIT=0. Pushed 1a4136f..589d0e8.
+- lib/export/pdf.ts:243 passes format 'A4' and sets no
+  preferCSSPageSize. app/releve/print/print.module.scss:273 declares
+  `@page { size: a4; margin: 0 }`.
+- Memory: brave is running again (2 995 MB), and commit free read 5 358.
+QUESTIONS (the session's):
+1. Keep the new selector rule? Every lib/export/pdf.ts edit then runs
+   test:container:e2e, about 5-6 minutes warm.
+2. 17 PDF render tests (export-pdf 15, verification-qr 2) need a live
+   server, and no gate starts one. Give them a server, or move them into
+   the container step?
+ANSWER (the advisor, verbatim in substance):
+- W2 merges; nothing needs re-running.
+- Record W1's merge gate, which its row promised and never stated. Word
+  W2's own merge gate as pending, and close it in W3's record.
+- W2's row gets a NOT delivered clause: monochrome print, the 17 tests,
+  and the never-fired harness refusal (a plant owed).
+- Q1: keep the rule. A renderer edit no suite sees is R251's finding, and
+  the session showed a Letter edit passing every gate without it. It is
+  not a product or budget question.
+- Q2: a new task, sourced from REPORT-FW-PDF-A4's QUESTION 2, slotted
+  after W3. It first proves, from the skip conditions and a gate log's
+  skipped count, that all 17 skip everywhere. Then it runs them in the
+  container harness's existing server step rather than a new suite, and
+  the owed plant rides with it.
+- Grep first for preferCSSPageSize and an @page size. If either decides
+  the page size, add those files in the follow-up task, not here.
+- Memory: do not close brave again on the earlier answer. Tell the user
+  the heavy gates wait on it. Record W2's drops so W3 and W4 have a
+  measured start line. W10 needs 5 045; it waits or parks.
+- Images: each session removes its own monreleve:<task> tag, by exact
+  name, at cleanup. No prune.
+APPLIED:
+- WEB-QUEUE-STATE: W1's row closes its V2; W2's row is MERGED, with its
+  NOT delivered clause; W3b is added; MEMORY carries the drops
+  (gate:changed with container e2e and db: 4 745, start line 6 745;
+  gate:clone: 2 676, start line 4 676).
+- relay/FW-PDF-RENDER-GATE.txt is written. It includes
+  print.module.scss's @page as a page-size input, for the selector
+  (inert while preferCSSPageSize is unset, but it decides the CSS page).
+- ORCH-WEB-COMPLETE Part B carries the image-tag cleanup.

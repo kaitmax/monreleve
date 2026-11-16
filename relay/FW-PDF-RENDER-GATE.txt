@@ -1,0 +1,83 @@
+FW-PDF-RENDER-GATE SESSION PROMPT - Mon Releve
+THE 17 PDF RENDER TESTS THAT NO GATE RUNS (web run step W3b)
+Written by the orchestrating session on 2026-11-16 for
+relay/ORCH-WEB-COMPLETE.txt step W3b (Web Ruling 3). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Parts A-B, including the CLEANUP rule;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-pdf-render-gate, branch
+  fw-pdf-render-gate, report REPORT-FW-PDF-RENDER-GATE.txt;
+- REPORT-FW-PDF-A4.txt in full;
+- CLAUDE.md (R251, R133, R180).
+Ruling numbers for this task: R980-R984.
+
+====================================================================
+THE TASK
+====================================================================
+Source, REPORT-FW-PDF-A4.txt's QUESTION 2 (verbatim in substance):
+- 17 PDF render tests run in no gate: tests/db/export-pdf.test.ts's 15
+  and tests/db/verification-qr.test.ts's 2.
+- They need a live server, and no gate's test:db (local or CI) starts
+  one.
+The advisor's ruling (Web Ruling 3):
+- First prove, from the skip conditions and a gate log's skipped count,
+  that all 17 skip everywhere.
+- Then run them in the container harness's existing server step
+  (scripts/container-e2e.mjs, which already serves the image and runs
+  container-pdf/container-auth), rather than in a new suite.
+- The plant owed by W2 rides with it.
+
+R980. THE SKIP, PROVEN. For each of the 17, give:
+    - the skip condition (file:line);
+    - whether any gate sets it: test:db local, gate:clone's test:db,
+      test:container:e2e, CI;
+    - a gate log's skipped count that includes them.
+    W2's gate:changed log says test:db 714 passed, 26 skipped; say which
+    of the 26 these are.
+
+R981. THEY RUN IN THE CONTAINER STEP. The harness runs both files against
+    the image it already serves, through the same mechanism it uses for
+    container-pdf/container-auth.
+    - Each test that ran before only by hand now runs, and its result
+      prints in the harness's own output.
+    - If a test cannot pass against the image (a premise the image
+      contradicts, like W1's), establish which side is wrong. Never skip
+      or loosen it; hand a product-side defect back.
+
+R982. THE SELECTOR KNOWS (R251). The selector rule W2 added
+    (gate-selection.mjs, "the container PDF step") also matches these two
+    files, and any page-size input the renderer reads.
+    app/releve/print/print.module.scss carries `@page { size: a4 }`. It
+    is inert while lib/export/pdf.ts sets no preferCSSPageSize, but it
+    decides the CSS page: state whether it belongs, and why. A test
+    asserts each added match.
+
+R983. THE OWED PLANT (R180). Container-e2e.mjs refuses when its PDF page
+    line is missing (W2's NOT delivered). Plant that absence, verify it
+    landed, show the harness refuses by name, then revert. Also plant one
+    failure in a newly run export-pdf test, and show the harness goes red
+    on it.
+
+R984. NOTHING ELSE MOVES. No renderer or route change.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock.
+1. R980.
+2. R981-R983, test-first.
+3. gate:changed. Read memory first. This selection includes
+   test:container:e2e and test:db; W2 measured its drop at 4 745 MB, so
+   it starts at >= 6 745 MB. Below that, wait (up to 15 minutes,
+   re-reading) and then hand back NO RESULT. Then commit and push the
+   branch.
+4. gate:clone ALONE on the tip (start >= 4 676 MB); push.
+5. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-PDF-RENDER-GATE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R980 (the table of 17) / R981-R984 with
+evidence and plants / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF FW-PDF-RENDER-GATE PROMPT

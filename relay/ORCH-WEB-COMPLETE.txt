@@ -43,12 +43,17 @@ PART B - HOW THE RUN WORKS
 - SEQUENTIAL. One gate-running session at a time: the memory floor
   (QUEUE-STATE.md's floor bullet) still binds. Commit free is read in its
   own step before every gate; a selection starts only at >= its worst
-  solo drop + 2 000 MB (gate:changed with e2e and visual 5 045;
-  gate:clone 3 958; base gate:changed 3 954). A sampler abort or a red
+  solo drop + 2 000 MB. The CURRENT lines are in WEB-QUEUE-STATE.md's MEMORY
+  (as of Web Ruling 3: gate:changed with test:container:e2e and test:db
+  6 745; with e2e and visual 5 045; gate:clone 4 676; base 3 954). A sampler abort or a red
   shaped like dead workers is NO RESULT, never a verdict.
 - MERGE. Fast-forward only. If main moved, the branch is rebased by its
   session (or the orchestrator, in its own worktree) and gated again.
   Every merge to main runs gate:clone ALONE on the exact tip first.
+- CLEANUP (Web Ruling 3). At its end a session removes its OWN images by
+  exact name (docker image rm monreleve:<task>, and any tag it built), its
+  scratch databases, its web/.env and its lock. No prune, and nothing
+  another session or project made.
 - RECORDS. relay/WEB-QUEUE-STATE.md is this run's memory; QUEUE-STATE.md
   is the previous queue's closed record, and its BLOCKED 1-12, PARKED
   TASKS and PARKED PROMOTIONS still stand. Record commits ride with a
