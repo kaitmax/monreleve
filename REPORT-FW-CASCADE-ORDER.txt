@@ -1,0 +1,610 @@
+REPORT-FW-CASCADE-ORDER
+=======================
+
+Web run step W10a (relay/ORCH-WEB-COMPLETE.txt, Web Ruling 11), prompt
+relay/FW-CASCADE-ORDER.txt (the orchestrator's copy), rulings R1010-R1014.
+Parallel mode (Web Ruling 7).
+- Branch fw-cascade-order, worktree C:/wt/fw-cascade-order, cut from
+  origin/main a2c502a809be691ef812e0f335c07359495332b4 (BASE_SHA at launch,
+  fetched and checked equal).
+- .session-lock.json written 01:21:17Z (gitignored, .gitignore:62).
+- Evidence: C:/wt/fw-cascade-order/.cascade-evidence/ (gitignored by
+  /.*-evidence/): every log named below, the sampler files, the census
+  builds' CSS and HTML (base-prod/, base-dev/), the container's CSS
+  (container-dev-fixed/), the RED's artefacts (red-test-results/), the
+  crops (crops/), the tools (tools/) and NOTES.txt.
+- Read only, never git: C:/wt/fw-calc-bytes (W10's report via `git show
+  origin/fw-calc-bytes:REPORT-FW-CALC-BYTES.txt` from my own worktree, its
+  crops, its saved 56b7116 build as a tool check, its bbox/shift tools
+  copied into my tools/).
+- Ports (block 3500-3599): 3510 (gate:changed's e2e webServer), 3520 (the
+  walkthrough's `pnpm dev`), 3530 (gate:clone's container step).
+- Databases: the scratch monreleve_fw_cascade_order (created 03:29Z and
+  migrated, 15 migrations, for gate:changed's e2e alert flow), and
+  gate:clone's own monreleve_gate_clone_<sha8>, which it creates and drops
+  through the `postgres` database a session web/.env names (written by
+  script from the main checkout's host, port and credentials, never
+  printed). Never `frontalier`.
+
+SUMMARY
+-------
+- R1010: six sibling-gap rules in the whole web app; three meet a
+  component's root margin reset. TWO were order-dependent, both (0,1,0)
+  against (0,1,0) in another module: P1 the calculator's `.advanced > * +
+  *` against SegmentedChoice's `.root { margin: 0 }` (the decompte
+  choice), P2 the comparator's `.form > * + *` against SegmentedButtons'
+  (its three toggles). P3, the card's missions question, already won by
+  (0,2,0).
+- Which won on a2c502a, READ FROM THE CHUNKS of four builds: the
+  production configuration (host, and the Linux image gate:clone built)
+  gave both stacks the gap; the dev-routes configuration that e2e and the
+  visual suite build (host, and the visual container itself) put
+  SegmentedChoice's reset last - the flush choice main's baseline
+  photographs - and still gave the comparator its gap. For these pairs it
+  was the build configuration, not the platform.
+- R1011: both stacks now use the card's own selector, `>
+  :not(:first-child)`, (0,2,0): the same children, and it beats every
+  (0,1,0) root reset in any order. Two SCSS files, +18/-4, comments
+  included; no shared component, no layout mode, no token changed.
+- R1012: the RED in the container failed EXACTLY the two avis-provisoire
+  baselines (2 failed, 166 passed), to W10's pixel: desktop 62 222 px in
+  x152-800 y1524-1980, mobile 7813 -> 7833 rows. No comparator baseline
+  moved.
+- R1013: named first (02:12:06Z); the regeneration wrote exactly those two;
+  the new images equal the RED's own captures (not Queue Ruling 20's
+  variant); looked at: a pure 20-row push under "Decompte" and nothing
+  else, bar W10's four anti-aliased mobile rows.
+- gate:changed of record PASSED (test 3 811, visual 168 with nothing
+  regenerated, e2e 367, late 10) after a first run that was NO RESULT (no
+  database for the e2e alert flow). gate:clone ALONE PASSED on e2ee0c6.
+  The walkthrough on `pnpm dev` (a third CSS order) measured 20 px and
+  24 px stacks everywhere it looked.
+- R1014: no guard built; its shape is NOTICED 1.
+
+STATUS (R391)
+-------------
+COMPLETE for the code commit e2ee0c6b40b1215afbf7eed6bc65156aee67cbc5:
+- gate:changed of record GREEN on the tree that became e2ee0c6 (the four
+  paths, uncommitted, hold 4b): "GATE PASSED for the paths changed.",
+  gate exit 0, STEP_EXIT=0 ABORTED=False. Pasted under PUSH PROOF.
+- gate:clone ALONE GREEN on e2ee0c6 itself (hold 5): "GATE:CLONE PASSED",
+  "gate:clone exit 0", STEP_EXIT=0 ABORTED=False. Pasted under PUSH PROOF.
+The branch tip is this report's commit, which adds only
+REPORT-FW-CASCADE-ORDER.txt on top of e2ee0c6: FULL GATE NOT RUN on the
+tip, as for W10's and W3d's report commits (its own selection would be
+the base chain). The checks that read reports ran on the tree holding
+it: register-coverage "OK - 230 cited id(s) across 173 report(s)" and
+fixture-coverage OK, both exit 0. The report is ASCII (0 bytes over
+126). Not merged.
+
+R1010. THE CENSUS
+-----------------
+HOW IT WAS FOUND, by reading selectors:
+- Every stylesheet under web/ (50 files: app/**, lib/**, e2e/visual-select.css;
+  style-files.txt) was searched for sibling and positional selectors (`+`,
+  `~`, `> *`, `:not(:first-child)`, `:nth-child`, `:first/last-child`), and
+  every hit read in context.
+- Every margin declaration in lib/ui/react/**/*.module.scss (and
+  ResultCard/_frame.scss) was mapped to its selector, and each component's
+  TSX read for the class its returned (root) element carries.
+- For each sibling-gap rule, the TSX that renders its container was read
+  for the container's DIRECT children.
+
+SIBLING-GAP RULES (margin) - six in the whole web app:
+  S1 comparateur.module.scss:88-90     .form > * + *              (0,1,0) margin-top var(--space-6)
+  S2 comparateur.module.scss:242-244   .joint > * + *             (0,1,0) margin-top var(--space-4)
+  S3 CalculatorForm.module.scss:99-101 .card > :not(:first-child) (0,2,0) margin-top var(--space-5)
+  S4 CalculatorForm.module.scss:189    .revealed > * + *          (0,1,0) margin-top var(--space-5)
+     (rule 189-192, shared with S5)
+  S5 CalculatorForm.module.scss:190    .advanced > * + *          (0,1,0) margin-top var(--space-5)
+  S6 Comparison.module.scss:70-72      .figure + .figure          (0,2,0) margin-top var(--space-3)
+Positional selectors read and NOT sibling gaps: ResultPanel.module.scss:46
+`.tiles > *` (padding, border, radius - MetricTile's .root sets only
+display/flex-direction/gap, so no property overlaps);
+calculateur.module.scss:146/155/163 `.rule > p:first-child / :nth-child(2)
+/ :last-child` (typography); guide.module.scss:37 `li + li::before` (a
+pseudo-element's margin-right); mdx.module.scss:115-123 `.warning p` and
+`p:last-child` ((0,1,1)/(0,2,1), MDX paragraphs only);
+application.module.scss:123-133 `.modeLine` margin-bottom with `&:last-child
+{ margin-bottom: 0 }` (the page's own lines, one module); global.scss:9
+`*, *::before, *::after` (box-sizing). Faq `.entry:last-of-type` and
+ReleveExcerpt `.row:last-child` set borders, not margins.
+
+COMPONENT ROOTS THAT CLAIM AN OUTER MARGIN (lib/ui/react, the class on the
+element the component returns), all single-class (0,1,0); none uses
+margin-block:
+  SegmentedChoice  .root  SegmentedChoice.module.scss:13-18, `margin: 0` at :15 (fieldset)
+  SegmentedButtons .root  SegmentedButtons.module.scss:9-14, `margin: 0` at :11 (fieldset)
+  Container .root `margin: 0 auto` (:23); Notice .root `margin: 0` (:11);
+  ReleveExcerpt .root `margin: 0` (:11); HeroPhone .figure `margin: 0` (:16);
+  LegalNote .note `margin: 0` (:5); ResultCard .brand/.surface (`margin: 0`
+  via _frame.scss:21); AlertCapture .card `margin: var(--space-8) 0 0` (:12);
+  Faq .faq `margin-top: var(--space-6)` (:7); GuideCta .cta `margin-top:
+  var(--space-12)` (:9); GuideInlineCta .card `margin: var(--space-8) 0` (:35).
+  No root margin: FieldGroup, Stepper, MetricTile, RateDisplay, ZoneBadge,
+  Chip, DataGrid, TableOfContents, HomeCounter, ThresholdRail.
+
+THE PAIRS (a sibling-gap rule whose container's direct children include
+one of those roots), main's line numbers:
+  P1 S5 CalculatorForm.module.scss:190 `.advanced > * + *` (0,1,0)
+     x SegmentedChoice.module.scss:15 `.root { margin: 0 }` (0,1,0)
+     element: the decompte choice (CalculatorForm.tsx:1232), the second or
+     third child of the advanced panel. EQUAL specificity, two modules:
+     ORDER-DEPENDENT. (REPORT-FW-CALC-BYTES DEFECT 1.)
+  P2 S1 comparateur.module.scss:88 `.form > * + *` (0,1,0)
+     x SegmentedButtons.module.scss:11 `.root { margin: 0 }` (0,1,0)
+     elements: the year, declaration and affiliation toggles
+     (ComparatorForm.tsx:274, 285, 373). EQUAL specificity, two modules:
+     ORDER-DEPENDENT. (DEFECT 2.)
+  P3 S3 CalculatorForm.module.scss:99 `.card > :not(:first-child)` (0,2,0)
+     x SegmentedChoice.module.scss:15 (0,1,0)
+     element: the missions question (CalculatorForm.tsx:1008). The stack
+     wins by specificity in every order; FW-CALCS-A2 made it so on purpose
+     (CalculatorForm.module.scss:95-98). Not order-dependent.
+
+NOT PAIRS, each with its reason:
+- S2 .joint > * + *: children are FieldGroup x2 (no root margin) and the
+  comparator's own p.helper (same module, source order fixed).
+- S4 .revealed > * + *: children are numericField's FieldGroup x2
+  (CalculatorForm.tsx:770), no root margin - latent only. It shares S5's
+  rule, so it moves with the fix.
+- S6 .figure + .figure: Comparison's own div.figure
+  (ComparisonPanel.tsx:112), the same module.
+- S1's other children: h2.formHeading (first child, not selected),
+  FieldGroup (no root margin), div.joint, fieldset.persons (the comparator's
+  own rule sets only margin-left/right, comparateur.module.scss:128-134),
+  button.submit (no margin).
+- S5's first child, the methode SegmentedChoice, is never selected (first
+  child).
+
+WHICH WINS IN MAIN'S BUILT CSS ORDER TODAY - read from the chunks, per
+build configuration (tools/cascade-order.cjs: the stylesheets each
+prerendered page links, in document order; the rule's sheet and offset;
+the later of an equal-specificity pair wins):
+- Hold 1 built a2c502a twice on this host, clean tree (porcelain empty
+  before and after): `pnpm build` (the production configuration) and
+  `pnpm build:dev` (FRONTALIER_DEV_ROUTES=1 - the graph the e2e/visual
+  webServer builds, playwright.config.ts:185-188, because /dev/** imports
+  both segmented components).
+- The container's own order was then READ, not inferred: during the RED
+  (hold 2) tools/container-css-grab.mjs waited for BUILD_ID in my own
+  visual container's per-run distDir and `docker cp`'d static/css and
+  server/app out of it (container c6bde90ee2c2, .next-visual-17908-mwk2hf2s).
+  That tree carries the fix, which changes two selectors and no import.
+
+  pair | host, production config     | host, dev routes            | visual container (Linux, dev routes)
+  -----+-----------------------------+-----------------------------+-------------------------------------
+  P1   | STACK later -> GAP          | RESET later -> FLUSH        | RESET later on main (see below) -> FLUSH,
+       | (one sheet: reset +0,       | (reset in its own chunk     | which main's baseline photographs
+       |  stack +12688)              |  SegmentedChoice+Stepper,   |
+       |                             |  linked after the big one)  |
+  P2   | STACK later -> GAP          | STACK later -> GAP          | STACK later -> GAP (baselines agree)
+       | (+10715 vs +7745)           | (+18427 vs +15457)          |
+  P3   | STACK by (0,2,0)            | STACK by (0,2,0)            | STACK by (0,2,0)
+
+- The container row is read from the chunks: 11 of its 12 CSS files are
+  BYTE-IDENTICAL to the host dev-routes build of main (same hashes); the
+  12th is the chunk holding the two edited modules, and with the two
+  selectors put back it carries the same 496 rules in the same 71 295 B,
+  with one module (resultat) placed differently. On the calculator page
+  it links the SegmentedChoice+Stepper chunk after the big chunk, exactly
+  as the host dev-routes build does - so on main the reset came later.
+- And from the pictures (tools/ink-rows.cjs on main's committed images):
+  calculateur-panneau-avis-provisoire-desktop.png has the "Decompte"
+  legend 5 px under the helper above it while "Nombre total" and "Debut
+  d'activite" sit 25 and 27 px under theirs; comparateur-vide-desktop.png
+  has its three toggles' legends 34, 29 and 29 px under their neighbours,
+  like the FieldGroup label beside them (28).
+- WHAT THIS CORRECTS IN W10's READING, for P1 and P2: what decided them
+  was the BUILD CONFIGURATION, not the platform. W10 compared Windows
+  production-configuration builds with the container's TEST build. The
+  test build's /dev routes re-chunk the CSS and put the reset last; a
+  production-configuration build of the same commit puts the stack last.
+  So for a2c502a the e2e/visual build shows the flush choice and a
+  production-configuration build on this host shows the gap. (The
+  platform does move other modules: NOTICED 3.) A Linux
+  production-configuration build's order was read from the image
+  gate:clone built (monreleve:fw-cascade-order, from e2ee0c6; `docker
+  create` + `docker cp`, never started, the probe container removed;
+  census-image-prod-fixed.txt). With the two edited selectors put back,
+  its calculator chunk equals the host production build of a2c502a in
+  rules AND order (211 rules, 29 559 B), so P1's stack sits at +12688
+  after the reset at +0: GAP on Linux too. Its comparator chunk has the
+  same 313 rules with one module (calculateur) placed differently - the
+  platform again - and P2's two rules at the same offsets: GAP. Six of
+  its eight CSS files are byte-identical to the host production build.
+  None of this is a claim about the live site, which is deployed from
+  another branch.
+
+R1011. THE FIX
+--------------
+THE MECHANISM: the stack rules carry the card's own selector,
+`> :not(:first-child)` instead of `> * + *`.
+- CalculatorForm.module.scss:189-192 (main) -> 197-200:
+  `.revealed > :not(:first-child), .advanced > :not(:first-child)
+  { margin-top: var(--space-5); }`
+- comparateur.module.scss:88-90 (main) -> 94-96:
+  `.form > :not(:first-child) { margin-top: var(--space-6); }`
+- Plus the comment above each saying why. No other line changes: two
+  files, +18/-4, all SCSS. Tokens unchanged (the same --space-5 and
+  --space-6); no raw value.
+WHY IT HOLDS BY CONSTRUCTION: `X > :not(:first-child)` selects exactly
+the elements `X > * + *` selects (an element is not the first child iff
+it has an element sibling before it) at (0,2,0) instead of (0,1,0). Every
+lib/ui/react rule that claims a margin on a component's root is a single
+class, (0,1,0) (census above), so specificity decides each pair and the
+chunk order cannot.
+WHY THIS ONE, the smallest that holds:
+- It is the file's own precedent. CalculatorForm.module.scss:95-98 already
+  made `.card`'s stack `:not(:first-child)` "so a child that zeroes its own
+  margin (.group, and SegmentedChoice's fieldset) still gets the gap";
+  :189-190 is the site that fix missed (R267's shape).
+- It changes no shared component. SegmentedChoice and SegmentedButtons
+  are also rendered by the workbench and the island harness, and their
+  reset stays exactly as it is.
+- It changes no layout mode. A flex column with `gap` (the design file's
+  way) would stretch the comparator's inline-flex submit button to the
+  full width and stop sibling margins collapsing in its form, which would
+  move comparator baselines (reasoned, not run); and the card's own comment (CalculatorForm.module.scss:86-90)
+  already refuses flex for the fieldset legend's sake.
+- The other example, narrowing the fieldset resets to `margin-inline: 0`
+  (the comparator's own .persons does that), also holds, but it edits two
+  shared components for a gap the containers own. One mechanism, not both.
+NO OTHER LOOK MOVES, checked before the run against every direct child the
+heavier selector newly beats: .advanced's FieldGroups and .revealed's
+FieldGroups claim no margin; .form's other children are FieldGroup (none),
+div.joint (none), fieldset.persons (margin-left/right only),
+button.submit (none), and the first child (h2) is not selected. The
+comparator's three toggles already had the 24 px gap in the container
+(P2: the stack was later), so they keep it.
+Before the RED: tools/apply-fix.mjs asserted each anchor matched exactly
+once and read each edit back ("landed where intended: true" x2, R211,
+R180); stylelint on both files exit 0 (proven able to fire on that path by
+a two-error plant in a scratch copy, removed); `gate:changed --print`
+selected typecheck, lint, test, build, test:e2e, test:visual, test:late.
+
+R1012. THE RED
+--------------
+`pnpm test:visual` in its container, with the fix applied and uncommitted
+(hold 2: lock ACQUIRED 02:22:18Z at 8 789 MB commit free, line 5 945;
+02:22-02:36Z; minimum commit free 6 447 MB, free physical 504 MB; no
+abort; hold2.log). visual.mjs printed "isolation: sole container of
+mcr.microsoft.com/playwright:v1.63.0-noble (checked); distDir
+.next-visual-17908-mwk2hf2s" and "photographed: a2c502a plus 2
+uncommitted path(s)" (the two SCSS files).
+THE FAILING LIST, pasted:
+  X    8 [visual] > e2e/calculateur.visual.spec.ts:302:7 > desktop > panneau-avis-provisoire (9.6s)
+  X   25 [visual] > e2e/calculateur.visual.spec.ts:302:7 > mobile > panneau-avis-provisoire (7.2s)
+  X   24 [visual] > e2e/calculateur.visual.spec.ts:302:7 > desktop > panneau-avis-provisoire (retry #1) (11.1s)
+  X   38 [visual] > e2e/calculateur.visual.spec.ts:302:7 > mobile > panneau-avis-provisoire (retry #1) (9.2s)
+  X   43 [visual] > e2e/calculateur.visual.spec.ts:302:7 > desktop > panneau-avis-provisoire (retry #2) (9.1s)
+  X   50 [visual] > e2e/calculateur.visual.spec.ts:302:7 > mobile > panneau-avis-provisoire (retry #2) (7.5s)
+  2 failed
+  166 passed (2.8m)
+(Playwright prints a cross mark and a single right-pointing angle
+quote; they are written X and > here, the report being ASCII.)
+- Exactly the two named tests; nothing else failed; all 30 comparateur
+  tests passed, so no comparator baseline moved.
+- THE WAY W10's RUN PREDICTED, to the pixel (tools/bbox.cjs, exact RGBA,
+  on red-test-results/):
+  - desktop, retries 1 and 2: "captured a stable screenshot", Playwright
+    "48493 pixels"; exact RGBA 62 222 px, box x152-800 y1524-1980, 1440x4097
+    both - W10's 62 222 px and box. Both actuals sha256 633d7824...
+  - mobile, all three attempts: "Expected an image 390px by 7813px,
+    received 390px by 7833px"; first differing row 2078; after a 20-row
+    shift 4 rows still differ (3048-5060), W10's same four rows: 3048-3050
+    by 1 in one channel (the result card's top corners) and 5060 by up to
+    26 (the "Me prevenir" button's top corners; W10's "1-3" quoted one
+    pixel of that row). All three actuals sha256 151d53a2...
+  - desktop, attempt 1: "Failed to take two consecutive stable
+    screenshots". Its -previous.png is the usual image (633d7824...) and
+    its -actual.png differs from it by 28 px at x1285-1287 y1819-2007:
+    Queue Ruling 20's edge variant, appearing between two captures of one
+    page. Not a finding; the retries then captured the usual image.
+- THE REASON IT FAILS: the "Decompte" legend now sits 25 px under the
+  helper above it, desktop and mobile (tools/ink-rows.cjs on the actuals),
+  where main's images have 5 px; "Nombre total" (25) and "Debut d'activite"
+  (27) are unchanged. +20 px = --space-5. Crops: crops/red-desktop-
+  expected.png and crops/red-desktop-actual.png, crops/red-mobile-
+  expected.png and crops/red-mobile-actual.png.
+- The RED ran in the container because the baselines are only ever
+  compared there (R37); a host run is not the suite of record.
+
+R1013. THE REGENERATION
+-----------------------
+THE NAMED SET, written into this report draft and into
+.cascade-evidence/named-set.txt at 02:12:06Z, before the RED and before
+test:visual:update ran (R207, R135):
+  web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+  web/tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png
+Reason: Web Ruling 11 - the stack's uniform gap (--space-5, 20 px) is the
+intended look, and the decompte choice now carries it in every chunk order
+(R1011). Main's two images photograph the flush choice (R135's
+wrong-but-stable case). Any other produced file stops the regeneration.
+THE RUN: `pnpm test:visual:update` (hold 3: lock ACQUIRED 02:48:03Z at
+7 802 MB, line 5 945; 02:48-02:57Z; minimum commit free 6 544 MB, free
+physical 608 MB; no abort; STEP_EXIT=0; hold3.log). "168 passed (2.5m)",
+"visual suite: 168 passed".
+THE PRODUCED SET = THE NAMED SET, by three signals:
+- Playwright wrote exactly two: ".../calculateur-panneau-avis-provisoire-
+  desktop.png is re-generated, writing actual." and the same for -mobile.
+- visual.mjs: "R135: 2 baseline(s) regenerated BY THIS RUN - list these in
+  the report with a reason:" naming the same two, and no R207 NOTE (git
+  agreed).
+- `git status --porcelain` afterwards: the two SCSS files and the two
+  PNGs, nothing else; `sha256sum -c` of all 163 baselines against the
+  pre-run list: 161 OK, these two changed.
+NOT THE EDGE VARIANT: the new desktop image (sha256 633d7824...) is
+byte-identical to the RED's stable captures of retries 1 and 2, and the
+new mobile image (151d53a2...) to all three of the RED's - two separate
+container runs wrote the same pixels.
+
+R1014. NO CLASS GUARD NOW
+-------------------------
+Not built. What it would look like is in NOTICED 1.
+
+BASELINES
+---------
+Named (02:12:06Z), regenerated (hold 3), looked at - two files, nothing
+else:
+  web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+    686ce88d... -> 633d7824...  1440x4097, unchanged size
+  web/tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png
+    77b2d01f... -> 151d53a2...  390x7813 -> 390x7833
+Reason: Web Ruling 11 (overturnable) - the advanced panel's uniform
+20 px gap is the intended look; the decompte choice sat flush in main's
+images only because of the test build's CSS chunk order.
+LOOKED AT (old = HEAD's file, new = the working tree's; regen/, crops/):
+- Desktop, exact RGBA: 62 222 px differ, box x152-800 y1524-1980. In the
+  form column (x 0-820) rows 0-1523 are identical and old rows 1524-2060
+  equal new rows 1544-2080 exactly (0 px): a pure 20-row push. The new
+  rows 1524-1543 are blank card and the "Decompte" legend starts at 1544.
+  The result column (x 821-1439) is identical over the whole height.
+- Mobile: rows 0-2077 identical; 20 blank rows inserted at 2078 (the
+  legend at 2098, 25 px under the helper, was 5); after the shift 22 px in
+  4 rows still differ - 3048-3050 (the "Votre resultat" card's top
+  corners, one channel by 1) and 5060 (10 px, the "Me prevenir" button's
+  top corners, up to 26 in a channel) - W10's same four rows, deterministic
+  (the RED's three captures and the update agree).
+- Crops read: crops/red-desktop-expected.png / -actual.png (W10's
+  visual-fail/crop-desktop-*.png show the same), crops/red-mobile-
+  expected.png / -actual.png; the whole new desktop image in two halves
+  (crops/new-desktop-top.png, crops/new-desktop-bottom.png): "Decompte"
+  carries the same gap as "Nombre total" above it and "Debut d'activite"
+  below it, and nothing else moved.
+- No comparator baseline moved: none failed in the RED, none was written.
+
+WALKTHROUGH (R176, R177)
+------------------------
+Against `pnpm dev` on port 3520 - a THIRD CSS pipeline (the dev server's),
+whose order is neither build's - inside hold 4b after the gate
+(tools/walk.mjs, hold4b-walk.log; 38 checks OK, 0 FAIL, WALKTHROUGH
+PASSED):
+- /api/health named the product: {"service":"monreleve",...,
+  "runtime":false} (R169); each page 200 with a token-carrying stylesheet
+  applied (R177); no page error.
+- The calculator, driven into avis-provisoire's state (Geneve, 40 days,
+  80 %, missions Oui 6 + 4, Options avancees open, Decompte exact, 200),
+  at 1440 and 390 px. The advanced panel's four children read margin-top
+  0 / 20 / 20 / 20 px with 20 / 20 / 20 px between boxes: Methode (first),
+  Nombre total, Decompte, Debut d'activite. The mission block (.revealed)
+  0 / 20; the card's missions question 20.
+- The comparator at 1440 and 390 px: the form's heading 0, then every
+  child 24 px with 24 px between boxes - the three toggles (Annee
+  comparee, Votre declaration, Votre affiliation), the revenue field, the
+  persons fieldset and the Comparer button.
+- The server's tree was killed; "R179 port 3520 free after killing the
+  tree".
+The first attempt of this walkthrough (hold 4) never ran: DEVIATIONS 2.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. R1014, A CLASS GUARD, NOT BUILT. What it would look like:
+   - It must not read ORDER. W10's jsdom scan (cascade-flips.cjs) compared
+     winners under the orders of two Windows production-configuration
+     builds and reported 0 flips, while the container's dev-routes order
+     differed. Any order a check reads is one sample of a build-dependent
+     quantity: two configurations and the platform here; client-side
+     navigation, which inserts a stylesheet a later page needs after those
+     already loaded, may add more (not measured here).
+   - It compares SPECIFICITY and PROPERTY OVERLAP, which are the same in
+     every build. From one build's CSS (every file, order ignored): every
+     rule whose last compound selects positional/sibling children of a
+     container class (`> * + *`, `> * ~ *`, `> :not(:first-child)`, `+`,
+     `~`) and sets margin, margin-top, margin-block or margin-block-start;
+     and every lib/ui/react component root rule (the class on the element
+     the component returns) that sets any of those. For every pair where
+     the component can be a DIRECT child of the container - from the
+     rendered DOM of the states the visual suite already reaches, or
+     conservatively from the TSX - it FAILS when the specificities are
+     EQUAL and the modules differ, naming both rules (file:line) and the
+     element.
+   - Presence first (R169, R154): it refuses on zero gap rules or zero
+     roots, and its own test plants one equal-specificity pair (must fail,
+     naming it) and one (0,2,0)-over-(0,1,0) pair (must pass): both
+     directions (R196's shape).
+   - A cheaper source-only variant: a scan that no SCSS selector ends in
+     `> * + *` or `> * ~ *` (always (0,1,0) after one class), forcing
+     `:not(:first-child)`, and that no lib/ui/react root rule sets a block
+     margin. It would have caught both sites here; it cannot see a (0,2,0)
+     root meeting a (0,2,0) gap, which the pair version can.
+2. THE VISUAL SUITE PHOTOGRAPHS A CSS ORDER THE PRODUCTION CONFIGURATION
+   DOES NOT BUILD. The e2e/visual webServer builds with
+   FRONTALIER_DEV_ROUTES=1 (playwright.config.ts:185-188), and the /dev
+   routes re-chunk the CSS: on a2c502a the host production-configuration
+   build puts SegmentedChoice's reset first in the calculator's sheet (the
+   gap shows) while the dev-routes build - and the container, read from
+   its chunks - links it in a later chunk (flush). So for P1 the baseline
+   certified a look a production-configuration build of the same commit
+   did not have (and the Linux production-configuration build read from
+   gate:clone's image agrees with the host's). After this fix no census
+   pair depends on order, so nothing known differs today; any future equal-specificity
+   cross-module pair can photograph one way and ship the other.
+   Recorded, not tasked (Web Ruling 9); see QUESTIONS.
+3. THE PLATFORM ALSO MOVES MODULES, just not these. The SAME tree (the fix)
+   built with dev routes on this host (gate:changed's e2e build, copied
+   from web/.next) and in the visual container gives 11 byte-identical CSS
+   files and one chunk with the same 496 rules in the same 71 340 B but
+   one module placed differently: resultat.module.scss sits after
+   calculateur on Windows and before CalculatorForm on Linux. So both the
+   build configuration and the platform reorder modules; for P1 and P2 it
+   was the configuration. Whether any equal-specificity pair involves
+   resultat's rules was not examined (outside the census's class).
+4. Queue Ruling 20's desktop edge variant appeared inside the RED's first
+   attempt as a capture-to-capture difference (28 px, x1285-1287
+   y1819-2007), and Playwright reported "Failed to take two consecutive
+   stable screenshots" for that attempt; the retries captured the usual
+   image. Its cause stays not established (the state ends with focus in
+   #total-jours).
+5. W10's NOTICED 5 stands: gate:clone's container step (container-write)
+   defaults FRONTALIER_PORT to 3120. This session set 3530 for it.
+
+DEVIATIONS
+----------
+1. MY FIRST gate:changed WAS NO RESULT (hold 4, 03:10-03:28Z). My hold
+   script removed DATABASE_URL because test:db was not selected; with no
+   web/.env, the e2e suite's three alert-capture tests
+   (calculateur.spec.ts:691 and :727, calculateur.nojs.spec.ts:182) could
+   not record a subscription and the page said "Le service est
+   momentanement indisponible" (error-context.md): 3 failed, 364 passed.
+   Everything before it was green (typecheck, lint, test 3 811, build,
+   test:visual 168 with nothing regenerated). The environment, not the
+   change: a scratch database monreleve_fw_cascade_order was created and
+   migrated (15 migrations) and the gate re-run with DATABASE_URL naming
+   it, as W3d and W10 ran theirs. Cost: one extra 18-minute hold.
+2. The walkthrough tool's first run, in that same hold, died at import
+   ("Cannot find module 'playwright'": the package is @playwright/test):
+   NO RESULT, fixed, re-run in hold 4b.
+3. The census reads more than "a build": two host builds (production and
+   dev-routes) and the container's own chunks, copied with `docker cp` out
+   of MY visual container during the RED (read-only: `test -f` and `cp`,
+   nothing started, stopped or removed), because W10 had found a host
+   build that disagreed with the baseline. After gate:clone, its image
+   monreleve:fw-cascade-order was read the same way: `docker create` (never
+   started), `docker cp` of /app/.next/static/css and server/app, `docker
+   rm` of that probe container, inside the same lock hold.
+4. `pnpm install --frozen-lockfile` in web/ ran outside the lock (01:2xZ,
+   1 m 13 s): it is not in the heavy list.
+5. A WALKTHROUGH section (R176/R177) is added; the prompt's report outline
+   does not list one.
+6. The comments added to the two stylesheets write "decompte" without its
+   accent: they are code comments, not lib/fr copy (R155's scope).
+7. A slip of my own, with no effect, recorded because it executed: a shell
+   command that wrote this draft carried backticks inside double quotes,
+   so bash ran `docker cp`, `test -f`, `cp` (each with no arguments: usage
+   errors) and `pnpm install --frozen-lockfile` in .cascade-evidence/
+   ("ERR_PNPM_NO_PKG_MANIFEST No package.json found": nothing installed).
+   Checked afterwards: no node_modules, manifest or lockfile appeared,
+   `git status` unchanged, no container. Report text is edited by file
+   scripts and the editor since.
+
+QUESTIONS
+---------
+1. Recorded, not tasked (Web Ruling 9), because no defect remains today:
+   the e2e/visual build (FRONTALIER_DEV_ROUTES=1) chunks CSS differently
+   from the production configuration, so the visual suite photographs a
+   cascade a production-configuration build may not have (NOTICED 2).
+   Close it by R1014's guard (equal-specificity cross-module pairs cannot
+   exist, so order stops mattering), by building the photographed pages
+   without /dev, or accept it? The orchestrator's.
+2. For operator item 5 (the visible change): on a2c502a a
+   production-configuration build (host, and Linux per gate:clone's image)
+   already gave the decompte choice the 20 px gap; only the dev-routes
+   build that e2e and the visual suite make showed it flush. So the
+   visible change ruled by Web Ruling 11 is certainly a change to the
+   photographed test build; what the live site shows depends on its own
+   deployed build (another branch), which this session did not read.
+   Information for the operator's list, not a question to rule.
+
+PUSH PROOF
+----------
+Branch fw-cascade-order (pushed; NOT merged). Base a2c502a = origin/main
+at launch. origin/main has since moved to bfdb1d4 (records of the W3e and
+W6 merges); `git merge-tree --write-tree origin/main HEAD` is clean (exit
+0, tree 85f17bc), and main's changes since a2c502a touch no app/**, lib/**
+or baseline path, so nothing in this census or fix moves under them.
+Code commit: e2ee0c6b40b1215afbf7eed6bc65156aee67cbc5 - the two SCSS files
+and the two PNGs, staged by name; the committed PNG blobs are 633d7824...
+and 151d53a2..., the images the gate passed on. Pushed before gate:clone
+(ls-remote: refs/heads/fw-cascade-order at e2ee0c6b). This report is the
+one commit on top of it; its SHA is in the hand-back, checked with
+`git ls-remote`.
+
+gate:changed - THE GATE OF RECORD (hold 4b, hold4b.log):
+- Under the heavy-run lock and run-sampled.ps1, cmd = node
+  tools/with-scratch.mjs pnpm gate:changed: DATABASE_URL = the scratch
+  database (in the environment only, never on a command line or in a
+  file), FRONTALIER_PORT=3510, MONRELEVE_VERIFICATION_ORIGIN removed, no
+  web/.env.
+- Lock ACQUIRED 03:43:32Z at 8 505 MB commit free (line 5 945: e2e and
+  visual, with +900 MB for three other live sessions). Sampler
+  03:43:33Z-04:01:12Z, first sample 8 380 MB; MINIMUM commit free 5 352 MB
+  (a drop of 3 153 MB from the start reading - more than the solo drop the
+  line assumed; parallel mode never lowers a line), minimum free physical
+  435 MB; exit 0, aborted False. Released 04:02:04Z, after the
+  walkthrough. Light work in other sessions may have overlapped.
+- Printed selection and counts:
+  gate selection (R132):
+    6 path(s) matched:
+      web/app/(public)/calculateur-lamal-cmu/comparateur.module.scss  ->  app/**
+      web/app/(public)/calculateur-lamal-cmu/comparateur.module.scss  ->  **/*.module.scss
+      web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.module.scss  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.module.scss  ->  **/*.module.scss
+      web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png  ->  a baseline, which is the record test:visual compares against (R144)
+      web/tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png  ->  a baseline, which is the record test:visual compares against (R144)
+    suites: typecheck, lint, test, build, test:visual, test:e2e, test:late
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3811 passed
+      build: exit 0 (no count to check)
+      test:visual: 168 passed
+      test:e2e: 367 passed
+      test:late: 10 passed
+  GATE PASSED for the paths changed.
+- Its visual run reproduced the committed images with nothing further
+  regenerated: both avis-provisoire tests passed on their first attempt,
+  no retry, "photographed: a2c502a plus 4 uncommitted path(s)".
+- The first run (hold 4: ACQUIRED 03:10:10Z at 7 884 MB, minimum 5 664)
+  was NO RESULT: DEVIATIONS 1.
+
+gate:clone, ALONE, on e2ee0c6 (hold 5, hold5.log):
+- ALONE: under the lock, so no other heavy run; `docker ps` at 04:18:08Z
+  listed only frontalier-postgres. Light work in other sessions may have
+  overlapped.
+- Under run-sampled.ps1, cmd = node tools/hold5.mjs: FRONTALIER_PORT=3530
+  (container-write defaults to 3120), CONTAINER_IMAGE=monreleve:fw-cascade-
+  order, DATABASE_URL and MONRELEVE_VERIFICATION_ORIGIN removed from the
+  environment; DATABASE_URL read from the session web/.env, which names
+  the local server's `postgres` database.
+- Lock ACQUIRED 04:18:08Z at 7 075 MB commit free (line 5 576). Sampler
+  04:18:09Z-04:30:51Z, first sample 7 049 MB; minimum commit free 5 155 MB
+  (a drop of 1 920 MB), minimum free physical 271 MB; exit 0, aborted
+  False. Released 04:30:54Z, after the image's CSS was read.
+- Its lines, pasted:
+    GATE:CLONE PASSED
+      commit  e2ee0c6b40b1215afbf7eed6bc65156aee67cbc5
+      clone   %TEMP%\monreleve-clone-YMKDWK (removed)
+      ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+      claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+              a machine with no .env, no prior node_modules and no generated
+              file this run did not produce itself.
+    2026-11-17T04:30:49.789Z gate:clone exit 0
+    STEP_EXIT=0 ABORTED=False
+- "swept no stale clones (older than 4h) found"; it created
+  monreleve_gate_clone_e2ee0c6b and pg_database no longer lists it; size
+  printed "All gated routes pass both gates."; the image it built is
+  monreleve:fw-cascade-order (created 04:29:08Z), not monreleve:write.
+  Its per-suite counts are not in its log (the 14-line tail per step,
+  which W6 changed on main after this branch's base).
+
+The other holds, for the memory record (no abort anywhere): hold 1, the
+census builds, 7 616 -> 6 009 MB (line 4 854); hold 2, the RED, 8 789 ->
+6 447 (line 5 945); hold 3, the regeneration, 7 802 -> 6 544 (line 5 945).
+
+CLEANUP (Part B), PENDING when this report was committed and done after
+its push; the after-state is in the hand-back: drop
+monreleve_fw_cascade_order; remove web/.env; `docker image rm
+monreleve:fw-cascade-order` (the one tag this session built; the visual
+runs used the pinned Playwright image and built none); remove
+.session-lock.json last. The worktree and .cascade-evidence/ stay.
