@@ -61,6 +61,13 @@ web/dist-parity/
 # stages the whole repository and not the current directory.
 .session-lock.json
 
+# R1038: a worktree's keep marker. web/scripts/wt-cleanup.mjs reads
+# C:/wt/<task>/.wt-keep as "merged, but its evidence is still needed" and
+# prints its content as the reason. Ignored so a kept worktree stays clean;
+# the script also exempts it in worktrees checked out before this line.
+# Anchored at the root, where the script reads it (FW-FOLLOWUP's lesson).
+/.wt-keep
+
 # KMP-2: the on-device walkthrough screenshots, and Kotlin's build cache.
 #
 # Every device task writes its PNGs to android/.<task>-shots/ - the helper
