@@ -39,6 +39,7 @@ import { SECTION_ID } from '@/app/(public)/calculateur-lamal-cmu/section-ids';
 import { CalculatorForm } from '@/app/(public)/calculateur-teletravail-frontalier/CalculatorForm';
 import type { ProvisionalId } from '@/lib/content/provisional';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
+import { LAMAL_COPY } from '@/lib/fr/lamal';
 import { PROVISIONAL_COPY } from '@/lib/fr/provisional';
 
 afterEach(cleanup);
@@ -179,6 +180,28 @@ describe('the comparator separates its bold leads from the text beside them', ()
 
       if (lead === null) throw new Error('a limit without its lead');
       expectOneSpaceBeside(item, lead);
+    }
+  });
+
+  it('the result figures: each bold amount, one space, its "per year"', () => {
+    render(<ComparateurPage />);
+    fireEvent.change(screen.getByLabelText(LAMAL_COPY.form.income.label), { target: { value: '50000' } });
+    fireEvent.change(screen.getByLabelText(LAMAL_COPY.form.persons.you), { target: { value: '1985' } });
+    fireEvent.click(screen.getByRole('button', { name: LAMAL_COPY.form.submit }));
+
+    // A figure's <dd> leads with the bold amount and its period beside it
+    // (ComparisonPanel's Figure and the French side's amount).
+    const figures = [...document.querySelectorAll('[data-side] dd')].filter(
+      (value) => value.firstElementChild?.tagName === 'SPAN' && value.children.length > 1,
+    );
+
+    // Non-vacuity: the French amount and the three Swiss totals at least.
+    expect(figures.length).toBeGreaterThanOrEqual(4);
+    for (const value of figures) {
+      const amount = value.firstElementChild;
+
+      if (amount === null) throw new Error('a figure without its amount');
+      expectOneSpaceBeside(value, amount);
     }
   });
 
