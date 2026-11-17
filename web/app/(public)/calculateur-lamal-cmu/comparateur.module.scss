@@ -377,17 +377,17 @@
   line-height: var(--type-h1-line);
 }
 
-// Two columns from the md breakpoint, each item under a hairline.
+// Each item under a hairline, in as many columns as fit, as the artboard sets
+// them (W20): one on a phone, two at the md breakpoint, three at 1440. A
+// column is at least a quarter of the public measure - the artboard's three
+// across at its widest - and never wider than the row.
 .limitList {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--layout-public) / 4)), 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
   column-gap: var(--space-10);
-
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
 }
 
 .limit {
@@ -404,12 +404,6 @@
 
 .limitRest {
   color: var(--colour-text-secondary);
-}
-
-.links {
-  margin: var(--space-4) 0 0;
-  font-size: var(--type-body-size);
-  line-height: var(--type-body-line);
 }
 
 // ---- FW-DELAI-RAPPEL, R918: the reminder form under the helper ---------------
@@ -514,6 +508,236 @@
 
 .reminderOutcomeBody {
   margin: var(--space-1) 0 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// ---- W20, FW-COMPARATEUR-A2-PAGE: the A2 artboard's static sections ---------
+//
+// ONE CLASS, `a2`, ON EACH ROOT, AND `data-a2` HOOKS UNDER IT. Measured, not
+// preferred: a class per element put a 943-byte class map (380 B gzip) into
+// the comparator's client chunk, because a CSS module's map ships with the
+// page even when only server components use it. This is one entry.
+//
+// `.a2` paints NO FILL. The bands' fills hang on `[data-a2-band]`, a selector
+// none of the text rules below starts with, so the contrast audit resolves
+// each of them against the page's surfaces - canvas and surface both - rather
+// than against one container (R121).
+
+// A chip's jump leaves the target's heading clear of the window's top edge.
+.a2[data-a2-anchor],
+.a2 [data-a2-anchor] {
+  scroll-margin-top: var(--space-6);
+}
+
+// The bands alternate canvas and surface, each under a hairline, as drawn.
+.a2[data-a2-band] {
+  padding-block: var(--space-16);
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}
+
+.a2[data-a2-band="canvas"] {
+  background: var(--colour-canvas);
+}
+
+.a2[data-a2-band="surface"] {
+  background: var(--colour-surface);
+}
+
+// The tool's name above the h1. The artboard fills it pale blue; the web has
+// no such token (PARK-CA4), so it is the calculator's year badge: brand text
+// on a surface pill.
+.a2 [data-a2="pill"] {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-1) var(--space-3);
+  border: var(--size-input-border) solid var(--colour-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--colour-surface);
+  color: var(--colour-brand);
+  font-size: var(--type-caption-size);
+  font-weight: var(--weight-semibold);
+  line-height: var(--type-caption-line);
+}
+
+.a2 [data-a2="chips"] {
+  margin-top: var(--space-6);
+}
+
+.a2 [data-a2="chip-list"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A link drawn as a chip: a touch target's height, the pill radius, the
+// primary text without an underline - the border and the shape say "link"
+// here, and the focus ring is the base layer's.
+.a2 [data-a2="chip"] {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-touch-target-web);
+  padding: 0 var(--space-4);
+  border: var(--size-input-border) solid var(--colour-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--type-label-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--type-label-line);
+  text-decoration: none;
+}
+
+.a2 [data-a2="heading"] {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.a2 [data-a2="lead"] {
+  max-width: var(--layout-article);
+  margin: 0 0 var(--space-6);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.a2 [data-a2="paragraph"] {
+  margin: 0 0 var(--space-3);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// Two across from the md breakpoint, one under the other below it.
+.a2 [data-a2="pair"] {
+  display: grid;
+  gap: var(--space-4);
+
+  @media (width >= bp.$breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+// Two text columns rather than two cards: the artboard's wider gap, which
+// also parts them when they stack on a phone.
+.a2 [data-a2-gap="wide"] {
+  gap: var(--space-10);
+}
+
+.a2 [data-a2="card"] {
+  padding: var(--space-6);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-surface);
+}
+
+.a2 [data-a2="card-heading"] {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-h3-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-h3-line);
+}
+
+.a2 [data-a2="list"] {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.a2 [data-a2="source"] {
+  margin: var(--space-4) 0 0;
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+// The two cards: France, Suisse.
+.a2 [data-a2="choice"] {
+  padding: var(--space-7);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--colour-surface);
+}
+
+.a2 [data-a2="choice"] [data-a2="list"] {
+  gap: var(--space-3);
+}
+
+// The side's name with its colour dot. The name is the label; the dot only
+// repeats it (SPEC 16: never colour alone).
+.a2 [data-a2="side"] {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0 0 var(--space-2);
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+.a2 [data-a2="dot"] {
+  flex: 0 0 auto;
+  width: var(--size-dot-lg);
+  height: var(--size-dot-lg);
+  border-radius: var(--radius-pill);
+}
+
+.a2 [data-a2-side="france"] {
+  background: var(--colour-france);
+}
+
+.a2 [data-a2-side="switzerland"] {
+  background: var(--colour-switzerland);
+}
+
+.a2 [data-a2="choice-heading"] {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+// Sources: the source on the left, what it sources on the right; one under
+// the other when the line is too short for both.
+.a2 [data-a2="source-list"] {
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.a2 [data-a2="source-row"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-top: var(--size-rule) solid var(--colour-border-default);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.a2 [data-a2="source-name"] {
+  font-weight: var(--weight-semibold);
+}
+
+.a2 [data-a2="source-what"] {
+  color: var(--colour-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+.a2 [data-a2="all-sources"] {
+  margin: var(--space-6) 0 0;
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
 }

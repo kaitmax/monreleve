@@ -17,7 +17,9 @@
 
 import { expect, test } from '@playwright/test';
 import { COMPARATOR_PATH } from '../lib/content/routes';
+import { SECTION_ID } from '../app/(public)/calculateur-lamal-cmu/section-ids';
 import { LAMAL_COPY } from '../lib/fr/lamal';
+import { LAMAL_PAGE_COPY } from '../lib/fr/lamal-page';
 import { RAPPEL_COPY } from '../lib/fr/rappel';
 import { LANDING_STATES, landingFragment } from '../lib/rappel/landing';
 
@@ -91,6 +93,42 @@ test.describe('with JavaScript disabled', () => {
 
     await expect(page.locator('[data-deadline-helper]')).toHaveCount(1);
     await expect(page.locator('[data-reminder-form]')).toHaveCount(0);
+  });
+
+  // FW-COMPARATEUR-A2-PAGE (W20, R1048): the artboard's static sections are
+  // server HTML. With scripting off the reader still gets the long h1, every
+  // section under its heading, and chips that are real in-page links - one
+  // is followed, and the address bar and the target show it worked.
+  test('the A2 sections and their chips are served without JavaScript', async ({ page }) => {
+    await page.goto(COMPARATOR_PATH);
+
+    expect((await page.locator('h1').textContent()) ?? '').toBe(LAMAL_PAGE_COPY.heading);
+
+    const main = (await page.locator('main').textContent()) ?? '';
+
+    for (const heading of [
+      LAMAL_PAGE_COPY.final.heading,
+      LAMAL_PAGE_COPY.family.heading,
+      LAMAL_PAGE_COPY.scope.heading,
+      LAMAL_PAGE_COPY.france.heading,
+      LAMAL_PAGE_COPY.switzerland.heading,
+      LAMAL_PAGE_COPY.sources.heading,
+    ]) {
+      expect(main, heading).toContain(heading);
+    }
+
+    const chips = page.getByRole('navigation', { name: LAMAL_PAGE_COPY.onThisPage }).getByRole('link');
+    const hrefs = await chips.evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
+
+    expect(hrefs.length).toBe(Object.keys(SECTION_ID).length);
+    for (const href of hrefs) {
+      await expect(page.locator(href), href).toHaveCount(1);
+    }
+
+    // Follow one: "Sources", the last section, far below the fold.
+    await chips.filter({ hasText: LAMAL_PAGE_COPY.sources.heading }).click();
+    await expect(page).toHaveURL(new RegExp(`#${SECTION_ID.sources}$`, 'u'));
+    await expect(page.locator(`#${SECTION_ID.sources}`)).toBeInViewport();
   });
 
   // The links in the messages land here with a fragment, and CSS :target
