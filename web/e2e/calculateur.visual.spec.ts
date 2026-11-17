@@ -178,6 +178,21 @@ const STATES: readonly VisualState[] = [
       await page.getByRole('button', { name: CALCULATEUR_COPY.form.advanced.summary }).click();
       await page.getByRole('radio', { name: CALCULATEUR_COPY.form.method.exact }).check();
       await page.fill('#total-jours', '200');
+      // R1052 (FW-AVIS-CAPTURE): THE PAGE IS SCROLLED TO THE TOP BEFORE THE
+      // FULL-PAGE CAPTURE. The fill above leaves the page scrolled 763 px at
+      // 1440, with the result column - position: sticky from the md
+      // breakpoint, and here as tall as the form - on screen. Captured
+      // there, the AppCard's sub-pixel right edge (x 1285-1287, y 1819-2007)
+      // rendered one of two ways (5 captures in 24, 4 fresh pages x 6
+      // consecutive captures), so its baseline could not be re-taken
+      // reliably. At scroll 0 it renders ONE way, 24 of 24. This is the only
+      // state the census found captured scrolled with a sticky element on
+      // screen (R1051); the page does not move after load, so nothing in the
+      // product changes. Not a threshold, mask, retry or sleep (R345). The
+      // same step as comparateur's 'rappel-confirme'; at 390, where the
+      // column is not sticky, the scroll-0 capture equals the stored one.
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
     },
   },
 
