@@ -46,7 +46,13 @@ SUMMARY
     [verifier] the database could not be reached (P1001, DatabaseNotReachable); answered the unavailable state:
     Invalid `prisma.issuanceRecord.findUnique()` invocation:
     Can't reach database server at <the database host>
-  P1001 is already on the list, so the list did not change.
+  P1001 is already on the list, so the list did not change. SCOPE of that
+  claim: a pool warm at an ORDERLY `docker stop`, then a fresh connect that
+  failed (the same P1001 as the cold runs; 1.2 s, then ~25 ms; no log line
+  for the pooled client). A query sent on a pooled connection whose server
+  vanished WITHOUT closing it (a kill, a partition) was not produced; P1017
+  ("server has closed the connection") stays off the list and is asserted
+  refused (database-unreachable.test.ts).
 - THE CONTENT DISCRIMINATES (item 1). W4's step now issues a REAL releve
   through GET /api/v1/export/pdf (the image's own Chromium, 163 840 bytes in
   5.5 s), reads its code back from the record, and judges /verifier/<that
@@ -284,9 +290,8 @@ R1025. NOTHING ELSE MOVES
   W4's existing unit cases pass unchanged; only the count line and the
   observation builder (the new verifier field) were extended.
 - The step reads more than before: lib/fr/verification.ts (the two
-  sentences) and the export route's answer. A change to verification.ts
-  selects test:e2e and test:visual (lib/fr/**) but not test:container:e2e:
-  the same selection gap W4 recorded for docs/api-v1.md (NOTICED 2).
+  sentences) and the export route's answer (NOTICED 2 has the selection
+  gap this opens).
 
 WEB RULING 20, CONDITION BY CONDITION
 -------------------------------------
@@ -343,10 +348,14 @@ NOTICED BUT NOT TOUCHING
    not replay: check 10 found no secret by value in the image's degraded
    body, and the hold's reads printed leaks []. Every console call in a
    server component has this dev-only property; nothing to change.
-2. SELECTION GAP (R251). web/lib/verification/database-unreachable.ts
-   matches no selector rule, so a commit touching only it runs the base
-   chain: `pnpm test` (its unit test and both page tests) covers it, but not
-   test:container:e2e, where check 4-9 would see a regression in the image.
+2. SELECTION GAPS (R251), two files the step now depends on:
+   - web/lib/verification/database-unreachable.ts matches no selector rule,
+     so a commit touching only it runs the base chain: `pnpm test` (its unit
+     test and both page tests) covers it, but not test:container:e2e, where
+     checks 4-9 would see a regression in the image;
+   - web/lib/fr/verification.ts, which the step now READS (copyLiteral),
+     selects test:e2e and test:visual (lib/fr/**) but not
+     test:container:e2e - the same gap W4 recorded for docs/api-v1.md.
    Not touched: gate-selection.mjs is W5's area.
 3. ONE HOME FOR THE ALLOW-LIST (R206). W13 (the bearer routes' outage
    envelope) needs the same "which errors are an outage" decision. The list
@@ -361,6 +370,10 @@ NOTICED BUT NOT TOUCHING
    connect that fails, refused or unresolvable (first sitting) - in
    1 223 ms; the second in 27 ms. Why the connect failed (the stopped
    container's name no longer resolving, or a refusal) was not measured.
+   Nor was the other warm-pool shape: a query on a pooled connection whose
+   server vanishes without closing it (a kill, a network partition). If that
+   surfaces as P1017 or a timeout, it answers today's 500 until a
+   measurement adds it to the list.
 5. AN OUTAGE CAN COST A READER 21 S (first sitting): an address that accepts
    and goes silent gave P1008 after 21 460 ms; lib/db/client.ts:64 sets no
    connect timeout of its own. Now degraded rather than a 500, but still slow.
@@ -390,6 +403,13 @@ DEVIATIONS
    suite runs; the gate of record runs it through container-e2e.mjs.
 5. The unknown-code read of a random code, the database up, is KEPT (as the
    presence half of check 6), and a second stopped read is PRINTED only.
+6. THE HEADING IS DERIVED FROM THE RUNNING IMAGE, NOT FROM lib/fr, in the
+   step. R1023 asks for the heading and the sentence read from lib/fr; the
+   sentence is (copyLiteral), but VERIFICATION_COPY.title is interpolated
+   (`${APOS}`), which copyLiteral refuses by design. So check 4 compares the
+   degraded answer's heading with the same image's database-up answer
+   (W4's "its own heading", R181: read, not typed). The `pnpm test` cases
+   assert it against VERIFICATION_COPY.title itself.
 
 QUESTIONS
 ---------
@@ -418,6 +438,10 @@ Resumed (line 6 640, a selection with test:container:e2e; 5 876 gate:clone):
 - 3: gate:clone. ACQUIRED 10:01:18Z at 6 826; 110 samples, minimum 4 561 MB
   at 10:09:12Z (a drop of 2 265); minimum physical free 397 MB; released
   10:12:52Z.
+- FOR THE MERGE GATE'S LINE: hold 2's drop, 3 597 MB (6 957 -> 3 360, 327 MB
+  physical free), is LARGER than the 3 440 the container selection's line
+  was built on (W3b), with the step now rendering a PDF in the image. No
+  line is mine to move; it is recorded.
 - Every hold started above its line; no line is lowered (Web Ruling 7).
   ALONE, in the lock's sense: no other heavy run overlapped any hold; light
   work in the other live sessions may have.
