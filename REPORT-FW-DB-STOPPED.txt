@@ -10,7 +10,9 @@ every heavy run went through C:/wt/.heavy-run.lock as holder W4; port block
 - The lock .session-lock.json was written at 00:10:00Z and is gitignored.
 - Evidence is in C:/wt/fw-db-stopped/.w4-evidence/ (gitignored): every log
   named below, the plant script, the batch scripts and the memory samples.
-- Nothing was written to the orchestrator's scratchpad.
+- Nothing of mine was written to the orchestrator's scratchpad. The tool
+  harness writes its own background-task output under the session temp
+  directory; nothing here relies on it.
 
 SUMMARY
 -------
@@ -56,7 +58,7 @@ COMPLETE for the web gates this task owns.
 - gate:changed ran on the same content before the commit, exit 0. Its
   selection included test:container:e2e, which ran to its end: CONTAINER
   E2E PASSED, the database-stopped step 57 of 57.
-- This report commit adds only REPORT-FW-DB-STOPPED.txt on top of 8b912ab.
+- The report commits add only REPORT-FW-DB-STOPPED.txt on top of 8b912ab.
 - No Android code changed, so there is no :app:gate.
 - Not merged: the orchestrator merges.
 - Plan Checkpoint D item 5: the local half (the public site keeps serving
@@ -155,7 +157,11 @@ entries/route.js...)". By reading, all ten bearer routes (devices, dossier,
 entries, me, account/delete, account/export, auth/revoke-all, auth/sign-out,
 export/csv, export/pdf) call authenticate() before any try, so the same is
 expected of each; only the entries GET was measured. The status matches the
-contract; the code a client branches on is absent. No change made (R949).
+contract; the code a client branches on is absent. Severity, by section
+6.5: a client branches on `code`, never on `message`, and treats an
+unrecognised code as terminal for that request - so a compliant client stops
+the request, without read_failed's retry sentence. Nothing is half-served:
+the read fails whole. No change made (R949).
 
 R947. WHERE IT RUNS (R251)
 --------------------------
@@ -180,8 +186,9 @@ Established by reading the five container harnesses:
 - Why not a suite of its own: a new `test:*` script edits package.json, and
   package.json selects EVERY suite (R414) on that commit, with no start line
   for it; it would also need a CI step, MAPPING_TARGETS, EVERY_SUITE and
-  SUITE_COUNTS. CI already runs test:container:e2e (the container-e2e job),
-  so the step is in CI with no workflow change (CI is off, R248).
+  SUITE_COUNTS. CI's container-e2e job already runs test:container:e2e, so
+  the step needs no workflow change there - on its default database-port
+  path, which NOTICED 7 covers (CI is off, R248).
 - The step runs WHENEVER THE IMAGE WAS BUILT, even when a step above it is
   already red, and its refusals join the harness's last line. Otherwise a
   first-failure-wins harness would answer "did the site survive the stop?"
@@ -328,6 +335,31 @@ NOTICED BUT NOT TOUCHING
    /a-propos. That agrees with the calculator page's own table ("async page,
    no searchParams ... head intact"); it is searchParams, not dynamic
    rendering alone, that moved metadata into the body.
+7. THE DEFAULT DATABASE-PORT PATH. Holds A-C all pinned
+   CONTAINER_DB_STOPPED_PG_PORT=3301 (my block). Unset - a merge gate that
+   does not know the variable, and CI - Docker picks a free host port and
+   the step reads it back with `docker port`.
+   NOT EXERCISED: Hold D (the step standalone, the variable unset) waited its
+   stated 30 minutes behind W10a, W11 and W10a and was NOT ACQUIRED at
+   04:19:57Z - NO RESULT. Until a run takes that path, a merge gate should set
+   CONTAINER_DB_STOPPED_PG_PORT to a port from its own block (the
+   orchestrator's is 3900-3999). CI takes the unset path (CI is off, R248).
+8. SELECTION GAP (R251). The step now READS docs/api-v1.md (the documented
+   status) and docker-compose.yml (the Postgres image), and neither file
+   selects test:container:e2e. Their unit tests catch a restructure (no
+   row, or two), not a changed value: a doc edit making read_failed 503
+   would pass every gate it selects and turn the step red only on the next
+   container run. QUESTION 1.
+9. A KILLED RUN. A SIGKILL mid-step leaves its app container holding the
+   port, and container-e2e.mjs's opening R179 check then refuses (something
+   answers /api/health) before the step's own leftover line can print.
+   Find it with `docker ps -a --filter
+   label=monreleve.harness=container-db-stopped` (and the same filter on
+   `docker network ls`); the run id in its name says which run left it.
+   The step never removes it itself (R334).
+10. The step's effect on the container suite's MEMORY PEAK is unmeasured:
+   Hold B's sampler wrote nothing (MEMORY, note 2). The step's standalone
+   run took 33 s; the gate of record ran 02:58:25Z-03:09:59Z in all.
 
 DEVIATIONS
 ----------
@@ -350,6 +382,10 @@ DEVIATIONS
 6. Plan Checkpoint D item 5's staging half: NOT MET. No staging exists; it
    needs Coolify and the token (QUEUE-STATE BLOCKED 1). Only the local half
    is proven here.
+7. WALKTHROUGH against the image only, not `pnpm dev` (R176, R177). This
+   task built a harness step, not a page; its subject is the BUILT image -
+   prerendered and ISR routes served by standalone output - while `pnpm dev`
+   renders every route per request, a different subject. See WALKTHROUGH.
 
 QUESTIONS
 ---------
@@ -363,8 +399,10 @@ QUESTIONS
    alternative is a structural unit test in `pnpm test`: no sitemap page's
    import graph reaches lib/db/client.ts. The same holds, more narrowly,
    for lib/content/readiness.ts, app/api/ready, app/api/health and
-   app/sitemap.xml, whose stopped-database answers only this step checks.
-   Not done here (R947 asks for the script's registration; R949).
+   app/sitemap.xml, whose stopped-database answers only this step checks,
+   and for docs/api-v1.md and docker-compose.yml, which the step reads
+   (NOTICED 8). Not done here (R947 asks for the script's registration;
+   R949).
 2. FINDING 1: should a database outage on a /v1 route answer the documented
    envelope (read_failed, or a 503)? That is a route change (R949) and the
    codes are frozen (api-v1 section 7), so it is the operator's.
@@ -379,8 +417,29 @@ DEFECTS
 -------
 None among the routes R946 names: every sitemap route survived, liveness
 held, readiness refused, the database route gave its documented status with
-no leak, and recovery needed no restart. FINDING 1 and QUESTION 3 are
-handed back as questions, not fixed (R949).
+no leak, and recovery needed no restart.
+A CANDIDATE, under R949 ("a public page that does NOT survive is a defect"):
+/verifier/[code] - public, noindex, outside the sitemap R946 asserts. With
+the database running: 200 with its heading. Stopped: 500, no heading, no
+leak (checked by value). Measured in all three runs, not judged by the step.
+Handed back as QUESTION 3, not fixed (R949). FINDING 1 is a contract gap
+(section 6.5 severity above), handed back as QUESTION 2.
+
+WALKTHROUGH (R176, R177)
+------------------------
+What this task built is the step, and it was driven against the image three
+times, each read in full (logs in .w4-evidence/):
+- standalone, 01:06:17Z-01:06:50Z (a-phase-dev.log): 57 of 57;
+- inside `pnpm test:container:e2e` with the plant, 01:06:50Z-01:11:31Z
+  (a-plant-run.log): RED, 56 of 57, naming /a-propos;
+- inside the gate of record, 03:09Z (b-gate-changed.log): 57 of 57;
+- a fourth, on the default port path, was not acquired (NOTICED 7).
+What the pages showed agrees with itself across runs: the same 20 routes
+and, with the database running, the same headings and cache headers (except
+/a-propos under the plant, by design); /api/ready named the database
+with reason unreachable each time; the entries GET answered 500 with an
+empty body each time; recovery took 17, 25 and 28 ms after Postgres
+accepted connections. `pnpm dev` was not driven (DEVIATION 7).
 
 THE CONTAINER SUITE, RUN TO ITS END (step 4)
 --------------------------------------------
@@ -421,8 +480,9 @@ PUSH PROOF
 ----------
 Branch: fw-db-stopped (pushed; not merged). Base a2c502a.
 Code commit: 8b912ab794613f1bcb7e0883a5f376aef543dcea, pushed before
-gate:clone (ls-remote: refs/heads/fw-db-stopped at 8b912ab). This report is
-the commit on top of it, adding only REPORT-FW-DB-STOPPED.txt.
+gate:clone (ls-remote: refs/heads/fw-db-stopped at 8b912ab). The report
+commits on top of it (c17b417, then its review edits) add only
+REPORT-FW-DB-STOPPED.txt.
 
 gate:changed, the gate of record (.w4-evidence/b-gate-changed.log):
 - Under the lock as W4: ACQUIRED 02:58:24.902Z, commitFree=8934, line 6 340
@@ -493,6 +553,7 @@ include +900 for three other live sessions):
   A     build, the step standalone, the plant RED 01:04:23      9 021  6 340  NO RESULT (1)
   B     gate:changed (+ test:container:e2e)       02:58:24      8 934  6 340  NO RESULT (2)
   C     gate:clone                                03:34:04      8 892  5 576  6 815 (drop 2 077)
+  D     the step, default port path (NOTICED 7)   NOT ACQUIRED in its 30 minutes (04:19:57Z): NO RESULT
   (1) the sampler was a .ps1 file, which this machine's execution policy
       refuses; (2) it was given a POSIX path, which PowerShell read as
       C:\c\wt\..., so it wrote nothing and never saw its stop file - the
