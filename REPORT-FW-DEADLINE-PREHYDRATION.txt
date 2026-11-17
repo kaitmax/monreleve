@@ -166,7 +166,9 @@ server's HTML and the effect's read.
    then dispatch - but if that forced hydration is what first reaches the
    input, track() (react-dom-client :1064) creates the value tracker already
    holding the typed value, and no change event fires. Without the read, that
-   value would be lost even after the scripts had arrived.
+   value would be lost even after the scripts had arrived. (READ from the
+   source - track() itself, not the comparison it feeds - and NOT DRIVEN; the
+   argument does not rest on it.)
 3. Between the commit and the read: impossible. A layout effect runs inside the
    commit, in the same task; the browser cannot run an input event in between.
    (A passive effect would leave a gap - harmless, since onChange is attached
@@ -234,10 +236,12 @@ walk/*.png)
 - Context locale fr-FR, Europe/Paris; CDP: CPU x6, network 1.6 Mbit/s down,
   150 ms latency. The date typed with REAL KEYSTROKES as a French reader types
   it ("17122026" into jj/mm/aaaa), not fill().
-- Run 3 (the recorded one; runs 1 and 2 the same):
-    date field visible after ~2.6 s, not hydrated;
-    typed by ~4.5 s, field value "2026-12-17", island NOT hydrated (no fiber);
-    island hydrated at ~21.7 s;
+- Run 3, the one walk/walkthrough.log holds (each run overwrites it; runs 1
+  and 2 had the same outcomes, with field visible / typed / hydrated at
+  2.4 / 3.5 / 17.4 s and 2.6 / 4.5 / 21.7 s):
+    date field visible after 1.1 s, not hydrated;
+    typed by 3.1 s, field value "2026-12-17", island NOT hydrated (no fiber);
+    island hydrated at 18.4 s;
     then data-deadline-end = "2027-03-17", step 2 reads "jusqu'au 17 mars 2027
     environ.", the reminder form shown, the typed date still in the field.
 - Used what it built: the reminder sent from that state with an
@@ -392,6 +396,17 @@ UNNUMBERED-5. The walkthrough, the console and style probes and the census
 UNNUMBERED-6. ALONE, as Part B reads it now: gate:clone held the lock
     (12:57:31-13:10:21Z) with no other heavy run. Light work in other
     sessions may have overlapped; mine was log reads only.
+UNNUMBERED-7. WHICH EVIDENCE PREDATES THE LAST EDITS (W11's V6 shape). The
+    dev GREEN (16/16), the 80/80 repeats, the walkthrough and the console
+    and style probes ran before three COMMENT-ONLY edits made about
+    10:50-10:55Z (the R1042 comment in DeadlineHelper.tsx; the hydration
+    signal's and the plant's docstrings in the spec). No runtime line
+    changed. gate:changed, gate:clone and the census probe ran on the final
+    tree (38936bc).
+EVIDENCE LOCATION: everything cited as .w18-evidence/... lives only in the
+    worktree's gitignored folder C:/wt/fw-deadline-prehydration/.w18-evidence
+    (logs, screenshots, probe scripts). It goes with the worktree when that
+    folder is removed (Web Ruling 22 records W10a's going the same way).
 MEMORY (sampler, every 5 s, .w18-evidence/*-sampler.log):
     gate:changed: start 7 205 MB, minimum 3 561 MB (12:23:13Z, during the
     unit suite), free physical minimum 313 MB (12:22:12Z); no abort.
