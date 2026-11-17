@@ -17,8 +17,10 @@ export const REMINDER_STATUS = {
   missing: 'adresse-manquante',
   /** Something arrived and it was not an address. */
   invalid: 'adresse-invalide',
-  /** Not a real day, or fewer than fourteen days away (R916). */
+  /** Not a real day, or fewer than fourteen days away (R916, kept by R1000). */
   date: 'date-refusee',
+  /** R1004: more than MAX_MONTHS_AHEAD months away. Its own status, because the one above says the due day has passed. */
+  far: 'date-trop-lointaine',
   /** Too many attempts from this connection. */
   rate: 'trop-de-tentatives',
   /** The database or the mailer refused. */

@@ -9,8 +9,7 @@
 // test chooses, so the file means the same thing on every day it runs.
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { NextRequest } from 'next/server';
-import { GET as DELETE } from '@/app/api/rappel-delai/suppression/route';
+import { pressLink } from './support/rappel-links';
 import { prisma } from '@/lib/db/client';
 import { siteOrigin } from '@/lib/content/site';
 import { clearOutbox, readOutbox, sendMail, type Message } from '@/lib/alerts/mailer';
@@ -45,7 +44,7 @@ async function row(confirmed: boolean, deadline = DEADLINE, email = EMAIL): Prom
       confirmationTokenHash: confirmed ? null : hashToken(`confirm:${seq}`),
       confirmationExpiresAt: confirmed ? null : new Date(Date.now() + 60_000),
       confirmedAt: confirmed ? new Date() : null,
-      deleteTokenHash: hashToken(`delete:${seq}`),
+      deleteTokenHashes: [hashToken(`delete:${seq}`)],
     },
   });
 }
@@ -195,7 +194,7 @@ describe('R916: a failed send is retried, and the row stays until it succeeds or
   });
 });
 
-describe('R916: the delete link in the REMINDER removes the row at once, where a row remains', () => {
+describe("R916 / R1002: the delete link in the REMINDER removes the row by its page's button, where a row remains", () => {
   it('a message that went out but was reported failed: its link deletes the surviving row', async () => {
     await row(true);
 
@@ -209,19 +208,20 @@ describe('R916: the delete link in the REMINDER removes the row at once, where a
 
     expect(link, 'the reminder carries no delete link').not.toBe('');
 
-    const response = await DELETE(new NextRequest(link));
+    const response = await pressLink(link);
 
     expect(response.headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
     expect(await prisma.deadlineReminder.count()).toBe(0);
   });
 
-  it('after a successful send, the same link finds nothing - the row went with the send', async () => {
+  it('after a successful send, the same link lands where a deletion does - the row went with the send (R1003)', async () => {
     await row(true);
     await runDeadlineReminders(noonOn(DUE));
 
     const text = readOutbox()[0]?.text ?? '';
     const link = text.split('\n').find((line) => line.startsWith(`${siteOrigin()}${DELETE_PATH}?token=`)) ?? '';
 
-    expect((await DELETE(new NextRequest(link))).headers.get('location')).toBe(landingFor(LANDING_STATES.deleteUnknown));
+    expect((await pressLink(link)).headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
+    expect(await prisma.deadlineReminder.count()).toBe(0);
   });
 });

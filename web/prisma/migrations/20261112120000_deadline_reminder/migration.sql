@@ -18,7 +18,7 @@ CREATE TABLE "DeadlineReminder" (
     "confirmationTokenHash" TEXT,
     "confirmationExpiresAt" TIMESTAMP(3),
     "confirmedAt" TIMESTAMP(3),
-    "deleteTokenHash" TEXT NOT NULL,
+    "deleteTokenHashes" TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "DeadlineReminder_pkey" PRIMARY KEY ("id")
@@ -29,9 +29,6 @@ CREATE UNIQUE INDEX "DeadlineReminder_email_key" ON "DeadlineReminder"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "DeadlineReminder_confirmationTokenHash_key" ON "DeadlineReminder"("confirmationTokenHash");
-
--- CreateIndex
-CREATE UNIQUE INDEX "DeadlineReminder_deleteTokenHash_key" ON "DeadlineReminder"("deleteTokenHash");
 
 -- CreateIndex
 CREATE INDEX "DeadlineReminder_confirmedAt_createdAt_idx" ON "DeadlineReminder"("confirmedAt", "createdAt");
@@ -69,3 +66,25 @@ ALTER TABLE "DeadlineReminder" ADD CONSTRAINT "DeadlineReminder_email_normalised
     AND position('@' in "email") > 1
     AND position('@' in "email") < char_length("email")
   );
+
+-- R1003: every delete link a message carried works while its row exists, so
+-- the row keeps the hash of each - and always at least one, the
+-- confirmation's. A row with none is a request nobody could delete before its
+-- date. (Prisma writes a list column as nullable TEXT[]; NOT NULL is here.)
+ALTER TABLE "DeadlineReminder" ADD CONSTRAINT "DeadlineReminder_delete_link"
+  CHECK ("deleteTokenHashes" IS NOT NULL AND cardinality("deleteTokenHashes") >= 1);
+
+-- R1004: the date is at most twelve calendar months after the day the row is
+-- written, in Paris (SPEC 8's day boundary). The figure is MAX_MONTHS_AHEAD
+-- in lib/rappel/window.ts, the one stated constant; tests/db/rappel-delai-
+-- schema.test.ts reads it out of this file and proves the bound both ways.
+-- `date + interval` clamps a month end exactly as that module does (29
+-- February 2028 plus twelve months is 28 February 2029).
+--
+-- WHY now() AND NOT "createdAt": a request awaiting confirmation can be
+-- renewed with a new date days later, and "createdAt" stays put. The bound
+-- only ever loosens as time passes - a row that met it when written meets it
+-- on every later write, and on a restore - so it never turns a stored row
+-- into an illegal one.
+ALTER TABLE "DeadlineReminder" ADD CONSTRAINT "DeadlineReminder_deadline_bound"
+  CHECK ("deadline" <= ((now() AT TIME ZONE 'Europe/Paris')::date + INTERVAL '12 months')::date);

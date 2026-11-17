@@ -114,7 +114,7 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'DeadlineReminder.confirmationTokenHash': 'deadlineReminder',
   'DeadlineReminder.confirmationExpiresAt': 'deadlineReminder',
   'DeadlineReminder.confirmedAt': 'deadlineReminder',
-  'DeadlineReminder.deleteTokenHash': 'deadlineReminder',
+  'DeadlineReminder.deleteTokenHashes': 'deadlineReminder',
   'DeadlineReminder.createdAt': 'deadlineReminder',
 
   // ---- The person.

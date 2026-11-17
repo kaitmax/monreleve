@@ -16,13 +16,15 @@
 // then deletes nothing, so it sends nothing. One reminder, whatever the
 // replica count.
 //
-// THE DELETE LINK IN THE REMINDER (R916, R917). Before the transaction, the
-// row's delete hash is rotated to a fresh token - committed - and that token
-// is the message's link. If the send then reports failure after the message
-// went out anyway, the row survives with THAT hash, so the link in the
-// message the person holds removes it at once. The cost: once a send has
-// been attempted, the confirmation message's older link no longer matches
-// (the alert flow's rule - the newest message's link is the one that works).
+// THE DELETE LINK IN THE REMINDER (R916, R917, R1003). Before the
+// transaction, a fresh token's hash is ADDED to the row's delete hashes -
+// committed - and that token is the message's link. If the send then reports
+// failure after the message went out anyway, the row survives holding THAT
+// hash, so the link in the message the person holds removes it; and because
+// the hash is added rather than swapped in, the confirmation's link and every
+// earlier attempt's link keep working too. R1003: a delete link works for as
+// long as its row exists. The list grows by one per attempt, and the row -
+// with every hash in it - goes with the send or once the date has passed.
 //
 // AFTER THE DATE, DELETED UNSENT (R916). A row whose date has passed is
 // deleted whether it was confirmed or not, whether a send failed or never
@@ -69,19 +71,20 @@ async function remind(id: string, send: Send): Promise<'sent' | 'failed' | 'skip
   const remove = freshToken();
 
   // Committed BEFORE the send: see the header (the link in a message that
-  // went out despite a reported failure must still remove the row).
-  const rotated = await prisma.deadlineReminder.updateMany({
+  // went out despite a reported failure must still remove the row). Added,
+  // never swapped in (R1003).
+  const added = await prisma.deadlineReminder.updateMany({
     where: { id, confirmedAt: { not: null } },
-    data: { deleteTokenHash: remove.hash },
+    data: { deleteTokenHashes: { push: remove.hash } },
   });
 
-  if (rotated.count !== 1) return 'skipped';
+  if (added.count !== 1) return 'skipped';
 
   try {
     return await prisma.$transaction(
       async (tx) => {
         const row = await tx.deadlineReminder.findFirst({
-          where: { id, deleteTokenHash: remove.hash },
+          where: { id, deleteTokenHashes: { has: remove.hash } },
           select: { email: true, deadline: true },
         });
 
@@ -89,7 +92,7 @@ async function remind(id: string, send: Send): Promise<'sent' | 'failed' | 'skip
 
         // THE CLAIM: a second pass blocks here on the row lock, then finds
         // nothing to delete and sends nothing.
-        const { count } = await tx.deadlineReminder.deleteMany({ where: { id, deleteTokenHash: remove.hash } });
+        const { count } = await tx.deadlineReminder.deleteMany({ where: { id, deleteTokenHashes: { has: remove.hash } } });
 
         if (count !== 1) return 'skipped';
 

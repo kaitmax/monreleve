@@ -91,7 +91,7 @@ describe("R915 / R204: the alert flow's purge pass also purges unconfirmed remin
         deadline: toStoredDay(shiftDays(parisDayOf(new Date()), 200) ?? ''),
         confirmationTokenHash: hashToken('lapsed'),
         confirmationExpiresAt: new Date(),
-        deleteTokenHash: hashToken('delete:lapsed'),
+        deleteTokenHashes: [hashToken('delete:lapsed')],
         createdAt: new Date(Date.now() - (PURGE_AFTER_DAYS + 1) * DAY_MS),
       },
     });
@@ -150,7 +150,7 @@ describe('R916: the deadline reminder is a queue in the existing scheduler', () 
         email: 'due@monreleve.test',
         deadline: toStoredDay(deadline),
         confirmedAt: new Date(),
-        deleteTokenHash: hashToken('delete:due'),
+        deleteTokenHashes: [hashToken('delete:due')],
       },
     });
 

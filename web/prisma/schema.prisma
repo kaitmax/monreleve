@@ -802,7 +802,12 @@ model CodeAttempt {
 //   DeadlineReminder_email_normalised       the address is stored trimmed and
 //                                           lowercased, which is what makes
 //                                           the unique index mean "one address,
-//                                           one reminder".
+//                                           one reminder";
+//   DeadlineReminder_delete_link            at least one delete link, always:
+//                                           the confirmation's (R1003);
+//   DeadlineReminder_deadline_bound         the date at most MAX_MONTHS_AHEAD
+//                                           months after the day it is written
+//                                           (R1004, lib/rappel/window.ts).
 // ---------------------------------------------------------------------------
 model DeadlineReminder {
   id String @id @default(cuid())
@@ -824,9 +829,11 @@ model DeadlineReminder {
   /// When the confirmation link was opened. Server-assigned.
   confirmedAt DateTime?
 
-  /// SHA-256 of the delete link's token. Every message carries one; a fresh
-  /// token per message, so the newest message's link is the one that works.
-  deleteTokenHash String @unique
+  /// SHA-256 of EVERY delete link a message has carried for this row - the
+  /// confirmation's, a renewed confirmation's, each reminder attempt's. Each
+  /// one works for as long as the row exists (R1003), so the link the person
+  /// holds is never one a later message silently replaced. At least one.
+  deleteTokenHashes String[]
 
   createdAt DateTime @default(now())
 

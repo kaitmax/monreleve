@@ -15,12 +15,16 @@
 // is the guarantee, in the database; this function decides what a second
 // request does:
 //   - awaiting confirmation: the new date replaces the old one, with a fresh
-//     link (nothing has been sent for the old one, and the new message is the
-//     one in front of the reader);
+//     confirmation link (nothing has been sent for the old one, and the new
+//     message is the one in front of the reader). The new message's delete
+//     link is ADDED to the row's, never swapped in: the older message's link
+//     keeps working while the row exists (R1003);
 //   - confirmed: NOTHING is written and nothing is sent. Changing a confirmed
 //     reminder because a stranger typed the address would let anybody cancel
 //     somebody's reminder; the person changes it by the delete link and a new
-//     request. (A QUESTION in the report, not a product decision taken here.)
+//     request, which the confirmation message says (R1001). Q2, KEPT by
+//     R1001; a re-submitted corrected date keeps the old one, unannounced, and
+//     the report records that as NOT delivered.
 
 import { prisma } from '@/lib/db/client';
 import { freshToken } from '@/lib/alerts/token';
@@ -74,15 +78,15 @@ export async function requestReminder(request: ReminderRequest, now: Date = new 
     deadline: toStoredDay(deadline),
     confirmationTokenHash: confirm.hash,
     confirmationExpiresAt: new Date(now.getTime() + CONFIRMATION_TTL_DAYS * DAY_MS),
-    // A FRESH DELETE TOKEN PER MESSAGE, as the alert flow mints a fresh
-    // unsubscribe token per send: the row keeps only a hash, so the newest
-    // message's link is the one that works.
-    deleteTokenHash: remove.hash,
   };
 
+  // A FRESH DELETE TOKEN PER MESSAGE, as the alert flow mints a fresh
+  // unsubscribe token per send - but KEPT BESIDE the earlier ones rather than
+  // replacing them (R1003): every delete link a message carried works for as
+  // long as the row exists. The row holds only hashes.
   if (existing === null) {
     try {
-      await prisma.deadlineReminder.create({ data: { email, ...data } });
+      await prisma.deadlineReminder.create({ data: { email, ...data, deleteTokenHashes: [remove.hash] } });
     } catch (error) {
       if (isUniqueViolation(error)) return { outcome: 'concurrent' };
 
@@ -96,7 +100,7 @@ export async function requestReminder(request: ReminderRequest, now: Date = new 
   // between the read and this write must not be undone by it.
   const updated = await prisma.deadlineReminder.updateMany({
     where: { id: existing.id, confirmedAt: null },
-    data,
+    data: { ...data, deleteTokenHashes: { push: remove.hash } },
   });
 
   if (updated.count !== 1) return { outcome: 'already-confirmed' };

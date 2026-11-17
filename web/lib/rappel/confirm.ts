@@ -13,9 +13,10 @@
 //     unsubscribed row as a record of a refusal; a reminder nobody confirmed
 //     has nothing left to protect);
 //   - a confirmation that arrives fewer than DAYS_BEFORE days before the date
-//     DELETES the request and programs nothing (R916's conservative choice:
-//     no reminder is ever sent for such a date; the alternative is a QUESTION
-//     in the report).
+//     DELETES the request and programs nothing (R916's conservative choice,
+//     KEPT by R1000: no reminder is ever sent for such a date - it would only
+//     repeat what the page showed - and the "trop-tard" outcome says nothing
+//     was kept).
 
 import { prisma } from '@/lib/db/client';
 import { hashToken } from '@/lib/alerts/token';
@@ -61,19 +62,24 @@ export async function confirmReminderByToken(token: string, now: Date = new Date
 }
 
 /**
- * Delete the address and the date, AT ONCE (R916), for whoever holds the link.
+ * Delete the address and the date for whoever holds a delete link, when its
+ * page's one button is pressed (R1002: only the POST reaches this).
  *
- * IDEMPOTENT: a second click finds nothing and says so with the same honest
- * page as a token never issued - "aucun rappel ne correspond à ce lien" is
- * true of both, and of the link in a reminder already sent (the row went with
- * the send).
+ * R1003: EVERY delete link a message ever carried for this row matches it,
+ * for as long as the row exists - the row keeps the hash of each one
+ * (deleteTokenHashes), so a reminder whose send was reported failed, or a
+ * confirmation sent before it, still removes what is left.
+ *
+ * ONE ANSWER FOR 'DELETED NOW' AND 'NO ROW FOR THIS LINK' (R1003): since
+ * every issued link works while its row exists, a link that matches nothing
+ * means nothing is kept under it - after a send, a deletion, a lapse or a
+ * purge, and for a token never issued. The outcome's words are true of all
+ * of them, and a caller learns nothing about which it was (R915).
  */
 export async function deleteReminderByToken(token: string): Promise<LandingState> {
-  if (token === '') return LANDING_STATES.deleteUnknown;
+  if (token !== '') {
+    await prisma.deadlineReminder.deleteMany({ where: { deleteTokenHashes: { has: hashToken(token) } } });
+  }
 
-  const { count } = await prisma.deadlineReminder.deleteMany({
-    where: { deleteTokenHash: hashToken(token) },
-  });
-
-  return count === 1 ? LANDING_STATES.deleted : LANDING_STATES.deleteUnknown;
+  return LANDING_STATES.deleted;
 }

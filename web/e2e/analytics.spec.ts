@@ -42,6 +42,7 @@ import {
   UNSUBSCRIBE_STATES,
 } from '../lib/alerts/status';
 import { liveRoutes } from '../lib/content/routes';
+import { DELETE_PATH } from '../lib/rappel/landing';
 
 /**
  * The server these tests actually hit, which is NOT the origin the build is
@@ -96,6 +97,9 @@ const ROUTES = [
   ...liveRoutes().map((route) => route.path),
   `${CONFIRMATION_PATH}/${CONFIRM_STATES.confirmed}`,
   `${UNSUBSCRIBE_PATH}/${UNSUBSCRIBE_STATES.unsubscribed}`,
+  // FW-DELAI-RAPPEL (R1002): the delete link's page, which must set no cookie
+  // and load nothing from a third party - a token is in its address bar.
+  `${DELETE_PATH}?token=${'a'.repeat(64)}`,
 ];
 
 test('the routes under test are the real registry, not a chosen few', () => {

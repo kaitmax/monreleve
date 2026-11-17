@@ -23,7 +23,7 @@ import { LAMAL_COPY } from '../lib/fr/lamal';
 import { RAPPEL_COPY } from '../lib/fr/rappel';
 import { RAPPEL_FORM_COPY } from '../lib/fr/rappel-form';
 import { optionPeriodEnd } from '../lib/lamal/deadline';
-import { LANDING_STATES, landingFragment } from '../lib/rappel/landing';
+import { DELETE_ENDPOINT, DELETE_PATH, LANDING_STATES, landingFragment } from '../lib/rappel/landing';
 import { REMINDER_ENDPOINT } from '../lib/rappel/status';
 import { DAYS_BEFORE, localDay, shiftDays } from '../lib/rappel/window';
 
@@ -146,6 +146,37 @@ test('the confirm route itself lands there: an unknown token reveals "no longer 
   await expect(page).toHaveURL(new RegExp(`${COMPARATOR_PATH}#${landingFragment(LANDING_STATES.unknown)}$`, 'u'));
   await expect(page.locator(`#${landingFragment(LANDING_STATES.unknown)}`)).toBeVisible();
   await expect(page.locator('[data-rappel-outcome]:visible')).toHaveCount(1);
+});
+
+test('R1002: the delete link opens a page with one button posting the token, and opening it deletes nothing', async ({
+  page,
+}) => {
+  const token = 'd'.repeat(64);
+  const response = await page.goto(`${DELETE_PATH}?token=${token}`);
+
+  expect(response?.status()).toBe(200);
+
+  const form = page.locator('form[method="post"]');
+
+  await expect(form).toHaveCount(1);
+  await expect(form).toHaveAttribute('action', DELETE_ENDPOINT);
+  await expect(form.locator('input[type="hidden"][name="token"]')).toHaveValue(token);
+  await expect(form.locator('button')).toHaveCount(1);
+
+  // Opening it changed nothing a browser can see: the page is still there,
+  // and no outcome is on it. The row itself is asserted in tests/db.
+  await page.reload();
+  await expect(form.getByRole('button', { name: RAPPEL_COPY.deletePage.button })).toBeVisible();
+});
+
+test('R1002: with JavaScript too, the button lands on the comparator with the outcome revealed', async ({ page }) => {
+  await page.goto(`${DELETE_PATH}?token=${'e'.repeat(64)}`);
+  await page.getByRole('button', { name: RAPPEL_COPY.deletePage.button }).click();
+
+  const shown = page.locator(`#${landingFragment(LANDING_STATES.deleted)}`);
+
+  await expect(shown).toBeVisible();
+  await expect(shown).toContainText(RAPPEL_COPY.outcomes.deleted.heading);
 });
 
 test('no outcome is shown on a plain visit', async ({ page }) => {

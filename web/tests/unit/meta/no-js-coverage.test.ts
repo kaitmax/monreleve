@@ -143,6 +143,10 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   // operator named.
   'lib/ui/react/AlertCapture/AlertCapture.tsx': 'calculateur.nojs.spec.ts',
   'lib/ui/react/PublicShell/PublicShell.tsx': 'burger.nojs.spec.ts',
+  // FW-DELAI-RAPPEL (R1002): the delete link's page is a plain POST form with
+  // one button - its whole point is that a person can press it with no
+  // script, and a mail client that only fetches the link deletes nothing.
+  'app/(public)/rappel-delai/suppression/page.tsx': 'rappel-suppression.nojs.spec.ts',
   'lib/ui/react/Faq/Faq.tsx': 'faq.nojs.spec.ts',
   'lib/guides/mdx-components.tsx': 'guides.nojs.spec.ts',
   // FW-HOME-A2 (R711): the home counter's GET form, the A2 page's no-JS

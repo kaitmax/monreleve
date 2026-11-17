@@ -56,7 +56,7 @@ async function confirmation(): Promise<SentMessage> {
 
 async function reminder(): Promise<SentMessage> {
   await prisma.deadlineReminder.create({
-    data: { email: EMAIL, deadline: toStoredDay(DEADLINE), confirmedAt: new Date(), deleteTokenHash: hashToken('d') },
+    data: { email: EMAIL, deadline: toStoredDay(DEADLINE), confirmedAt: new Date(), deleteTokenHashes: [hashToken('d')] },
   });
   await runDeadlineReminders(new Date(`${reminderDay(DEADLINE) ?? ''}T11:00:00Z`));
 
@@ -144,6 +144,18 @@ describe('R917: what each message alone carries', () => {
     await prisma.deadlineReminder.deleteMany();
 
     expect(linksTo(await reminder(), CONFIRM_PATH)).toHaveLength(0);
+  });
+
+  it('R1001: the confirmation says how to change the date - the delete link below it, then a new request', async () => {
+    // A confirmed request changes only through its owner's link (Q2, kept by
+    // R1001), so the one message that carries that link says so - on the
+    // message as it was SENT, out of the outbox, never on the copy constant.
+    const lines = (await confirmation()).text.split('\n');
+    const said = lines.indexOf(RAPPEL_COPY.confirmation.changeDate);
+    const link = lines.findIndex((line) => line.startsWith(`${siteOrigin()}${DELETE_PATH}?token=`));
+
+    expect(said, 'the confirmation does not say how to change the date').toBeGreaterThan(-1);
+    expect(link, 'the link it points at is not below it').toBeGreaterThan(said);
   });
 
   it('the reminder says what happens without a choice, by the helper\'s key', async () => {

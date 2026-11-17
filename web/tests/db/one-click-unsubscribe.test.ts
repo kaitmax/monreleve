@@ -19,7 +19,10 @@
 
 import { TEST_ORIGIN } from '../../lib/content/identity';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { NextRequest } from 'next/server';
+import { POST as REQUEST_REMINDER } from '@/app/api/rappel-delai/route';
 import { POST as SUBSCRIBE } from '@/app/api/alertes/route';
 import { GET, POST } from '@/app/api/alertes/desinscription/route';
 import { prisma } from '@/lib/db/client';
@@ -28,6 +31,10 @@ import { ONE_CLICK_BODY } from '@/lib/alerts/list-headers';
 import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { UNSUBSCRIBE_PATH, UNSUBSCRIBE_STATES } from '@/lib/alerts/status';
 import { requestMagicLink } from '@/lib/auth/request';
+import { hashToken } from '@/lib/alerts/token';
+import { parisDayOf, toStoredDay } from '@/lib/entries/day';
+import { runDeadlineReminders } from '@/lib/rappel/job';
+import { reminderDay, shiftDays } from '@/lib/rappel/window';
 
 const ORIGIN = TEST_ORIGIN;
 const EMAIL = 'frontalier@example.com';
@@ -217,15 +224,60 @@ describe('the GET stays, and both reach the same handler', () => {
   });
 });
 
+/**
+ * R1008: EVERY MODULE THAT CAN PUT A MESSAGE ON THE WIRE, and the kind of mail
+ * it sends. COUNTED, NOT REMEMBERED: the block below used to say "there are
+ * exactly two callers of sendMail", and FW-DELAI-RAPPEL made it four with
+ * nothing here noticing. A sender that imports sendMail and is not listed
+ * fails the census, so the next one has to be classified - list mail carries
+ * the pair, transactional mail never does - before it can ship.
+ */
+const SENDERS: Readonly<Record<string, 'list' | 'transactional'>> = {
+  'lib/alerts/confirmation.ts': 'list',
+  'lib/auth/request.ts': 'transactional',
+  // The deadline reminder (R917, R245): one person, one request, no list.
+  'lib/rappel/job.ts': 'transactional',
+  'lib/rappel/mail.ts': 'transactional',
+};
+
+/** Every app/ or lib/ module importing sendMail from the one mailer, repo-relative. */
+function mailSenders(): string[] {
+  const web = process.cwd();
+  const importsSendMail = /import\s*\{[^}]*\bsendMail\b[^}]*\}\s*from\s*'@\/lib\/alerts\/mailer'/u;
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = join(dir, entry.name);
+
+      if (entry.isDirectory()) return walk(full);
+
+      return /\.tsx?$/u.test(entry.name) ? [full] : [];
+    });
+
+  return ['app', 'lib']
+    .flatMap((root) => walk(join(web, root)))
+    .filter((file) => importsSendMail.test(readFileSync(file, 'utf8')))
+    .map((file) => relative(web, file).split('\\').join('/'))
+    .sort();
+}
+
+describe('R1008: every send site is enumerated, with the kind of mail it sends', () => {
+  it('finds the senders by scanning, so the list below cannot fall behind', () => {
+    // R133: an empty scan would agree with an empty list.
+    expect(mailSenders()).toContain('lib/alerts/confirmation.ts');
+    expect(mailSenders()).toEqual(Object.keys(SENDERS).sort());
+  });
+});
+
 describe('a transactional message carries NO unsubscribe control', () => {
   it('the sign-in link has neither header', async () => {
     // ============================================================================
     // "EVERY SEND" MEANS EVERY SEND OF A LIST MESSAGE
     // ============================================================================
     //
-    // There are exactly two callers of sendMail: the alert confirmation, which
-    // is a list message, and this, which is a sign-in link somebody asked for
-    // seconds ago.
+    // The callers of sendMail are counted in SENDERS above (R1008): the alert
+    // confirmation is list mail; this - a sign-in link somebody asked for
+    // seconds ago - is transactional, and so are the deadline reminder's two
+    // messages, asserted after it.
     //
     // AN UNSUBSCRIBE CONTROL ON A SIGN-IN MAIL IS A PROMISE NOTHING KEEPS. The
     // reader cannot unsubscribe from their own sign-in: pressing it would
@@ -244,6 +296,43 @@ describe('a transactional message carries NO unsubscribe control', () => {
     expect(message, 'no sign-in message was collected').toBeDefined();
     expect(message?.headers?.['List-Unsubscribe']).toBeUndefined();
     expect(message?.headers?.['List-Unsubscribe-Post']).toBeUndefined();
+  });
+
+  it("R1008: the deadline reminder's CONFIRMATION has neither header", async () => {
+    await prisma.deadlineReminder.deleteMany();
+    await REQUEST_REMINDER(
+      new NextRequest(`${ORIGIN}/api/rappel-delai`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '1.2.3.5' },
+        body: new URLSearchParams({ email: EMAIL, date: shiftDays(parisDayOf(new Date()), 120) ?? '' }).toString(),
+      }),
+    );
+
+    const message = readOutbox().at(-1);
+
+    expect(message, 'no reminder confirmation was collected').toBeDefined();
+    expect(SENDERS['lib/rappel/mail.ts']).toBe('transactional');
+    expect(message?.headers?.['List-Unsubscribe']).toBeUndefined();
+    expect(message?.headers?.['List-Unsubscribe-Post']).toBeUndefined();
+    await prisma.deadlineReminder.deleteMany();
+  });
+
+  it('R1008: the deadline REMINDER itself has neither header', async () => {
+    const deadline = shiftDays(parisDayOf(new Date()), 120) ?? '';
+
+    await prisma.deadlineReminder.deleteMany();
+    await prisma.deadlineReminder.create({
+      data: { email: EMAIL, deadline: toStoredDay(deadline), confirmedAt: new Date(), deleteTokenHashes: [hashToken('r1008')] },
+    });
+    await runDeadlineReminders(new Date(`${reminderDay(deadline) ?? ''}T11:00:00Z`));
+
+    const message = readOutbox().at(-1);
+
+    expect(message, 'no reminder was collected').toBeDefined();
+    expect(SENDERS['lib/rappel/job.ts']).toBe('transactional');
+    expect(message?.headers?.['List-Unsubscribe']).toBeUndefined();
+    expect(message?.headers?.['List-Unsubscribe-Post']).toBeUndefined();
+    await prisma.deadlineReminder.deleteMany();
   });
 
   it('and the list message in the same run still has both', async () => {

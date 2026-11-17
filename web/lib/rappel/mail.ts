@@ -14,18 +14,22 @@
 // present, in the same run, on the alert list's message.
 //
 // THE WAY OUT IS THE DELETE LINK IN THE BODY of each message (R916, R917).
+// It opens a page with one button, and only that button deletes (R1002): the
+// confirmation carries both links, and a mail client that fetches links to
+// build a preview must not remove a request before anybody has read it.
 
 import { AUTH_EMAIL_FROM } from '@/lib/fr/emails';
 import { RAPPEL_COPY } from '@/lib/fr/rappel';
 import { siteOrigin } from '@/lib/content/site';
 import { sendMail, type Message } from '@/lib/alerts/mailer';
 import type { EnvLike } from '@/lib/push/resolve';
+import { DELETE_PATH } from '@/lib/rappel/landing';
 
 /** Where the confirmation link points. */
 export const CONFIRM_PATH = '/api/rappel-delai/confirm';
 
-/** Where the delete link in every message points. */
-export const DELETE_PATH = '/api/rappel-delai/suppression';
+/** Where the delete link in every message points: the one-button page (R1002), whose path lives in lib/rappel/landing.ts. */
+export { DELETE_PATH };
 
 /** An absolute link for a message: a mail client has no base URL (R81's siteOrigin). */
 function tokenUrl(path: string, token: string): string {

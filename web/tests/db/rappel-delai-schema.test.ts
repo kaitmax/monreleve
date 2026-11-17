@@ -10,7 +10,10 @@
 // fired.
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { prisma } from '@/lib/db/client';
+import { toStoredDay } from '@/lib/entries/day';
+import { MAX_MONTHS_AHEAD, latestDeadline, shiftDays } from '@/lib/rappel/window';
 
 /** Run a write that must fail, and hand back what PostgreSQL said. */
 async function rejection(write: Promise<unknown>): Promise<string> {
@@ -35,7 +38,7 @@ function pending(overrides: Record<string, unknown> = {}): {
   confirmationTokenHash: string | null;
   confirmationExpiresAt: Date | null;
   confirmedAt: Date | null;
-  deleteTokenHash: string;
+  deleteTokenHashes: string[];
 } {
   seq += 1;
 
@@ -45,7 +48,7 @@ function pending(overrides: Record<string, unknown> = {}): {
     confirmationTokenHash: `${'c'.repeat(60)}${String(seq).padStart(4, '0')}`,
     confirmationExpiresAt: new Date(Date.now() + HOUR_MS),
     confirmedAt: null,
-    deleteTokenHash: `${'d'.repeat(60)}${String(seq).padStart(4, '0')}`,
+    deleteTokenHashes: [`${'d'.repeat(60)}${String(seq).padStart(4, '0')}`],
     ...overrides,
   };
 }
@@ -153,6 +156,70 @@ describe('the address is stored normalised, so "one address, one reminder" holds
   });
 });
 
+describe('R1003: every delete link a message carried is kept, and there is always at least one', () => {
+  it('refuses a row with no delete link at all', async () => {
+    const message = await rejection(prisma.deadlineReminder.create({ data: pending({ deleteTokenHashes: [] }) }));
+
+    expect(message).toContain('DeadlineReminder_delete_link');
+  });
+
+  it('refuses a row whose list of links is NULL - written past the client, as another writer might', async () => {
+    const row = await prisma.deadlineReminder.create({ data: pending() });
+    const message = await rejection(
+      prisma.$executeRaw`UPDATE "DeadlineReminder" SET "deleteTokenHashes" = NULL WHERE "id" = ${row.id}`,
+    );
+
+    expect(message).toContain('DeadlineReminder_delete_link');
+  });
+
+  it('accepts one link, and several', async () => {
+    await prisma.deadlineReminder.create({ data: pending() });
+    await prisma.deadlineReminder.create({ data: pending({ deleteTokenHashes: ['a'.repeat(64), 'b'.repeat(64), 'c'.repeat(64)] }) });
+
+    expect(await prisma.deadlineReminder.count()).toBe(2);
+  });
+});
+
+describe(`R1004: the date is at most ${MAX_MONTHS_AHEAD} months after the day the row is written`, () => {
+  /**
+   * The DATABASE's today in Paris - the day its bound is measured from - read
+   * from the database rather than from this process (R171: the role).
+   */
+  async function databaseToday(): Promise<string> {
+    const [row] = await prisma.$queryRaw<{ today: string }[]>`
+      SELECT to_char((now() AT TIME ZONE 'Europe/Paris')::date, 'YYYY-MM-DD') AS today`;
+
+    return row?.today ?? '';
+  }
+
+  it('accepts the bound itself, computed by lib/rappel/window.ts from the database\'s today', async () => {
+    const latest = latestDeadline(await databaseToday()) ?? '';
+
+    await prisma.deadlineReminder.create({ data: pending({ deadline: toStoredDay(latest) }) });
+
+    expect(await prisma.deadlineReminder.count()).toBe(1);
+  });
+
+  it('refuses the day after the bound, by name', async () => {
+    const beyond = shiftDays(latestDeadline(await databaseToday()) ?? '', 1) ?? '';
+    const message = await rejection(prisma.deadlineReminder.create({ data: pending({ deadline: toStoredDay(beyond) }) }));
+
+    expect(message).toContain('DeadlineReminder_deadline_bound');
+  });
+
+  it('states the figure the constant states: the migration is read, never retyped here (R181)', () => {
+    const migration = readFileSync(
+      'prisma/migrations/20261112120000_deadline_reminder/migration.sql',
+      'utf8',
+    );
+    const check = /ADD CONSTRAINT "DeadlineReminder_deadline_bound"\s+CHECK \(([^;]+)\);/u.exec(migration)?.[1] ?? '';
+
+    expect(check, 'the bound constraint is not in the migration').not.toBe('');
+    expect(check).toContain(`INTERVAL '${MAX_MONTHS_AHEAD} months'`);
+    expect(check.match(/INTERVAL '\d+ months'/gu)).toHaveLength(1);
+  });
+});
+
 describe('the table holds what the notice says and nothing else', () => {
   it('has exactly the columns R914 names', async () => {
     const columns = await prisma.$queryRaw<{ column_name: string }[]>`
@@ -165,7 +232,7 @@ describe('the table holds what the notice says and nothing else', () => {
       'confirmedAt',
       'createdAt',
       'deadline',
-      'deleteTokenHash',
+      'deleteTokenHashes',
       'email',
       'id',
     ]);

@@ -1,10 +1,11 @@
 // web/app/(public)/calculateur-lamal-cmu/ReminderOutcomes.tsx
 //
 // FW-DELAI-RAPPEL: where the two links in a reminder message land - the
-// confirmation link and the delete link. The /api/rappel-delai handlers
-// consume the token and answer 303 to THIS page with a fragment
-// (lib/rappel/landing.ts), so the token leaves the address bar and the reader
-// is back on the comparator, at "Votre délai", reading what happened.
+// confirmation link, and the delete link's one button (R1002: the link opens
+// a page, and only its POST deletes). The /api/rappel-delai handlers answer
+// 303 to THIS page with a fragment (lib/rappel/landing.ts), so the token
+// leaves the address bar and the reader is back on the comparator, at "Votre
+// délai", reading what happened.
 //
 // THE ALERT CARD'S MECHANISM (lib/ui/react/AlertCapture): every outcome is
 // rendered, hidden, and CSS :target reveals the one the fragment names. A
@@ -30,7 +31,7 @@ const OUTCOMES = [
   { state: LANDING_STATES.tooLate, copy: RAPPEL_COPY.outcomes.tooLate },
   { state: LANDING_STATES.unknown, copy: RAPPEL_COPY.outcomes.unknown },
   { state: LANDING_STATES.deleted, copy: RAPPEL_COPY.outcomes.deleted },
-  { state: LANDING_STATES.deleteUnknown, copy: RAPPEL_COPY.outcomes.deleteUnknown },
+  { state: LANDING_STATES.deleteFailed, copy: RAPPEL_COPY.outcomes.deleteFailed },
 ] as const;
 
 export function ReminderOutcomes(): React.ReactElement {

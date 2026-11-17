@@ -34,6 +34,7 @@ const ANSWERS: Readonly<Record<ReminderStatus, string>> = {
   [REMINDER_STATUS.missing]: RAPPEL_COPY.answers.missing,
   [REMINDER_STATUS.invalid]: RAPPEL_COPY.answers.invalid,
   [REMINDER_STATUS.date]: RAPPEL_COPY.answers.date,
+  [REMINDER_STATUS.far]: RAPPEL_COPY.answers.far,
   [REMINDER_STATUS.rate]: RAPPEL_COPY.answers.rate,
   [REMINDER_STATUS.unavailable]: RAPPEL_COPY.answers.unavailable,
 };

@@ -15,9 +15,9 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { TEST_ORIGIN } from '../../lib/content/identity';
+import { pressLink } from './support/rappel-links';
 import { POST } from '@/app/api/rappel-delai/route';
 import { GET as CONFIRM } from '@/app/api/rappel-delai/confirm/route';
-import { GET as DELETE } from '@/app/api/rappel-delai/suppression/route';
 import { prisma } from '@/lib/db/client';
 import { siteOrigin } from '@/lib/content/site';
 import { clearOutbox, readOutbox } from '@/lib/alerts/mailer';
@@ -32,7 +32,7 @@ import { LANDING_STATES, landingFor } from '@/lib/rappel/landing';
 import { CONFIRM_PATH, DELETE_PATH } from '@/lib/rappel/mail';
 import { purgeUnconfirmedReminders } from '@/lib/rappel/purge';
 import { REMINDER_STATUS } from '@/lib/rappel/status';
-import { DAYS_BEFORE, reminderDay, shiftDays } from '@/lib/rappel/window';
+import { DAYS_BEFORE, MAX_MONTHS_AHEAD, latestDeadline, reminderDay, shiftDays } from '@/lib/rappel/window';
 
 const EMAIL = 'rappel@monreleve.test';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -309,20 +309,20 @@ describe('R915: what is refused writes nothing and sends nothing', () => {
   });
 });
 
-describe('R916: the delete link in the confirmation removes the row AT ONCE', () => {
-  it('deletes the address and the date, and a second click finds nothing', async () => {
+describe("R916 / R1002: the delete link in the confirmation removes the row, by its page's one button", () => {
+  it('deletes the address and the date, and a second press lands where the first did (R1003)', async () => {
     await submit({ email: EMAIL, date: inDays(60) });
 
     const link = linkTo(lastMessage().text, DELETE_PATH);
-    const first = await DELETE(new NextRequest(link));
+    const first = await pressLink(link);
 
     expect(first.status).toBe(303);
     expect(first.headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
     expect(await prisma.deadlineReminder.count()).toBe(0);
 
-    const second = await DELETE(new NextRequest(link));
+    const second = await pressLink(link);
 
-    expect(second.headers.get('location')).toBe(landingFor(LANDING_STATES.deleteUnknown));
+    expect(second.headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
   });
 
   it('deletes a CONFIRMED reminder too', async () => {
@@ -331,18 +331,58 @@ describe('R916: the delete link in the confirmation removes the row AT ONCE', ()
     const text = lastMessage().text;
 
     await CONFIRM(new NextRequest(linkTo(text, CONFIRM_PATH)));
-    await DELETE(new NextRequest(linkTo(text, DELETE_PATH)));
+    await pressLink(linkTo(text, DELETE_PATH));
 
     expect(await prisma.deadlineReminder.count()).toBe(0);
   });
 
-  it('deletes nothing for a token never issued', async () => {
+  it('deletes nothing for a token never issued, and lands where a deletion does (R1003: no oracle)', async () => {
     await submit({ email: EMAIL, date: inDays(60) });
 
-    const response = await DELETE(new NextRequest(`${TEST_ORIGIN}${DELETE_PATH}?token=${'e'.repeat(64)}`));
+    const response = await pressLink(`${siteOrigin()}${DELETE_PATH}?token=${'e'.repeat(64)}`);
 
-    expect(response.headers.get('location')).toBe(landingFor(LANDING_STATES.deleteUnknown));
+    expect(response.headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
     expect(await prisma.deadlineReminder.count()).toBe(1);
+  });
+});
+
+describe(`R1004: a date more than ${MAX_MONTHS_AHEAD} months ahead is refused, in its own words`, () => {
+  /** The latest date the server accepts today, and the day after it. */
+  const latest = (): string => latestDeadline(today()) ?? '';
+
+  it('refuses the day after the bound: its own status and sentence, nothing written, nothing sent', async () => {
+    const answer = await answerOf(await submit({ email: EMAIL, date: shiftDays(latest(), 1) ?? '' }));
+
+    expect(answer).toEqual({ status: REMINDER_STATUS.far, message: RAPPEL_COPY.answers.far });
+    expect(await prisma.deadlineReminder.count()).toBe(0);
+    expect(readOutbox()).toHaveLength(0);
+  });
+
+  it('accepts the bound itself, through the route AND the database', async () => {
+    const answer = await answerOf(await submit({ email: EMAIL, date: latest() }));
+
+    expect(answer.status).toBe(REMINDER_STATUS.ok);
+    expect(fromStoredDay((await prisma.deadlineReminder.findUniqueOrThrow({ where: { email: EMAIL } })).deadline)).toBe(
+      latest(),
+    );
+  });
+
+  it('accepts the bound on a RENEWAL made days after the first request, through both layers', async () => {
+    // A request awaiting confirmation, written ten days ago. Renewed today with
+    // the latest date allowed TODAY: a bound measured from the row's createdAt
+    // would refuse it, and the route would answer "indisponible".
+    await submit({ email: EMAIL, date: inDays(60) });
+    await prisma.deadlineReminder.update({
+      where: { email: EMAIL },
+      data: { createdAt: new Date(Date.now() - 10 * DAY_MS) },
+    });
+
+    const answer = await answerOf(await submit({ email: EMAIL, date: latest() }));
+
+    expect(answer.status).toBe(REMINDER_STATUS.ok);
+    expect(fromStoredDay((await prisma.deadlineReminder.findUniqueOrThrow({ where: { email: EMAIL } })).deadline)).toBe(
+      latest(),
+    );
   });
 });
 
@@ -356,7 +396,7 @@ describe(`R915 / R919: an unconfirmed request is purged after ${PURGE_AFTER_DAYS
         confirmationTokenHash: confirmed ? null : hashToken(email),
         confirmationExpiresAt: confirmed ? null : new Date(),
         confirmedAt: confirmed ? new Date() : null,
-        deleteTokenHash: hashToken(`delete:${email}`),
+        deleteTokenHashes: [hashToken(`delete:${email}`)],
         createdAt: new Date(Date.now() - days * DAY_MS),
       },
     });

@@ -20,8 +20,10 @@
 // stay here (R750; e2e/rappel-delai.spec.ts reads the request body). The
 // server keeps the two, for one reminder, and deletes them (R919).
 //
-// R916, THE CONSERVATIVE CHOICE: no form for a date fewer than fourteen days
-// away, so no mail is ever sent for one. "Today" here is the reader's own
+// R916, THE CONSERVATIVE CHOICE, KEPT BY R1000: no form for a date fewer than
+// fourteen days away, so no mail is ever sent for one - and R1004: none for a
+// date too far ahead either. Where the form would be, ONE SENTENCE SAYS WHY
+// (R225, asserted on the rendered page). "Today" here is the reader's own
 // calendar day; the server refuses on Paris's, and its refusal is shown.
 //
 // R750, ZERO STORAGE for everything else: the select and the date carry no
@@ -39,7 +41,7 @@ import { optionPeriodEnd } from '@/lib/lamal/deadline';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
 import { RAPPEL_FORM_COPY } from '@/lib/fr/rappel-form';
 import { REMINDER_ENDPOINT, REMINDER_STATUS, isFieldStatus } from '@/lib/rappel/status';
-import { localDay, reminderOffered } from '@/lib/rappel/window';
+import { localDay, reminderWindow } from '@/lib/rappel/window';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
 import { ResultCard } from '@/lib/ui/react/ResultCard/ResultCard';
 import styles from './comparateur.module.scss';
@@ -70,7 +72,9 @@ export function DeadlineHelper() {
   const [sent, setSent] = useState<{ readonly for: string; readonly message: string }>();
   const [pending, setPending] = useState(false);
   const end = optionPeriodEnd(date);
-  const offered = end !== undefined && reminderOffered(end, localDay());
+  const standing = end === undefined ? undefined : reminderWindow(end, localDay());
+  // `end !== undefined` restated so TypeScript narrows `end` wherever `offered` holds.
+  const offered = end !== undefined && standing === 'offered';
   const steps = [
     <>
       <strong>
@@ -217,6 +221,11 @@ export function DeadlineHelper() {
           )}
           <p className={styles.reminderHint}>{RAPPEL_FORM_COPY.hint}</p>
         </form>
+      ) : standing === 'too-close' || standing === 'too-far' ? (
+        // R1000 / R1004: why there is no form, in the box the form would use.
+        <p className={styles.reminderSent} role="status" data-reminder-refused={standing}>
+          {standing === 'too-close' ? RAPPEL_FORM_COPY.tooClose : RAPPEL_FORM_COPY.tooFar}
+        </p>
       ) : null}
     </div>
   );

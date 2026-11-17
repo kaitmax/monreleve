@@ -11,14 +11,16 @@
 // status, never a stack trace.
 //
 // THE DATE IS THE COMPUTED END, an ISO day, and the server refuses one fewer
-// than DAYS_BEFORE days away on Paris's calendar (R916's conservative choice:
-// no mail is ever sent for such a date). The island hides its form for those
-// dates on the reader's own calendar; this is the rule that holds.
+// than DAYS_BEFORE days away on Paris's calendar (R916's conservative choice,
+// kept by R1000: no mail is ever sent for such a date), and one more than
+// MAX_MONTHS_AHEAD months away (R1004), each with its own status. The island
+// hides its form for those dates on the reader's own calendar and says why;
+// this is the rule that holds.
 
 import { normaliseEmail } from '@/lib/db/alert-subscriber';
 import { isPlausibleEmail } from '@/lib/alerts/email';
 import { REMINDER_STATUS, type ReminderStatus } from '@/lib/rappel/status';
-import { isIsoDay, reminderOffered } from '@/lib/rappel/window';
+import { reminderWindow } from '@/lib/rappel/window';
 
 export interface ReminderRequest {
   /** Normalised: trimmed and lowercased, as the unique index sees it. */
@@ -51,10 +53,10 @@ export function parseReminderRequest(data: FormData, today: string): ParsedReque
   if (!isPlausibleEmail(email)) return { ok: false, status: REMINDER_STATUS.invalid };
 
   const deadline = field(data, 'date');
+  const standing = reminderWindow(deadline, today);
 
-  if (!isIsoDay(deadline) || !reminderOffered(deadline, today)) {
-    return { ok: false, status: REMINDER_STATUS.date };
-  }
+  if (standing === 'too-far') return { ok: false, status: REMINDER_STATUS.far };
+  if (standing !== 'offered') return { ok: false, status: REMINDER_STATUS.date };
 
   return { ok: true, value: { email, deadline } };
 }

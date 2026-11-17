@@ -21,10 +21,10 @@ import { DEADLINE_ID } from '@/app/(public)/calculateur-lamal-cmu/DeadlineHelper
 import { LAMAL_COPY } from '@/lib/fr/lamal';
 import { RAPPEL_COPY } from '@/lib/fr/rappel';
 import { RAPPEL_FORM_COPY } from '@/lib/fr/rappel-form';
-import { optionPeriodEnd } from '@/lib/lamal/deadline';
+import { OPTION_PERIOD_MONTHS, optionPeriodEnd } from '@/lib/lamal/deadline';
 import { LANDING_STATES, landingFragment } from '@/lib/rappel/landing';
 import { REMINDER_ENDPOINT, REMINDER_STATUS } from '@/lib/rappel/status';
-import { DAYS_BEFORE, reminderDay, shiftDays } from '@/lib/rappel/window';
+import { DAYS_BEFORE, MAX_MONTHS_AHEAD, latestDeadline, reminderDay, shiftDays, shiftMonths } from '@/lib/rappel/window';
 
 expect.extend(matchers);
 
@@ -123,6 +123,57 @@ describe('R918: the form appears once a date is computed', () => {
   });
 });
 
+describe('R1000 / R1004 (R225): where no form is offered for a computed date, the helper says why', () => {
+  /** The note in the form's place, read off the rendered page. */
+  const note = (): Element | null => document.querySelector('[data-reminder-refused]');
+
+  it(`says the reminder's day has passed, for a date fewer than ${DAYS_BEFORE} days away`, () => {
+    render(<ComparateurPage />);
+    // An event whose end is DAYS_BEFORE - 1 days after today, as above.
+    dated(shiftDays(TODAY, -(92 - (DAYS_BEFORE - 1))) ?? '');
+
+    expect(document.querySelector('[data-reminder-form]')).toBeNull();
+    expect(note()?.getAttribute('data-reminder-refused')).toBe('too-close');
+    expect(note()?.textContent).toBe(RAPPEL_FORM_COPY.tooClose);
+    expect(note()?.getAttribute('role')).toBe('status');
+  });
+
+  it(`says the date is too far, for one more than ${MAX_MONTHS_AHEAD} months ahead - by its rule, never its figure (R153)`, () => {
+    render(<ComparateurPage />);
+    // An event whose end is the day after the latest date allowed today.
+    const beyond = shiftDays(latestDeadline(TODAY) ?? '', 1) ?? '';
+    const event = shiftMonths(beyond, -OPTION_PERIOD_MONTHS) ?? '';
+
+    expect(optionPeriodEnd(event)).toBe(beyond);
+
+    dated(event);
+
+    expect(document.querySelector('[data-reminder-form]')).toBeNull();
+    expect(note()?.getAttribute('data-reminder-refused')).toBe('too-far');
+    expect(note()?.textContent).toBe(RAPPEL_FORM_COPY.tooFar);
+    expect(RAPPEL_FORM_COPY.tooFar).not.toMatch(/\d/u);
+  });
+
+  it('offers the form on the latest date itself, and says nothing then', () => {
+    render(<ComparateurPage />);
+    const latest = latestDeadline(TODAY) ?? '';
+    const event = shiftMonths(latest, -OPTION_PERIOD_MONTHS) ?? '';
+
+    expect(optionPeriodEnd(event)).toBe(latest);
+
+    dated(event);
+
+    expect(document.querySelector('[data-reminder-form]')).not.toBeNull();
+    expect(note()).toBeNull();
+  });
+
+  it('says nothing before a date is computed', () => {
+    render(<ComparateurPage />);
+
+    expect(note()).toBeNull();
+  });
+});
+
 describe('R918 / R750: the request carries the address and the COMPUTED date, nothing else', () => {
   it('posts exactly two fields to the endpoint', async () => {
     render(<ComparateurPage />);
@@ -215,6 +266,17 @@ describe('the six outcomes the links land on', () => {
       expect(element?.textContent).toContain(copy.body);
       expect(element?.getAttribute('role')).toBe('status');
     }
+  });
+});
+
+describe('R1000: the "trop-tard" outcome says nothing was kept, on the rendered page', () => {
+  it('ends on the sentence every deleting outcome ends on', () => {
+    render(<ComparateurPage />);
+
+    const element = document.getElementById(landingFragment(LANDING_STATES.tooLate));
+
+    expect(RAPPEL_COPY.nothingKept).toBeTruthy();
+    expect(element?.textContent).toContain(RAPPEL_COPY.nothingKept);
   });
 });
 

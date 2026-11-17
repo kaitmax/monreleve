@@ -9,6 +9,14 @@
 //           -> the reminder in the outbox
 //             -> the table, read, and empty.
 //
+// R1002: THE DELETE LINK IS PRESSED ON THE WAY. Opening the confirmation's
+// delete link - a GET, as a mail client fetching it would - leaves the row;
+// the reminder's delete link opens the page and its button lands where a
+// deletion does. A second test presses the button before any reminder, and
+// the table is empty. Opening and pressing are tests/db/support/
+// rappel-links.ts's: the form's action and token come out of the rendered
+// page, never from a constant here.
+//
 // Every unit below is tested on its own elsewhere; this is the one test that
 // crosses all of them, so a link pointing at nothing, a queue registered with
 // the wrong worker, or a pass that sends without deleting fails HERE (FW22's
@@ -18,6 +26,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { TEST_ORIGIN } from '../../lib/content/identity';
+import { linkIn, open, pressLink } from './support/rappel-links';
 import { POST } from '@/app/api/rappel-delai/route';
 import { GET as CONFIRM } from '@/app/api/rappel-delai/confirm/route';
 import { prisma } from '@/lib/db/client';
@@ -27,7 +36,7 @@ import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { RAPPEL_COPY } from '@/lib/fr/rappel';
 import { parisDayOf } from '@/lib/entries/day';
 import { LANDING_STATES, landingFor } from '@/lib/rappel/landing';
-import { CONFIRM_PATH } from '@/lib/rappel/mail';
+import { CONFIRM_PATH, DELETE_PATH } from '@/lib/rappel/mail';
 import { isSchedulerRunning, startScheduler, stopScheduler } from '@/lib/scheduler/boss';
 import {
   CODE_ATTEMPT_QUEUE,
@@ -110,6 +119,11 @@ describe('R920: submit -> confirm -> the job at its time -> the reminder -> noth
 
     expect(confirmed.headers.get('location')).toBe(landingFor(LANDING_STATES.confirmed));
 
+    // 3b. R1002: OPENING the confirmation's delete link deletes nothing.
+    await open(linkIn(confirmation?.text ?? '', DELETE_PATH));
+
+    expect(await prisma.deadlineReminder.count()).toBe(1);
+
     // 4. The job, through pg-boss, on the due day (the placed clock).
     running = await startScheduler();
 
@@ -138,6 +152,40 @@ describe('R920: submit -> confirm -> the job at its time -> the reminder -> noth
     expect(reminder?.subject).toBe(RAPPEL_COPY.reminder.subject(deadline));
 
     // 6. And nothing kept: the table, read, is empty.
+    expect(await prisma.deadlineReminder.count()).toBe(0);
+
+    // 7. R1002 / R1003: the reminder's delete link, pressed, lands where a
+    // deletion does - there is nothing left under it, and the page says so in
+    // the same words.
+    const pressed = await pressLink(linkIn(reminder?.text ?? '', DELETE_PATH));
+
+    expect(pressed.headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
+    expect(await prisma.deadlineReminder.count()).toBe(0);
+  });
+
+  it('R1002: submit -> the confirmation -> its delete link -> the button -> nothing kept', async () => {
+    const deadline = shiftDays(parisDayOf(new Date()), 120) ?? '';
+
+    await POST(
+      new NextRequest(`${TEST_ORIGIN}/api/rappel-delai`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-forwarded-for': '10.9.9.8' },
+        body: new URLSearchParams({ email: EMAIL, date: deadline }).toString(),
+      }),
+    );
+
+    const link = linkIn(readOutbox().at(-1)?.text ?? '', DELETE_PATH);
+
+    // Opened, as a scanner would: the row stays.
+    await open(link);
+
+    expect(await prisma.deadlineReminder.count()).toBe(1);
+
+    // Pressed, as a person would: the row goes, and the comparator says so.
+    const pressed = await pressLink(link);
+
+    expect(pressed.status).toBe(303);
+    expect(pressed.headers.get('location')).toBe(landingFor(LANDING_STATES.deleted));
     expect(await prisma.deadlineReminder.count()).toBe(0);
   });
 });

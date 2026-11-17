@@ -22,6 +22,7 @@ import { APP_NAME } from '@/lib/fr';
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 import { LAMAL_COPY } from '@/lib/fr/lamal';
 import { CONFIRMATION_TTL_DAYS, PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
+import { RAPPEL_FORM_COPY } from '@/lib/fr/rappel-form';
 import { DAYS_BEFORE } from '@/lib/rappel/window';
 
 const APOS = String.fromCharCode(0x2019);
@@ -30,11 +31,28 @@ const NB = String.fromCharCode(0x00a0);
 /** A punctuation mark with the no-break space French sets before it (R91). */
 const n = (mark: string): string => `${NB}${mark}`;
 
+/**
+ * R1000: WHAT A DELETION LEAVES - NOTHING - said in the same words wherever a
+ * request is removed without a reminder, and asserted on the rendered outcome.
+ */
+const NOTHING_KEPT = `L${APOS}adresse et la date ont été supprimées${n(':')} rien n${APOS}est conservé.`;
+
 /** "Vous pouvez choisir l'assurance maladie française jusqu'au 28 février 2027 environ." - the helper's step 2. */
+/**
+ * R1001: a confirmed request changes only through its owner's link, so the
+ * confirmation says how to change the date: delete, then ask again.
+ */
+const RAPPEL_COPY_CHANGE_DATE =
+  `Pour changer de date, supprimez cette demande par le lien ci-dessous, ` +
+  `puis faites-en une nouvelle sur le comparateur.`;
+
 const untilLine = (deadline: string): string =>
   `${LAMAL_COPY.deadline.choose} ${LAMAL_COPY.deadline.until(LAMAL_COPY.deadline.longDate(deadline))}`;
 
 export const RAPPEL_COPY = {
+  /** R1000: the sentence every deleting outcome ends on (see NOTHING_KEPT). */
+  nothingKept: NOTHING_KEPT,
+
   /**
    * THE ANSWERS TO A SUBMIT, sent with the status (lib/rappel/status.ts).
    *
@@ -53,6 +71,8 @@ export const RAPPEL_COPY = {
     date:
       `Un rappel part ${DAYS_BEFORE} jours avant la date, et ce jour est déjà ` +
       `passé${n(':')} aucun rappel ne peut être programmé pour cette date.`,
+    /** R1004: the helper's own sentence, by key (R206), which names the rule and not the figure (R153). */
+    far: RAPPEL_FORM_COPY.tooFar,
     rate: ALERTES_COPY.errors.tooMany,
     unavailable: ALERTES_COPY.errors.unavailable,
   },
@@ -79,8 +99,7 @@ export const RAPPEL_COPY = {
       heading: 'Ce rappel ne peut plus être programmé',
       body:
         `Il devait partir ${DAYS_BEFORE} jours avant la date, et ce jour est ` +
-        `passé${n(':')} rien ne vous sera envoyé, et l${APOS}adresse et la date ` +
-        `ont été supprimées.`,
+        `passé${n(':')} rien ne vous sera envoyé. ${NOTHING_KEPT}`,
     },
     unknown: {
       heading: `Ce lien de confirmation n${APOS}est plus valable`,
@@ -88,19 +107,20 @@ export const RAPPEL_COPY = {
         `Il a peut-être déjà servi${n(':')} un lien de confirmation ne ` +
         `fonctionne qu${APOS}une fois.`,
     },
+    // R1003: ONE OUTCOME FOR "DELETED NOW" AND "NO ROW FOR THIS LINK". Every
+    // delete link works for as long as its row exists, so these words are
+    // true after the button deleted the row, after a send or a lapse took it,
+    // and for a token never issued - and they tell a caller nothing about
+    // which it was.
     deleted: {
-      heading: `L${APOS}adresse et la date sont supprimées`,
-      body: 'Aucun rappel ne vous sera envoyé.',
+      heading: `Aucune adresse ni date n${APOS}est enregistrée pour ce lien`,
+      body: `Aucun rappel ne sera envoyé pour cette demande${n(';')} rien n${APOS}en est conservé.`,
     },
-    deleteUnknown: {
-      heading: 'Aucun rappel ne correspond à ce lien',
-      // NOT « il n'y a rien à supprimer »: once a send has been attempted,
-      // the confirmation message's older link no longer matches a row that may
-      // still exist (lib/rappel/job.ts). What is true of every case is that
-      // THIS link matches nothing.
-      body:
-        `Le rappel a peut-être déjà été envoyé ou supprimé, ou un message ` +
-        `plus récent contient un nouveau lien.`,
+    // The database refused: nothing was deleted, and the outcome must not say
+    // otherwise - the person would stop expecting a message and receive it.
+    deleteFailed: {
+      heading: `La suppression n${APOS}a pas pu être faite`,
+      body: `Rien n${APOS}a été modifié. Réessayez dans quelques instants avec le lien du message.`,
     },
   },
 
@@ -130,9 +150,13 @@ export const RAPPEL_COPY = {
         `l${APOS}adresse sera supprimée au bout de ${PURGE_AFTER_DAYS} jours au ` +
         `plus tard.`,
       '',
+      RAPPEL_COPY_CHANGE_DATE,
+      '',
       `Pour supprimer dès maintenant l${APOS}adresse et la date${n(':')}`,
       deleteUrl,
     ],
+    /** R1001: how to change the date - the delete link, then a new request. */
+    changeDate: RAPPEL_COPY_CHANGE_DATE,
   },
 
   /** The one reminder. */
@@ -152,8 +176,23 @@ export const RAPPEL_COPY = {
       LAMAL_COPY.deadline.warning,
       '',
       `Ce message est le seul${n(':')} l${APOS}adresse et la date sont ` +
-        `supprimées à son envoi. Ce lien supprime ce qui en resterait${n(':')}`,
+        `supprimées à son envoi. S${APOS}il en restait quelque chose, ce lien ` +
+        `permet de le supprimer${n(':')}`,
       deleteUrl,
     ],
+  },
+
+  /**
+   * R1002: THE PAGE THE DELETE LINK OPENS - one button, and only the button
+   * deletes, so a mail client that fetches the link deletes nothing.
+   */
+  deletePage: {
+    title: 'Supprimer la demande de rappel',
+    heading: `Supprimer votre demande de rappel${n('?')}`,
+    body:
+      `L${APOS}adresse et la date de fin du délai seront supprimées, et aucun ` +
+      `rappel ne sera envoyé pour cette demande. Rien n${APOS}est supprimé tant ` +
+      `que vous n${APOS}appuyez pas sur ce bouton.`,
+    button: `Supprimer l${APOS}adresse et la date`,
   },
 } as const;
