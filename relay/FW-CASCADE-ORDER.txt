@@ -1,0 +1,116 @@
+FW-CASCADE-ORDER SESSION PROMPT - Mon Releve
+SIBLING GAPS THAT HOLD BY CHUNK ORDER: MADE ORDER-INDEPENDENT (web run step W10a)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W10a (Web Ruling 11). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it (the orchestrator's copy in C:/wt/web-orch/relay/ is the
+  newest);
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-cascade-order, branch
+  fw-cascade-order, report REPORT-FW-CASCADE-ORDER.txt;
+- C:/wt/fw-calc-bytes/REPORT-FW-CALC-BYTES.txt (on branch fw-calc-bytes),
+  its DEFECTS 1-2 and its visual-fail crops, which are READ-ONLY;
+- relay/QUEUE-STATE.md's PARKED TASKS bullet on R912 and the
+  avis-provisoire variant (Queue Ruling 20);
+- CLAUDE.md: R135, R207, R267, R345, R180.
+Ruling numbers for this task: R1010-R1014.
+
+====================================================================
+THE TASK
+====================================================================
+The defect (REPORT-FW-CALC-BYTES.txt DEFECTS 1-2, confirmed by the
+orchestrator):
+- `.SegmentedChoice_root { margin: 0 }`
+  (lib/ui/react/SegmentedChoice/SegmentedChoice.module.scss:15) and
+  `.CalculatorForm_advanced > * + *` / `.CalculatorForm_revealed > * + *
+  { margin-top: var(--space-5) }` (CalculatorForm.module.scss:189-192) are
+  both specificity (0,1,0), in different modules.
+- Which wins depends on the CSS order that Next's chunking produces at
+  build time.
+- In main's chunk order the reset wins, and the "Decompte" choice sits
+  FLUSH against the field above it, while the stack's other children
+  keep the gap (main's baseline). W10's re-chunking flipped it.
+- The same class exists on the comparator: `.SegmentedButtons_root`
+  (SegmentedButtons.module.scss:11) against `.comparateur_form > * + *`.
+  It holds today only by chunk order.
+
+THE LOOK, RULED (Web Ruling 11; overturnable): the stack's UNIFORM gap is
+the intended look.
+- docs/design/calculateur-a2.dc.html lays the advanced options out as a
+  flex column with ONE gap between every child.
+- CalculatorForm.module.scss:187-188 says the advanced panel's stack
+  needs "the same gap the card gives its own children".
+- The flush "Decompte" is the defect, and main's baseline photographs it
+  (R135's wrong-but-stable case).
+- So two baselines move, with that as the stated reason.
+
+R1010. THE CENSUS (R267). Find EVERY rule that sets a sibling gap with a
+    margin (`> * + *`, `> * ~ *`, owl-style selectors) on a container
+    whose children include a component that resets its own outer margin
+    (a `.root { margin: 0 }` or `margin-block`, in any
+    lib/ui/react/**/*.module.scss). Search by reading the selectors, not
+    by guessing.
+    - List each pair: file:line on both sides, the specificities, and
+      which wins in main's built CSS order today. Read the order from a
+      build's CSS chunks (a build is heavy: use the lock).
+
+R1011. THE FIX, ORDER-INDEPENDENT, ALL SITES IN ONE COMMIT. Each pair
+    resolves the same way whatever the chunk order. Choose the smallest
+    mechanism that holds by construction, and state why. Examples:
+    - the container uses `display: flex; flex-direction: column; gap:
+      <token>`, as the design file does, since a child's margin reset
+      cannot cancel a gap;
+    - or the component's reset stops claiming the outer margin a parent
+      owns.
+    Design tokens only (no raw values). No other look changes: the
+    comparator's look must NOT move.
+
+R1012. THE RED IS MAIN'S OWN BASELINE IN THE CONTAINER. With the fix
+    applied, `pnpm test:visual` (heavy, in its container) fails exactly
+    the two calculateur-panneau-avis-provisoire baselines, desktop and
+    mobile, the way W10's run predicted. A host run that passes proves
+    nothing (W10's Windows builds did not show the flip).
+    - Paste the failing list.
+    - If any OTHER baseline fails, STOP and hand back with its crop.
+    - If a comparator baseline moves, STOP.
+
+R1013. THE REGENERATION, NAMED FIRST (R207, R135).
+    - Before running test:visual:update, write the expected set in the
+      report: exactly calculateur-panneau-avis-provisoire-desktop.png and
+      calculateur-panneau-avis-provisoire-mobile.png.
+    - Run it (heavy). The produced set must equal the named set; any
+      other file stops the regeneration.
+    - Crop and LOOK at both: "Decompte" now carries the same gap as its
+      siblings, and nothing else moved.
+    - Known: the desktop image has a rare edge variant (Queue Ruling 20:
+      28 px at x 1285-1287, every channel within 1-4). The gate's own
+      visual run must reproduce the committed image. That variant, if
+      seen, is NO RESULT, not a finding: re-run once.
+
+R1014. NO CLASS GUARD NOW. Record, in NOTICED, what a guard against this
+    class would look like (for example, a test over the built CSS that no
+    sibling-gap rule meets an equal-specificity margin reset). Do not
+    build it. NOTHING ELSE MOVES.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree and lock, from the BASE_SHA in the launch message.
+1. R1010 (one build under the lock).
+2. R1011.
+3. R1012: the RED, under the lock.
+4. R1013: the named regeneration, under the lock.
+5. gate:changed. It selects e2e and visual, so take the line from the
+   launch message. Its visual run passes with nothing further
+   regenerated. Commit; push the branch.
+6. gate:clone under the lock; push.
+7. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-CASCADE-ORDER.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1010 (the census table) / R1011-R1014
+with evidence and crops / BASELINES (named, regenerated, looked at) /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-CASCADE-ORDER PROMPT

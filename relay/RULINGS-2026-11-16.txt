@@ -476,3 +476,174 @@ APPLIED:
   reading container-render-verdict.mjs: "never passed" is a refusal.
 - R1002 is amended in relay/FW-DELAI-RAPPEL-RESUME.txt. Part B carries
   the container names and the stop rule. The roster is updated.
+
+====================================================================
+WEB RULING 10 - W3e VERIFIED (MERGE BATCHED); DAYS BEFORE THE START DATE; W4
+====================================================================
+EVIDENCE:
+- Branch fw-period-fraction e1f52fc (code f6812d3), base 56b7116.
+- main is a2c502a: W3d's merge gate (gate:clone under the priority lock)
+  PASSED, and it was pushed 56b7116..a2c502a.
+- `git merge-tree` of W3e against main is clean.
+- The session's gate:changed: test 3 765, test:db 724 (+26). Its
+  gate:clone on f6812d3: exit 0.
+- REPORT NOTICED 5: the dossier counts every row of the year whatever the
+  start date (lib/dossier/load.ts:85-92).
+- toTeleworkInput passes only telework and mission counts.
+- rawRate is monotonic in teleworkDays (properties-5-8.test.ts:43).
+- /api/v1/me (route.ts:135-141) sets activityStartDate with no check
+  against existing days.
+- W6's lock logs: it waited behind the orchestrator, W10, W11 (35 min)
+  and W3e, acquired at 23:57:32Z (commit free 7 744), and its gate:changed
+  passed (test 3 823). Its gate:clone now waits behind W11. That is the
+  QUEUE, not a memory line.
+QUESTIONS:
+1. Merge W3e now?
+2. Days before the start date: a defect, a convention or the operator's?
+3. /sources row 9?
+4. The stricter date criterion?
+5. Plants run outside the lock?
+ANSWER (the advisor, verbatim in substance):
+- W3e is sound. Nothing waits on it, so do not spend a lock round on it
+  alone. Run a round when two verified branches wait, or when one blocks
+  a launch or has waited an hour. Name two branches in one `git merge
+  --no-ff --no-commit`, so gate:changed sees the union. The expected
+  counts on the merged tree are test 3 811 and test:db 724 passed / 27
+  skipped; a different count is a finding. Mark W3e VERIFIED, merge
+  pending.
+- Days before the start date: what the numerator counts is a calculation
+  rule (Ask-first). It goes on the operator's list, not into SPEC as a
+  convention. Make it decision-ready:
+  - direction: if a pre-start day can only raise a served rate, it is
+    over-warning; if one can lower a rate, it is a defect;
+  - reach: whether the start date can be set after days exist.
+  No web task; the app writes days, so it goes into the Android re-plan.
+- /sources row 9: no task. A published id is permanent (R162), and the
+  wording on an unreviewed convention is the operator's.
+- The stricter date: accepted.
+- Plants outside the lock: fine. Part B gains the line "a plant is heavy
+  when its proof needs a heavy run".
+- W3e's NOT delivered: pre-start rows, the leap-year denominator, the
+  mission cap under proration, and the Android strings.
+- Launch W4 from a2c502a; a new container script must keep W3d's closure
+  census green.
+- W6: read its lock log. If it waits on the queue, stop adding
+  contenders (four live), and do not edit the helper while waiters run it.
+- W11 carries a migration: run db:deploy on the orchestrator's scratch
+  database after staging its merge.
+APPLIED: WEB-QUEUE-STATE (W3e's row, operator item 4, the roster with W4,
+W3d's merge gate closed) and Part B (plants, merge rounds, migrations).
+Direction: raise-only for telework days (invariant 5); missions are not
+property-tested. Reach: the start date can be set after days exist. W4
+launches as the fourth live session, the one selector-touching task.
+
+====================================================================
+WEB RULING 11 - W10 STOPPED ON A LATENT CASCADE DEFECT; THE LOOK RULED; W10a
+====================================================================
+EVIDENCE: REPORT-FW-CALC-BYTES.txt (branch fw-calc-bytes 4e3453d, report
+only; the code uncommitted and checksummed in C:/wt/fw-calc-bytes).
+- gate:changed: test:visual failed on calculateur-panneau-avis-provisoire
+  desktop (62 222 px) and mobile (height 7813 -> 7833). Everything else
+  was green.
+- The crops (visual-fail/crop-desktop-expected.png and
+  crop-desktop-actual.png): on main, "Decompte" sits flush under the help
+  text above it, while "Debut d'activite en cours d'annee" keeps the
+  stack's gap. In W10's render, "Decompte" has the same gap as its
+  siblings.
+- The cause: SegmentedChoice.module.scss:15 `.root { margin: 0 }`
+  against CalculatorForm.module.scss:189-192 `.revealed > * + *,
+  .advanced > * + * { margin-top: var(--space-5) }`. Both are (0,1,0), so
+  chunk order decides. The comparator has the same class
+  (SegmentedButtons.module.scss:11 against `.comparateur_form > * + *`).
+- The stylesheet comment: "the advanced panel's stack, need the same gap
+  the card gives its own children".
+- docs/design/calculateur-a2.dc.html:97 lays the advanced options out as
+  `display: flex; flex-direction: column; gap: 18px`, one gap between
+  every child.
+- The free control: W11's gate (23:10-23:45Z, a tree without W10's
+  change) passed both avis-provisoire tests (168 passed).
+QUESTIONS (the session's):
+1. The control on a clean tree.
+2. Which look: (a) accept the gap and regenerate; (b) make main's look
+   order-independent; (c) a client-only stylesheet import.
+3. Should liveLinks be required?
+4. Add server-only as a dependency?
+5. Should size run in gate:changed?
+ANSWER (the advisor, verbatim in substance):
+- W10 stopped where it should; nothing of it merges yet.
+- The cascade is a defect on main, so it gets its own small task now: the
+  stop rule's exception, since it blocks W10 -> W12. It takes W10's slot.
+- Three reads before ruling the look, with no lock:
+  - the crops: is the choice flush while the stack's other children keep
+    the gap?
+  - a brief stating the stack's rhythm, which outranks the comment;
+  - W11's long hold as a free control.
+- THE RULING (overturnable): if the choice sits flush in a stack that
+  otherwise has the gap, the stated 20 px is the intended look, made
+  independent of chunk order. Two baselines move, with that as the
+  stated reason. Anything else in the crop comes back. Put it on the
+  operator's list as a visible change made by ruling.
+- The fix task:
+  - fix both named sites in one commit, with a census of every
+    sibling-gap rule that meets a component's margin reset (R267);
+  - the RED is main's own baseline in the container, since a host run
+    proves nothing;
+  - name the set before regenerating (R207): exactly the two images; any
+    other file stops it, and no comparator baseline moves;
+  - the desktop image's rare edge variant (Queue Ruling 20) is NO
+    RESULT;
+  - no class guard now; record it.
+- W10 resumes IN PLACE as a FRESH session (the C10 pattern). It brings
+  the fix's verified tip in, as W3b did with W3, and merges in the same
+  round. Its visual run must pass with nothing regenerated, which is also
+  the fix's proof under the second chunk order. Accept the island-harness
+  edit only if what that assertion protected still holds.
+- Q3: if links render when liveLinks is absent, R85 has lost its
+  enforcement point, so make it required; if nothing renders, leave it.
+  Q4: no; the size guard delivers. Q5: recorded only; gate:clone runs
+  size before every push.
+- Merge round: W3e plus the fix, and W6 if it is back. The fix changes
+  app/** (or lib/ui/**), so that round runs e2e and visual.
+APPLIED:
+- The crops show the flush choice in a stack that otherwise has the gap.
+- The design file states one uniform gap, outranking the comment, and
+  agreeing with it.
+- The control passed on main's chunk order.
+- So the ruling's first branch applies: the uniform gap (--space-5) is
+  intended, and the two baselines move by ruling.
+- W10a FW-CASCADE-ORDER (relay/FW-CASCADE-ORDER.txt, R1010-R1014, free by
+  scan) is launched from a2c502a.
+- W10b is written when W10a is verified.
+- Operator item 5 records the visible change.
+
+====================================================================
+WEB RULING 12 - MERGE ROUND 1: W3e AND W6 IN ONE OCTOPUS MERGE
+====================================================================
+EVIDENCE:
+- W3e: fw-period-fraction e1f52fc (code f6812d3), VERIFIED (Web Ruling
+  10), waiting for over an hour.
+- W6: fw-gate-clone-admin ca7bf87 (code 96de423).
+  - Its gate:changed: test 3 823.
+  - Its gate:clone on 96de423 PASSED with every count printed.
+- Both are based on 56b7116, which is behind main a2c502a.
+- `git merge-tree` is clean for W6 against main, and for W3e against W6.
+- `git merge --no-ff --no-commit origin/fw-period-fraction
+  origin/fw-gate-clone-admin` reported "Automatic merge went well".
+- W6's questions:
+  - Q1: should gate:clone also apply suite-floor.json?
+  - Q2: should container-write.mjs's toAdminUrl fold into
+    adminDatabaseUrl?
+DECISION (the orchestrator, under Web Rulings 9 and 10):
+- A round runs when two verified branches wait; both do. They go into ONE
+  octopus merge, so one gate:changed sees the union.
+- EXPECTED counts on the merged tree:
+  - test 3 869: main's 3 811 plus W6's 58 new unit tests, since W6
+    measured 3 823 on a base of 3 765;
+  - test:db 724 passed / 27 skipped: main's 722 / 27 plus W3e's 2.
+  A different count is a finding.
+- W6's Q1 and Q2 are recorded as NOT delivered, under the stop rule
+  (no defect: a short count is now VISIBLE, and the duplicate derivation
+  is consistent).
+APPLIED: the merge is staged in C:/wt/web-orch with these records.
+gate:changed runs under the priority lock; then the merge commit, then
+the record commit, then gate:clone on the tip.

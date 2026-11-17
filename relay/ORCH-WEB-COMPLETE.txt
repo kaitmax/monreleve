@@ -81,6 +81,15 @@ above where they differ:
   NOTICED. It retries a git lock error and never deletes a lock file.
 - Only one task that touches gate-selection.mjs or its test is live at a
   time.
+- A PLANT is heavy when its proof needs a heavy run; one proven by a single
+  test file is light (Web Ruling 10).
+- MERGE ROUNDS (Web Ruling 10): a round costs about 20 minutes of the lock,
+  so it runs when two verified branches wait, or when one blocks a launch or
+  has waited an hour. Two branches go into ONE `git merge --no-ff
+  --no-commit A B`, so gate:changed sees the union. If git refuses an
+  octopus merge, they are merged one at a time.
+- A branch carrying a migration: run db:deploy on the orchestrator's scratch
+  database after staging its merge, because test:db only generates.
 - WHY THE DOCKER CLAUSE HAS NO EXCEPTIONS (Web Ruling 9): the harnesses use
   FIXED container names (monreleve-e2e, monreleve-write) and `docker rm -f`
   them on start. Two container runs at once would remove each other's
