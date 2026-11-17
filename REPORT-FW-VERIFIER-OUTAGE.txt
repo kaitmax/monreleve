@@ -1,0 +1,454 @@
+REPORT-FW-VERIFIER-OUTAGE
+=========================
+
+Web run step W14 (relay/ORCH-WEB-COMPLETE.txt; Web Rulings 13, 14 item 2 and
+18), prompt relay/FW-VERIFIER-OUTAGE.txt (read in the orchestrator's worktree,
+where it lived at launch), rulings R1021-R1025. Parallel mode (Web Ruling 7).
+- Branch fw-verifier-outage, worktree C:/wt/fw-verifier-outage, cut from
+  origin/main e75b70c45853e270563fa48044fd028f50a97997 (BASE_SHA). In the main
+  checkout only `git fetch` and `git worktree add` ran.
+- The session lock .session-lock.json was written at 05:17:24Z (gitignored)
+  and is removed last.
+- Evidence: C:/wt/fw-verifier-outage/.w14-evidence/ (gitignored): every log
+  named below, the scripts that produced them (scripts/), the throwaway
+  option-(b) boundary (probe/error.tsx) and the served bodies (heavy/). It
+  stays in the worktree after the session.
+- Ports (block 3600-3699): 3600 for `pnpm dev` and `next start`; 3699 is the
+  DEAD database port (nothing listens: a Postgres SSLRequest to it gets
+  ECONNREFUSED in 3 ms, beside a positive control, the compose server on
+  5436, answering "N"; pg-wire-probe.log). Scratch database
+  monreleve_fw_verifier_outage (created and migrated 05:27Z; dropped at the
+  end). frontalier-postgres was never stopped; no container was run.
+
+SUMMARY
+-------
+- STOPPED AT R1022, AT ITS STATUS CLAUSE. Next 15.5.25 gives an App Router
+  page no supported way to answer 503. A page's status comes from exactly
+  four things, read from the shipped runtime:
+  - notFound / forbidden / unauthorized: 404 / 403 / 401 only
+    (http-access-fallback.js:35-40, ALLOWED_CODES = {404, 403, 401});
+  - redirect / permanentRedirect: a redirect status (app-render.js:1406-1417);
+  - any other error escaping the render: 500 (app-render.js:1418-1420);
+  - otherwise 200.
+  next/navigation's server exports are exactly those
+  (navigation.react-server.d.ts:12-17); next/headers is read-only. Middleware
+  and a route handler were READ and do not qualify (R1022 below). Per R1022
+  nothing was implemented and nothing is picked: the choice is handed back
+  with what was measured.
+- R1021, read: the one database read is lib/verification/lookup.ts:82, reached
+  from page.tsx:73. Nothing catches a throw, and the app has no error.tsx,
+  global-error.tsx or loading.tsx anywhere, so a throw becomes Next's 500
+  with the empty __next_error__ document. The unknown-code state renders
+  VERIFICATION_COPY.unknown (lib/fr/verification.ts:55) at
+  VerificationContent.tsx:117. TWO PATHS NEVER REACH THE DATABASE and so
+  answer exactly as today during an outage: the rate limit (page.tsx:65-70,
+  an in-memory map) and a malformed code (lookup.ts:80, the unknown text at
+  200).
+- HOW AN OUTAGE IS TOLD APART, MEASURED (the lookup's own query, through the
+  client built as lib/db/client.ts:64 builds it; error-shape.log): a refused
+  port and an unresolvable host both throw PrismaClientKnownRequestError
+  code P1001 with the adapter cause kind DatabaseNotReachable; an address
+  that accepts and then never answers throws P1008 / SocketTimeout after
+  21.5 s; a code defect looks like neither (a missing table: P2010 /
+  TableDoesNotExist; a bad argument: PrismaClientValidationError, no code).
+- WHAT EACH CHOICE DELIVERS, MEASURED: see R1022, THE CHOICES. In one line:
+  (a) is the only one whose heading and sentence are in the served HTML;
+  (b)'s boundary renders only in the browser, after hydration, and receives a
+  redacted error it cannot classify.
+- NO SENTENCE EXISTS IN lib/fr: the STOP came before any code. A draft for the
+  operator is in QUESTIONS, in ASCII, marked illustrative (R155, R168).
+
+STATUS (R391)
+-------------
+STOPPED at R1022 (the framework offers no supported 503 for this page). NO
+CODE COMMIT, and the full gate was not run:
+- gate:changed: NOT RUN (nothing to gate but this report).
+- gate:clone: NOT RUN (no code commit to run it on).
+- The report commit is the only commit on the branch (its SHA: the hand-back
+  and `git ls-remote`). FULL GATE NOT RUN on it; it adds this one ASCII file
+  at the repository root.
+- Two heavy holds ran under the lock, for MEASUREMENT only: a production
+  build of today's tree and one of a throwaway option-(b) tree (MEMORY).
+- No Android code changed. Not merged.
+
+R1021. WHAT THE PAGE DOES TODAY, READ
+-------------------------------------
+Where the database is read:
+- web/app/(public)/verifier/[code]/page.tsx:73 `const view = await
+  lookupVerification(code);` - the page's only data call.
+- web/lib/verification/lookup.ts:82 `prisma.issuanceRecord.findUnique({
+  where: { code }, select: SELECT })` - the one query.
+- Two answers come BEFORE it and never touch the database:
+  - page.tsx:65 checkRate(...) and :69-70 `{ kind: 'rate-limited' }`: the
+    window lives in memory (lib/alerts/rate-limit.ts:56, a Map);
+  - lookup.ts:80 `if (!CODE.test(code)) return null;`: a malformed code is the
+    neutral null, so page.tsx:75 renders the unknown state.
+What a thrown error does:
+- Neither file catches (no try in page.tsx:52-79 or lookup.ts:79-99). The
+  rejection leaves VerifyPage at page.tsx:73. No error.tsx, global-error.tsx
+  or loading.tsx exists anywhere under web/app (find: none), so no boundary
+  and no Suspense sit above it.
+- Next then fails the shell: app-render.js:1418-1420 (node_modules/next/dist/
+  server/app-render/, 15.5.25) sets res.statusCode = 500 for an error that is
+  neither an HTTP access fallback (:1402-1405) nor a redirect (:1406-1417),
+  and serves getErrorRSCPayload's document (app-render.js:713-725): `<html
+  id="__next_error__">` with an empty head and body (the body carries the
+  message only when NODE_ENV !== 'production', :719). NonIndex
+  (app-render.js:155-167) adds `<meta name="robots" content="noindex">` for
+  any status above 400.
+- Measured, pnpm dev, DATABASE_URL on 127.0.0.1:3699: 500, h1 [], no <main>;
+  the log shows PrismaClientKnownRequestError P1001 thrown at lookup.ts:82
+  through page.tsx:73 (dev-dead.log:46-66). W4 measured the same on the image
+  (stopped 500, h1 []).
+The unknown-code state, by its copy key:
+- VERIFICATION_COPY.unknown (web/lib/fr/verification.ts:55), rendered at
+  VerificationContent.tsx:117 in the neutral paragraph (:116-118), after the
+  heading VERIFICATION_COPY.title (:108) and VERIFICATION_COPY.intro (:109).
+  The rate-limit state shares the same paragraph with
+  VERIFICATION_COPY.rateLimited (verification.ts:58-59).
+- The page is force-dynamic (page.tsx:30) and noindex through its metadata
+  (page.tsx:37-40).
+
+R1022. THE DEGRADED STATE - STOPPED AT THE STATUS
+------------------------------------------------
+R1022: "If the framework offers no supported way for this page to answer 503,
+STOP at R1022 and hand back the choice with what you measured ... Do not
+pick." It does not, so this section is the hand-back.
+
+THE STATUS, READ (Next 15.5.25, web/node_modules/next/dist/):
+- client/components/http-access-fallback/http-access-fallback.js:35-40:
+  HTTPAccessErrorStatus is {404, 403, 401} and ALLOWED_CODES is built from it;
+  isHTTPAccessFallbackError (:42-48) accepts only those, so a 503 dressed as
+  one is not a fallback and ends as a 500.
+- server/app-render/app-render.js:1402-1420: when the render fails, the
+  status is the fallback's (:1402-1405), the redirect's (:1406-1417) or 500
+  (:1418-1420). Nothing else sets it.
+- client/components/navigation.react-server.d.ts:12-17: what a server
+  component may call is redirect, permanentRedirect, notFound, forbidden,
+  unauthorized and unstable_rethrow. next/headers (headers.d.ts) exports
+  cookies, headers and draftMode: request-side, no response status.
+TWO DOORS, CLOSED BY READING (not built):
+- MIDDLEWARE. Next takes a middleware's own status when the middleware
+  answers the request itself (router-utils/resolve-routes.js:405-407 mark it
+  x-middleware-refresh, :478-485 finish with middlewareRes.status and its
+  body); on next() or a rewrite the page renders. Middleware is invoked
+  before the page (:333-338), so it cannot know the page's lookup failed: it
+  would need its own database probe, which can disagree with the lookup, and
+  its own HTML for the 503, a second rendering of the page. web/middleware.ts
+  matches only the calculator and its result page (:81-83).
+- A ROUTE HANDLER in place of page.tsx. route-modules/app-route/module.js
+  dispatches to the handler's own method (this.methods[method], :196) and
+  returns its Response: no layout, no metadata (so no robots meta), no React
+  tree. The heading and sentence would be hand-built HTML: the second route
+  the prompt excludes.
+MEASURED, PRODUCTION (`pnpm build` + `next start` on 3600, under the lock;
+heavy/; the copy keys READ from lib/fr, headings by W4's headingsOf):
+- TODAY'S TREE, hold 1 (06:14:42Z-06:17:04Z). Build: "<U+0192>
+  /verifier/[code] 304 B 103 kB" (U+0192 is Next's dynamic marker).
+  - Database unreachable, the known and an unknown well-formed code: 500 (1.5 s
+    cold, then 138 ms); Cache-Control "private, no-cache, no-store, max-age=0,
+    must-revalidate"; the served HTML is `<html id="__next_error__">`, 9 926
+    B, h1 [], no <main>, no copy key but the <title>; robots metas "noindex"
+    (Next's) and "noindex, nofollow, noarchive, nosnippet, nocache" (the
+    page's); no driver message, connection string or stack in the body (W4's
+    API shapes: []); the server log: P1001, digest 3076157892.
+  - In headless Chromium with JS: 500; h1 []; one h2, Next's default
+    "Application error: a server-side exception has occurred while loading
+    127.0.0.1 (see the server logs for more information)." and "Digest:
+    3076157892". Without JS: nothing visible.
+  - The malformed code with the database unreachable: 200, h1 [title], intro,
+    VERIFICATION_COPY.unknown (NOTICED 1).
+  - Database up: the known code 200 with the vouch; an unknown and a malformed
+    code 200 with VERIFICATION_COPY.unknown; every answer Cache-Control
+    "private, no-cache, no-store, max-age=0, must-revalidate", the page's
+    robots meta, no Set-Cookie.
+  - Hold 1 then stopped on its own harness ("fetch failed": its keep-alive
+    pool reused a socket to the server killed a step earlier, on the same
+    port; every measurement above had been taken). Hold 2 retried and ran the
+    probe build alone.
+- THE OPTION-(b) PROBE, hold 2 (06:56:26Z-06:57:44Z). probe/error.tsx: a
+  'use client' boundary in app/(public)/verifier/[code]/ rendering
+  VERIFICATION_COPY.title as h1, a marker sentence W14-PROBE-B-SENTENCE, and
+  what it receives (the digest; whether the message names the database;
+  whether it is production's generic one).
+  - Plant verified: sha256 b04efd967615 = its source; porcelain exactly
+    "?? web/app/(public)/verifier/[code]/error.tsx"; LANDED true. It landed
+    in the build: the served 500 references its client chunk
+    app/(public)/verifier/%5Bcode%5D/error-d9283dd9b5c489bf.js, and the
+    browser rendered its marker (below).
+  - Database unreachable, an unknown well-formed code: 500 (669 ms); the same
+    Cache-Control and the same two robots metas as today; the served HTML is
+    STILL the empty __next_error__ document: h1 [], no <main>, the marker 0
+    times, no leak. 10 007 B against today's 9 926 B: the 81 B are the
+    boundary's script reference, nothing a reader sees.
+  - Headless Chromium WITH JS: still status 500; after hydration the boundary
+    renders inside the site's layout: header, h1 [title], the marker
+    sentence, the footer. What it received: a digest (4043596290), a message
+    that is production's generic one (true) and does NOT name the database
+    (false).
+  - WITHOUT JS: status 500, nothing visible.
+  - Removed in the hold's finally: exists false; porcelain []. The hold
+    ended 7 792 MB commit free.
+THE CHOICES (handed back; not picked):
+(a) 200 WITH NOINDEX AND NO-STORE. page.tsx would catch ONLY the classified
+    outage around lookupVerification and render the heading and the new
+    sentence itself; every other error rethrows to today's 500.
+    - Measured shape: it is the same force-dynamic page with another body, so
+      it carries today's 200 headers (hold 1, database up): Cache-Control
+      "private, no-cache, no-store, max-age=0, must-revalidate" and the
+      page's robots meta. The heading and sentence are in the served HTML:
+      a reader without JS, W4's headingsOf and a `pnpm test` render all see
+      them.
+    - Cost: the status says success for an answer that did not happen; what
+      reads the status alone (a monitor, a crawler) sees 200. noindex keeps it
+      out of an index, no-store out of any cache.
+    - Supported: a try/catch around a data call in a server component; no
+      dependency, no second route.
+(b) 500 THROUGH AN ERROR BOUNDARY that renders the heading and the sentence.
+    - Measured (hold 2): the served HTML does not change - the same empty
+      __next_error__ document as today, h1 [], no sentence. The heading and
+      sentence exist only in a browser running JS, after hydration. W4's
+      headingsOf reads [] from it, as does any reader without JS.
+    - The boundary receives a REDACTED error in production (the generic
+      message, a digest), so it cannot tell an outage from a code defect by
+      itself. Either every error on this route shows the outage sentence,
+      which dresses a defect up as an outage (against "any other error keeps
+      today's behaviour"), or the page classifies first and hands the class
+      across the server/client edge. The only carrier is the digest: Next
+      hashes one only when the error has none (app-render/
+      create-error-handler.js:83-88, "respect the original digest"), so a
+      product-set digest would reach the boundary. That is a runtime detail
+      with a code comment, not a documented interface (error.js documents
+      the digest as an automatically generated hash). READ, not built or
+      measured.
+    - It adds a client component to a page whose header says it ships no
+      client JS (page.tsx:15), and it replaces, for every error on this
+      route, today's default "Application error: a server-side exception has
+      occurred..." screen.
+    - Its status is 500, not R1022's 503; (a)'s is 200.
+(c) OTHER SUPPORTED ANSWERS, NONE OF THEM 503. notFound(), forbidden() and
+    unauthorized() answer 404, 403 and 401 (http-access-fallback.js:35-40):
+    each says something about the code or the reader, which R1022 forbids.
+    No other status mechanism exists (THE STATUS, READ). So (c) holds
+    nothing new unless the operator accepts one of those statuses.
+What the other clauses of R1022 would need, from what was measured (for the
+session that implements the choice):
+- THE CLASSIFICATION: P1001 + DatabaseNotReachable is the measured outage;
+  P1008 + SocketTimeout is the open question (QUESTION 3); a missing table
+  (P2010) and a bad argument (PrismaClientValidationError) are code defects
+  and keep today's 500.
+- NOINDEX: the page's metadata robots (page.tsx:37-40) is in every state's
+  head today, the 500 included (NOTICED 3).
+- NEVER CACHED: force-dynamic's no-store, as measured above.
+
+R1023. BOTH DIRECTIONS - NOT DONE (THE STOP)
+--------------------------------------------
+Nothing was written. What the session that implements the chosen option
+inherits, all read or measured here:
+- W4's step already fetches /verifier/<random 32-hex> with the database up and
+  stopped and prints it as "not judged" (scripts/container-db-stopped.mjs:
+  478-498, 551-554); judging it means a check in
+  container-db-stopped-verdict.mjs plus its unit cases.
+- tests/unit/pages/verification-rate-bucket.test.ts:40-41 already renders
+  page.tsx in `pnpm test` with lookupVerification mocked; a client that
+  cannot connect is cheap and real: a PrismaClient on 127.0.0.1:<dead port>
+  throws P1001 in 161 ms here (error-shape.log).
+- Under (b) the step's headingsOf would read [] from the served HTML (measured
+  in R1022), so (b) cannot be judged there by heading and sentence.
+
+R1024. A VERIFIED PLANT - NOT DONE (THE STOP)
+---------------------------------------------
+There is no degraded branch to remove. The plants this session made were
+MEASUREMENT plants (the option-(b) boundary), each verified landed and
+verified removed (R180); see R1022 and the hold.
+
+R1025. NOTHING ELSE MOVES
+-------------------------
+- The branch's diff against e75b70c is this report alone (PUSH PROOF).
+- No baseline regenerated; no visual state added.
+- No page, API route, lib/auth or lib/fr file changed; gate-selection.mjs
+  and its test untouched; parking.md untouched.
+
+WALKTHROUGH (R176)
+------------------
+Driven with scripts/walk.mjs (fetch, no JS): status, Cache-Control, the robots
+metas, W4's own headingsOf, and which VERIFICATION_COPY keys the served HTML
+carries - the copy READ from lib/fr/verification.ts (R181), never typed.
+`pnpm dev` on 3600 (R177), one releve seeded in the scratch database
+(scripts/seed-walk.mjs; the code is in known-code.txt):
+- Database up, 05:31:27Z-05:31:52Z (walk-dev-live.log):
+  - the known code: 200; h1 [title]; intro, the vouch dated 01.04.2026 and
+    the printed fields (Camille Rey, 39,16 %, 94 days...); Cache-Control
+    "no-store, must-revalidate" (dev's own); robots meta "noindex, nofollow,
+    noarchive, nosnippet, nocache"; no Set-Cookie.
+  - an unknown well-formed code: 200; h1 [title]; intro; unknown.
+  - a malformed code (/verifier/not-a-code): 200; h1 [title]; intro; unknown.
+- Database unreachable (DATABASE_URL on 127.0.0.1:3699), 05:32:54Z-05:33:08Z
+  (walk-dev-dead.log, dev-dead.log):
+  - the known code: 500 (13 s: the route's first compile); the
+    __next_error__ document; h1 []; no <main>; the head keeps the page's
+    <title> and two robots metas, Next's "noindex" and the page's own; the log
+    shows P1001 thrown at lookup.ts:82 via page.tsx:73.
+  - the unknown well-formed code: 500 in 632 ms; the same document.
+  - the malformed code: 200 with the unknown text (NOTICED 1).
+  - Two flags of the scan are DEV NOISE, not findings: "a server path"
+    matches every dev body (dev chunk URLs), and the dev error body carries
+    the driver message in Next's dev-only template (app-render.js:719), which
+    production omits (the hold, below).
+- The option-(b) probe in dev, 05:33:50Z (walk-dev-dead-probeB.log): the
+  boundary planted (sha256 b04efd96... = its source; porcelain showed exactly
+  that one untracked file), the unknown code with the database unreachable:
+  500, h1 [], no <main>, the probe sentence in the served HTML 0 times - while
+  the payload names the boundary (verifier/[code]/error.tsx@boundary), so it
+  was in the tree and not in the HTML. Removed: the directory lists page.tsx,
+  VerificationContent.tsx and the stylesheet only; porcelain empty;
+  `git diff --quiet` exit 0.
+- `next start` on 3600 (production builds, holds 1 and 2; R1022 has the
+  detail): the same three answers with the database up (200, the vouch /
+  the unknown text) and down (500 empty document for well-formed codes, 200
+  unknown for the malformed one), now with production's Cache-Control
+  "private, no-cache, no-store, max-age=0, must-revalidate" and NO driver
+  message in any body. In a browser today's outage shows only Next's default
+  "Application error ..." screen with a digest; without JS, nothing.
+- The page agrees with itself in every state measured: the heading is the
+  same constant wherever it renders, the robots meta is present in all
+  answers (500s included), and no answer set a cookie.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. TWO ANSWERS NEVER SEE AN OUTAGE. A malformed code gets
+   VERIFICATION_COPY.unknown at 200 (lookup.ts:80 returns before the query;
+   measured with the database unreachable: walk-dev-dead.log, and in
+   production, R1022), and the rate limit gets VERIFICATION_COPY.rateLimited
+   (page.tsx:65-70, in memory). Neither path asks the database, so the page
+   cannot know about the outage there. The unknown text stays true for a
+   malformed code (it can match nothing), but "stopped, never the
+   unknown-code text" can then be asserted for well-formed codes only.
+   QUESTION 4.
+2. AN OUTAGE CAN COST THE READER 21 SECONDS. Against an address that accepts
+   the connection and then goes silent (192.0.2.1, RFC 5737 TEST-NET-1; on
+   this PC something on the path completes every outbound handshake), the
+   lookup's own query threw P1008 / SocketTimeout after 21 460 ms
+   (error-shape-remote.log). lib/db/client.ts:64 hands the adapter only a
+   connection string, so no connect timeout of the product's own is set
+   (read, not measured further). Whether this shape is "cannot be reached" is
+   QUESTION 3.
+3. NOINDEX ALREADY HOLDS ON TODAY'S 500, twice: Next's NonIndex adds
+   "noindex" for any status above 400 (app-render.js:155-167) and the
+   __next_error__ document keeps the page's own robots meta (measured in dev
+   and in production: WALKTHROUGH, R1022).
+4. `pnpm dev` starts the pg-boss scheduler against whatever DATABASE_URL names:
+   it scheduled three jobs in this session's scratch database (dev-live.log:
+   22-23) and logged "failed to start ... ECONNREFUSED" against the dead port
+   (dev-dead.log:22-24). Expected; noted because a walkthrough pointed at a
+   shared database would schedule jobs there.
+5. The two unknown-code baselines are untouched (sha256 f7bd5f15...
+   desktop, bc8e30fb... mobile, last changed in 2d481fc); W12 regenerates
+   them (Web Ruling 18 item 3).
+
+DEVIATIONS
+----------
+1. STOPPED AT R1022, as the prompt directs. THE WORK's steps 2-5 did not
+   run: no lib/fr string, no degraded branch, no test, no R1024 plant, no
+   gate:changed, no gate:clone. The report is the only commit.
+2. MEASUREMENT PLANTS, not R1024's: a throwaway option-(b) boundary
+   (probe/error.tsx) was planted in dev and in hold 2's build, each time
+   verified landed (sha256 and porcelain) and verified removed. Never
+   committed, never staged.
+3. Two HEAVY holds for measurement: a production build (`pnpm build`) each,
+   `next start`, and one headless Chromium for the browser reading. Their
+   line was the base-chain gate:changed line, 5 154: a build is that chain's
+   largest step, and the holds ran no test suite. Hold 1 stopped on its own
+   harness after its measurements (a reused keep-alive socket); hold 2
+   carried the retry.
+4. The stopped-CONTAINER shape (a compose network whose database container
+   stopped) was NOT measured: it is read from W4's log ("Can't reach
+   database server at <the database host>", P1001's wording). Measured here:
+   a refused loopback port, an unresolvable host (db.invalid, the nearest
+   local analogue of a stopped container's name) and an accept-then-silent
+   address.
+5. The walkthrough ran on `pnpm dev` (R176, R177) AND on `next start`,
+   because option (b) turns on production's error redaction, which dev does
+   not apply.
+
+QUESTIONS
+---------
+1. THE STATUS (R1022's hand-back): (a), (b) or (c), as measured under
+   R1022, THE CHOICES. Not picked here.
+2. THE SENTENCE. No string exists in lib/fr. A draft, ASCII-ILLUSTRATIVE ONLY
+   and NOT A SOURCE (R155, R168): the accented original is authored in
+   web/lib/fr/verification.ts, under a key of its own beside `unknown` and
+   `rateLimited` (R165), by the session that implements the choice:
+     "La verification est momentanement indisponible, veuillez reessayer
+     plus tard."
+   One sentence; no colon or semicolon (verification.ts:17-19 keeps those out
+   of that file); nothing about the code or the document; the register of
+   the existing rateLimited sentence.
+3. WHICH ERRORS ARE "CANNOT BE REACHED"? Measured: P1001 with the adapter
+   cause DatabaseNotReachable (a refused port, 161 ms; an unresolvable host,
+   79 ms) and P1008 with SocketTimeout (an address that accepts and goes
+   silent, 21 460 ms). Is P1008 an outage for this page? Not measured: a
+   connection closed mid-query, a pool that cannot hand out a connection.
+   The rule "any other error keeps today's behaviour" needs the list closed.
+4. MALFORMED CODES AND THE RATE LIMIT DURING AN OUTAGE (NOTICED 1): do they
+   keep today's 200 answers?
+5. THE INTRO. R1022 says "its own heading and ONE sentence". Every state today
+   renders VERIFICATION_COPY.intro under the heading (VerificationContent.tsx:
+   109): two sentences on what the page confirms. Does the degraded state
+   drop it?
+
+MEMORY, THE HEAVY HOLDS (the lock as W14; line 5 154, the base-chain
+gate:changed line from the launch message)
+--------------------------------------------------------------------------
+- Hold 1: build today's tree; next start, database dead then live; walk;
+  Chromium. ACQUIRED 06:14:42Z at 7 338 MB commit free; minimum 6 837 MB at
+  06:16:28Z (sampled every 5 s); released 06:17:04Z (it stopped on "fetch
+  failed", R1022).
+- Hold 2: plant (b); build; next start, database dead; walk; Chromium;
+  remove. ACQUIRED 06:56:26Z at 7 733 MB; minimum 7 546 MB at 06:57:35Z;
+  released 06:57:44Z, STEP_EXIT=0.
+- Minimum free physical: 1 428 MB (hold 1), 2 055 MB (hold 2). No line is
+  lowered (Web Ruling 7). ALONE in the lock's sense: no other heavy run
+  overlapped; light work in the other live sessions may have.
+- Waiting: hold 1's acquire waited 05:37:40Z-06:14:42Z (the orchestrator's
+  round 3, W9, the orchestrator again). Hold 2's first acquire (30 s poll)
+  lost each release to a fresh acquirer; I stopped that acquire of my own
+  (it held nothing: the lock was W7's, and my release was REFUSED as not the
+  holder) and re-queued with --poll-sec 5, which acquired at 06:56:26Z.
+
+PUSH PROOF
+----------
+- Branch fw-verifier-outage, base e75b70c, pushed; NOT merged.
+- One commit: this report. Its SHA is in the hand-back and in
+  `git ls-remote origin refs/heads/fw-verifier-outage`; before it was made,
+  `git status --porcelain` listed exactly "?? REPORT-FW-VERIFIER-OUTAGE.txt".
+- gate:changed: NOT RUN. Its printed selection for this commit, recorded
+  (`node scripts/gate-for-changes.mjs --print`, gate-print.log):
+    gate selection (R132):
+      no path matched the selector - base chain only
+      suites: typecheck, lint, test, build
+  The base chain would re-test code identical to e75b70c, which the
+  orchestrator's gate:clone passed (Web Ruling 18). The one check that reads
+  REPORT-*.txt, scripts/register-coverage.mjs, was run on this tree with the
+  report in place: exit 0, "register coverage: OK - 230 cited id(s) across
+  176 report(s)" (register-coverage.log).
+- gate:clone: NOT RUN (no code commit).
+
+END-OF-SESSION CLEANUP (ORCH-WEB-COMPLETE Part B, Web Ruling 3), 07:00Z
+-----------------------------------------------------------------------
+- Database: monreleve_fw_verifier_outage dropped; pg_database rows for it
+  afterwards: 0 (cleanup-db.log). No other database was created or touched.
+- web/.env: removed (ls: No such file or directory). web/.next, which held
+  hold 2's probe build, removed with it.
+- Docker: no image was built and no container was run; the one docker
+  command was a read-only `docker ps -a`, which shows frontalier-postgres
+  "Up 5 days (healthy)" at 07:00Z.
+- Servers: every `pnpm dev` and `next start` tree this session spawned was
+  killed by its own PID tree; ports 3600 and 3699 have no listener and no
+  node process names this worktree (Get-NetTCPConnection, Win32_Process).
+- The probe is absent: verifier/[code]/ holds page.tsx,
+  VerificationContent.tsx and verification.module.scss; before this report
+  was added, `git status --porcelain` was empty.
+- Kept, gitignored: .w14-evidence/ and web/node_modules.
+- The session lock .session-lock.json is removed last, after this report is
+  pushed.
