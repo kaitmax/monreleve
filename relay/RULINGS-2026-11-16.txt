@@ -942,3 +942,525 @@ DECISION (the orchestrator, under Web Rulings 7 and 17):
 4. From here, every launch's lines carry +1 200 (four other live
    sessions: W9, W7, W14, then W5 and W10b).
 APPLIED: these records join round 3's record commit.
+
+====================================================================
+WEB RULING 19 - W9 VERIFIED; ITS D-1 BECOMES W15
+====================================================================
+EVIDENCE:
+- W9: fw-docs-email-from 84562ff (code e0e9fa6; base bfdb1d4). Its
+  gate:changed: test 3 869, test:container 28. Its gate:clone ALONE on
+  e0e9fa6 PASSED.
+- V1: six files, all docs or comments; merge-tree is clean against main
+  9868254.
+- W9 removed the image tag monreleve:fw28 after checking that it pointed
+  at its own build; container-check.mjs rebuilds that tag on every run.
+  So no other session's artefact was removed.
+- Its D-1: dcac1df moved the sender to MAIL_DOMAIN (the site's own
+  domain), but docs/domain-checklist.md item 3 still tells the operator
+  to verify the dropped subdomain in Resend, with proofs for it. W9
+  flagged it in section 2 without rewriting it. deploy.md section 8 N3
+  and the emails.ts comment above EMAIL_FROM say the same.
+DECISION (the orchestrator, under Web Ruling 9's exception: it shows a
+defect):
+1. W9 is verified (V1). Its merge waits for the next verified branch, or
+   one hour (Web Ruling 10).
+2. D-1 becomes W15 FW-DOCS-SENDER-DOMAIN: relay/FW-DOCS-SENDER-DOMAIN.txt
+   (R1031-R1035). An operator who follows item 3 at promotion verifies a
+   domain the code no longer sends from. So this is a launch risk, and
+   it can be closed by naming the constant rather than restating its
+   value. The checklist must never state the operator's Resend or DNS
+   state as done.
+3. W15 launches at the next free slot (four sessions live now: W7, W14,
+   W5 and W10b).
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 20 - W14's R1022 STOP RULED: OPTION (a), WITH CONDITIONS;
+W14 RESUMED
+====================================================================
+EVIDENCE:
+- W14 stopped at R1022's status clause, correctly. In Next 15.5.25 an
+  App Router page answers only 404/403/401 (the access fallbacks), a
+  redirect, 500 for any escaping error, or 200. forbidden() and
+  unauthorized() also need experimental.authInterrupts, which is not
+  set. Its branch carries only its report (3c4573a, base e75b70c).
+- (b) was MEASURED on a throwaway error boundary in a production build.
+  The served HTML is the empty __next_error__ document (h1 []); the
+  heading and sentence appear only after hydration; the boundary gets a
+  redacted message plus a digest, so it cannot tell an outage from a
+  defect; and it adds client JS to a page that ships none.
+- Outage shapes measured with the lookup's own query: a refused port and
+  an unresolvable host give P1001 (DatabaseNotReachable); a server that
+  accepts and never answers gives P1008 (SocketTimeout) after 21 460 ms.
+  Controls: a missing table gives P2010; a bad argument gives a
+  PrismaClientValidationError. A warm pool losing its server: NOT
+  measured.
+- The blocking check (the advisor's): nothing reads /verifier's status
+  as a verdict. android/ has no reference to it. In web,
+  verification-qr.test.ts's 200s are the PDF export route's,
+  verifier.spec.ts asserts content, and W4's step does not judge
+  /verifier yet.
+DECISION (the advisor, under "Advisor decides"; overturnable by the
+operator, operator item 7):
+1. R1022's status clause is AMENDED to option (a): 200, noindex,
+   no-store, with the heading and ONE sentence server-rendered.
+   Middleware stays closed.
+2. The content must discriminate, since the status no longer does. The
+   stopped case is judged with a REAL code issued while the database is
+   up (W4's step issues one through the export route if it does not
+   already). Asserted with the database stopped: the new sentence
+   present; the unknown-code copy and the verified content absent;
+   no-store read off the degraded response itself.
+3. Two plants, each verified (R180): R1024's (the page throws again),
+   and a new one where the catch renders the unknown-code state. Both
+   must go RED.
+4. Q3: an allow-list by connection-level cause. P1001 and P1008 take
+   the degraded path; everything else throws as today, asserted with the
+   P2010 and validation controls. The warm-pool shape, the production
+   case, is measured in W4's step by reading /verifier before any other
+   database-touching route after the stop. It joins the list only if it
+   is connection-level. Until it is measured, W14 does not report
+   COMPLETE.
+5. Q4: unchanged. Malformed codes and the rate limit keep their answers.
+6. Q5: the intro is DROPPED. The degraded state is the heading plus one
+   sentence.
+7. Q2: W14 authors the sentence in lib/fr/verification.ts under its own
+   key. The report's ASCII draft is not a source. The wording goes to
+   the operator.
+8. W14 is RESUMED by message, not relaunched: it holds the measurements,
+   and its branch carries only the report. It keeps its base e75b70c and
+   takes the fourth slot, so W15 waits.
+9. W14's merge is the first container run on a tree with W11, which
+   closes Web Ruling 18 item 2's gap. The record says so when it passes.
+   That merge is not batched with a branch that selects test:db unless
+   the line is re-read: that is the 6 745 pair.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 21 - THE OPERATOR'S CLEANUP; MERGED WORKTREES REMOVED BY
+HAND; W16 AMENDED; W7 VERIFIED FOR ROUND 4; W17 QUEUED
+====================================================================
+THE OPERATOR, 2026-11-17, verbatim:
+  "when a branch is done and merged to the main delete its folder on
+  c:/wt add script to claude md i'm having a big size folder optimize
+  space"
+EVIDENCE:
+- C: had 40 238 MB free (92 % used).
+- Inventory of the 32 worktrees, by R392's checks:
+  - removable: merged into origin/main, clean, unlocked;
+  - kept: the live sessions (locked); the parked or unmerged ones
+    (fw-calc-bytes, fw-web-account, fw-canton, fw-docs-email-from);
+  - refused as dirty: ten merged worktrees. Eight hold only an old
+    session's untracked evidence or a Kotlin cache (an-*, ios2a,
+    ios2a-device, fw-followup). Two hold uncommitted edits to Android
+    gradle files (als-a, als-b).
+  - C:/wt/kmp-0 and kmp-1 are not worktrees: only android/app/build,
+    with no source file.
+  - C:/wt/queue-evidence is not a worktree; QUEUE-STATE points at it, and
+    it holds the R8 mapping files. It is NEVER removed.
+- Removed by hand, each check re-run immediately before: the eleven
+  merged, clean worktrees of this run (W1, W2, W3, W3b, W3c, W3d, W3e,
+  W4, W6, W8, W10a), then fw-delai-rappel once W7 had handed back.
+  - Queue Ruling 26 had kept fw-delai-rappel because C10's uncommitted
+    work lived there. Its reasons lapsed when W11 committed everything
+    and merged in round 3, and C10's evidence was already copied to
+    queue-evidence/fw-delai-rappel/. The words were a queue ruling, not
+    the operator's.
+- MEASURED: `git worktree remove` (no --force) unregistered every one,
+  then failed on each ("Directory not empty"; "Function not
+  implemented"). It left about 2 840 pnpm directory junctions per folder,
+  plus up to 52 851 files.
+  - Node's fs.readlinkSync read every junction, dangling ones included.
+    All of them pointed INSIDE their own folder (0 outside, in all 11).
+  - `cmd /c rmdir /s /q` run from PowerShell then removed the rest
+    without following a link. From Git Bash, MSYS rewrote the switches
+    and the command failed.
+  - PowerShell 5.1's Remove-Item -Recurse can follow junctions, and is
+    never used.
+- Freed: about 5.3 GB. pnpm hard-links node_modules to a store, so
+  deleting a copy frees little.
+- DOCKER is the larger share. docker_data.vhdx is 78.9 GB. Images are
+  30.47 GB (23.92 GB reclaimable), the build cache 35.74 GB (21.35 GB),
+  volumes 7.1 GB (6.7 GB). It was NOT pruned: a prune also takes other
+  projects' objects, and the VHDX shrinks only after a WSL shutdown and
+  a compaction. Both are the operator's.
+- The advisor caught two defects in W16's specification: the script
+  would meet the same junctions, which its temp-dir tests could never
+  show; and a new session's worktree is merged, clean and unlocked in
+  the seconds before its lock is written.
+- W7: fw-visual-filter f0114c5 (code 4aeaef9). Its gate:clone ALONE on
+  4aeaef9 PASSED. visual.mjs still passes CI=true to the container
+  (line 306), with its isolation and R184 lines intact.
+DECISION (the operator's instruction, the advisor's V3 and rulings):
+1. Merged worktrees are removed under R392's checks, now and after every
+   merge: by hand until W16 merges, then by its script. The first real
+   --apply on C:/wt is the orchestrator's, after W16's merge, and the
+   record does not say the script works on C:/wt before that run.
+2. W16 is AMENDED by message (R1036/R1037):
+   - every R392 check runs before the remove;
+   - the script completes the delete itself, never following a link,
+     and only for a path it has just unregistered; "gone" means the
+     directory is absent;
+   - a test where a link inside the worktree points at a sentinel
+     outside it, and the sentinel survives;
+   - --apply recomputes every verdict;
+   - an age guard against a worktree too new to hold its lock yet.
+3. The ten dirty, merged worktrees and kmp-0/kmp-1 go to the operator
+   in ONE question. The Android and iOS records point into the an-* and
+   ios2a* evidence (RULINGS-2026-11-03-MOBILE, IOS-2a, IOS-2a-DEVICE,
+   IOS-2b), so the offered default MOVES that evidence to queue-evidence
+   and deletes the rest. als-a and als-b default to KEEP.
+4. Docker is REPORTED to the operator, not pruned.
+5. W7 is verified (V1, V3). ROUND 4 is W9 + W7 on main.
+   - Its gate is gate:changed PLUS an explicit `pnpm test:visual` in
+     the same hold, because visual.mjs selects nothing.
+   - Read the visual run's header against round 3's log (image,
+     isolation, commit and dirty lines), and look for "R961: REUSED" and
+     "Already up to date": this is the cache's first use from another
+     worktree, and a full install is a finding.
+   - A visual red is the harness or the cached volume first, since round
+     3 ran the same 174 green on this tree.
+   - EXPECTED: test 4 012 (3 980 + 32); test:container 28; test:visual
+     174.
+6. W7's DEFECT 1 becomes W17 FW-SELECTOR-SUITE-SCRIPTS, after W5 merges:
+   a derived guard that every script a test:* entry invokes selects that
+   suite. Until then, any merge touching visual.mjs runs test:visual
+   explicitly. W5 is not amended mid-run.
+7. W7's Q2: the cache volume is KEPT.
+APPLIED: these records join round 4's record commit.
+
+====================================================================
+WEB RULING 22 - W10b STOPPED; WHAT IS ATTRIBUTABLE; W18; THE CLEANUP'S
+OUTCOME; DOCKER; ROUND 4's FIRST GATE IS NO RESULT
+====================================================================
+EVIDENCE:
+- W10b (fw-calc-bytes-2 91f8ed9, report only) stopped at R1016/R977
+  with NO code commit:
+  - the increment applied and hashed exactly;
+  - the calculator gains 1 371 B of spare (58 -> 1 429 B);
+  - gate run 1 failed 2 tests of e2e/rappel-delai.spec.ts;
+  - gate run 2 failed 1 of them, then test:visual failed
+    calculateur-panneau-avis-provisoire desktop (28 px at x1285-1287,
+    delta <= 2), identical over three attempts.
+- Timing: gate run 1 was 06:57-07:06Z. Gate run 2 was 07:48-08:28Z. The
+  orchestrator's own cleanup (size scans, deletions, hashing, 62 volume
+  inspections) ran from about 07:50 to 08:50Z.
+- Round 4's first gate:changed (08:29-08:49Z, inside that window)
+  failed ONE test: HomeCounter's R711 sweep timed out at 300 s (it took
+  326 865 ms). Neither W9 nor W7 touches it, and round 3 ran it green.
+  The same run's explicit test:visual passed 174 and reused W7's cache
+  from another worktree ("Already up to date", node_modules on the
+  named volume).
+- DeadlineHelper.tsx holds the date in useState('') behind a controlled
+  input. A date typed before hydration is not in state: no deadline, no
+  form.
+- The cleanup's outcome: 22 worktree folders and kmp-0/kmp-1 deleted;
+  C: went from 40 238 to 50 410 MB free.
+  - Seven Android/iOS evidence folders were MOVED (renamed) into
+    C:/wt/queue-evidence/<name>/, 1 338 files, hashes equal before and
+    after, with a SHA256SUMS per folder.
+  - als-a and als-b are kept (uncommitted gradle edits).
+  - One deletion stalled on EPERM: a du.exe from the orchestrator's own
+    stopped size scan still held handles (TaskStop kills the shell, not
+    the tree). It was stopped by PID, and the folder then went.
+  - W10a's evidence went with its folder, so W10b's Q2 cannot be
+    answered from it.
+- Docker: the operator answered "Prune all unused, all projects".
+  Listed first, the unused volumes include three NAMED data volumes of
+  other projects (luxurykitchen_counterworthy-postgres-data,
+  fortniteislands_fnmetrics-data, supabase_edge_runtime_AI_Morocco_Planner).
+  Read-only inspection classified the 62 anonymous ones as 41 Postgres
+  data directories (PG_VERSION), 7 node_modules caches and 14 empty.
+- web/Dockerfile pins chromium=156.0.8078.79-1~deb12u1 on
+  node:22-bookworm-slim. If the archive has rotated it out, the cached
+  layers are the only copies.
+DECISION (the advisor's V3 and rulings; the operator's words where
+quoted):
+1. Round 4's first gate:changed is NO RESULT, caused by the
+   orchestrator's own disk load. It is re-run on the same staged tree;
+   the visual run stands (same tree). Read the sweep's duration in the
+   re-run: near 300 s on a quiet machine is a finding of its own.
+2. MASS DELETES, HASHING AND VOLUME INSPECTIONS ARE HEAVY. From now on
+   they run under the lock, and so does W16's first real --apply.
+3. W10b's stop stands, and neither red is attributed to the increment
+   yet.
+   - The e2e race is real (gate run 1 was outside any load) and it is a
+     PRODUCT defect: it becomes W18 FW-DEADLINE-PREHYDRATION
+     (R1041-R1045), proven by a test that holds the helper's scripts
+     back. networkidle is not a hydration signal.
+   - The visual variant was seen only inside the cleanup window, so it
+     is NO RESULT. It is settled by repetition, with the rule stated
+     before the run: the one spec, N runs on base and N on the increment,
+     in one hold, through W7's filter. If only the increment gives the
+     variant, R977's stop holds and the counts come back. If both flip,
+     the capture is unstable on main, a task of its own.
+   - Q2 is NO RESULT: W10a's captures were deleted with its worktree.
+4. ORDER: round 4 lands (it carries W7's filter), then W18, then W10b
+   resumes by message. It merges main into its dirty tree and re-checks
+   the 18 hashes first.
+5. DOCKER, on the operator's word:
+   - unused IMAGES and BUILD CACHE are pruned;
+   - the 7 node_modules caches and the 14 empty anonymous volumes are
+     removed by ID;
+   - the three named data volumes, the 41 Postgres volumes and this
+     app's visual cache are KEPT and named to the operator (item 8).
+   - It runs after round 4 is pushed, under the lock, AFTER checking from
+     a throwaway node:22-bookworm-slim container that the archive still
+     offers the pinned chromium. If it does not, the build cache and the
+     images holding that layer are NOT pruned until the pin moves.
+APPLIED: these records join round 4's record commit.
+
+====================================================================
+WEB RULING 23 - W14 VERIFIED
+====================================================================
+EVIDENCE:
+- W14: fw-verifier-outage 7a67645 (code 9a82dae; base e75b70c). Its
+  gate:changed: test 3 936, e2e 367, visual 168, container e2e with the
+  database-stopped step 67 of 67, late 10. Its gate:clone ALONE on
+  9a82dae: exit 0. Its gate's memory drop was 3 597 MB, above the 3 440
+  that the container e2e line was built on.
+- V1: 13 files read against the claims. The allow-list admits only
+  PrismaClientKnownRequestError with P1001 or P1008. merge-tree is
+  clean against main 41ddc9e4.
+DECISION (the orchestrator; V3 with the next handback):
+1. W14 is verified (V1). Its merge waits for the next verified branch,
+   or one hour (Web Ruling 10). It is the first container run on a tree
+   with W11, so its merge gate closes Web Ruling 18 item 2's gap, and the
+   record says so when it passes.
+2. Its merge gate's line uses W14's own measured drop: 3 597 + 2 000 =
+   5 597 solo, 6 800 with four other live sessions. It is not batched
+   with a branch that selects test:db unless the line is re-read.
+3. EXPECTED on the merged tree: test 4 040 (4 012 + 28); the
+   database-stopped step 67 of 67.
+4. The new sentence's wording goes to the operator (item 7), by its key.
+   Its French is not repeated in the records (R168).
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 24 - THE OPERATOR ASKS FOR THE DEPLOY; THE PROMOTION'S FACTS;
+W15 RESUMED
+====================================================================
+THE OPERATOR, 2026-11-17, verbatim:
+  "merge on main deploy the last version on coolify"
+  "continue the serie ..." (the run continues)
+EVIDENCE (read-only, 12:0xZ):
+- docs/deploy.md 10.1 step 0, over `ssh monreleve-vps`: one container,
+  image pkptabevr1nhtyygrq0mc8qx:52caca8c..., healthy; `production` is
+  52caca8c. PREVIOUS = 52caca8. Its image and 22b16bb's are on the
+  server, so a rollback to PREVIOUS is possible.
+- NEW = 41ddc9e4, main's tip. gate:clone PASSED on it today and ran
+  db:deploy, test:db and test:container:write (step 1). The Chromium pin
+  was offered by the archive today at 10:13Z (step 2).
+- Step 3: ONE migration is pending, 20261112120000_deadline_reminder
+  (W11's, additive: a new table and its CHECKs).
+- Variables, by name only: RESEND_API_KEY set; FRONTALIER_SCHEDULER
+  UNSET (the scheduler is off, BLOCKED 6); MONRELEVE_VERIFICATION_ORIGIN
+  unset; AUTH_SECRET and DATABASE_URL set.
+- The Coolify API token is absent (BLOCKED 1).
+- The API's env update writes value, is_multiline and is_shown_once from
+  the request whatever is sent (ApplicationsController.php 4066-4078, at
+  v4.5.0). Without the sensitive ability it never returns values. So a
+  build-time flip through the API would have to send each secret's
+  value back, or erase it.
+- W15 handed back with its code pushed and NO gate run. It had read the
+  resume note as "hand back" and stopped its own pending acquire.
+- Memory: commit free has sat between 2 478 and 5 325 MB for hours
+  (vmmemWSL 7.9 GB, Brave 2.3 GB), so every session's gates wait long.
+THE OPERATOR'S ANSWERS (AskUserQuestion):
+- "New token, you run it all (Recommended)".
+- "Latest, scheduler on": deploy main's tip and set FRONTALIER_SCHEDULER=1
+  in the same settings visit. BLOCKED 6 is lifted by the operator.
+DECISION:
+1. The promotion is P1 (QUEUE-STATE PARKED PROMOTIONS) on NEW =
+   41ddc9e4, run as docs/deploy.md 10.1 top to bottom, with P2 item 1
+   first.
+   - P2 item 1's six build-time flips, the new FRONTALIER_SCHEDULER=1
+     (runtime only), and the deletion of any leftover CHROMIUM_VERSION
+     are the operator's clicks in the Coolify UI, done while creating
+     the token. The API would have to round-trip the secrets.
+   - The token needs read and deploy, not sensitive and not root.
+   - The orchestrator verifies every flag through the API (names and
+     flags only), takes item 3's baseline on the serving image, applies
+     the migration from the server by section 4's route (migrate status
+     first, which must name poxl2l4x0p0fxd85or0itnxo and list exactly the
+     one migration), pushes NEW to production as a fast-forward, follows
+     the deployment by GET only, and runs 10.1 step 6's checks and P2
+     item 6's startup log (the [scheduler] line).
+   - A failed check is rolled back through POST .../rollback with
+     {"commit": "<PREVIOUS>"}; the operator chose the API route by
+     choosing "you run it all".
+   - P2 items 4-5 (old images; the key rotation with A5's keys) stay
+     after this promotion and are the operator's to start.
+2. Still the operator's, and not blocking the push: item 2 (the
+   reminder's legal basis in the privacy notice), item 3 (the inbox for
+   a real test sign-up), item 7 (/verifier's sentence; W14 is not in
+   NEW) and item 9 (which domain Resend has verified).
+3. W15 is resumed to merge main, apply its Q2 and Q3, and run both
+   gates.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 25 - THE OPERATOR'S 89 BRANCHES: WHAT IS ON MAIN, WHAT IS NOT
+====================================================================
+THE OPERATOR, 2026-11-17, verbatim:
+  "i have 89 branches on the repo, implement that on the main to the
+  production"
+EVIDENCE (git fetch --prune, then --merged / --no-merged origin/main):
+- 89 remote branches: 80 are FULLY CONTAINED in main, so their work is
+  in 41ddc9e4, promoted to production at 12:23Z (Web Ruling 24). 9 are not:
+  - fw-verifier-outage (W14): VERIFIED (Web Ruling 23), waiting for a
+    merge round;
+  - fw-lighthouse-calc (W5), fw-docs-sender-domain (W15) and fw-wt-cleanup
+    (W16): running, with code pushed;
+  - fw-calc-bytes (W10) and fw-calc-bytes-2 (W10b): reports only; W10b's
+    code resumes after W18 (Web Ruling 22);
+  - fw-web-account (C9): PARKED WHOLE (Queue Ruling 22), "NOT to be
+    merged"; its work is W12's resume;
+  - fw34 (2026-10-04, +3, 740 behind): a WIP of the home page, recorded
+    in REPORT-FW34.txt as "PARKED WIP - READ, ASSESSED FOR REUSE"; the
+    home page shipped by other tasks since;
+  - fw-canton-required (2026-10-16, +1, 536 behind): R380, the operator's
+    own request ("when a user forgot to add a canton I want to highlight
+    it to the user in red and add the message that he should add it"),
+    with an approved resolution (neutral while filling, an error after
+    Calculer). Its gate:changed was green on 9809944 (test 3 273, e2e
+    339, visual 111, late 10). No record says why it was not merged.
+    git merge-tree against main is CLEAN, and main has only the neutral
+    hint, not R380.
+DECISION (the orchestrator, under the operator's words):
+1. Nothing is merged without its gate: "Merge to main when gated" (the
+   operator, 2026-11-16) still binds.
+2. ROUND 5 is W14 with the next verified branch. fw-canton-required
+   merges in the round AFTER W10b: R380 adds client code to the
+   calculator page, which has 58 B of GATE A headroom (BLOCKED 11), and
+   W10b frees about 1 371 B. Its tests were written against a form 536
+   commits older, so a red in that round is a finding about R380 first.
+3. fw34 is NOT merged: a superseded WIP that would fight today's home
+   page. fw-web-account is NOT merged (its own record). Both branches are
+   kept; deleting them is the operator's call.
+4. Every later merge round that passes its gate:clone is PROMOTED to
+   production by docs/deploy.md 10.1 (migrations first, a fast-forward,
+   the checks), while the operator's token is on this machine.
+5. The 80 contained branches are left as they are. Deleting merged
+   branches is the operator's call (R392: only once the owning session's
+   report is on main).
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 26 - PRODUCTION PROMOTED TO 41ddc9e4 (P1, WITH P2 ITEM 1)
+====================================================================
+WHAT WAS DONE, IN ORDER (docs/deploy.md 10.1; QUEUE-STATE P1 and P2):
+0. PREVIOUS = 52caca8, read over ssh: one container, healthy; production
+   names 52caca8. Its image and 22b16bb's were on the server.
+1. NEW = 41ddc9e4. gate:clone PASSED on it today (db:deploy, test:db,
+   test:container:write all ran).
+2. The Chromium pin was offered by the archive today (10:13Z).
+P2 item 1 (through the API, on the operator's token):
+- Baseline on 52caca8's image: RESEND_API_KEY 4, FCM_PRIVATE_KEY 4,
+  FCM_CLIENT_EMAIL 4, FCM_PROJECT_ID 4, EMAIL_FROM 4, ANDROID_PACKAGE_NAME
+  4; DATABASE_URL 0, AUTH_SECRET 0; NEXT_PUBLIC_SITE_URL 5. That is the
+  SECURITY INCIDENT recorded at the top of QUEUE-STATE.md.
+- Those six production variables were set to runtime-only. Each value was
+  sent back exactly as GET returned it, and its sha256 was equal before
+  and after (the model trims on get and set, so the round trip is the
+  identity); every other flag was kept. EMAIL_FROM is kept (the
+  operator's call). No CHROMIUM_VERSION variable existed.
+- Read: Commit SHA "HEAD"; branch "production"; images to keep 2;
+  disable_build_cache false; no pre- or post-deployment command;
+  health_check_enabled false (QUESTION 1 still open). Server cleanup:
+  force_docker_cleanup true, daily at 00:00, threshold 80 %;
+  delete_unused_volumes false.
+3. Migration, from the server by section 4's route, with the folder taken
+   from the repository at NEW: migrate status named "postgres" at
+   poxl2l4x0p0fxd85or0itnxo:5432 and listed exactly
+   20261112120000_deadline_reminder; migrate deploy applied it; status then
+   read "up to date". /api/ready stayed 200 on 52caca8 with the new table.
+4. The push: 52caca8..41ddc9e4 to production, a fast-forward, 12:23:26Z.
+5. Followed by GET only: deployment alu9bb1d2zyyjrosuonpfrbh, "Rolling
+   update started", the Dockerfile healthcheck "healthy" on attempt 1,
+   "Rolling update completed", status finished.
+6. Checks: /api/health 200 naming monreleve; /api/ready 200 ready; one
+   container with image pkptabevr1nhtyygrq0mc8qx:41ddc9e4... (all 40
+   characters), Docker health "healthy"; ready from inside 200; the baked
+   origin https://monreleve.ch; MONRELEVE_VERIFICATION_ORIGIN unset (by
+   name). 6.6, the production PDF: NOT RUN. No @monreleve.test account
+   exists in production, and creating one would write to production
+   outside the product's own flow.
+P2 item 3 on NEW's image: every secret name 0; NEXT_PUBLIC_SITE_URL 6.
+THE SCHEDULER (the operator's "Latest, scheduler on"), after step 6:
+- What each job would act on at its first tick, read-only: unconfirmed
+  alert subscribers past 30 days 0 (of 3); DeadlineReminder 0; CodeAttempt
+  0; users with reminderEnabled 0; devices 0.
+- FRONTALIER_SCHEDULER=1 created runtime-only, production row only (the
+  preview copy the API adds was deleted). Step 0's two reads agreed
+  (41ddc9e4 both), so the app was restarted.
+- The restart (deployment bwmsmubqfdp1wa7heirwl1cr, 12:31-12:32Z) re-used the image ("No build configuration changed & image found ... Build step skipped"), healthy on attempt 1; health and ready 200 after it. The log: "[scheduler] ... scheduled: purge-unconfirmed, purge-code-attempts, deadline-reminder"; "NOT scheduled: daily-reminder" (the push sender refused).
+STILL OWED, the operator's:
+- P2 item 5: rotate RESEND_API_KEY and FCM_PRIVATE_KEY and revoke the
+  old ones. The startup log refuses the push sender: "malformed_private_key:
+  backslash_after_restore" (the stored FCM key is escaped twice), so the
+  app's daily reminder is NOT scheduled until a correct key is pasted.
+- P2 item 4 (old images) after that; then the token revoked.
+- Operator items 2, 3, 7 and 9.
+
+====================================================================
+WEB RULING 27 - THE COMPARATOR BUILT TO ITS A2 ARTBOARD (W20)
+====================================================================
+THE OPERATOR, 2026-11-17, verbatim, with a 1440 x 6377 screenshot:
+  "attached the design we should have instead of this :
+  https://monreleve.ch/calculateur-lamal-cmu make it like the design"
+EVIDENCE:
+- The screenshot's headings equal those of
+  docs/design/comparateur-lamal-a2.dc.html (14147fd1, "the operator's
+  updated comparator artboard"). The live page (41ddc9e4) renders H1
+  "Comparateur LAMal / CMU", the form, the delay and the not-compared
+  list. Missing are the long H1, the chips, the warning box, and the
+  sections "Ce qui est definitif", "Qui suit votre choix", "Ce que couvre
+  l'option", the France and Suisse cards, and "Sources". The result cards
+  may render only after a comparison.
+- 52caca8 had merged the comparator's six features (FW-CALCS-A2 addendum
+  2); REPORT-FW-CALCS-A2.txt parks CA1-CA12, and none of them is the
+  missing layout.
+- The screenshot is kept read-only at
+  C:/wt/queue-evidence/design/comparateur-lamal-cmu-target-2026-11-17.png
+  (sha256 0ad01d93673d0fa5...).
+DECISION:
+1. W20 FW-COMPARATEUR-A2-PAGE, relay/FW-COMPARATEUR-A2-PAGE.txt
+   (R1046-R1050), launched from 41ddc9e4, port block 3600-3699.
+   - It measures the gap before writing code.
+   - It ships only facts with a source row; a fact without one ships
+     without that sentence.
+   - It keeps R664-R678, the budgets and the tokens.
+   - It names the comparator's baselines before regenerating them.
+   - It does not touch DeadlineHelper or ReminderOutcomes (W18 owns the
+     first).
+2. Its merge follows W18's. Once it merges and its gate:clone passes, it
+   is promoted to production by Web Ruling 25 item 4.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 28 - W18 VERIFIED; ROUND 5 IS W14 + W18; W21 QUEUED
+====================================================================
+EVIDENCE:
+- W18: fw-deadline-prehydration b9bd015 (code 38936bc; base 41ddc9e4,
+  which is main and production). Its gate:changed: test 4 012, e2e 387,
+  visual 174, late 10. Its gate:clone ALONE on 38936bc PASSED.
+- V1: DeadlineHelper reads its two fields once, on mount, in a layout
+  effect. The spec's six held tests prove the pre-hydration path with a
+  verified plant. merge-tree is clean against main and against W14.
+- R1044's census, driven with the plant: ComparatorForm (income, the first
+  birth year, the accident box), CalculatorForm (canton, numeric fields,
+  radios, chips; a GET form, so a native submit still sends them) and
+  HomeCounter (the sliders) lose a value typed before hydration.
+DECISION:
+1. ROUND 5 is ONE octopus merge of W14 and W18 on main, line 6 800 (W14's
+   measured drop). EXPECTED: test 4 040 (4 012 + W14's 28), test:e2e 387,
+   test:visual 174, test:late 10, and the database-stopped step 67 of 67.
+   Its container run is the first on a tree with W11, which closes Web
+   Ruling 18 item 2's gap.
+2. Once round 5 is pushed, W10b resumes by message (Web Ruling 22 item 4),
+   and the round is promoted to production (Web Ruling 25 item 4).
+3. W21 FW-PREHYDRATION-SITES is queued. The comparator's form and the home
+   counter wait for W20; the calculator waits for W10b and for a ruling on
+   which wins when the shared-link URL and a typed field disagree.
+APPLIED: these records join round 5's record commit.

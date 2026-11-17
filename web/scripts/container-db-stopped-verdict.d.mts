@@ -67,6 +67,29 @@ export interface DatabaseStoppedObservations {
     appBefore: ContainerState | null;
     appAfter: ContainerState | null;
   };
+  /** FW-VERIFIER-OUTAGE (Web Ruling 20): /verifier/<a code the export route issued>. */
+  verifier: {
+    /** The name the step gave the account before the export: it is printed on the releve. */
+    holderName: string;
+    /** VERIFICATION_COPY's two sentences, read from lib/fr/verification.ts (copyLiteral). */
+    copy: { unavailable: string; unknown: string };
+    /** pg_stat_activity: the app's connections to its database when it was stopped. */
+    connectionsAtStop: number | null;
+    up: {
+      /** The issued code, the database running. */
+      issued: HttpAnswer;
+      /** A random well-formed code, the database running: presence of the unknown sentence. */
+      unknown: HttpAnswer;
+    };
+    down: {
+      /** The FIRST database-touching read after the stop: the warm pool's answer, judged. */
+      first: HttpAnswer;
+      /** A second read of the same code, printed only. */
+      second: HttpAnswer;
+      /** The app's log lines from the stop to the end of the two reads, redacted. */
+      log: string[];
+    };
+  };
 }
 
 export declare function sitemapPaths(
@@ -79,6 +102,8 @@ export declare function headingsOf(html: string): string[];
 export declare function documentedStatus(markdown: string, code: string, method: string): number;
 
 export declare function composePostgresImage(yaml: string): string;
+
+export declare function copyLiteral(source: string, key: string): string;
 
 export declare function leaksIn(
   body: string,

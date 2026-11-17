@@ -1,0 +1,112 @@
+FW-COMPARATEUR-A2-PAGE SESSION PROMPT - Mon Releve
+THE DROIT D'OPTION PAGE, BUILT TO ITS APPROVED A2 DESIGN (web run step W20)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W20 (Web Ruling 27). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-comparateur-a2-page, branch
+  fw-comparateur-a2-page, report REPORT-FW-COMPARATEUR-A2-PAGE.txt;
+- docs/design/comparateur-lamal-a2.dc.html, the approved artboard
+  (14147fd1, "the operator's updated comparator artboard"), IN FULL;
+- the operator's screenshot of the target, 2026-11-17, read-only:
+  C:/wt/queue-evidence/design/comparateur-lamal-cmu-target-2026-11-17.png
+  (1440 x 6377). It shows the artboard rendered; where the two differ,
+  STOP and ask which one rules;
+- relay/FW-CALCS-A2.txt with ADDENDUM 2 (relay/FW-CALCS-A2-ADDENDUM-2.txt)
+  and REPORT-FW-CALCS-A2.txt: what was built, PARK-CA1 to CA12, and the
+  rule that "the design's arithmetic remains a SKETCH";
+- docs/regulatory-sources.md rows L1-L17, and
+  docs/sources/primes-lamal/sources-2026-10.md and sources-2026-11.md;
+- CLAUDE.md: R2, R127, R135, R147, R153, R155, R160, R165, R167, R168,
+  R172, R173, R181, R206, R207, R225, and R664-R678 above all (what the
+  page never says).
+Ruling numbers for this task: R1046-R1050.
+
+====================================================================
+THE TASK
+====================================================================
+The operator, 2026-11-17, attaching the screenshot: "the design we should
+have instead of this: https://monreleve.ch/calculateur-lamal-cmu make it
+like the design".
+The orchestrator's read (pointers, not verdicts): the live page renders
+the form, the three-month delay and the not-compared list, with an H1 of
+"Comparateur LAMal / CMU". The artboard also has:
+- the long H1, its lead, and the row of section links (chips);
+- the "Le choix ne se reprend pas" warning box;
+- the result column's cards: the 13-insurer chart, "Une annee avec beaucoup
+  de soins" and "Et si le franc varie ?". Some of these may exist and
+  render only after a comparison: CHECK by filling the form, do not assume;
+- the sections "Ce qui est definitif", "Qui suit votre choix", "Ce que
+  couvre l'option", the France and Suisse cards, and "Sources" with its
+  "Ce que cette page ne dit pas" box.
+
+R1046. THE GAP, MEASURED FIRST. Run `pnpm dev` and drive the page, with
+    the form filled AND empty, at 1440 and 390. Compare section by section
+    with the artboard. One table: each artboard element is PRESENT (as
+    designed), DIFFERENT (and how) or MISSING. Paste it in the report
+    before writing code.
+
+R1047. EVERY FACT HAS A SOURCE (R181; ADDENDUM 2's rule).
+    - Each sentence of new copy that states a rule (irrevocability, who
+      follows the choice, what the option covers, the French and Swiss
+      specifics) maps to a docs/regulatory-sources.md row or to a source
+      the artboard's own "Sources" list names, with the row cited in the
+      report.
+    - A fact with NO source ships WITHOUT that sentence and is listed,
+      exactly as ADDENDUM 2 did. Nothing is written from memory.
+    - Adding a regulatory-sources row needs a source document already in
+      docs/sources/; if one is needed and absent, STOP and hand back the
+      list.
+    - Never: which option to choose, "recommande", an insurer's name, a
+      single LAMal figure, a converted figure without its rate and date
+      (R673). The artboard's figures are a SKETCH: every live figure comes
+      from the dataset and the formula, never from the artboard.
+
+R1048. THE BUILD, the artboard's layout and order.
+    - French copy only in lib/fr, fully accented (R155), new keys per
+      instance (R165); figures interpolated, never typed (R147, R153).
+    - Design tokens only: no raw value. A token the artboard needs that
+      DESIGN-SYSTEM.md lacks is an Ask-first stop.
+    - Static sections are server-rendered and add no client JS. The
+      comparator has about 1 070 B of GATE A headroom; GATE A and every
+      budget stay unchanged (R2). If the build cannot fit, STOP with the
+      byte table.
+    - Every anchor styled (R173); the chips are links to section ids;
+      nothing scrolls the page sideways at 320 (R127).
+    - Do NOT change web/app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx
+      or ReminderOutcomes.tsx (W18 owns the first; the delay section is
+      W11's work and already follows the artboard). If the artboard needs
+      them changed, list it and hand back.
+
+R1049. THE BASELINES, NAMED FIRST (R135, R207). The comparator's
+    baselines change, by the operator's request. Before regenerating,
+    write the expected set; the produced set must equal it; crop and LOOK
+    at each against the artboard. No other page's baseline may move: if
+    one does, STOP.
+
+R1050. NOTHING ELSE MOVES. No calculation, constant, rounding rule or
+    dataset changes (SPEC 20). No other page.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree from the BASE_SHA in the launch message; lock.
+1. R1046 (light: pnpm dev on your port).
+2. R1047's source map (reading).
+3. R1048, test-first where a test can say it: the sections present, the
+   chips' targets exist, no figure typed, the never-says list.
+4. R1049 under the lock.
+5. gate:changed (e2e and visual); commit; push the branch.
+6. gate:clone ALONE on the tip; push.
+7. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-COMPARATEUR-A2-PAGE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1046's table / R1047's source map and
+the sentences shipped without a source / R1048-R1050 with evidence /
+BASELINES / WALKTHROUGH (R176) / NOTICED / DEVIATIONS / QUESTIONS (every
+wording a reader of the operator's should confirm) / PUSH PROOF
+
+END OF FW-COMPARATEUR-A2-PAGE PROMPT

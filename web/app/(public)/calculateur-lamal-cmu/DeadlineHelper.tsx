@@ -35,7 +35,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { optionPeriodEnd } from '@/lib/lamal/deadline';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
@@ -71,6 +71,30 @@ export function DeadlineHelper() {
   const [formError, setFormError] = useState<string>();
   const [sent, setSent] = useState<{ readonly for: string; readonly message: string }>();
   const [pending, setPending] = useState(false);
+  const eventField = useRef<HTMLSelectElement>(null);
+  const dateField = useRef<HTMLInputElement>(null);
+
+  // FW-DEADLINE-PREHYDRATION, R1042: WHAT THE READER CHOSE OR TYPED BEFORE THIS
+  // ISLAND HYDRATED. Both fields are in the server's HTML, so a reader on a slow
+  // phone can use them before the scripts arrive. Hydration keeps what a field
+  // holds - React does not write a field's value while it hydrates - but tells
+  // the state nothing: the date stayed '' (no deadline, no form), and the next
+  // render put the select back on the first event.
+  //
+  // So each field is read ONCE, as the island mounts, into its state. A LAYOUT
+  // effect, because it runs in the same task as the hydration's commit: no input
+  // event can run between that commit and this read. A value typed before the
+  // scripts arrived, or while React was hydrating, is in the field when it runs,
+  // because nothing writes the field before this read - whether or not React
+  // ever dispatched its event. After the read, every change comes through
+  // onChange. (A hydration that fails is client-rendered instead, on new nodes,
+  // and nothing could read the old ones.) Setting a state to the value it
+  // already holds renders nothing, so a page nobody typed into is unchanged.
+  useLayoutEffect(() => {
+    if (eventField.current !== null) setChoice(Number(eventField.current.value));
+    if (dateField.current !== null) setDate(dateField.current.value);
+  }, []);
+
   const end = optionPeriodEnd(date);
   const standing = end === undefined ? undefined : reminderWindow(end, localDay());
   // `end !== undefined` restated so TypeScript narrows `end` wherever `offered` holds.
@@ -140,6 +164,7 @@ export function DeadlineHelper() {
             {(control) => (
               <select
                 {...control}
+                ref={eventField}
                 className={styles.select}
                 value={choice}
                 onChange={(event) => setChoice(Number(event.target.value))}
@@ -156,6 +181,7 @@ export function DeadlineHelper() {
             {(control) => (
               <input
                 {...control}
+                ref={dateField}
                 className={`${styles.input} ${styles.dateInput}`}
                 type="date"
                 value={date}

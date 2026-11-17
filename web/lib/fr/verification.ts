@@ -57,4 +57,14 @@ export const VERIFICATION_COPY = {
   /** The rate-limit refusal. It reveals nothing about whether a code exists. */
   rateLimited:
     `Trop de vérifications depuis cet appareil. Veuillez réessayer dans quelques minutes.`,
+
+  /**
+   * The database could not be reached (FW-VERIFIER-OUTAGE, R1022 as amended by
+   * Web Ruling 20). The page looked nothing up, so it can say nothing about the
+   * code or the document - neither that a releve corresponds nor that none
+   * does (R160's shape). ONE sentence, the only thing under the heading: the
+   * intro is dropped too. Its own key, never the unknown answer reworded
+   * (R165). The wording is the operator's to confirm.
+   */
+  unavailable: `La vérification est momentanément indisponible, veuillez réessayer plus tard.`,
 } as const;

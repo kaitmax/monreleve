@@ -1,0 +1,465 @@
+REPORT - FW-DEADLINE-PREHYDRATION (web run step W18, Web Ruling 22)
+THE DEADLINE HELPER KEEPS A DATE TYPED BEFORE IT HYDRATES
+Session W18, 2026-11-17. Worktree C:/wt/fw-deadline-prehydration, branch
+fw-deadline-prehydration, base 41ddc9e (origin/main, merge round 4). Port block
+3400-3499 (dev server 3410, gate:changed e2e 3420). Scratch database
+monreleve_w18 (16 migrations, db:deploy). Ruling numbers R1041-R1045.
+
+====================================================================
+SUMMARY
+====================================================================
+- THE DEFECT, ESTABLISHED. DeadlineHelper held the event in useState(0) and the
+  date in useState('') behind CONTROLLED fields. The React that Next 15.5.25
+  vendors (19.2.0-canary-0bdb9206-20250818) never writes a field's value while
+  it hydrates: react-dom-client.production.js initInput,
+      isHydrating || value === element.value || (element.value = value);
+  and for a <select> it only adds an 'invalid' listener
+  (prepareToHydrateHostInstance, case "select"). So a date typed before the
+  island hydrated stayed in the box and never reached state: no deadline, no
+  form. A select changed before hydration kept its option on screen until the
+  first re-render, which put it back on the first event. A PRODUCT defect, as
+  Web Ruling 22 read it; load only decides how often a test meets it.
+- THE FIX (R1042): two refs and ONE layout effect in DeadlineHelper.tsx that
+  read both fields once, on mount, into state. No new copy, no visual change,
+  no dependency.
+- THE SPEC (R1041/R1043): every test that types into the helper now runs in
+  BOTH orders - "typed as the page loads" (as before, no wait) and "typed
+  before the helper hydrates" (every /_next/static script held at the network
+  until the typing is done) - plus one held-only test for the select.
+- RED on base (pnpm dev): all 6 held tests failed for the stated reason; 4 of
+  the 5 as-loaded variants failed too, by the same mechanism, because dev-mode
+  hydration is slow. GREEN with the fix: 16/16; then 80/80 over five repeats
+  with four workers.
+- gate:changed: PASSED on the uncommitted pair, then committed as 38936bc:
+  typecheck 0, lint 0, test 4 012 passed, build 0, test:e2e 387 passed
+  (381 + the 6 new tests), test:visual 174 passed, test:late 10 passed.
+- gate:clone ALONE: PASSED on 38936bc, exit 0: test 4 012 of 4 012 (232
+  files), size 21 routes, test:db 816 of 843 (27 skipped, 60 files),
+  test:container:write 10 checks.
+- R1044 census: the comparator form, the calculator form and the home counter
+  each LOSE a value typed (or a slider moved) before hydration - read from
+  the code, then DRIVEN with the spec's plant on pnpm dev: the value stays on
+  screen until the island's first re-render, which erases it. The alert form
+  keeps it (no island); the shell has no typeable control. Listed in NOTICED
+  N1 for the orchestrator to task; none was touched here.
+
+====================================================================
+STATUS (R391)
+====================================================================
+STATUS: COMPLETE. gate:changed GREEN (exit 0) on the change, committed
+unchanged as 38936bc, and gate:clone ALONE GREEN (exit 0) on 38936bc, both
+run in this session. The report commit on top of 38936bc adds only this
+file and was not gated. Pending merge: the orchestrator merges.
+
+====================================================================
+R1041 - THE DEFECT, PROVEN FIRST (R154, R180)
+====================================================================
+THE PLANT (e2e/rappel-delai.spec.ts, typeBeforeHydration):
+- page.route(/\/_next\/static\/.+\.js(?:\?|$)/u) holds EVERY script request
+  until the typing is done: the framework's and the helper's own chunk alike.
+  CSS and fonts are not held, so the page stays the real, styled one.
+- page.goto(..., { waitUntil: 'domcontentloaded' }) - 'load' waits for the very
+  scripts held. Every script tag on the page is async (polyfills is noModule).
+- VERIFIED BEFORE ITS RESULT IS READ, in every held test:
+    1. at least one script request is waiting (expect.poll > 0);
+    2. the date field carries no React fiber (no `__reactFiber$` key) BEFORE the
+       typing, and STILL none AFTER it - so the value landed on the server's
+       HTML;
+    3. once released, React's hydration claims the field (the fiber key
+       appears, 20 s bound) - so a failure after this is the helper's, not a
+       page the plant broke. React sets that key in its RENDER phase
+       (prepareToHydrateHostInstance, called from completeWork), so the commit
+       can trail it by a moment; the web-first assertions after it retry over
+       that gap (5 s each).
+- WHICH REQUESTS WAITED, AND FOR HOW LONG (printed by each held test as an
+  [R1041] line). On pnpm dev, the same five every time:
+      /_next/static/chunks/webpack.js
+      /_next/static/chunks/main-app.js
+      /_next/static/chunks/app-pages-internals.js
+      /_next/static/chunks/app/(public)/layout.js
+      /_next/static/chunks/app/(public)/calculateur-lamal-cmu/page.js  (the helper's chunk)
+  RED run, per held test: 395-398, 545-547, 418-423, 451-453, 266-268,
+  314-315 ms. GREEN run: 250-388 ms. Five repeats: 231-1 938 ms.
+  On the production build inside gate:changed: 10 scripts each time, the helper's
+  own chunk among them:
+      /_next/static/chunks/webpack-ec0ed5785ea92d2d.js
+      /_next/static/chunks/07a4fdd4-f1d5997dc924bfcd.js
+      /_next/static/chunks/5355-be9623b1a110402b.js
+      /_next/static/chunks/main-app-bee822e33f055911.js
+      /_next/static/chunks/3749-44ba9972ff8bb2cb.js
+      /_next/static/chunks/4003-afb0c0b7574e9bed.js
+      /_next/static/chunks/9879-5e73194f6f625207.js
+      /_next/static/chunks/9267-0f61563bef079501.js
+      /_next/static/chunks/app/(public)/layout-332573e44b0330b4.js
+      /_next/static/chunks/app/(public)/calculateur-lamal-cmu/page-da4bdcf923029689.js
+  held 485-494 ms (the R1041 test), 514-518 (too close), 472-478 (R750),
+  410-412 (R225), 447-448 (refused address), 496-497 (the select).
+
+THE RED - base component, the new spec, pnpm dev on 3410, 2 workers
+(.w18-evidence/red-run.log): 10 failed, 6 passed (2.2 m), STEP_EXIT=1.
+  The R1041 test itself (the held variant of "the form appears only once a
+  date is computed"):
+    5) [chromium] > e2e\rappel-delai.spec.ts:143:5 > typed before the helper
+       hydrates (R1041) > the form appears only once a date is computed
+       Error: expect(locator).toHaveAttribute(expected) failed
+       Locator:  locator('[data-deadline-end]')
+       Expected: "2027-03-17"
+       Received: ""
+       Timeout:  5000ms
+         14 x locator resolved to <strong data-deadline-end="">dans les trois
+         mois qui suivent.</strong>
+           - unexpected value ""
+  It fails AFTER the plant saw React's hydration claim the field, and keeps
+  failing for 5 s more: the island was live and the date typed before it was
+  not in its state. The other four held
+  variants failed the same way (data-deadline-end "" for 5 s; the reminder
+  field never appearing within the 30 s test timeout for R750, R225 and the
+  refused address).
+  The select (R1042's second half):
+    10) ... typed before the helper hydrates (R1041): an event chosen then is
+        kept (R1042)
+        Error: expect(locator).toHaveValue(expected) failed
+        Locator:  locator('#evenement-option')
+        Expected: "3"
+        Received: "0"
+  The line above it in that test (a date typed AFTER hydration gives
+  data-deadline-end = 2027-03-17) passed: the date re-rendered the helper, and
+  the re-render put the select back on the first event.
+  The as-loaded variants on dev: 4 of 5 failed the same way (data-deadline-end
+  "" / reminder field never appearing). That is W11's walkthrough symptom: on
+  pnpm dev, page.goto's 'load' comes well before the dev-mode island hydrates.
+  The R750 as-loaded variant passed (it types the income first).
+
+====================================================================
+R1042 - THE FIX, IN THE COMPONENT
+====================================================================
+web/app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx, the whole change:
+  - import { useLayoutEffect, useRef, useState } from 'react';
+  - const eventField = useRef<HTMLSelectElement>(null);
+    const dateField = useRef<HTMLInputElement>(null);
+  - useLayoutEffect(() => {
+      if (eventField.current !== null) setChoice(Number(eventField.current.value));
+      if (dateField.current !== null) setDate(dateField.current.value);
+    }, []);
+  - ref={eventField} on the select, ref={dateField} on the date input.
+The select HAS the same shape (controlled, server-rendered, state from a
+constant), so it gets the same treatment, with its own RED above. The email
+field does not: it renders only once a date is computed, so it is never in the
+server's HTML.
+No new copy; no dependency; no visual change - setting a state to the value it
+already holds renders nothing, so a page nobody typed into renders exactly as
+before (and the visual suite: R1045).
+
+WHY IT CANNOT LOSE A VALUE TYPED BETWEEN THE FIRST RENDER AND THE EFFECT
+(for a hydration that succeeds - one that fails is client-rendered on NEW
+nodes, and nothing could read the server's):
+THE ARGUMENT RESTS ON ONE FACT: nothing writes either field between the
+server's HTML and the effect's read.
+1. Typed before the scripts arrive: there is no listener, so the value lives
+   only in the field. Hydration does not write it (initInput's isHydrating
+   branch; a select's hydration only adds an 'invalid' listener), and nothing
+   else writes the field before the effect reads it.
+2. Typed during the hydration render (root listeners attached, commit not yet
+   made): the value is in the field for the same reason, and the read takes
+   it. It does NOT rest on React dispatching that event: 'input' and 'change'
+   are discrete events, so a blocked one makes React hydrate synchronously and
+   then dispatch - but if that forced hydration is what first reaches the
+   input, track() (react-dom-client :1064) creates the value tracker already
+   holding the typed value, and no change event fires. Without the read, that
+   value would be lost even after the scripts had arrived. (READ from the
+   source - track() itself, not the comparison it feeds - and NOT DRIVEN; the
+   argument does not rest on it.)
+3. Between the commit and the read: impossible. A layout effect runs inside the
+   commit, in the same task; the browser cannot run an input event in between.
+   (A passive effect would leave a gap - harmless, since onChange is attached
+   by then - but the layout effect needs no such argument.)
+4. After the read: onChange is attached, and every change comes through it.
+
+====================================================================
+R1043 - THE SPEC
+====================================================================
+- e2e/rappel-delai.spec.ts: the five tests that type into the helper run in a
+  loop over two orders, each in its own describe:
+      typed as the page loads             (no wait; whichever order happens)
+      typed before the helper hydrates (R1041)   (the plant)
+  plus one held-only test, "...: an event chosen then is kept (R1042)". The
+  other five tests (the landing fragment, the confirm route, the delete page
+  twice, the plain visit) type nothing and are unchanged. 10 -> 16 tests
+  (5 as loaded + 5 held + 1 select + 5 untouched).
+- "The form appears only once a date is computed" also asserts
+  data-deadline-end equals the computed end now, in both orders (it asserted
+  only the form before), so R1041's "the deadline and the form appear" is
+  literal.
+- PASSES UNDER THE HELD-BACK CONDITION AND NORMALLY: pnpm dev 16/16
+  (.w18-evidence/green-run.log, 38.9 s); five repeats with 4 workers 80/80
+  (green-repeat5.log, 1.9 m); the production build in gate:changed:
+  387 passed (3.5 m, 4 workers), all 16 of this spec among them,
+  on a next build + next start (port 3420).
+- WAITS: none added to any as-loaded test. The one wait is inside the plant,
+  AFTER the typing: React's own fiber on the date field - its hydration
+  claiming that very node (render phase; the retrying assertions after it
+  cover the commit). networkidle is not used anywhere in the spec.
+- WHICH TESTS NOW PROVE THE PRE-HYDRATION PATH: the six held tests, by
+  construction (each verifies the field was still the server's after typing):
+      typed before the helper hydrates (R1041) > the form appears only once a date is computed
+      typed before the helper hydrates (R1041) > no form for a date fewer than 14 days away (R916, the conservative choice)
+      typed before the helper hydrates (R1041) > sends the address and the computed date, and nothing else from the page (R750)
+      typed before the helper hydrates (R1041) > R225: the confirmation state is on the rendered page once the server answers
+      typed before the helper hydrates (R1041) > an address the server refuses is named on the field, and nothing is confirmed
+      typed before the helper hydrates (R1041): an event chosen then is kept (R1042)
+  The five as-loaded variants meet the pre-hydration path only when hydration
+  is slow (4 of 5 did on dev, on base); they now pass in either order, so they
+  stop racing but prove neither order deterministically.
+
+====================================================================
+R1044 - THE SECOND SITES (R267): CENSUS - see NOTICED BUT NOT TOUCHING N1
+====================================================================
+Every client island in the tree (all nine 'use client' modules) was read.
+Nothing was changed outside DeadlineHelper.tsx.
+
+====================================================================
+R1045 - NOTHING ELSE MOVES
+====================================================================
+No baseline regenerated; no other product file touched. The diff is two files:
+DeadlineHelper.tsx and e2e/rappel-delai.spec.ts. test:visual in gate:changed:
+174 passed (3.9 m). Header: "isolation: sole container of
+mcr.microsoft.com/playwright:v1.63.0-noble (checked) ... R961: REUSED";
+"photographed: 41ddc9e4 plus 2 uncommitted path(s)" - the two files of this
+change, before they were committed. The image was pulled cold (the
+orchestrator's Docker prune). Nothing regenerated.
+
+====================================================================
+WALKTHROUGH (R176) - pnpm dev on 3410, the comparator, a date typed early
+on a throttled page (.w18-evidence/walkthrough.mjs; walk/walkthrough.log,
+walk/*.png)
+====================================================================
+- Context locale fr-FR, Europe/Paris; CDP: CPU x6, network 1.6 Mbit/s down,
+  150 ms latency. The date typed with REAL KEYSTROKES as a French reader types
+  it ("17122026" into jj/mm/aaaa), not fill().
+- Run 3, the one walk/walkthrough.log holds (each run overwrites it; runs 1
+  and 2 had the same outcomes, with field visible / typed / hydrated at
+  2.4 / 3.5 / 17.4 s and 2.6 / 4.5 / 21.7 s):
+    date field visible after 1.1 s, not hydrated;
+    typed by 3.1 s, field value "2026-12-17", island NOT hydrated (no fiber);
+    island hydrated at 18.4 s;
+    then data-deadline-end = "2027-03-17", step 2 reads "jusqu'au 17 mars 2027
+    environ.", the reminder form shown, the typed date still in the field.
+- Used what it built: the reminder sent from that state with an
+  @monreleve.test address; the server's sentence replaced the form.
+- After hydration everything goes through onChange: the event changed to the
+  third -> step 1 names it; the date cleared -> the deadline empties.
+- Followed the links out: the guide link under the comparison,
+  /guides/droit-option-lamal-cmu, answers 200 and links back to the comparator.
+- Control, unthrottled, typed after hydration: the same deadline, 2027-03-17.
+- WALKTHROUGH PASSED, in all three runs.
+- The screenshot shows the dev overlay's "1 Issue": see N2. It is a harness
+  artifact of the walkthrough's own pre-hydration screenshot, not the product.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1. R1044's CENSUS - every island with a control a person can use before
+    hydration, and whether that value survives (React 19.2 as above: hydration
+    writes no field; the state starts from its initializer; the owning
+    component's next re-render writes the state's value back into the field;
+    re-typing the SAME value fires no onChange, since React's value tracker
+    already holds it).
+
+    a. app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx - THIS TASK.
+       event select and date: KEPT now (the layout effect). The reminder's
+       email field: not in the server HTML (only once a date is computed).
+
+    b. app/(public)/calculateur-lamal-cmu/ComparatorForm.tsx (the comparator
+       form) - LOSES. No mount read (imports only useState, :50).
+       - income: useState('') :125; controlled <input value={income}> :302-309
+         (value :308). In the server HTML (the default declaration is
+         'individual').
+       - the first person's birth year: useState([{ key: 0, birthYear: '' ...}])
+         :130-133; <input value={person.birthYear}> :420-428 (value :427).
+       - the first person's accident checkbox: checked={person.withAccident}
+         :434-439 (checked :438); a pre-hydration toggle is reset on the next
+         re-render (updateInput writes checked).
+       - The year, declaration and affiliation toggles are SegmentedButtons
+         (type="button", aria-pressed): a press before hydration does nothing,
+         so no value diverges. The joint fields, the start date, further
+         persons and the franc slider are not in the server HTML.
+       - DRIVEN (.w18-evidence/census-probe.mjs, the spec's plant, pnpm dev;
+         census-probe.log): 42000, 1985 and the accident box typed or ticked
+         with 6 scripts held; after hydration the DOM still shows all three;
+         after "Comparer" the income box is EMPTY with its error shown, the
+         birth year is EMPTY, the box is UNTICKED, and there is no result.
+       - Related, by design (R750, the file's header :9-13): an Enter BEFORE
+         hydration submits the nameless form natively and reloads the page
+         empty, losing every value typed.
+
+    c. app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx (the
+       calculator form) - LOSES (with JavaScript). One state, useState(INITIAL)
+       :369-371 (INITIAL :239-252; the page passes no `initial`,
+       calculateur page.tsx:224-234). The mount effect :397-435 reads
+       window.location.search only, never the fields.
+       - canton <select value={state.canton}> :953-960 (value :957);
+       - the rate and telework-day text inputs via numericField :796-805
+         (value={state[config.stateKey]} :802);
+       - the missions SegmentedChoice radios :1008-1030 (value :1012)
+         (lib/ui/react/SegmentedChoice/SegmentedChoice.tsx:50-55, checked=);
+       - the rhythm chips :1093-1110 (Chip.tsx:33-37, checked=).
+       - Not in the server HTML: the mission-day fields (:1040,
+         !state.hasMissions), the advanced section (:1164, !advancedOpen).
+       - MITIGATED ON ONE PATH: it is a real GET form with named controls
+         (:942), so a submission BEFORE hydration sends the typed values to
+         /resultat. Once hydrated, onSubmit preventDefaults (:895-906) and the
+         in-page result is computed from state, which never had them.
+       - The alert form's hidden scenario is written from this state after
+         hydration (:682-688), so it inherits the loss.
+       - DRIVEN (census-probe.log): GE and 84 chosen and typed with 6 scripts
+         held; after hydration the DOM shows GE and 84 while the result reads
+         the empty state ("Choisissez votre canton de travail pour lancer le
+         calcul."); typing the rate AFTER hydration then puts the canton back
+         to "" and the days to "0".
+
+    d. lib/ui/react/AlertCapture/AlertCapture.tsx (the alert form) - KEEPS.
+       A server component, not an island: a plain POST form with an
+       uncontrolled <input name="email" type="text"> :94-106 and no state. On
+       the calculator it sits outside the island (page.tsx:247-249); also on
+       /alertes and the home page.
+
+    e. lib/ui/react/HomeCounter/HomeCounter.tsx (the home counter) - LOSES. Two
+       controlled range sliders, useState(initialTelework) :108 and
+       useState(initialBasis) :109, <input type="range" value=...> :170-179 and
+       :187-196, no effect at all (header :15-18). DRIVEN (census-probe.log):
+       the telework slider moved +10 (to 72) by keyboard with 6 scripts held;
+       after hydration the thumb shows 72 while its label still says 62 and
+       the rate (28,18 %) is 62's; moving the OTHER slider after hydration
+       puts the telework thumb back to 62.
+       The form (:120) submits natively (no onSubmit),
+       but with scripting on it has no submit button (the canton select and
+       button are inside <noscript>, home page.tsx:157-178).
+
+    f. lib/ui/react/PublicShell/PublicShell.tsx - NO TYPEABLE CONTROL. The
+       mobile menu is an uncontrolled native <details> (:300), its open state
+       the browser's; the dropdown state (:110) is driven by a button.
+
+    g. DEV-ONLY islands (the test build's /dev routes, R129; not in the
+       production build), recorded for completeness:
+       app/dev/composants/CalcsSpecimens.tsx - controlled, LOSES (:32/:50-54,
+       :84/:95, :103-155); app/dev/spike/SpikeForm.tsx - the select uses
+       defaultValue (:33, keeps), the radios are controlled (:68-82, lose);
+       app/dev/island/IslandHarness.tsx - an uncontrolled text input (:140,
+       keeps), the others read-only or driven by `shown`;
+       app/dev/rail-parity/page.dev.tsx - no control.
+
+N2. THE DEV OVERLAY's "1 Issue" IN THE WALKTHROUGH SCREENSHOT is React's
+    dev-only warning "A tree hydrated but some attributes of the server rendered
+    HTML didn't match the client properties", naming `style={{}}` on
+    ComparatorForm's #revenu-fiscal and #naissance-0 - no DeadlineHelper field.
+    CAUSE ESTABLISHED (.w18-evidence/style-probe.mjs): a Playwright
+    page.screenshot() taken BEFORE hydration leaves style="" on those inputs
+    (attribute null before the shot, "" after), and React reports it; without
+    the screenshot, 0 console errors (two plain loads, two early-typed loads,
+    two throttled loads). A harness artifact. It very likely explains W11's
+    N6 too (its walkthrough took screenshots); not re-run on W11's script.
+
+N3. e2e/comparateur.visual.spec.ts fills #date-evenement right after load in
+    'delai-sans-s3' (:262) and 'delai-rappel-envoye' (:281), so the visual
+    suite was exposed to the same race until this fix; the component now
+    covers it. Not touched (R1045).
+
+====================================================================
+DEVIATIONS
+====================================================================
+UNNUMBERED-1. R1041's "a Playwright test" is the held variant of the existing
+    form test, inside a two-order loop that also holds R750, R225, the refused
+    address and the too-close date - plus one held test for the select. One
+    standalone test would have proved the date alone; the loop proves the
+    whole spec in both orders (R1043's first line).
+UNNUMBERED-2. The plant's wait for React's fiber on the date field runs in
+    every held test, including the ones about the form. Read as part of
+    verifying the plant (R180: the release worked and the island hydrated), and
+    placed AFTER the typing, so it cannot move the typing past hydration. No
+    wait was added to any as-loaded test.
+UNNUMBERED-3. The RED was run on pnpm dev (rule 5: a single spec runs outside
+    the lock only against a dev server I started). The production build's run
+    is gate:changed's e2e, GREEN.
+UNNUMBERED-4. THE SESSION WAS INTERRUPTED (the account's API limit) while
+    gate:changed waited for memory. The acquire started at 10:45:08Z (node
+    PID 33148) kept polling, its bash chain intact, after the harness
+    process that launched it had gone. On the coordinator's message, no
+    second acquire was started: that one ACQUIRED at 12:20:38Z (7 205 MB),
+    its chain ran gate:changed as written and RELEASED at 12:44:40Z. The
+    results were read from its log files, since its completion notice could
+    not reach this session. The tree it gated was the tree committed (no
+    edit after 10:55Z; "photographed: 41ddc9e4 plus 2 uncommitted path(s)").
+UNNUMBERED-5. The walkthrough, the console and style probes and the census
+    probe ran OUTSIDE the lock, each one browser against my own pnpm dev on
+    3410 (rule 5's reading for a single light run). The dev server was
+    stopped by PID tree each time and the port read free.
+UNNUMBERED-6. ALONE, as Part B reads it now: gate:clone held the lock
+    (12:57:31-13:10:21Z) with no other heavy run. Light work in other
+    sessions may have overlapped; mine was log reads only.
+UNNUMBERED-7. WHICH EVIDENCE PREDATES THE LAST EDITS (W11's V6 shape). The
+    dev GREEN (16/16), the 80/80 repeats, the walkthrough and the console
+    and style probes ran before three COMMENT-ONLY edits made about
+    10:50-10:55Z (the R1042 comment in DeadlineHelper.tsx; the hydration
+    signal's and the plant's docstrings in the spec). No runtime line
+    changed. gate:changed, gate:clone and the census probe ran on the final
+    tree (38936bc).
+EVIDENCE LOCATION: everything cited as .w18-evidence/... lives only in the
+    worktree's gitignored folder C:/wt/fw-deadline-prehydration/.w18-evidence
+    (logs, screenshots, probe scripts). It goes with the worktree when that
+    folder is removed (Web Ruling 22 records W10a's going the same way).
+MEMORY (sampler, every 5 s, .w18-evidence/*-sampler.log):
+    gate:changed: start 7 205 MB, minimum 3 561 MB (12:23:13Z, during the
+    unit suite), free physical minimum 313 MB (12:22:12Z); no abort.
+    gate:clone: start 5 948 MB, minimum 4 279 MB (13:01:05Z), free physical
+    minimum 1 224 MB.
+SIZE (gate:clone): /calculateur-lamal-cmu 124.0 KiB, GATE A pass with 1.0 KiB
+    spare (B 1.6); /calculateur-teletravail-frontalier 124.9 KiB, 0.1 KiB
+    spare (B 0.7) - BLOCKED 11's margin, untouched by this change. The
+    change's own byte cost was not measured against base.
+
+====================================================================
+QUESTIONS
+====================================================================
+None that needs a ruling. One note for tasking N1's sites: the mechanism
+here (read the server's field once, in a layout effect, into state) fits the
+comparator form and the home counter as they are. The calculator form needs
+one more decision first: its mount effect seeds state from the URL
+(:397-435), so a field typed before hydration and a shared link's value can
+disagree, and which one wins is a product choice.
+
+====================================================================
+PUSH PROOF
+====================================================================
+- Branch fw-deadline-prehydration, base 41ddc9e (origin/main).
+- Code commit 38936bcf35751d22cae6191a25cdd4906cb98666, pushed: git ls-remote
+  origin refs/heads/fw-deadline-prehydration read 38936bc after the push.
+- The report commit is this file's commit, its parent 38936bc; pushed after
+  it (the hand-back gives its SHA).
+- gate:changed's printed selection (in the commit body):
+    GATE PASSED for the paths changed.
+    gate selection (R132):
+      2 path(s) matched:
+        web/app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx  ->  app/**
+        web/e2e/rappel-delai.spec.ts  ->  a spec file, which selects the suite it belongs to (R144)
+      suites: typecheck, lint, test, build, test:e2e, test:visual, test:late
+      measured: typecheck exit 0; lint exit 0; test 4012 passed; build exit 0;
+                test:e2e 387 passed; test:visual 174 passed; test:late 10 passed
+    STEP_EXIT=0. Lock: ACQUIRED 12:20:38Z commitFree=7205 line=6245;
+    RELEASED 12:44:40Z.
+- gate:clone ALONE on 38936bc: "GATE:CLONE PASSED", commit
+  38936bcf35751d22cae6191a25cdd4906cb98666, claim: "this commit builds and
+  passes register-coverage, fixture-coverage, install, typecheck, lint, test
+  (4012 of 4012 tests passed, 232 files), build, size (21 routes measured),
+  db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files),
+  test:container:write (10 checks passed) from a clean checkout"; exit 0.
+  Lock: ACQUIRED 12:57:31Z commitFree=5948 line=5876; RELEASED 13:10:21Z.
+- Cleanup, done before this report was committed: scratch database
+  monreleve_w18 dropped (and gate:clone's monreleve_gate_clone_38936bcf is
+  gone too: 0 of either left); web/.env removed; image monreleve:write - the
+  tag gate:clone's test:container:write built at 13:09:25Z, inside this
+  session's lock window - removed by exact name. The shared Playwright image
+  and the visual node_modules volume are kept (not this session's). The dev
+  servers were stopped by PID tree; port 3410 read free. The session lock is
+  removed after this report is pushed, last.
+
+END OF REPORT-FW-DEADLINE-PREHYDRATION

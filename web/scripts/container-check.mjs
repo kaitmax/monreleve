@@ -654,9 +654,9 @@ if (SHOULD_BUILD) {
     ['explains why a pinned build disappears', /bookworm-security/],
     ['lists a real version the archive offers', /chromium\s*\|\s*\d+\.\d+\.\d+/],
     // ONE PLACE, NOT TWO (R753). The Dockerfile ARG is the only source of
-    // truth since Coolify's override was deleted on 2026-10-14 (docs/deploy.md),
+    // truth (docs/deploy.md section 1 holds the record of Coolify's override),
     // so the diagnosis must name that ARG AND name no Coolify override: a
-    // message sending the operator to a variable that no longer exists is the
+    // message sending the operator to a variable deploy.md says to delete is the
     // undiagnosed failure in another form. One regex, so the count is unchanged.
     [
       'names the one place the version is set',
