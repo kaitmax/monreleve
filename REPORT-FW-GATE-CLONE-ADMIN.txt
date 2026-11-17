@@ -82,7 +82,7 @@ GREEN: 13 targeted files, 355 tests, including scratch-database-census,
 declaration-parity, entry-points, gate-covers-ci, french-literals, gate-selection and
 test-db-guard.
 
-The real run prints (gate:clone ALONE on 96de423, .gate-clone-admin-evidence/gate-clone-real.log):
+The real run prints (gate:clone ALONE on 96de423; excerpt, the whole output is the APPENDIX):
   --- pnpm test ---
   (14-line tail: 9 canvas warnings and 4 R348 lines from fixture-coverage.test.ts's own
   cases, as before)
@@ -233,7 +233,9 @@ R959 - NOTHING ELSE MOVES
 In `git diff 56b7116 96de423 -- web/scripts/gate-clone.mjs`:
 - every step's label, command, args and pattern is unchanged, and so is their order;
 - the only change to a tuple is the fifth element;
-- the sweep, the CANNOT_RUN_HERE list, the cleanup and signal paths are untouched;
+- the sweep and the CANNOT_RUN_HERE list are untouched; cleanup() and the signal handler
+  are unchanged; dropScratch() changed under R957 only, and now sends its DROP through
+  administer();
 - the 14-line tail stays;
 - the scratch URL is unchanged (pinned);
 - gate-selection.mjs and its test are untouched (rule 8);
@@ -257,6 +259,10 @@ N4. The calculator's GATE A margin, 0.1 KiB (124.9 of 125.0), is in gate:clone's
     the first time. That is BLOCKED 11 / W10's subject; nothing here touches it.
 N5. The size summary prints the table's blank line as four spaces (trailing whitespace in
     the log). Cosmetic.
+N6. A missing summary fails through the steps loop's existing failure path. So R955's NO
+    RESULT line is followed by that loop's standing text ("This is a defect a normal gate
+    cannot see: it passes on a machine that has a .env..."), which reads as a verdict on
+    the commit. The plant log shows it. Left as is (R959).
 
 ====================================================================
 DEVIATIONS
@@ -321,5 +327,237 @@ Evidence (outside the repository): C:/wt/fw-gate-clone-admin/.gate-clone-admin-e
   red-1.log, green-2.log, gate-changed-1.log, gate-changed-2.log (+ samples),
   gate-clone-plant-r955.log, gate-clone-real.log, gate-clone.samples.txt, plants/, probe/,
   capture/ (the vitest captures).
+
+====================================================================
+APPENDIX - gate:clone ALONE on 96de423, its output in full
+====================================================================
+From .gate-clone-admin-evidence/gate-clone-real.log. Its first and last lines are the
+chain script's own (the commit-free read and the end time); the rest is gate:clone. Changed
+to fit an ASCII report, and nothing else:
+- line 27, the clone's progress line (2401 characters of "Updating files" updates joined by
+  carriage returns), is replaced by a one-line note quoting its last update;
+- 83 characters from next build's and Prisma's output are transliterated: U+2714 -> +,
+  U+251C -> +, U+2514 -> +, U+2518 -> +, U+2502 -> |, U+2500 -> -, U+0192 -> f,
+  U+25CB -> o, U+25CF -> *.
+No credential appears in it; the admin line masks them.
+--------------------------------------------------------------------
+2026-11-17T01:42:53Z commitFree=8764 before the real run (line 5576); HEAD 96de423fb6ab011d7058fbe1c1d1b3d6c689f128
+$ node scripts/gate-clone.mjs
+gate:clone - what is being checked
+  commit    96de423fb6ab011d7058fbe1c1d1b3d6c689f128
+  subject   FW-GATE-CLONE-ADMIN (W6, R955-R959): gate:clone prints every suite's own count and administers its scratch database through postgres
+  branch    fw-gate-clone-admin
+  tree      clean - HEAD is everything you have
+  clone     C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-bEnPHZ
+  scrubbed  DATABASE_URL, RESEND_API_KEY, NEXT_PUBLIC_SITE_URL, FRONTALIER_RUNTIME, FRONTALIER_DEV_ROUTES, AUTH_SECRET, ANDROID_PACKAGE_NAME, ANDROID_SHA256_CERT_FINGERPRINTS
+  swept     no stale clones (older than 4h) found
+
+  resource envelope (R227):
+    cpus        8
+    vitest      maxWorkers 4 (R99's cap, from vitest.config.ts)
+    free memory 2358 MiB of 16195 MiB
+
+  named as unable to run in a clone (R133 - not silently omitted):
+    test:e2e     needs a Playwright browser download; runs locally via pnpm test:e2e
+    test:visual  needs the Playwright Docker container (R98); runs locally via pnpm test:visual
+    test:runtime needs a Playwright browser download
+    lighthouse   needs a Chrome binary and a served build
+    parity:check covered by typecheck here; the Node matrix is R201 workflow_dispatch from October
+    test:container selected locally when the container changed (R251). CI runs it too, but that job has never passed - see F-CI
+
+Cloning into 'C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-bEnPHZ'...
+done.
+[clone progress line removed (2401 characters); its last update: "Updating files: 100% (2268/2268), done."]
+--- node scripts/register-coverage.mjs (R327 register coverage) ---
+series taken: one letter A B C D E F G H I J K L M N O P Q R S T U V W X Y Z; two letters CA FT HA IA IB IE IF PB PI TG; PARK-<n> up to 32; PARKAN-<n> up to 50; two-letter series held by phantom citations: FW ZZ
+register coverage: OK - 230 cited id(s) across 171 report(s), all have headings in parking.md
+
+--- node scripts/fixture-coverage.mjs (R348 fixture coverage) ---
+fixture coverage: OK - 7 section(s) across 6 file(s), each consumed by every engine that reads its file
+
+--- pnpm install --frozen-lockfile ---
++ stylelint-declaration-strict-value 1.12.1
++ typescript 5.9.3
++ typescript-eslint 8.69.0
++ vitest 5.0.0
++ vitest-axe 0.1.0
+
+. postinstall$ node node_modules/prisma/build/index.js generate
+. postinstall: Loaded Prisma config from prisma.config.ts.
+. postinstall: Prisma schema loaded from prisma\schema.prisma.
+. postinstall: + Generated Prisma Client (v7.10.0) to .\node_modules\.pnpm\@prisma+client@7.10.0_prism_cb37a646768690139b50f73a8af6fd9e\node_modules\@prisma\client in 271ms
+. postinstall: Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+. postinstall: Done
+Done in 40.8s using pnpm v11.17.0
+
+--- pnpm typecheck ---
+$ tsc --noEmit && tsc -p tsconfig.scripts.json
+
+--- pnpm lint ---
+$ eslint . && stylelint "{app,lib}/**/*.scss"
+
+--- pnpm test ---
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+R348: a shared fixture section is not consumed by every engine that reads its file:
+  - demo.json: web (TypeScript) reads this file but NOT its section "cases" (consumed by neither engine) - a shared section one engine does not read is the mission-cap near-miss (R348)
+R348: a shared fixture section is not consumed by every engine that reads its file:
+  - orphan.json is in fixtures/ but NO engine's test suite reads it - an orphan fixture cannot catch a divergence (R133/R246)
+
+  summary (R955, read from the whole output, not the tail):
+     Test Files  222 passed (222)
+          Tests  3823 passed (3823)
+--- pnpm build ---
++ First Load JS shared by all                      103 kB
+  + chunks/07a4fdd4-f1d5997dc924bfcd.js           54.2 kB
+  + chunks/5355-be9623b1a110402b.js               46.5 kB
+  + other shared chunks (total)                   2.06 kB
+
+
+f Middleware                                      35.1 kB
+
+o  (Static)   prerendered as static content
+*  (SSG)      prerendered as static HTML (uses generateStaticParams)
+f  (Dynamic)  server-rendered on demand
+
+$ node scripts/copy-fonts.mjs && next build
+
+--- pnpm size ---
+/releve-annuel                                public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+/releve/print                                 public      102.0     1.4    7.6   47.1  pass (A 23.0 spare, B 23.6 spare)
+/sources                                      public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+/tarifs                                       public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+/verifier/[code]                              public      108.3     7.7    3.5   47.1  pass (A 16.7 spare, B 17.3 spare)
+-------------------------------------------------------------------------------------------------------------------------------
+css   reported, never gated: it is not JS.
+fonts reported, never gated: 47.1 KiB preloaded (latin subset), 130.2 KiB across 2 file(s) on disk. woff2 is already compressed.
+polyfills excluded: 38.6 KiB gzip / 110.0 KiB raw, served nomodule.
+framework floor: 100.6 KiB, measured on next 15.5.25 / react 19.2.8, 07.09.2026.
+
+All gated routes pass both gates.
+$ node scripts/check-budgets.mjs
+
+  summary (R955, read from the whole output, not the tail):
+    First-load JS per route (gzip level 9). Ruling R2 gates:
+      GATE A  total <= 125.0 KiB
+      GATE B  delta <= 25.0 KiB over the 100.6 KiB framework floor
+    
+    route                                         bucket   js total   delta    css  fonts  verdict
+    -------------------------------------------------------------------------------------------------------------------------------
+    /                                             public      114.0    13.4   14.7   47.1  pass (A 11.0 spare, B 11.6 spare)
+    /_not-found                                   public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+    /a-propos                                     public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+    /alertes                                      public      108.5     7.9   14.7   47.1  pass (A 16.5 spare, B 17.1 spare)
+    /alertes/confirmation/[etat]                  public      108.3     7.7    7.9   47.1  pass (A 16.7 spare, B 17.3 spare)
+    /alertes/desinscription/[etat]                public      108.3     7.7    7.9   47.1  pass (A 16.7 spare, B 17.3 spare)
+    /application                                  public      108.4     7.8    8.5   47.1  pass (A 16.6 spare, B 17.2 spare)
+    /calculateur-lamal-cmu                        public      122.7    22.1   14.7   47.1  pass (A 2.3 spare, B 2.9 spare)
+    /calculateur-teletravail-frontalier           public      124.9    24.3   14.7   47.1  pass (A 0.1 spare, B 0.7 spare)
+    /calculateur-teletravail-frontalier/resultat  public      109.8     9.2   14.7   47.1  pass (A 15.2 spare, B 15.8 spare)
+    /cgu                                          public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+    /confidentialite                              public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+    /guides                                       public      108.3     7.7    8.4   47.1  pass (A 16.7 spare, B 17.3 spare)
+    /guides/[slug]                                public      109.7     9.1   14.7   47.1  pass (A 15.3 spare, B 15.9 spare)
+    /mentions-legales                             public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+    /releve-annuel                                public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+    /releve/print                                 public      102.0     1.4    7.6   47.1  pass (A 23.0 spare, B 23.6 spare)
+    /sources                                      public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+    /tarifs                                       public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+    /verifier/[code]                              public      108.3     7.7    3.5   47.1  pass (A 16.7 spare, B 17.3 spare)
+    -------------------------------------------------------------------------------------------------------------------------------
+
+--- database: scratch database monreleve_gate_clone_96de423f created ---
+  admin     postgresql://<credentials>@localhost:5436/postgres (R957: DATABASE_URL's host, port and credentials, never its database)
+--- pnpm db:deploy ---
+|  Update available 7.10.0 -> 8.0.0-rc.34                 |
+|                                                         |
+|  This is a major update - please follow the guide at    |
+|  https://pris.ly/d/major-version-upgrade                |
+|                                                         |
+|  Run the following to update                            |
+|    npm i --save-dev prisma@latest                       |
+|    npm i @prisma/client@latest                          |
++---------------------------------------------------------+
+.env not found. Continuing without it.
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+
+--- pnpm test:db ---
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+.env not found. Continuing without it.
+
+[export-pdf] R133: the render tests did not run - no server answered http://localhost:3720/api/health - start one with `pnpm dev` (R170: set FRONTALIER_PORT to move it)
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+
+[verification-qr] R133: the render tests did not run - no live server - no server answered http://localhost:3720/api/health - start one with `pnpm dev` (R170: set FRONTALIER_PORT to move it)
+
+
+  summary (R955, read from the whole output, not the tail):
+     Test Files  49 passed | 3 skipped (52)
+          Tests  722 passed | 26 skipped (748)
+--- pnpm test:container:write ---
+#24 exporting layers
+#24 exporting layers 3.7s done
+#24 exporting manifest sha256:f10c6f1de69e243da507f79c0aa60b8fb2f0e636780048bb510fcee27f1594e5 0.0s done
+#24 exporting config sha256:b84c98589c780e496b06d0c44cd890c446b1846d3aa5938e33b7a074c5918176 0.0s done
+#24 exporting attestation manifest sha256:73a105a0c1f1e745b090b1064853d6d7a39bf8d75e3e612bb767563f5406e643 0.0s done
+#24 exporting manifest list sha256:776030f2615473f1315b5593a5094744c2f6df014f20f3ab195a3f7f8bce857a 0.0s done
+#24 naming to docker.io/library/monreleve:fw-gate-clone-admin
+#24 naming to docker.io/library/monreleve:fw-gate-clone-admin done
+#24 unpacking to docker.io/library/monreleve:fw-gate-clone-admin
+#24 unpacking to docker.io/library/monreleve:fw-gate-clone-admin 2.2s done
+#24 DONE 6.1s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/o40hrcg1lnl1d5oep1hm3xwz3
+
+  summary (R955, read from the whole output, not the tail):
+    Production write checks  10 passed (10)
+
+GATE:CLONE PASSED
+
+  CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+  commit  96de423fb6ab011d7058fbe1c1d1b3d6c689f128
+  clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-bEnPHZ (removed)
+  ran     register-coverage, fixture-coverage, install, typecheck, lint, test (3823 of 3823 tests passed, 222 files), build, size (20 routes measured), db:deploy, test:db (722 of 748 tests passed, 26 skipped, 52 files), test:container:write (10 checks passed)
+
+  claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (3823 of 3823 tests passed, 222 files), build, size (20 routes measured), db:deploy, test:db (722 of 748 tests passed, 26 skipped, 52 files), test:container:write (10 checks passed) from a clean checkout -
+          a machine with no .env, no prior node_modules and no generated
+          file this run did not produce itself.
+
+  NOT RUN HERE, AND THE CLAIM EACH ONE IS THEREFORE NOT MAKING:
+    test:e2e
+      why   needs a Playwright browser download; runs locally via pnpm test:e2e
+      SO    no claim about the product in a real browser
+    test:visual
+      why   needs the Playwright Docker container (R98); runs locally via pnpm test:visual
+      SO    no claim that any page still looks the way its baseline says
+    test:runtime
+      why   needs a Playwright browser download
+      SO    no claim about the runtime guard (R81)
+    lighthouse
+      why   needs a Chrome binary and a served build
+      SO    no claim about performance, and none about SPEC 21 LCP
+    parity:check
+      why   covered by typecheck here; the Node matrix is R201 workflow_dispatch from October
+      SO    no claim about Node versions other than this one
+    test:container
+      why   selected locally when the container changed (R251). CI runs it too, but that job has never passed - see F-CI
+      SO    no claim about the image beyond what the production-write suite above proves
+STEP_EXIT=0
+2026-11-17T01:54:19Z real run ends
+--------------------------------------------------------------------
 
 END OF REPORT
