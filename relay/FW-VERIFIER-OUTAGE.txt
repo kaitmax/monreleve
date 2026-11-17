@@ -1,0 +1,112 @@
+FW-VERIFIER-OUTAGE SESSION PROMPT - Mon Releve
+/verifier/[code] DEGRADES, WITHOUT A WORD ABOUT THE CODE, WHILE THE
+DATABASE IS DOWN (web run step W14)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W14 (Web Rulings 13, 14 and 18). Read
+first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-verifier-outage, branch
+  fw-verifier-outage, report REPORT-FW-VERIFIER-OUTAGE.txt;
+- REPORT-FW-DB-STOPPED.txt on main: R946's measurements, the candidate
+  under DEFECTS, and QUESTION 3;
+- relay/RULINGS-2026-11-16.txt: Web Rulings 13, 14 (item 2) and 18;
+- CLAUDE.md: R154, R155, R160, R165, R168, R180, R181, R196, R206, R225.
+Ruling numbers for this task: R1021-R1025.
+
+====================================================================
+THE TASK
+====================================================================
+Measured by W4 (REPORT-FW-DB-STOPPED.txt):
+- /verifier/[code] is public, noindex, and not in the sitemap.
+- With the database running it answers 200 with its heading. With the
+  database stopped it answers 500 with NO heading.
+- The app has no error page of its own above it, so a reader who checks
+  a releve's code during an outage gets the framework's bare error.
+
+R1021. WHAT THE PAGE DOES TODAY, READ. Read page.tsx,
+    VerificationContent.tsx and the module that looks the code up.
+    - Name where the database is read and what a thrown error does.
+    - Name what the unknown-code state renders, by its copy key.
+    - Quote file:line for each.
+
+R1022. THE DEGRADED STATE (Web Ruling 14 item 2).
+    - With the database unreachable, the page renders its own heading and
+      ONE sentence: verification is temporarily unavailable; try again
+      later.
+    - It says NOTHING about the code or the document: no unknown,
+      invalid or not-found wording, and no claim about validity (R160's
+      shape: claim no more than the record supports).
+    - The sentence is NEW. It lives in lib/fr/verification.ts, fully
+      accented (R155), and is separate from the unknown-code copy (R165).
+      Its wording goes to the operator in the report's QUESTIONS.
+    - noindex is unchanged. The degraded answer is never cached as the
+      page's answer; say how.
+    - THE STATUS. 503 is the target. If the framework offers no supported
+      way for this page to answer 503, STOP at R1022 and hand back the
+      choice with what you measured. "Supported" means no hack, no new
+      dependency, and no second route invented for it. The choices to
+      hand back:
+      (a) 200 with noindex and no-store;
+      (b) 500 through an error boundary that renders the heading and the
+          sentence;
+      (c) anything else the framework does support.
+      Do not pick.
+    - ONLY a database that cannot be reached takes this path. Any other
+      error keeps today's behaviour, so a code defect is never dressed up
+      as an outage. Say how the two are told apart.
+
+R1023. BOTH DIRECTIONS (R196, R225).
+    - Database stopped: the degraded state, and NOT the unknown-code text.
+    - Database up, unknown code: unchanged. The existing unknown-code
+      baselines pass untouched.
+    - Database up, known code: unchanged.
+    - The stopped case's positive test lives in W4's verdict module,
+      web/scripts/container-db-stopped-verdict.mjs. /verifier/<code>
+      moves from "not judged" to judged: status, heading and sentence,
+      the last two read from lib/fr (R181: derived, never typed). Its
+      unit test, tests/unit/meta/container-db-stopped-verdict.test.ts,
+      covers both outcomes.
+    - A test in `pnpm test` also drives the degraded branch WITHOUT
+      Docker (a database client that cannot connect), so the state is
+      asserted on every gate, not only in the container suite.
+
+R1024. A VERIFIED PLANT (R180). Remove the degraded branch, so the page
+    throws again, and show that both the `pnpm test` case and the
+    container step go RED, each by name. Then restore and verify the
+    restore.
+
+R1025. NOTHING ELSE MOVES.
+    - No baseline is regenerated. The visual suite cannot stop a
+      database, so prefer no new visual state. If you add one, name it
+      first (R207) and say why it is needed.
+    - No other page, no API route, and no lib/auth file: W13 and W12 own
+      those.
+    - W4's checks of every other route are unchanged. The verdict's
+      count grows only by the verifier's checks.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree from the BASE_SHA in the launch message; lock.
+1. R1021 (read).
+2. R1022 and R1023, test-first: the RED first.
+3. R1024's plant.
+4. gate:changed. It selects test:container:e2e, test:e2e and
+   test:visual, so take the line from the launch message. Commit; push
+   the branch.
+5. gate:clone ALONE on the tip; push.
+6. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-VERIFIER-OUTAGE.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1021-R1025 with evidence / WALKTHROUGH
+(R176: pnpm dev with a known code, an unknown code, and the degraded
+state. Reach the degraded state by pointing DATABASE_URL at a port
+nothing listens on. NEVER stop frontalier-postgres: other worktrees'
+scratch databases live in it) / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS (the new sentence's wording, for the operator) / PUSH PROOF
+
+END OF FW-VERIFIER-OUTAGE PROMPT

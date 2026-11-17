@@ -828,3 +828,117 @@ DECISION (the orchestrator, under Web Rulings 9 and 10):
 3. The run's records keep `_wt-setup` in relay/ only, so W8's census
    stays true.
 APPLIED: these records join round 2's record commit.
+
+====================================================================
+WEB RULING 17 - W11 VERIFIED; ROUND 3 IS W10a + W8 + W11; W7 AMENDED
+(R1020); THE PROMOTABLE TIP
+====================================================================
+EVIDENCE:
+- W11: fw-delai-rappel fe82ec6 (code 5cbc815; base 17270f3 + 764ef54).
+  Its last gate:changed: test 3 782, visual 174, e2e 381, db 806 (+26
+  skipped), late 10. Its gate:clone ALONE on 5cbc815 PASSED.
+- V1: 73 files read against the claims. The migration is additive only
+  (one new table and its CHECKs). The cascade census over its SCSS
+  finds no new pair (Web Ruling 14 item 5). It touches no selector or
+  gate script (git diff --name-only 17270f3 origin/fw-delai-rappel), so
+  the label census cannot double-count. merge-tree is clean against
+  main, W4, W10a and W8.
+- W11's DEFECT 1: web/scripts/visual.mjs counts "<path> is re-generated,
+  writing actual." but not "A snapshot doesn't exist at <path>, writing
+  actual.", so new baselines are missing from the printed list and an
+  all-new regeneration exits "WROTE NOTHING" (h3-regen.log:507, 524).
+- V3: the advisor passed W10a and W11 and approved one round.
+DECISION (the advisor, under "Advisor decides"; overturnable by the
+operator):
+1. ROUND 3 is one octopus merge of W10a, W8 and W11 on round 2's tip.
+   - Run db:deploy on monreleve_web_orch after staging, and confirm it
+     lists 20261112120000_deadline_reminder.
+   - The LINE comes from the staged merge's own --print, read after
+     db:deploy, since the sessions' selections were made against older
+     selectors. If test:container:e2e is selected together with test:db,
+     that is the 6 745 pair (7 645 with three others): decide how to run
+     it before acquiring. If test:container:e2e is NOT selected, the
+     round's build table must keep the static marker that the comparator
+     and /alertes carry in round 2's log; if either changed, the
+     container suite runs in the same hold. Until then, W4's "local half
+     met" is not extended to the new tip.
+   - EXPECTED: test 3 980 (3 908 + W8's 14 + W11's 58, the latter
+     against 3 724, W1's merge count, the nearest measurement of
+     17270f3); test:db 816 passed / 27 skipped (724 + W11's 92, against
+     714 at W2's merge); test:visual 174 with NOTHING regenerated;
+     test:e2e 381; test:late 10. A different count is reconciled FILE BY
+     FILE before it is called a finding, since two of these bases were
+     inferred rather than run.
+   - A RED in the reminder specs is the ENVIRONMENT first (did db:deploy
+     list the migration?). A baseline red STOPS the round: nothing is
+     regenerated in web-orch, and the merge is restaged without W11 to
+     find the owner.
+2. W5 launches from round 3's tip, not e75b70c: R951 puts the
+   comparator on the 100 floor, and W11 changes that page.
+3. W11's DEFECT 1 is added to W7 now, by message, as R1020: the counter
+   recognises both lines and says which is which; a positive test is fed
+   lines copied from W11's evidence (read-only); the R208 refusal still
+   fires when neither kind appears; a verified plant. It is W7's file,
+   and W12's 109-file regeneration depends on that list (R207).
+4. W8's Q1: YES. A session may run the guarded _mint-readback.mjs on its
+   OWN monreleve_<task> database, and its walkthrough says so.
+5. W10a's Q1 (the test build's CSS chunking differs from production's)
+   is recorded until W12 merges. No task now.
+6. C9's questions (Q1, Q2, Q4) are not answered yet: W12 is two merges
+   away. They come back with the R898 text and api-v1 sections 1.5 and
+   1.6 open.
+7. THE PROMOTABLE TIP: e75b70c, once pushed, is the last tip without
+   W11. Every later merge stacks on W11, whose form renders
+   unconditionally (R1007). So the operator's choice is e75b70c, or a
+   later tip together with BLOCKED 6's two settings. Operator item 6.
+APPLIED: these records join round 3's record commit.
+
+====================================================================
+WEB RULING 18 - ROUND 2 ON MAIN; ROUND 3 STAGED; W14 LAUNCHED AHEAD OF
+W13
+====================================================================
+EVIDENCE:
+- gate:clone under the priority lock on e75b70c PASSED: test 3 908 of
+  3 908; test:db 724 of 751, 27 skipped; size 20 routes;
+  test:container:write 10 checks; start 7 143 MB, minimum 5 777 MB.
+  main was pushed bfdb1d4..e75b70c at 05:13Z.
+- Round 3 staged on e75b70c: `git merge --no-ff --no-commit
+  origin/fw-cascade-order origin/fw-wt-setup-guard
+  origin/fw-delai-rappel` reported "Automatic merge went well".
+  comparateur.module.scss merged automatically and holds both W10a's
+  `.form > :not(:first-child)` and W11's reminder rules.
+- db:deploy on monreleve_web_orch found 16 migrations and applied
+  20261112120000_deadline_reminder.
+- The staged merge's own --print: 82 paths; suites typecheck, lint,
+  test, build, test:visual, test:e2e, test:db, test:late. It does NOT
+  select test:container:e2e.
+- Round 2's host build marks /calculateur-lamal-cmu and /alertes static
+  (the round-2 log's route table).
+- C9's saved increment (C:/wt/fw-web-account/.webaccount-evidence/
+  gated-tree/status.txt, read only) edits lib/auth/tokens.ts, which
+  holds FINDING 1's inspectAccessToken, and app/api/v1/auth/code. It
+  edits no verifier file and not lib/fr/verification.ts. It does
+  regenerate the page-verifier-inconnu baselines for its header link.
+DECISION (the orchestrator, under Web Rulings 7 and 17):
+1. Round 3's line is 6 245: e2e + visual's 5 045, plus 1 200 for up to
+   four other live sessions. test:db's 4 542 is below it.
+2. Web Ruling 17 item 1's container condition is read from the round's
+   build table. If /calculateur-lamal-cmu or /alertes is no longer
+   static, test:container:e2e runs in the same hold. Otherwise W4's
+   "local half met" stays tied to e75b70c and is not claimed for round
+   3's tip.
+3. W14 FW-VERIFIER-OUTAGE launches NOW, from e75b70c, ahead of W13.
+   - Why: W13 must wait for W12, because both edit lib/auth/tokens.ts.
+     W14 shares no file with W12's increment, so it can use the idle
+     capacity.
+   - W14 and W13 still never run side by side, as Web Ruling 14 item 3
+     requires: W13 starts only after W12 merges.
+   - W14 must not regenerate the page-verifier-inconnu baselines; W12
+     regenerates them for its header link.
+   - Its prompt is relay/FW-VERIFIER-OUTAGE.txt (R1021-R1025). Until
+     round 3's record commit lands, it lives in the orchestrator's
+     worktree.
+   - W13 takes R1026-R1030 when it launches.
+4. From here, every launch's lines carry +1 200 (four other live
+   sessions: W9, W7, W14, then W5 and W10b).
+APPLIED: these records join round 3's record commit.
