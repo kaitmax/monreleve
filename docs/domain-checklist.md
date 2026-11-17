@@ -140,29 +140,59 @@ address it cannot confirm.
 
 ## 3. Resend sending domain + DNS (SPF, DKIM, DMARC)
 
-**Measured 2026-10-06** (authoritative NS: Cloudflare): **no** SPF, DKIM, DMARC, or
-MX records resolve for `monreleve.ch` **or** `notifications.monreleve.ch`. The
-sending domain is not set up, so even with a key, double opt-in lands in spam and
-the list silently stops growing (deploy.md section 8 N3).
+**The sending domain is the one `MAIL_DOMAIN` holds** in
+`web/lib/content/identity.ts`; the senders in `web/lib/fr/emails.ts` are built
+on it. This item names the constant, not its value, so read the domain there.
+The code moved off a sending subdomain on 2026-10-14 (dcac1df), and the
+constant's comment records why.
+
+**Readings** (dated records: none is this item's proof, and none says it is done):
+
+- **2026-10-06** (authoritative NS: Cloudflare): **no** SPF, DKIM, DMARC, or MX
+  records resolved for `monreleve.ch` **or** `notifications.monreleve.ch`, the
+  subdomain the code sent from then.
+- **2026-10-14**: `MAIL_DOMAIN`'s comment records what was measured in
+  production that day.
+- **2026-11-17, about 09:10Z, from the session's own machine.** One PC's view
+  through its own network path - not proof of what the world sees, and nothing
+  about what Resend shows. Queried with `nslookup` addressed to 8.8.8.8, with
+  the system resolver (10.2.0.1), and over HTTPS (`https://dns.google/resolve`);
+  the three agreed. Queries addressed to 1.1.1.1 all timed out, the control
+  included, so that resolver gave no result. Controls: `_dmarc.google.com` TXT
+  returned its record; a never-used name under `monreleve.ch` returned NXDOMAIN.
+
+  | Queried | Answer |
+  |---|---|
+  | `notifications.monreleve.ch` A, TXT | NXDOMAIN |
+  | `resend._domainkey.monreleve.ch` TXT | one record, beginning `p=MIGfMA0G` |
+  | `monreleve.ch` TXT | one record, a `google-site-verification=` token |
+  | `monreleve.ch` MX | `10 inbound-smtp.eu-west-1.amazonaws.com` |
+  | `_dmarc.monreleve.ch` TXT | NXDOMAIN |
+  | `send.monreleve.ch` TXT, MX | CNAME to `send.forge.rmta.net`, which answers TXT `v=spf1 ip4:52.3.252.119 ip4:44.222.39.36 ip4:199.249.231.0/24 ~all` and MX `10 feedback.forge.rmta.net` |
+
+Without these records, even with a key, double opt-in lands in spam and the list
+silently stops growing (deploy.md section 8 N3).
 
 **What to do:**
 
-1. In Resend, add and verify the sending domain **`notifications.monreleve.ch`**.
+1. In Resend, add and verify the sending domain: **the domain `MAIL_DOMAIN`
+   holds** (above).
 2. Resend then shows the **exact** SPF (`TXT`), DKIM (`TXT`, e.g.
-   `resend._domainkey.notifications...`) and MX records. **Copy them verbatim**
-   into Cloudflare DNS. Do **not** invent them - the values are Resend's.
+   `resend._domainkey.<MAIL_DOMAIN>`) and MX records. **Copy them verbatim**
+   into Cloudflare DNS. Do **not** invent them - the names and values are Resend's.
 3. Add a DMARC record at `_dmarc.monreleve.ch` (at minimum
    `v=DMARC1; p=none; rua=mailto:<you>`).
 
-**Proof** (each must return a record):
+**Proof** (each must return a record). `<MAIL_DOMAIN>` stands for the
+constant's value; query each record by the exact name Resend lists for it:
 
 ```
-nslookup -type=TXT notifications.monreleve.ch 8.8.8.8                       # SPF
-nslookup -type=TXT resend._domainkey.notifications.monreleve.ch 8.8.8.8     # DKIM (selector per Resend)
-nslookup -type=TXT _dmarc.monreleve.ch 8.8.8.8                             # DMARC
+nslookup -type=TXT <SPF name Resend lists for MAIL_DOMAIN> 8.8.8.8     # SPF
+nslookup -type=TXT <DKIM name Resend lists for MAIL_DOMAIN> 8.8.8.8    # DKIM (selector per Resend)
+nslookup -type=TXT _dmarc.monreleve.ch 8.8.8.8                         # DMARC
 ```
 
-and the Resend dashboard shows the domain **Verified**.
+and the Resend dashboard shows that domain **Verified**.
 
 ---
 
