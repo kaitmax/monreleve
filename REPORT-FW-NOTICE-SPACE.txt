@@ -20,11 +20,12 @@ regenerated, named first, and the produced set equals the expected set.
 ====================================================================
 STATUS (R391)
 ====================================================================
-COMPLETE on the code commit b27d1896ada8c2b7e8e0ab52190ece7ba7376a35:
-gate:changed GATE PASSED (exit 0) and gate:clone GATE:CLONE PASSED (exit 0),
-both run in this session on that commit's tree. Pending merge: the
-orchestrator merges. This report rides in a later commit on the same branch
-(report only, no code).
+COMPLETE on the code tip 13bec935b5e5c892ffd1d09245160260d6a9b2ab: gate:changed
+GATE PASSED (exit 0) on its tree and gate:clone GATE:CLONE PASSED (exit 0) on
+that exact commit, both in this session. The fix and baselines are b27d1896
+(gate:changed with e2e and visual, and gate:clone, both passed on it too).
+Pending merge: the orchestrator merges. The report commit on top is report
+only, no code.
 
 ====================================================================
 R1061 - THE CAUSE, FOUND, AND A TEST FIRST
@@ -45,8 +46,12 @@ R1061 - THE CAUSE, FOUND, AND A TEST FIRST
 - Every site of the pattern (R267), swept by tag and by class:
   - JSX multiline grep for an inline close followed by text or an expression
     on the next line (span, strong, b, em, a, abbr, code) in app, lib, components;
-  - every *.module.scss class that sets font-weight, mapped to its JSX and
-    its neighbours;
+  - every *.module.scss class in app and lib/ui that sets font-weight, mapped
+    to its JSX and its neighbours (a first pass opened about a dozen; the
+    report's first version said "every" too early, and the sweep was then
+    completed: the rest are block elements - headings, paragraphs, legends,
+    labels, dt/th cells, figcaptions - or icon/suffix spans, or the ones
+    named below);
   - content/guides for **bold**Word and </strong>Word.
   Bold-lead-with-text sites found, all included in the test:
   1. the provisional notice, P1 and P3 (CalculatorForm.tsx) - BROKEN;
@@ -54,7 +59,14 @@ R1061 - THE CAUSE, FOUND, AND A TEST FIRST
      (app/(public)/calculateur-lamal-cmu/page.tsx:180) - correct;
   3. the deadline helper's step 1 (<strong> lead, {' '}, text) and step 2
      (text, {' '}, <strong> date) (calculateur-lamal-cmu/DeadlineHelper.tsx:103-114)
-     - correct.
+     - correct;
+  4. the comparator's result figures: the bold amount, {' '}, its "per year"
+     (lib/ui/react/Comparison/ComparisonPanel.tsx:115 Figure, :349 the French
+     side) - correct. Found by the completed sweep and added in a second
+     commit (13bec935). A verified plant (R180: the {' '} at :115 removed,
+     the diff confirmed, then restored and the diff confirmed empty) fails
+     that case alone: after "2 718 EUR": expected 'pa' to match
+     /^ [^ \t\n\r]/u - 1 failed, 8 passed.
   Examined and not the pattern: ComparisonPanel's attribution and priminfo
   links and /sources' premiums line (the copy ends in a space or no-break
   space); ComparisonPanel rateLead + <strong> (lead ends in a space, the bold
@@ -68,7 +80,8 @@ R1061 - THE CAUSE, FOUND, AND A TEST FIRST
   fail; no \s folding, the copy carries no-break spaces, R91). For the notice
   it also asserts each entry's whole text equals
   interpretation + ' ' + body + ' ' + readMore, composed from PROVISIONAL_COPY
-  (R181). Cases: P1, P3, P1 and P3 at once; the limits list; both deadline steps.
+  (R181). Cases: P1, P3, P1 and P3 at once; the limits list; the result
+  figures; both deadline steps (9 tests).
 - RED (base code, the new test only), .fw-notice-space-evidence/red.log:
       x P1 / P3 / P1 and P3 at once: each entry reads name, one space, sentence
       x P1 / P3 / P1 and P3 at once: the bold name is followed by exactly one space
@@ -158,13 +171,30 @@ GATES
     from a clean checkout"
   GATE:CLONE PASSED, STEP_EXIT=0. Not run there, by its own list: test:e2e,
   test:runtime, lighthouse (browser or Chrome), the Node matrix, test:container.
+- gate:changed again for 13bec935's tree (the extended test), under the lock
+  (acquired 22:54:52Z, commitFree 7 153, line 4 600; released 23:02:12Z),
+  web/.env absent. Selection, pasted:
+    no path matched the selector - base chain only
+    suites: typecheck, lint, test, build
+  GATE PASSED for the paths changed: test 4111 passed. STEP_EXIT=0.
+- gate:clone ALONE on 13bec935, under the lock (acquired 23:16:54Z, commitFree
+  7 432, line 5 300; released 23:31:13Z). Tree DIRTY by 1 path NOT in the run
+  (this report, uncommitted then). Claim, pasted:
+    "this commit builds and passes register-coverage, fixture-coverage,
+    install, typecheck, lint, test (4111 of 4111 tests passed, 241 files),
+    build, size (21 routes measured), db:deploy, test:db (816 of 843 tests
+    passed, 27 skipped, 60 files), test:container:write (10 checks passed)
+    from a clean checkout"
+  GATE:CLONE PASSED, STEP_EXIT=0.
 - WALKTHROUGH (R176), under the lock (acquired 22:37:17Z, line 4 600):
   pnpm dev on PORT=3600. /api/health answered
   {"service":"monreleve",...,"status":"ok",...} (R169). GET
   /calculateur-teletravail-frontalier?canton=GE&tt=40&taux=80&mfr=6&mtiers=4
   served 149 302 B, with NO provisional notice in the HTML (0 matches for
-  data-notice="provisional", 0 for "missionVos"): the notice is derived from
-  client state after mount, so a fetch cannot see it. The notice was driven
+  data-notice="provisional", 0 for "missionVos"). The served form carries
+  the defaults, not the link's values (#jours-teletravail value="0"), so the
+  link is applied in the browser and a fetch cannot see the notice. The
+  notice was driven
   in a real browser by the visual run (the state fills the form, R1063) and
   by jsdom in the test; the dev-server drive is therefore NO RESULT for the
   notice itself. The dev tree I spawned (pnpm dev -> next dev, PIDs
@@ -190,9 +220,34 @@ DEVIATIONS
 - D1. R176's walkthrough could not show the notice from the dev server (see
   WALKTHROUGH): the browser drive of the notice is the visual run's, against
   the container's server, not pnpm dev.
-- D2. web/.env was absent for the visual run and gate:changed (as W23's N4),
-  and present only for gate:clone, written by script from the main checkout's
-  file, never printed, and removed at the end.
+- D2. web/.env was absent for the visual run and both gate:changed runs (as
+  W23's N4). It was written by script from the main checkout's file, never
+  printed, for each gate:clone - and it was ALSO still present during the
+  walkthrough's `pnpm dev`, which this report's first version did not say.
+- D3. THE WALKTHROUGH'S DEV SERVER RAN THE SCHEDULER ON THE SHARED DEVELOPMENT
+  DATABASE. With web/.env present, `pnpm dev` read DATABASE_URL = localhost:5436
+  database `frontalier` (the shared development database, not production, not
+  a scratch one) and its scheduler started and ran for about one minute
+  (22:37:49Z-22:38:40Z). dev.log, verbatim:
+    [push] no Firebase credentials: reminders will be PRINTED to this terminal
+      and delivered to nobody (development only).
+    [scheduler ...] scheduled: purge-unconfirmed, purge-code-attempts,
+      daily-reminder, deadline-reminder
+    [purge] older than 30 days (2026-10-18T22:37:49.399Z): considered 3
+      unconfirmed, deleted 0, kept 0 unsubscribed and 3 too recent  (x3)
+    [code-attempts] older than 2026-11-16T22:37:49.182Z: considered 9, deleted 9
+  So the purge-code-attempts job DELETED 9 rows (sign-in code attempts older
+  than 24 h) from `frontalier`. That is the job's own retention rule, and any
+  `pnpm dev` with that .env does the same, but this session did not create
+  those rows and did not intend the write (R334's spirit). No reminder line
+  was printed; nothing was sent. Should have been run without web/.env.
+  Recorded for the operator; nothing was restored (there is nothing to
+  restore from, and the rows were expired by the product's own rule).
+- D4. The report's first version (445a61da) overstated three things - the
+  font-weight sweep ("every"), web/.env ("present only for gate:clone",
+  "removed at the end" before it was), and the walkthrough's cause (asserted).
+  This version corrects them; the sweep's completion added one test case
+  (13bec935), re-gated.
 
 ====================================================================
 QUESTIONS
@@ -202,12 +257,20 @@ QUESTIONS
   decision, outside R1062.
 
 ====================================================================
+DEFECTS
+====================================================================
+- None open. The one product defect (the run-in notice) is fixed here. D3 is
+  a session incident, recorded above, not a product defect.
+
+====================================================================
 PUSH PROOF
 ====================================================================
 - Code: `git push -u origin fw-notice-space` -> "* [new branch]
   fw-notice-space -> fw-notice-space" at b27d1896ada8c2b7e8e0ab52190ece7ba7376a35,
   before gate:clone; gate:clone then ran on that same commit.
-- This report: committed on b27d1896 and pushed to origin/fw-notice-space;
-  a report cannot carry its own SHA, so the session's final message gives
-  it, read back with git ls-remote.
+- Report v1: 445a61da on b27d1896, pushed (b27d1896..445a61da).
+- Extended test: 13bec935, pushed after its gate:clone passed.
+- This report (v2): committed on 13bec935 and pushed; a report cannot carry
+  its own SHA, so the session's final message gives it, read back with
+  git ls-remote.
 - NOT merged to main (the orchestrator merges).
