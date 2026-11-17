@@ -38,6 +38,7 @@ import { fileURLToPath } from 'node:url';
 import { DEV_DIST_DIR } from './dev-routes.mjs';
 import { refuseIfTreeLocked } from './tree-lock.mjs';
 import { readSizeMarker, shippingMarkerRefusal } from './size-marker.mjs';
+import { REGISTRY_SOURCE, checkRegistryInClient } from './client-registry-leak.mjs';
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /**
@@ -457,6 +458,27 @@ console.log(
 );
 console.log('');
 
+// RULING R976 (FW-CALC-BYTES): THE ROUTE REGISTRY NEVER REACHES THE BROWSER.
+//
+// Every registered route used to ship to every public page, in a chunk the
+// shell, the calculator's form and its result panel all imported - so a new
+// route entry cost bytes on the page with the least GATE A spare (QUEUE-STATE
+// BLOCKED 11). The shell now
+// resolves liveness on the server; this reads every client chunk of the build
+// measured above and fails if one carries a string only the registry holds.
+// See scripts/client-registry-leak.mjs for why a chunk scan and not 'server-only'.
+//
+// THE SHIPPING BUILD ONLY, like GATE A: the dev-routes build is measured for
+// GATE W and GATE I, and nothing it adds is sent to a reader.
+const registry = DEV_GATES_ONLY
+  ? null
+  : checkRegistryInClient(NEXT_DIR, await readFile(join(WEB_ROOT, REGISTRY_SOURCE), 'utf8'));
+
+if (registry !== null) {
+  for (const line of registry.lines) (registry.ok ? console.log : console.error)(line);
+  console.log('');
+}
+
 if (breaches.length > 0) {
   for (const row of breaches) {
     if (row.failsA) {
@@ -482,6 +504,8 @@ if (breaches.length > 0) {
   }
   process.exit(1);
 }
+
+if (registry !== null && !registry.ok) process.exit(1);
 
 console.log(
   DEV_GATES_ONLY

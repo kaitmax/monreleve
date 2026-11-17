@@ -44,10 +44,12 @@ const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })
  * the source by "excludes nothing that would actually cost a client bundle"
  * below, so neither is a claim a reader has to take on trust:
  *
- * PublicShell is already a client component of its own, so it enters a
- * client bundle on every public page and GATE A counts it there; the
- * calculator's figure includes it. Rendering it inside this island would
- * measure it twice and make GATE I's number harder to read.
+ * PublicShell's client code enters a client bundle on every public page and
+ * GATE A counts it there; the calculator's figure includes it. Since
+ * FW-CALC-BYTES (R976) that client code is its interactive leaves,
+ * PublicShell/ShellNav.tsx, and the shell itself renders on the server so the
+ * route registry stays out of the browser. Rendering it inside this island
+ * would measure it twice and make GATE I's number harder to read.
  *
  * AlertCapture (FW14) is a SERVER component - a plain form with no
  * 'use client' anywhere - so it contributes nothing to any client bundle at
@@ -72,8 +74,9 @@ const COMPONENTS = readdirSync(LIBRARY, { withFileTypes: true })
 const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
   [
     'PublicShell',
-    "Already a 'use client' component, so it is in every public route's " +
-      'bundle and GATE A measures it there. Rendering it here would double-count.',
+    "Its interactive leaves (ShellNav.tsx, 'use client') are in every public route's " +
+      'bundle and GATE A measures them there; the shell itself renders on the ' +
+      'server (R976). Rendering it here would double-count.',
   ],
   [
     'AlertCapture',
@@ -124,6 +127,13 @@ const MEASURED_ELSEWHERE: ReadonlyArray<readonly [string, string]> = [
  * must have no client cost, and this one must genuinely have some.
  */
 const COUNTED_BY_GATE_A = 'PublicShell';
+
+/**
+ * Where COUNTED_BY_GATE_A's client code lives since FW-CALC-BYTES (R976): the
+ * shell is a server component that resolves the route registry, and hands
+ * plain data to these leaves.
+ */
+const COUNTED_BY_GATE_A_LEAVES = join(LIBRARY, COUNTED_BY_GATE_A, 'ShellNav.tsx');
 
 /** The harness with its comments stripped - see withoutComments. */
 const harnessSource = (): string => withoutComments(readFileSync(HARNESS, 'utf8'));
@@ -209,11 +219,13 @@ describe('the island harness imports the whole component library (R122)', () => 
     //   the server components  must contain no 'use client', so GATE I is
     //                          not being asked to measure a cost that does
     //                          not exist
-    //   PublicShell            must contain one, because its reason is the
-    //                          opposite - it IS in a client bundle and GATE
-    //                          A counts it there. If it ever stopped being
-    //                          client code, its exclusion would be wrong in
-    //                          the other direction and nothing would say so.
+    //   PublicShell            its LEAVES (ShellNav.tsx) must contain one,
+    //                          because its reason is the opposite - they ARE
+    //                          in a client bundle and GATE A counts them
+    //                          there. If they ever stopped being client code,
+    //                          its exclusion would be wrong in the other
+    //                          direction and nothing would say so. The shell
+    //                          file itself must NOT contain one (R976).
     //
     // A client component slipped into this list to dodge the harness fails
     // here, whatever the cap says.
@@ -225,7 +237,16 @@ describe('the island harness imports the whole component library (R122)', () => 
       const isClient = /^\s*['"]use client['"]/m.test(source);
 
       if (component === COUNTED_BY_GATE_A) {
-        expect(isClient, `${component} is excluded as client code but is not`).toBe(true);
+        // BOTH HALVES OF R976's SPLIT, so neither can drift: the shell stays
+        // on the server (else the registry ships again), and its leaves are
+        // client code (else this exclusion would hide a cost nothing counts).
+        const leaves = readFileSync(COUNTED_BY_GATE_A_LEAVES, 'utf8');
+
+        expect(isClient, `${component} must render on the server (R976)`).toBe(false);
+        expect(
+          /^\s*['"]use client['"]/m.test(leaves),
+          `${component}'s leaves are excluded as client code but are not`,
+        ).toBe(true);
         continue;
       }
 

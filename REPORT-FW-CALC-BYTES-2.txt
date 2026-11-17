@@ -1,0 +1,936 @@
+REPORT-FW-CALC-BYTES-2
+======================
+
+Web run step W10b (relay/ORCH-WEB-COMPLETE.txt; Web Rulings 11, 14, 15, and
+on resumption 22 and 28), prompt relay/FW-CALC-BYTES-RESUME.txt, rulings
+R1015-R1019; R975-R979 of relay/FW-CALC-BYTES.txt still bind. Parallel mode
+(Web Ruling 7).
+- Branch fw-calc-bytes-2, worktree C:/wt/fw-calc-bytes-2, cut from origin/main
+  986825421349b427500adc2d84675a1040d4b8a1 (BASE_SHA at launch). STOPPED at
+  08:46Z (the first stop, kept below as history), RESUMED at 14:00Z on the
+  coordinator's message (Web Rulings 22 and 28) and merged with origin/main
+  b794b588 (merge 5731b016).
+- .session-lock.json written 06:17:30Z, removed 08:46Z at the stop, written
+  afresh 14:00:56Z (gitignored, .gitignore:62).
+- Evidence: C:/wt/fw-calc-bytes-2/.calcbytes2-evidence/ (gitignored by
+  /.*-evidence/): every log named below, the sampler files, the saved
+  BEFORE and AFTER builds (before-next/, after-next/), the copied increment
+  (w10-increment/), my own tools (tools/), the failing runs' artefacts
+  (gate1-e2e-artifacts/, gate2-test-results/, gate2-visual-fail/,
+  gate5-test-results/), the repetition's runs (vis-rep-*), the crops
+  (crops/) and the report's parts (report-parts/).
+- READ-ONLY sources: C:/wt/fw-calc-bytes/.calcbytes-evidence/increment/ (read,
+  checksummed and copied; no git, no write there); W10's and W10a's reports
+  via `git show` in the main checkout, before my worktree existed
+  (DEVIATIONS 1).
+- Ports (block 3800-3899): 3810 (every gate's e2e webServer, the first
+  control's MINE arm), 3811 (that control's BASE arm), 3820 (the
+  walkthroughs' pnpm dev), 3830 (gate:clone's container step).
+- Database: the scratch monreleve_fw_calc_bytes_2 (created through the local
+  server's `postgres` database, host, port and credentials read by script
+  from the main checkout's web/.env, never printed), migrated by db:deploy
+  (16 migrations); dropped at the stop, created and migrated again at
+  14:34Z. Never `frontalier`.
+- Two temporary detached worktrees, both removed: C:/wt/fw-calc-bytes-2-base
+  (9868254, the e2e control) and C:/wt/fw-calc-bytes-2-base2 (b794b588, the
+  visual repetition's BASE arm) (DEVIATIONS 4).
+
+SUMMARY
+-------
+- THE CODE IS COMMITTED: 9beab80547a840a3720f805349311d27403c38bb, W10's
+  18 paths re-applied by W10b, every committed blob equal to SHA256SUMS. The
+  route registry no longer ships to the browser.
+- R1015 DONE: SHA256SUMS 20 OK before use; none of the 18 paths moved on main
+  (56b7116..9868254, and again 9868254..b794b588); `git apply` clean, the 8
+  added files copied, 18 of 18 equal to SHA256SUMS; carried uncommitted across
+  the merge of b794b588 and re-checked, 18 EQUAL.
+- R1016 BYTES, measured on 9868254 (fresh builds of the base and of the
+  increment): the calculator 127 942 -> 126 571 B. The guard fails base's own
+  build naming chunk 9879 (R178); the R979 plant went RED and was reverted.
+  ON THE TIP, gate:clone's own size table: see STATUS and PUSH PROOF.
+- R977 MET on the tree that became 9beab805, gate:changed run 5: test 4 072,
+  e2e 387, visual 173 passed + 1 FLAKY with ZERO regenerated, db 816, late 10:
+  "GATE PASSED for the paths changed." THE FLAKY is calculateur-panneau-avis-
+  provisoire desktop: attempt 1 captured Queue Ruling 20's variant (the same
+  image as gate run 2's), retry #1 the baseline. QUESTION 1.
+- THE COORDINATOR'S REPETITION (its rule committed in 9431ec2f BEFORE the
+  run): 5 BASE (b794b588) and 5 MINE runs of that test, alternating, one hold:
+  CLEAN 5/5 in both arms, so the session continued.
+- Gate runs 3 and 4 before it: run 3 NO RESULT (the sampler aborted it at
+  1 814 MB commit free); run 4 RED at `test` (HomeCounter's slider sweep timed
+  out at 300 s inside a 430 s suite; the file alone passes in 186.6 s), with
+  its full visual 174 passed and its walkthrough clean.
+- R1017: no order-dependent pair; main changed no stylesheet after 9868254.
+  R1018: liveLinks stays optional, its direction test proven by a plant;
+  island-harness in W10's reported shape, both halves proven. R1019 held.
+- The first stop's two reds are closed by Web Rulings 22 and 28: the e2e race
+  was a product defect in DeadlineHelper, fixed by W18 on main (and run 5's
+  e2e passed 387 with it); gate run 2's visual run is NO RESULT (it overlapped
+  the orchestrator's disk cleanup), and its Q2 is NO RESULT (the captures it
+  named were deleted).
+
+STATUS (R391)
+-------------
+COMPLETE for the code commit 9beab80547a840a3720f805349311d27403c38bb:
+- gate:changed of record (run 5) GREEN on the tree that became 9beab805 (HEAD
+  9431ec2f plus the 18 paths, uncommitted): "GATE PASSED for the paths
+  changed.", STEP_EXIT=0 ABORTED=False. test:visual 173 passed + 1 FLAKY
+  (named in SUMMARY and QUESTION 1), zero regenerated.
+- gate:clone ALONE GREEN on 9beab805 itself: "GATE:CLONE PASSED", exit code 0,
+  STEP_EXIT=0 ABORTED=False. Its size table: the calculator 123.6 KiB,
+  "pass (A 1.4 spare, B 2.0 spare)". Pasted under PUSH PROOF.
+- Gate runs 1-2 (the first stop) and 4 are RED, run 3 NO RESULT; each is
+  recorded below with its cause.
+The branch tip is this report's commit, which changes only
+REPORT-FW-CALC-BYTES-2.txt on top of 9beab805: FULL GATE NOT RUN on the tip.
+register-coverage and fixture-coverage ran on the tree holding it. Not merged.
+
+THE RESUME (Web Rulings 22 and 28)
+----------------------------------
+THE MERGE
+- origin/main b794b588 (rounds 4-5: W9, W7, W14, W18). `git diff --name-only
+  9868254 origin/main` (36 paths, resume-main-moved.txt) against status.txt's
+  list: no overlap; no stylesheet under app/ or lib/ and no baseline among them.
+- `git merge origin/main` with the 18 paths uncommitted: merge commit
+  5731b016a8362197f50c851b8a9d1339711ac192 (parents 91f8ed91, b794b588), no
+  conflict, no stash, reset or force. Afterwards the porcelain equalled
+  status.txt and all 18 paths hashed to SHA256SUMS (resume-18-path-comparison.txt).
+
+THE VISUAL REPETITION (hold visrep: visrep.log, vis-rep-*.log, vis-rep-results.json)
+- The rule was stated in this report and pushed BEFORE the run (commit
+  9431ec2f, 14:02Z; it is kept verbatim below, "THE VISUAL REPETITION RULE").
+- Lock ACQUIRED 14:14:49Z at 6 676 MB (line 6 245), released 14:32:56Z.
+  Sampler: minimum commit free 5 492 MB, free physical 733 MB, no abort.
+- Each run: `pnpm test:visual -- e2e/calculateur.visual.spec.ts --grep
+  "panneau-avis-provisoire"`, 2 tests on 2 workers, W7's cached install
+  ("R961: REUSED"). BASE photographed "b794b588, clean tree"; MINE "9431ec2f
+  plus 18 uncommitted path(s)". 94-126 s a run.
+                 run 1   run 2   run 3   run 4   run 5
+    BASE         CLEAN   CLEAN   CLEAN   CLEAN   CLEAN
+    MINE         CLEAN   CLEAN   CLEAN   CLEAN   CLEAN
+  Every run: desktop and mobile passed on their first attempt, "2 passed",
+  0 failed, 0 flaky; the baselines unchanged by hash after every run.
+- VERDICT by the stated rule: VARIANT IN NEITHER, so continue.
+- What it does not show: each run was 2 tests on 2 workers, and every
+  sighting of the variant today was inside a full-suite run (QUESTION 1).
+
+GATE RUN 3 - NO RESULT (gate3.log, gate3.samples.txt)
+- Lock ACQUIRED 14:35:22Z at 7 105 MB (line 6 245). At 14:46:52 the sampler
+  read 1 814 MB commit free (< 2 000) and killed the tree it started:
+  "ABORT ... taskkill /T /F", ABORTED=True. The lock was released 14:46:54Z.
+- What the kill left behind, all of it this run's own and all of it removed
+  (DEFECTS 1): the visual container nostalgic_rosalind (created 14:44:21Z,
+  mounting C:/wt/fw-calc-bytes-2) kept running - `docker stop` by its exact
+  name; it was started with --rm, and both of its anonymous volumes are gone.
+  web/tsconfig.json and web/next-env.d.ts still pointed at its distDir
+  .next-visual-28232-mwksznkj - restored with `git restore` on those two paths
+  only; the empty mount point removed with `rmdir`. Afterwards the porcelain
+  equalled status.txt and the 18 paths hashed to SHA256SUMS.
+- Commit free then read 422-760 MB with the lock FREE and nothing of mine
+  running; vmmemWSL held about 6 950 MB private. It recovered to 7 048 MB by
+  14:52Z.
+
+GATE RUN 4 - RED AT `test` (gate4.log, gate4-gate-changed.log)
+- Lock ACQUIRED 14:52:12Z at 7 048 MB (line 6 245), released 15:05:49Z.
+  Sampler: minimum commit free 5 536 MB, free physical 557 MB, no abort.
+- typecheck 0; lint 0; test 1 FAILED, 4 071 passed (4 072 = 4 040 + 32):
+  lib/ui/react/HomeCounter/HomeCounter.test.tsx > "sweeps both sliders over
+  their whole ranges: rate, status and both tiles": "Test timed out in
+  300000ms" (the file 380.9 s, the suite 429.8 s). "GATE FAILED at pnpm test".
+- The evidence that this is load, not the change: the same file ALONE on the
+  same tree passed 9 of 9 in 186.6 s (homecounter-alone.log); the whole unit
+  suite took 223 s in gate run 1, 297 s in run 2 and 430 s here; HomeCounter
+  is none of the 18 paths. Still, the run is RED, not NO RESULT.
+- In the same hold, `pnpm test:visual` ALONE: 174 passed, 0 failed, 0 flaky,
+  photographed "9431ec2f plus 18 uncommitted path(s)"; baselines unchanged.
+  The walkthrough: 69 checks OK, 0 FAIL.
+
+GATE RUN 5 - GREEN, THE GATE OF RECORD (gate5.log, gate5-gate-changed.log)
+- Lock ACQUIRED 15:09:42Z at 6 871 MB (line 6 245), released 15:26:23Z.
+  Sampler: minimum commit free 4 187 MB, free physical 840 MB, no abort.
+  Docker VM MemAvailable 5 515 960 kB at the start.
+- The tree: HEAD 9431ec2f with the 18 paths uncommitted (the porcelain equal
+  to status.txt before and after), which is exactly the tree committed as
+  9beab805.
+- typecheck 0; lint 0; test 4 072 passed (239 files); build 0; test:e2e 387
+  passed; test:visual 173 passed + 1 flaky; test:db 816 passed, 27 skipped;
+  test:late 10 passed. "GATE PASSED for the paths changed." 169 baselines
+  hashed before and after: changed NONE; none in `git status`.
+- THE FLAKY: [visual] e2e/calculateur.visual.spec.ts:320:7 desktop >
+  panneau-avis-provisoire. Attempt 1 "captured a stable screenshot" that
+  differs from the baseline by 28 px at x1285-1287 y1819-2007, max channel
+  delta 2 (sha256 52380f52363999198e00d57b2196bdb02d3d9196bf24749149473422162c2286,
+  the same image gate run 2 captured three times); retry #1 matched the
+  baseline. Images: .calcbytes2-evidence/gate5-test-results/
+  calculateur.visual-desktop-panneau-avis-provisoire-visual/ (expected,
+  actual, diff, error-context) and -retry1/trace.zip.
+- The walkthrough in the same hold: 69 checks OK, 0 FAIL (gate5-walkthrough.log).
+
+THE VISUAL REPETITION RULE, STATED BEFORE THE RUN (the coordinator's step 2)
+- The test: e2e/calculateur.visual.spec.ts, desktop > panneau-avis-provisoire.
+  The filter `pnpm test:visual -- e2e/calculateur.visual.spec.ts --grep
+  "panneau-avis-provisoire"` also runs its mobile twin; mobile is recorded,
+  and the verdict is the desktop test's.
+- The arms: BASE = a temporary detached worktree of origin/main b794b588
+  (C:/wt/fw-calc-bytes-2-base2, its own lock file, removed after); MINE =
+  C:/wt/fw-calc-bytes-2 (b794b588's tree plus this report, plus the
+  increment uncommitted). The only code difference is the increment.
+- Five runs per arm, alternating BASE, MINE, BASE, MINE, ... in ONE lock
+  hold (line 6 245), each through W7's filter with its warm install. The
+  container runs with CI=true, so each test has up to three attempts.
+- Per run, the desktop test is VARIANT if ANY of its attempts failed
+  (a capture differing from the committed baseline 633d7824..., or no two
+  consecutive stable captures), and CLEAN if it passed on its first attempt.
+  Every failed attempt's actual image is hashed and its difference measured
+  (box and pixel count).
+- The 169+ baselines are hashed before and after every run; nothing is
+  regenerated (no --update).
+- A run that does not complete (a refusal, an install or container failure,
+  a sampler abort) is NO RESULT and does not count; an arm with fewer than
+  five counted runs is handed back as NO RESULT.
+- THE VERDICT: VARIANT in MINE only (at least one, and none in BASE): R977's
+  stop holds, hand back with the counts. VARIANT in BOTH arms: the capture is
+  unstable on main, hand back with the counts as a task of its own. VARIANT
+  in NEITHER: continue to gate:changed (line 6 245), the code commit, push,
+  and gate:clone ALONE (line 5 876).
+
+R1015. THE INCREMENT, VERIFIED, THEN APPLIED
+--------------------------------------------
+THE CHECKSUMS, BEFORE ANYTHING WAS USED (r1015-sha256sums-check-*.txt):
+- `sha256sum -c --strict SHA256SUMS`, run read-only in
+  C:/wt/fw-calc-bytes/.calcbytes-evidence/increment/: 20 lines, 20 OK
+  (the 18 files under files/, tracked.diff and status.txt), exit 0. No
+  git and no write in that worktree.
+- The folder was then copied whole into my evidence folder
+  (.calcbytes2-evidence/w10-increment/) and checked again there: 20 OK.
+  Everything below reads the copy.
+
+THE ORCHESTRATOR'S CLAIM, RE-CHECKED ON MY BASE (r1015-main-moved-check.txt):
+- For each of the 18 paths, `git diff --quiet 56b7116 HEAD -- <path>`:
+  none changed between 56b7116 and 9868254. The 10 tracked paths exist
+  at both commits; the 8 new paths exist at neither.
+- tracked.diff's pre-image blob ids equal HEAD's blobs for all 10
+  tracked files, and its post-image ids equal `git hash-object` of the
+  saved copies (r1015-blob-crosscheck.txt):
+    CalculatorForm.tsx 5f2a732 -> a866231   ResultPanel.tsx ffc14a5 -> 233c9b8
+    page.tsx fcd3e08 -> 70b2023             resultat/page.tsx 7e718e2 -> 0abeb55
+    IslandHarness.tsx 4e9eb78 -> e48e00d    routes.ts fc37097 -> 004b7b2
+    guides/registry.ts a9c61a4 -> 176cfb0   PublicShell.tsx 752ef31 -> 864c406
+    check-budgets.mjs 8f1890e -> e637462    island-harness.test.ts d45cbc7 -> f23791a
+- What main changed under web/ since 56b7116 (main-moved-56b7116-to-base.txt)
+  touches none of the 18. W10a's two stylesheets and W11's comparator,
+  reminder and alert files are all outside them.
+
+HOW IT APPLIED:
+- `git apply --check -v tracked.diff` on 9868254: exit 0, all 10 patches
+  "Checking patch ... " clean (r1015-git-apply-check.txt).
+- `git apply -v tracked.diff`: exit 0. The 8 added files (the ?? lines
+  of status.txt) were copied from files/, each refused if it already
+  existed (none did).
+- No three-way resolution was needed: no file was resolved by hand.
+- `git status --porcelain` afterwards equals status.txt line for line:
+  10 M and 8 ?? (r1015-status-after-apply.txt).
+
+THE 18-PATH COMPARISON (r1015-18-path-comparison.txt; first 12 hex of each):
+  web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx      53f958b54bce = 53f958b54bce  EQUAL
+  web/app/(public)/calculateur-teletravail-frontalier/ResultPanel.tsx         cd9ef53ddf2c = cd9ef53ddf2c  EQUAL
+  web/app/(public)/calculateur-teletravail-frontalier/page.tsx                1c995b7ee909 = 1c995b7ee909  EQUAL
+  web/app/(public)/calculateur-teletravail-frontalier/resultat/page.tsx       25fb0e8628f3 = 25fb0e8628f3  EQUAL
+  web/app/dev/island/IslandHarness.tsx                                        9f4342d82790 = 9f4342d82790  EQUAL
+  web/lib/content/route-paths.ts                                              099537e95d03 = 099537e95d03  EQUAL
+  web/lib/content/routes.ts                                                   480f31c92475 = 480f31c92475  EQUAL
+  web/lib/guides/registry.ts                                                  cfd6f703fad7 = cfd6f703fad7  EQUAL
+  web/lib/ui/react/PublicShell/PublicShell.tsx                                11884643a16c = 11884643a16c  EQUAL
+  web/lib/ui/react/PublicShell/ShellNav.tsx                                   821c69beb2c3 = 821c69beb2c3  EQUAL
+  web/scripts/check-budgets.mjs                                               ad5fd61522c8 = ad5fd61522c8  EQUAL
+  web/scripts/client-registry-leak.d.mts                                      69e102e95b83 = 69e102e95b83  EQUAL
+  web/scripts/client-registry-leak.mjs                                        0aa4108617a4 = 0aa4108617a4  EQUAL
+  web/tests/unit/content/live-hrefs.test.ts                                   98891fe21de9 = 98891fe21de9  EQUAL
+  web/tests/unit/content/route-paths.test.ts                                  a6d0050557a4 = a6d0050557a4  EQUAL
+  web/tests/unit/meta/client-registry-leak.test.ts                            dbd1fc494a15 = dbd1fc494a15  EQUAL
+  web/tests/unit/meta/island-harness.test.ts                                  c45e91392492 = c45e91392492  EQUAL
+  web/tests/unit/pages/result-links-server.test.tsx                           64a55c9ae498 = 64a55c9ae498  EQUAL
+  18 of 18 EQUAL to SHA256SUMS. Nothing differs, so there is no
+  resolution to report.
+
+R1016. THE BYTES AND THE BEHAVIOUR, PROVEN AGAIN ON THE NEW BASE
+-----------------------------------------------------------------
+THE BYTES AND THE PLANT were measured on 9868254 (before the merge of
+b794b588), below. ON THE TIP: gate:clone's own size table (PUSH PROOF).
+THE BEHAVIOUR (R977): NOT met at the first stop (history below); MET by
+gate:changed run 5 (THE RESUME).
+
+HOW THE BYTES ARE MEASURED: gzip level 9, each file alone, rootMainFiles
+plus every ancestor layout plus the page entry, .js only - check-budgets'
+own method, because the figures come from check-budgets' own code:
+tools/make-bytes-variant.mjs derives a copy of base's
+web/scripts/check-budgets.mjs in which only kib() prints bytes, the
+relative imports become absolute and WEB_ROOT is fixed (5 replacements,
+each asserted to match exactly once, R211; `diff` against the original
+shows those lines and nothing else). The SAME derived tool measured both
+saved builds. Cross-checks: every byte figure rounds to the KiB that
+`pnpm size` printed for that route, on both builds (21 of 21, twice), and
+my own chunk reader's union for the calculator gives the same totals
+(127 942 and 126 571 B).
+
+HOLD 1, THE BEFORE BUILD (hold1.log, hold1.samples.txt):
+- Lock ACQUIRED 06:36:29Z at 7 218 MB commit free (line 5 154), released
+  06:38:02Z. Sampler: minimum commit free 5 611 MB, free physical 814 MB,
+  no abort, STEP_EXIT=0.
+- The script refused to run unless HEAD was 9868254 and
+  `git status --porcelain` was empty: "HEAD 98682542...; porcelain EMPTY",
+  and EMPTY again afterwards. No web/.env. web/.next deleted first.
+- `pnpm build` exit 0; `pnpm size` exit 0, "All gated routes pass both
+  gates." (before-size.log). The build was saved (minus cache/) to
+  .calcbytes2-evidence/before-next/.
+- THE REGISTRY IN THE CALCULATOR'S CLIENT CHUNKS on 9868254
+  (before-registry-chunks.log): ONE client file of 67 carries the
+  registry: static/chunks/9879-84f1b6865f0484ac.js (5 946 B raw, 2 100 B
+  gzip), the same chunk name and hash W10 and C9 found. All three probes
+  sit in webpack module 4643 (~3 218 B raw) = lib/content/routes.ts. Its
+  file holds modules 1679, 2449, 2556, 4643, 4650, 5856 and 8936, and the
+  app-build-manifest lists it for /not-found, /(public)/layout and the
+  calculator's page. The calculator loads 11 first-load .js files.
+
+HOLD 2, THE AFTER BUILD, THE GUARD AND THE PLANT (hold2.log, hold2.samples.txt):
+- Lock ACQUIRED 06:53:40Z at 6 577 MB (line 5 154), released 06:56:23Z.
+  Sampler: minimum commit free 5 702 MB, free physical 518 MB, no abort,
+  STEP_EXIT=0. The script refused unless HEAD was 9868254 and the porcelain
+  equalled status.txt (10 M + 8 ??); it did, before and after.
+- `pnpm build` exit 0. `pnpm size` exit 0: "R976 registry check: 3 probe(s)
+  from lib/content/routes.ts, seen in 3 server file(s), absent from all 65
+  client chunk(s)." and "All gated routes pass both gates." (after-size.log)
+- EVERY REGISTERED ROUTE STOPPED SHIPPING, read from the chunks: 0 of 65
+  client files carry a probe (after-registry-chunks.log). A wider search
+  (after-extra-probes.txt): "changeFrequency", "/guides/geneve",
+  "/guides/attestation-employeur-teletravail" and "FW16, content FW17" are
+  in 0 files under after-next/static, while each IS in the server output
+  (7, 63, 63 and 4 files) and each was in 1 file under before-next/static,
+  so the search can see them. The calculator now loads 9 first-load files.
+
+THE TABLE, bytes, MEASURED ON 9868254 (before = 9868254; after = 9868254 +
+the increment, uncommitted at the time;
+before-after-table.txt). GATE A = 125 KiB = 128 000 B.
+  route                                          before    after  delta  spare-b  spare-a
+  /                                              116728   114921  -1807    11272    13079
+  /_not-found                                    111010   105958  -5052    16990    22042
+  /a-propos                                      111069   105686  -5383    16931    22314
+  /alertes                                       111097   105715  -5382    16903    22285
+  /alertes/confirmation/[etat]                   110919   105535  -5384    17081    22465
+  /alertes/desinscription/[etat]                 110919   105535  -5384    17081    22465
+  /application                                   111016   105633  -5383    16984    22367
+  /calculateur-lamal-cmu                         126937   125132  -1805     1063     2868
+  /calculateur-teletravail-frontalier            127942   126571  -1371       58     1429
+  /calculateur-teletravail-frontalier/resultat   112390   107006  -5384    15610    20994
+  /cgu                                           110963   105580  -5383    17037    22420
+  /confidentialite                               110963   105580  -5383    17037    22420
+  /guides                                        110938   105555  -5383    17062    22445
+  /guides/[slug]                                 112300   106918  -5382    15700    21082
+  /mentions-legales                              110963   105580  -5383    17037    22420
+  /rappel-delai/suppression                      110919   105535  -5384    17081    22465
+  /releve-annuel                                 111069   105686  -5383    16931    22314
+  /releve/print                                  104423   104414     -9    23577    23586
+  /sources                                       111069   105686  -5383    16931    22314
+  /tarifs                                        111069   105686  -5383    16931    22314
+  /verifier/[code]                               110866   105483  -5383    17134    22517
+- THE CALCULATOR: 127 942 -> 126 571 B, so 58 -> 1 429 B spare (+1 371 B
+  of headroom against the 42 B BLOCKED 11 needs).
+- On 9868254, C9's 97 B header link would have left 1 429 - 97 = 1 332 B
+  spare (the tip's figure is gate:clone's, PUSH PROOF). The
+  97 B is C9's measurement with a client shell; with this split the
+  link's copy and its product-state read would render on the server, so
+  97 B is an upper bound to re-measure in W12.
+- W10's tables (on 56b7116) are evidence of their day and are not reused:
+  main's figures moved (e.g. the calculator read 127 941 there, 127 942
+  here; the comparator 125 595 there, 126 937 here after W11).
+
+THE GUARD ON THE BEFORE BUILD, through the real script (R178, a live
+instance): `NEXT_DIST_DIR=../.calcbytes2-evidence/before-next pnpm size`
+with the increment's check-budgets.mjs: EXIT 1,
+  "R976 REGISTRY IN CLIENT CHUNK  static/chunks/9879-84f1b6865f0484ac.js:
+   FW10 placeholder, FW20 real | FW19, built FW-COMPARATEUR | FW16, content FW17"
+  "R976 BREACH: the route registry (lib/content/routes.ts) ships to the
+   browser in 1 client chunk(s). ..."
+(hold2-size-on-before-build.log)
+
+THE R979 PLANT, RUN AGAIN ON THE NEW BASE (tools/plant.mjs, plant-*.log):
+- ShellNav.tsx (a 'use client' module) gained `import { PUBLIC_ROUTES }
+  from '@/lib/content/routes'; // PLANT R979` and, inside MobileMenuList,
+  `if (PUBLIC_ROUTES.length === 0) return null; // PLANT R979` (a runtime
+  read, so neither import elision nor tree shaking can drop it).
+- VERIFIED BEFORE ITS RESULT WAS READ (R180): the file hashed to its
+  SHA256SUMS value first; each anchor matched exactly once (R211); read
+  back, the import sits at offset 1738, before the first function (2795),
+  and the read at 6132, inside MobileMenuList (5956..7574); "landed where
+  intended: true"; sha256 821c69be... -> ef5a0120....
+- `pnpm build` exit 0; `pnpm size` EXIT 1:
+  "R976 REGISTRY IN CLIENT CHUNK  static/chunks/9575-0c803e97c8204ebe.js:
+   FW10 placeholder, FW20 real | FW19, built FW-COMPARATEUR | FW16, content FW17"
+  and the BREACH line. The manifest lists that chunk for /not-found and
+  /(public)/layout (plant-registry-chunks.log).
+- REVERTED: the kept original restored; sha256 821c69be... equal to
+  SHA256SUMS: true; "PLANT R979" absent: true; the porcelain equals
+  status.txt again.
+
+THE FIRST STOP (HISTORY, 06:57-08:28Z; closed by Web Rulings 22 and 28)
+-----------------------------------------------------------------------
+Web Ruling 28, as the coordinator relayed it: gate run 1's e2e red was a
+REAL race, a product defect in DeadlineHelper that W18 fixed on main; gate
+run 2's visual run overlapped the orchestrator's own disk cleanup and is NO
+RESULT; QUESTION 2 of that stop is NO RESULT (the captures it named were
+deleted with fw-cascade-order). The text below is as it was written then.
+Every gate below ran on the UNCOMMITTED increment (HEAD 9868254 plus the
+18 paths, the porcelain equal to status.txt before and after each run),
+FRONTALIER_PORT=3810, DATABASE_URL = monreleve_fw_calc_bytes_2 in the
+environment only (migrated by db:deploy: 16 migrations, the last
+20261112120000_deadline_reminder), no web/.env, MONRELEVE_VERIFICATION_ORIGIN
+removed. The printed selection is the same in both runs (PUSH PROOF).
+
+GATE RUN 1 - RED at test:e2e (hold 3: hold3.log, hold3-gate-changed.log)
+- Lock ACQUIRED 06:57:45Z at 7 777 MB commit free (line 6 245), released
+  07:06:15Z. Sampler: minimum commit free 4 460 MB and free physical
+  224 MB, both at 07:05:24, inside the e2e window; no abort. Docker VM
+  MemAvailable 5 712 220 kB at the start.
+- typecheck exit 0; lint exit 0; test 4 012 passed (233 files) =
+  3 980 + 32, as predicted; build exit 0; test:e2e 2 FAILED, 379 passed
+  (381 tests, 4 workers, 2.7 m): "GATE FAILED at pnpm test:e2e (exit 1)".
+  test:visual, test:db and test:late did NOT RUN.
+- The two failures, both in W11's e2e/rappel-delai.spec.ts (chromium):
+    :45  "the form appears only once a date is computed": [data-reminder-form]
+         not found within 5 s
+    :104 "R225: the confirmation state is on the rendered page ...": the
+         reminder field never appeared; 30 s test timeout
+  Both page snapshots (gate1-e2e-artifacts/test-results/*/error-context.md)
+  show the date box holding 2026-12-17 while the helper's step list is in
+  its EMPTY form (its end date never computed). That is consistent with
+  the fill landing before DeadlineHelper hydrated: the spec fills
+  immediately after page.goto, while W11's own walkthrough met the same
+  symptom in dev mode and waited for network idle
+  (REPORT-FW-DELAI-RAPPEL.txt WALKTHROUGH and N6; home.spec.ts:337-339 is
+  the repo's own "hydration first" precedent). The tests at :59, :68 and
+  :118 open the same way and passed in this run.
+
+THE CONTROL (hold 3b: hold3b.log, control-*.log, control-results.json)
+- Lock ACQUIRED 07:17:25Z at 6 321 MB (line 6 245), released 07:24:46Z.
+  Sampler: minimum commit free 5 171 MB, free physical 640 MB, no abort.
+- One test, repeated, in two trees in one hold: `pnpm exec playwright test
+  e2e/rappel-delai.spec.ts --project=chromium -g "the form appears only once
+  a date is computed" --repeat-each=40 --workers=<n>` (the test makes no
+  request, so repeats cannot couple through the database or rate limit).
+    BASE = C:/wt/fw-calc-bytes-2-base, detached at 9868254 for this (its
+           own lock file, install and port 3811; porcelain empty)
+    MINE = this worktree, 9868254 + the increment, port 3810
+                     workers 4        workers 8
+    BASE             40/40 passed     40/40 passed
+    MINE             40/40 passed     40/40 passed
+  Each port was free before and after every arm.
+- What it does NOT show: it isolated one test from the full suite's load,
+  under which the failures happened, so 0/160 clears neither tree.
+
+GATE RUN 2 - RED at test:e2e again (gate2.log, gate2-gate-changed.log)
+- Lock ACQUIRED 07:48:33Z at 6 819 MB (line 6 245), released 08:28:05Z
+  (the hold also carried the visual run and the walkthrough below).
+  Sampler over the whole hold: minimum commit free 3 402 MB (08:27:44, the
+  walkthrough's dev server) and free physical 238 MB (08:22:57, the visual
+  run); no abort. Inside the e2e window: minimum commit free 3 693 MB, free
+  physical 1 244 MB. Docker VM MemAvailable 5 238 668 kB at the start.
+- typecheck 0; lint 0; test 4 012 passed (233 files); build 0; test:e2e
+  1 FAILED, 380 passed (381, 4 workers, 4.0 m). test:db and test:late did
+  NOT RUN.
+- The failure, the same spec, a third of its fill-first tests:
+    :59  "no form for a date fewer than 14 days away (R916 ...)":
+         [data-deadline-end] stayed "" for 5 s after the fill (13 polls)
+  (gate2-test-results/*/error-context.md). Same shape as run 1.
+
+THE VISUAL VERDICT, ALONE, IN THE SAME HOLD (gate2-visual-alone.log)
+- `pnpm test:visual` (the real visual.mjs): "isolation: sole container of
+  mcr.microsoft.com/playwright:v1.63.0-noble (checked)", "photographed:
+  9868254 plus 18 uncommitted path(s)", 174 tests, 4 workers:
+  1 FAILED, 173 passed (6.3 m). R977 IS NOT MET in the one visual run made.
+- THE FAILING LIST:
+    [visual] e2e/calculateur.visual.spec.ts:320:7 > desktop > panneau-avis-provisoire
+      attempt 1, retry #1, retry #2: all failed, "10 pixels (ratio 0.01 of
+      all image pixels) are different" and "Timeout 5000ms exceeded".
+- READ EXACTLY (tools/bbox.cjs, exact RGBA, all three attempts): 28 px
+  differ, box x1285-1287 y1819-2007, the largest channel difference 2;
+  the same image every time (actual sha256 52380f52363999198e00d57b2196bd
+  b02d3d9196bf24749149473422162c2286 x3), against the committed baseline
+  633d7824becae96aa1dcf12e9a10c39c10add940dea412088d13beacbcb55ad0.
+- THE ELEMENT: the right edge of the calculator's AppCard (`div[data-app-card]`,
+  ResultCard tone="brand", the dark "Votre teletravail, jour par jour" card
+  in the result column), where its straight right edge meets the top and
+  bottom rounded corners. Nothing else in the 1440x4097 image differs.
+- These are Queue Ruling 20's coordinates (C9's update-3; W10a's RED attempt
+  1: "28 px at x1285-1287 y1819-2007"), but where that variant was one
+  capture in three, here it settled: one image in three fresh attempts.
+- Baselines: 169 hashed before and after the run, changed NONE; none in
+  `git status`. Nothing was regenerated (test:visual:update never ran).
+- CROPS (.calcbytes2-evidence/crops/):
+    avis-desktop-expected-context.png / avis-desktop-actual-context.png
+      x820-1439 y1760-2060, 1:1, the AppCard and the sources link
+    avis-desktop-expected-edge-x8.png / avis-desktop-actual-edge-x8.png
+      x1270-1300 y1810-2015 at 4x, the card's right edge
+    avis-desktop-diff-marked-edge-x4.png
+      the same region of the actual, the 28 differing px in magenta
+  The images: gate2-visual-fail/<attempt>/ (expected, actual, diff, trace).
+
+R1017. THE CASCADE CENSUS REACHES THE NEW CODE
+----------------------------------------------
+HOW: W10a's R1010 search, rerun by my own tools on 9868254 with the
+increment read from its saved copy (it changes no stylesheet; it changes
+which files import one). Every selector with `+`, `~`, `> *`,
+`> * + *`, `> * ~ *`, `:not(:first-child)`, `:nth-child`, `:first-` or
+`:last-child`, in all 50 tracked stylesheets, with each declaration under
+it (tools/scss-rules.mjs, r1017-sibling-rules-all.txt); every margin
+declaration in lib/ui/react/** mapped to its selector; each sibling-gap
+container's DIRECT children read in its TSX. Judged by selector,
+property and specificity only; no build order is read (W10a NOTICED 1).
+Full record: .calcbytes2-evidence/r1017-census.txt.
+
+SCOPE A, the stylesheets the increment's components import:
+  CalculatorForm.tsx -> CalculatorForm.module.scss
+  ResultPanel.tsx -> ResultPanel.module.scss
+  calculator page.tsx -> calculateur.module.scss
+  resultat/page.tsx -> resultat.module.scss
+  PublicShell.tsx AND the new ShellNav.tsx -> PublicShell.module.scss (one module)
+  IslandHarness.tsx -> none of its own
+  (the components they render are read through the all-50 scan; no
+  file under lib/ui/** changed after a2c502a)
+SCOPE B, SCSS main gained or changed after a2c502a
+(`git diff --name-status a2c502a HEAD -- '*.scss' '*.css'`): alertes.module.scss (W11),
+comparateur.module.scss (W10a, W11), CalculatorForm.module.scss (W10a).
+None was added.
+
+THE SIBLING-GAP MARGIN RULES IN SCOPE (the same set W10a counted; no new one):
+  comparateur.module.scss:94-96       .form > :not(:first-child)      (0,2,0) margin-top
+  comparateur.module.scss:248-250     .joint > * + *                  (0,1,0) margin-top
+  CalculatorForm.module.scss:99-101   .card > :not(:first-child)      (0,2,0) margin-top
+  CalculatorForm.module.scss:197-200  .revealed > :not(:first-child), .advanced > :not(:first-child)  (0,2,0) margin-top
+Not sibling gaps, no margin: ResultPanel.module.scss:46 `.tiles > *`
+(padding, border, radius); calculateur.module.scss:146/155/163 `.rule > p`
+positional rules (typography); PublicShell.module.scss:248
+`.mobileList li:last-child .mobileLink` (border-bottom: 0). alertes and
+resultat: none. W11 added no sibling selector; its new rules use flex gaps.
+
+THE PAIRS (container rule x a component root that resets its own margin):
+  CalculatorForm.module.scss:198 `.advanced > :not(:first-child)` x
+    SegmentedChoice.module.scss:15 `.root { margin: 0 }` (the decompte
+    choice): (0,2,0) against (0,1,0), the stack wins in ANY order.
+  CalculatorForm.module.scss:99 `.card > :not(:first-child)` x
+    SegmentedChoice.module.scss:15 (the missions question): (0,2,0)
+    against (0,1,0).
+  comparateur.module.scss:94 `.form > :not(:first-child)` x
+    SegmentedButtons.module.scss:11 `.root { margin: 0 }` (the three
+    toggles, ComparatorForm.tsx:274, 285, 373): (0,2,0) against (0,1,0).
+  None is order-dependent: specificity decides each, in every chunk order.
+NOT PAIRS, with the reason:
+  - `.joint > * + *` (comparateur:248, still (0,1,0)): its direct children
+    (ComparatorForm.tsx:318-367, unchanged since a2c502a) are FieldGroup x2,
+    whose root sets no margin (FieldGroup.module.scss:18-22), and the page's
+    own p.helper (comparateur:149-150), the SAME module, so source order
+    (line 149 before line 248) decides in every build.
+  - `.revealed`: FieldGroup x2, no root margin.
+  - W11's margin resets (comparateur:451-457 .reminderHint/.reminderError,
+    :469-478 .reminderSent) render in DeadlineHelper inside page.tsx:95's
+    section.deadline (flex gaps), under neither stack, and are the same module.
+  - The increment's new structure: ShellNav's lists and links take
+    PublicShell.module.scss's classes, the same module as their containers,
+    and that sheet has no sibling-gap rule. ResultPanel's root sits in
+    CalculatorForm's .resultColumn (CalculatorForm.module.scss:27-32: flex
+    with gap), which has none.
+RESULT: no order-dependent pair, so nothing stops here and nothing was fixed.
+ON RESUMPTION: main changed no stylesheet after 9868254 (the 36 paths of
+9868254..b794b588 hold no .scss or .css), so the census stands as read.
+
+R1018. W10's QUESTIONS, AS RULED
+--------------------------------
+- Q1 (the control) and Q2 (the uniform gap): answered by Web Ruling 11 and
+  W10a. What is left of them is R977: not met at the first stop, met by
+  gate:changed run 5 (THE RESUME).
+- Q3, liveLinks stays OPTIONAL. An absent prop renders slot 7 as TEXT:
+  ResultPanel.tsx reads `const liveHref = liveLinks?.[status] ?? null;`
+  and renders the anchor only when liveHref is not null.
+  THE DIRECTION TEST already exists in the increment, and no second test
+  was added: tests/unit/pages/result-links-server.test.tsx, "reads an
+  absent table as 'not known to be live': text, never a guessed link
+  (R85)", renders `<ResultPanel result={result} thresholds={RULES} />`
+  with no liveLinks and expects no anchor in [data-panel="link"]. Its
+  neighbour in the same file proves the registry has that status's target
+  LIVE today (`RESOLVED[STATUS]` equals the link's href), so only a panel
+  that does not guess can pass it.
+  VERIFIED PLANT (light, one test file; tools/plant-r1018.mjs,
+  plant-r1018.txt and plant-r1018-run.log):
+  - ResultPanel.tsx's line became `const liveHref = liveLinks === undefined
+    ? link.href : liveLinks[status]; // PLANT R1018` (an absent table
+    renders the link). The anchor matched exactly once (R211); read back,
+    it replaced the line inside ResultPanel (R180); sha256 cd9ef53d... ->
+    cfb1e049....
+  - result-links-server.test.tsx: exit 1, "1 failed | 6 passed (7)",
+    exactly "reads an absent table as ..."; "AssertionError: expected
+    <a class=...>...</a> to be null".
+  - Restored: sha256 cd9ef53d... again, equal to SHA256SUMS; "PLANT R1018"
+    absent.
+  So the prop stays optional and the 17 render calls are not edited.
+- Q4, 'server-only': not added (Ask-first); the client-chunk scan in
+  `pnpm size` is the guard (R1016's plant below).
+- Q5, size in gate:changed: recorded only. gate:clone runs size.
+- DEVIATION 1, island-harness.test.ts: in the shape W10 reported, and
+  nothing removed or weakened beyond it. Its diff against main
+  (`git diff 9868254 -- web/tests/unit/meta/island-harness.test.ts`,
+  +33/-12, r1018-island-harness.diff), code lines only:
+    REMOVED  the PublicShell reason string (2 lines)
+    REMOVED  expect(isClient, `${component} is excluded as client code but is not`).toBe(true);
+    ADDED    the reason string naming ShellNav.tsx and R976 (3 lines)
+    ADDED    const COUNTED_BY_GATE_A_LEAVES = join(LIBRARY, COUNTED_BY_GATE_A, 'ShellNav.tsx');
+    ADDED    const leaves = readFileSync(COUNTED_BY_GATE_A_LEAVES, 'utf8');
+    ADDED    expect(isClient, `${component} must render on the server (R976)`).toBe(false);
+    ADDED    expect(/^\s*['"]use client['"]/m.test(leaves),
+               `${component}'s leaves are excluded as client code but are not`).toBe(true);
+  The rest of the diff is comments. No `it(` was added or removed (24
+  tests). The one assertion removed is replaced by the two the ruling
+  names: the interactive island (ShellNav.tsx) must declare 'use client',
+  and PublicShell.tsx must not.
+  BOTH HALVES PROVEN ABLE TO FIRE (light; tools/plant-island.mjs,
+  plant-island.txt): (a) 'use client' added to PublicShell.tsx -> exit 1,
+  1 failed | 23 passed, naming "must render on the server (R976)";
+  (b) the directive removed from ShellNav.tsx -> exit 1, 1 failed | 23
+  passed, naming "leaves are excluded as client code but are not". Each
+  file restored to its SHA256SUMS hash; porcelain equal to status.txt after.
+
+R1019. NOTHING ELSE MOVES
+-------------------------
+- GATE A (128 000 B), GATE B, GATE W, GATE I and the framework floor are
+  unchanged: check-budgets.mjs's diff against main adds the R976 import,
+  the registry check and its exit, and touches no constant (tracked.diff
+  lines 660-707).
+- No baseline was regenerated: test:visual:update was never run, and the
+  gate's visual run is checked by hash below.
+- W10's NOTICED 1-2 are not touched: lib/fr/shell.ts still spells its two
+  paths, and middleware.ts still imports RESULT_PATH from the registry.
+- The code commit 9beab805 holds exactly W10's 18 paths (18 staged by
+  name; every committed blob equal to SHA256SUMS). Before it, the porcelain
+  equalled status.txt after every hold, and every plant was restored to its
+  SHA256SUMS hash.
+
+WALKTHROUGH (R176, R177)
+------------------------
+Against `pnpm dev` on port 3820 (tools/walk.mjs), three times, each 69
+checks OK, 0 FAIL, "WALKTHROUGH PASSED": in gate run 2's hold (9868254 +
+the increment; gate2-walkthrough.log), and in gate runs 4 and 5's holds
+(b794b588 merged + the increment; gate4-, gate5-walkthrough.log). The
+figures below are run 2's; runs 4 and 5 read the same.
+- R179: port 3820 free before start; the dev server's tree killed
+  (taskkill /T /F, exit 0) and the port free afterwards.
+- R169: /api/health named the product: {"service":"monreleve",...,"runtime":false}.
+- THE SHELL ON FOUR PAGES (/, /calculateur-teletravail-frontalier, /guides,
+  /cgu) at 1280 and 390 px: HTTP 200; a stylesheet carrying the token layer
+  served and --colour-brand resolving on :root (#173b63) (R177); aria-current
+  only on links to the page being read (none on / and /cgu, the calculator's
+  link on the calculator, both lists' /guides on /guides); no header CTA
+  (trackerExists is false); the footer's four columns (Outils, Guides, Le
+  produit, Legal), 19 links, ending on the review date (09.09.2026); no page
+  error, no console error, no hydration warning at either width.
+- THE MENU, desktop: the nav reads Calculateurs (button) | Guides | Le releve
+  | Tarifs; the disclosure opens on click (aria-expanded=true, its two links
+  to the calculator and the comparator) and closes on Escape with the focus
+  back on its button.
+- THE MENU, phone: it starts closed; opens from its summary listing
+  Calculateur de teletravail [aria-current] | Comparateur LAMal / CMU |
+  Guides | Le releve | Tarifs | Calculer ma situation; Escape from a panel
+  link closes it with the focus on the summary; Escape from the summary
+  closes it too.
+- THE CALCULATOR'S RESULT LINKS (slot 7), each an anchor whose text and href
+  are the same status's pair, and every target live in the registry:
+    island GE 20 days -> "Gardez une trace datee de vos journees" -> /releve-annuel
+    island GE 84 days + 24 mission days in France -> "Comprendre les jours de
+      mission hors de Suisse" -> /guides/jours-de-mission-hors-suisse
+    island GE 150 days -> "Le seuil de securite sociale, et ce qui bascule"
+      -> /guides/seuil-social-49-9-pourcent
+    the form's action is /calculateur-teletravail-frontalier/resultat, and the
+    server's /resultat?canton=GE&tt=20, ...&tt=84&mfr=24 and ...&tt=150 each
+    answered 200 with the same three anchors.
+  (Accents are stripped here; the page renders them.)
+- THE COMPARATOR'S REMINDER FORM (W11), added after gate run 1: no form before
+  a date; after network idle, the event date 2026-12-17 computed the end
+  2027-03-17 and showed the reminder form on the FIRST fill; no page or
+  console error. So the feature works once the island has hydrated; what
+  failed in the gates is the spec's fill racing hydration (QUESTION 1).
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. W10's NOTICED 1-2 stand as written (R1019): lib/fr/shell.ts's two
+   literal paths; middleware.ts imports RESULT_PATH from the registry, so
+   the whole registry is in server/middleware.js (server-side only).
+2. The probes stay three. W11's /rappel-delai/suppression page added no
+   registry entry (routes.ts is unchanged since 56b7116), so the guard's
+   probe set is W10's: "FW10 placeholder, FW20 real", "FW19, built
+   FW-COMPARATEUR", "FW16, content FW17".
+3. The size table now has 21 routes, one more than W10 measured:
+   /rappel-delai/suppression (W11), 110 919 B before.
+4. gate:clone's container step still defaults FRONTALIER_PORT to 3120
+   (W10 NOTICED 5, W10a NOTICED 5); this session set 3830 for it.
+5. The byte variant's header lines read "GATE A total <= 128000 KiB": the
+   derivation changes kib() only, so a label that says KiB prints bytes.
+   A cosmetic artefact of the derived copy, not of check-budgets.mjs.
+6. e2e/rappel-delai.spec.ts (W11) fills #date-evenement immediately after
+   page.goto in every test; nothing waits for the island to hydrate. The
+   same fill-first shape is what failed in both gate runs (QUESTION 1).
+7. Gate run 2's e2e took 4.0 m against run 1's 2.7 m on the same tree, and
+   the hold's minimum fell to 3 402 MB commit free / 238 MB free physical,
+   below the 5 000 regime QUEUE-STATE describes, with no sampler abort.
+8. The visual container's node_modules install hit npm registry errors with
+   retries (error 23 on several tarballs) and finished; W7's area.
+9. My own hold script printed "the chain stopped at test:e" (its regex
+   stopped at the digit of "e2e"); the gate's own line reads "GATE FAILED
+   at pnpm test:e2e (exit 1)". An evidence-tool cosmetic, nothing gated.
+
+DEVIATIONS
+----------
+1. READ-ONLY GIT IN THE MAIN CHECKOUT, before my worktree existed. The
+   HOW THIS SESSION RUNS rule allows only `git fetch` and `git worktree add`
+   there. I also ran `git show origin/main:<file>` (the prompt and the
+   files it lists), `git rev-parse`, `git cat-file -t`, `git worktree list`,
+   `git branch --list` and `git ls-remote`. All read-only; nothing was
+   written, staged or checked out there. Every later git command ran in my
+   own worktrees: C:/wt/fw-calc-bytes-2, and C:/wt/fw-calc-bytes-2-base
+   (DEVIATIONS 4).
+2. OTHER SESSIONS' WORKTREES, read-only and without git, beyond what launch
+   rule 2 names: I listed W10's .calcbytes-evidence/ root (`ls`) once, to
+   confirm nothing had been written there; and, for the lock file's format,
+   I read C:/wt/fw-verifier-outage/.session-lock.json (W14's) and tried
+   C:/wt/fw-calc-bytes/.session-lock.json (absent). Launch rule 1 says never
+   to touch those worktrees; nothing was written, run or changed in either.
+   I read and copied nothing else outside increment/; my byte, chunk,
+   census, plant and walkthrough tools are my own (.calcbytes2-evidence/tools/).
+3. The lock was acquired with --poll-sec 5 (the helper's own option),
+   because W10 lost 47 minutes to races at the 30 s default. For gate run
+   2 that still lost three races in a row (W5 at 07:24:47Z, W7 at
+   07:31:32Z, W14 at 07:44:43Z, each within seconds of a release). I
+   stopped my own waiting acquire (PID 20096, checked by its command line;
+   it held nothing, and its chain's release was correctly REFUSED:
+   gate2-attempt1.lock.log) and restarted it with --poll-sec 1, which
+   acquired at 07:48:33Z.
+4. A SECOND WORKTREE, C:/wt/fw-calc-bytes-2-base, detached at 9868254, for
+   the e2e control (the advisor's design: no stash, since refs/stash is
+   shared by every worktree and stashing would break the applied tree's
+   hash continuity). It carried its own lock file and install and ran only
+   the control. A second, C:/wt/fw-calc-bytes-2-base2 (detached at
+   b794b588), was the visual repetition's BASE arm, made and removed the
+   same way. The first was REMOVED at the first stop (after its report
+   commit): its
+   porcelain was empty; `git worktree remove` (no --force) removed its
+   registration, its tracked files and its lock, then stopped on the
+   ignored install ("failed to delete ... Directory not empty"). With no
+   .git left and no longer listed by `git worktree list`, the leftover
+   (only my own web/node_modules) was deleted with `rm -rf`.
+5. pnpm install --frozen-lockfile ran outside the lock in both worktrees (it
+   is not in the heavy list, as W10a recorded).
+6. Single test files ran outside the lock, one file per vitest run: the
+   four new tests, island-harness, declaration-parity, gate-selection,
+   PublicShell, aria-current, cta-gate, nav-collapse, result-path, routes,
+   shell-reachable, no-js-coverage and no-next-link (light-single-files.log),
+   plus the R1018 and island-harness plants.
+7. AFTER GATE RUN 3's ABORT, cleanup of what the killed run left (all of it
+   this session's own): `docker stop nostalgic_rosalind` (my visual run's
+   container, confirmed by its mount of C:/wt/fw-calc-bytes-2 and its
+   creation at 14:44:21Z); `git restore -- web/tsconfig.json
+   web/next-env.d.ts` (only those two paths, which the killed run had
+   pointed at its distDir); `rmdir` of its empty mount point
+   web/.next-visual-28232-mwksznkj.
+8. The one-second poll, restarted for gate run 4 while commit free was below
+   the line, took and released the lock every few seconds to read memory. I
+   stopped that waiter after about 25 s (its chain then released the lock it
+   held at that instant: "RELEASED holder=W10b", gate4-attempt1.lock.log)
+   and waited at a ten-second poll instead; gate run 5 waited at five.
+
+DEFECTS
+-------
+1. CANDIDATE (not this task's area: the sampler and visual.mjs). A sampler
+   abort kills the HOST tree only: gate run 3's `taskkill /T /F` left the
+   visual run's container running (it mounts the worktree and builds in the
+   Docker VM), and web/tsconfig.json and web/next-env.d.ts pointing at the
+   killed run's distDir, so the worktree read dirty in two files no task
+   changed. Commit free then fell to 422 MB with the lock FREE. A killed
+   gate is NO RESULT, but what it leaves keeps using the machine and the
+   tree until someone stops it; here this session did (DEVIATIONS 7).
+No other defect is established. The first stop's two reds are closed by
+Web Rulings 22 and 28.
+
+QUESTIONS
+---------
+1. THE FLAKY IN THE GATE OF RECORD: is calculateur-panneau-avis-provisoire
+   desktop's 28 px variant main's, or the increment's?
+   - Sightings today, all inside FULL-suite visual runs: with the increment,
+     gate run 2 (three attempts of three; ruled NO RESULT by Web Ruling 28
+     for the disk-cleanup overlap) and gate run 5 (attempt 1 of 2; there was
+     no cleanup overlap in run 5 that this session knows of) - the same
+     image 52380f52... both times; gate run 4's full run (174) was clean.
+     Without the increment, today: none observed, but no full-suite visual
+     run of main was made. Before today, on main's code: C9's update-3 and
+     W10a's RED attempt 1 (REPORT-FW-CASCADE-ORDER.txt), both at the same
+     coordinates.
+   - The repetition (2 tests on 2 workers) was 0/5 in both arms, so it
+     neither clears the increment nor blames it.
+   - THE CHECK THAT SETTLES IT: the full `pnpm test:visual`, alternating
+     b794b588 and this tip, several runs each in one hold, counting the
+     desktop avis-provisoire test's failed attempts per arm. Not run here,
+     unasked.
+2. Recorded only: HomeCounter's slider sweep needs 180 s alone against a
+   300 s limit, and timed out inside a 430 s suite (gate run 4). As the
+   machine's load rises it is the first unit test to go red.
+
+PUSH PROOF
+----------
+Branch fw-calc-bytes-2 (pushed; NOT merged). Its commits on top of 9868254:
+010858a5 and 91f8ed91 (the first stop's report), 5731b016 (the merge of
+origin/main b794b588), 9431ec2f (the repetition rule, before the run),
+9beab805 (THE CODE COMMIT), and this report's commit (the tip; its SHA is in
+the hand-back, checked with `git ls-remote`). Every commit staged by name.
+- The code commit: exactly the 18 paths (18 staged; `git status` empty after),
+  each committed blob equal to SHA256SUMS (18 EQUAL), the 10 modified files'
+  blobs equal to tracked.diff's post-image ids (e.g. routes.ts 004b7b2,
+  PublicShell.tsx 864c406, check-budgets.mjs e637462). Pushed before
+  gate:clone: `git ls-remote` refs/heads/fw-calc-bytes-2 = 9beab805.
+
+gate:changed - THE GATE OF RECORD, run 5 (gate5.log, gate5-gate-changed.log):
+- Under the lock and run-sampled.ps1: ACQUIRED 15:09:42Z at 6 871 MB commit
+  free (line 6 245; four other sessions' allowance included), released
+  15:26:23Z; minimum commit free 4 187 MB, free physical 840 MB; no abort.
+  FRONTALIER_PORT=3810; DATABASE_URL = monreleve_fw_calc_bytes_2 in the
+  environment only; no web/.env. Light work in other sessions may have
+  overlapped.
+- Printed selection and counts:
+  gate selection (R132):
+    11 path(s) matched:
+      web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/ResultPanel.tsx  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/page.tsx  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/resultat/page.tsx  ->  app/**
+      web/app/dev/island/IslandHarness.tsx  ->  app/**
+      web/lib/content/route-paths.ts  ->  modules whose output reaches rendered HTML (R140)
+      web/lib/content/route-paths.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/lib/content/routes.ts  ->  modules whose output reaches rendered HTML (R140)
+      web/lib/content/routes.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/lib/ui/react/PublicShell/PublicShell.tsx  ->  lib/ui/**
+      web/lib/ui/react/PublicShell/ShellNav.tsx  ->  lib/ui/**
+    suites: typecheck, lint, test, build, test:e2e, test:visual, test:db, test:late
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 4072 passed
+      build: exit 0 (no count to check)
+      test:e2e: 387 passed
+      test:visual: 173 passed
+      test:db: 816 passed
+      test:late: 10 passed
+  GATE PASSED for the paths changed.
+  (test:visual's own tally: "1 flaky ... desktop > panneau-avis-provisoire"
+  and "173 passed (3.1m)"; test:db: 816 passed | 27 skipped (843).)
+- Expected from round 5's gate (4 040, 387, 174, 816/27, 10): test 4 040 + 32
+  = 4 072 as predicted; visual 173 + 1 flaky = 174.
+
+gate:clone, ALONE, on 9beab805 (clone.log, hold4-gate-clone.log):
+- ALONE: under the lock, so no other heavy run; `docker ps` before: only
+  frontalier-postgres. Light work in other sessions may have overlapped.
+- ACQUIRED 15:44:35Z at 6 490 MB (line 5 876), released 16:01:47Z; minimum
+  commit free 3 885 MB, free physical 737 MB; no abort. FRONTALIER_PORT=3830
+  (the container step's default is 3120), CONTAINER_IMAGE=monreleve:fw-calc-bytes-2;
+  DATABASE_URL from a web/.env written by script for this run only (naming
+  the scratch database; gate:clone administers its own through `postgres`),
+  removed right after ("web/.env removed: true").
+- Its lines, pasted:
+    GATE:CLONE PASSED
+      commit  9beab80547a840a3720f805349311d27403c38bb
+      clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-ZKmxUY (removed)
+      ran     register-coverage, fixture-coverage, install, typecheck, lint, test (4072 of 4072 tests passed, 239 files), build, size (21 routes measured), db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files), test:container:write (10 checks passed)
+      claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (4072 of 4072 tests passed, 239 files), build, size (21 routes measured), db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files), test:container:write (10 checks passed) from a clean checkout -
+              a machine with no .env, no prior node_modules and no generated
+              file this run did not produce itself.
+  exit code 0 (CLONE_EXIT=0; STEP_EXIT=0 ABORTED=False).
+- SIZE ON THE TIP (its own table): "R976 registry check: 3 probe(s) from
+  lib/content/routes.ts, seen in 3 server file(s), absent from all 65 client
+  chunk(s)." and "All gated routes pass both gates.":
+    /calculateur-teletravail-frontalier  public  123.6  23.0  14.5  47.1  pass (A 1.4 spare, B 2.0 spare)
+    /calculateur-lamal-cmu               public  122.3  21.7  14.5  47.1  pass (A 2.7 spare, B 3.3 spare)
+    /                                    public  112.2  11.6  14.5  47.1  pass (A 12.8 spare, B 13.4 spare)
+  On main the calculator read A 0.1 KiB spare (W18's gate:clone on 38936bc,
+  WEB-QUEUE-STATE). So C9's 97 B link would leave about 1.3 KiB on the tip
+  (1.4 KiB printed to one decimal; the byte-exact 1 332 B is 9868254's).
+- It created and dropped monreleve_gate_clone_9beab805, and built
+  monreleve:fw-calc-bytes-2 (removed at cleanup, below).
+
+CLEANUP (Part B), after this report's push:
+- `docker image rm monreleve:fw-calc-bytes-2` (the one tag this session
+  built); the scratch database monreleve_fw_calc_bytes_2 dropped and the
+  monreleve_* listing shown in the hand-back; no web/.env (removed by the
+  gate:clone hold); both temporary worktrees already removed.
+- .session-lock.json removed LAST. The worktree C:/wt/fw-calc-bytes-2 stays
+  (clean: the code is committed) with .calcbytes2-evidence/ in it.
+
+RESUMED AGAIN (Web Ruling 32) - STOPPED: THE CAUSE IS ON MAIN
+=============================================================
+The coordinator's message (about 18:10Z): round 6's gate failed the desktop
+panneau-avis-provisoire capture on attempt 1 and retry 1 ("10 pixels
+different" while waiting for two consecutive screenshots to agree, then the
+5 000 ms timeout); make it repeat on this tip with R912's pattern; "If the
+cause turns out to be on main and not in your increment, STOP and hand back
+with the evidence: the control runs decide."
+- About 18:10Z: a fresh .session-lock.json; origin/main still b794b588; tip
+  aabf67c0, tree clean.
+
+THE DIAGNOSIS (one hold: diag1.lock.log - ACQUIRED 18:15:45Z at 6 444 MB, line
+6 245, released 18:20:31Z; no abort)
+- A TEMPORARY spec (tools/zz-w10b-diag.visual.spec.ts, never committed,
+  removed from both trees after the run) through the real visual.mjs and its
+  filter, in the container: the avis-provisoire state reached exactly as the
+  real spec reaches it, at 1440 x 900; four arms; per arm 4 FRESH contexts x 6
+  consecutive full-page captures, hashed; the layout read at capture time.
+- Run in MINE (aabf67c0, this branch) and in BASE (a temporary detached
+  worktree of main b794b588, C:/wt/fw-calc-bytes-2-base3), the same hold.
+  Capture hashes (count of 24 per arm):
+    arm              MINE                              BASE (main)
+    asIs             9585b2a3 x21, 5a4c348f x3          9585b2a3 x22, 5a4c348f x2
+    blur             7c2765ed x18, 4c84a439 x6          7c2765ed x21, 4c84a439 x3
+    scrollTop        5a4c348f x24                       5a4c348f x24
+    blurScrollTop    4c84a439 x24                       4c84a439 x24
+  (diag1-mine/, diag1-base/: the JSON per arm and the first and last capture
+  of every page.)
+- THE SAME TWO RENDERINGS, BYTE FOR BYTE, IN BOTH TREES, at the same rate.
+  The two asIs hashes differ by exactly the variant: 28 px at x1285-1287
+  y1819-2007, max channel delta 2 (tools/bbox.cjs). The majority one
+  (9585b2a3) differs from the committed baseline only inside the canton
+  select's label (42 px at x754-763 y426-432; the diagnostic used
+  `color: transparent` where the real spec's e2e/visual-select.css uses
+  -webkit-text-fill-color), so the majority rendering IS the baseline's.
+- WHAT DECIDES IT: the scroll position. Every arm captured at scrollY 763
+  (where `page.fill('#total-jours')`, the state's last step, leaves the page)
+  gives two renderings; every arm scrolled to 0 before capturing gives ONE,
+  24 of 24, in both trees - and that one is the variant. Focus is not the
+  cause: blurring alone (R912's remedy) still gives two. The geometry is
+  identical in both trees: the AppCard at x 824.65625, width 463.328125
+  (its right edge at x 1287.98, sub-pixel), inside the result column, which
+  is `position: sticky` from the md breakpoint (CalculatorForm.module.scss:
+  39-44) and is 1 754 px tall, docY 301. So a full-page capture of a page
+  scrolled 763 px renders the sticky column's AppCard edge one of two ways;
+  at scroll 0 it renders one way.
+- MAIN HAS IT, AND THE INCREMENT DOES NOT CHANGE IT: same hashes, same
+  geometry, MINE 3 of 24 against BASE 2 of 24 for the variant. The full-suite
+  sightings on this branch and none on main's tips today are consistent with
+  a capture-level race of this rate; no full-suite control run was made,
+  because the coordinator's stop condition was met by the control above.
+- So, per the message: STOPPED. Nothing was changed, committed or
+  regenerated for the capture; no fix was attempted on this branch.
+- THE FIX, for whoever takes it on main (a task of its own): in the spec,
+  scroll to the top before the full-page capture of this state (one
+  rendering, 24/24 in both trees) - not a threshold, mask, retry or sleep;
+  the PRODUCT does not move after load (both trees settle on one image at
+  scroll 0). It moves this state's desktop baseline to the scroll-0 image,
+  which is today's 28 px variant, so it is a named regeneration of one file
+  (R207). Other states captured while scrolled with the sticky column may
+  share the race; not examined here.
+
+STATUS (R391) of this resumption: STOPPED (the cause is on main). The code
+commit 9beab805 and its gates stand as reported above; FULL GATE NOT RUN
+again; no new code. The branch tip is this report's commit. Not merged.
+CLEANUP: the diagnostic spec removed from both trees; C:/wt/fw-calc-bytes-2-base3
+removed after its porcelain read empty; .session-lock.json removed last.

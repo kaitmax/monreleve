@@ -29,6 +29,15 @@
 // links is a 404 today.
 
 import { LAST_REGULATORY_REVIEW } from './regulatory';
+import { CALCULATOR_PATH, COMPARATOR_PATH, RESULT_PATH } from './route-paths';
+
+// THE SLUGS LIVE IN ./route-paths, A LEAF, SINCE FW-CALC-BYTES (R976). This file
+// is the registry, and a client module that imported a path from here shipped
+// every registered route to the browser. The registry declares its routes with
+// the leaf's constants and re-exports them, so it stays the one place a route
+// is declared (R206) and every existing importer is unchanged; client code
+// imports the leaf directly. Their documentation moved with them.
+export { CALCULATOR_PATH, COMPARATOR_PATH, RESULT_PATH };
 
 /** Whether the page exists yet. Only a `live` route can reach the sitemap. */
 export type RouteStatus = 'live' | 'planned';
@@ -76,44 +85,6 @@ export interface PublicRoute {
  * R52's placeholders, one directory over.
  */
 export const UNASSIGNED_TASK = 'UNASSIGNED';
-
-/**
- * The calculator's slug, exported because it appears in the registry, the
- * route directory, the nav, the page's metadata and three test files - and
- * SPEC 14 makes it permanent once published, so it is the last string in this
- * product that should be typed twice.
- */
-export const CALCULATOR_PATH = '/calculateur-teletravail-frontalier';
-
-/**
- * The server-rendered result, and its path is FROZEN (R351, authorised by the
- * operator with the ruling).
- *
- * WHY IT IS ITS OWN ROUTE rather than the calculator answering for itself.
- * FW13 increment 2 measured that ANY use of searchParams on the calculator -
- * in the page or in generateMetadata, even behind a Suspense boundary - makes
- * that route dynamic and emits <title> and the canonical into the BODY. This
- * is SPEC 14's target-query page, and AC3's noindex would land in the body
- * too, where it is ignored, leaving param URLs indexable. So the calculator
- * stays static exactly as FW13 built it, and the computing happens here.
- *
- * FROZEN MEANS WHAT SPEC 14 MEANS BY IT: a form's action is a published
- * address the moment a reader bookmarks where it lands, so renaming this
- * costs a 301 forever. tests/unit/content/result-path.test.ts asserts the
- * literal, so a rename is a deliberate act with a failing test in front of it
- * rather than a refactor nobody noticed.
- *
- * DELIBERATELY ABSENT FROM PUBLIC_ROUTES. The sitemap is generated from that
- * registry and this page must never appear in it: it holds no content of its
- * own, only an answer to someone's figures. Its noindex arrives as
- * middleware's X-Robots-Tag, UNCONDITIONALLY - not on the calculator's "only
- * when there is a query" rule, because even this path's bare form is a
- * parameterised view.
- */
-export const RESULT_PATH = `${CALCULATOR_PATH}/resultat`;
-
-/** The LAMal / CMU comparator's slug (SPEC 9.6), for the same reason as CALCULATOR_PATH. */
-export const COMPARATOR_PATH = '/calculateur-lamal-cmu';
 
 export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   // ---- live today -------------------------------------------------------
@@ -326,6 +297,29 @@ export function ctaHrefIfOffered(
   routes: readonly PublicRoute[] = PUBLIC_ROUTES,
 ): string | null {
   return offered ? ctaHrefIfLive(href, routes) : null;
+}
+
+/**
+ * RULING R85 OVER A TABLE OF LINKS: each one's href when its target is live,
+ * null when it is not - ctaHrefIfLive, key by key.
+ *
+ * FOR CLIENT CODE, WHICH MUST NOT DECIDE THIS ITSELF (R976, FW-CALC-BYTES). The
+ * calculator's result panel renders inside a client island and called
+ * ctaHrefIfLive on every render, which put this whole registry in the
+ * calculator's first-load JS. The pages that render the panel call this on the
+ * server and hand the island the answers: a four-entry table, and no registry.
+ */
+export function liveHrefs<K extends string>(
+  links: Readonly<Record<K, { readonly href: string }>>,
+  routes: readonly PublicRoute[] = PUBLIC_ROUTES,
+): Readonly<Record<K, string | null>> {
+  const resolved = {} as Record<K, string | null>;
+
+  for (const key of Object.keys(links) as K[]) {
+    resolved[key] = ctaHrefIfLive(links[key].href, routes);
+  }
+
+  return resolved;
 }
 
 /** The routes that exist, whether or not a gate currently hides them. */

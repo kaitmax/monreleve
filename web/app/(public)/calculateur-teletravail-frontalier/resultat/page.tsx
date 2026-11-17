@@ -39,7 +39,7 @@
 
 import type { Metadata } from 'next';
 import { calculateTelework, ruleSetFor } from '@/lib/calc-engine';
-import { CALCULATOR_PATH } from '@/lib/content/routes';
+import { CALCULATOR_PATH, liveHrefs } from '@/lib/content/routes';
 import { currentDayInParis, currentTaxYear } from '@/lib/content/tax-year';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { project } from '@/lib/forecast/project';
@@ -51,6 +51,7 @@ import { FORM_ONLY_PARAMS, strayParams } from '@/lib/params/schema';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { errorMessage } from '@/lib/fr/errors';
 import { PARAM_NOTICE } from '@/lib/fr/params';
+import { RESULT_COPY } from '@/lib/fr/result';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { AppCard } from '../AppCard';
 import { ResultPanel } from '../ResultPanel';
@@ -313,7 +314,11 @@ export default async function ResultatPage({
               JavaScript sees the same result card.
             */}
             <div className={styles.column}>
-            <ResultPanel result={outcome.value} thresholds={rules} />
+            <ResultPanel
+              result={outcome.value}
+              thresholds={rules}
+              liveLinks={liveHrefs(RESULT_COPY.links)}
+            />
 
             {/*
               THE PROJECTION, when a rhythm arrived (R343, FW-FORECAST).
