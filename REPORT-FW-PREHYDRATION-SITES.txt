@@ -213,7 +213,8 @@ copy, "PLANT" 0 matches; re-run 2 passed (.w21-evidence/plant-r1059*.log).
 ====================================================================
 R1060 - NOTHING ELSE MOVES
 ====================================================================
-Five paths: three components, one new spec, one new support module. No
+Six paths: three components, one new spec, one new support module, one new
+unit test file (plus this report). No
 baseline regenerated; test:visual in gate:changed: 174 passed, none
 regenerated ("photographed: 4d933cec plus 5 uncommitted path(s)"; sole
 container of mcr.microsoft.com/playwright:v1.63.0-noble, R961 REUSED).
