@@ -1,0 +1,57 @@
+FW-PREHYDRATION-SITES SESSION PROMPT - Mon Releve
+WHAT A PERSON TYPES BEFORE THE PAGE HYDRATES IS KEPT, EVERYWHERE (web run
+step W21)
+Written by the orchestrating session on 2026-11-17 (Web Rulings 28 and 36).
+Read first: relay/ORCH-WEB-COMPLETE.txt Part B including PARALLEL MODE;
+relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" with this task's names
+(worktree C:/wt/fw-prehydration-sites, branch fw-prehydration-sites,
+report REPORT-FW-PREHYDRATION-SITES.txt); REPORT-FW-DEADLINE-PREHYDRATION.txt
+on main (W18): its mechanism (R1042), its plant (R1041) and its census
+(R1044); CLAUDE.md R154, R180, R196, R206. Ruling numbers: R1056-R1060.
+
+THE DEFECT (W18's R1044, driven with its plant): three islands lose a value
+typed before hydration.
+- ComparatorForm.tsx: the income, the first person's birth year, the
+  accident box. After "Comparer", the box empties, an error shows and the
+  checkbox unticks.
+- CalculatorForm.tsx: canton, the numeric fields, radios, chips. The screen
+  shows the typed values while the result shows the empty state; the next
+  keystroke resets them. (A GET form: a native submit before hydration
+  still sends them.)
+- HomeCounter.tsx: the slider thumb shows the moved value while the label
+  and figures stay at the default.
+A person on a slow phone who starts typing is told nothing and loses what
+they typed: this is the user-experience defect the operator asked to keep.
+
+R1056. THE RED FIRST, with W18's plant (hold every /_next/static script
+    until the typing is done, then release), one test per island, verified
+    to have held something back. RED on your base, pasted.
+R1057. THE FIX, W18's mechanism: on mount, read the value the control holds
+    into state (refs and one layout effect per island), so a value typed
+    before or during hydration is what the island starts from.
+    - THE CALCULATOR AND ITS SHARED LINK (Web Ruling 36's default, the
+      operator's to overturn): the server renders the shared link's values
+      into the fields, so the value the field holds at mount IS the link's
+      value unless the person changed it. Reading the field therefore
+      keeps the link when untouched and the person's edit when touched.
+      If the calculator's mount effect seeds state from the URL AFTER that
+      read, order them so the field's value wins, and test both cases: a
+      shared link untouched shows the link's result; a shared link edited
+      before hydration shows the edit.
+    - No copy, visual or dependency change; no figure or rule changes.
+R1058. GREEN under the plant AND normally, every existing test unchanged
+    in what it asserts. The as-loaded tests still pass.
+R1059. A VERIFIED PLANT (R180): remove one island's mount read and show its
+    test goes RED; restore and verify the restore.
+R1060. NOTHING ELSE MOVES. No baseline regenerated: a visual red is handed
+    back with its crop.
+
+THE WORK: 0. worktree from the BASE_SHA in the launch message, and lock;
+1. R1056 (light: pnpm dev on your port); 2. R1057-R1059; 3. gate:changed
+under the lock; commit; push; 4. gate:clone ALONE; push; 5. report;
+commit; push; cleanup; remove the lock last.
+
+REPORT: SUMMARY / STATUS (R391) / R1056-R1060 with evidence / WALKTHROUGH
+(a throttled page, typing early, on the three islands) / NOTICED /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF FW-PREHYDRATION-SITES PROMPT

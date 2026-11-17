@@ -1637,3 +1637,24 @@ DECISION:
    the spec scrolls to the top before each, repetition proof, a named
    regeneration. It lands before W12 regenerates baselines.
 APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 36 - THE OPERATOR: ONLY WHAT MATTERS FOR USER EXPERIENCE
+====================================================================
+THE OPERATOR, 2026-11-17, verbatim:
+  "ok continue the web serie if there is something unecesser to the
+  product leave it after the go live of the apps, now only what matters
+  for user experience"
+DECISION:
+1. KEPT (user-visible): R380 (fw-canton-required), W21 (values typed
+   before hydration), W12 (the account area, Web Rulings 30 and 32).
+2. KEPT as enablers: W10b (frees the calculator bytes R380 and W12 need)
+   and W23 (stable captures before W12 regenerates baselines).
+3. DEFERRED until after the apps go live: W13 (API outage envelope),
+   W17 (selector guard), W22 (the sweep's speed). A HomeCounter timeout
+   in a gate is re-run, as before.
+4. W5 and W16 finish what they are doing; nothing more is spent on them.
+5. ORDER: round 7 = W10b alone (it blocks R380, W21 and W12); then R380
+   merged in a round of its own; W21 launched once W10b is on main (it
+   touches CalculatorForm); W12 once W23 and W10b are on main.
+APPLIED: these records join the next record commit.
