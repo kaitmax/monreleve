@@ -1,0 +1,47 @@
+FW-AVIS-CAPTURE SESSION PROMPT - Mon Releve
+THE STICKY-COLUMN CAPTURES REPEAT (web run step W23)
+Written by the orchestrating session on 2026-11-17 (Web Ruling 35). Read
+first: relay/ORCH-WEB-COMPLETE.txt Part B including PARALLEL MODE;
+relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS" with this task's names
+(worktree C:/wt/fw-avis-capture, branch fw-avis-capture, report
+REPORT-FW-AVIS-CAPTURE.txt); REPORT-FW-CALC-BYTES-2.txt on branch
+fw-calc-bytes-2, its last section "RESUMED AGAIN (Web Ruling 32)", and the
+diagnostic spec copied to C:/wt/fw-calc-bytes-2/.calcbytes2-evidence/tools/
+(read-only); CLAUDE.md R135, R180, R207, R345, R912's precedent (the
+error-state capture). Ruling numbers: R1051-R1055.
+
+THE FINDING (W10b, measured on main b794b588 and on its own tip): the
+calculator's desktop panneau-avis-provisoire capture renders two ways
+(2 in 24 on main, 3 in 24 on the tip, the same two images in both trees),
+differing by 28 px at x1285-1287 y1819-2007 (channel delta 2), the
+AppCard's sub-pixel right edge inside the result column, which is
+position: sticky from the md breakpoint (CalculatorForm.module.scss:39-44).
+The state's last step, fill('#total-jours'), leaves the page scrolled to
+763 px. Scrolled to 0 before the capture: one image, 24 of 24, in both
+trees. Blurring alone does not settle it.
+
+R1051. THE CENSUS. Every visual state (calculator, comparator, /resultat,
+    any page with a sticky column) captured while the page is scrolled
+    with a sticky element on screen. Measure each as W10b did (N fresh
+    pages x consecutive captures, hashed), so the list is measured, not
+    guessed.
+R1052. THE FIX IN THE SPEC: the page is scrolled to the top before each
+    such full-page capture. The product does not move after load (both
+    trees settle at scroll 0), so the product is not changed. No
+    threshold, mask, retry or sleep (R345).
+R1053. THE PROOF: for every fixed state, the same hashed repetition shows
+    ONE image; then two consecutive FULL `pnpm test:visual` runs with each
+    such test first-time green and zero flaky.
+R1054. THE REGENERATION, NAMED FIRST (R207, R135): the expected set (at
+    least calculateur-panneau-avis-provisoire-desktop.png, now the scroll-0
+    image) written before the run; the produced set equals it; each image
+    cropped and looked at.
+R1055. NOTHING ELSE MOVES. No product code, no other baseline.
+
+THE WORK: 0. worktree and lock; 1. R1051 (heavy runs under the lock);
+2. R1052; 3. R1053-R1054 under the lock; 4. gate:changed; commit; push;
+5. gate:clone ALONE; push; 6. report; commit; push; remove the lock last.
+
+REPORT: SUMMARY / STATUS (R391) / R1051's table / R1052-R1055 with
+evidence / BASELINES / NOTICED / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF FW-AVIS-CAPTURE PROMPT

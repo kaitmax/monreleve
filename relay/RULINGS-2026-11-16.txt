@@ -1464,3 +1464,176 @@ DECISION:
    counter wait for W20; the calculator waits for W10b and for a ruling on
    which wins when the shared-link URL and a typed field disagree.
 APPLIED: these records join round 5's record commit.
+
+====================================================================
+WEB RULING 29 - W15 VERIFIED; THE HEAVIEST SELECTION'S LINE RAISED
+====================================================================
+EVIDENCE:
+- W15: fw-docs-sender-domain f1861d3 (code 7b90dd72; it merged 41ddc9e4).
+  Run 1 of its gate:changed was RED on the rappel-delai race (Web Ruling
+  22), since its base lacked W18's fix; run 2 PASSED (test 4 012, e2e 381,
+  visual 174, db 816, late 10). Its gate:clone ALONE on 7b90dd72 PASSED.
+  V1: two docs and one lib/fr comment block; merge-tree clean against
+  main b794b588.
+- Run 1 dropped 4 840 MB (7 071 -> 2 231 commit free, 180 MB physical)
+  on e2e + visual + test:db + late.
+DECISION:
+1. W15 is verified. Its merge waits for the next verified branch, or one
+   hour.
+2. Every launch and merge gate selecting test:e2e, test:visual AND test:db
+   uses 7 000 from now on (4 840 + 2 000, plus others).
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 30 - THE OPERATOR RULES ON W12 (THE WEB ACCOUNT AREA)
+====================================================================
+THE OPERATOR, 2026-11-17 (AskUserQuestion), verbatim answers:
+- "Yes, as designed (Recommended)": the header link "Se connecter" and
+  the read-only signed-in area at /mon-releve ship. It lands after W10b
+  frees the calculator's GATE A bytes; its other open questions go to the
+  advisor.
+- "Existing app users only (Recommended)": C9's Q1. A web sign-in never
+  creates an account; only an address the app already knows gets in.
+DECISION:
+1. W12 FW-WEB-ACCOUNT (resume) is queued after W10b merges, and its
+   prompt carries this ruling. C9's Q2 (which tax years the area shows)
+   and Q4 (keep R898's SPEC amendment) go to the advisor when the prompt
+   is written, with the R898 text and api-v1 sections 1.5 and 1.6 open
+   (Web Ruling 17 item 6).
+2. A web sign-in for an unknown address must not reveal whether the
+   address has an account: api-v1 section 1.5 answers identically for
+   every cause.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 31 - W10b VERIFIED; ROUND 6 IS W15 + W10b
+====================================================================
+EVIDENCE: REPORT-FW-CALC-BYTES-2.txt (aabf67c, code 9beab805). The
+calculator 123.6 KiB with 1.4 KiB of GATE A spare. Repetition 5/5 clean
+on both arms. Gate run 5 green with one flaky: the known
+panneau-avis-provisoire desktop variant on attempt 1, the baseline on
+retry 1.
+DECISION:
+1. W10b is verified. The flaky is main's capture instability (seen on
+   main's code before), not the increment's; a task to make that capture
+   repeat is recorded for after the web run, like R912 did for the error
+   state.
+2. ROUND 6 is W15 + W10b, one octopus, line 7 000 (e2e + visual + db).
+   EXPECTED: test 4 072 (4 040 + 32 from W10b; W15 adds none), e2e 387,
+   visual 174 (a flaky is reported as such), db 816 / 27 skipped, late 10.
+3. After round 6: W12 (with Web Ruling 30) and R380 (fw-canton-required)
+   may go; both need the calculator's freed bytes.
+APPLIED: these records join round 6's record commit.
+
+====================================================================
+WEB RULING 32 - TWO CORRECTIONS; ROUND 6's READING RULE; W12 RULED
+====================================================================
+CORRECTIONS (the advisor):
+1. Web Ruling 29 item 2 is WITHDRAWN. The 4 840 drop is one reading, and
+   it overlapped W20's launch; the same suites dropped 1 869, 2 684 and
+   3 644 elsewhere today. The line for e2e + visual + db is 6 245 again.
+   Round 6's waiter was restarted at 6 245, because a priority waiter
+   below its line stalls every session.
+2. Web Ruling 31 item 1's attribution is WITHDRAWN. Both earlier
+   sightings of the panneau-avis-provisoire desktop variant were on
+   CHANGED trees (C9's increment, W10a's fix). Today's full visual runs
+   on main's own tips (rounds 3, 4 and 5, W18, and W15's second run)
+   never showed it. W10b's full runs showed it in two of three.
+ROUND 6's READING RULE, stated before its visual line is read:
+- a sighting of the variant on ANY attempt counts against W10b. Round 6
+  is then restaged with W15 alone, and W10b resumes to make that capture
+  repeat on its tip (R912's pattern), proven through full-suite runs;
+- if the line is clean, the merge proceeds, the flaky is recorded as
+  unattributed, and W20, W5 and W16 are told its test and coordinates;
+- either way, that capture is stable before W12 regenerates the file.
+BEFORE PROMOTING ROUND 6: test:container:e2e runs on its tip. W10b
+re-chunks the shell on every page, and no browser has driven the
+production build of the new shell.
+W12 (the advisor, under "Advisor decides", after Web Ruling 30):
+- Q4: R898 is KEPT and lands in W12's merge, never ahead. The session
+  quotes R898's sentence; if it says more than "a read-only signed-in
+  area, its cookie only there", it comes back. The second site is
+  CLAUDE.md's R209 bullet, which still says D14 deleted the session
+  model.
+- Q2: the current tax year and the one before, no selector. A year
+  without its own rule set carries the engine's warning (api-v1 6.5); in
+  January the current year is that case. The area renders the warning,
+  asserted on the page in both directions, with the year read from its
+  source.
+- NOT a patch apply. Queue Ruling 21's design (a link passed into a client
+  shell) no longer exists, since the shell is a server component now.
+  Files main has not changed since db68601 are copied and hashed; the rest
+  are rewritten, each listed.
+- Asserted before handback: public routes keep their static markers and
+  set no cookie; R907's table proven row by row; R909 and R911 run; Web
+  Ruling 30 in both directions (an unknown address writes no row, sends no
+  mail and gets the same answer); the app's /api/v1/auth/code still
+  creates the account.
+- Baselines LAST, on a main containing W20: the expected set derived
+  afresh, and Queue Ruling 13's three conditions recomputed.
+- PROMOTION CARVE-OUT: W12's round is NOT promoted until the operator has
+  read the new notice sentences and the sign-in mail's code sentence
+  (Queue Ruling 12). Every later round stacks on it.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 33 - ROUND 6 READ UNDER ITS RULE: W10b OUT, W20 IN; THE
+OPERATOR ON THE COMPARATOR
+====================================================================
+EVIDENCE:
+- W20 verified (the W20 row). merge-tree clean against main, W10b, W15.
+- Round 6 was restaged as W15 + W10b + W20 (one octopus; the waiter had
+  never acquired). Its gate (16:21-16:37Z, start 6 093, minimum 3 272):
+  test 4 097, e2e 388, db 816, late 10, all as predicted; test:visual 173
+  passed + 1 FLAKY: calculateur panneau-avis-provisoire desktop failed on
+  attempt 1 and retry 1 ("10 pixels different", the page did not settle
+  within 5 000 ms) and passed on retry 2. Log kept as
+  .gate-changed-round6-with-w10b.log.
+DECISION (Web Ruling 32's rule, stated before the reading):
+1. The sighting counts against W10b. Round 6 is restaged as W15 + W20
+   and gated again; EXPECTED test 4 065, e2e 388, visual 174, db 816,
+   late 10.
+2. W10b is sent back to make that capture repeat on its tip (R912's
+   pattern: no threshold, mask, retry or sleep), proven by two
+   consecutive full visual runs with that test first-time green, against
+   two control runs of main.
+THE OPERATOR, 2026-11-17 (AskUserQuestion), on W20's questions:
+- Q1: "Form alone until filled (Recommended)". No example result on the
+  first view.
+- Q3: "Leave it out (Recommended)". The 'ne dit pas' box stays out.
+- W20's Q2 and Q4-Q9 keep the page as built; they are recorded for the
+  expert reviewer's pass, not tasked.
+APPLIED: these records join round 6's record commit.
+
+====================================================================
+WEB RULING 34 - THE HOMECOUNTER SWEEP BECOMES W22
+====================================================================
+EVIDENCE: round 6 (W15 + W20) failed at pnpm test only: HomeCounter's R711
+sweep timed out at 304 116 ms; 4 064 of 4 065 passed. It is the third gate
+today the sweep has failed under load (round 4's first run, W10b's run 4).
+Alone it takes about 180 s. Neither W15 nor W20 touches it.
+DECISION:
+1. The run is NO RESULT for the sweep and is re-run on the same staged
+   tree.
+2. W22 FW-SWEEP-TIME is queued: the sweep is made fast enough to hold
+   under load without asserting less. A longer timeout is not the fix.
+APPLIED: these records join round 6's record commit.
+
+====================================================================
+WEB RULING 35 - THE CAPTURE RACE IS MAIN'S; W10b CLEARED; W23 LAUNCHED
+====================================================================
+EVIDENCE: REPORT-FW-CALC-BYTES-2.txt, "RESUMED AGAIN" (tip 054b039).
+One hold, the same temporary spec in both trees, 24 captures per arm:
+the avis-provisoire desktop state renders the same two images on main
+b794b588 (variant 2 in 24) and on W10b (3 in 24). Scrolled to 0 before
+the capture, both trees give one image, 24 of 24. The cause is the
+sticky result column at the scroll position the last fill leaves.
+DECISION:
+1. Web Ruling 32's rule is satisfied by its control: the race is main's,
+   not the increment's. W10b merges in the next round; a flaky on that
+   test is recorded as main's until W23 lands.
+2. W23 FW-AVIS-CAPTURE, relay/FW-AVIS-CAPTURE.txt (R1051-R1055), is
+   launched from b794b588: a measured census of sticky-column captures,
+   the spec scrolls to the top before each, repetition proof, a named
+   regeneration. It lands before W12 regenerates baselines.
+APPLIED: these records join the next record commit.
