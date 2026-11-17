@@ -1,0 +1,446 @@
+REPORT-FW-CALC-BYTES
+====================
+
+Web run step W10 (relay/ORCH-WEB-COMPLETE.txt Part C; QUEUE-STATE BLOCKED 11,
+its first option), prompt relay/FW-CALC-BYTES.txt, rulings R975-R979.
+Parallel mode (Web Ruling 7).
+- Branch fw-calc-bytes, worktree C:/wt/fw-calc-bytes, cut from origin/main
+  56b71166db7fe86f39c125075cbcbde70e718bc1 (BASE_SHA at launch).
+- The lock .session-lock.json was written at 22:11:56Z (gitignored).
+- Evidence: C:/wt/fw-calc-bytes/.calcbytes-evidence/ (gitignored): every log
+  named below, the sampler files, the saved BEFORE and AFTER builds
+  (before-next/, after-next/: static/, server/, manifests, size marker), the
+  tools (tools/), the visual failure artefacts (visual-fail/), the walkthrough
+  screenshots (walkthrough/) and the uncommitted increment (increment/).
+- Ports used: 3600 only (gate:changed's e2e, the walkthrough). Scratch
+  database: monreleve_fw_calc_bytes (dropped at the end).
+- C9's evidence (C:/wt/fw-web-account/.webaccount-evidence/) was READ only;
+  its byte tools were copied into my evidence folder and adapted there.
+
+SUMMARY
+-------
+- STOPPED AT R977: A BASELINE MOVED. gate:changed ran on the finished
+  increment and failed at test:visual: 2 failed, 166 passed. Both failures are
+  one state, calculateur-panneau-avis-provisoire (desktop and mobile): a 20 px
+  gap now opens above the "Decompte" choice in the calculator's advanced
+  panel. Per R977 nothing was committed, regenerated or "fixed" to chase green;
+  gate:clone was not run. The increment is uncommitted in the worktree and
+  saved with checksums (increment/, 20 OK).
+- The cause is a pre-existing ORDER-DEPENDENT CASCADE (DEFECT 1):
+  `.SegmentedChoice_root{margin:0}` against `.CalculatorForm_advanced>*+*
+  {margin-top:var(--space-5)}`, both specificity (0,1,0), in two modules.
+  Which wins depends on stylesheet order, and Next's CSS chunking decides
+  that order from the module graph with ties broken by module identifiers,
+  which carry absolute paths. Main's baseline shows the `margin:0` winning (no
+  gap); this branch's container build shows the stack rule winning (20 px,
+  the gap CalculatorForm.module.scss says it intends). Causation is NOT fully
+  proven: the control, test:visual on a clean BASE tree, was NOT RUN
+  (QUESTION 1).
+- Everything before the visual suite is done and green:
+  - R975: BASE measured from a fresh build of 56b7116. The calculator reads
+    127 941 B against 128 000 B (59 B spare). ONE webpack module, 4643 =
+    lib/content/routes.ts (the whole registry, 20 routes), sits in
+    static/chunks/9879-84f1b6865f0484ac.js, loaded by /(public)/layout (every
+    page), /not-found and the calculator.
+  - R976: the registry is resolved on the server. PublicShell renders on the
+    server and hands plain data to its client leaves (ShellNav.tsx); paths come
+    from a leaf, lib/content/route-paths.ts; the result panel's link (a third
+    client importer, found by an import-graph scan) is resolved by liveHrefs on
+    the server. `pnpm size` now fails any build whose client chunks carry the
+    registry. Every step test-first, RED shown.
+  - R978 (on the uncommitted increment, same machine): the calculator reads
+    126 567 B, 1 433 B spare (+1 374 B of headroom against the 42 B needed).
+    No registered route ships: no client chunk carries any registry string.
+    GATE A/B/W/I unchanged. C9's 97 B link would leave 1 336 B spare.
+  - R979: a verified plant (the registry imported into ShellNav.tsx, build,
+    `pnpm size`) went RED naming the chunk; reverted to the identical sha256.
+  - WALKTHROUGH: 97 checks passed on `pnpm dev`, 0 failed.
+
+STATUS (R391)
+-------------
+STOPPED at R977 (a visual baseline moved). FULL GATE NOT GREEN, and NO CODE
+COMMIT exists:
+- gate:changed on the uncommitted increment (working tree, not a commit):
+  typecheck, lint, test (3 797), build, test:e2e (367) passed; test:visual
+  RED, 2 failed, 166 passed; test:db and test:late NOT RUN (the chain stops at
+  the first failure). STEP_EXIT=1, ABORTED=False.
+- gate:clone: NOT RUN (no code commit to run it on; R977 says stop).
+- This report is the only commit on the branch (its SHA: the hand-back and
+  `git ls-remote`). FULL GATE NOT RUN on it; it adds this one ASCII file at
+  the repository root.
+- The worktree is DELIBERATELY DIRTY: the increment's 18 files are
+  uncommitted there (10 modified, 8 new). Do not clean or remove it (R392).
+- Not merged.
+
+R975. THE BYTES, MEASURED BEFORE
+--------------------------------
+Hold 1, under the heavy-run lock and run-sampled.ps1 (hold1-before.log):
+- ACQUIRED 22:38:20Z at 7 764 MB commit free (line 4 854), released
+  22:39:42Z; minimum commit free 6 209 MB, free physical 1 363 MB, no abort.
+- HEAD 56b71166db7fe86f39c125075cbcbde70e718bc1, `git status --porcelain`
+  empty, no web/.env: a fresh `pnpm build` of BASE_SHA itself.
+- `pnpm size`: exit 0, "All gated routes pass both gates." (before-size.log).
+- Bytes: tools/make-bytes-variant.mjs DERIVES a byte-precise copy of this
+  worktree's own scripts/check-budgets.mjs (only kib() and import paths change;
+  each replacement asserted to match exactly once, R211). Cross-checked by
+  tools/routes-bytes.cjs (C9's all-routes.cjs adapted to a .next-shaped copy):
+  agree on 20 of 20 routes. gzip level 9, each file alone, rootMainFiles +
+  ancestor layouts + the page entry, .js only - check-budgets' own method.
+  GATE A = 125 KiB = 128 000 B.
+
+The table (before / after / delta / GATE A spare before / after), bytes:
+  route                                         before    after   delta  spare-b  spare-a
+  /                                             116727   114923   -1804    11273    13077
+  /_not-found                                   111007   105957   -5050    16993    22043
+  /a-propos                                     111065   105685   -5380    16935    22315
+  /alertes                                      111064   105684   -5380    16936    22316
+  /alertes/confirmation/[etat]                  110882   105502   -5380    17118    22498
+  /alertes/desinscription/[etat]                110882   105502   -5380    17118    22498
+  /application                                  111013   105633   -5380    16987    22367
+  /calculateur-lamal-cmu                        125595   123791   -1804     2405     4209
+  /calculateur-teletravail-frontalier           127941   126567   -1374       59     1433
+  /calculateur-teletravail-frontalier/resultat  112386   107005   -5381    15614    20995
+  /cgu                                          110960   105580   -5380    17040    22420
+  /confidentialite                              110960   105580   -5380    17040    22420
+  /guides                                       110935   105558   -5377    17065    22442
+  /guides/[slug]                                112303   106923   -5380    15697    21077
+  /mentions-legales                             110960   105580   -5380    17040    22420
+  /releve-annuel                                111065   105685   -5380    16935    22315
+  /releve/print                                 104420   104412      -8    23580    23588
+  /sources                                      111065   105685   -5380    16935    22315
+  /tarifs                                       111065   105685   -5380    16935    22315
+  /verifier/[code]                              110867   105487   -5380    17133    22513
+(before-routes-bytes.txt, after-routes-bytes.txt, before-after-table.txt)
+
+The modules from routes.ts in the calculator's client chunks
+(before-registry-modules.txt, before-chunk-9879.txt, before-calculator-files.txt):
+- ONE module, id 4643: lib/content/routes.ts, 3 212 B raw, about 900 B gzip
+  alone. It holds the whole registry - all 20 PUBLIC_ROUTES entries with
+  path, status, task, changeFrequency and priority, /guides/geneve and
+  /guides/attestation-employeur-teletravail included - plus the paths and the
+  functions. Its export map {I9, Wl, XN, c6, sS, xW} is six exports:
+  collapseLoneDisclosures, visibleNav, visibleFooterColumns and
+  ctaHrefIfOffered (PublicShell), ctaHrefIfLive (ResultPanel), RESULT_PATH
+  (CalculatorForm).
+- It lives in static/chunks/9879-84f1b6865f0484ac.js (2 100 B gzip), which
+  app-build-manifest.json lists for exactly /(public)/layout, /not-found and
+  the calculator's page - the same chunk name and hash as C9's db68601.
+- Chunk 9879's other six modules are shell and calculator code: 1679
+  regulatory.ts (the review date), 2449 lib/fr/legal.ts, 4650 lib/fr/shell.ts,
+  2556 lucide chevron-down, 5856 lucide's icon base, 8936 (152 B raw).
+- The calculator loads 11 first-load files: 10 shared, one route-only (its
+  page chunk, 13 825 B).
+
+R976. THE REGISTRY IS RESOLVED ON THE SERVER
+--------------------------------------------
+Where it reached the browser, found from source before any edit
+(tools/client-graph.cjs walks every 'use client' module's local value imports;
+client-graph-base.txt): PublicShell.tsx ('use client'), CalculatorForm.tsx
+('use client', RESULT_PATH) and ResultPanel.tsx (no directive, but client code
+inside CalculatorForm; it called ctaHrefIfLive per render). ResultPanel was not
+in the prompt's pointers; module 4643's export map confirms it. After the
+change the same scan reports every client module clean (client-graph-after.txt).
+
+1. THE SHELL. PublicShell.tsx is a server component. It keeps, at module
+   scope and unchanged in text, `ctaHrefIfOffered(SHELL_COPY.ctaHref,
+   PRODUCT_STATE.trackerExists)` and `collapseLoneDisclosures(visibleNav(
+   SHELL_NAV))`, plus footerColumns() over visibleFooterColumns; it renders the
+   native disclosure element, the panel's landmark, the home link, the desktop
+   nav's landmark, the CTA, the panel's action link and the whole footer
+   (legal sentence and reviewNotice(LAST_REGULATORY_REVIEW) included). The new
+   client file ShellNav.tsx holds NavItem and NavMenu (moved verbatim),
+   CurrentNavMenu (usePathname for the desktop list), MobileMenuList (the
+   phone list, aria-current per link, the server-rendered action as children)
+   and MenuTrigger (the summary; its effect puts the Escape listener on its
+   parent disclosure, closes it and takes focus back). They receive the
+   RESOLVED entries as plain data and decide nothing. PublicShell.tsx
+   re-exports NavItem and NavMenu, so every importer is unchanged.
+2. THE PATHS. lib/content/route-paths.ts imports nothing and holds
+   CALCULATOR_PATH, RESULT_PATH and COMPARATOR_PATH with their documentation.
+   routes.ts imports them, declares its routes with them and re-exports them
+   (R206: still the one place a route is declared). CalculatorForm imports the
+   leaf. tests/unit/content/route-paths.test.ts asserts: the leaf exports
+   exactly the three and imports nothing; routes.ts imports the leaf and,
+   comments stripped, spells none of its paths and composes no "/resultat";
+   the re-exported values are the leaf's; the registry declares the two tools
+   with them and not the result path.
+3. THE RESULT PANEL. routes.ts gains liveHrefs(links, routes?): R85 over a
+   table, ctaHrefIfLive key by key. Both pages that render the panel call
+   liveHrefs(RESULT_COPY.links) on the server (the calculator page through
+   CalculatorForm). ResultPanel renders slot 7 from that table and no longer
+   imports the registry. The prop is OPTIONAL; an absent table renders the
+   link as text (DEVIATIONS 2, QUESTION 3).
+4. THE GUARD. 'server-only' is not in web/package.json nor the lockfile, and
+   adding it is Ask-first, so R976's fallback: `pnpm size` runs
+   scripts/client-registry-leak.mjs (+ .d.mts) on the shipping build. Probes =
+   the registry's OWN task strings of 12+ characters, read from routes.ts
+   (today three: "FW10 placeholder, FW20 real", "FW19, built FW-COMPARATEUR",
+   "FW16, content FW17"; the unit test ties each to PUBLIC_ROUTES at runtime).
+   It REFUSES with no probe, with no probe in any server file (presence first,
+   R169), or with no client chunk; it FAILS naming each file under
+   .next/static that carries a probe. Placed after the size table, before the
+   breach exit, shipping build only.
+
+RED before GREEN, each for its stated reason:
+- client-registry-leak.test.ts: RED "Cannot find package
+  '@/scripts/client-registry-leak.mjs'" (red-guard-unit.log); then 23 passed
+  with declaration-parity (green-guard-unit.log).
+- The guard on BASE's own build: offline (red-guard-on-before-build.txt), and
+  through the real script in hold 2, `NEXT_DIST_DIR=../.calcbytes-evidence/
+  before-next pnpm size` on the saved 56b7116 build: EXIT 1, "R976 REGISTRY IN
+  CLIENT CHUNK static/chunks/9879-84f1b6865f0484ac.js: FW10 placeholder, FW20
+  real | FW19, built FW-COMPARATEUR | FW16, content FW17"
+  (hold2-size-on-before-build.log). A live instance (R178).
+- route-paths.test.ts: RED 2 of 6, "imports the leaf" and "routes.ts retypes
+  CALCULATOR_PATH" (red-leaf.log); GREEN after (82 passed in 7 files).
+- live-hrefs.test.ts: RED "liveHrefs is not a function" (red-result-links.log).
+- result-links-server.test.tsx: RED 4 of 7 once liveHrefs existed: the panel
+  rendered the anchor when the server's table said "not live" and when it was
+  absent, the island did the same, the calculator page passed no table
+  (red-result-links-2.log). GREEN after.
+
+R977. BEHAVIOUR DOES NOT MOVE - NOT MET (A BASELINE MOVED)
+----------------------------------------------------------
+- THE VISUAL SUITE, gate:changed in hold 3 (hold3-gate-changed.log): 166
+  passed, 2 failed, both after two retries with identical pixel counts:
+    calculateur-panneau-avis-provisoire-desktop.png  62 222 px (exact RGBA),
+      box x152-800 y1524-1980, same size 1440x4097 (Playwright: 48 493 px)
+    calculateur-panneau-avis-provisoire-mobile.png   height 7813 -> 7833
+  Shift test on mobile (tools/shift-compare.cjs): the first differing row is
+  2078; with 20 rows inserted there, only 22 px in 4 rows still differ, each
+  by 1-3 in one channel at rounded corners (anti-aliasing). Desktop: the same
+  20 px push inside the form column. So the ONE material change, on both, is a
+  20 px gap above the advanced panel's "Decompte" choice. Crops:
+  visual-fail/crop-desktop-expected.png and crop-desktop-actual.png.
+- ZERO baselines regenerated; test:visual:update was never run; nothing
+  under tests/visual/baselines changed.
+- WHY, AS FAR AS MEASURED (DEFECT 1): `.SegmentedChoice_root{margin:0}` and
+  `.CalculatorForm_advanced>*+*{margin-top:var(--space-5)}` (20 px) are both
+  (0,1,0) in different modules, so the later one wins. Main's baseline has the
+  margin:0 winning; this branch's container build has the stack rule winning.
+  CalculatorForm.module.scss states the 20 px as the intent ("the advanced
+  panel's stack need[s] the same gap the card gives its own children").
+- WHAT IS NOT PROVEN, said plainly:
+  - The control (test:visual on a clean 56b7116 tree) was NOT RUN.
+  - The container's stylesheet order was never read; the containers' build
+    output is on an anonymous volume.
+  - In MY Windows builds the two rules are in the SAME order before and after
+    (SegmentedChoice_root at offset 0, CalculatorForm_advanced later, one
+    file), so the local builds did not predict this. The plausible mechanism
+    is Next's css-chunking-plugin: it merges CSS modules greedily and breaks
+    ties by module identifier, which carries absolute paths, so Windows and
+    Linux can order one graph differently. This task changed the graph (the
+    shell's stylesheet is now imported by a server and a client module).
+  - For it: C9's three captures of this very state (r910-avis/, read-only)
+    differ from main's baseline only at x772-1287 (header and result column);
+    none touches the form column, where mine differs and nowhere else.
+- LOCAL EVIDENCE THAT HOLDS, and what it does not cover:
+  - The rendered markup is identical: on all 27 prerendered pages the
+    <header>, <footer> and <body> without <script> are byte-identical
+    (html-compare-before-after.txt).
+  - The CSS is the same SET: 27 of 27 pages link the same rules
+    (css-ruleset-all-pages.txt). Only grouping and order changed.
+  - tools/cascade-flips.cjs (jsdom, equal-specificity pairs from different
+    modules on one element) found 0 flips on the 27 static pages, and its
+    positive control (all rules reversed) found 3 (DEFECT 2). It read the
+    LOCAL order and the static DOM only, so it did not and could not see this
+    failure: the advanced panel is client state, and the container order
+    differs. Unphotographed states in the container order are UNKNOWN.
+- Existing tests: every one passed (hold 2 and gate:changed: 224 files, 3 797
+  tests; e2e 367). ONE existing test file was edited, island-harness
+  (DEVIATIONS 1). Untouched and green: PublicShell.test.tsx, aria-current,
+  the R85 tests (cta-gate, regulatory-gate, routes, nav-collapse), the R172
+  tests, no-js-coverage, no-next-link, shell-reachable, accessibility, every
+  calculator and result-panel test. Main's unit count is 3 765; +32 = 31 in
+  the four new files (client-registry-leak 14, route-paths 6, live-hrefs 4,
+  result-links-server 7) and 1 declaration-parity case for the new .d.mts.
+
+R978. THE BYTES, MEASURED AFTER (ON THE UNCOMMITTED INCREMENT)
+--------------------------------------------------------------
+- Hold 2 (hold2.log): ACQUIRED 23:03:39Z at 7 226 MB (line 4 854), released
+  23:10:06Z; minimum commit free 5 776 MB, free physical 1 030 MB, no abort.
+  In order: whole-project typecheck (0), lint (0), unit suite (0; 224 files,
+  3 797), then build and size, then the guard runs below. Tree: this task's
+  changes, uncommitted, no web/.env.
+- `pnpm size`: exit 0, "All gated routes pass both gates." and "R976 registry
+  check: 3 probe(s) from lib/content/routes.ts, seen in 2 server file(s),
+  absent from all 61 client chunk(s)." (after-size.log). Table: R975 above.
+- The calculator gained 1 374 B: 127 941 -> 126 567 B, 59 -> 1 433 B spare.
+  The comparator 125 595 -> 123 791 B; '/' 116 727 -> 114 923 B.
+- EVERY REGISTERED ROUTE STOPPED SHIPPING, read from the chunks: no file under
+  after-next/static (61 client chunks) contains any registry task string,
+  "regulatory-review", "changeFrequency", "/guides/geneve" or
+  "/guides/attestation-employeur-teletravail" (after-registry-modules.txt,
+  empty); the same probes ARE in server/chunks/4443.js and
+  server/middleware.js, so the search can see them. The calculator now loads
+  9 first-load files (11 before).
+- GATE A (128 000 B), GATE B, GATE W, GATE I and the framework floor are
+  unchanged: no constant in check-budgets.mjs is in the diff.
+- C9's link: 1 433 - 97 = 1 336 B spare. 97 B was C9's measurement with a
+  client shell; with this split the link's copy and product-state read would
+  stay on the server, so 97 B is an upper bound to re-measure at W12.
+- These figures belong to the uncommitted design. If the design changes after
+  QUESTION 1-2, they must be measured again.
+
+R979. A VERIFIED PLANT (R180)
+-----------------------------
+In hold 2, by tools/plant.mjs (hold2.log):
+- ShellNav.tsx (the shell's client leaves) gained `import { PUBLIC_ROUTES }
+  from '@/lib/content/routes'; // PLANT R979` and, inside MobileMenuList,
+  `if (PUBLIC_ROUTES.length === 0) return null;` (a runtime read, so neither
+  import elision nor tree shaking can drop it).
+- Verified before its result was read: each anchor matched exactly once before
+  writing (R211); read back, the import sits above NavItem and the read inside
+  MobileMenuList ("landed where intended: true"); sha256 821c69be... ->
+  8b261220...; `git status` listed the file.
+- `pnpm build` exit 0; `pnpm size` EXIT 1: "R976 REGISTRY IN CLIENT CHUNK
+  static/chunks/9575-e3f07cc62a8acbd5.js: FW10 placeholder, FW20 real | FW19,
+  built FW-COMPARATEUR | FW16, content FW17" and "R976 BREACH ...". The manifest
+  lists that chunk for /(public)/layout and /not-found (plant-chunk-loaders.txt).
+- Reverted: the kept original restored, sha256 821c69be... equal: true, "PLANT
+  R979" absent.
+
+WALKTHROUGH (R176)
+------------------
+`pnpm dev` on port 3600 (hold 3, after the gate; tools/walk-run.mjs and
+walkthrough.mjs; hold3-walkthrough.log; screenshots in walkthrough/):
+- /api/health named the product: {"service":"monreleve",...,"runtime":false}.
+- Four pages (/, /calculateur-teletravail-frontalier, /guides, /cgu), at 1280
+  and 390 px: 200, stylesheet with tokens (R177), aria-current only on links to
+  the page read (on /guides both lists mark /guides; on / and /cgu none), no
+  CTA (trackerExists false), the four footer columns (19 links) and the review
+  date, no hydration warning, no page error, no console error.
+- Desktop: the nav reads Calculateurs (button) | Guides | Le releve | Tarifs;
+  the Calculateurs disclosure opens on click, closes on Escape, focus back.
+- Phone: the menu starts closed, opens from its summary, lists Calculateur de
+  teletravail | Comparateur LAMal / CMU | Guides | Le releve | Tarifs |
+  Calculer ma situation (aria-current on the calculator there); Escape from a
+  panel link and from the summary both close it, focus back on the summary.
+- 97 checks OK, 0 FAIL. The dev server's tree was killed; port 3600 free.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. lib/fr/shell.ts still spells two of the leaf's paths as literals
+   (TELEWORK_CALCULATOR, LAMAL_COMPARATOR). Pre-existing; routes.test.ts
+   asserts the shell's hrefs are registered; lib/content documents that it
+   does not depend on lib/fr.
+2. middleware.ts imports RESULT_PATH from the registry, so the whole registry
+   is in server/middleware.js. Server-side, not this task; the leaf would do.
+3. lib/guides/registry.ts matched no selector pattern in gate:changed's
+   printout although guideNavLinks() feeds every page's footer (R251's shape).
+   W3d's area. (Its comment was corrected here: DEVIATIONS 4.)
+4. `size` is not a selectable suite, so the R976 guard runs in gate:clone and
+   `pnpm gate` only (QUESTION 5).
+5. gate:clone's container step defaults FRONTALIER_PORT to 3120, outside any
+   session's port block.
+6. BLOCKED 11's 127 946 B was C9's db68601; main 56b7116 reads 127 941 B.
+7. The visual container reinstalled node_modules in 10 m 23 s over a slow
+   registry (W7's item); one SWC download retried.
+8. Local Windows builds and the Linux container order CSS differently (see
+   R977), so a local static CSS analysis does not predict production order.
+
+DEFECTS
+-------
+1. ORDER-DEPENDENT CASCADE in the calculator's advanced panel and mission
+   block: `.SegmentedChoice_root{margin:0}` vs `.CalculatorForm_advanced>*+*`
+   and `.CalculatorForm_revealed>*+*` `{margin-top:var(--space-5)}`, all
+   (0,1,0). The gap above a SegmentedChoice there is decided by build-time
+   stylesheet order, not by the stylesheets. Pre-existing on main; this task's
+   re-chunking exposed it. W12 (C9's shell link) can meet it too.
+2. The same class on the comparator: `.SegmentedButtons_root{margin:0}` vs
+   `.comparateur_form>*+*{margin-top:var(--space-6)}` (0,1,0). Holds today only
+   because both modules share a chunk in one order (cascade-flips-control.txt).
+
+DEVIATIONS
+----------
+1. One existing test edited, against R977's "unchanged":
+   tests/unit/meta/island-harness.test.ts. It required PublicShell.tsx ITSELF
+   to declare 'use client'; PublicShell.test.tsx requires that same file to
+   contain the ctaHrefIfOffered(...) call and to render the resolved shell from
+   guideLinks alone; R976 forbids the registry in client code. No layout
+   satisfies all three unchanged. Edit: the reason string, a constant naming
+   ShellNav.tsx, and the check now asserts both halves (PublicShell.tsx has NO
+   'use client'; ShellNav.tsx HAS one), plus two comments. No other existing
+   test file was touched; the native disclosure element, four anchors, R87 and
+   every SHELL_COPY key stay in PublicShell.tsx so the other censuses hold.
+2. liveLinks is OPTIONAL (absent = the link as text, R85's direction). A
+   required prop would edit about 17 render calls in 9 existing test files.
+   The page call sites are pinned by result-links-server.test.tsx and the
+   baselines. Unit tests rendering ResultPanel or CalculatorForm without it now
+   see slot 7 as text; none of their assertions depends on it.
+3. Scope: ResultPanel was not in the prompt's pointers; R976's first sentence
+   covers it and the guard cannot pass without it.
+4. Comment-only corrections where this change made prose false:
+   app/dev/island/IslandHarness.tsx and lib/guides/registry.ts (the latter
+   after the hold-2 measurement; a comment in a server module, no byte effect).
+5. Lock: the first hold-3 acquire (30 s poll) lost three races to newcomers
+   between 23:17Z and 00:04Z; I stopped my own waiting acquire (it held
+   nothing; its release was correctly REFUSED) and restarted it with
+   --poll-sec 5 (hold3-attempt1.lock.log). The walkthrough ran inside the same
+   hold at the 5 945 line.
+
+QUESTIONS
+---------
+1. THE CONTROL: run test:visual on a clean 56b7116 tree. If it passes, this
+   refactor's re-chunking flips DEFECT 1 in the Linux build; if it fails,
+   DEFECT 1 already bites on main. NOT RUN here: my tree is not clean, and the
+   orchestrator has a main-based tree and lock priority.
+2. THEN WHICH WAY (each is a ruling, none is this task's):
+   (a) accept the stylesheet's stated 20 px and regenerate the two baselines in
+       a ruled task;
+   (b) keep main's look and make it order-independent (a design ruling);
+   (c) try a split that keeps PublicShell.module.scss imported only by client
+       code (the header and footer markup in a client view, the server file
+       resolving data only), which may restore main's chunking - untested,
+       costs census edits and a container run per attempt.
+   The byte figures above hold for this design only.
+3. liveLinks: required (17 render calls edited) or optional as built?
+4. Add 'server-only' (Ask-first) for a build-time refusal on top of the scan?
+5. Should gate:changed run `pnpm size` (or this check) for app/** and lib/**
+   changes? A selector change, so W3d's area.
+
+PUSH PROOF
+----------
+Branch: fw-calc-bytes (pushed; not merged). Base 56b7116 = origin/main at
+launch; origin/main has since moved to a2c502a (fetched at the end), so the
+branch is behind main. NO CODE COMMIT: the increment stays uncommitted in the worktree and is
+saved in .calcbytes-evidence/increment/ (tracked.diff, status.txt, files/,
+SHA256SUMS: 20 entries, `sha256sum -c` 20 OK). The branch carries ONE commit,
+this report, on top of 56b7116; its SHA is in the hand-back, checked with
+`git ls-remote`.
+
+gate:changed - RED, the gate of record for the increment (hold 3):
+- Under the heavy-run lock and run-sampled.ps1, cmd=pnpm gate:changed.
+  DATABASE_URL (the scratch database) and FRONTALIER_PORT=3600 were inherited
+  from the parent shell, never on a recorded command line; no web/.env.
+- Lock ACQUIRED 00:39:04Z at 8 828 MB commit free (line 5 945, Web Ruling 7's
+  e2e+visual line; test:db rides with it). First sample 8 759 MB, minimum
+  commit free 4 811 MB, minimum free physical 172 MB; 00:39:05Z-01:01:13Z,
+  exit 1, aborted False. Released 01:02:26Z (after the walkthrough). Light
+  work in other sessions may have overlapped (parallel mode).
+- Printed selection:
+  gate selection (R132):
+    11 path(s) matched:
+      web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/ResultPanel.tsx  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/page.tsx  ->  app/**
+      web/app/(public)/calculateur-teletravail-frontalier/resultat/page.tsx  ->  app/**
+      web/app/dev/island/IslandHarness.tsx  ->  app/**
+      web/lib/content/route-paths.ts  ->  modules whose output reaches rendered HTML (R140)
+      web/lib/content/route-paths.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/lib/content/routes.ts  ->  modules whose output reaches rendered HTML (R140)
+      web/lib/content/routes.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/lib/ui/react/PublicShell/PublicShell.tsx  ->  lib/ui/**
+      web/lib/ui/react/PublicShell/ShellNav.tsx  ->  lib/ui/**
+    suites: typecheck, lint, test, build, test:e2e, test:visual, test:db, test:late
+- Measured: typecheck exit 0; lint exit 0; test 3 797 passed (224 files);
+  build exit 0; test:e2e 367 passed (3.1 m); test:visual 2 failed, 166
+  passed -> "GATE FAILED at pnpm test:visual (exit 1)". test:db and test:late
+  NOT RUN.
+
+gate:clone: NOT RUN (no code commit; R977 says stop). No image was built, so
+there is no monreleve:fw-calc-bytes to remove.
+
+The other heavy holds: hold 1 (BEFORE build+size) 7 764 -> 6 209 MB; hold 2
+(typecheck, lint, test, AFTER build+size, the two guard runs, the plant)
+7 226 -> 5 776 MB; the walkthrough's minimum 6 423 MB. No abort anywhere.
