@@ -19,11 +19,24 @@
 // UNKNOWN AND WITHDRAWN ARE ONE ANSWER, BY ONE PATH. Both resolve to a null view
 // through the same lookup, so there is no difference in content or timing between
 // "never existed" and "erased" (R330).
+//
+// A DATABASE THAT CANNOT BE REACHED IS A THIRD ANSWER (FW-VERIFIER-OUTAGE, R1022
+// as amended by Web Ruling 20). The heading and one sentence - verification is
+// temporarily unavailable - and nothing about the code or the document: the page
+// looked nothing up. It answers 200, because Next 15.5 gives a page no 503
+// (404/403/401, a redirect, 500 or 200 are the only statuses it can produce), so
+// the CONTENT is what tells this answer apart. It is never cached as the page's
+// answer: force-dynamic (below) sends every answer of this route with
+// `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`,
+// read off the degraded answer itself by the container step. Only the causes on
+// the allow-list take this path (lib/verification/database-unreachable.ts);
+// every other error is thrown on, as before, and answers the framework's 500.
 
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { checkRate, clientKey } from '@/lib/alerts/rate-limit';
-import { lookupVerification } from '@/lib/verification/lookup';
+import { describeUnreachable, isDatabaseUnreachable } from '@/lib/verification/database-unreachable';
+import { lookupVerification, type VerificationView } from '@/lib/verification/lookup';
 import { VERIFICATION_COPY } from '@/lib/fr/verification';
 import { VerificationContent, type VerificationState } from './VerificationContent';
 
@@ -49,6 +62,34 @@ export const metadata: Metadata = {
  */
 const VERIFY_RATE_LIMIT = 30;
 
+/**
+ * What a well-formed request resolves to, the database permitting.
+ *
+ * THE CATCH WRAPS THE LOOKUP AND NOTHING ELSE, so a defect in what follows it is
+ * never read as an outage. Inside it, only an allow-listed cause becomes the
+ * unavailable state, and the error is LOGGED with its code and the adapter's
+ * cause: the degraded answer says nothing, so the log is the one record of what
+ * the page got (the container step reads it).
+ */
+async function resolveCode(code: string): Promise<VerificationState> {
+  let view: VerificationView | null;
+
+  try {
+    view = await lookupVerification(code);
+  } catch (error) {
+    if (!isDatabaseUnreachable(error)) throw error;
+
+    console.error(
+      `[verifier] the database could not be reached (${describeUnreachable(error)}); ` +
+        `answered the unavailable state: ${error.message}`,
+    );
+
+    return { kind: 'unavailable' };
+  }
+
+  return view === null ? { kind: 'unknown' } : { kind: 'found', view };
+}
+
 export default async function VerifyPage({
   params,
 }: {
@@ -70,9 +111,8 @@ export default async function VerifyPage({
     state = { kind: 'rate-limited' };
   } else {
     const { code } = await params;
-    const view = await lookupVerification(code);
 
-    state = view === null ? { kind: 'unknown' } : { kind: 'found', view };
+    state = await resolveCode(code);
   }
 
   return <VerificationContent state={state} />;

@@ -20,8 +20,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { VERIFICATION_COPY } from '@/lib/fr/verification';
 import {
   composePostgresImage,
+  copyLiteral,
   documentedStatus,
   headingsOf,
   judgeDatabaseStopped,
@@ -81,6 +83,25 @@ const readyDown = answer(
 
 const APP = { id: 'abc123', startedAt: '2026-11-17T01:00:00.000Z', restartCount: 0, running: true };
 
+// FW-VERIFIER-OUTAGE (Web Ruling 20): /verifier/<a code the export route issued
+// with the database up>. The pages below are built from VERIFICATION_COPY, the
+// copy the step itself reads out of lib/fr/verification.ts (copyLiteral).
+const HOLDER = 'Titulaire 0a1b2c3d';
+const NO_STORE = 'private, no-cache, no-store, max-age=0, must-revalidate';
+
+const verifierPage = (main: string, cacheControl = NO_STORE): HttpAnswer => ({
+  status: 200,
+  body: `<html><head><title>x</title></head><body><header>Mon Relevé</header><main class="m"><h1 class="t">${VERIFICATION_COPY.title}</h1>${main}</main></body></html>`,
+  cacheControl,
+});
+const issuedPage = verifierPage(
+  `<p>${VERIFICATION_COPY.intro}</p><p>vouch</p><dl class="f"><dt>Nom</dt><dd>${HOLDER}</dd><dt>Version</dt><dd>1</dd></dl>`,
+);
+const unknownPage = verifierPage(`<p>${VERIFICATION_COPY.intro}</p><p class="n">${VERIFICATION_COPY.unknown}</p>`);
+const unavailablePage = verifierPage(`<p class="n">${VERIFICATION_COPY.unavailable}</p>`);
+const VERIFIER_LOG =
+  "[verifier] the database could not be reached (P1001, DatabaseNotReachable); answered the unavailable state: Can't reach database server";
+
 /** A run where everything R946 states held: the base every case edits once. */
 function observations(): DatabaseStoppedObservations {
   return {
@@ -112,6 +133,13 @@ function observations(): DatabaseStoppedObservations {
       appBefore: APP,
       appAfter: { ...APP },
     },
+    verifier: {
+      holderName: HOLDER,
+      copy: { unavailable: VERIFICATION_COPY.unavailable, unknown: VERIFICATION_COPY.unknown },
+      connectionsAtStop: 1,
+      up: { issued: issuedPage, unknown: unknownPage },
+      down: { first: unavailablePage, second: unavailablePage, log: [VERIFIER_LOG] },
+    },
   };
 }
 
@@ -134,10 +162,12 @@ describe('judgeDatabaseStopped: the positive direction first (R196)', () => {
 
     expect(refusals).toEqual([]);
     // Five checks of the reference, eight with the database stopped, four of
-    // the recovery, and two per route (running, stopped). A check that
+    // the recovery, two per route (running, stopped), and ten of /verifier
+    // (FW-VERIFIER-OUTAGE: the only checks that task added). A check that
     // silently stopped being made would shrink this number (R133).
-    expect(passed).toHaveLength(5 + 8 + 4 + 2 * ROUTES.length);
+    expect(passed).toHaveLength(5 + 8 + 4 + 2 * ROUTES.length + 10);
     expect(passed.filter((name) => name.includes('/guides/geneve'))).toHaveLength(2);
+    expect(passed.filter((name) => name.includes('/verifier/'))).toHaveLength(8);
   });
 });
 
@@ -413,5 +443,150 @@ describe('the documented status and the Postgres image are READ, not typed (R181
   it('reads the one Postgres image docker-compose.yml runs, so the step pulls nothing new', () => {
     expect(composePostgresImage(COMPOSE)).toMatch(/^postgres:\S+$/u);
     expect(() => composePostgresImage('services:\n  a:\n    image: redis:7\n')).toThrow(/R211/u);
+  });
+});
+
+// ============================================================================
+// FW-VERIFIER-OUTAGE (R1023, Web Ruling 20): /verifier/<the issued code>, judged
+// ============================================================================
+//
+// Under Web Ruling 20 the degraded answer is a 200, like the unknown-code
+// answer, so the STATUS cannot tell the two apart. The CONTENT must: with the
+// database stopped, the unavailable sentence present; the unknown-code
+// sentence and the releve's content absent; no-store read off that response.
+// The code is a REAL one the export route issued with the database up - the
+// case where the unknown-code text would be a false statement about a real
+// releve.
+
+describe('FW-VERIFIER-OUTAGE: /verifier/<the issued code>, the database stopped', () => {
+  it("refuses R1024's plant: the page throws again, and answers the framework's 500", () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.down.first = {
+        status: 500,
+        body: '<html id="__next_error__"><head></head><body></body></html>',
+        cacheControl: NO_STORE,
+      };
+      run.verifier.down.log = ["⨯ Error [PrismaClientKnownRequestError]: Can't reach database server"];
+    });
+    const said = refusals.join('\n');
+
+    expect(said).toContain('/verifier/<the issued code> answers 200');
+    expect(said).toContain('status 500');
+    expect(said).toContain('VERIFICATION_COPY.unavailable');
+    expect(said).toContain('[verifier]');
+  });
+
+  it("refuses the second plant: the catch renders the unknown-code state - the 200 passes, the content does not", () => {
+    const run = observations();
+
+    run.verifier.down.first = unknownPage;
+
+    const { passed, refusals } = judgeDatabaseStopped(run);
+
+    // The status check cannot see this failure: it holds.
+    expect(passed.some((name) => name.includes('answers 200 with its own heading'))).toBe(true);
+    // Only the content can: the sentence is missing and the unknown text is there.
+    expect(refusals).toHaveLength(2);
+    expect(refusals.join('\n')).toContain('VERIFICATION_COPY.unavailable');
+    expect(refusals.join('\n')).toContain('does not carry VERIFICATION_COPY.unknown');
+  });
+
+  it("refuses a degraded answer that keeps the intro: the heading and ONE sentence", () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.down.first = verifierPage(
+        `<p>${VERIFICATION_COPY.intro}</p><p class="n">${VERIFICATION_COPY.unavailable}</p>`,
+      );
+    });
+
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]).toContain('the one sentence');
+  });
+
+  it("refuses a degraded answer that shows the releve's content", () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.down.first = verifierPage(
+        `<p class="n">${VERIFICATION_COPY.unavailable}</p><dl><dt>Nom</dt><dd>${HOLDER}</dd></dl>`,
+      );
+    });
+
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]).toContain("none of the releve's content");
+  });
+
+  it('refuses a degraded answer that a cache may keep, or that says nothing about caching', () => {
+    for (const cacheControl of ['public, max-age=60', '', undefined]) {
+      const refusals = refusalsOf((run) => {
+        run.verifier.down.first = { ...unavailablePage, cacheControl };
+      });
+
+      expect(refusals, String(cacheControl)).toHaveLength(1);
+      expect(refusals[0]).toContain('no-store');
+    }
+  });
+
+  it('refuses the database host in the degraded answer, by name and never by value', () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.down.first = verifierPage(
+        `<p class="n">${VERIFICATION_COPY.unavailable}</p><!-- ${SECRETS['the database host']} -->`,
+      );
+    });
+
+    expect(refusals.join('\n')).toContain('the database host');
+    expect(refusals.join('\n')).not.toContain(SECRETS['the database host']);
+  });
+
+  it('refuses a stopped read with no [verifier] line in the server log: NO RESULT, not "no error"', () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.down.log = [];
+    });
+
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]).toContain('NO RESULT');
+  });
+
+  it('refuses a cold pool: the first read after the stop must be the warm-pool shape', () => {
+    for (const connectionsAtStop of [0, null]) {
+      const refusals = refusalsOf((run) => {
+        run.verifier.connectionsAtStop = connectionsAtStop;
+      });
+
+      expect(refusals, String(connectionsAtStop)).toHaveLength(1);
+      expect(refusals[0]).toContain('pg_stat_activity');
+    }
+  });
+});
+
+describe('FW-VERIFIER-OUTAGE: the reference is sound before any absence is read (presence first)', () => {
+  it("refuses an issued code whose page did not show its holder's name with the database running", () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.up.issued = unknownPage;
+    });
+
+    expect(refusals.join('\n')).toContain('/verifier/<the issued code>');
+  });
+
+  it('refuses an unknown-code reference that does not carry the exact unknown sentence', () => {
+    const refusals = refusalsOf((run) => {
+      run.verifier.up.unknown = verifierPage('<p>autre chose</p>');
+    });
+
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0]).toContain('/verifier/<an unknown code>');
+  });
+});
+
+describe('the two sentences are READ from lib/fr/verification.ts, never typed (R181, R211)', () => {
+  const SOURCE = readFileSync(join(process.cwd(), 'lib', 'fr', 'verification.ts'), 'utf8');
+
+  it('reads each sentence exactly as the module exports it', () => {
+    expect(copyLiteral(SOURCE, 'unavailable')).toBe(VERIFICATION_COPY.unavailable);
+    expect(copyLiteral(SOURCE, 'unknown')).toBe(VERIFICATION_COPY.unknown);
+  });
+
+  it('refuses anything but exactly one plain literal', () => {
+    // An interpolated value cannot be read without evaluating the module.
+    expect(() => copyLiteral(SOURCE, 'title')).toThrow(/R211/u);
+    expect(() => copyLiteral(SOURCE, 'noSuchKey')).toThrow(/R211/u);
+    expect(() => copyLiteral("  a: 'x',\n  a: 'y',\n", 'a')).toThrow(/R211/u);
   });
 });

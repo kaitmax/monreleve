@@ -19,6 +19,14 @@
 // container-db-stopped-verdict.mjs decides what the answers mean (pure, and
 // unit-tested); this file only collects them.
 //
+// /verifier/[code] TOO (FW-VERIFIER-OUTAGE, Web Ruling 20). Before the
+// reference, the step issues a REAL releve through the export route (the
+// image's own Chromium renders it) and reads its code back from the record.
+// The last database-touching read before the stop is that code's page, so the
+// pool is warm; the FIRST read after the stop is that page again, before any
+// other route can touch the pool, so the error the page gets is the production
+// shape - and the page's own [verifier] log line records it.
+//
 // WHERE IT RUNS (R947). Inside test:container:e2e: container-e2e.mjs calls it
 // after its own teardown, against the image that harness has just built. No
 // harness owned a database's LIFECYCLE before this - all five borrow the
@@ -54,6 +62,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import pg from 'pg';
 import {
   composePostgresImage,
+  copyLiteral,
   documentedStatus,
   headingsOf,
   judgeDatabaseStopped,
@@ -84,6 +93,8 @@ const POSTGRES_DEADLINE_MS = 60_000;
 const START_DEADLINE_MS = 120_000;
 const RECOVERY_DEADLINE_MS = 90_000;
 const POLL_MS = 1_000;
+/** FW-VERIFIER-OUTAGE: one PDF render in the image's own Chromium, cold. */
+const EXPORT_TIMEOUT_MS = 120_000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -294,6 +305,118 @@ async function signIn(base, hostUrl) {
   return body.accessToken;
 }
 
+/**
+ * One query on the step's own database, from the host side.
+ *
+ * @param {string} hostUrl
+ * @param {string} sql
+ * @param {unknown[]} [values]
+ * @returns {Promise<import('pg').QueryResult<Record<string, unknown>>>}
+ */
+async function hostQuery(hostUrl, sql, values = []) {
+  const client = new pg.Client({ connectionString: hostUrl, connectionTimeoutMillis: 5_000 });
+
+  await client.connect();
+
+  try {
+    return await client.query(sql, values);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * FW-VERIFIER-OUTAGE (Web Ruling 20 item 1): a REAL verification code, issued
+ * with the database up through the real export route - the image renders the
+ * PDF with its own Chromium and records the issuance - then read back from the
+ * record it wrote. The account first gets what a releve needs: a titulaire and
+ * a canton, as tests/db/container-pdf.test.ts gives its own. An empty year is
+ * a document like any other (R516), so no day is needed.
+ *
+ * Every failure is named - status, content type and the envelope's `code` -
+ * so a refused export is never read as a failure of the page under test.
+ */
+async function issueReleve(base, hostUrl, token, holderName, year) {
+  const named = await hostQuery(hostUrl, 'UPDATE "User" SET name = $1, canton = $2 WHERE email = $3', [
+    holderName,
+    'GE',
+    EMAIL,
+  ]);
+
+  if (named.rowCount !== 1) throw new Error(`the account to issue a releve for: ${named.rowCount} row(s), expected 1`);
+
+  const started = Date.now();
+  let response;
+
+  try {
+    response = await fetch(`${base}/api/v1/export/pdf?year=${year}`, {
+      headers: { authorization: `Bearer ${token}` },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(EXPORT_TIMEOUT_MS),
+    });
+  } catch (cause) {
+    throw new Error(
+      `the export route issued nothing within ${EXPORT_TIMEOUT_MS / 1000}s: ${cause instanceof Error ? cause.message : String(cause)}`,
+    );
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const bytes = Buffer.from(await response.arrayBuffer());
+
+  if (response.status !== 200 || !contentType.startsWith('application/pdf')) {
+    let code = null;
+
+    try {
+      code = JSON.parse(bytes.toString('utf8'))?.code ?? null;
+    } catch {
+      // not an envelope
+    }
+
+    throw new Error(
+      `the export route did not issue a releve: status ${response.status}, content-type ${JSON.stringify(contentType)}, ` +
+        `envelope code ${JSON.stringify(code)}`,
+    );
+  }
+
+  const issued = await hostQuery(
+    hostUrl,
+    'SELECT r.code FROM "IssuanceRecord" r JOIN "User" u ON u.id = r."userId" WHERE u.email = $1 AND r."supersededAt" IS NULL',
+    [EMAIL],
+  );
+  const code = issued.rows.length === 1 ? String(issued.rows[0].code) : '';
+
+  if (!/^[0-9a-f]{32}$/u.test(code)) {
+    throw new Error(`the issued releve's record: ${issued.rows.length} current row(s), code well-formed: false`);
+  }
+
+  console.log(`  issued a releve through GET /api/v1/export/pdf: ${bytes.length} bytes in ${Date.now() - started} ms; code ${code.slice(0, 8)}...`);
+
+  return code;
+}
+
+/**
+ * The app's connections to the step's database, read from the host
+ * (pg_stat_activity, the host probe's own excluded). Read at the stop, it says
+ * whether the first read afterwards meets a WARM pool - the production shape -
+ * or a cold one: node-postgres closes an idle client after about ten seconds.
+ */
+async function connectionsTo(hostUrl) {
+  const result = await hostQuery(
+    hostUrl,
+    'SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()',
+    [DATABASE],
+  );
+
+  return Number(result.rows[0]?.n ?? 0);
+}
+
+/** The app container's log so far, per stream: append-only, so a later read's suffix is what came after. */
+function appLogs(name) {
+  const logs = spawnSync('docker', ['logs', name], { encoding: 'utf8', timeout: 60_000, maxBuffer: 64 * 1024 * 1024 });
+
+  return { stdout: logs.stdout ?? '', stderr: logs.stderr ?? '' };
+}
+
 /** One reading of everything R946 names, for the routes given. */
 async function snapshot(base, paths, databaseRoute, token) {
   const routes = [];
@@ -369,6 +492,13 @@ export async function runDatabaseStoppedPhase({ image, port, pgPort }) {
     const service = JSON.parse(readFileSync(join(WEB, 'identity.json'), 'utf8')).service;
     const documented = documentedStatus(readFileSync(join(REPO, 'docs', 'api-v1.md'), 'utf8'), 'read_failed', 'GET');
     const postgresImage = composePostgresImage(readFileSync(join(REPO, 'docker-compose.yml'), 'utf8'));
+    // FW-VERIFIER-OUTAGE: the two sentences /verifier is judged by, read out of
+    // lib/fr (R181) - an .mjs cannot import TypeScript; the unit test pins both.
+    const verificationSource = readFileSync(join(WEB, 'lib', 'fr', 'verification.ts'), 'utf8');
+    const copy = {
+      unavailable: copyLiteral(verificationSource, 'unavailable'),
+      unknown: copyLiteral(verificationSource, 'unknown'),
+    };
     // The origin the image was BUILT for: the entrypoint refuses any other
     // (R250), and the sitemap's <loc>s are on it.
     const origin = docker(['run', '--rm', '--entrypoint', 'cat', image, '/etc/frontalier-site-origin'], secrets);
@@ -475,15 +605,27 @@ export async function runDatabaseStoppedPhase({ image, port, pgPort }) {
 
     const token = await signIn(base, hostUrl);
     const listed = sitemapPaths((await get(`${base}/sitemap.xml`)).body, origin).paths;
-    // NOT JUDGED: /verifier/[code] is public but not in the sitemap, and it
-    // reads the database by design. Its answers are printed for the report.
-    const verifier = `/verifier/${randomBytes(16).toString('hex')}`;
+    // FW-VERIFIER-OUTAGE (Web Ruling 20): /verifier/[code] is public, outside
+    // the sitemap, and reads the database by design. It is judged with a REAL
+    // code, issued here with the database up - where the unknown-code text
+    // would be a false statement about a real releve.
+    const holderName = `Titulaire ${run}`;
+    const issuedCode = await issueReleve(base, hostUrl, token, holderName, new Date().getUTCFullYear());
+    const verifierIssued = `/verifier/${issuedCode}`;
 
     const up = await snapshot(base, listed, databaseRoute, token);
-    const verifierUp = await get(`${base}${verifier}`);
+    // A random well-formed code, the database up: the image's own unknown
+    // sentence, present, before its absence is read below (presence first).
+    const verifierUnknownUp = await get(`${base}/verifier/${randomBytes(16).toString('hex')}`);
+    // THE LAST DATABASE-TOUCHING READ BEFORE THE STOP, so the pool is warm when
+    // the database goes: node-postgres closes an idle client after ~10 s.
+    const verifierIssuedUp = await get(`${base}${verifierIssued}`);
+    const connectionsAtStop = await connectionsTo(hostUrl);
     const appBefore = lifetime(names.app, secrets);
+    const logsBefore = appLogs(names.app);
 
     console.log(`  the reference: ${listed.length} route(s) in the sitemap, read with the database running`);
+    console.log(`  the app's connections to ${DATABASE} at the stop (pg_stat_activity): ${connectionsAtStop}`);
 
     // ------------------------------------------------------------------------
     // 4. THE STOP, AND THE MEASUREMENT (R945, R946)
@@ -494,8 +636,20 @@ export async function runDatabaseStoppedPhase({ image, port, pgPort }) {
 
     console.log(`  stopped ${names.database}; docker says running: ${databaseRunning}`);
 
+    // /verifier FIRST: no other database-touching request may reach the pool
+    // before it, so the error it gets is the warm pool's (Web Ruling 20 item 4).
+    // A second read follows, printed beside it; then the log the two produced.
+    const verifierFirst = await get(`${base}${verifierIssued}`);
+    const verifierSecond = await get(`${base}${verifierIssued}`);
+    const logsAfter = appLogs(names.app);
+    const verifierLog = redact(
+      `${logsAfter.stdout.slice(logsBefore.stdout.length)}${logsAfter.stderr.slice(logsBefore.stderr.length)}`,
+      secrets,
+    )
+      .split(/\r?\n/u)
+      .filter((line) => line.trim() !== '');
+
     const down = { databaseRunning, ...(await snapshot(base, listed, databaseRoute, token)) };
-    const verifierDown = await get(`${base}${verifier}`);
 
     // ------------------------------------------------------------------------
     // 5. THE RECOVERY: the database started again, the app left alone
@@ -547,12 +701,21 @@ export async function runDatabaseStoppedPhase({ image, port, pgPort }) {
     ]) {
       console.log(`  ${what}: ${show(answer)} in ${answer.ms} ms  body ${JSON.stringify(redact(answer.body, secrets).slice(0, 600))}`);
     }
-    console.log(
-      `  not judged (not in the sitemap): ${verifier.slice(0, 12)}...  running ${show(verifierUp)}` +
-        ` h1 ${JSON.stringify(headingsOf(verifierUp.body))}  stopped ${show(verifierDown)}` +
-        ` h1 ${JSON.stringify(headingsOf(verifierDown.body))}` +
-        `  leaks ${JSON.stringify(leaksIn(verifierDown.body, secrets, { api: false }))}`,
-    );
+    console.log('\n--- /verifier/<the issued code> (FW-VERIFIER-OUTAGE, Web Ruling 20) ---');
+    for (const { what, answer } of [
+      { what: 'running, an unknown code', answer: verifierUnknownUp },
+      { what: 'running, the issued code', answer: verifierIssuedUp },
+      { what: 'stopped, FIRST read (judged)', answer: verifierFirst },
+      { what: 'stopped, second read', answer: verifierSecond },
+    ]) {
+      console.log(
+        `  ${what}: ${show(answer)} in ${answer.ms} ms  [${answer.cacheControl ?? ''}]` +
+          `  h1 ${JSON.stringify(headingsOf(answer.body))}` +
+          `  leaks ${JSON.stringify(leaksIn(answer.body, secrets, { api: false }))}`,
+      );
+    }
+    console.log(`  the app's log from the stop to the end of the two reads (${verifierLog.length} line(s), redacted):`);
+    for (const line of verifierLog.slice(0, 80)) console.log(`    | ${line}`);
 
     const verdict = judgeDatabaseStopped({
       service,
@@ -564,6 +727,13 @@ export async function runDatabaseStoppedPhase({ image, port, pgPort }) {
       up,
       down,
       recovery,
+      verifier: {
+        holderName,
+        copy,
+        connectionsAtStop,
+        up: { issued: verifierIssuedUp, unknown: verifierUnknownUp },
+        down: { first: verifierFirst, second: verifierSecond, log: verifierLog },
+      },
     });
 
     passed = verdict.passed.length;

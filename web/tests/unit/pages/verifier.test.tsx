@@ -95,6 +95,25 @@ describe('the neutral states (R330)', () => {
     // It must NOT accidentally render the unknown wording, which would hint.
     expect(text).not.toContain(VERIFICATION_COPY.unknown);
   });
+
+  // FW-VERIFIER-OUTAGE (R1022, Web Ruling 20 items 1 and 6): the database could
+  // not be reached, so the page looked nothing up and can say nothing about the
+  // code or the document - the heading and ONE sentence, the intro dropped.
+  it('shows the heading and ONE sentence when the database cannot be reached', () => {
+    const { container } = render(<VerificationContent state={{ kind: 'unavailable' }} />);
+    const text = container.textContent ?? '';
+
+    expect(container.querySelector('h1')?.textContent).toBe(VERIFICATION_COPY.title);
+    expect(container.querySelectorAll('p')).toHaveLength(1);
+    expect(container.querySelector('p')?.textContent).toBe(VERIFICATION_COPY.unavailable);
+    expect(container.querySelector('dl')).toBeNull();
+    for (const other of [VERIFICATION_COPY.intro, VERIFICATION_COPY.unknown, VERIFICATION_COPY.rateLimited]) {
+      expect(text).not.toContain(other);
+    }
+    for (const banned of ['certifié', 'attesté', 'conforme', 'validé', 'approuvé', 'invalide', 'introuvable']) {
+      expect(text.toLowerCase(), `${banned} appears in the unavailable state`).not.toContain(banned);
+    }
+  });
 });
 
 // FW-DOSSIER-EMPTY-3 (R586, closes PARK-H5): THE PAGE'S DATES ARE PARIS DAYS.
