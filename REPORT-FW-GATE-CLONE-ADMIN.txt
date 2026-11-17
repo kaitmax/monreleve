@@ -1,0 +1,325 @@
+REPORT-FW-GATE-CLONE-ADMIN.txt - Mon Releve
+W6 FW-GATE-CLONE-ADMIN (relay/FW-GATE-CLONE-ADMIN.txt, R955-R959), parallel mode (Web Ruling 7)
+Session: worktree C:/wt/fw-gate-clone-admin, branch fw-gate-clone-admin, cut from 56b7116
+(origin/main at launch). Ports 3700-3799 (3720 used). 2026-11-16 22:10Z - 2026-11-17 02:10Z.
+
+====================================================================
+SUMMARY
+====================================================================
+gate:clone used to print the last 14 lines of each step's stdout followed by its stderr.
+Every suite prints its summary on stdout and its noise on stderr, so the log showed canvas
+warnings under `pnpm test`, docker's build log under the production write, and the size
+table from /releve-annuel down, without its header or the calculator's own row (A 0.1
+spare). A run with fewer tests read like a full one. And it created and dropped its
+scratch database through a session on whatever database DATABASE_URL named, which is
+`frontalier` in a developer's checkout.
+
+Now, on the code commit 96de423:
+- R955: test, test:db, test:container:write and size each have their own summary read
+  from the WHOLE output after stripAnsi and printed beside the tail. A missing summary
+  fails the step, named: NO RESULT, never a pass.
+- R956: the "ran" line and the claim are rendered from one record of the steps that
+  completed, each with the count its summary printed.
+- R957: every CREATE/DROP DATABASE goes through administer(), which opens DATABASE_URL's
+  host, port and credentials on the server's `postgres` database. gate-clone.mjs opens no
+  database connection of its own.
+- gate:clone ran ALONE on 96de423 and PASSED, now printing: test 3823 of 3823 in 222
+  files; size 20 routes; test:db 722 of 748, 26 skipped, 52 files; production write 10
+  checks.
+
+The testable parts live in a new module, web/scripts/gate-clone-parts.mjs (+ .d.mts),
+because gate-clone.mjs runs a clone the moment it is imported. No page changed, so there
+was nothing for an R176 walkthrough to drive.
+
+====================================================================
+STATUS (R391)
+====================================================================
+GREEN on the code commit 96de423: gate:changed PASSED (STEP_EXIT=0) and gate:clone ALONE
+PASSED (STEP_EXIT=0), both in this session, both pasted below. FULL GATE NOT RUN on the
+report commit that adds this file; it adds no code, and register-coverage reads OK on it.
+Not merged (the orchestrator merges).
+
+====================================================================
+R955 - EVERY TEST STEP'S COUNT IS PRINTED IN FULL
+====================================================================
+What changed (web/scripts/gate-clone.mjs, web/scripts/gate-clone-parts.mjs):
+- The step tuples gain a fifth element naming a summary reader: 'vitest' for pnpm test and
+  pnpm test:db, 'size' for pnpm size, 'production-write' for pnpm test:container:write.
+  The other steps have no count and are judged as before (exit code + R133 pattern).
+- run() reads the summary with readStepSummary(label, kind, output) BEFORE it judges the
+  exit code, so a red run's short count is printed too, and prints it under the 14-line
+  tail, which stays (R959). After the exit code and R133's pattern, a summary that was not
+  found returns { ok: false, why } naming the step. The existing loops throw it, so the
+  five GateCloneFailure sites and the single process.exit are unchanged.
+- The readers work on stripAnsi(output) (imported from gate-selection.mjs, R206/R266),
+  split on \r?\n:
+  - vitest: the LAST "Test Files" line with a "Tests" line directly beneath it, plus an
+    "Errors" line when present. A Tests line on its own is not a summary.
+  - size: the per-route table, title to closing rule. It needs the column header, a rule,
+    at least one route row (each row matching the column shape) and a closing rule.
+  - production write: "Production write checks  N passed (N)" plus "N FAILED:" when
+    present.
+
+RED first (.gate-clone-admin-evidence/red-1.log): 52 failed | 7 passed. Reasons:
+- the module functions were unwritten (a stub);
+- the unchanged gate-clone.mjs had no reader on any of the four tuples;
+- `run() reads the summary: expected -1 to be greater than -1`.
+The 7 that passed hold on the unchanged code by design:
+- five fixture checks: the fixtures read; the 14-line tail of `pnpm test`'s real output
+  holds no count; the size tail starts mid-table; the production-write tail is docker
+  output; gate-clone.mjs still prints that tail;
+- two claim-test assertions that did not change.
+
+Fixtures are real bytes:
+- vitest 5.0.0: passed, FORCE_COLOR=1, skipped, and failed+todo+Errors, captured from
+  single files spawned the way run() spawns them (a throwaway failing file, deleted);
+- stderr: the tails W3c's gate:clone log shows;
+- the size table: a whole `pnpm size` run on db68601;
+- the production-write line: read out of container-write.mjs's own source (R181).
+A test asserts the passed count equals gate-selection.mjs's readCount on every capture.
+
+GREEN: 13 targeted files, 355 tests, including scratch-database-census,
+declaration-parity, entry-points, gate-covers-ci, french-literals, gate-selection and
+test-db-guard.
+
+The real run prints (gate:clone ALONE on 96de423, .gate-clone-admin-evidence/gate-clone-real.log):
+  --- pnpm test ---
+  (14-line tail: 9 canvas warnings and 4 R348 lines from fixture-coverage.test.ts's own
+  cases, as before)
+    summary (R955, read from the whole output, not the tail):
+       Test Files  222 passed (222)
+            Tests  3823 passed (3823)
+  --- pnpm size ---
+  (tail from /releve-annuel down, as before)
+    summary (R955, read from the whole output, not the tail):
+      First-load JS per route (gzip level 9). Ruling R2 gates:
+        GATE A  total <= 125.0 KiB
+        GATE B  delta <= 25.0 KiB over the 100.6 KiB framework floor
+
+      route                                         bucket   js total   delta    css  fonts  verdict
+      -------------------------------------------------------------------------------------------------------------------------------
+      /                                             public      114.0    13.4   14.7   47.1  pass (A 11.0 spare, B 11.6 spare)
+      /_not-found                                   public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+      /a-propos                                     public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+      /alertes                                      public      108.5     7.9   14.7   47.1  pass (A 16.5 spare, B 17.1 spare)
+      /alertes/confirmation/[etat]                  public      108.3     7.7    7.9   47.1  pass (A 16.7 spare, B 17.3 spare)
+      /alertes/desinscription/[etat]                public      108.3     7.7    7.9   47.1  pass (A 16.7 spare, B 17.3 spare)
+      /application                                  public      108.4     7.8    8.5   47.1  pass (A 16.6 spare, B 17.2 spare)
+      /calculateur-lamal-cmu                        public      122.7    22.1   14.7   47.1  pass (A 2.3 spare, B 2.9 spare)
+      /calculateur-teletravail-frontalier           public      124.9    24.3   14.7   47.1  pass (A 0.1 spare, B 0.7 spare)
+      /calculateur-teletravail-frontalier/resultat  public      109.8     9.2   14.7   47.1  pass (A 15.2 spare, B 15.8 spare)
+      /cgu                                          public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+      /confidentialite                              public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+      /guides                                       public      108.3     7.7    8.4   47.1  pass (A 16.7 spare, B 17.3 spare)
+      /guides/[slug]                                public      109.7     9.1   14.7   47.1  pass (A 15.3 spare, B 15.9 spare)
+      /mentions-legales                             public      108.4     7.8    7.9   47.1  pass (A 16.6 spare, B 17.2 spare)
+      /releve-annuel                                public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+      /releve/print                                 public      102.0     1.4    7.6   47.1  pass (A 23.0 spare, B 23.6 spare)
+      /sources                                      public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+      /tarifs                                       public      108.5     7.9    7.9   47.1  pass (A 16.5 spare, B 17.1 spare)
+      /verifier/[code]                              public      108.3     7.7    3.5   47.1  pass (A 16.7 spare, B 17.3 spare)
+      -------------------------------------------------------------------------------------------------------------------------------
+  --- pnpm test:db ---
+    summary (R955, read from the whole output, not the tail):
+       Test Files  49 passed | 3 skipped (52)
+            Tests  722 passed | 26 skipped (748)
+  --- pnpm test:container:write ---
+  (tail: docker build output, as before)
+    summary (R955, read from the whole output, not the tail):
+      Production write checks  10 passed (10)
+
+====================================================================
+R956 - THE CLAIM LINE CARRIES THE COUNTS
+====================================================================
+- `const ranSteps = describeRan(ran);`. The hand-typed template is gone.
+- Each step is recorded as it completes: register-coverage, fixture-coverage, then
+  `ran.push({ step: args[0], counts: result.counts })` in both loops. args[0] is the pnpm
+  script name, the same name the list always used, in the same order with the same
+  conditions.
+- The "ran" line and the claim are both `${ranSteps}`.
+- RED first: gate-clone-claim.test.ts (rewritten) failed on the template (`expected ... to
+  contain 'const ranSteps = describeRan(ran);'`; `not to match /['"`]register-coverage,
+  fixture-cove.../`).
+
+The real run (96de423):
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  96de423fb6ab011d7058fbe1c1d1b3d6c689f128
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-bEnPHZ (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test (3823 of 3823 tests passed, 222 files), build, size (20 routes measured), db:deploy, test:db (722 of 748 tests passed, 26 skipped, 52 files), test:container:write (10 checks passed)
+
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (3823 of 3823 tests passed, 222 files), build, size (20 routes measured), db:deploy, test:db (722 of 748 tests passed, 26 skipped, 52 files), test:container:write (10 checks passed) from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  (the NOT RUN HERE list follows, unchanged)
+  STEP_EXIT=0
+
+====================================================================
+R957 - THE ADMIN CONNECTION IS postgres
+====================================================================
+- adminDatabaseUrl(databaseUrl) builds a NEW URL from DATABASE_URL's protocol, host, port,
+  username and password, on /postgres. Its database, query string and fragment are not
+  copied.
+  - The test: 'postgresql://frontalier:frontalier@localhost:5436/frontalier?schema=public'
+    -> 'postgresql://frontalier:frontalier@localhost:5436/postgres' (.env.example's
+    published values).
+  - Near misses: ?database=, ?dbname=, ?db= and a fragment are all dropped. An encoded
+    password, an IPv6 host, a missing port and no credentials are all kept as they were.
+- The query string, measured before choosing (2026-11-16, local server): pg CONNECTED to
+  postgres with ?schema=public, without it, and with ?database=frontalier
+  (current_database() = postgres). So it is dropped because nothing in it belongs to an
+  admin connection and it can carry a second database name, not because pg needs it gone.
+- administer(databaseUrl, statements, connect) opens adminDatabaseUrl(...) once, sends the
+  statements in order, closes the client in a finally, and never swallows a refusal.
+  - Injected-client test: opened = ['postgresql://frontalier:frontalier@localhost:5436/postgres'];
+    sent = DROP then CREATE, both on postgres; nothing on frontalier; ended once; a refused
+    statement still closes, sends nothing after it, and rejects.
+- gate-clone.mjs, fenced by gate-clone-admin.test.ts:
+  - no `new Client`, no pg import;
+  - three DATABASE statements, all inside administer(server, [...]) calls;
+  - the CREATE DATABASE "${scratchDatabase}" site stays there, named from the home, so
+    scratch-database-census still resolves it;
+  - the scratch URL is scratchDatabaseUrl(local, scratchDatabase): DATABASE_URL with the
+    path swapped, query string kept, exactly as before (R959). Pinned, and test:db's guard
+    admits it.
+- adminTarget() is derived from adminDatabaseUrl, credentials masked. The real run prints:
+    --- database: scratch database monreleve_gate_clone_96de423f created ---
+      admin     postgresql://<credentials>@localhost:5436/postgres (R957: DATABASE_URL's host, port and credentials, never its database)
+- RED first: `expected <gate-clone.mjs> not to match /new\s+Client\b/u` on the unchanged
+  script (it opened its own pg client on DATABASE_URL), and the derivation tests on the
+  stub.
+- Real server, light (one connection): administer() with a DATABASE_URL naming
+  monreleve_w6_absent, which never existed, created and dropped monreleve_w6_r957_probe
+  through postgres.
+
+====================================================================
+R958 - VERIFIED PLANTS (R180), REVERTED
+====================================================================
+R955, a gate:clone run (.gate-clone-admin-evidence/gate-clone-plant-r955.log):
+- The plant: VITEST_TESTS /^\s*Tests\s+.../ became /^\s*Testz\s+.../ in the working tree on
+  96de423, applied by a script that asserts its anchor once (R211). `git diff`: exactly
+  that one line, 1 file. gate:clone printed "tree DIRTY, 1 path(s) NOT in this run: M
+  web/scripts/gate-clone-parts.mjs".
+- It went RED at the first summarised step, though `pnpm test` itself passed: the reason is
+  R955's, not an exit code:
+    --- pnpm test ---
+    (the canvas/R348 tail)
+      summary (R955): NOT FOUND
+    GATE:CLONE FAILED - pnpm test printed no vitest summary (a "Test Files" line with a "Tests" line beneath it). A missing count is NO RESULT, never a pass (R955, R391).
+    STEP_EXIT=1
+- The unit tests on the same plant: 7 failed | 22 passed.
+- Reverted with git restore. `git status --porcelain` read empty; the plant's clone
+  (monreleve-clone-CYzahp) was removed; it failed before the database step, so no scratch
+  database was made.
+
+R957, unit level + real server, NOT a gate:clone run: web/.env names postgres, so a
+gate:clone run cannot tell the old admin code from the new.
+- The plant: adminDatabaseUrl kept the named database (line 272). The diff against a saved
+  pristine copy showed exactly that line.
+- gate-clone-admin.test.ts: 14 failed | 10 passed. The injected client opened
+  "postgresql://frontalier:frontalier@localhost:5436/frontalier".
+- The real-server probe was REFUSED: database "monreleve_w6_absent" does not exist. Its log
+  target read .../monreleve_w6_absent.
+- Restored: the diff against the pristine copy was identical; 24 passed; the probe created
+  and dropped its database through postgres.
+- The plant found a defect in my own first draft: adminTarget was built beside the
+  derivation, so with the plant the log still said `postgres` while the named database was
+  opened. It is now derived from adminDatabaseUrl, with a RED first (`adminTarget derives
+  from adminDatabaseUrl: expected ... to contain 'adminDatabaseUrl(databaseUrl)'`).
+
+====================================================================
+R959 - NOTHING ELSE MOVES
+====================================================================
+In `git diff 56b7116 96de423 -- web/scripts/gate-clone.mjs`:
+- every step's label, command, args and pattern is unchanged, and so is their order;
+- the only change to a tuple is the fifth element;
+- the sweep, the CANNOT_RUN_HERE list, the cleanup and signal paths are untouched;
+- the 14-line tail stays;
+- the scratch URL is unchanged (pinned);
+- gate-selection.mjs and its test are untouched (rule 8);
+- the selection is the base chain.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1. web/scripts/container-write.mjs:84-100 has its own toAdminUrl, a second home of the
+    admin derivation (R206). Its comment says `pg` hands `schema` to the server, which
+    rejects it, and that is stale: measured above, pg connects with ?schema=public.
+    Folding it in would select test:container:write (R247). Not touched (R959). See Q2.
+N2. gate:clone applies no floor from scripts/suite-floor.json; gate:changed does
+    (gate-for-changes.mjs FLOOR_FOR). A short count is now printed and carried in the
+    claim, but not refused. See Q1.
+N3. vitest's summary format now has two readers: SUITE_COUNTS.test in gate-selection.mjs
+    (the passed count) and gate-clone-parts.mjs (the whole lines). A test pins their
+    agreement on every capture. One home would put the line reader in gate-selection.mjs,
+    which is the selector-touching task's area.
+N4. The calculator's GATE A margin, 0.1 KiB (124.9 of 125.0), is in gate:clone's log for
+    the first time. That is BLOCKED 11 / W10's subject; nothing here touches it.
+N5. The size summary prints the table's blank line as four spaces (trailing whitespace in
+    the log). Cosmetic.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. `pnpm install` in the worktree ran outside the heavy lock. It is setup, not a gate,
+    suite, build or container. Commit free was ~6 000 MB.
+D2. R958 for R957 ran at unit level and against the real server, not as a gate:clone run
+    (the reason is in R958).
+D3. The R955 plant run and the real run ran under ONE lock acquisition, chained: restore,
+    a clean-tree check, then a commit-free read against 5 576 (8 764 read). Each was ALONE
+    under the lock. Light work in other sessions may have overlapped.
+D4. The R955 plant ran after the code commit and push, not inside step 2. gate:clone loads
+    its reader from the working tree, and the plant is verified by `git diff` against the
+    committed file.
+D5. The first gate:changed was RED at typecheck. TS2339: `!read.found` does not narrow
+    StepSummary under tsconfig.scripts.json (strict off). Fixed with `=== false`. A narrow
+    tsc on the two files, with the scripts options, reproduced the error when toggled
+    back, so it was not vacuous. The second gate:changed PASSED.
+D6. web/.env for gate:clone: host, port and credentials from the main checkout, database
+    postgres. It also keeps that URL's query string (?schema=public), which is not a
+    credential.
+D7. The first version of the plant script had its anchor collapsed by a heredoc. Its R211
+    anchor assertion refused to write, nothing changed, and it was rewritten with
+    String.raw.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. Should gate:clone apply scripts/suite-floor.json's floors to test and test:db, as
+    gate:changed does? R955 made a short count visible; refusing it is a new behaviour
+    outside R955-R959.
+Q2. Should container-write.mjs's toAdminUrl be folded into gate-clone-parts.mjs's
+    adminDatabaseUrl (one home), with its stale comment corrected, in a task that runs
+    test:container:write?
+
+DEFECTS: none open. Two defects in this task's own first drafts, the TS2339 narrowing and
+the independent adminTarget, were found by the gate and the plant, and fixed before the
+code commit's gate:clone.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch fw-gate-clone-admin, pushed to origin. Base 56b7116. Code commit 96de423 (pushed
+before the gate:clone run). The report commit follows it.
+
+gate:changed (run 2; run 1 was RED at typecheck, D5), printed selection:
+  gate selection (R132):
+    no path matched the selector - base chain only
+    suites: typecheck, lint, test, build
+  measured: typecheck exit 0, lint exit 0, test 3823 passed (222 files), build exit 0
+  GATE PASSED for the paths changed. STEP_EXIT=0
+  heavy lock: ACQUIRED 2026-11-16T23:57:32Z commitFree=7744 (line 4854); minimum 5397 at
+  00:02:41Z; RELEASED 00:03:07Z.
+
+gate:clone ALONE on 96de423 (FRONTALIER_PORT=3720, CONTAINER_IMAGE=monreleve:fw-gate-clone-admin):
+  the claim line is quoted under R956; GATE:CLONE PASSED, STEP_EXIT=0.
+  heavy lock: ACQUIRED 2026-11-17T01:36:43Z commitFree=6902 (line 5576), held for the R955
+  plant run (minimum 6628), then the real run: commitFree=8764 at 01:42:53Z, minimum 6295
+  at 01:52:16Z, RELEASED 01:54:19Z.
+
+Evidence (outside the repository): C:/wt/fw-gate-clone-admin/.gate-clone-admin-evidence/
+  red-1.log, green-2.log, gate-changed-1.log, gate-changed-2.log (+ samples),
+  gate-clone-plant-r955.log, gate-clone-real.log, gate-clone.samples.txt, plants/, probe/,
+  capture/ (the vitest captures).
+
+END OF REPORT
