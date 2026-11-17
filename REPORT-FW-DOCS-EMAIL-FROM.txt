@@ -1,0 +1,388 @@
+REPORT - FW-DOCS-EMAIL-FROM (web run step W9) - Mon Releve
+====================================================================
+Session W9. Worktree C:/wt/fw-docs-email-from, branch fw-docs-email-from,
+cut from origin/main bfdb1d490354f064d49aa60b7e3e3d8aa64f0442 (2026-11-17,
+about 04:30Z). Prompt relay/FW-DOCS-EMAIL-FROM.txt; rulings R970-R974; port
+block 3700-3799. Parallel mode (Web Ruling 7): every heavy run went through
+C:/wt/.heavy-run.lock.
+
+====================================================================
+SUMMARY
+====================================================================
+- R970: nothing reads EMAIL_FROM from the environment, and no commit on any
+  ref ever has. It is a constant, web/lib/fr/emails.ts:101:
+      export const EMAIL_FROM = `${APP_NAME} <alertes@${MAIL_DOMAIN}>`;
+  It goes out as the alert mail's sender at
+  web/lib/alerts/confirmation.ts:70 ("from: EMAIL_FROM,") and reaches Resend
+  at web/lib/alerts/mailer.ts:148 ("from: message.from,"). The mailer's only
+  environment read is RESEND_API_KEY (mailer.ts:93).
+- R971: two greps over the tracked tree (REPORT-*.txt and relay/ excluded)
+  found 20 EMAIL_FROM lines and 28 lines carrying 2026-10-14. Each is in the
+  hit table below. Six were current claims that the code or deploy.md
+  contradicts: the four parked sites, and two more found by the grep
+  (domain-checklist.md 126 and the home-page design spec's line 516). Two
+  more lines were citations that the fixes would otherwise have made false
+  (deploy.md 47 and 745).
+- R972: 6 files, 23 insertions, 18 deletions. Under web/, ONE file changes,
+  two comment lines in web/scripts/container-check.mjs.
+- R973: gate:changed selected the base chain plus test:container. gate:clone
+  ran ALONE on the code commit. Both results are under PUSH PROOF.
+- R974: nothing else moved. No code, no test, no baseline, no parking.md.
+
+====================================================================
+STATUS (R391)
+====================================================================
+GREEN on the code commit e0e9fa6, in this session:
+- gate:changed PASSED, STEP_EXIT=0, on the edits before they were
+  committed.
+- gate:clone ALONE PASSED on e0e9fa6, STEP_EXIT=0.
+Both are pasted under R973. The FULL GATE did NOT run on the report commit
+that adds this file. That commit adds no code, and register-coverage and
+fixture-coverage read OK with it in place (PUSH PROOF). Not merged: the
+orchestrator merges.
+
+====================================================================
+R970 - THE CURRENT TRUTH, ESTABLISHED FIRST
+====================================================================
+Read: docs/deploy.md section 1 (14-77; the override's record is 38-53),
+section 8 (736-758), section 2's EMAIL_FROM row (200), and the code that sets
+the sender.
+- web/lib/fr/emails.ts:101 EMAIL_FROM and :111 AUTH_EMAIL_FROM are template
+  constants over MAIL_DOMAIN.
+- web/lib/content/identity.ts:160 makes MAIL_DOMAIN = SITE_DOMAIN, which is
+  'monreleve.ch' (:115). That is the apex. The comment at 135-159 records why,
+  and the change is dcac1df (2026-10-14T22:55Z).
+- The callers: web/lib/alerts/confirmation.ts:70 passes EMAIL_FROM, and
+  web/lib/auth/request.ts:193 passes AUTH_EMAIL_FROM.
+- web/lib/alerts/mailer.ts:147-148 hands message.from to
+  resend(key).emails.send. Its environment reads are RESEND_API_KEY (:93)
+  and NODE_ENV (:122), nothing else.
+- web/.env.example names DATABASE_URL, RESEND_API_KEY, AUTH_SECRET and
+  FCM_*, and no EMAIL_FROM.
+- The current tree: `git grep -E "EMAIL_FROM.*process\.env|process\.env.*
+  EMAIL_FROM"` finds nothing.
+- History, all refs: `git log --all -S "env.EMAIL_FROM"` and
+  `-G "EMAIL_FROM.*process\.env|process\.env.*EMAIL_FROM"` both find
+  nothing. The same two searches with RESEND_API_KEY find 9da6b88 (FW14) and
+  0160441, so the searches can hit (R133).
+- web/tests/unit/content/identity.test.ts:92-103 pins the two senders on the
+  apex. It passed 19 of 19 when run singly in this session.
+Every edit below says what the code does and points at deploy.md section 2's
+EMAIL_FROM row for the setting (R206). For the domain it points at
+MAIL_DOMAIN in identity.ts, because deploy.md section 8 N3 still says
+"subdomain" (NOTICED N1).
+
+====================================================================
+R971 - EVERY SITE, CLASSIFIED (line numbers at bfdb1d4)
+====================================================================
+EMAIL_FROM: 20 lines.
+E1  SPEC-frontalier-web.md:1009 - current claim, FALSE. FIXED: the name is
+    removed from the env list, and a sub-bullet at 1011 follows 1010's voice
+    and points at deploy.md section 2.
+E2  docs/deploy.md:200 (section 2 row) - current claim, true. Left: it is
+    the home the edits point at.
+E3  docs/deploy.md:745 (section 8 N2) - current claim, true. Left. Its
+    citation "domain-checklist.md 126-130" is re-pointed to 125-127 (E5).
+E4  docs/deploy.md:1171 (10.3) - current claim, true. Left: it concerns
+    Coolify's stored variable, recorded build-time on 2026-10-21, whose
+    deletion is P2 item 1's.
+E5  docs/domain-checklist.md:126 - current claim, FALSE in part. Its setting
+    claim (not an environment variable) is true. "derived from
+    MAIL_SUBDOMAIN" and the address alertes@notifications.monreleve.ch have
+    been false since dcac1df; identity.test.ts:98 asserts the address is not
+    on notifications.monreleve.ch. FIXED (125-131) by name: EMAIL_FROM in
+    emails.ts, MAIL_DOMAIN in identity.ts, no address retyped. The sentence
+    also says item 3 predates the change; item 3 is NOT rewritten (N1).
+E6  docs/domain-checklist.md:130 - current claim, FALSE since C7 (the
+    parked site). FIXED: the blockquote (130-132) is dropped. deploy.md N2
+    no longer lists EMAIL_FROM as a setting, and 125-127 now say what the
+    blockquote said, with no contradiction left to flag.
+E7  tasks/todo.md:693 - current claim, FALSE (the parked site). The parked
+    wording calls it "EMAIL_FROM as an env setting"; the line actually says
+    EMAIL_FROM "sends from a subdomain (notifications.frontalier.fr)", so
+    what is stale is the subdomain. FIXED in line 117's voice: struck, then a
+    SUPERSEDED note (696-700) giving both pointers. FW14's record is kept.
+E8  web/lib/fr/emails.ts:101,106,111 - code (the truth, R970). Left.
+E9  web/lib/alerts/confirmation.ts:11,70 - code. Left.
+E10 web/lib/auth/request.ts:36,193 - code (AUTH_EMAIL_FROM, a substring
+    hit). Left.
+E11 web/tests/unit/content/identity.test.ts:27,92,93,98,99,103 - test (6).
+    Cited: alertes@monreleve.ch and notifications@monreleve.ch, neither on
+    notifications.monreleve.ch, and the two distinct.
+
+2026-10-14: 28 lines. The DISPUTED date is the one docs/deploy.md section 1
+records for the deletion of Coolify's CHROMIUM_VERSION override. The other
+2026-10-14 events were checked and are not disputed: the duplicate deploys,
+the migrations, the apt failure and the apex decision.
+D1  android/shared/src/commonTest/kotlin/ch/monreleve/app/fr/text/
+    FrenchFormatGoldens.kt:9329,10487,10873,11259,11645,12031 - test (6).
+    Cited: date-format goldens.
+D2  android/shared/src/iosTest/kotlin/ch/monreleve/app/ios/
+    IosRecordClearIosTest.kt:26 - test. Cited: a fixture day.
+D3  docs/deploy.md:34 - history (the duplicate deploys; REPORT-FW-CHROMIUM
+    section 3). Left.
+D4  docs/deploy.md:42 - current claim, true: section 1's own record of the
+    dispute. Left.
+D5  docs/deploy.md:47 - current claim that D16's fix would make FALSE (it
+    cited the comment and its date). FIXED (46-48): the script half is in
+    the past tense. It stays one bullet, so section 2's "three readings"
+    (204) still holds.
+D6  docs/deploy.md:576 - history (the migration command run). Left.
+D7  docs/deploy.md:634 - history (what migrate status printed). Left.
+D8  docs/deploy.md:862 - history (the duplicate deploys). Left.
+D9  docs/domain-checklist.md:17,30,37 - history (3): item 1, done that day.
+    Left.
+D10 docs/superpowers/specs/2026-09-29-home-page-design.md:516 - current
+    claim, DISPUTED, and NOT in the parked list. 65c6914 (2026-11-02) added
+    the closing note, which said the override "was deleted on 2026-10-14
+    (`docs/deploy.md`)". FIXED: the parenthetical only; it now points at
+    deploy.md section 1.
+D11 parking.md:2351 - history (PARK-G1's heading date). Left; parking.md is
+    not written in parallel mode.
+D12 web/Dockerfile:206 - history, written that day (d951625,
+    2026-10-14T17:04Z): the apt failure the operator saw. Left.
+D13 web/lib/content/identity.ts:138,153 - history (2): the apex decision and
+    the 403s, measured that day. Left.
+D14 web/lib/fr/emails.ts:94 - history: the two senders, named that day.
+    Left.
+D15 web/scripts/container-check.mjs:572 - history, written that day
+    (d951625). Left.
+D16 web/scripts/container-check.mjs:657 - current claim, DISPUTED (the
+    parked site). FIXED as a comment only, the same 5 lines (656-660): it
+    points at deploy.md section 1. "a variable that no longer exists" (659)
+    asserted the same unestablished state, so it now reads "a variable
+    deploy.md says to delete". The regex and the count are unchanged.
+D17 web/tests/db/code-budget.test.ts:244,251 - test (2). Cited: a cutoff
+    fixture.
+D18 web/tests/unit/content/identity.test.ts:77,84 - test (2). Cited:
+    comments on the sender decision.
+Also searched:
+- The disputed claim written without its date
+  ("override ... deleted / no longer exists"). Found only deploy.md:39 and
+  204 (the dispute's record, true), and D10 and D16.
+- Other date forms (14 October, 14 octobre, 14.10.2026). Found
+  docs/sources/primes-lamal/sources-2026-10.md:220, a quoted tax deadline:
+  history, left.
+- The excluded sets, named and not edited:
+  - REPORT-*.txt is history. 2026-10-14 appears in FW-CHROMIUM-PIN,
+    FW-CHROMIUM, FW-DEPLOY-DOC, FW-SECRETS, IOS-0 and KMP-2b. EMAIL_FROM
+    appears in DOMAIN, FW-CHROMIUM, FW-DEPLOY-DOC, FW-SECRETS, FW20c and
+    FW28.
+  - relay/ holds FW-DEPLOY-DOC.txt, this prompt, ORCH-WEB-COMPLETE.txt,
+    QUEUE-STATE.md and RULINGS-2026-11-11.txt. None is a living plan that
+    states the disputed date as fact; QUEUE-STATE.md:440 agrees EMAIL_FROM
+    "is read by nothing".
+- The main checkout's untracked android/scripts/an*.mjs (29 files, not
+  repository content): a plain grep found no hit.
+After the edits both greps were re-run, and every remaining hit has a row
+above.
+
+====================================================================
+R972 - THE EDITS (minimal, in place)
+====================================================================
+- SPEC-frontalier-web.md 1009/1011
+- tasks/todo.md 693-700
+- docs/domain-checklist.md 125-131 (130-132 dropped). The file stays pure
+  ASCII (its line 21): 0 bytes above 0x7F, against a control file with 273.
+- docs/deploy.md 46-48 and 745
+- docs/superpowers/specs/2026-09-29-home-page-design.md 516
+- web/scripts/container-check.mjs 657 and 659 (comment)
+Line citations were re-opened after the edits:
+- deploy.md 745 -> domain-checklist.md 125-127 holds "Nothing reads it from
+  the environment".
+- deploy.md 47 -> container-check.mjs 657 is the rewritten comment line.
+- domain-checklist.md 129 -> item 3 names notifications.monreleve.ch at 149.
+- todo.md shifts by +5 after 695, SPEC by +1 after 1010, and the checklist
+  by -1 after 132. No tracked file outside REPORT-*.txt and relay/ cites a
+  line in those ranges.
+No test reads an edited doc: the tests that open docs/ open api-v1.md,
+regulatory-sources.md, lamal-refresh.md, sources/primes-lamal and
+brand/rejected. Three files scan scripts/ or cite the senders, and each was
+run singly: french-literals 5/5, no-js-coverage 7/7, identity 19/19. eslint
+on container-check.mjs exits 0.
+
+====================================================================
+R973 - THE GATE THE DIFF SELECTS
+====================================================================
+Memory was read first: repo-root-is-parent, never-bundle-push-with-verdict,
+git-add-all-is-repo-wide, gate-worker-deaths, gate-clone-container-fetch-
+failed, size-measure-in-clean-clone, run-the-regex and ruling-numbers. Every
+heavy run went through the lock, in the background, with a sampler (numbers
+only) writing to .docsemail-evidence/.
+
+gate:changed ran on the uncommitted edits, before the code commit:
+  lock: 2026-11-17T05:54:04.606Z ACQUIRED holder=W9 commitFree=8639
+        line=6340 (queued from 04:53Z behind the orchestrator, W11 and W7);
+        RELEASED 06:02:06.526Z
+  sampler: first reading 8 447; MINIMUM 6 700 MB commit free (physical
+        1 178). The drop from the start reading was 1 939 MB.
+  gate selection (R132):
+    1 path(s) matched:
+      web/scripts/container-check.mjs  ->  the container, and what decides
+      whether it serves (R251)
+    suites: typecheck, lint, test, build, test:container
+  measured:
+    typecheck: exit 0
+    lint: exit 0
+    test: 3869 passed (Test Files 223 passed). Web Ruling 12 expects 3 869
+          on this base, so the count matches.
+    build: exit 0
+    test:container: 28 passed ("Container checks  28 passed (28)"). That
+          includes "names the one place the version is set", the check
+          whose comment changed.
+  GATE PASSED for the paths changed. STEP_EXIT=0
+  Image built by this run: monreleve:fw28 -> 3c13f0247829 (created
+  06:01:25Z). It replaced a 5-day-old tag (0d104b04fdda) that is not mine.
+  The harness itself removed monreleve:pin-probe and the container
+  monreleve-container-check.
+
+gate:clone ran ALONE on the code commit:
+  lock: 2026-11-17T06:24:28.324Z ACQUIRED holder=W9 commitFree=7614
+        line=5576 (queued from 06:03Z behind the orchestrator); RELEASED
+        06:36:26.604Z. No other heavy run held the lock meanwhile ("ALONE",
+        Web Ruling 7). Light work in other sessions may have overlapped.
+  sampler: first reading 7 494; MINIMUM 5 113 MB commit free (physical
+        549). The drop from the start reading was 2 501 MB.
+  env: FRONTALIER_PORT=3701 and CONTAINER_IMAGE=monreleve:fw-docs-email-from.
+        web/.env named the local server's postgres database; its host, port
+        and credentials were copied from the main checkout by script and
+        never printed.
+  header: commit e0e9fa6e45565d701773687bb102b4593cde7627, branch
+        fw-docs-email-from, "tree      clean - HEAD is everything you have",
+        "swept     no stale clones (older than 4h) found"
+  claim   this commit builds and passes register-coverage, fixture-coverage,
+          install, typecheck, lint, test (3869 of 3869 tests passed, 223
+          files), build, size (20 routes measured), db:deploy, test:db (724
+          of 751 tests passed, 27 skipped, 53 files), test:container:write
+          (10 checks passed) from a clean checkout - a machine with no .env,
+          no prior node_modules and no generated file this run did not
+          produce itself.
+  GATE:CLONE PASSED. STEP_EXIT=0
+  test:db 724 passed / 27 skipped is the count Web Ruling 12 expects on
+  this base. The clone names what it did not run: test:e2e, test:visual,
+  test:runtime, lighthouse, parity:check and test:container. gate:changed
+  ran test:container above.
+
+====================================================================
+R974 - NOTHING ELSE MOVES
+====================================================================
+git diff --stat bfdb1d4..e0e9fa6: the 6 files above. No file under
+web/lib, web/app or web/tests changed. No test changed. No baseline was
+regenerated. parking.md and the relay records were not written. No ruling
+number was minted beyond R970-R974.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1 [DEFECT] The sending SUBDOMAIN that the code left on 2026-10-14
+   (dcac1df; identity.ts:135-160) is still presented as current at three
+   sites:
+   (a) docs/domain-checklist.md item 3 (140-166 after the edit): "In Resend,
+       add and verify the sending domain notifications.monreleve.ch" and its
+       nslookup proofs. It was written 2026-10-06 (cd98b9c) and never
+       revised. Item 2 now says so (128-131).
+   (b) docs/deploy.md section 8 N3: "SPF and DKIM for the sending
+       subdomain".
+   (c) web/lib/fr/emails.ts 80-88, the JSDoc above EMAIL_FROM: "A subdomain
+       rather than the apex: ...".
+   Not touched, for three reasons:
+   - It is the sending domain, not EMAIL_FROM as a setting and not the
+     disputed date (R974).
+   - (a) is the operator's DNS and Resend procedure, and its live state (is
+     the apex verified in Resend?) cannot be read from a session.
+   - (c) sits under lib/fr/**, which adds test:e2e and test:visual to the
+     gate.
+   The docs send the operator to verify a domain the code does not send
+   from, so this is a defect (Web Ruling 9); see QUESTIONS.
+N2 SPEC-frontalier-web.md:1009 also lists VAPID_PUBLIC_KEY,
+   VAPID_PRIVATE_KEY and NEXT_PUBLIC_UMAMI_*. Nothing in the tracked tree
+   reads any of them: git grep finds only SPEC:67 (D7: "The daily reminder
+   is Web Push (VAPID)") and SPEC:1009. deploy.md section 2 names FCM for the
+   reminder. Not touched (R974).
+N3 web/Dockerfile:226, R249's printed refusal, says "no deployment
+   overrides it (docs/deploy.md)". deploy.md sections 1-2 treat the
+   override's live state as not established (re-read at P2 item 1). This is
+   printed output that test:container asserts, not a comment, so it is not
+   touched (brief, rule 11).
+N4 docs/superpowers/specs/2026-09-29-home-page-design.md:516 says
+   FW-CHROMIUM-PIN "moved it on 2026-11-03". a68003a is dated
+   2026-11-02T10:12:01Z and its merge d110050 2026-11-02T11:01:33Z. Left
+   (R974).
+
+====================================================================
+DEVIATIONS
+====================================================================
+V1 Before my worktree existed I ran read-only git commands in the main
+   checkout: `git show origin/main:<relay files>`, rev-parse, cat-file,
+   `worktree list` and `branch --list`. HOW THIS SESSION RUNS allows only
+   `git fetch` and `git worktree add` there. Nothing was written. Every git
+   command after `worktree add` ran in C:/wt/fw-docs-email-from.
+V2 UNNUMBERED-1 (R156): domain-checklist.md 125-128 was fixed as well as the
+   parked 130-132, because line 126 is itself a hit and is false. Item 3 is
+   flagged, not rewritten.
+V3 UNNUMBERED-2 (R156): the home-page design spec's line 516, a site the
+   parked list did not name (R267, R971), was fixed.
+V4 UNNUMBERED-3 (R156): deploy.md 47 and 745 were edited because the fixes
+   above would otherwise have made them false (R175).
+V5 UNNUMBERED-4 (R156): todo.md:693 does not say "env setting", which is the
+   parked wording. It was fixed for what is actually stale there: the
+   subdomain.
+V6 The report commit goes through no gate. This follows W1, W3e and W6:
+   gate:clone vouches for e0e9fa6, and the report commit adds only this
+   file. The standalone checks that read files outside the code ran with the
+   report in place (PUSH PROOF). HOW THIS SESSION RUNS says "gate:changed
+   before every commit", and this commit is the exception.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1 (recorded, Web Ruling 9; it shows a docs defect): should one task
+   re-read checklist item 3 against MAIL_DOMAIN, and fix deploy.md N3 and
+   emails.ts 80-88 with it (N1)? Whether the apex is verified in Resend is
+   the operator's to read.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code commit e0e9fa6e45565d701773687bb102b4593cde7627, base bfdb1d4, 6 files:
+  git push -u origin fw-docs-email-from:
+    * [new branch]      fw-docs-email-from -> fw-docs-email-from
+  git ls-remote origin refs/heads/fw-docs-email-from:
+    e0e9fa6e45565d701773687bb102b4593cde7627
+gate:clone ran on e0e9fa6 after that push. The tip did not move, so step 4
+had nothing new to push.
+Report commit: on top of e0e9fa6, adding only this file. A file cannot carry
+its own commit id, so its SHA and push are in the handback.
+
+Cleanup (Web Ruling 3), 06:37Z, before this report commit:
+- Databases. pg_database before gate:clone: frontalier,
+  monreleve_fw_verifier_outage, monreleve_web_orch, postgres, template0,
+  template1. After it: the same, plus monreleve_fw_calc_bytes_2, which is
+  another session's and was not touched. gate:clone dropped its own
+  monreleve_gate_clone_*. This session created no scratch database:
+  gate:clone administered through postgres.
+- Images, removed by exact name, each only after checking that its tag
+  still pointed at this session's build:
+  - monreleve:fw-docs-email-from 4ecd7e54a0f4 (gate:clone's
+    test:container:write): untagged, deleted.
+  - monreleve:fw28 3c13f0247829 (gate:changed's test:container): untagged,
+    deleted.
+  Before the build, monreleve:fw28 named 0d104b04fdda (5 days old, not this
+  session's). After the build moved the tag, that image is no longer listed,
+  and docker image ls -a lists no untagged image. Nothing removed it by
+  name. monreleve:write 0e88247d8f73 was built at 06:13Z, before this
+  session's gate:clone; it is not mine and was not touched. No prune.
+- Containers: none of this session's exist.
+- web/.env removed (ls: No such file).
+- The session lock .session-lock.json is removed last, after this report
+  is pushed.
+
+Standalone checks, run with this report in place before the report commit:
+  node scripts/register-coverage.mjs: exit 0, "register coverage: OK - 230
+    cited id(s) across 175 report(s), all have headings in parking.md"
+    (175 counts this report; it cites only PARK-G1, which has a heading)
+  node scripts/fixture-coverage.mjs: exit 0, "fixture coverage: OK - 7
+    section(s) across 6 file(s), each consumed by every engine that reads
+    its file"
+  vitest tests/unit/meta/register-coverage.test.ts: 27 passed (1 file)
+  The report is pure ASCII: 0 bytes above 0x7F; its longest line is 78.
