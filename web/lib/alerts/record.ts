@@ -14,15 +14,13 @@
 // handler throws that distinction away before answering. The distinction
 // lives exactly as long as it is needed and never reaches the response.
 
-import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db/client';
+import { freshToken, hashToken } from '@/lib/alerts/token';
+import { CONFIRMATION_TTL_DAYS } from '@/lib/alerts/lifetimes';
 import type { Subscription } from '@/lib/alerts/subscribe';
 
-/** Seven days, in milliseconds. The schema explains the seven. */
-const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-/** 32 bytes of randomness, hex-encoded: 64 characters in the link. */
-const TOKEN_BYTES = 32;
+/** Seven days, in milliseconds. The schema explains the seven; lib/alerts/lifetimes.ts holds it. */
+const TOKEN_TTL_MS = CONFIRMATION_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 export type Outcome =
   /** No row existed. */
@@ -46,25 +44,13 @@ export interface RecordResult {
   readonly token?: string;
 }
 
-/** What goes in the link. */
-function freshToken(): { token: string; hash: string } {
-  const token = randomBytes(TOKEN_BYTES).toString('hex');
-
-  return { token, hash: hashToken(token) };
-}
-
 /**
- * SHA-256, and no salt.
- *
- * A password hash needs a slow function and a per-row salt because passwords
- * are low-entropy and reused. This is 256 bits from a CSPRNG, used once, for
- * seven days: there is no dictionary to attack and no other account it
- * unlocks. What hashing buys here is that a database copy does not contain
- * working confirmation links, and SHA-256 buys that completely.
+ * What goes in the link, and the token's hash. FW-DELAI-RAPPEL (R915) moved
+ * both primitives to lib/alerts/token.ts so the deadline reminder confirms by
+ * the same mechanics; hashToken is re-exported so every reader of this module
+ * keeps the name it imports.
  */
-export function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
+export { hashToken };
 
 /**
  * Record a subscription, whatever state the address was already in.

@@ -50,6 +50,8 @@
 // TODO-COPY: realistic French, not reviewed by counsel.
 
 import { APP_NAME } from '@/lib/fr';
+import { PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
+import { DAYS_BEFORE } from '@/lib/rappel/window';
 
 /**
  * THE ENUMERATED RECORDS, KEYED - and keyed so that something else can point
@@ -69,7 +71,8 @@ import { APP_NAME } from '@/lib/fr';
 export const DISCLOSED_RECORDS = {
   // --- Recorded by the public site, before any account exists.
   // EACH CASE NAMES ITSELF, and cropping the baseline is what showed why.
-  // The lead sentence announces « deux cas seulement » and then renders as a
+  // The lead sentence announced « deux cas seulement » (three since
+  // FW-DELAI-RAPPEL, and now COUNTED from EMAIL_CASES below) and then rendered as a
   // BULLET AT THE SAME LEVEL as the two cases it announces, with the
   // unrelated audience sentence following at that level too. A reader
   // scanning the list met a promise of two cases and then three more peers.
@@ -78,7 +81,8 @@ export const DISCLOSED_RECORDS = {
   // their lead, so each began « Pour... » and read as a subordinate clause
   // hunting for the sentence it came from. Naming them « Premier cas » and
   // « Second cas » makes each bullet self-locating, so the text keeps the
-  // promise without the rendering having to.
+  // promise without the rendering having to. FW-DELAI-RAPPEL made it three,
+  // so « Second cas » became « Deuxième cas »: « second » is the last of two.
   //
   // Not a nested list, deliberately: the section renders a flat array, and
   // changing that shape for one section is a rendering change reaching every
@@ -89,7 +93,7 @@ export const DISCLOSED_RECORDS = {
     'votre accord est enregistrée, et chaque message contient un lien de ' +
     'désinscription en un clic.',
   signInLink:
-    'Second cas, la connexion à l’application, lorsqu’un lien de connexion ' +
+    'Deuxième cas, la connexion à l’application, lorsqu’un lien de connexion ' +
     'est demandé pour cette adresse. Le service enregistre alors, le temps ' +
     'que le lien reste valable, l’adresse et une empreinte du lien — jamais ' +
     'le lien lui-même. Tant que ce lien n’a pas été ouvert, aucun compte ' +
@@ -108,6 +112,23 @@ export const DISCLOSED_RECORDS = {
     'elle-même — et l’heure de chaque tentative, afin d’empêcher qu’un ' +
     'code soit deviné à force d’essais. Ces traces sont effacées au bout ' +
     'de vingt-quatre heures.',
+
+  // FW-DELAI-RAPPEL (R919): ONE SENTENCE - what is kept (the address and the
+  // date), why (one reminder), until when (the send, the date passing, the
+  // link, and the purge of a request nobody confirmed). The lead time and
+  // the purge are the constants the job and the purge use (R153, R181),
+  // never typed. The DeadlineReminder table maps here column by column
+  // (lib/content/personal-data.ts), and tests/db/rappel-delai*.test.ts bind
+  // each clause to the code that performs it.
+  deadlineReminder:
+    'Troisième cas, le rappel du délai du droit d’option, si vous le ' +
+    'demandez sur le comparateur LAMal / CMU : le service enregistre votre ' +
+    'adresse et la date de fin du délai calculée par le comparateur, pour vous ' +
+    `envoyer un seul rappel ${DAYS_BEFORE} jours avant cette date, et les supprime ` +
+    'dès l’envoi de ce rappel, une fois cette date passée, ou aussitôt par ' +
+    'le lien présent dans chaque message ; une demande qui n’est pas ' +
+    `confirmée par le lien reçu est supprimée au bout de ${PURGE_AFTER_DAYS} jours ` +
+    'au plus tard.',
 
   // --- Recorded for an account, under « pour votre compte et pour lui seul ».
   email:
@@ -195,6 +216,18 @@ export const DISCLOSED_RECORDS = {
 } as const;
 
 /**
+ * THE CASES IN WHICH THE PUBLIC SITE RECORDS AN ADDRESS, in the order the
+ * notice names them. Each sentence opens with its ordinal - « Premier cas »,
+ * « Deuxième cas », « Troisième cas » - and the lead sentence counts this list
+ * (tests/unit/content/privacy-cases.test.ts asserts both).
+ */
+export const EMAIL_CASES = ['alertList', 'signInLink', 'deadlineReminder'] as const satisfies readonly (keyof typeof DISCLOSED_RECORDS)[];
+
+/** The count, in words, as the lead sentence says it. */
+const CASE_COUNT_WORDS: readonly string[] = ['aucun', 'un', 'deux', 'trois', 'quatre', 'cinq'];
+const caseCount = (count: number): string => CASE_COUNT_WORDS[count] ?? String(count);
+
+/**
  * The public-site statements that are not data disclosures.
  *
  * KEYED FOR THE SAME REASON DISCLOSED_RECORDS IS. tests/db/privacy-claims.ts
@@ -209,9 +242,12 @@ export const WEB_STATEMENTS = {
     'Le site public ne dépose aucun cookie, ne vous demande aucun compte et ' +
     'ne vous identifie pas. Vous pouvez utiliser le calculateur sans rien ' +
     'communiquer.',
-  twoCases:
-    'Une adresse e-mail est enregistrée dans deux cas seulement, et jamais ' +
-    'sans une action de votre part.',
+  // COUNTED, NOT TYPED (Queue Ruling 24). « deux cas seulement » went false
+  // by count the day a third case was stored, with every guard green; the
+  // number now comes from the list of cases the page renders.
+  emailCases:
+    `Une adresse e-mail est enregistrée dans ${caseCount(EMAIL_CASES.length)} ` +
+    'cas seulement, et jamais sans une action de votre part.',
   analytics:
     'Le site ne mesure pas encore son audience. Lorsqu’il le fera, la ' +
     'mesure sera auto-hébergée, sans cookie et sans identifiant ' +
@@ -259,7 +295,7 @@ export const CONFIDENTIALITE_COPY = {
     // « si vous la donnez vous-même » was strained too: the sign-in endpoint
     // accepts an address typed by anyone, so a row can exist for somebody who
     // never asked. That is why the sign-in message says no account was created.
-    WEB_STATEMENTS.twoCases,
+    WEB_STATEMENTS.emailCases,
     DISCLOSED_RECORDS.alertList,
     DISCLOSED_RECORDS.signInLink,
 
@@ -268,6 +304,10 @@ export const CONFIDENTIALITE_COPY = {
     // a link is requested should read what is kept when a code is typed,
     // without having to find a different section.
     DISCLOSED_RECORDS.codeAttempts,
+
+    // FW-DELAI-RAPPEL (R919): the third case, after the sign-in flow that the
+    // second case and its code line describe together.
+    DISCLOSED_RECORDS.deadlineReminder,
 
     // R138: a privacy claim is written in the tense that matches the code.
     // Present tense from FW10 for analytics that do not exist; the future

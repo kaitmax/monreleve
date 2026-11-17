@@ -18,6 +18,8 @@
 import { expect, test } from '@playwright/test';
 import { COMPARATOR_PATH } from '../lib/content/routes';
 import { LAMAL_COPY } from '../lib/fr/lamal';
+import { RAPPEL_COPY } from '../lib/fr/rappel';
+import { LANDING_STATES, landingFragment } from '../lib/rappel/landing';
 
 /** A figure nobody would type by accident, so a hit can only be ours. */
 const INCOME = '73519';
@@ -69,5 +71,37 @@ test.describe('with JavaScript disabled', () => {
     // the address bar.
     expect(seen.filter((line) => line.includes(INCOME))).toEqual([]);
     expect(page.url()).not.toContain(INCOME);
+  });
+
+  // FW-DELAI-RAPPEL. LAMAL_COPY.noScript says « Rien de ce que vous saisissez
+  // n'est envoyé ni enregistré », and it is rendered ONLY inside <noscript>.
+  // The reminder form - the one thing on this page that sends an address and
+  // a date - exists only once the island has computed a date, so a reader who
+  // can read that sentence has no form to type into. This ties the sentence's
+  // scope to the page rather than to a comment: the note is shown, the date
+  // can be typed, and no reminder form appears.
+  test('the no-script note stays true: with no JavaScript there is no reminder form to send anything', async ({
+    page,
+  }) => {
+    await page.goto(COMPARATOR_PATH);
+
+    expect((await page.locator('main').textContent()) ?? '').toContain(LAMAL_COPY.noScript);
+
+    await page.locator('#date-evenement').fill('2026-11-30');
+
+    await expect(page.locator('[data-deadline-helper]')).toHaveCount(1);
+    await expect(page.locator('[data-reminder-form]')).toHaveCount(0);
+  });
+
+  // The links in the messages land here with a fragment, and CSS :target
+  // reveals the outcome - no script involved, as the alert card's statuses.
+  test('a link\x27s outcome is revealed by its fragment, with no JavaScript', async ({ page }) => {
+    await page.goto(`${COMPARATOR_PATH}#${landingFragment(LANDING_STATES.deleted)}`);
+
+    const shown = page.locator(`#${landingFragment(LANDING_STATES.deleted)}`);
+
+    await expect(shown).toBeVisible();
+    expect(await shown.textContent()).toContain(RAPPEL_COPY.outcomes.deleted.heading);
+    await expect(page.locator('[data-rappel-outcome]:visible')).toHaveCount(1);
   });
 });

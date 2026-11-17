@@ -34,7 +34,9 @@ import {
   describePlaceholderCensus,
   expectNoComplianceClaims,
 } from './placeholder-census';
-import { CONFIDENTIALITE_COPY } from '@/lib/fr/confidentialite';
+import { CONFIDENTIALITE_COPY, DISCLOSED_RECORDS, WEB_STATEMENTS } from '@/lib/fr/confidentialite';
+import { PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
+import { DAYS_BEFORE } from '@/lib/rappel/window';
 
 describePlaceholderCensus({
   page: '/confidentialite',
@@ -172,6 +174,29 @@ describe('the public site collects nothing by default', () => {
 
   it('says the email is given, not taken', () => {
     expect(pageText()).toContain('adresse e-mail');
+  });
+});
+
+describe('R919: the deadline reminder, in one sentence, on the rendered page', () => {
+  /** The rendered text, case kept: the sentence is compared whole. */
+  const rendered = (): string =>
+    render(<ConfidentialiteContent entity={FILLED_ENTITY} />).container.textContent ?? '';
+
+  it('renders the third case: what is kept, why, until when', () => {
+    expect(rendered()).toContain(DISCLOSED_RECORDS.deadlineReminder);
+  });
+
+  it('states the lead time and the purge with the constants the job and the purge use (R153, R181)', () => {
+    expect(DISCLOSED_RECORDS.deadlineReminder).toContain(`${DAYS_BEFORE} jours`);
+    expect(DISCLOSED_RECORDS.deadlineReminder).toContain(`${PURGE_AFTER_DAYS} jours`);
+  });
+
+  it('renders the lead counting three cases, before the cases it counts', () => {
+    const text = rendered();
+
+    expect(text).toContain(WEB_STATEMENTS.emailCases);
+    expect(WEB_STATEMENTS.emailCases).toContain('trois cas seulement');
+    expect(text.indexOf(WEB_STATEMENTS.emailCases)).toBeLessThan(text.indexOf(DISCLOSED_RECORDS.deadlineReminder));
   });
 });
 

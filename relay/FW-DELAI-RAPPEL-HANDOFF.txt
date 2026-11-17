@@ -1,0 +1,49 @@
+FW-DELAI-RAPPEL HANDOFF - W11, the resume of queue step C10 (ASCII; refreshed per gated commit)
+=============================================================================================
+Prompt: C:/wt/web-orch/relay/FW-DELAI-RAPPEL-RESUME.txt (R1000-R1009, Web Rulings 7-9).
+C10's park-time handoff is kept verbatim in C:/wt/queue-evidence/fw-delai-rappel/park/.
+
+WHERE THINGS ARE
+  worktree     C:/wt/fw-delai-rappel, branch fw-delai-rappel, base 17270f3 (stale on
+               purpose: the orchestrator merges it with a merge commit, Web Ruling 7).
+               Lock: .session-lock.json (W11). Port block 3800-3899.
+  scratch db   monreleve_fw_delai_rappel on frontalier-postgres (:5436). web/.env names
+               it (written by .rappel-evidence/w11/make-env.cjs; nothing secret printed).
+  evidence     .rappel-evidence/w11/ (gitignored); C10's in .rappel-evidence/ and
+               C:/wt/queue-evidence/fw-delai-rappel/ (187 OK re-verified at W11 start).
+  heavy runs   only under C:/wt/.run-tools/heavy-lock.mjs (holder W11), lines in the
+               launch message (gate:changed with e2e+visual 5 945).
+
+THE PLAN (three gated commits; each baseline file written once)
+  commit 1  increment 1 (R914 + R919's sentence) + page-confidentialite-{desktop,mobile}.
+            The notice is FINAL here: R1002-R1004 make the clause of
+            DISCLOSED_RECORDS.deadlineReminder about the link in every message true
+            rather than changing it (R1009's "after the last change that touches the
+            notice"; R168: the accented text lives in lib/fr/confidentialite.ts).
+  commit 2  increments 2-6 ported FILE BY FILE from the saved trees (inc3 u inc4 u inc5
+            u inc6 = the scratch copy; inc1's confidentialite.test.tsx WINS, D3) + the
+            comparator's six baselines (delai-sans-s3 x2 moved; delai-rappel-envoye x2,
+            rappel-confirme x2 new). Check: diff -rq worktree vs scratch prints exactly
+            one line (confidentialite.test.tsx).
+  commit 3  R1002 (delete page, one button, POST deletes; no registry entry), R1003
+            (every delete link works while its row exists: all hashes kept), R1004
+            (twelve-month bound, one constant, CHECK in the branch's own migration),
+            R1000, R1001, R1008 + the delete page's baselines. The migration file
+            changes in place (unmerged), so the scratch db is rebuilt from migrations.
+  then      gate:clone ALONE under the lock; push; report; push; cleanup.
+
+STATE
+  commit 1  60a1bf3, gated (GATE PASSED), pushed. Baselines #1 regenerated once
+            (SET EQUAL) and measured by shift (.rappel-evidence/w11/regen1-*).
+  commit 2  6d52427, gated (GATE PASSED), pushed: increments 2-6 ported by
+            .rappel-evidence/w11/port-inc2-6.cjs (37 copied and verified, 7
+            already equal) + six comparator baselines (SET EQUAL).
+  commit 3  5cbc815, gated (GATE PASSED), pushed: R1002-R1004, R1000, R1001,
+            R1008 + the delete page's two baselines (SET EQUAL; the update run
+            exited 1 on visual.mjs's R208 counter - DEFECT 1 in the report).
+            GATE:CLONE PASSED on 5cbc815 alone under the lock, its "ran" line
+            naming db:deploy, test:db and test:container:write.
+  DONE      REPORT-FW-DELAI-RAPPEL.txt is the record. Nothing is owed by a
+            session; the merge and the promotion are the orchestrator's.
+  see the commit log of fw-delai-rappel; each gated commit's body carries its
+  selection. If this file says less than the log, the log wins.

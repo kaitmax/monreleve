@@ -30,6 +30,7 @@
 
 import { test } from '@playwright/test';
 import { expectPageBaseline } from './baseline';
+import { DELETE_PATH } from '../lib/rappel/landing';
 
 /**
  * The pages with a screenshot contract. Not read from lib/content/routes.ts on
@@ -72,6 +73,13 @@ const PAGES = [
   { id: 'alertes-confirmee', path: '/alertes/confirmation/confirmee' },
   { id: 'alertes-lien-invalide', path: '/alertes/confirmation/invalide' },
   { id: 'alertes-desinscrit', path: '/alertes/desinscription/ok' },
+
+  // FW-DELAI-RAPPEL (R1002): where the delete link in every reminder message
+  // leads - a heading, a sentence and ONE button, set with the alert landings'
+  // stylesheet. Photographed with a token no message carried: the page renders
+  // the same for every token (no oracle, R915), so this is the page a person
+  // holding a real link sees.
+  { id: 'rappel-suppression', path: `${DELETE_PATH}?token=${'a'.repeat(64)}` },
   // THE CAPTURE CARD'S TWO STATUS STATES LIVE IN calculateur.visual.spec.ts,
   // not here, and the reason is a flake this suite produced. They are
   // captures of the CALCULATOR, and that page needs e2e/visual-select.css -

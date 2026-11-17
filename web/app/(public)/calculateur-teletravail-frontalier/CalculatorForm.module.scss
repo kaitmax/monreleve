@@ -185,9 +185,17 @@
 }
 
 // The two mission fields inside it, and the advanced panel's stack, need the
-// same gap the card gives its own children.
-.revealed > * + *,
-.advanced > * + * {
+// same gap the card gives its own children - by the card's own selector, for
+// the card's reason: :not(:first-child) is (0,2,0), so a child that zeroes its
+// own margin still gets the gap.
+//
+// FW-CASCADE-ORDER (R1011). As `> * + *` this rule was (0,1,0), the same as
+// SegmentedChoice's `.root { margin: 0 }` in another module, so the build's
+// CSS chunk order decided whether the decompte choice had its gap: flush in
+// main's baseline, spaced in a re-chunked build (REPORT-FW-CASCADE-ORDER,
+// R1010). The heavier selector wins in every order.
+.revealed > :not(:first-child),
+.advanced > :not(:first-child) {
   margin-top: var(--space-5);
 }
 

@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import { ALERTES_COPY } from '@/lib/fr/alertes';
 import { normaliseEmail } from '@/lib/db/alert-subscriber';
+import { isPlausibleEmail } from '@/lib/alerts/email';
 
 /**
  * Where a subscription came from.
@@ -38,33 +39,17 @@ export type ParseResult =
   | { readonly ok: false; readonly error: string };
 
 /**
- * RFC 5321 caps a forward path at 256 octets. Past that an address is not a
- * typo - it is either a mistake of a different kind or a deliberate one, and
- * an unbounded string ends up in the database and on screen.
+ * WHAT COUNTS AS AN ADDRESS lives in lib/alerts/email.ts since FW-DELAI-RAPPEL
+ * (R915): the reminder form asks the same question, and a second regular
+ * expression would be a second answer to it. The reasoning moved with it.
  */
-const MAX_EMAIL = 254;
-
-/**
- * WHY NOT z.email(). Zod's built-in is a reasonable general-purpose check and
- * its exact grammar is a moving target between versions; what this needs is a
- * rule the French error message can honestly describe. The message says "un
- * @ et un nom de domaine", so that is what is checked: one at-sign, something
- * either side, no whitespace, and a dot in the domain.
- *
- * DELIBERATELY NOT RFC-COMPLETE. A full 5322 grammar accepts quoted strings
- * and comments that no signup form has ever legitimately received, and every
- * address it would additionally accept is one this list cannot deliver to
- * anyway. The failure direction that matters is the other one - refusing a
- * real address - and this refuses none that a mail provider would issue.
- */
-const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 const schema = z.object({
   email: z
     .string()
     .transform(normaliseEmail)
     .refine((value) => value.length > 0, { error: ALERTES_COPY.errors.emailMissing })
-    .refine((value) => value.length <= MAX_EMAIL && EMAIL.test(value), {
+    .refine((value) => isPlausibleEmail(value), {
       error: ALERTES_COPY.errors.emailInvalid,
     }),
   source: z.enum(SOURCES, { error: ALERTES_COPY.errors.sourceInvalid }),

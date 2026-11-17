@@ -16,9 +16,8 @@
 // they received it) and because the fix differs: waiting longer will not
 // help, so the page says to start again.
 
-import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db/client';
-import { hashToken } from '@/lib/alerts/record';
+import { hashToken, mintToken } from '@/lib/alerts/token';
 
 export type ConfirmOutcome =
   /** The address is on the list as of now. */
@@ -34,10 +33,8 @@ export type UnsubscribeOutcome =
   /** Never issued. */
   | 'unknown';
 
-/** 32 bytes, hex: the same shape as the confirmation token. */
-function mint(): string {
-  return randomBytes(32).toString('hex');
-}
+/** 32 bytes, hex: the same shape as the confirmation token (lib/alerts/token.ts). */
+const mint = mintToken;
 
 /**
  * Confirm, if that token still means anything.

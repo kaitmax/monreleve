@@ -35,6 +35,7 @@ import { Container } from '@/lib/ui/react/Container/Container';
 import { JsonLd } from '@/lib/ui/react/JsonLd/JsonLd';
 import { ComparatorForm } from './ComparatorForm';
 import { DeadlineHelper } from './DeadlineHelper';
+import { ReminderOutcomes } from './ReminderOutcomes';
 import styles from './comparateur.module.scss';
 
 export function generateMetadata(): Metadata {
@@ -86,11 +87,14 @@ export default function ComparateurPage() {
         FW-CALCS-A2, R748: "Le délai de trois mois", as the design draws it -
         the period and the four events that open it (rows D1-D6, the banner's
         own list), and the helper beside them. The text is the server's; the
-        helper is a small island that stores nothing (R750) and offers no
-        reminder (R749, parked).
+        helper is a small island that keeps nothing from the comparison (R750)
+        and offers the reminder form once a date is computed (FW-DELAI-RAPPEL,
+        R918). The reminder links land here: ReminderOutcomes renders their
+        outcomes hidden, and the fragment reveals one (lib/rappel/landing.ts).
       */}
       <section className={styles.deadline} aria-labelledby="delai-titre" data-deadline="true">
         <Container width="public">
+          <ReminderOutcomes />
           <div className={styles.deadlineLayout}>
             <div>
               <h2 className={styles.deadlineHeading} id="delai-titre">

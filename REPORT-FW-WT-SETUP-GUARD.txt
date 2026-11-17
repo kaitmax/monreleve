@@ -1,0 +1,545 @@
+REPORT-FW-WT-SETUP-GUARD - Mon Releve, web run step W8
+THE TWO TRACKED "NOT committed" SCRIPTS: ONE REMOVED, ONE GUARDED
+Session W8, 2026-11-17, worktree C:/wt/fw-wt-setup-guard, branch
+fw-wt-setup-guard, base bfdb1d490354f064d49aa60b7e3e3d8aa64f0442 (origin/main
+at launch). Prompt: relay/FW-WT-SETUP-GUARD.txt. Rulings R965-R969.
+
+====================================================================
+SUMMARY
+====================================================================
+- web/scripts/_wt-setup.mjs is REMOVED. It was a one-off for a device
+  walkthrough (WT1, 2026-10-11, PARKAN-43, closed). Nothing has run it since,
+  and nothing depends on the accounts it made.
+- web/scripts/_mint-readback.mjs is KEPT AND GUARDED. A later, unrelated
+  session ran it (FW-DOSSIER-EMPTY, 2026-10-24/25), so its purpose is not
+  shown to be spent.
+  - It now refuses (exit 1, naming the database it read and the reason)
+    unless DATABASE_URL names a database test:db's own guard admits.
+  - The judge and the pattern are imported from lib/db/scratch-database.mjs
+    (R206).
+  - Prisma is imported only after the verdict, so a refused run never loads
+    a client.
+  - Its false "not committed" header is rewritten.
+- New test web/tests/unit/meta/mint-readback-guard.test.ts, 14 tests:
+  - both directions on db.invalid hosts;
+  - the structure (judge from the home, Prisma after the verdict, one read
+    of the variable);
+  - a census over every tracked file proving no live reference to
+    _wt-setup.mjs remains, with presence first.
+- Real database proof: on this session's own seeded scratch database the
+  script admitted and wrote 3 sessions and 6 tokens. An env file naming
+  `frontalier` (on db.invalid) was refused in 154 ms, with no driver error
+  and empty stdout.
+- Plants (R968): guard switched off, 5 tests RED; refusal without exit, 6
+  tests RED. Each was restored from a saved copy, and the hashes matched.
+
+====================================================================
+STATUS
+====================================================================
+GREEN on the code commit 5941f093e52bfae0e1b51113f9e823da0fa8827b.
+- gate:changed PASSED (STEP_EXIT=0) and gate:clone ALONE PASSED
+  (STEP_EXIT=0). Both ran in this session, both under the heavy lock, and
+  both are pasted below.
+- "ALONE" means no other heavy run held the lock at the time. Light work in
+  other sessions may have overlapped.
+- FULL GATE NOT RUN on the report commit that adds this file. It adds no
+  code. With this file in the tree, register-coverage reads OK and the new
+  test file passes 14 of 14.
+- :app:gate is not applicable: no Android file changed.
+- Not merged; the orchestrator merges. origin/main was still bfdb1d4 at
+  04:49:38Z, so the branch fast-forwards.
+
+NOT DELIVERED: no GATED test shows that the guarded script still MINTS on an
+admitted database. The unit test stops at the admitted line. That the script
+writes rests on one manual run on this session's scratch database
+(WALKTHROUGH).
+
+====================================================================
+R965 - WHO USES THEM, ESTABLISHED
+====================================================================
+HOW: `git grep` over the branch for `_wt-setup|_mint-readback|wt-setup\.mjs|
+mint-readback`, and for the accounts _wt-setup.mjs made
+(`wt-fresh|wt-noname|wt-probe`). `rg` (read-only) over the main checkout,
+which also reads its untracked relay prompts and android/scripts.
+`git log --follow` on each script. `git log --all -S` for every commit that
+ever added or removed a mention.
+
+HOW THEY ENTERED THE TREE: ONE COMMIT, NOT THEIR OWN.
+- `git log --follow` gives exactly one commit for each file, the same one:
+    65c0af6a61641e15b96d433e906cae89d382732f 2026-10-12T12:09:48Z
+    "FW-SHELL-BURGER / R345: finalize zero-tolerance config + the no-JS
+    burger"
+  Its body: "Found uncommitted in the tree, committed per operator
+  instruction." It changed 22 files; these two were its only web/scripts/_*
+  files. Neither has changed since.
+- Two hours earlier, the FW-SHELL-BURGER session's own report (a3cfe36,
+  REPORT-FW-SHELL-BURGER.txt:307-310) listed both as untracked: "The two
+  web/scripts helpers were swept in by a `git add -A -- web` and were
+  UNSTAGED before the commit: they are not this task's and not mine."
+
+_mint-readback.mjs: WRITTEN BY SEED-RELEVE, RUN AGAIN BY FW-DOSSIER-EMPTY.
+- Written by SEED-RELEVE as a throwaway. REPORT-SEED-RELEVE.txt:630-632
+  (1ba46e4): "The throwaway read-back/mint helper
+  (web/scripts/_mint-readback.mjs) and the seed-shots are UNTRACKED and NOT
+  committed (R334)". It existed by 2026-10-06T14:23Z, when AN-LINKS first
+  listed it as untracked. SEED-RELEVE committed its read-back figures that
+  day, at 12:55Z (ee4454d).
+- Listed as untracked and not theirs (history, no use) by:
+  - REPORT-AN-LINKS.txt:269 (18fb540);
+  - REPORT-AN-ONBOARD-2.txt:301 (a267442);
+  - REPORT-DOMAIN.txt:425 (ca800b4);
+  - REPORT-AN-NOTIF.txt:177 (3804cd5);
+  - REPORT-WALKTHROUGHS.txt:62 and 582 (fc8816c);
+  - REPORT-FIX-GREETING.txt:158 (aebb736);
+  - REPORT-REG-APPLY.txt:300 (130df8f);
+  - REPORT-FW34.txt:381 (c47a6cb);
+  - REPORT-FW34-PAGE.txt:314 (7999779);
+  - REPORT-FW-SHELL-BURGER.txt:307 (a3cfe36).
+- RUN AFTER IT WAS COMMITTED, ONCE. REPORT-FW-DOSSIER-EMPTY.txt:765-768
+  (the session's commits start at 2026-10-24T22:39Z; the report, f21bac4,
+  is 2026-10-25T00:23Z): "against fw_dossier_empty_scratch after `prisma db
+  seed` ... Tokens minted with scripts/_mint-readback.mjs into a scratchpad
+  file, never printed."
+- Named by the other script's header: _wt-setup.mjs:4, "Shape copied from
+  _mint-readback.mjs". That mention leaves with the removal.
+
+_wt-setup.mjs: WRITTEN BY DEVICE-WALKTHROUGHS FOR WT1, NEVER RUN AGAIN.
+- REPORT-WALKTHROUGHS.txt (fc8816c, 2026-10-11):
+  - :60-62: "Token pairs minted per account against the local DB (a
+    throwaway web/scripts/_wt-setup.mjs, same shape as the untracked
+    _mint-readback.mjs ...)".
+  - :78-86: the three R196 probes, all REJECTED by the database.
+  - :596-597: "my throwaway: the R196 constraint probes + the partial-state
+    account creation + session minting for WT1/WT3".
+- Listed as untracked and not theirs by:
+  - REPORT-FIX-GREETING.txt:158 (aebb736);
+  - REPORT-REG-APPLY.txt:300 (130df8f);
+  - REPORT-FW34.txt:381 (c47a6cb);
+  - REPORT-FW-SHELL-BURGER.txt:307 (a3cfe36).
+- No report after 65c0af6 says it was run.
+- Its accounts (wt-fresh, wt-noname, wt-probe @example.invalid) appear only
+  in history:
+  - REPORT-WALKTHROUGHS.txt:100-216;
+  - REPORT-FIX-GREETING.txt:19;
+  - parking.md:2132 and :2211 (PARKAN-50, resolved).
+  CLAUDE.md:51's "wt-probe" is the /c/wt-probe directory, not an account.
+
+THE PARKED TASK'S OWN RECORDS (both scripts):
+- REPORT-FW-TESTDB-GUARD.txt:431-434 (9154595, C6's NOTICED);
+- relay/RULINGS-2026-11-11.txt:938-939 (Queue Ruling 9: "a parked task, and
+  sessions do not run them") and :971;
+- relay/QUEUE-STATE.md:212-215 (PARKED TASKS);
+- relay/ORCH-WEB-COMPLETE.txt:132-133 (W8);
+- relay/FW-WT-SETUP-GUARD.txt:18.
+
+NOTHING RUNS EITHER, AND NOTHING EVER DID:
+- no package.json script, import or spawn;
+- no CI workflow, Dockerfile line, doc, README, SPEC, tasks/ or parking.md
+  instruction;
+- no relay prompt.
+- `git log --all -S` finds only reports and relay records, plus 65c0af6
+  itself.
+- The main checkout's untracked files (relay prompts never committed,
+  android/scripts/*.mjs) name neither.
+
+====================================================================
+R966 - THE CHOICE, BY THE EVIDENCE
+====================================================================
+The rule is per script. REMOVE only when nothing references it AND its
+purpose is spent; otherwise GUARD. I read "references" as something that runs,
+imports or instructs running the script. Session reports and the parked
+task's records are history: removing the file leaves each of them true about
+its date, and the file stays in git at bfdb1d4.
+
+web/scripts/_wt-setup.mjs: REMOVED (`git rm`, in the code commit).
+- Nothing references it (R965).
+- Its purpose is spent:
+  - WT1, the walkthrough it was written for, is closed (PARKAN-43,
+    device-verified in REPORT-WALKTHROUGHS.txt).
+  - Its partial-state accounts serve no later report, test or prompt.
+  - Its three R196 probes were a one-off reading, recorded at
+    REPORT-WALKTHROUGHS.txt:78-86. Two of the three constraints are now
+    asserted in test:db: employmentRate 1-100 and exactTotalWorkDays iff
+    EXACT, tests/db/schema-constraints.test.ts:74-128. The third: NOTICED 3.
+  - Nothing ran it after 2026-10-11.
+- It was also the more dangerous of the two. It ran deleteMany by email and
+  created users in whatever DATABASE_URL named.
+
+web/scripts/_mint-readback.mjs: GUARDED.
+- Its purpose is NOT shown to be spent. FW-DOSSIER-EMPTY, an unrelated
+  session, ran it between 2026-10-24T22:39Z and 2026-10-25T00:23Z, about
+  twelve days after the commit (R965). I could not name a gated replacement
+  for that use.
+  - android/scripts/an5c-signedin.mjs signs in through the real callback,
+    but only for its own walkthrough.
+  - tests/db use issueTokenPair inside test:db.
+  So the rule's second branch applies.
+- THE GUARD:
+  1. DATABASE_URL is read ONCE into `databaseUrl`. That value is judged by
+     judgeTestDatabase, imported from lib/db/scratch-database.mjs (the
+     pattern's one home, R206; nothing is retyped). The client is
+     constructed from the same value.
+  2. Refused: it writes to stderr
+       `_mint-readback REFUSED (R966): DATABASE_URL does not name a scratch
+       database.`
+     then the database the guard read, why, the pattern, its home, and a
+     pointer to README.md's recipe. It exits 1. Never the URL.
+  3. Admitted: one stderr line, `_mint-readback: DATABASE_URL names "<db>",
+     a scratch database; minting.`. stdout stays the tokens' JSON line
+     only, because callers redirect it to a file.
+  4. `@prisma/adapter-pg` and `@prisma/client` are now `await import()`ed
+     AFTER the verdict, so a refused run never loads a client. That makes
+     "before connecting" structural.
+- The minting logic is byte-for-byte what it was, except that it connects
+  with the captured variable.
+- The header ("THROWAWAY - not committed") was false and is rewritten: what
+  it does, where it came from (65c0af6, SEED-RELEVE, FW-DOSSIER-EMPTY), why
+  it is guarded, and how. Its first line is now its path, as elsewhere in
+  web/scripts.
+- The removed sibling is NOT named in it, so the census below stays
+  meaningful.
+
+====================================================================
+R967 - A TEST FOR WHAT REMAINS
+====================================================================
+web/tests/unit/meta/mint-readback-guard.test.ts, 14 tests, in `pnpm test`.
+It needs no database.
+
+SAFETY FIRST. Every URL it uses, refused or admitted, is on host db.invalid
+(RFC 6761, never resolves; measured here: ENOTFOUND in 74 ms). PGHOST and
+PGDATABASE are pointed at db.invalid / frontalier for the child too, so a
+run with no DATABASE_URL cannot fall back to a local server. A regressed
+guard can do no worse than fail to resolve a name.
+
+REFUSES (5 tests), each read from the OUTPUT, not the exit code.
+- The cases:
+  - `frontalier`;
+  - `postgres`;
+  - `frontalier_test`;
+  - a scratch path carrying `&dbname=frontalier`;
+  - DATABASE_URL unset.
+- Each asserts:
+  - the refusal line;
+  - `pointed at  "<db>"` (or `(none)`);
+  - the pattern's source and its home, taken FROM the home;
+  - no driver error (ENOTFOUND, DriverAdapterError, DatabaseNotReachable,
+    P1001, PrismaClient*Error; the unguarded script printed
+    DriverAdapterError, DatabaseNotReachable and P1001 on this file's RED
+    run);
+  - no admitted line;
+  - empty stdout;
+  - exit 1;
+  - never the password, never "postgresql://".
+- WHY THE TEXT AND NOT THE CODE: an UNGUARDED script pointed at db.invalid
+  also exits 1, on its connection failure.
+
+ADMITS (2 tests), proving the refusals are not a guard that refuses
+everything (R196).
+- The cases: `monreleve_fw_wt_setup_guard`, and the shape gate:clone uses
+  (`monreleve_gate_clone_4a65f426`).
+- Each asserts the admitted line naming exactly that database, and no
+  REFUSED.
+- The child is stopped as soon as that line appears. What would follow is a
+  connection to a host that never resolves, and nothing past the verdict is
+  under test.
+
+STRUCTURE (3 tests):
+- the judge is imported from '../lib/db/scratch-database.mjs', and the
+  source holds neither the prefix nor the pattern (R206);
+- no static `import ... from '@prisma/...'`, and the first
+  `await import('@prisma/` comes after `process.exit(1)`;
+- `process.env.DATABASE_URL` appears exactly once.
+
+THE REMOVAL (4 tests). R246/R251's censuses cannot answer it: they enumerate
+the package ROOT's entry points and tool configs, and web/scripts/ is outside
+them. So the test carries its own census.
+- SURFACES: every tracked file (`git ls-files`).
+- EXCLUDED BY NAME, with the reason in the file:
+  - REPORT-*.txt (history);
+  - relay/** (prompts consumed once, and the runs' records, this task's
+    included);
+  - the test itself.
+  Binary extensions are skipped too.
+- The tests:
+  - the walk found more than 1 000 files, including web/package.json and the
+    kept script;
+  - PRESENCE: the same scanner FINDS `_mint-readback` in
+    web/scripts/_mint-readback.mjs (its path line);
+  - _wt-setup.mjs does not exist;
+  - no live surface contains `_wt-setup`.
+
+TEST-FIRST:
+- RED on the unguarded tree (red-1.log): 11 failed, 3 passed.
+  - The 3 that passed: the single read (the old file also read the variable
+    once), the walk's own presence, and "no live surface names it", which
+    was already true. The file's existence was what failed.
+- GREEN after the change (green-1-verbose.log): 14 passed.
+  - Refusals took 60-94 ms, against 1.2-2.5 s in RED, where Prisma loaded
+    and failed to connect.
+
+====================================================================
+R968 - VERIFIED PLANTS (R180)
+====================================================================
+Each plant ran as a script (.wtguard-evidence/plant.mjs). Its steps:
+1. copy the guarded file aside and hash it;
+2. require the search text to match EXACTLY once before writing (R211);
+3. print the diff, saved copy -> planted;
+4. run the single test file;
+5. restore from the saved copy, never `git checkout`, since the guard was
+   uncommitted;
+6. compare the hashes.
+Guarded file sha256 217520dfb536781ffa850facf14304fb979e25982380ce9b2aa98b761c2606cb.
+
+PLANT 1 "guard-off". Diff: `-if (!verdict.admitted) {` / `+if (false) {`
+(one line).
+- Result: 5 failed, 9 passed. EXACTLY the five refusal tests went RED.
+- Each RED names the script proceeding, for example "_mint-readback:
+  DATABASE_URL names "frontalier", a scratch database; minting.". The unset
+  case read "names null".
+- Restored: the sha256 equals the saved one.
+
+PLANT 2 "no-exit". Diff: `-  process.exit(1);` (one line): the refusal
+still prints, but the script goes on.
+- Result: 6 failed, 8 passed.
+  - 4 refusals failed on "not to match" the admitted line.
+  - The unset case failed on the driver error. It went on to connect via
+    PGHOST=db.invalid.
+  - The structure test failed: `process.exit(1)` was not found.
+- Restored: the sha256 equals the saved one.
+- What it proves: the test does not accept a refusal message alone; the run
+  must also stop.
+
+Both plants ran outside the lock: a single test file, no heavy run (Web
+Ruling 10). Every URL was on db.invalid, so neither planted script could
+reach a server.
+
+====================================================================
+R969 - NOTHING ELSE MOVES
+====================================================================
+The code commit changes three paths:
+- M web/scripts/_mint-readback.mjs
+- D web/scripts/_wt-setup.mjs
+- A web/tests/unit/meta/mint-readback-guard.test.ts
+Not touched:
+- lib/db/** (not even scratch-database.mjs's "WHO USES" comment: a lib/db
+  edit selects test:db, measured by a read-only selectSuites probe);
+- gate-selection.mjs and its test (W4's area);
+- package.json, any doc, parking.md, relay/.
+The report is the only other file, in its own commit.
+
+====================================================================
+WALKTHROUGH (R176)
+====================================================================
+No page, route or served file changed, so there was no `pnpm dev` page to
+drive. The thing this task built is the script's guard, and it was driven on
+real databases (parallel-mode rule 10).
+
+THIS SESSION'S OWN SCRATCH DATABASE, monreleve_fw_wt_setup_guard.
+- Setup, on frontalier-postgres:
+  - created through the `postgres` maintenance database;
+  - `pnpm db:deploy`: "All migrations have been successfully applied";
+  - `pnpm db:seed`: Camille, Alex and Sam.
+  web/.env is the HOLDS recipe: .env.example with DATABASE_URL naming this
+  database (host, port and credentials copied by script from the main
+  checkout's web/.env, never printed) and a generated AUTH_SECRET.
+- Run (real-proof.log), 03:10:21.616Z -> 03:10:22.621Z:
+  `node --env-file=.env scripts/_mint-readback.mjs`.
+  - Exit 0.
+  - stderr: `_mint-readback: DATABASE_URL names "monreleve_fw_wt_setup_guard",
+    a scratch database; minting.`
+  - Counts before {"users":4,"deviceSessions":0,"sessionTokens":0}; after
+    {"users":4,"deviceSessions":3,"sessionTokens":6}.
+  - stdout went to a file, never printed: three entries
+    (camille.martin, alex.dupont, sam.bernard @example.invalid), each with a
+    43-character access and refresh token. Access expires +1 h, refresh
+    +90 days.
+
+A URL NAMING `frontalier`, REFUSED BEFORE CONNECTING (refuse-proof.log).
+- The way a developer would meet it: an env file holding
+  `DATABASE_URL="postgresql://frontalier:frontalier@db.invalid:5436/
+  frontalier?schema=public"`, run as `node --env-file=<that file>
+  scripts/_mint-readback.mjs`, with PGHOST=db.invalid.
+- 03:10:32Z: exit 1, 154 ms, stdout 0 bytes, 0 driver-error lines. stderr:
+    _mint-readback REFUSED (R966): DATABASE_URL does not name a scratch database.
+      pointed at  "frontalier"
+      why         "frontalier" is not a scratch database name
+      requires    ^monreleve_[a-z0-9_]{1,53}$
+      defined in  web/lib/db/scratch-database.mjs
+- The real `frontalier` database was never named on a reachable host by
+  this session.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+1. lib/db/scratch-database.mjs's "WHO USES THIS FILE" list (lines 25-31),
+   and scratch-database.d.mts's header ("two plain `node` scripts read it"),
+   now omit scripts/_mint-readback.mjs. Not edited: any lib/db/** edit
+   selects test:db, and R969 holds.
+2. _mint-readback.mjs keeps its own copies of lib/auth/tokens.ts's TTLs
+   (1 h access, 90 days refresh) and its sha256 token hash: a second home
+   (R206). It cannot import tokens.ts, which is TypeScript, from plain
+   `node`. If tokens.ts changes, this script mints the old shape silently.
+   Unchanged (R969).
+3. User.granularity NOT NULL is enforced by migration
+   20260918003225_user_device_auth (migration.sql:21), but no gated test
+   asserts it. A wide grep of tests/db and tests/unit finds none. The
+   removed _wt-setup.mjs probed it by hand once (REPORT-WALKTHROUGHS.txt:81).
+   The other two R196 constraints it probed are asserted
+   (schema-constraints.test.ts:74-128).
+4. The guard inherits R877's stated limit: it reads the database NAME only,
+   on any host. A monreleve_* database on a remote server would be admitted.
+5. FW-DOSSIER-EMPTY's run used `fw_dossier_empty_scratch`, a name the guard
+   now refuses. Following that report's recipe now meets the refusal, which
+   points at README.md's recipe.
+6. R967 names "the R246/R251 census" as one way to prove the removal. It
+   cannot: rootCodeFiles and ROOT_TOOL_CONFIGS cover the package root, not
+   web/scripts/. A change to a web/scripts/ helper selects the base chain,
+   whose `test` now runs this guard's test.
+7. pg_database at the start (03:06:44Z, read only) held, besides this
+   session's: frontalier, monreleve_container_e2e, monreleve_fw_delai_rappel,
+   monreleve_web_orch, postgres and the templates. Others' databases; not
+   touched.
+8. Two dates in the committed header of _mint-readback.mjs, and in the
+   code commit message, are less exact than the evidence:
+   - "SEED-RELEVE wrote it on 2026-10-06": proven is "existed by
+     2026-10-06T14:23Z".
+   - "FW-DOSSIER-EMPTY ran it again on 2026-10-25": proven is "between
+     2026-10-24T22:39Z and 2026-10-25T00:23Z", so possibly the 24th
+     in UTC.
+   The report gives the bounded wording. The comment is not re-edited:
+   any edit under web/ costs two more lock rounds, for a date in a
+   comment.
+9. The new census turns RED if `_wt-setup` appears in any tracked file
+   outside REPORT-*.txt and relay/, for example CLAUDE.md, parking.md,
+   tasks/ or docs/. Records of W8 belong in relay/ (WEB-QUEUE-STATE.md,
+   the rulings), where the run keeps them already.
+
+====================================================================
+DEVIATIONS
+====================================================================
+None from R965-R969 as written. Five choices a reader might check:
+D1. R967 offered "a test, or the R246/R251 census". The census cannot see
+    web/scripts/ (NOTICED 6), so the proof is a test that carries its own
+    census, presence first.
+D2. Two plants rather than one (R968). The second, "no-exit", proves the
+    test rejects a guard that prints its refusal and then carries on.
+D3. The script was RUN on a real database, although Queue Ruling 9 says
+    "sessions do not run them". This was the brief's rule 10 ("Prove the
+    guard on a scratch database of your own"). It ran once, guarded, on
+    monreleve_fw_wt_setup_guard only. Q1 asks whether that may become
+    general.
+D4. The R966 choice (remove one, guard one) was put to my advisor before
+    any code was written, as relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION
+    RUNS" allows. The advisor also set the test's safety rule: every URL
+    naming `frontalier` is on a .invalid host, plants included.
+D5. Light work outside the lock, none of it whole-project:
+    - pnpm install in the worktree;
+    - the single test file, RED, GREEN and both plants;
+    - eslint on the two changed files;
+    - tsc on two narrow configs extending tsconfig.scripts.json and
+      tsconfig.json, including only the changed files. --listFilesOnly
+      confirmed each one includes its file.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1 (recorded, not a defect; Web Ruling 9). Queue Ruling 9 says "sessions do
+not run them". With the guard, may a session run _mint-readback.mjs on its
+OWN monreleve_<task> database for a walkthrough? It was written for that
+use. This session ran it only for rule 10's proof, on its own scratch
+database. The script's header states no permission either way.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch fw-wt-setup-guard.
+- Code commit 5941f093e52bfae0e1b51113f9e823da0fa8827b, pushed before
+  gate:clone ran (ls-remote: refs/heads/fw-wt-setup-guard at 5941f09).
+- Its committed blob of _mint-readback.mjs has the tested sha256, 217520df...
+- This report is the one commit on top of it.
+
+gate:changed, the gate of record for the commit:
+- The heavy lock: ACQUIRED 2026-11-17T03:28:24.980Z commitFree=8791
+  (line 4854); RELEASED 03:34:01.644Z. It waited from 03:13:24Z behind W10a.
+- The sampler (run-sampled.ps1, cmd=pnpm gate:changed): start 8719 MB at
+  03:28:25Z; MINIMUM 7108 MB at 03:33:21Z (free physical minimum 1196 MB);
+  a drop of 1683 from the lock's reading. exit=0, aborted=False.
+- Printed:
+    gate selection (R132):
+      no path matched the selector - base chain only
+      suites: typecheck, lint, test, build
+      a11y: covered by pnpm test - test:a11y's three files are a subset of
+            its globs, so requiring it separately is a second run
+      measured:
+        typecheck: exit 0 (no count to check)
+        lint: exit 0 (no count to check)
+        test: 3883 passed
+        build: exit 0 (no count to check)
+    GATE PASSED for the paths changed.
+    STEP_EXIT=0 ABORTED=False
+- Test Files 224 passed (224). 3883 = main's expected 3869 (Web Ruling 12)
+  plus this file's 14.
+
+gate:clone ALONE on 5941f09:
+- The heavy lock: ACQUIRED 2026-11-17T04:31:00.793Z commitFree=6759
+  (line 5576); RELEASED 04:44:36.911Z. It waited from 03:35:28Z behind W4,
+  W10a, W11 and W10a.
+- The sampler (cmd=pnpm gate:clone, FRONTALIER_PORT=3600,
+  CONTAINER_IMAGE=monreleve:fw-wt-setup-guard): start 6677 MB at 04:31:01Z;
+  MINIMUM 5627 MB at 04:38:41Z (free physical minimum 460 MB); a drop of
+  1132 from the lock's reading. exit=0, aborted=False.
+- Header: commit 5941f093e52bfae0e1b51113f9e823da0fa8827b, branch
+  fw-wt-setup-guard, "tree clean - HEAD is everything you have", "swept no
+  stale clones".
+- The claim line, verbatim:
+    claim   this commit builds and passes register-coverage, fixture-coverage,
+            install, typecheck, lint, test (3883 of 3883 tests passed, 224
+            files), build, size (20 routes measured), db:deploy, test:db (724 of
+            751 tests passed, 27 skipped, 53 files), test:container:write (10
+            checks passed) from a clean checkout - a machine with no .env, no
+            prior node_modules and no generated file this run did not produce
+            itself.
+    GATE:CLONE PASSED
+    STEP_EXIT=0 ABORTED=False
+- test:db 724 passed / 27 skipped is Web Ruling 12's expected count.
+- NOT RUN in the clone, as it names them: test:e2e, test:visual,
+  test:runtime, lighthouse, parity:check, test:container. None is selected
+  by this diff.
+
+Evidence (gitignored), C:/wt/fw-wt-setup-guard/.wtguard-evidence/:
+- red-1.log, green-1-verbose.log;
+- plant-guard-off.log and plant-no-exit.log, with their .test.log files;
+- real-proof.log, refuse-proof.log;
+- gate-changed-1.log and .samples.txt, gate-clone-1.log and .samples.txt;
+- lock-gate-changed-1.log, lock-gate-clone-1.log;
+- pg-database-before.txt, pg-database-after.txt;
+- the tools: make-env.mjs, scratch-db.mjs, real-proof.mjs, plant.mjs,
+  locked-run.sh.
+
+====================================================================
+CLEANUP
+====================================================================
+What has happened at the time of this commit:
+- The image monreleve:fw-wt-setup-guard was removed by exact name.
+  - It was 2fd45a0ddf70, created at 04:43:17Z by this session's gate:clone.
+    The pre-check before gate:clone counted 0 images of that name.
+  - docker printed "Untagged: monreleve:fw-wt-setup-guard" and "Deleted:
+    sha256:2fd45a0ddf70...".
+  - monreleve:write (4cc070ea6540, created 04:16:37Z) belongs to another
+    session's run and was not touched.
+  - No monreleve-write container existed (docker ps -a, read only).
+- The database monreleve_fw_wt_setup_guard was dropped (WITH (FORCE))
+  through the postgres maintenance database. pg_database afterwards
+  (04:49:20Z, read only):
+    frontalier monreleve_fw_delai_rappel monreleve_web_orch postgres
+    template0 template1
+  So this session's database is gone, and so is gate:clone's
+  monreleve_gate_clone_5941f093.
+- web/.env was removed.
+- The file holding the real run's raw tokens was deleted. They were valid
+  only on the dropped database.
+- PENDING: the session lock C:/wt/fw-wt-setup-guard/.session-lock.json is
+  removed after this push, once ls-remote shows this commit.
+- Left for the orchestrator: the worktree and the branch.
+
+END OF REPORT-FW-WT-SETUP-GUARD

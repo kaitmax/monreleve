@@ -32,9 +32,16 @@
 // single number cannot show.
 
 import { prisma } from '@/lib/db/client';
+import { PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
 
-/** The number /confidentialite states. Changing one without the other is a lie. */
-export const PURGE_AFTER_DAYS = 30;
+/**
+ * The number /confidentialite states. Changing one without the other is a lie.
+ *
+ * Its home is lib/alerts/lifetimes.ts since FW-DELAI-RAPPEL, so a copy module
+ * can interpolate it without importing the database client; it is re-exported
+ * here so every reader of this module keeps reading the same name.
+ */
+export { PURGE_AFTER_DAYS };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

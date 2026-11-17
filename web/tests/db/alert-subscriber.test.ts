@@ -171,6 +171,11 @@ describe('the row, and the constraint that keeps it one row', () => {
       // foreign key would make a row exist only for registered addresses,
       // which is the enumeration signal docs/api-v1.md 1.5 forbids.
       'CodeAttempt',
+      // FW-DELAI-RAPPEL (R914): one reminder before the droit d'option
+      // deadline - an address and a date, deleted on send, at the date, by
+      // the link, or unconfirmed after thirty days. No relation to User: a
+      // person asking for a reminder has no account.
+      'DeadlineReminder',
       // D21, replacing the PushSubscription a web-push design would need.
       'Device',
       // FW22 increment 3: one sign-in on one device, and the credentials

@@ -340,6 +340,8 @@ describe('the FW21 migration on an FW14-era database', () => {
       // table above it - the point of this test is that a migration adds
       // alongside rather than instead.
       'CodeAttempt',
+      // FW-DELAI-RAPPEL (R914): the deadline reminder, additive like the rest.
+      'DeadlineReminder',
       'Device',
       'DeviceSession',
       'Entry',
@@ -384,6 +386,14 @@ describe('the FW21 migration on an FW14-era database', () => {
     ]);
 
     expect(checks).toEqual([
+      // FW-DELAI-RAPPEL (R914, R196): the reminder record's invariants - three
+      // at R914, and W11 added R1004's bound and R1003's "at least one delete
+      // link" - each proven both ways by tests/db/rappel-delai-schema.test.ts.
+      'DeadlineReminder_deadline_bound',
+      'DeadlineReminder_delete_link',
+      'DeadlineReminder_email_normalised',
+      'DeadlineReminder_pending_xor_confirmed',
+      'DeadlineReminder_token_expiry_pair',
       'DeviceSession_revoked_pair',
       'Entry_absenceReason_iff_absent',
       'Entry_detectedKind_when_detected',

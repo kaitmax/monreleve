@@ -131,10 +131,22 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   // income - its controls have no `name`. That spec drives exactly this.
   'app/(public)/calculateur-lamal-cmu/ComparatorForm.tsx': 'comparateur.nojs.spec.ts',
 
+  // FW-DELAI-RAPPEL (R918). The helper now renders the reminder <form>, and
+  // it has deliberately NO no-JS journey: the date it sends is the one the
+  // island computes, so without scripting there is no date and no form - which
+  // is also what keeps LAMAL_COPY.noScript ('Rien de ce que vous saisissez
+  // n'est envoyé ni enregistré') true. That spec drives exactly this: the
+  // date typed with scripting off, and no reminder form.
+  'app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx': 'comparateur.nojs.spec.ts',
+
   // The alert sign-up: the calculator's POST form, and the journey the
   // operator named.
   'lib/ui/react/AlertCapture/AlertCapture.tsx': 'calculateur.nojs.spec.ts',
   'lib/ui/react/PublicShell/PublicShell.tsx': 'burger.nojs.spec.ts',
+  // FW-DELAI-RAPPEL (R1002): the delete link's page is a plain POST form with
+  // one button - its whole point is that a person can press it with no
+  // script, and a mail client that only fetches the link deletes nothing.
+  'app/(public)/rappel-delai/suppression/page.tsx': 'rappel-suppression.nojs.spec.ts',
   'lib/ui/react/Faq/Faq.tsx': 'faq.nojs.spec.ts',
   'lib/guides/mdx-components.tsx': 'guides.nojs.spec.ts',
   // FW-HOME-A2 (R711): the home counter's GET form, the A2 page's no-JS

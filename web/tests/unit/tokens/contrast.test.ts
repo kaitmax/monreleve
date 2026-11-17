@@ -805,6 +805,13 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       '(public)/guides/hub .entryDate -> --colour-surface',
       '(public)/guides/hub .entryDescription -> --colour-surface',
       '(public)/guides/hub .entryLink -> --colour-surface',
+
+      // FW-DELAI-RAPPEL (R918): the reminder form's hint and its alert sit in
+      // the inset box the form paints in the canvas colour, and arrived here by
+      // failing this assertion. Text-secondary and text-primary on the canvas
+      // are the page's own pairs, so the audit's ratios are unchanged.
+      '(public)/calculateur-lamal-cmu/comparateur .reminderError -> --colour-canvas',
+      '(public)/calculateur-lamal-cmu/comparateur .reminderHint -> --colour-canvas',
     ].sort());
   });
 

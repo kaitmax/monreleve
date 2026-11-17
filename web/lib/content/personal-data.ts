@@ -103,6 +103,20 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'AlertSubscriber.unsubscribedAt': 'alertList',
   'AlertSubscriber.createdAt': 'alertList',
 
+  // ---- FW-DELAI-RAPPEL (R914, R919): the deadline reminder. Disclosed by the
+  // PUBLIC SITE section as its third case, for the alert list's reason: a
+  // person asking for a reminder has no account. Every column is the one
+  // sentence's - the address, the date, and the confirm and delete machinery
+  // that exists only so the two can be confirmed and removed.
+  'DeadlineReminder.id': 'deadlineReminder',
+  'DeadlineReminder.email': 'deadlineReminder',
+  'DeadlineReminder.deadline': 'deadlineReminder',
+  'DeadlineReminder.confirmationTokenHash': 'deadlineReminder',
+  'DeadlineReminder.confirmationExpiresAt': 'deadlineReminder',
+  'DeadlineReminder.confirmedAt': 'deadlineReminder',
+  'DeadlineReminder.deleteTokenHashes': 'deadlineReminder',
+  'DeadlineReminder.createdAt': 'deadlineReminder',
+
   // ---- The person.
   'User.id': 'email',
   'User.email': 'email',

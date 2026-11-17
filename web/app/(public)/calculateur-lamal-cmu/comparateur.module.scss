@@ -85,7 +85,13 @@
   }
 }
 
-.form > * + * {
+// The card's stack. :not(:first-child) rather than * + * - the same children,
+// one pseudo-class heavier, (0,2,0) - because three of them are SegmentedButtons
+// fieldsets whose own `.root { margin: 0 }` is (0,1,0) in another module: at
+// equal weight the build's CSS chunk order decided which rule won, and this
+// gap held only because that order happened to favour it (FW-CASCADE-ORDER,
+// R1011; CalculatorForm.module.scss's card does the same).
+.form > :not(:first-child) {
   margin-top: var(--space-6);
 }
 
@@ -402,6 +408,112 @@
 
 .links {
   margin: var(--space-4) 0 0;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// ---- FW-DELAI-RAPPEL, R918: the reminder form under the helper ---------------
+
+// The helper card and the form below it, as the design stacks them. One
+// child until a date is computed, and with min-width 0 and no margin on the
+// card the single-child column lays the card out exactly as the grid did.
+.deadlineColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+// The design's inset form: a bordered box in the canvas colour, the field
+// and the button on one row when there is room, the hint under both.
+.reminder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  padding: var(--space-5);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-canvas);
+}
+
+.reminderField {
+  flex: 1 1 100%;
+  min-width: 0;
+
+  // Beside the button from md, where the helper column has room for both;
+  // above it on a phone, where an address needs the whole width.
+  @media (width >= bp.$breakpoint-md) {
+    flex-basis: 0;
+  }
+}
+
+.reminderHint,
+.reminderError {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
+
+.reminderHint {
+  color: var(--colour-text-secondary);
+}
+
+.reminderError {
+  color: var(--colour-text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+// R225: the server's "ok", in place of the form, in the same box.
+.reminderSent {
+  margin: 0;
+  padding: var(--space-5);
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--colour-canvas);
+  color: var(--colour-text-primary);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+// ---- FW-DELAI-RAPPEL: the reminder links' outcomes (ReminderOutcomes.tsx) ------
+//
+// THE :target RULE IS THE POINT, as in AlertCapture.module.scss: every outcome
+// is rendered and hidden, and the fragment the handler redirects with reveals
+// one. display:none, so the hidden ones leave the accessibility tree too.
+//
+// HERE, NOT IN A STYLESHEET OF ITS OWN (the byte probe): a new CSS module
+// was merged into the CSS chunk every page loads, and the renamed chunk moved
+// every route's JavaScript by -3 to +1 B. In this file the rules join the
+// comparator's own chunk; their class names cost the comparator alone.
+
+.reminderOutcomes {
+  min-width: 0;
+}
+
+.reminderOutcome {
+  display: none;
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--colour-info-soft);
+  color: var(--colour-text-primary);
+}
+
+.reminderOutcome:target {
+  display: block;
+}
+
+.reminderOutcomeHeading {
+  margin: 0;
+  font-size: var(--type-body-size);
+  font-weight: var(--weight-bold);
+  line-height: var(--type-body-line);
+}
+
+.reminderOutcomeBody {
+  margin: var(--space-1) 0 0;
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
 }

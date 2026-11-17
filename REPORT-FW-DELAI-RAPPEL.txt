@@ -1,0 +1,661 @@
+REPORT-FW-DELAI-RAPPEL - FW-DELAI-RAPPEL: one reminder before the droit d'option deadline
+Queue step C10 (parked 2026-11-12), resumed in place as web run step W11 (2026-11-16/17).
+
+=====================================================================================
+C10's PARK RECORD - KEPT AS C10 WROTE IT (2026-11-12), the park/ copy, sha256 b20b5ad9
+=====================================================================================
+Read it with what the tip changed: three CHECK constraints are now five
+(DeadlineReminder_delete_link, DeadlineReminder_deadline_bound); deleteTokenHash
+(one unique hash) is now deleteTokenHashes (every link's hash); the delete link
+opens a page and only its POST deletes (R1002); the outcome "introuvable" is gone
+(R1003); R921 step 4 is restated in W11's R921 below. Its STATUS, WALKTHROUGH and
+PUSH PROOF lines describe the park, and are superseded by W11's.
+REPORT-FW-DELAI-RAPPEL - queue step C10, one reminder before the droit d'option deadline
+Session: C10 FW-DELAI-RAPPEL. Worktree C:/wt/fw-delai-rappel, branch fw-delai-rappel,
+cut from 17270f3c1358dad467ccead353ffeaf038067073. Written 2026-11-12, under
+Queue Ruling 25 (PARK if no read clears the memory floor by 17:12 UTC).
+Evidence (gitignored, kept): C:/wt/fw-delai-rappel/.rappel-evidence/
+Saved trees (checksummed): C:/wt/queue-evidence/fw-delai-rappel/
+
+SUMMARY
+  C10 IS PARKED on the memory floor alone. The feature is built and tested
+  in six increments. Increment 1 sits in the worktree, uncommitted; its
+  suites ran as WHAT RAN below says, and none that needs 5 000 MB ran.
+  Increments 2-6 sit in a scratch copy of web/ and are green on their
+  targeted suites there. Nothing beyond R912 is committed, and nothing is
+  pushed.
+  Why it stopped: increment 1 must regenerate two privacy-page baselines,
+  then pass gate:changed (test:e2e and test:visual) and gate:clone, and every
+  one of those needs commit free >= 5 000 MB (QUEUE-STATE HOLDS; Queue Ruling
+  25 measured worst drop + 2 000 MB: gate:clone 5 155, gate:changed 5 045,
+  test:visual:update 4 385). Commit free read 2 000-4 000 MB from ~15:40 UTC
+  to the deadline: first under another project's e2e run, then flat at
+  ~3 700-4 000 MB with nothing of this session running (vmmemWSL 8 090 MB,
+  VS Code 4 781 MB, brave 2 523 MB). From 16:46:14 to 17:13:10 UTC, 84 reads
+  (.rappel-evidence/floor-samples.txt): maximum 4 835 MB, none >= 5 000. No
+  heavy step was started under the floor, and increment 1 was not committed
+  ungated.
+
+STATUS (R391)
+  PARKED. FULL GATE NOT RUN; nothing committed; the report is uncommitted,
+  pending a commit and push once commit free reads >= 5 000 MB.
+  On the branch: 764ef54 only (R912, cherry-picked from db68601;
+  `git diff --quiet db68601 HEAD -- web` exit 0). Not pushed: a push owes
+  gate:clone. ls-remote refs/heads/fw-delai-rappel: none (never pushed).
+
+  WHAT RAN ON INCREMENT 1, EXACTLY (R391): each full suite ran ONCE, before
+  later edits - typecheck (0 errors), lint (exit 0), pnpm test (2 failures,
+  both copy censuses, then fixed), pnpm test:db (3 failures, all censuses,
+  then fixed), build + size (pass). After that ONLY the touched files were
+  re-run: tests/unit/fr and tests/unit/content (384 passed), the two db
+  census files (17 passed), tests/unit/pages/confidentialite.test.tsx (38
+  passed). The later edits - the caseCount fix in confidentialite.ts, the
+  census numbers, the R919 rendered-notice tests - were never typechecked,
+  linted or run in a full suite.
+  THE SCRATCH CLAIM, NARROWED THE SAME WAY: each increment was green on its
+  targeted files when written; tests/db/rappel-delai-request.test.ts was not
+  re-run after increment 3 changed lib/rappel/purge.ts, and the final
+  scratch tree's db suites were never run together.
+
+INCREMENT 0 - THE BYTE PROBE (Queue Rulings 23-24)
+  Measured as check-budgets does (gzip level 9, per file, summed), each
+  build from a fresh .next. Base and stub were built in ONE directory: two
+  directories differ by 1-7 B through path-hashed entry-module ids alone.
+  Two fresh base builds in the worktree were identical on every route.
+                          base 764ef54   stub (fragment)   C9 at db68601
+    calculator             127 945        127 945 (=)       127 946
+    comparator             125 598        126 622 (+1 024)  125 598
+    the other 18 routes    -              identical files
+  `git diff 17270f3 -- web/lib/content/routes.ts web/lib/content/
+  product-state.ts`: empty, 0 bytes. No route entry and no flag.
+  CHOICE: the confirm and delete links land on
+  /calculateur-lamal-cmu#rappel-<etat> through the /api/ handlers (303,
+  relative). A server component (ReminderOutcomes) renders the six outcomes
+  hidden, and CSS :target reveals one, which is the alert card's own
+  mechanism. The outcome rules live in comparateur.module.scss.
+  REJECTED, each measured:
+    - an unregistered /rappel-delai/[etat] page: +9 B on EVERY route,
+      calculator 127 954, because its CSS chunk id joins the webpack runtime;
+    - that page sharing alertes.module.scss: +1 B on /alertes/confirmation
+      and /alertes/desinscription;
+    - a new CSS module for the outcomes: merged into the CSS chunk every page
+      loads, and the renamed chunk moved every route by -3..+1 B (/guides +1).
+  Increment 1, measured at its tree:
+    - worktree build: equal to the worktree base on all 20 routes (calculator
+      127 945, comparator 125 602);
+    - same-directory copy: 15 of 20 routes identical, 5 differing only by two
+      CSS-module ids swapping (0 B, and -1 B on /guides/[slug]). Increment 1
+      changes no client module.
+  pnpm size: all gated routes pass both gates (inc1-size.log).
+
+R914 - THE RECORD (increment 1; in the worktree, uncommitted)
+  Table DeadlineReminder:
+    - columns: id, email (unique, normalised), deadline (DATE),
+      confirmationTokenHash (unique), confirmationExpiresAt, confirmedAt,
+      deleteTokenHash (unique, not null), createdAt;
+    - indexes on (confirmedAt, createdAt) and on deadline;
+    - no relation to User.
+  Migration: web/prisma/migrations/20261112120000_deadline_reminder/
+  migration.sql. ADDITIVE: one table and its indexes, plus three CHECK
+  constraints (R196):
+    DeadlineReminder_pending_xor_confirmed
+    DeadlineReminder_token_expiry_pair
+    DeadlineReminder_email_normalised
+  Proven both ways by name (tests/db/rappel-delai-schema.test.ts, 15).
+  Every column maps to DISCLOSED_RECORDS.deadlineReminder
+  (lib/content/personal-data.ts).
+  RED:
+    - r914-red-personal-data.log: 8 unmapped columns and 1 unused key;
+    - r914-red-schema.log: the table is absent;
+    - r914-red-schema-nochecks.log: the table without its checks; the 9
+      refusals are ACCEPTED and the 6 acceptances pass;
+    - r914-red-case-count.log: a planted "deux" fails "expected 2 to be 3".
+  Censuses moved, each with a reason in the file:
+    - alert-subscriber and fw14-era-migration: the table and its 3 constraints;
+    - copy-codepoints: confidentialite.ts 23 -> 25, total 44 -> 46.
+  Extraction: lib/alerts/lifetimes.ts (PURGE_AFTER_DAYS 30,
+  CONFIRMATION_TTL_DAYS 7). purge.ts re-exports the first; record.ts reads
+  the second.
+
+R919 - THE PRIVACY NOTICE (increment 1)
+  One sentence, keyed: DISCLOSED_RECORDS.deadlineReminder. It covers what is
+  kept, why, and until when. The lead time and the purge interpolate
+  DAYS_BEFORE and PURGE_AFTER_DAYS (R153, R181).
+  The case count is DERIVED from EMAIL_CASES and ASSERTED against the
+  rendered list of ordinal-led sentences (tests/unit/content/
+  privacy-cases.test.ts).
+  /confidentialite is rendered and asserted (tests/unit/pages/
+  confidentialite.test.tsx). Its RED, r919-red-rendered.log: HEAD's notice
+  fails 3.
+
+R915-R918, R920 - BUILT IN THE SCRATCH COPY, NOT YET IN THE WORKTREE
+  Scratch copy: .rappel-evidence/base-src/web. Saved as
+  C:/wt/queue-evidence/fw-delai-rappel/inc2-R915 ... inc6-R920 (see
+  EVIDENCE).
+  R915 (confirmation first):
+    - lib/alerts/token.ts and email.ts extracted; the alert modules read
+      them, and the alert tests are untouched and green;
+    - POST /api/rappel-delai answers JSON { status, message }, the same for
+      every address;
+    - GET /api/rappel-delai/confirm and /suppression;
+    - the alert flow's purge pass also purges unconfirmed requests;
+    - RED inc2-red.log; GREEN 24.
+  R916 (one reminder, then gone):
+    - a cron sweep with a null payload;
+    - the row deleted in the same transaction as the send, and a failed
+      send rolls back;
+    - rows past their date are deleted unsent, by the pass and by the daily
+      purge;
+    - DEADLINE_QUEUE runs '41 8-20 * * *' Europe/Paris, with the retry
+      policy STATED (retryLimit 3, retryDelay 600, retryBackoff false);
+    - it is scheduled only with a mail sender (R205);
+    - RED inc3-red.log, inc3-red-scheduled.log; GREEN 20 + 4 through pg-boss.
+  R917 (the messages):
+    - each carries the warning by key, the delete link, and nothing the
+      record does not hold;
+    - R245: TRANSACTIONAL, from notifications@, with no List-Unsubscribe
+      pair, asserted absent on both and present on the alert list's message
+      in the same run;
+    - RED inc4-red-plant.log (three verified plants, four failures); GREEN 15.
+  R918 (the form):
+    - in the helper once a date is computed, hidden for a date fewer than
+      14 days away;
+    - it sends only email and the COMPUTED date;
+    - the confirmation state is rendered (R225);
+    - RED inc5-red-unit.log (the base island fails 11); GREEN 12 unit tests;
+      e2e/rappel-delai.spec.ts and the comparateur.nojs additions written,
+      not yet run (they need a server: test:e2e, a heavy step).
+  R920 (round trip):
+    - submit -> outbox -> link -> pg-boss job at a placed clock ->
+      reminder -> table empty;
+    - RED inc6-red-plant.log (send without delete: "expected 1 to be +0");
+      GREEN 1.
+
+WALKTHROUGH (R176)
+  NOT RUN. It needs the increments in the worktree and a dev server.
+
+CLAIMS THE FEATURE MAKES FALSE (Queue Ruling 12 conditions 1-2)
+  Grep over lib/fr and content/guides, frontmatter included
+  (.rappel-evidence/claims-grep-raw.txt, 151 hits read).
+  CHANGED, by key, for the operator to read before any promotion:
+    DISCLOSED_RECORDS.deadlineReminder   new, the one R919 sentence
+    WEB_STATEMENTS.emailCases            was twoCases; "deux cas seulement"
+                                         went false by count; now "trois",
+                                         derived and asserted
+    DISCLOSED_RECORDS.signInLink         "Second cas" -> "Deuxieme cas"
+                                         (second = the last of two)
+  NEW copy keys:
+    - RAPPEL_FORM_COPY.label, .submit, .hint, .offline;
+    - RAPPEL_COPY.answers.*, .outcomes.*, .confirmation.subject/.lines,
+      .reminder.subject/.lines.
+  TRUE AS SCOPED:
+    - LAMAL_COPY.noScript. It renders only inside <noscript>, where no
+      reminder form exists. Asserted in comparateur.nojs.spec.ts (written,
+      not yet run);
+    - WEB_STATEMENTS.noCookies.
+  QUESTION: CONFIDENTIALITE_COPY.basis[1] (below, Q6).
+
+PDF
+  `git diff --name-only 17270f3 -- web/Dockerfile web/lib/export
+  web/lib/dossier web/app/releve/print` prints nothing. No PDF proof is owed.
+
+R921 - THE PROMOTION CHECKLIST, PARKED FOR THE ORCHESTRATOR, IN ORDER
+  0. Preconditions, the operator's (BLOCKED 6):
+     a. FRONTALIER_SCHEDULER=1 at runtime. Without it nothing runs: no
+        reminder is sent, and no row is deleted - not on send, not at the
+        date, not by the purge. The notice sentence would then describe
+        deletions nothing performs.
+     b. RESEND_API_KEY at RUNTIME. Without it the deadline queue is NOT
+        scheduled (the boot line says why), and confirmations reach no one.
+  1. gate:clone on the exact SHA; its "ran" line names db:deploy, test:db
+     and test:container:write.
+  2. docs/deploy.md section 4's in-container route:
+     - `migrate status` first, showing exactly one pending migration,
+       20261112120000_deadline_reminder;
+     - `migrate deploy`;
+     - `migrate status` again, showing none pending.
+     The migration is additive, and the previous image never names the
+     table.
+  3. The fast-forward push of `production`.
+  4. After deploy:
+     - health and ready;
+     - the [scheduler] line lists deadline-reminder;
+     - the form shows on the live page once a date is typed;
+     - one real sign-up whose confirmation arrives, then its delete link,
+       read by COUNT of "DeadlineReminder" (+1, then back), never by
+       printing addresses.
+  5. Rollback if any check fails: the previous deployment, restored from
+     Coolify (needs the token, BLOCKED 1); the table stays and is harmless.
+
+PARKED
+  The whole increment set, on the memory floor (Queue Ruling 25).
+
+DEVIATIONS
+  D1. Increments 2-6 were built and tested in a scratch copy of web/ while
+      the worktree held increment 1 for its visual run. They are not yet
+      committed increment by increment. Each is saved and checksummed with
+      its RED log.
+  D2. Several REDs are by verified plant (R180), not by a test written
+      before its code: R917, R920, and the R919 rendered test (against
+      HEAD's notice). For R917 and R920 the code came first because R204
+      needed the links to point at a real route.
+  D3. The scratch copy's own .env (a copy of web/.env) was removed with
+      web/.env at the park. A resume recreates both.
+
+QUESTIONS
+  Q1 (R916, handed back as asked). A date fewer than 14 days away.
+     TAKEN, the conservative choice:
+       - no form for it;
+       - the server refuses it (date-refusee): nothing is stored and nothing
+         is sent;
+       - a confirmation after the due day deletes the request and lands on
+         "trop-tard".
+     ALTERNATIVE: accept the date and send at once on confirmation.
+  Q2. A CONFIRMED address submitted again with another date is left alone:
+     no mail, and the same answer (enumeration). Changing the date means the
+     delete link, then a new request.
+  Q3. The delete link is a GET that deletes at once (R916). A link-scanning
+     mail client can delete a reminder unseen. Alternative: a one-button
+     POST.
+  Q4. The REMINDER's delete link finds no row after a successful send,
+     because the row goes with the send. It removes a row only after a send
+     that was reported failed but went out anyway. Once a send has been
+     attempted, the confirmation's older link no longer matches (the alert
+     flow's newest-link rule).
+  Q5. No upper bound on the date, so none on how long a confirmed row waits.
+  Q6. CONFIDENTIALITE_COPY.basis[1] does not name the reminder. The legal
+     basis is not this session's to choose; the paragraph is unchanged.
+  Q7. R921 4's @monreleve.test address: .test is a reserved, non-delivering
+     TLD, so no confirmation can arrive there. Which inbox should be used?
+
+EVIDENCE
+  C:/wt/queue-evidence/fw-delai-rappel/. Every directory carries a
+  SHA256SUMS taken from the source before the copy; `sha256sum -c` after
+  the copy gives 183 OK, 0 FAILED:
+    inc1-R914 16, inc2-R915 28, inc3-R916 31, inc4-R917 1,
+    inc5-R918-R919 11, inc6-R920 1, scratch-final-inc2-to-inc6 34, logs 61.
+  The handoff relay/FW-DELAI-RAPPEL-HANDOFF.txt (in the worktree,
+  uncommitted) and this report are copied beside them into park/ (4 files;
+  187 OK, 0 FAILED with park/). park/ holds the CURRENT handoff;
+  inc1-R914/relay/ holds a superseded one.
+  STALE FILE: scratch-final-inc2-to-inc6/web/tests/unit/pages/
+  confidentialite.test.tsx predates the R919 rendered-notice tests (0 hits
+  for "R919:" there, 1 in inc1-R914). For that file inc1-R914's copy WINS;
+  never restore scratch-final over the worktree wholesale.
+
+CLEANUP (done at the park, 17:13 UTC)
+  - C:/wt/fw-delai-rappel/.session-lock.json removed.
+  - web/.env removed, and the scratch copy's .env (a copy of it) too.
+  - Scratch DB monreleve_fw_delai_rappel LEFT IN PLACE (Queue Ruling 25),
+    migrated to 16 migrations. pg_database, read-only, at the park:
+      frontalier, monreleve_fw_delai_rappel, postgres, template0, template1
+  - No container, dev server or port of this session is running (none was
+    started); the four background memory samplers were stopped.
+  - The worktree is LEFT DIRTY on purpose: increment 1 (10 modified, 5
+    untracked web paths), this report and the handoff, all uncommitted.
+    Saved and checksummed in C:/wt/queue-evidence/fw-delai-rappel/.
+
+PUSH PROOF
+  None. Nothing was pushed.
+
+=====================================================================================
+W11 - THE RESUME (2026-11-16/17), IN PLACE, UNDER WEB RULINGS 7-9
+=====================================================================================
+Session: W11 FW-DELAI-RAPPEL-RESUME, the continuation of C10 (BLOCKED 12's action).
+Prompt: C:/wt/web-orch/relay/FW-DELAI-RAPPEL-RESUME.txt (R1000-R1009). Worktree
+C:/wt/fw-delai-rappel, branch fw-delai-rappel, base 17270f3 (stale on purpose: merged
+by a merge commit, Web Ruling 7). Lock .session-lock.json; ports 3800-3899.
+Evidence (gitignored): C:/wt/fw-delai-rappel/.rappel-evidence/w11/
+
+SUMMARY
+  The feature C10 built is on the branch in three gated commits, and Web Ruling 8's
+  decisions are applied in the third:
+    60a1bf3  increment 1 (R914 + R919) + the privacy pair of baselines
+    6d52427  increments 2-6 (R915-R918, R920), ported file by file from the saved
+             trees, + six comparator baselines
+    5cbc815  R1002 (a delete PAGE with one button; the POST deletes), R1003 (every
+             delete link works while its row exists), R1004 (a twelve-month bound,
+             in the database too), R1000, R1001, R1008 + the delete page's two
+             baselines
+  Each commit: pre-checks, ONE named regeneration whose output equalled the named
+  set, then gate:changed - all under C:/wt/.run-tools/heavy-lock.mjs as W11. No
+  registry entry: routes.ts and product-state.ts are untouched since 17270f3. Do
+  not merge before reading PROMOTION FACTS: the form renders unconditionally.
+
+STATUS (R391)
+  COMPLETE for the code tip 5cbc815: gate:clone ran ALONE on it in this session -
+  GATE:CLONE PASSED, STEP_EXIT=0, "ran register-coverage, fixture-coverage,
+  install, typecheck, lint, test, build, size, db:deploy, test:db,
+  test:container:write" (below). The commit carrying this report adds
+  REPORT-FW-DELAI-RAPPEL.txt and relay/FW-DELAI-RAPPEL-HANDOFF.txt only - no web
+  path (git diff --stat 5cbc815..HEAD -- web is empty) - and is gated by its own
+  gate:changed. Regeneration #3's test:visual:update exited 1 on visual.mjs's R208
+  counter (DEFECT 1) with its two files written and SET EQUAL; the gate's
+  test:visual then passed 174. NOT MERGED (the orchestrator's); NOT DEPLOYED
+  (R921 parked; read PROMOTION FACTS first).
+
+COMMITS AND GATES
+  commit 1  60a1bf3 - gate:changed (FRONTALIER_PORT=3810), lock ACQUIRED 23:10:13Z
+            commitFree=7553 line=5945; minimum 5616 MB commit free, 187 MB free
+            physical. 18 path(s) matched; suites: typecheck, lint, test, build,
+            test:visual, test:e2e, test:db, test:late. GATE PASSED: test 3733,
+            test:visual 168, test:e2e 367, test:db 729 (+26 skipped), test:late 10.
+  commit 2  6d52427 - lock ACQUIRED 00:03:12Z commitFree=7671 line=5945; minimum
+            5827 MB, 458 MB free physical. 49 path(s) matched; the same suites.
+            GATE PASSED: test 3764, test:visual 172, test:e2e 377, test:db 784
+            (+26 skipped), test:late 10.
+  commit 3  5cbc815 - three lock holds, each line 5945:
+            3a 01:02:31Z-01:04:14Z (commitFree 9017): the walkthrough's first run,
+               failed on its own script (WALKTHROUGH); released at once.
+            3b 01:11:36Z-01:36:22Z (commitFree 7520): the walkthrough (0
+               failures), probe arm B (its build caught a type error), the fix,
+               the hydration diagnostic, probe B again, the pre-checks, the
+               isolating builds (A2, B2), and regeneration #3.
+            3c 01:57:21Z-02:15:56Z (commitFree 7919; minimum 6016 MB commit free,
+               494 MB free physical): gate:changed. 40 path(s) matched; suites:
+               typecheck, lint, test, build, test:visual, test:e2e, test:db,
+               test:late. GATE PASSED: test 3782, test:visual 174, test:e2e 381,
+               test:db 806 (+26 skipped), test:late 10.
+  Pre-checks before every photograph, in the same hold (typecheck, lint, test,
+  test:db): commit 1 test 3733 / db green; commit 2 test 3764 / db 784 (+26);
+  commit 3 test 3782 / db 806 (+26) - after a probe build caught a type error the
+  unit runs could not (DeadlineHelper's `offered` no longer narrowed `end`; fixed by
+  restating `end !== undefined`, runtime unchanged).
+  gate:clone ALONE: GATE:CLONE PASSED on 5cbc815 (STEP_EXIT=0), ALONE under the
+  lock: ACQUIRED 04:02:26Z commitFree=8474 line=5576; minimum 5696 MB commit free,
+  337 MB free physical; RELEASED 04:18:06Z (light work in other sessions may have
+  overlapped; no other heavy run could). ran: register-coverage,
+  fixture-coverage, install, typecheck, lint, test, build, size, db:deploy,
+  test:db, test:container:write. claim: "this commit builds and passes [the
+  same] from a clean checkout". size: "All gated routes pass both gates." The
+  tree was dirty by one untracked path, this report, not in the run (it clones
+  HEAD). Named by the harness as not run in a clone: test:e2e and test:visual
+  (both ran in commit 3's gate:changed above), test:runtime and lighthouse (not
+  run in this task).
+
+R914-R923 (C10's numbers)
+  R914 the record - 60a1bf3 (C10's RED logs: r914-red-personal-data, -schema,
+       -schema-nochecks, -case-count (planted)). W11 changed it in 3 by R1003/R1004:
+       deleteTokenHash -> deleteTokenHashes (every link's hash), and two more checks.
+  R915 confirmation first - 6d52427 (inc2-red.log).
+  R916 one reminder, then gone - 6d52427 (inc3-red.log, inc3-red-scheduled.log).
+  R917 the messages, transactional - 6d52427 (inc4-red-plant.log: a PLANT, D2).
+  R918 the form in the helper - 6d52427 (inc5-red-unit.log).
+  R919 the notice's one sentence - 60a1bf3 (r919-red-rendered.log: a PLANT against
+       the old notice, D2).
+  R920 the round trip - 6d52427 (inc6-red-plant.log: a PLANT, D2); in 3 it also
+       presses the delete button, taking the form's action and token out of the
+       RENDERED page (tests/db/support/rappel-links.ts).
+  R921 the promotion checklist - PARKED for the orchestrator. C10's record above
+       stands with TWO CHANGES the tip makes: (1) step 0 gains PROMOTION FACTS
+       below; (2) step 4's delete-link check is now: OPEN the confirmation's delete
+       link - the count of "DeadlineReminder" is UNCHANGED (R1002: opening deletes
+       nothing) - then PRESS its page's button - the count goes back. An operator
+       following C10's wording would read the unchanged count as a failed check.
+       Step 2's `migrate status` still shows exactly one pending migration,
+       20261112120000_deadline_reminder, now with five checks and the list column.
+  R922, R923 - reserved spares, unused.
+
+R1000-R1009 (Web Ruling 8; each RED in .rappel-evidence/w11/red1/ against commit 2's
+code, R1003's in red2/ against R1002 alone; GREEN in green3/)
+  R1000 Q1 KEPT. The helper now SAYS why no form is offered, in the form's place, as
+        a status: too close (RAPPEL_FORM_COPY.tooClose, interpolating DAYS_BEFORE)
+        and too far (R1004). The trop-tard outcome ends on RAPPEL_COPY.nothingKept.
+        Both asserted on the rendered page (tests/unit/pages/comparateur-rappel).
+        RED: no [data-reminder-refused] element; RAPPEL_COPY.nothingKept undefined.
+  R1001 Q2 KEPT. The confirmation says how to change the date - the delete link
+        below it, then a new request (RAPPEL_COPY.confirmation.changeDate),
+        asserted on the message out of the outbox. RED: "expected -1 to be greater
+        than -1". NOT DELIVERED, recorded as ruled: a person who re-submits a
+        corrected date for a CONFIRMED request keeps the old one, and is not told.
+  R1002 Q3 CHANGED. The delete link opens app/(public)/rappel-delai/suppression/
+        page.tsx: a server component, one plain form (method post, the token in a
+        hidden field), ONE button, no JavaScript of its own, no cookie, noindex
+        (in the head - WALKTHROUGH). Opening it reads and writes no row and renders
+        the same for every token. POST /api/rappel-delai/suppression deletes; it
+        has no GET (the framework answers 405). Styled by the alert landings'
+        existing stylesheet (two classes added). REDs: opening the link deleted the
+        row ("expected +0 to be 1"); the endpoint exported ['GET'], not ['POST'].
+        R920's round trip presses the button. The confirm link is unchanged (GET,
+        as the alert flow). R267's second site, the alert unsubscribe GET:
+        CHECKED, NOT CHANGED - its header argues one click (RFC 8058), and an
+        unsubscribed row is kept and undone by subscribing again; neither holds
+        for a reminder whose only message a scanner could cancel.
+        NO REGISTRY ENTRY: `git diff 17270f3 -- web/lib/content/routes.ts
+        web/lib/content/product-state.ts` is empty. THE BYTE PROBE, re-run:
+        BYTE PROBE after the delete page (R1002, Web Ruling 9) - gzip-9 first-load JS per route, as
+        check-budgets sums it (C10 all-routes-next.cjs, unchanged); every arm a fresh .next in THIS worktree.
+          A  = commit 2 tree (6d52427)          A2 = commit 3 tree WITHOUT the page directory
+          B  = commit 3 tree, fresh build 1     B2 = commit 3 tree, fresh build 2 (identical tree to B)
+        route                                             A      A2       B      B2  spare(B)
+        /                                            116728  116728  116732  116727     11268
+        /_not-found                                  111007  111007  111011  111006     16989
+        /a-propos                                    111067  111067  111071  111066     16929
+        /alertes                                     111065  111096  111100  111095     16900
+        /alertes/confirmation/[etat]                 110884  110914  110921  110916     17079
+        /alertes/desinscription/[etat]               110884  110914  110921  110916     17079
+        /application                                 111015  111015  111019  111014     16981
+        /calculateur-lamal-cmu                       126623  126930  126934  126929      1066
+        /calculateur-teletravail-frontalier          127945  127945  127950  127944        50
+        /calculateur-teletravail-frontalier/resultat 112388  112388  112392  112387     15608
+        /cgu                                         110962  110962  110966  110961     17034
+        /confidentialite                             110962  110962  110966  110961     17034
+        /guides                                      110937  110937  110941  110936     17059
+        /guides/[slug]                               112305  112305  112309  112304     15691
+        /mentions-legales                            110962  110962  110966  110961     17034
+        /rappel-delai/suppression                         -       -  110921  110916     17079
+        /releve-annuel                               111067  111067  111071  111066     16929
+        /releve/print                                104423  104423  104423  104422     23577
+        /sources                                     111067  111067  111071  111066     16929
+        /tarifs                                      111067  111067  111071  111066     16929
+        /verifier/[code]                             110869  110869  110873  110868     17127
+        Reading: A2 (no page) equals A (commit 2) on every route but the comparator
+        (+307 B: the island's two sentences and lib/rappel/window.ts's bound) and
+        the three alert routes (+30/31 B: the stylesheet's two new class names).
+        B and B2 are two fresh builds of ONE tree and differ by 4-6 B on every
+        route; the page's effect on the calculator (127 945 without it; 127 950
+        and 127 944 with it) is inside that noise. GATE A holds on every route.
+  R1003 Q4 KEPT + the rule. DeadlineReminder.deleteTokenHashes keeps the hash of
+        EVERY delete link a message carried (a renewal and each reminder attempt
+        ADD one; nothing is swapped), so every link works while its row exists.
+        "Deleted now" and "no row for this link" land on ONE outcome (supprime),
+        worded true of both and of a token never issued; a database refusal lands
+        on its own (suppression-impossible). CHECK DeadlineReminder_delete_link:
+        at least one, never NULL. All inside the branch's own unmerged migration.
+        REDs (red2, after R1002 alone): after three failed sends the
+        confirmation's link no longer deleted the row; a renewal orphaned the
+        older link; a second press landed on #rappel-introuvable.
+  R1004 Q5 BOUNDED. MAX_MONTHS_AHEAD = 12 in lib/rappel/window.ts, one stated
+        constant (the helper does not bound its input: lib/lamal/deadline.ts takes
+        any year). The server answers date-trop-lointaine with the helper's own
+        sentence (R206), which names the rule, never the figure (R153; a test
+        asserts no digit). CHECK DeadlineReminder_deadline_bound: deadline <= the
+        Paris day of now() + INTERVAL '12 months'; a test reads the figure out of
+        the migration and binds it to the constant, and proves the bound both ways
+        by name at the DATABASE's own Paris today. now(), not "createdAt": a
+        request renewed days later with the latest date is accepted by both layers
+        (a test); the bound only loosens with time, so no stored row turns illegal.
+        REDs: latestDeadline is not a function; the database took the day after.
+  R1005 / R1006 / R1007 - PROMOTION FACTS below.
+  R1008 tests/db/one-click-unsubscribe.test.ts - the pre-existing R245 test - now
+        COUNTS the send sites (every app/ or lib/ module importing sendMail) and
+        classifies each; it said "exactly two callers", and there were four. RED:
+        the scan found 4 where the list named 2. Its two new cases (no pair on the
+        reminder's confirmation, none on the reminder; the list message in the same
+        run keeps both) passed on their first run, so they are proven by a VERIFIED
+        PLANT (plant-r1008.cjs: the pair added to both sends, 2 landed -> exactly
+        those 2 failed; restored byte-identical, db9ede9d0408).
+  R1009 THE BASELINES - below.
+
+D1-D3, DISCHARGED
+  D1 the scratch database suites together: the pre-check test:db and each gate's
+     test:db ran every file at once (commit 2: 56 files, 784 passed, 26 skipped;
+     commit 3: 57 files, 806 passed) - rappel-delai-{schema,request,job,jobs,mail,
+     round-trip,suppression} and scheduled-jobs among them.
+  D2 the REDs that are PLANTS, not tests written first: R917 (inc4, three plants),
+     R920 (inc6), R919's rendered test (against the old notice) - all C10's - and
+     W11's R1008 message cases. Every other W11 RED is a test run before its code.
+  D3 scratch-final's stale confidentialite.test.tsx was never restored: the port
+     copied from inc3/inc4/inc5/inc6 only, refusing that file by name; inc1's copy
+     is the one committed (60a1bf3).
+
+WALKTHROUGH (R176) - `pnpm dev` on port 3820 (NEXT_PUBLIC_SITE_URL=http://
+localhost:3820), driven by .rappel-evidence/w11/walkthrough.mjs inside the lock;
+log and screenshots in .rappel-evidence/w11/walk/. Second run: 0 failures.
+  - the form: none before a date; shown for an event 30 days ahead; submitted
+    with an @monreleve.test address; the server's sentence replaced it; 1 row.
+  - the confirmation, read from the dev outbox (printed by lib/alerts/mailer.ts):
+    the change-date line present (R1001); no List-Unsubscribe printed (R1008).
+  - the delete page: one button; opening it deleted nothing (count 1); its raw
+    HTML carries the noindex IN THE HEAD (offset 1355, </head> at 2687), for a
+    browser and for a crawler user agent alike - MEASURED ON `pnpm dev` ONLY; the
+    production server's placement was not read (routes.ts records that a page
+    reading searchParams can stream its metadata into the body there).
+  - the confirm link -> #rappel-confirme shown, the row confirmed; the delete
+    link's button -> #rappel-supprime shown, count 0.
+  - trop-tard: a request 10 days from its date written straight to the table (the
+    form refuses one), its confirm link -> #rappel-trop-tard, reading "... rien ne
+    vous sera envoye. L'adresse et la date ont ete supprimees : rien n'est
+    conserve." (accents stripped here; lib/fr/rappel.ts holds the text); count 0.
+  - far: an event 400 days ahead -> no form and the too-far note; 82 days ago ->
+    the too-close note; the server refused a date 400 days ahead with
+    "date-trop-lointaine" and wrote nothing.
+  The FIRST run failed on its own script, not the product: it filled the date
+  before the dev-mode island hydrated (the form never appeared in 60 s). The
+  second waits for network idle and logs how many fills it took (1 each time).
+  It also logged four dev-mode React warnings ("attributes of the server rendered
+  HTML didn't match") on pages reached within ONE browser context; a fresh context
+  per page - /cgu, /alertes/confirmation/confirmee, the comparator with and
+  without #rappel-confirme, the delete page, the calculator - logged 0 console
+  errors (hydration-diag.log). Cause not established; recorded, not changed.
+
+BASELINES (R1009) - each file written ONCE, by the regeneration of the commit
+that first moves it; every set NAMED before its run (regen1/2/3-expected.txt,
+r1009-full-set.txt), every run's output equal to it (check-set.cjs: SET EQUAL),
+every image cropped and looked at (regen1/2-measure.txt, regen3-*):
+  #1 commit 1 - page-confidentialite-desktop.png and -mobile.png: the notice's
+     third case, "trois cas", "Deuxieme cas". By shift (Queue Ruling 24 cond. 3):
+     rows above the first change identical; rows below the last change identical
+     offset by the growth (+194 / +350 px); inside the band only the changed text
+     lines, plus one row of 5 px at a box corner (delta 17).
+  #2 commit 2 - comparateur-delai-sans-s3-{desktop,mobile} (the form under the
+     helper; a clean insertion, +156 / +252 px), and new: comparateur-delai-
+     rappel-envoye-{desktop,mobile} (the ok sentence in the form's place) and
+     comparateur-rappel-confirme-{desktop,mobile} (a confirmation's landing).
+  #3 commit 3 - new: page-rappel-suppression-{desktop,mobile} (the delete page:
+     a heading, one sentence, one button; the button fits at 390 px). Written by
+     ONE test:visual:update (174 passed; Playwright: "A snapshot doesn't exist at
+     .../page-rappel-suppression-desktop.png, writing actual." and the same for
+     -mobile; mtimes 01:36:13Z and 01:36:17Z, inside the run). SET EQUAL. The run
+     EXITED 1 on visual.mjs's R208 guard ("REGENERATION WROTE NOTHING ... 2
+     baseline(s) differ from HEAD, which this run did not write") - DEFECT 1 below,
+     not a failed photograph; the gate's test:visual then compared against them.
+  DEVIATION from R1009's wording (one run, after everything): three runs, one per
+  commit, because each commit's gate selects test:visual and a red commit is
+  forbidden (R132); no file was written twice, and the privacy pair was written
+  once, after the last change to the notice (R1002-R1004 make its link clause
+  true rather than change it).
+
+PROMOTION FACTS
+  R1005 (the operator's wording; blocks promotion, not the merge). Today
+  CONFIDENTIALITE_COPY.basis[1] (lib/fr/confidentialite.ts, the "Bases legales"
+  list) gives CONSENT as the basis for "les alertes par e-mail, ... le rappel
+  quotidien et ... le mode automatique", each withdrawn separately: the alerts by
+  "le lien de desinscription present dans chaque message", the daily reminder and
+  automatic mode in the app's settings (quoted with accents stripped; the original
+  is the file's). It names the e-mail alerts and the APP's daily reminder; it does
+  not name the deadline reminder, whose basis the notice therefore does not state.
+  Unchanged.
+  R1006 (which inbox for R921's real sign-up): the operator's; nothing done.
+  R1007 THE FORM RENDERS UNCONDITIONALLY. DeadlineHelper offers it whenever a
+  computed date is in the window; no product-state flag, no environment variable,
+  no registry gate. So once this branch is on main, main's tip takes sign-ups that
+  production cannot honour until BOTH are set (BLOCKED 6):
+    - RESEND_API_KEY: without it the confirmation is collected in memory and never
+      delivered (the person reads "C'est note" and receives nothing), and the
+      deadline queue is not scheduled (describeMailSender);
+    - FRONTALIER_SCHEDULER=1: without it the scheduler does not start against a
+      non-local database (lib/scheduler/boss.ts), so nothing purges an
+      unconfirmed request after 30 days, deletes a row at its date, or sends - and
+      the notice's sentence would describe deletions nothing performs.
+  It does not block the merge. The promotable tip is the last main SHA before this
+  merge (Web Ruling 8: "record the last SHA before W11 as the promotable tip").
+
+NOTICED BUT NOT TOUCHING
+  N1 Two fresh builds of ONE tree in ONE directory differ by 4-6 B on every route
+     (B vs B2 above): the calculator read 127 950 and 127 944. A single build's
+     margin on the 55 B calculator headroom (BLOCKED 11) carries that noise.
+  N2 The lower bound (fewer than DAYS_BEFORE days) is enforced by the helper, the
+     route and the confirm step, not by a CHECK: measured from now() it would turn
+     stored rows illegal as days pass, and measured from "createdAt" a renewal
+     breaks it. Not ruled; recorded.
+  N3 On mobile the notice breaks "14 / jours" and "30 / jours" across lines (a
+     plain space, as calculateur.ts and dossier.ts write `${n} jours`).
+  N4 test:visual's container logs "[scheduler] failed to start: ECONNREFUSED
+     127.0.0.1:5436" (no database in the container) on every run - pre-existing.
+  N5 test:visual:update spends ~7 min reinstalling node_modules in the container on
+     every run (W7's parked item), three times in this task.
+  N6 The dev-mode hydration warnings above (WALKTHROUGH), not reproduced on fresh
+     contexts.
+
+DEVIATIONS
+  V1 Three baseline regenerations, not one (BASELINES).
+  V2 R1002-R1004, R1000, R1001 and R1008 share ONE gated commit (the same gate
+     selection; the prompt allows it); each kept its own RED, recorded above.
+  V3 R1004's database bound is measured from now() rather than from the row's
+     "createdAt" - the renewal case (R1004 above) - and the bound's monotonicity is
+     argued in the migration's own comment.
+  V4 R1003 keeps EVERY delete-link hash (a list column) rather than two slots: a
+     link from any attempt works while the row exists. The list grows by one per
+     message - per renewal and per reminder attempt - and the row goes with the
+     send, at its date, by its link, or (unconfirmed) after 30 days. The column
+     is a nullable TEXT[] with NOT NULL and at-least-one in its CHECK; `prisma
+     migrate diff --from-config-datasource --to-schema` against the rebuilt
+     scratch database reads "No difference detected", and `db pull` reads the
+     column back as String[] (diff-db-to-schema.txt, dbpull.txt).
+  V5 The walkthrough's first run failed on its own script (WALKTHROUGH); the
+     lock was released at once and re-acquired for the second.
+  V6 The commit-3 gate ran after a mid-hold type fix (DeadlineHelper narrowing, a
+     test's array type); the walkthrough's evidence predates that fix, which
+     changes no runtime behaviour.
+  V7 Some vitest runs OUTSIDE the lock were multi-file (33 and 37 unit files; the
+     REDs' 4-file unit run), where the rule allows single files. Every database
+     file ran singly outside the lock.
+
+NOT ASSERTED
+  The database-refusal outcome of the delete POST (LANDING_STATES.deleteFailed,
+  #rappel-suppression-impossible): its copy renders (the outcomes loop in
+  tests/unit/pages/comparateur-rappel.test.tsx), but no test drives the route's
+  catch. A case (a non-form body lands there, the row count unchanged, RED by a
+  plant) would move the web tip and owe another gate:changed and gate:clone; it
+  was left out for that cost, and is named here instead.
+
+DEFECTS (found, not fixed here - outside this task's scope)
+  DEFECT 1 web/scripts/visual.mjs counts the baselines a regeneration wrote with
+     WROTE = /^(.*\.png) (?:is re-generated, writing actual|does not exist.*writing
+     actual)/u, and Playwright 1.63 announces a NEW baseline as "A snapshot doesn't
+     exist at <path>, writing actual." - which it does not match. So a new baseline
+     is never counted: regeneration #2's "R135: 2 baseline(s) regenerated BY THIS
+     RUN" omitted the 4 new comparator files the same run wrote (its log shows 6
+     "writing actual"), and regeneration #3, all-new, exited 1 as "WROTE NOTHING".
+     R208 then refuses the one shape of run that adds a page. W7 (FW-VISUAL-FILTER)
+     owns visual.mjs in this run; recorded for it, not edited here.
+
+QUESTIONS
+  None that block the merge. For the operator, at promotion: Q6 (R1005's basis
+  wording) and Q7 (R1006's inbox), as Web Ruling 8 left them.
+
+CLEANUP - PENDING AT THIS COMMIT (R334: a report states only what has happened)
+  To run after this commit is gated and pushed: drop the scratch database
+  monreleve_fw_delai_rappel (a read-only pg_database listing then), remove
+  web/.env, confirm no process of this session holds a port in 3800-3899 and no
+  container of this session runs (none was started outside the harnesses), and
+  remove .session-lock.json LAST. web/.env stays until this commit's own
+  gate:changed has run. The outcome is in the handback, not here.
+
+PUSH PROOF
+  git ls-remote origin refs/heads/fw-delai-rappel, after the code tip's push:
+    5cbc815fffc071ef8bab62abb4516e6e56afd284  refs/heads/fw-delai-rappel
+  This report rides one commit on top of 5cbc815, adding no web path; a file
+  cannot carry its own SHA, so that commit's push is proven in the handback.
+  NOT MERGED: the orchestrator merges with a merge commit (Web Ruling 7).

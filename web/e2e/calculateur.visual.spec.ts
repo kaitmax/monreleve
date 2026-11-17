@@ -94,6 +94,24 @@ const STATES: readonly VisualState[] = [
     reach: async (page: import('@playwright/test').Page) => {
       await fillGenevaCaseC(page);
       await page.fill('#taux-activite', '0');
+      // R912 (FW-WEB-ACCOUNT, Queue Ruling 18): THE ERROR STATE IS PHOTOGRAPHED
+      // WITH NO FIELD FOCUSED. The fill above leaves focus in the field it has
+      // just made invalid, and that - nothing else - made this capture
+      // non-repeating: each full-page capture repainted the page differently
+      // (anti-aliasing at the stepper and chip corners), so a regenerated
+      // baseline could never be re-taken. Measured, 8 consecutive full-page
+      // captures x 3 fresh pages: focus in the invalid field 2-3 hashes per
+      // page; focus moved off, or on a valid field, ONE hash; the 'vide' and
+      // 'rempli' states one hash; a viewport-only clip of the same area one
+      // hash. All three things the comment above names - the error border, the
+      // message, the result note - are still on screen; only the focus goes.
+      await page.locator('#taux-activite').blur();
+      // AND THE BLUR CHANGES NO STATE (Queue Ruling 19): the field is still
+      // marked invalid, which is what draws its error border (Stepper's
+      // :has(input[data-invalid])) - and focus drew nothing on it: its computed
+      // outline, box-shadow and border are equal focused and blurred. The error
+      // text is asserted by MUST_SHOW below, after this whole function.
+      await expect(page.locator('#taux-activite')).toHaveAttribute('aria-invalid', 'true');
     },
   },
 

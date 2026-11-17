@@ -28,7 +28,22 @@
 //   comparateur-franc-deplace-*      R747: the slider moved to +5 %
 //   comparateur-delai-sans-s3-*      R748: the deadline helper filled, with
 //                                    « environ » and its warning - S3 was not
-//                                    found, so there is no "with S3" state
+//                                    found, so there is no "with S3" state.
+//                                    FW-DELAI-RAPPEL: it now shows the reminder
+//                                    form (R918), on a PLACED clock - the form
+//                                    is offered only while the due day has not
+//                                    passed, so an unplaced clock would drop it
+//                                    from this picture after 14 February 2027
+//
+// FW-DELAI-RAPPEL (R918), each NAMED:
+//
+//   comparateur-delai-rappel-envoye-*  the form answered "ok": the server's
+//                                      sentence in its place (R225). The answer
+//                                      is FULFILLED here, not asked of a server -
+//                                      the picture is of the page, and the
+//                                      round trip is tests/db's (R920)
+//   comparateur-rappel-confirme-*      a confirmation link's landing: the
+//                                      outcome revealed by its fragment
 //
 // Every mustShow below is DERIVED from lib/lamal and LAMAL_COPY (R171): the
 // count sentence from the same countAgainst the panel uses, the dates from
@@ -47,6 +62,10 @@ import { expect, test } from '@playwright/test';
 import { expectPageBaseline } from './baseline';
 import { COMPARATOR_PATH } from '../lib/content/routes';
 import { LAMAL_COPY } from '../lib/fr/lamal';
+import { RAPPEL_COPY } from '../lib/fr/rappel';
+import { RAPPEL_FORM_COPY } from '../lib/fr/rappel-form';
+import { LANDING_STATES, landingFragment } from '../lib/rappel/landing';
+import { REMINDER_ENDPOINT, REMINDER_STATUS } from '../lib/rappel/status';
 import { MONTHS_PER_YEAR } from '../lib/lamal/compare';
 import { optionPeriodEnd } from '../lib/lamal/deadline';
 import { formatEur } from '../lib/lamal/format';
@@ -82,7 +101,17 @@ interface VisualState {
   readonly id: string;
   readonly reach: (page: import('@playwright/test').Page) => Promise<void>;
   readonly mustShow?: string;
+  /**
+   * FW-DELAI-RAPPEL: the moment the page believes it is, placed before it
+   * loads. The role (R171): a reader filling the helper ON THE DAY OF THE
+   * EVENT - the reminder is offered then for any event, so the picture does
+   * not depend on the day the suite runs.
+   */
+  readonly clock?: Date;
 }
+
+/** The reader fills the helper on the day of the event, at noon. */
+const ON_THE_EVENT_DAY = new Date(`${EVENT}T12:00:00`);
 
 const STATES: readonly VisualState[] = [
   { id: 'vide', reach: async () => undefined, mustShow: LAMAL_COPY.banner.heading },
@@ -228,11 +257,49 @@ const STATES: readonly VisualState[] = [
   {
     // R748, S3 NOT FOUND: 30 November -> the end of February, « environ ».
     id: 'delai-sans-s3',
+    clock: ON_THE_EVENT_DAY,
     reach: async (page) => {
       await page.locator('#date-evenement').fill(EVENT);
       await expect(page.locator('[data-deadline-warning]')).toHaveText(LAMAL_COPY.deadline.warning);
+      // R918: the reminder form under the helper, confirmed before photographed.
+      await expect(page.locator('[data-reminder-form]')).toBeVisible();
     },
     mustShow: LAMAL_COPY.deadline.until(LAMAL_COPY.deadline.longDate(optionPeriodEnd(EVENT) ?? '')),
+  },
+  {
+    // R918 / R225: the server answered "ok"; its sentence replaces the form.
+    // Focus ends on no field: the button it was on is gone with the form.
+    id: 'delai-rappel-envoye',
+    clock: ON_THE_EVENT_DAY,
+    reach: async (page) => {
+      await page.route(`**${REMINDER_ENDPOINT}`, (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ status: REMINDER_STATUS.ok, message: RAPPEL_COPY.answers.ok }),
+        }),
+      );
+      await page.locator('#date-evenement').fill(EVENT);
+      await page.getByLabel(RAPPEL_FORM_COPY.label).fill('rappel@monreleve.test');
+      await page.getByRole('button', { name: RAPPEL_FORM_COPY.submit }).click();
+      await expect(page.locator('[data-reminder-sent]')).toBeVisible();
+    },
+    mustShow: RAPPEL_COPY.answers.ok,
+  },
+  {
+    // A confirmation link's landing: the fragment reveals one outcome. The
+    // page is scrolled back to the top so the capture does not depend on the
+    // browser's jump to the target.
+    id: 'rappel-confirme',
+    reach: async (page) => {
+      const target = landingFragment(LANDING_STATES.confirmed);
+
+      await page.evaluate((hash) => {
+        window.location.hash = hash;
+      }, target);
+      await expect(page.locator(`#${target}`)).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, 0));
+    },
+    mustShow: RAPPEL_COPY.outcomes.confirmed.heading,
   },
 ];
 
@@ -245,6 +312,8 @@ for (const { width, label } of [
 
     for (const state of STATES) {
       test(state.id, async ({ page }) => {
+        if (state.clock !== undefined) await page.clock.setFixedTime(state.clock);
+
         await page.goto(COMPARATOR_PATH);
         await page.evaluate(() => document.fonts.ready);
         await state.reach(page);

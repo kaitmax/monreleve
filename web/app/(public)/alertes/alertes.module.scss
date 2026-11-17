@@ -47,3 +47,33 @@
   font-size: var(--type-body-m-size);
   line-height: var(--type-body-m-line);
 }
+
+// ---- FW-DELAI-RAPPEL (R1002): the reminder's delete page ---------------------
+//
+// app/(public)/rappel-delai/suppression/page.tsx is set with the rules above
+// and these two, in THIS file rather than a stylesheet of its own: a page
+// with its own CSS module adds its CSS chunk to the webpack runtime that
+// every route loads (+9 B on each, C10's byte probe), and this file's chunk
+// exists already. One form, one button - the comparator's submit button, in
+// the same tokens (FD1: 48 px tall).
+
+.outcomeForm {
+  margin: var(--space-6) 0 0;
+}
+
+.outcomeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--size-button-min-width);
+  height: var(--size-button-height);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--colour-brand);
+  color: var(--colour-surface);
+  font-family: inherit;
+  font-size: var(--type-body-m-size);
+  font-weight: var(--type-body-m-weight);
+  cursor: pointer;
+}
