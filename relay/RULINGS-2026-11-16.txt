@@ -1658,3 +1658,72 @@ DECISION:
    merged in a round of its own; W21 launched once W10b is on main (it
    touches CalculatorForm); W12 once W23 and W10b are on main.
 APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 37 - W12's STOP ON R990; ITS TIMING; IT LANDS LAST
+====================================================================
+EVIDENCE: W12's handback (stop tree in
+C:/wt/fw-web-account-2/.webaccount2-evidence/stop-tree/). The R990 census
+in tests/unit/meta/gate-selection.test.ts fails: the web PDF download
+shares the PDF pipeline with GET /api/v1/export/pdf (R900), so
+lib/export/{pdf,print-token,render-queue}.ts and lib/issuance/record.ts
+gain an importer outside PRINT_ENTRY_POINTS and leave the closure.
+R990's own text (scripts/gate-selection.mjs, "R990: WHAT THE CONTAINER
+PDF STEP RENDERS AND READS") is a CLOSURE seeded from enumerated
+framework entry points (R246), not a fence: a new route that renders
+the PDF is a new entry point, which is the designed extension.
+DECISION (advisor, product decisions delegated 2026-11-16):
+1. R1071. LAUNCH RULE 5 IS AMENDED FOR W12, NARROWLY. W12 adds
+   'app/(account)/mon-releve/export/pdf/route.ts' to PRINT_ENTRY_POINTS
+   and updates the R990 census to the paths the REAL script gives on the
+   FINAL tree (named, about 20), nothing else in either file. RED then
+   GREEN pasted. It states which suites a change to lib/auth/secret.ts
+   alone selects; print tokens depend on it (R251), so if nothing that
+   exercises a print token is selected, that is a finding to report.
+2. R1072. TIMING (api-v1 1.5 with Web Ruling 30). A gap between the
+   known and the unknown path tells a caller which addresses use the
+   app. W12 states, from the code, what each path does in the request
+   (queries, whether the mail send is awaited), and measures both paths
+   through the real handler. If an EXISTING off-request mechanism can
+   take the send with no new dependency and no change to
+   /api/v1/auth/code, W12 uses it and proves both paths equal; otherwise
+   it records the measured gap, and the gap goes to the operator with
+   the texts. Either way, W12 is not promoted before the operator reads.
+3. R1073. W12 LANDS ON MAIN LAST. Production is fast-forwarded from
+   main, so W12 on main would ship with the next promotion. W21 and W24
+   merge and promote first. W12 does R1071, R1072 and the R907/R909/R911
+   proofs and its walkthrough now; it does NOT regenerate baselines
+   (R1069) or take its final byte table (R1065) until the orchestrator
+   says main carries W21 and W24. Then it brings its tree onto that main,
+   re-derives the expected baseline set and re-measures every route on
+   the combined tree (W21 edits CalculatorForm; the calculator had 1 311
+   B spare).
+4. R1074. THE OPERATOR'S LIST is five texts, not four (the reworded
+   code-page sentence is new copy), plus Q2 (the CLAUDE.md R209 bullet).
+5. R1075. PORTS: W5's lock and W12's launch both named 3300-3399. W12
+   keeps 3381-3389, as it chose; recorded.
+6. W12's status stays "FULL GATE NOT RUN" until R907, R909 and R911 have
+   run and the gates have run on its final tip (R391).
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 38 - W21 VERIFIED; THE SHARED LINK KEEPS PER-FIELD EDITS
+====================================================================
+EVIDENCE: REPORT-FW-PREHYDRATION-SITES.txt (code tip 5c20d5d4, both
+gates PASSED alone on it; merge-tree onto 3111fc0f clean). V1: the diff
+is the three islands' mount reads, the spec and its plant support, one
+unit test; nothing else moves (R1060).
+DECISION (advisor, product decisions delegated 2026-11-16):
+1. Q1 (the shared link touched before hydration): (a) KEPT. A field the
+   reader changed keeps the change; every other field takes the link's
+   value at hydration. The prompt's premise (the server renders the
+   link) was false, and W21 found it by curl; (c) would move the
+   canonical ruling and is not needed for the defect.
+2. Q2 (bytes): measured by the merge round's gate on the combined tree;
+   W12's final table is taken after W21 is on main (Web Ruling 37 R1073).
+3. NOTICED, DEFERRED until after the apps go live (Web Ruling 36): the
+   inline plant copy in e2e/rappel-delai.spec.ts; no missions_declared
+   event for an answer given before hydration (analytics, not user-
+   visible). The 3700-3799 block shared with W16's lock: recorded.
+4. W21 merges in round 9, alone (W24 still running).
+APPLIED: these records join the next record commit.

@@ -1,0 +1,36 @@
+FW-NOTICE-SPACE SESSION PROMPT - Mon Releve
+THE PROVISIONAL NOTICE'S BOLD NAME IS FOLLOWED BY A SPACE (web run step W24)
+Written by the orchestrating session on 2026-11-17 (Web Ruling 36: a
+user-visible defect). Read first: relay/ORCH-WEB-COMPLETE.txt Part B
+including PARALLEL MODE; relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION
+RUNS" with this task's names (worktree C:/wt/fw-notice-space, branch
+fw-notice-space, report REPORT-FW-NOTICE-SPACE.txt); REPORT-FW-AVIS-CAPTURE.txt
+on main, its NOTICED; CLAUDE.md R91, R135, R155, R207, R225.
+Ruling numbers: R1061-R1063.
+
+THE DEFECT (W23, seen in the old and new baselines): the calculator's
+provisional notice renders its bold reading name run into the next
+sentence: "missionVos", "exactVous".
+
+R1061. THE CAUSE, FOUND AND A TEST FIRST. Find where the bold name and the
+    following sentence meet (component or copy), and write a test on the
+    RENDERED text (R225) that fails today: the bold name and the sentence
+    after it are separated by exactly one space (or the typography R91
+    requires). Search for every other place the same component or pattern
+    renders a bold lead followed by text, and include each in the test
+    (R267's second site).
+R1062. THE FIX, the smallest: in the component or the copy, never by
+    typing a space into a string the typography guard forbids. No other
+    copy or layout change.
+R1063. THE BASELINES, NAMED FIRST (R207, R135): the expected set (the
+    states that show the notice) written before the regeneration; the
+    produced set equals it; each image cropped and looked at: the space
+    is there and nothing else moved.
+
+THE WORK: worktree from the BASE_SHA in the launch message and lock;
+R1061 (RED); R1062 (GREEN); R1063 under the lock; gate:changed; commit;
+push; gate:clone ALONE; push; report; commit; push; cleanup; remove the
+lock last.
+REPORT: SUMMARY / STATUS (R391) / R1061-R1063 with evidence / BASELINES /
+NOTICED / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF FW-NOTICE-SPACE PROMPT
