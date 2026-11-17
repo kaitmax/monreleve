@@ -115,6 +115,17 @@ Live (step 4):
 - AFTER (warm), FULL: `node scripts/visual.mjs` -> "filter: none - the
   full suite", "Running 168 tests using 4 workers", "168 passed (2.7m)",
   "visual suite: 168 passed" (floor 81 applied).
+- THE pnpm LEG. Both live runs were started as `node scripts/visual.mjs
+  ...`, not through pnpm. The pnpm leg was proven after the gates, with
+  docker hidden from PATH so nothing could start, through the real
+  package.json script:
+    pnpm test:visual -- e2e/composants.visual.spec.ts --grep "spec.ts badge-" --retries=0
+    $ node scripts/visual.mjs "--" "e2e/composants.visual.spec.ts" "--grep" "spec.ts badge-" "--retries=0"
+    REFUSING TO RUN: --retries=0 is not a filter. ...   (exit 2)
+  pnpm's own echo shows the pattern with a space as ONE argument and the
+  `--` passed through; the parser accepted the spec and the --grep pair
+  and refused the option. `pnpm test:visual -- --ignore-snapshots` gave
+  the same refusal naming --ignore-snapshots (the `--` dropped).
 
 ====================================================================
 R961 - A CACHED INSTALL
@@ -163,6 +174,16 @@ Timings (each its own lock hold; elapsed from the wrapper):
   tree"), created and removed by this session; both AFTER runs
   photographed 4aeaef9, clean tree. The warm elapsed includes a 1 s
   `docker volume inspect` after the run.
+  REUSE FROM ANOTHER WORKTREE IS NOT MEASURED. The warm run came from the
+  worktree that did the cold install, with that install's pnpm store on
+  its bind mount (NOTICED 6). The volume NAME is the same in any worktree
+  (it depends on the lockfile alone, which is what nodeModulesCache's
+  comment states); that a run from another worktree is then warm is not
+  proven. The first visual run from another worktree on this lockfile
+  (the orchestrator's merge round, W10b, W12) should print
+  `R961: REUSED: the install made for this lockfile` and `Already up to
+  date`. A full install there instead would mean the cache is per
+  worktree in practice: a finding, not a pass.
 
 Unit tests (visual-filter.test.ts, R961 block, 6 tests): the name from
 the hash (same lockfile same name, one byte more another name, CRLF =
@@ -195,6 +216,19 @@ test, rule 8):
   code), so a gate's shell cannot hand it a filter.
 gate:changed's own floor would likely also refuse a filtered count, but
 "would likely" is not the rule; this test is.
+ON TODAY'S MAIN, NOT ONLY ON THE BASE. The test reads files other
+sessions edit, and main moved to 9868254 (merge rounds 2 and 3) after
+this branch was cut. Checked after the gates, light: gate-for-changes.mjs,
+gate-clone.mjs, gate-clone-parts.mjs and package.json are identical on
+main; gate-selection.mjs gained one pattern (W4's container-db-stopped
+scripts). Evaluated against main's gate-selection.mjs (a temporary probe
+copy, deleted; the real file not edited): EVERY_SUITE 15 bare names, the
+visual path yields exactly ["test:visual"]. `git merge-tree` of the
+branch against main: clean.
+TWO BRITTLE SPOTS, both failing closed: the process-start scan also
+matches a regex `.exec(` (a future `.exec(` in gate-for-changes.mjs fails
+the test rather than passing it), and the bare-name pattern rejects a
+hyphenated script name (a future `test:foo-bar` suite fails it too).
 
 ====================================================================
 R963 - VERIFIED PLANTS (R180), on the committed tip 4aeaef9
@@ -271,7 +305,11 @@ R1020 - THE REGENERATION COUNTER COUNTS NEW BASELINES (Web Ruling 17)
   met), the mixed run gave 2 of 6, the report header said 2 where 6 were
   written.
 - Plant P5 above.
-- Not exercised live: no regeneration ran (R964).
+- NOT EXERCISED LIVE: no regeneration ran (R964), so main()'s use of it -
+  regenerationReport() writing its lines and setting the exit code after
+  a real --update run - has never executed. The next regeneration (W11's
+  or W12's) is its first live use; its R135 list should name every file,
+  new and re-generated, with its kind.
 
 ====================================================================
 GATES
@@ -289,6 +327,9 @@ gate:changed on the change, before the commit, its own hold:
   7213 (line 4 854), minimum 5 967, 415 s. 3 901 = main's 3 869 (Web
   Ruling 12's expected count) + this task's 32 tests (14 + 10 + 7, and
   one new declaration-parity case).
+  EXPECTED ON THE MERGED TREE: test 4 012 = main 9868254's measured 3 980
+  (round 3) + 32. test:visual is 174 on main (W11's six new baselines);
+  this branch's full run measured 168 on its base bfdb1d4.
 
 gate:clone ALONE on 4aeaef9, its own hold (ACQUIRED 07:31:33Z commitFree
 8275, line 5 576; minimum 5 380; 773 s). The hold ran, in sequence, a
@@ -406,8 +447,9 @@ Q1. NOTICED 1 (a defect): should scripts/visual.mjs (and visual.d.mts)
     select test:visual? For W5, who owns the selector next.
 Q2. The cache volume is KEPT: monreleve-visual-node-modules-a7691087f3e172ce
     (1.1G). Once this branch merges, every visual run on this lockfile
-    (the orchestrator's merge rounds, W10b, W12) reuses it and skips the
-    ~13-minute install. Remove with `docker volume rm
+    (the orchestrator's merge rounds, W10b, W12) should reuse it and skip
+    the ~13-minute install - measured from this worktree only (R961's
+    NOT MEASURED). Remove with `docker volume rm
     monreleve-visual-node-modules-a7691087f3e172ce` if unwanted.
 
 ====================================================================
@@ -416,6 +458,9 @@ PUSH PROOF
 - Code commit 4aeaef9a299a55ed7f6cdcbcb9117346a738802f pushed to
   origin/fw-visual-filter (git ls-remote after the push:
   4aeaef9a299a55ed7f6cdcbcb9117346a738802f refs/heads/fw-visual-filter).
-- This report is committed on top of it and pushed to the same branch;
-  the remote ref after that push is in the session's handback.
+- This report was committed on top of it as d744af7 and pushed
+  (4aeaef9..d744af7); the review amendment (the pnpm leg, R962 on today's
+  main, reuse from another worktree NOT MEASURED, R1020's wiring not yet
+  run live, the merged-tree count) is a second report-only commit on top,
+  pushed to the same branch; its remote ref is in the session's handback.
 - Not merged to main.
