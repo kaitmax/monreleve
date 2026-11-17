@@ -1,0 +1,97 @@
+FW-DEADLINE-PREHYDRATION SESSION PROMPT - Mon Releve
+THE DEADLINE HELPER KEEPS A DATE TYPED BEFORE IT HYDRATES (web run step
+W18)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W18 (Web Ruling 22). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-deadline-prehydration,
+  branch fw-deadline-prehydration, report
+  REPORT-FW-DEADLINE-PREHYDRATION.txt;
+- REPORT-FW-CALC-BYTES-2.txt on branch fw-calc-bytes-2 (W10b): GATE RUN
+  1 and THE CONTROL;
+- REPORT-FW-DELAI-RAPPEL.txt on main: its WALKTHROUGH note on filling
+  the date before the island hydrated;
+- relay/RULINGS-2026-11-16.txt: Web Ruling 22;
+- CLAUDE.md: R154, R180, R196, R225, R267.
+Ruling numbers for this task: R1041-R1045.
+
+====================================================================
+THE TASK
+====================================================================
+Measured: W10b's gate run 1 ran outside any other load (06:57-07:06Z),
+and e2e/rappel-delai.spec.ts failed there twice (lines 45 and 104). The
+page state fitted a date filled in before the island hydrated. W11's own
+walkthrough met the same thing once. The control repeated one test 160
+times in isolation and it passed every time, so the failure is a race
+that load exposes.
+The orchestrator's read (pointers, not verdicts):
+- app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx holds the date
+  in useState('') (about line 68) and renders a CONTROLLED input
+  (value={date}, about line 161). A date typed into the server-rendered
+  field before hydration is therefore not in state. No deadline is
+  computed and no reminder form appears.
+- So this is a PRODUCT defect, not only a test race. A person on a slow
+  phone who types before hydration gets nothing, and a wait added to the
+  spec would hide it.
+
+R1041. THE DEFECT, PROVEN FIRST (R154, R180).
+    - A Playwright test HOLDS the helper's JavaScript back: route the
+      script requests and release them only after the date is typed.
+    - It types a date into the server-rendered field, releases, and
+      asserts that the deadline and the reminder form appear.
+    - It is RED on your base, with the failure pasted. Holding the
+      scripts back is the plant that delays hydration, and it is
+      verified to have held something back: say which requests waited,
+      and for how long.
+
+R1042. THE FIX, IN THE COMPONENT, the smallest mechanism that holds by
+    construction.
+    - A value already in the date field when the island mounts is taken
+      into state. The choice select gets the same treatment if it has
+      the same shape.
+    - No new copy, no visual change, no new dependency. State why the
+      mechanism cannot lose a value typed between the first render and
+      the effect.
+
+R1043. THE SPEC.
+    - e2e/rappel-delai.spec.ts passes under R1041's held-back condition
+      AND normally.
+    - A wait is added only where the test is about something else, and
+      it waits on a real hydration signal: `networkidle` is not one.
+    - Say which tests now prove the pre-hydration path.
+
+R1044. THE SECOND SITES (R267). Census every other island with a
+    controlled input a person can type into before hydration: the
+    calculator form, the comparator form, the alert form, the home
+    counter, and any other.
+    - For each, read whether a value typed before hydration survives,
+      with file:line.
+    - Do NOT fix them here. List each with its reading in NOTICED, so
+      that the orchestrator can task the ones that lose a value.
+
+R1045. NOTHING ELSE MOVES. No baseline is regenerated. If a visual test
+    fails, STOP and hand back its crop.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree from the BASE_SHA in the launch message; lock.
+1. R1041 (RED).
+2. R1042 and R1043 (GREEN).
+3. R1044 (reading).
+4. gate:changed. It selects test:e2e and test:visual, so take the line
+   from the launch message. Commit; push the branch.
+5. gate:clone ALONE on the tip; push.
+6. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-DEADLINE-PREHYDRATION.txt (ASCII, committed, pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1041-R1045 with evidence / WALKTHROUGH
+(R176: pnpm dev, the comparator, a date typed early on a throttled page)
+/ NOTICED BUT NOT TOUCHING (R1044's census) / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+
+END OF FW-DEADLINE-PREHYDRATION PROMPT

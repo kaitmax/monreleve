@@ -690,9 +690,14 @@ correct for tests and development, and in production means the alert list
 accepts subscriptions nobody can confirm. The fallback logs once, loudly,
 for exactly that reason.
 
-**SPF and DKIM for the sending domain.** `EMAIL_FROM` sends from a
+**SPF and DKIM for the sending domain.** ~~`EMAIL_FROM` sends from a
 subdomain (`notifications.frontalier.fr`) so that its records can change
-without touching the apex records the rest of the domain relies on. The DNS
+without touching the apex records the rest of the domain relies on.~~ —
+**SUPERSEDED (corrected FW-DOCS-EMAIL-FROM, R970).** `EMAIL_FROM` is a constant
+in `web/lib/fr/emails.ts`, not an environment variable (`docs/deploy.md`
+section 2's `EMAIL_FROM` row), and the domain it sends from is `MAIL_DOMAIN` in
+`web/lib/content/identity.ts`, whose comment records why it is no longer a
+subdomain. The DNS
 records themselves cannot be created from this repository: FW14 noted them
 here rather than attempting them. Without both, the double opt-in lands in
 spam and the list silently stops growing — a failure that looks like nobody

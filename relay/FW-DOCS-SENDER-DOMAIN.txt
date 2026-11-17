@@ -1,0 +1,82 @@
+FW-DOCS-SENDER-DOMAIN SESSION PROMPT - Mon Releve
+THE DOCS THAT STILL NAME THE DROPPED SENDING SUBDOMAIN (web run step W15)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W15 (Web Ruling 19). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-docs-sender-domain, branch
+  fw-docs-sender-domain, report REPORT-FW-DOCS-SENDER-DOMAIN.txt;
+- REPORT-FW-DOCS-EMAIL-FROM.txt (W9), its DEFECTS D-1 and QUESTION Q1;
+- relay/RULINGS-2026-11-16.txt: Web Ruling 19;
+- CLAUDE.md: R153, R167, R181, R206, R267.
+Ruling numbers for this task: R1031-R1035.
+
+====================================================================
+THE TASK
+====================================================================
+W9's D-1, in substance: dcac1df moved the sender from a subdomain to the
+site's own domain (web/lib/content/identity.ts, MAIL_DOMAIN, and the
+comment above it, which records why). Three places still present the
+dropped subdomain as current:
+- docs/domain-checklist.md item 3, "Resend sending domain + DNS": it
+  tells the operator to verify the subdomain in Resend, with nslookup
+  proofs for it. W9 flagged it in section 2 and did not rewrite it;
+- docs/deploy.md section 8 N3, "sending subdomain";
+- the comment block in web/lib/fr/emails.ts above EMAIL_FROM (about
+  lines 80-88).
+Why it matters: an operator following item 3 at promotion verifies a
+domain the code no longer sends from, and the alerts' and the sign-in
+mail's deliverability fails while the checklist reads as done.
+
+R1031. THE TRUTH, ESTABLISHED FIRST. Quote MAIL_DOMAIN's definition and
+    every sender built on it (EMAIL_FROM, AUTH_EMAIL_FROM, and any
+    other), file:line. Name the commit that moved it and quote its
+    reason from identity.ts.
+
+R1032. EVERY SITE IS FOUND, NOT ONLY THE THREE (R267). Search the whole
+    repository, excluding node_modules, REPORT-*.txt and relay/, for the
+    subdomain by its literal, for MAIL_SUBDOMAIN, and for "sending
+    subdomain" or its French form. Classify each hit:
+    - current claim: fix it;
+    - history: leave it;
+    - test: cite it.
+
+R1033. THE EDITS, BY NAME (R153, R181).
+    - Item 3 is rewritten to name the domain MAIL_DOMAIN holds, by
+      pointing at the constant, so the checklist cannot drift from it
+      again. Its proofs query that domain.
+    - The checklist NEVER states the operator's Resend or DNS state as
+      done. It may carry a dated measurement taken from this machine,
+      labelled as such. A DNS answer seen from this PC is not proof of
+      what the world sees, so say what was queried, and how.
+    - deploy.md section 8 N3 and the emails.ts comment are corrected in
+      their own voice.
+    - Minimal, in place. A report (REPORT-*.txt) is history and is never
+      edited.
+
+R1034. THE GATE THE DIFF SELECTS, run in full. A comment in lib/fr selects
+    test:e2e and test:visual, so read memory first and take the line
+    from the launch message.
+
+R1035. NOTHING ELSE MOVES. No code change beyond the comment, no DNS
+    change, and no Resend action: those are the operator's.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree from the BASE_SHA in the launch message; lock.
+1. R1031 and R1032 (read).
+2. R1033.
+3. gate:changed, commit, push the branch.
+4. gate:clone ALONE on the tip; push.
+5. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-DOCS-SENDER-DOMAIN.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1031-R1035 with the hit table / NOTICED
+BUT NOT TOUCHING / DEVIATIONS / QUESTIONS (for the operator: which
+domain is verified in Resend today) / PUSH PROOF
+
+END OF FW-DOCS-SENDER-DOMAIN PROMPT

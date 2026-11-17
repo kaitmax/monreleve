@@ -1,0 +1,122 @@
+FW-WT-CLEANUP SESSION PROMPT - Mon Releve
+A MERGED BRANCH'S WORKTREE IS REMOVED BY A SCRIPT THAT REFUSES WHAT R392
+FORBIDS (web run step W16)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W16 (Web Ruling 21). Read first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-wt-cleanup, branch
+  fw-wt-cleanup, report REPORT-FW-WT-CLEANUP.txt;
+- relay/RULINGS-2026-11-16.txt: Web Ruling 21;
+- CLAUDE.md: R334, R349, R392 (every sub-bullet), R154, R180, R185,
+  R196, R206, R251, R391.
+Ruling numbers for this task: R1036-R1040.
+
+====================================================================
+THE TASK
+====================================================================
+The operator, 2026-11-17 (in substance; the words are in Web Ruling 21):
+when a branch is done and merged to main, its folder under C:/wt is
+deleted; the script that does it goes into CLAUDE.md; C:/wt has grown
+large.
+CLAUDE.md R392 already says what that script must be: "PARKED: when
+cleanup IS scripted, that script refuses (non-zero, naming the reason)
+on a foreign lock or a dirty tree, with a test for each refusal."
+
+R1036. THE SCRIPT: web/scripts/wt-cleanup.mjs.
+    - It reads `git worktree list --porcelain` of the repository it runs
+      in, and considers ONLY worktrees under a root: C:/wt by default,
+      `--root <dir>` for the tests.
+    - It never treats as a candidate the main checkout, the worktree it
+      runs from, or anything outside the root.
+    - A directory under the root that is not a registered worktree is
+      reported as "not a worktree, left alone", never touched.
+    - It fetches origin first (`--no-fetch` for the tests). "Merged"
+      means the worktree's HEAD is an ancestor of origin/main.
+    - Each worktree gets ONE verdict, with its reason:
+      - REMOVE: merged, clean, no lock, no keep marker;
+      - REFUSED (lock): a .session-lock.json, whoever wrote it;
+      - REFUSED (dirty): `git status --porcelain` is not empty; list the
+        paths;
+      - REFUSED (unpushed): HEAD is in no remote-tracking ref;
+      - KEPT: a `.wt-keep` file, whose content is the reason;
+      - SKIPPED (not merged).
+    - The DRY RUN is the default. It prints the table with each folder's
+      size and the total that `--apply` would free.
+    - `--apply` removes exactly the REMOVE rows, with
+      `git worktree remove <path>` and NEVER --force, then runs
+      `git worktree prune`. It then reads the list again and confirms
+      each removed worktree is gone.
+    - A REFUSED row is never removed. Its reason is printed, and the exit
+      code is non-zero whenever any row was refused (R392's "refuses,
+      non-zero, naming the reason"). The other rows are still processed.
+    - It never deletes a branch or a remote ref. R392 keeps that for
+      after the owning session's report is on main, or the operator's
+      word, and it is out of scope here.
+
+R1037. THE TESTS, test-first (R154, R196).
+    web/tests/unit/meta/wt-cleanup.test.ts builds a scratch repository in
+    a temp directory, NEVER under C:/wt, with a bare repository as its
+    origin and worktrees in a temp root. One case per verdict:
+    - a merged, clean, unlocked worktree: --apply removes it, and it is
+      gone afterwards (the positive case);
+    - a lock file: refused, still present, exit non-zero;
+    - a modified tracked file: refused; an untracked file: refused;
+    - an unpushed commit: refused;
+    - a keep marker: kept;
+    - not merged: skipped;
+    - the dry run removes nothing;
+    - the caller's own worktree and the main checkout are never
+      candidates;
+    - a non-worktree directory under the root is left alone.
+    Plants (R180): turn each refusal off in turn and show its test go
+    RED, verified landed and restored.
+    If the test imports the module, its declaration is asserted, not
+    argued (R185).
+
+R1038. CLAUDE.md AND .gitignore.
+    - R392's PARKED clause is replaced by the script's rule, in the
+      file's own voice:
+      - after a merge to main, the orchestrator (or the operator) runs
+        the dry run, reads it, and then runs --apply;
+      - a merged worktree whose evidence is still needed carries a
+        `.wt-keep` with the reason;
+      - what the script refuses, and why.
+    - Every sentence in CLAUDE.md that says no cleanup script exists is
+      updated (search for "worktree remove" and "not scripted").
+    - .gitignore gains `.wt-keep`, so a kept worktree stays clean.
+    - The "Commands" section names the script.
+
+R1039. THE GATE THE DIFF SELECTS.
+    - Expected: the base chain. A script that decides nothing a suite
+      runs needs no selector rule, under R251's reading. Say so.
+    - If the selector or its census disagrees, STOP and hand back. W5
+      owns gate-selection.mjs now.
+
+R1040. NOTHING ELSE MOVES.
+    - You do NOT run --apply against C:/wt. The orchestrator does that
+      after your merge.
+    - Your real-machine evidence is ONE dry run against C:/wt, pasted in
+      the report.
+    - NOTICED, not done: anything else that would save space, for
+      example worktrees sharing one pnpm store.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree from the BASE_SHA in the launch message; lock.
+1. R1037's tests first (RED), then R1036 (GREEN), then the plants.
+2. R1038.
+3. The dry run against C:/wt (R1040).
+4. gate:changed, commit, push the branch.
+5. gate:clone ALONE on the tip; push.
+6. Report; commit; push; cleanup per Part B; remove the lock last.
+
+====================================================================
+REPORT - REPORT-FW-WT-CLEANUP.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1036-R1040 with evidence and the dry
+run / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-WT-CLEANUP PROMPT

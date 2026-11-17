@@ -122,14 +122,13 @@ unmailed breaks the promise the form makes, so this is the first email item.
 |---|---|---|
 | `RESEND_API_KEY` | from the Resend dashboard | production env |
 
-The sender address is **fixed in code** as `alertes@notifications.monreleve.ch`
-(`EMAIL_FROM`, derived from `MAIL_SUBDOMAIN`) - it is **not** an environment
-variable, so there is nothing to set for it, but the sending **domain**
-`notifications.monreleve.ch` must be verified in Resend (item 3).
-
-> deploy.md section 8 N2 lists `EMAIL_FROM` as an operator setting. The code does
-> **not** read it from the environment (it imports the constant). Treat the sender
-> as fixed; the only email key to set is `RESEND_API_KEY`.
+The sender address is **fixed in code**: `EMAIL_FROM`, a constant in
+`web/lib/fr/emails.ts`. Nothing reads it from the environment, so there is
+nothing to set for it (deploy.md section 2's `EMAIL_FROM` row). Its domain is
+`MAIL_DOMAIN` in `web/lib/content/identity.ts`, and that domain must be verified
+in Resend. Item 3 names `notifications.monreleve.ch`, the subdomain the code used
+before `MAIL_DOMAIN`; identity.ts records why it changed. Item 3 was written
+on 2026-10-06, before that change, and has not been revised since.
 
 **Proof** (the operator does this with their own address - the session cannot):
 subscribe on https://monreleve.ch/alertes and **confirm the confirmation email
