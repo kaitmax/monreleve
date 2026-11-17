@@ -131,6 +131,14 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   // income - its controls have no `name`. That spec drives exactly this.
   'app/(public)/calculateur-lamal-cmu/ComparatorForm.tsx': 'comparateur.nojs.spec.ts',
 
+  // FW-DELAI-RAPPEL (R918). The helper now renders the reminder <form>, and
+  // it has deliberately NO no-JS journey: the date it sends is the one the
+  // island computes, so without scripting there is no date and no form - which
+  // is also what keeps LAMAL_COPY.noScript ('Rien de ce que vous saisissez
+  // n'est envoyé ni enregistré') true. That spec drives exactly this: the
+  // date typed with scripting off, and no reminder form.
+  'app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx': 'comparateur.nojs.spec.ts',
+
   // The alert sign-up: the calculator's POST form, and the journey the
   // operator named.
   'lib/ui/react/AlertCapture/AlertCapture.tsx': 'calculateur.nojs.spec.ts',

@@ -29,6 +29,7 @@ import { isSchedulerRunning, startScheduler, stopScheduler } from '@/lib/schedul
 import {
   PURGE_CRON,
   CODE_ATTEMPT_QUEUE,
+  DEADLINE_QUEUE,
   PURGE_QUEUE,
   REMINDER_CRON,
   REMINDER_QUEUE,
@@ -78,7 +79,8 @@ afterEach(async () => {
   // flake with no visible cause, arriving in a different file from the one
   // that created it.
   if (running !== null) {
-    for (const queue of [PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE]) {
+    // FW-DELAI-RAPPEL: the deadline reminder's schedule is a row too.
+    for (const queue of [PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE, DEADLINE_QUEUE]) {
       await running.unschedule(queue).catch(() => undefined);
       await running.deleteAllJobs(queue).catch(() => undefined);
     }
@@ -139,7 +141,9 @@ describe('what gets registered', () => {
 
     const registration = await registerJobs(boss, DEVELOPMENT);
 
-    expect(registration.scheduled).toEqual([PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE]);
+    // FW-DELAI-RAPPEL: development has a mail sender too (the printed outbox),
+    // so the deadline reminder is scheduled beside the daily one.
+    expect(registration.scheduled).toEqual([PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE, DEADLINE_QUEUE]);
     expect(registration.skipped).toEqual([]);
 
     const schedule = await boss.getSchedule(REMINDER_QUEUE);
@@ -154,8 +158,8 @@ describe('what gets registered', () => {
 
     const second = await registerJobs(boss, DEVELOPMENT);
 
-    expect(second.scheduled).toEqual([PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE]);
-    expect(await boss.getSchedules()).toHaveLength(3);
+    expect(second.scheduled).toEqual([PURGE_QUEUE, CODE_ATTEMPT_QUEUE, REMINDER_QUEUE, DEADLINE_QUEUE]);
+    expect(await boss.getSchedules()).toHaveLength(4);
   });
 
   it('names the skip in the line a log carries', () => {

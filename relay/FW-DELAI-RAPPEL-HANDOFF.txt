@@ -33,5 +33,14 @@ THE PLAN (three gated commits; each baseline file written once)
   then      gate:clone ALONE under the lock; push; report; push; cleanup.
 
 STATE
+  commit 1  60a1bf3, gated (GATE PASSED), pushed. Baselines #1 regenerated once
+            (SET EQUAL) and measured by shift (.rappel-evidence/w11/regen1-*).
+  commit 2  increments 2-6 ported by .rappel-evidence/w11/port-inc2-6.cjs (37
+            copied and verified, 7 already equal); diff -rq against the scratch
+            copy: confidentialite.test.tsx and the two regenerated baselines
+            only. Named set #2: .rappel-evidence/w11/regen2-expected.txt.
+  commit 3  drafted in .rappel-evidence/w11/stage3/ (tests first; stepA/ is
+            R1002 alone, for R1003's own RED); base hashes in
+            stage3/base/BASE-SHA256SUMS - apply a draft only over its base.
   see the commit log of fw-delai-rappel; each gated commit's body carries its
   selection. If this file says less than the log, the log wins.

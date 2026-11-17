@@ -31,16 +31,20 @@
 
 import type { PgBoss } from 'pg-boss';
 import { describePurge, purgeUnconfirmed } from '@/lib/alerts/purge';
+import { describeReminderPurge, purgeUnconfirmedReminders } from '@/lib/rappel/purge';
 import { describeCodeAttemptSweep, purgeCodeAttempts } from '@/lib/auth/magic-link';
 import { describePushSender, resolvePushSender } from '@/lib/push/resolve';
 import type { EnvLike } from '@/lib/push/resolve';
 import { DevicePushTransport } from '@/lib/push/transport';
 import { describeRun, runDailyReminders } from '@/lib/reminders/job';
+import { describeDeadlineRun, runDeadlineReminders } from '@/lib/rappel/job';
+import { describeMailSender } from '@/lib/rappel/mail';
 import { tagged } from '@/lib/scheduler/instance';
 
 export const REMINDER_QUEUE = 'daily-reminder';
 export const PURGE_QUEUE = 'purge-unconfirmed';
 export const CODE_ATTEMPT_QUEUE = 'purge-code-attempts';
+export const DEADLINE_QUEUE = 'deadline-reminder';
 
 /**
  * Both expressions are read in Paris, because both are about a LOCAL day.
@@ -81,6 +85,25 @@ export const PURGE_CRON = '17 3 * * *';
  */
 export const CODE_ATTEMPT_CRON = '23 * * * *';
 
+/**
+ * FW-DELAI-RAPPEL (R916): the deadline reminder's pass, hourly from 08:41 to
+ * 20:41 in Paris. A reminder is due on a DAY, fourteen days before the date;
+ * the first pass of that day sends it, and every later pass is a retry for a
+ * send that failed. Daytime only, because a reminder about a deadline that
+ * lands at 02:41 is buried under the morning's mail.
+ */
+export const DEADLINE_CRON = '41 8-20 * * *';
+
+/**
+ * THE QUEUE'S RETRY POLICY, STATED (R345's corollary: a default is a setting
+ * nobody chose). A pass in which any send failed throws once it has tried
+ * every due row; pg-boss then runs it again up to three times, ten minutes
+ * apart, and the hourly schedule keeps trying after that until the date
+ * passes. A retry re-reads the table, so a row already sent is never sent
+ * twice - the delete is the claim (lib/rappel/job.ts).
+ */
+export const DEADLINE_RETRY = { retryLimit: 3, retryDelay: 600, retryBackoff: false } as const;
+
 export interface JobRegistration {
   readonly scheduled: readonly string[];
   readonly skipped: readonly { readonly queue: string; readonly reason: string }[];
@@ -96,6 +119,10 @@ export interface JobRegistration {
 export async function registerJobs(
   boss: PgBoss,
   env: EnvLike = process.env,
+  // FW-DELAI-RAPPEL: the moment the deadline pass runs AT, a parameter so a
+  // test can place it (R171), as `env` is for the environment. The real
+  // clock for every caller but a test.
+  clock: () => Date = () => new Date(),
 ): Promise<JobRegistration> {
   const scheduled: string[] = [];
   const skipped: { queue: string; reason: string }[] = [];
@@ -108,6 +135,11 @@ export async function registerJobs(
   await boss.work(PURGE_QUEUE, async () => {
     // R244: what it considered, what it removed, and why it kept the rest.
     console.log(tagged(describePurge(await purgeUnconfirmed())));
+
+    // FW-DELAI-RAPPEL (R915): the deadline reminder's unconfirmed requests go
+    // ON THE SAME PASS, so /confidentialite's thirty days are performed by the
+    // job that performs the alert list's.
+    console.log(tagged(describeReminderPurge(await purgeUnconfirmedReminders())));
   });
 
   // `once` rather than `skip`: a deployment that was down at 03:17 should
@@ -138,14 +170,50 @@ export async function registerJobs(
   // ---------------------------------------------------------------------
   const push = resolvePushSender(env);
 
-  if (!push.ok) {
+  if (push.ok) {
+    await registerDailyReminder(boss, new DevicePushTransport(push.sender));
+    scheduled.push(REMINDER_QUEUE);
+  } else {
     skipped.push({ queue: REMINDER_QUEUE, reason: describePushSender(push) });
+  }
+
+  // ---------------------------------------------------------------------
+  // FW-DELAI-RAPPEL (R916): the deadline reminder, which needs a mail
+  // sender. Registered after the daily reminder, so a skip of both reads in
+  // that order.
+  // ---------------------------------------------------------------------
+  const mail = describeMailSender(env);
+
+  if (!mail.ok) {
+    skipped.push({ queue: DEADLINE_QUEUE, reason: mail.reason });
 
     return { scheduled, skipped };
   }
 
-  const transport = new DevicePushTransport(push.sender);
+  await boss.createQueue(DEADLINE_QUEUE, DEADLINE_RETRY);
 
+  await boss.work(DEADLINE_QUEUE, async () => {
+    // R244: what it considered and did. Never an address in the line.
+    const run = await runDeadlineReminders(clock());
+
+    console.log(tagged(describeDeadlineRun(run)));
+
+    // A failed send leaves its row; throwing hands the pass to the retry
+    // policy above. Rows already sent were deleted, so a retry cannot repeat
+    // them.
+    if (run.failed > 0) throw new Error(`[deadline-reminder] ${run.failed} send(s) failed; the rows stay for a retry`);
+  });
+
+  // `once`: a deployment down at 08:41 still runs a pass when it comes back.
+  // The payload is null - no address or date is ever copied into pg-boss.
+  await boss.schedule(DEADLINE_QUEUE, DEADLINE_CRON, null, { tz: SCHEDULE_TZ, missed: 'once' });
+  scheduled.push(DEADLINE_QUEUE);
+
+  return { scheduled, skipped };
+}
+
+/** The daily push reminder, which needs somewhere to send. FW27, unchanged. */
+async function registerDailyReminder(boss: PgBoss, transport: DevicePushTransport): Promise<void> {
   await boss.createQueue(REMINDER_QUEUE);
 
   await boss.work(REMINDER_QUEUE, async () => {
@@ -165,9 +233,6 @@ export async function registerJobs(
   // backlog of missed reminder passes would all find the same people due and
   // race for the same claim rows to no purpose.
   await boss.schedule(REMINDER_QUEUE, REMINDER_CRON, null, { tz: SCHEDULE_TZ, missed: 'skip' });
-  scheduled.push(REMINDER_QUEUE);
-
-  return { scheduled, skipped };
 }
 
 /** One line for a log at boot, naming what will run and what will not. */
