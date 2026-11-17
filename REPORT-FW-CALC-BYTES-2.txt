@@ -717,3 +717,44 @@ CLEANUP (Part B), as it happened after the first report commit's push:
 - .session-lock.json: removed LAST, after this correction's push.
 - THIS worktree stays, dirty on purpose: the increment's 18 paths
   uncommitted (porcelain equal to status.txt) and .calcbytes2-evidence/.
+
+RESUMED (Web Rulings 22 and 28; the coordinator's message of 2026-11-17)
+=======================================================================
+- 14:00:56Z: a fresh .session-lock.json; port block 3800-3899.
+- origin/main b794b588 (rounds 4-5: W9, W7, W14, W18). None of the 18 paths
+  changed on main since 9868254 (`git diff --name-only 9868254 origin/main`,
+  36 paths, against status.txt's list: no overlap; no stylesheet under
+  app/ or lib/ and no baseline among them).
+- `git merge origin/main` with the 18 paths uncommitted: merge commit
+  5731b016a8362197f50c851b8a9d1339711ac192 (parents 91f8ed91, b794b588),
+  no conflict, no stash, reset or force. Afterwards the porcelain equals
+  status.txt and all 18 paths hash to their SHA256SUMS values (18 EQUAL,
+  resume-18-path-comparison.txt).
+
+THE VISUAL REPETITION RULE, STATED BEFORE THE RUN (the coordinator's step 2)
+- The test: e2e/calculateur.visual.spec.ts, desktop > panneau-avis-provisoire.
+  The filter `pnpm test:visual -- e2e/calculateur.visual.spec.ts --grep
+  "panneau-avis-provisoire"` also runs its mobile twin; mobile is recorded,
+  and the verdict is the desktop test's.
+- The arms: BASE = a temporary detached worktree of origin/main b794b588
+  (C:/wt/fw-calc-bytes-2-base2, its own lock file, removed after); MINE =
+  C:/wt/fw-calc-bytes-2 (b794b588's tree plus this report, plus the
+  increment uncommitted). The only code difference is the increment.
+- Five runs per arm, alternating BASE, MINE, BASE, MINE, ... in ONE lock
+  hold (line 6 245), each through W7's filter with its warm install. The
+  container runs with CI=true, so each test has up to three attempts.
+- Per run, the desktop test is VARIANT if ANY of its attempts failed
+  (a capture differing from the committed baseline 633d7824..., or no two
+  consecutive stable captures), and CLEAN if it passed on its first attempt.
+  Every failed attempt's actual image is hashed and its difference measured
+  (box and pixel count).
+- The 169+ baselines are hashed before and after every run; nothing is
+  regenerated (no --update).
+- A run that does not complete (a refusal, an install or container failure,
+  a sampler abort) is NO RESULT and does not count; an arm with fewer than
+  five counted runs is handed back as NO RESULT.
+- THE VERDICT: VARIANT in MINE only (at least one, and none in BASE): R977's
+  stop holds, hand back with the counts. VARIANT in BOTH arms: the capture is
+  unstable on main, hand back with the counts as a task of its own. VARIANT
+  in NEITHER: continue to gate:changed (line 6 245), the code commit, push,
+  and gate:clone ALONE (line 5 876).
