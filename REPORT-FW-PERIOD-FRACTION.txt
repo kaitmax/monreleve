@@ -1,0 +1,526 @@
+REPORT-FW-PERIOD-FRACTION
+=========================
+
+Web run step W3e (relay/ORCH-WEB-COMPLETE.txt, Web Ruling 6, run in
+PARALLEL MODE under Web Ruling 7), prompt relay/FW-PERIOD-FRACTION.txt,
+rulings R995-R999.
+- Branch fw-period-fraction, in worktree C:/wt/fw-period-fraction, cut from
+  origin/main 56b71166db7fe86f39c125075cbcbde70e718bc1 (W3c merged).
+- The session lock .session-lock.json was written at 22:12:00Z and is
+  gitignored. Port block 3500-3599; only 3500 was named (FRONTALIER_PORT).
+- Evidence is in C:/wt/fw-period-fraction/.period-evidence/ (gitignored by
+  /.*-evidence/): every log named below, the plant runner and its per-plant
+  logs, the selection probe, the arithmetic probe and the sampler files.
+- Scratch database: monreleve_fw_period_fraction on frontalier-postgres.
+
+SUMMARY
+-------
+- R995: the code does exactly the stated rule (read in lib/ui/core/period.ts,
+  its Kotlin port, and the one API writer of activityStartDate). SPEC 7.2
+  step 2 gains one ASCII sentence, appended to line 365 so no cited SPEC line
+  number moves. No constant, rounding or engine API changed.
+- R996: docs/regulatory-sources.md's constants table gains row 9, unchecked,
+  "No instrument states it", pointing at SPEC 7.2 step 2. Neither
+  register-coverage.mjs nor fixture-coverage.mjs reads that table (both run,
+  both OK); the id is confirmed free by the table itself.
+- R997: 15 numbered groups of hits in lib/fr and content/guides, plus one
+  group of words matched outside the subject, listed below. NONE
+  presents the period fraction's day-count basis as official or sourced. The
+  only day-count basis presented as sourced is the comparator's CMU prorata,
+  a different instrument (row L9), correctly attributed. No user-facing copy
+  changed.
+- R998: new web/tests/db/period-fraction.test.ts, through the real dossier
+  route handler, for a new PART_YEAR_PERSON in tests/support/seeded-year.ts
+  (extended: one shared writer for both persons). The start date is COMPUTED:
+  2026-01-21, 345/365, workedDays 182 (181 one day short, 183 one day long,
+  192 for a whole year). 22 served engine figures and period.fraction equal
+  the engine at the counted fraction, exactly. The test passed on its first
+  run against unchanged code, as the prompt foresaw.
+- R999: three verified plants on lib/ui/core/period.ts, each landed, RED and
+  restored to HEAD's blob. Each required direction goes RED naming
+  period.fraction and 18 engine figures, tiles.workedDays first; a third
+  (the denominator) is caught by period.fraction alone.
+- Nothing in web/lib, web/app, web/prisma or web/scripts changed.
+
+STATUS (R391)
+-------------
+COMPLETE for R995, R996, R997, R998 and R999 (both required plant
+directions, plus one more). Both web gates ran in this session:
+- gate:changed: exit 0, ABORTED False, on the working tree whose content is
+  the code commit f6812d3961a38069cc4456b7a90205a0934e60b3. The commit staged
+  exactly the four gated paths, by name, and nothing was edited between the
+  gate and the commit: the committed blobs of the test (91c83f24) and of
+  the support module (ee49f14b) are the gated working blobs, and the test
+  blob is the one the plants ran on. test 3 765 passed; test:db 724 passed
+  | 26 skipped.
+- gate:clone ALONE (under the heavy lock, no other heavy run) on f6812d3
+  itself: STEP_EXIT=0, ABORTED=False.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges. main moved to a2c502a (W3d merged)
+  while this ran, so the branch is no longer a fast-forward; "git
+  merge-tree --write-tree origin/main HEAD" exits 0 (clean, no shared
+  path). Under Web Ruling 7 that is a merge commit and the orchestrator's
+  gate:changed on the merged tree.
+
+R995. THE SPEC SENTENCE
+-----------------------
+THE CHECK OF THE CODE, before writing (a STOP would have been the answer if
+it differed):
+- web/lib/ui/core/period.ts:83-96 remainingYearFraction:
+    daysInYear = daysBetween(1 January, 31 December) + 1   (365, or 366)
+    remaining  = daysBetween(start, 31 December) + 1       (both included)
+    return remaining / daysInYear
+  So: calendar days from the start to 31 December, both included, over the
+  days in that calendar year. A leap year: the denominator is 366
+  (tests/unit/ui-core/period.test.ts:56-60, 184/366; :77-80, 307/366). A
+  start on 1 January: exactly 1 (period.test.ts:40-46).
+- A start in a LATER year: 0, which the engine refuses (SPEC 7.4: 0 < f) and
+  the dossier names year_before_activity before the engine is asked
+  (lib/dossier/aggregate.ts:219-233, R580; dossier-route.test.ts R580 tests).
+  A start in an EARLIER year: 1 (period.ts:87). Both are outside the
+  sentence, which speaks of a start during the year; recorded, not widened.
+- The Kotlin port does the same: android/shared/src/commonMain/kotlin/ch/
+  monreleve/app/dossier/Aggregate.kt:152-176 (daysUntil + 1 over
+  daysUntil(31 Dec) + 1 from 1 January; earlier year 1.0, later 0.0).
+- The UNREAD SIDE, read (the advisor's first point): the dossier reads the
+  stored DateTime's UTC day (aggregate.ts:223, toISOString().slice(0, 10)).
+  The only API writer, app/api/v1/me/route.ts:135-141, stores
+  new Date(`${day}T00:00:00.000Z`) from a zod ISO_DAY string
+  (lib/me/schema.ts:71); prisma/seed.ts:120-122 day() does the same. So the
+  UTC day read back IS the day entered: no off-by-one from storage.
+- lib/params/codec.ts (the calculator's debut= link) and
+  CalculatorForm.tsx:183 call the same remainingYearFraction.
+
+THE SENTENCE, appended to SPEC-frontalier-web.md line 365 (after "...as a
+fraction of the calendar year."), verbatim:
+
+  `periodFraction` is the number of calendar days from the activity
+  start date to 31 December, both included, divided by the number of
+  days in that calendar year; no source states a basis, so this is the
+  product's own convention, pending expert review
+  (`docs/regulatory-sources.md`, constants row 9).
+
+- ASCII (0 non-ASCII characters, checked by script). Nothing in web/tests,
+  web/scripts or the Android tests reads SPEC text (grep), and appending to
+  the line keeps every cited SPEC line number.
+- It changes no constant, no rounding and no engine API: SPEC only.
+- It does not cite L9 (Web Ruling 6), and neither does the register row.
+
+R996. THE REGISTER ROW
+----------------------
+docs/regulatory-sources.md, "Constants in RuleSet(2026)", a new last row:
+  # 9 | (period fraction) | no value | periodFraction for a start during
+  the year: the calendar days from the activity start date to 31 December,
+  both included, divided by the days in that calendar year; "The product's
+  own convention", stated in SPEC 7.2 step 2 (Web Ruling 6, 16.11.2026) |
+  source: "No instrument states it." The accord's 1(d) (Source A) and row 3
+  prorate without naming a day-count basis | the table's own unchecked box,
+  "pending - the product's convention, NOT a transcription. Unlike rows 6
+  and 7, no source speaks here: the expert reviewer is asked to confirm the
+  convention or name the rule".
+(The row itself uses the doc's own characters: the unchecked box, the dash,
+the division sign. Rendered here in ASCII words.)
+- Why the wording differs from rows 6 and 7: the doc keeps "a source speaks
+  and nobody has opened it" (rows 6-7) apart from "no source speaks"
+  (regulatory-sources.md:257-260). Row 9 is the second kind.
+- THE ID IS FREE, and how that was established:
+  - the constants table at base 56b7116 holds ids 1-8, and the doc there
+    has no "| 9 |" row anywhere (0 at base, 1 now: mine). The doc's
+    other series are D1-D10 and L1-L17 (their own tables) and P1-P3 (the
+    published namespace, R162, so not P4).
+  - web/scripts/register-coverage.mjs reads ONLY parking.md and
+    REPORT-*.txt (register-coverage.mjs:207-225; it never names
+    regulatory-sources.md). Run: "register coverage: OK - 230 cited id(s)
+    across 171 report(s), all have headings in parking.md", exit 0.
+  - web/scripts/fixture-coverage.mjs reads ONLY fixtures/*.json and the two
+    engines' test trees. Run: "fixture coverage: OK - 7 section(s) across 6
+    file(s), each consumed by every engine that reads its file", exit 0.
+  - So neither check can confirm or refuse a constants-table id: the
+    prompt's premise that one reads the table does not hold. No check
+    requires a fixture or a source per row, so there was nothing to follow.
+  - The tests that DO read the doc or the published registry, run as single
+    files: tests/unit/guides/claims.test.ts (reads the doc for its pending
+    rows), tests/unit/pages/sources.test.tsx (SOURCE_IDS, 30 asserted),
+    tests/unit/meta/register-coverage.test.ts and fixture-coverage.test.ts:
+    4 files, 62 passed, exit 0.
+- /sources is NOT changed: lib/content/sources.ts is lib/, and the prompt
+  forbids any user-facing change. So the row exists in the record and not
+  on the published page: QUESTION 1.
+
+R997. NO COPY CLAIMS IT
+-----------------------
+Searched with ripgrep (UTF-8), case-insensitive, over web/lib/fr/*.ts and
+web/content/guides/*.mdx, for: prorat, proportion, fraction, 184, 365, 366,
+annee (in)complete, partie de l'annee, en cours d'annee, 31 decembre, debut
+d'activite, periode, calendaire, nombre de jours, au jour, jour pres (each
+with its accented letters). A first pass with GNU grep's [ee]-style classes
+missed accented matches (multibyte in a byte locale) and was discarded.
+Every hit that concerns a period, a proration or a start date, by file:line,
+with its classification. The French is in the files (R155, R168); this
+report names it by key and gist.
+
+(a) PRORATION STATED, NO BASIS, NO SOURCE CLAIMED (user-facing):
+  1. lib/fr/calculateur.ts:85-88, the missions paragraph: the mission quota
+     is reduced proportionally for part-time work or an incomplete year.
+  2. lib/fr/calculateur.ts:257-262, form.start: the field label (start of
+     activity during the year) and its helper (an incomplete year reduces
+     the annual ceiling and the mission quota in the same proportion).
+  3. lib/fr/faq.ts:105-108, the 'missions' answer: as 1.
+  4. lib/fr/provisional.ts:70-73, P3's calculator notice: the calculation
+     reduces the mission quota in the same proportion.
+  (lib/fr/calculateur.ts:133, form.rate.helper, is part-time only.)
+(b) PRORATION ATTRIBUTED TO ITS SOURCE (accord 1(d), row 3), BASIS NOT
+    STATED:
+  5. lib/fr/sources.ts:159-161, rules.missionCapProration.
+  6. lib/fr/sources.ts:243-253, settledIntro: the reduction for part-time
+     or an incomplete year, under both methods, now tied to the accord.
+  7. lib/fr/sources.ts:299-309, P3.body: 1(d) reduces the quota for
+     part-time or an incomplete year; "therefore" the calculator reduces it
+     by the employment rate and by the year fraction. The closest hit:
+     it names the year fraction right after citing 1(d), but states no basis
+     and presents only the PRORATION as sourced, which 1(d) is. Clean.
+  8. content/guides/geneve.mdx:20-21 (FAQ), :34-35 (claim
+     missionCapProration), :166-168 (prose).
+  9. content/guides/jours-de-mission-hors-suisse.mdx:18-19 (FAQ), :27-28
+     (claim), :76, :100-102.
+ 10. content/guides/teletravail-frontalier-40-pourcent.mdx:37-38 (claim),
+     :142-143.
+(c) THE PERIOD AS A LABEL OR A BOUND, NO BASIS:
+ 11. lib/fr/dossier.ts:131 header.period; :154 fromDate (the period printed
+     from the start date to 31 December of the year: consistent with the
+     convention, claims no source); :168 partialPeriod.
+ 12. lib/fr/errors.ts:52, :69: periodFraction must be above 0 and at most a
+     whole year (SPEC 7.4's bound).
+ 13. lib/fr/releve-annuel.ts:58 (the period is among what the releve
+     states); lib/fr/confidentialite.ts:118 (the start date is stored).
+ 14. content/guides/attestation-employeur-teletravail.mdx:85-87: a document
+     covering part of the year says nothing about the ceiling (employer
+     attestations, not proration).
+(d) A DAY-COUNT BASIS PRESENTED AS SOURCED, FOR A DIFFERENT INSTRUMENT:
+ 15. lib/fr/lamal.ts:243-245, affiliation.helper (French contribution by
+     days, Swiss premiums by whole months), :385-387, result.french.prorata
+     (x N days / yearDays, per article D380-2), and lib/fr/sources.ts:219,
+     rules.cmuProrata. All the comparator's CMU contribution, CSS art.
+     D380-2 II and URSSAF 6a (row L9), correctly attributed. Not the period
+     fraction.
+(e) NOT ABOUT THE PERIOD AT ALL (matched a search word): calculateur.ts:44,
+    :290, :326, :471; cgu.ts:51; errors.ts:82, :85; grid.ts:21; lamal.ts:47,
+    :356; sources.ts:203; tarifs.ts:120; droit-option-lamal-cmu.mdx:17, :28,
+    :146, :181, :185; jours-de-mission-hors-suisse.mdx:95, :138;
+    geneve.mdx:81; teletravail-frontalier-40-pourcent.mdx:106. Comments
+    (not copy): dossier.ts:157-163, :185; lamal.ts:234, :384;
+    provisional.ts:18.
+VERDICT: no sentence presents the day-count basis of the period fraction as
+official or sourced; no figure like 184/365 appears. No QUESTION from R997
+(the one about /sources is R996's, QUESTION 1).
+
+R998. THE PIN
+-------------
+web/tests/db/period-fraction.test.ts, 2 tests, in test:db (tests/db/**,
+vitest.db.config.ts:49), no skip condition.
+- HEADER: "THIS FILE PINS THE PRODUCT'S STATED CONVENTION. IT VERIFIES NO
+  REGULATORY RULE.", the sentence quoted, and what is NOT pinned (below).
+- THROUGH THE ROUTE (R204): GET from app/api/v1/dossier/route with a real
+  token pair (issueTokenPair), as W3 did. Imports nothing from lib/dossier
+  and NOT remainingYearFraction (the code under test).
+- THE SEED, EXTENDED (tests/support/seeded-year.ts): PART_YEAR_PERSON =
+  PERSON's settings (80 %, HALF_DAY, GE, SIMPLIFIED240) with its own email;
+  rowsFrom(startDay) = SEED's own rows on or after the start (the dossier
+  selects rows by year, lib/dossier/load.ts:85-92, so a row before the
+  start would be counted); seedPartYear(startDay). seedYear() and
+  seedPartYear() share ONE writer, writePerson(); the start day is stored as
+  the API stores it (UTC midnight). seedYear() writes what it always wrote.
+- THE EXISTING TESTS ARE UNCHANGED, against THIS session's base capture
+  (taken at 56b7116 before any edit; annex-rendered's by restoring HEAD's
+  blob of the support module, verified, and putting the edit back,
+  verified): dossier-engine 5 passed before and after, the same 5 names,
+  and its "[dossier-engine] 22 figures, served | engine" block
+  byte-identical (fig-base.txt = fig-after.txt, diff empty); annex-rendered
+  3 passed before and after, the same 3 names.
+- THE EXPECTED FRACTION is COUNTED from the SPEC sentence: every calendar
+  day of 2026 as an ISO string, the count of those on or after the start
+  (the start day and 31 December included), over their total.
+- THE DATE, BY COMPUTATION, in the test: the first day of the year at which
+  (1) a count one day SHORT moves at least one served engine figure, (2) a
+  count one day LONG moves at least one, and (3) a whole year's figures
+  differ (a route ignoring the date). Asked of calculateTelework over the
+  22 served figures, never a retyped ceil; a day where the engine refuses a
+  fraction (one day long on 1 January is above 1) is not a candidate.
+  UNNUMBERED-1 below says why all three. The run printed:
+    start 2026-01-21: 345/365 days, 52 rows from that day
+    one day short (344/365) moves: tiles.workedDays 182 -> 181;
+      zone.declarableRate 14.56 -> 14.64; zone.rawRate 14.6 -> 14.7;
+      zone.fiscalCeilingDays 72.8 -> 72.4; zone.remainingToFiscal 46 ->
+      45.5; zone.remainingToSocial 64 -> 63.5; rateWithoutMissions 10.16 ->
+      10.22; months[1..11].cumulativeDeclarableRate (11 figures)
+    one day long (346/365) moves: tiles.workedDays 182 -> 183 and the same
+      17 others (18 figures in all, each side)
+    a whole year (1) moves: tiles.workedDays 182 -> 192 and the same 17
+    first earlier day where an off-by-one moved anything: 2026-01-02
+      (364/365: short moves 19, long moves 0, whole year moves 0)
+  It lands on the arithmetic probe's date (.period-evidence/probe-days.mjs,
+  ceilProrated's own formula): 2026-01-21, 182 / 181 / 183.
+- PRESENCE FIRST (test 1): 200; taxYear; 52 stored rows = 52 seeded =
+  recordedEntries; 0 < 345 < 365; the three discriminations re-asserted;
+  a non-zero declarable rate (14.56); and the cap NOT binding (credited 8 =
+  logged 8), asserted so the header's "not pinned" cannot go stale.
+- THE PIN (test 2): period.startDate = 2026-01-21; period.fraction served
+  0.9452054794520548 = counted 345/365 = 0.9452054794520548 (Object.is);
+  22 figures, served = engine, toStrictEqual in wire form, soft so a RED
+  names each:
+    tiles.workedDays 182; zone.declarableRate 14.56; zone.rawRate 14.6;
+    zone.ratesDiffer true; zone.fiscalCeilingDays 72.8;
+    zone.remainingToFiscal 46; zone.remainingToSocial 64; zone.warnings [];
+    creditedMissionDays 8; rateWithoutMissions 10.16; months[0..11]
+    cumulative 0, 4.67, 10.16, 13.46, then 14.56 for May to December.
+- First run (run1.log, 22:34:55Z, 2 passed): it passed against
+  unchanged code, which the prompt foresaw; the REDs are R999's.
+- WHAT IS NOT PINNED, stated in the header: the leap-year denominator
+  (2026 has 365 days; 366 is pinned at unit level only); the mission cap's
+  proration (8 missions = the prorated cap 8 at this date, so it does not
+  bind; W3's "credited differs from logged" does not hold for this person);
+  starts outside the year (dossier-route.test.ts, R580).
+- Targeted typecheck (tsc over the four seed-sharing test files and their
+  imports, a config in the evidence folder): exit 0. eslint on the two
+  changed test files: exit 0. Both before the plants; the gate's whole-
+  project runs are below.
+
+R999. VERIFIED PLANTS
+---------------------
+Runner .period-evidence/plant.mjs (W3c's discipline): the target's blob
+must equal HEAD's (3a9dee3b); EXACTLY ONE match of the full original line
+(R211; "+ 1" is on two lines of period.ts, so the whole line is the anchor);
+write; "git diff -U0" must show exactly that line out and the planted line
+in (R180); run tests/db/period-fraction.test.ts alone on the scratch
+database; restore the bytes; the blob must equal HEAD's and "git diff
+--quiet" exit 0. The test file's blob in every run was 91c83f24, which is the
+committed blob (git rev-parse HEAD:web/tests/db/period-fraction.test.ts at
+f6812d3 = 91c83f24...).
+In every planted run the PRESENCE test passed, so no RED is a refused or
+empty payload. 22:36:17Z-22:36:25Z; logs in .period-evidence/plants/.
+  P1 (R999, one day SHORT), period.ts:94
+       -  const remaining = daysBetween(start, lastOfYear) + 1;
+       +  const remaining = daysBetween(start, lastOfYear);
+     RED, 1 failed | 1 passed, 19 named: "period.fraction: the SPEC 7.2
+     sentence, counted: expected 0.9424657534246575 to be
+     0.9452054794520548", "tiles.workedDays: expected 181 to strictly
+     equal 182", zone.declarableRate 14.64 vs 14.56, zone.rawRate,
+     zone.fiscalCeilingDays, zone.remainingToFiscal, zone.remainingToSocial,
+     rateWithoutMissions, months[1..11].
+  P2 (R999, one day LONG), period.ts:94, "+ 1" -> "+ 2".
+     RED, 1 failed | 1 passed, 19 named: period.fraction 0.947945205479452
+     vs 0.9452054794520548, "tiles.workedDays: expected 183 to strictly
+     equal 182", and the same 17 more.
+  P3 (beyond R999, the DENOMINATOR one day short), period.ts:93, "+ 1"
+     removed (364 days in 2026).
+     RED, 1 failed | 1 passed, 1 named: "period.fraction: ... expected
+     0.9478021978021978 to be 0.9452054794520548". NO engine figure moved:
+     345/364 still ceils to 182. At this date a denominator off-by-one is
+     caught by period.fraction alone (NOTICED 3).
+Each restored: "blob 3a9dee3b equals HEAD true; git diff --quiet exit 0".
+NOTHING ELSE MOVES: "git diff --quiet 56b7116 HEAD -- web/lib web/app
+web/prisma web/scripts" exits 0 at f6812d3.
+
+UNNUMBERED (R156: the conservative, reversible choice, recorded)
+----------------------------------------------------------------
+1. "An off-by-one" read as BOTH directions, plus a whole-year difference.
+   The literal first date at which ONE off-by-one moves a figure is
+   2026-01-02 (one day short: 192 -> 191). Its own figures equal a whole
+   year's (192), so a dossier ignoring the start date would serve them too,
+   and the long side is unpinned there. Requiring all three gives
+   2026-01-21. Reversible: one condition in chooseStartDay().
+2. The part-year person's rows are SEED's rows on or after the computed
+   start (52 of 59), so the rates are real rates over the prorated basis
+   (no zeros) and no row precedes the start. Reversible: rowsFrom().
+3. A third plant (the denominator), beyond R999's one, because it shows the
+   limit of the pin (NOTICED 3).
+
+WALKTHROUGH (R176)
+------------------
+No page, route or rendered surface changed (a SPEC sentence, a doc row, a
+test and a test support module), so no server was started or driven. The
+dossier route was exercised through its handler inside test:db (R204), and
+its payload is printed in run1.log.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. Row 9 is in docs/regulatory-sources.md but not on /sources:
+   lib/content/sources.ts SOURCE_IDS holds no such id (30, asserted by
+   sources.test.tsx). QUESTION 1.
+2. Stale counts already there before this task, now one further off:
+   lib/content/sources.ts:30 says SOURCE_IDS are "the rows, in the order
+   docs/regulatory-sources.md numbers them" (SOURCE_IDS[8] is
+   missionTravelDays, while row 9 is now the period fraction);
+   lib/guides/frontmatter.ts:47 and tests/unit/guides/claims.test.ts:19
+   say "the eight source rows" (SOURCE_IDS has 30). The doc's own header
+   block (regulatory-sources.md:7-30) counts P1-P3 and rows 6-7 and does not
+   name row 9.
+3. At 2026-01-21 a DENOMINATOR off-by-one moves no engine figure (P3): only
+   period.fraction catches it. The leap-year denominator is not pinned
+   through the route at all (2026 has 365 days; 366 is unit-level only).
+4. The prompt's "1 July at 80 % does not" holds for the SHORT side only:
+   one day LONG moves workedDays 97 -> 98 there; 2026-08-01 moves both
+   sides (80 / 82). Arithmetic with ceilProrated's formula
+   (.period-evidence/probe-days.mjs), not a test.
+5. The dossier counts every row of the year whatever the start date
+   (lib/dossier/load.ts:85-92): a day logged before the activity start
+   would be counted in a prorated year. The seed avoids it; whether the
+   product should is not this task's.
+6. The 22-figure list and the derivation of engine inputs from seeded rows
+   now live in TWO test files, dossier-engine.test.ts and
+   period-fraction.test.ts, each its own reading (seeded-year.ts keeps
+   readings with their tests). A 23rd served engine figure could be added
+   to one list and not the other.
+
+DEVIATIONS
+----------
+1. NOT TEST-FIRST in the sense of a failing test before a code change: R999
+   allows no code change, so the pin passed on its first run, as the prompt
+   foresaw ("The pin passes on its first run against unchanged code, so its
+   RED is the plant"). The REDs are P1-P3.
+2. The support module's seedYear() body moved into a shared writePerson()
+   (one writer for both persons). Proven unchanged by the base captures in
+   R998, not by assertion.
+3. R996's "confirm it is free with the register's own check": that check
+   (and fixture-coverage) does not read the constants table; both were run
+   and the id was confirmed from the table (R996).
+4. Scratch-database administration ran through .period-evidence/
+   db-admin.mjs (pg resolved from the worktree's web/node_modules by
+   createRequire). Credentials were read from the main checkout's web/.env by
+   script and never printed to the console. They WERE written to two
+   gitignored files: .period-evidence/scratch.env (the scratch database URL,
+   for single-file runs and gate:changed) and web/.env (the server's postgres
+   database, for gate:clone). Both are removed at cleanup.
+5. Nothing was written to the orchestrator's scratchpad or to any other
+   worktree; no git ran in another worktree. C:/wt/queue-evidence/
+   run-sampled.ps1 was run in place, read only, with its evidence directory
+   set to .period-evidence.
+6. WHAT RAN OUTSIDE THE HEAVY LOCK, all of it light work between 22:19Z and
+   22:37Z, before the first heavy run: pnpm install --frozen-lockfile (done
+   22:20:14Z) and prisma migrate deploy on the scratch database; seven
+   single-file vitest runs on the scratch database (dossier-engine at base
+   three times, 22:23:14Z-22:23:47Z, the third verbose and the capture;
+   annex-rendered at base 22:33:35Z; both after the edit
+   22:33:45Z-22:33:47Z; period-fraction run1 22:34:55Z); tsc over the four
+   seed-sharing test files and their imports (done 22:35:59Z); eslint on the
+   two changed test files (done 22:36:12Z); the three plants (22:36:17Z-
+   22:36:23Z), each ONE test file; register-coverage.mjs and
+   fixture-coverage.mjs (22:37:04Z); four unit test files reading the doc
+   (22:37:10Z). The brief's heavy list ends "plants included"; Web Ruling 7
+   also says "Single test files stay outside". A plant here is one test file
+   on the scratch database, with no build, browser or container, so I read it
+   as light. The orchestrator may judge otherwise. After gate:clone, also
+   light: the cleanup (23:58Z) and the three report-in-place checks (23:59Z,
+   PUSH PROOF). Light work in the other live sessions may have overlapped
+   every run, the gates included.
+
+QUESTIONS
+---------
+1. /sources and row 9 (user-facing, so not done here). docs/regulatory-
+   sources.md now records the part-year day count as the product's own
+   convention, pending expert review, but /sources publishes rows from
+   lib/content/sources.ts SOURCE_IDS (30, asserted) and does not carry it.
+   Rows 6 and 7, pending, ARE published as pending. Should /sources gain a
+   pending row for the convention (a SOURCE_ID, its lib/fr line, the count
+   test moving 30 -> 31), or does the record suffice because no copy
+   presents the basis as sourced (R997)?
+
+DEFECTS: none. The served dossier matched the stated convention.
+
+PUSH PROOF
+----------
+Branch: fw-period-fraction (pushed; NOT merged). Base 56b7116 = origin/main
+at launch and at the code commit; origin/main read a2c502a (W3d merged) at
+23:58Z, after gate:clone (see STATUS).
+Code commit: f6812d3961a38069cc4456b7a90205a0934e60b3, pushed; ls-remote
+showed refs/heads/fw-period-fraction at f6812d3 before gate:clone ran. This
+report is the commit on top of it.
+
+gate:changed, the gate of record for the commit:
+- Under the heavy lock: "2026-11-16T22:39:42.823Z ACQUIRED holder=W3e
+  commitFree=7826 line=5442" (the start reading); released 22:48:02.945Z.
+  It waited behind W10 from 22:38:42Z.
+- Under run-sampled.ps1, cmd=pnpm gate:changed. DATABASE_URL (the scratch
+  database monreleve_fw_period_fraction) and FRONTALIER_PORT=3500 were
+  exported in the parent shell; no web/.env existed.
+- 22:39:43Z-22:48:02Z, exit 0, aborted False. First sample 7 756 MB,
+  MINIMUM commit free 5 745 MB (2 081 below the lock's reading), minimum free
+  physical 1 064 MB.
+- Printed selection:
+  gate selection (R132):
+    2 path(s) matched:
+      web/tests/db/period-fraction.test.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+      web/tests/support/seeded-year.ts  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)
+    suites: typecheck, lint, test, build, test:db
+    a11y: covered by pnpm test - test:a11y's three files are a subset of
+          its globs, so requiring it separately is a second run
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3765 passed
+      build: exit 0 (no count to check)
+      test:db: 724 passed
+  GATE PASSED for the paths changed.
+  (SPEC-frontalier-web.md and docs/regulatory-sources.md were changed paths
+  too and matched no rule, as the dry run beforehand had printed:
+  .period-evidence/selection-probe.txt.)
+  - test 3 765 passed (220 files) = main's (W3c's gate read 3 765).
+  - test:db: 724 passed | 26 skipped (750); Test Files 50 passed | 3
+    skipped (53). W3c's: 722 | 26 and 49 | 3 (52). +2 tests, +1 file: this
+    task's two tests. The 26 skipped are unchanged in number.
+
+gate:clone, ALONE, on f6812d3:
+- Under the heavy lock: "2026-11-16T23:45:27.805Z ACQUIRED holder=W3e
+  commitFree=8567 line=5576" (the start reading); released 23:57:30.713Z.
+  It waited from 22:48Z behind the orchestrator (with its priority marker),
+  W10 and W11. "ALONE" here is the lock's meaning (Web Ruling 7): no other
+  heavy run; light work in other sessions may have overlapped.
+- Under run-sampled.ps1, cmd=pnpm gate:clone. CONTAINER_IMAGE=
+  monreleve:fw-period-fraction and FRONTALIER_PORT=3500 were set;
+  DATABASE_URL was unset in the shell, so gate:clone read web/.env, written
+  by script to name the local server's postgres database and used only to
+  reach the server. It created its own monreleve_gate_clone_f6812d39.
+- 23:45:28Z-23:57:30Z, exit 0, aborted False. First sample 8 493 MB,
+  MINIMUM commit free 6 908 MB (1 659 below the lock's reading), minimum
+  free physical 571 MB.
+- "tree clean - HEAD is everything you have"; "swept no stale clones (older
+  than 4h) found"; register coverage OK (230 ids, 171 reports) and fixture
+  coverage OK (7 sections, 6 files) on the clone.
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  f6812d3961a38069cc4456b7a90205a0934e60b3
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  STEP_EXIT=0 ABORTED=False
+
+Cleanup (Web Ruling 3), 23:58:42Z-23:58:52Z, before this report commit:
+- pg_database listed first: frontalier, monreleve_fw_calc_bytes,
+  monreleve_fw_delai_rappel, monreleve_fw_period_fraction,
+  monreleve_web_orch, postgres, template0, template1. gate:clone's
+  monreleve_gate_clone_f6812d39 was already gone (dropped by gate:clone).
+- monreleve_fw_period_fraction dropped. pg_database then: frontalier,
+  monreleve_fw_calc_bytes, monreleve_fw_delai_rappel, monreleve_web_orch,
+  postgres, template0, template1 (the others are other sessions', not
+  touched).
+- web/.env and .period-evidence/scratch.env removed (ls: No such file).
+- monreleve:fw-period-fraction, built by gate:clone's test:container:write,
+  removed by exact name (docker image rm: untagged, deleted 1d4c6ffe556f).
+  No other image touched; no prune.
+- No container of mine; frontalier-postgres is the only one running and was
+  not touched. :3500 refuses (curl exit 7).
+- The session lock is removed last, after this report is pushed.
+
+Report commit: it adds only this file on top of f6812d3 and goes through no
+gate - gate:clone vouches for f6812d3. The gate:clone steps that read files
+outside the code were run standalone with this report in place, before the
+report commit, 23:59Z (logs in .period-evidence/):
+  node scripts/register-coverage.mjs: exit 0, "register coverage: OK - 230
+    cited id(s) across 172 report(s), all have headings in parking.md"
+    (171 + this one; it cites no register id)
+  node scripts/fixture-coverage.mjs: exit 0, "fixture coverage: OK - 7
+    section(s) across 6 file(s), each consumed by every engine that reads
+    its file"
+  vitest tests/unit/meta/register-coverage.test.ts: 27 passed
