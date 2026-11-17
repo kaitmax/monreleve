@@ -15,7 +15,12 @@
 // A CORRECT VALUE BEFORE HYDRATION. The server renders this component with the
 // initial slider values, so the HTML already carries the engine's answer for
 // them; hydration changes nothing on screen until a slider moves. That is also
-// why the island holds no effect and no loading state.
+// why the island holds no loading state.
+//
+// A SLIDER MOVED BEFORE HYDRATION (FW-PREHYDRATION-SITES, R1057): the sliders
+// are native controls, so they move before the scripts arrive, and hydration
+// never writes a field's value. The island's ONE effect reads both sliders on
+// mount, so the figures follow the thumb a reader already moved - see it below.
 //
 // THE WORDS ARRIVE AS PROPS, every one a plain string the server page built
 // from lib/fr/home.ts. Importing that module here would ship the whole home
@@ -29,7 +34,7 @@
 
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { COUNTER_BASIS, COUNTER_TELEWORK, counterFigures } from '@/lib/content/home-counter';
 import { formatSignedDays, zoneFor } from '@/lib/ui/core';
@@ -108,6 +113,18 @@ export function HomeCounter({
   const [telework, setTelework] = useState(initialTelework);
   const [basis, setBasis] = useState(initialBasis);
 
+  // R1057: read once, on mount, in a layout effect - it runs in the hydration
+  // commit's own task, so nothing can move between the commit and the read,
+  // and from then on every move comes through onChange. An untouched slider
+  // gives back the value the state already holds, which renders nothing.
+  const teleworkField = useRef<HTMLInputElement>(null);
+  const basisField = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    if (teleworkField.current !== null) setTelework(Number(teleworkField.current.value));
+    if (basisField.current !== null) setBasis(Number(basisField.current.value));
+  }, []);
+
   const thresholds = ruleSetFor(taxYear);
   const figures = counterFigures(taxYear, telework, basis);
 
@@ -175,6 +192,7 @@ export function HomeCounter({
             min={COUNTER_TELEWORK.min}
             max={COUNTER_TELEWORK.max}
             step={1}
+            ref={teleworkField}
             value={telework}
             onChange={(event) => setTelework(Number(event.target.value))}
           />
@@ -192,6 +210,7 @@ export function HomeCounter({
             min={COUNTER_BASIS.min}
             max={COUNTER_BASIS.max}
             step={1}
+            ref={basisField}
             value={basis}
             onChange={(event) => setBasis(Number(event.target.value))}
           />
