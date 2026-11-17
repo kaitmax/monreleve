@@ -1,0 +1,396 @@
+REPORT - FW-PREHYDRATION-SITES (web run step W21, Web Rulings 28 and 36)
+WHAT A PERSON TYPES BEFORE THE PAGE HYDRATES IS KEPT, EVERYWHERE
+Session W21, 2026-11-17. Worktree C:/wt/fw-prehydration-sites, branch
+fw-prehydration-sites, base 4d933cec (origin/main). Port block 3700-3799 (dev
+server 3781, gate:changed e2e 3782). Scratch database monreleve_w21 (16
+migrations, db:deploy). Ruling numbers R1056-R1060.
+
+====================================================================
+SUMMARY
+====================================================================
+- THE DEFECT (W18's R1044), RED FIRST on base with W18's plant, one test per
+  island, each verified to have held the page's scripts back: the comparator
+  (Comparer showed no result), the home counter (label stayed at 62 with the
+  thumb at 72), the calculator (no result, the empty state), and a shared link
+  edited before hydration (the result was the link's, not the edit's).
+- THE FIX (R1057), W18's mechanism in each island: refs and ONE layout effect
+  that read, on mount, what the controls hold into state.
+    ComparatorForm: the income, the first birth year, the first accident box.
+    HomeCounter: both sliders.
+    CalculatorForm: one form ref; typedBefore(form) reads the canton, the rate,
+      the telework days, the missions radios and the rhythm chips, and the URL
+      seed's effect becomes a layout effect that applies the link FIRST and the
+      typed controls LAST.
+- THE PROMPT'S PREMISE FOR THE CALCULATOR IS FALSE, measured: the page is
+  static and never reads searchParams, so the server renders the DEFAULTS into
+  the fields even for a shared link (curl of ?canton=GE&tt=84&mfr=24&decompte=dj
+  on pnpm dev: <option value="" selected="">, name="tt" value="0"). Reading the
+  field wholesale would blank every untouched link. So the read is PER CONTROL:
+  a control whose value differs from the state the first render put into it
+  was touched and wins; every other control takes the link's value. Both of
+  Web Ruling 36's cases hold, and a plant of the wholesale reading (PLANT A,
+  PLANT A2) turns both shared-link cases RED. QUESTION 1.
+- TWO CODE COMMITS. a4711fa1 judged "touched" by the DOM's default attributes
+  (defaultSelected and the like). The final review found that on a CLIENT render
+  (an in-site navigation, no server HTML) React never sets defaultSelected, so
+  every control read as changed and a shared link lost its canton - a
+  regression against main on that path. RED first
+  (tests/unit/pages/calculateur-link-mount.test.tsx: canton '' for 'GE'), then
+  5c20d5d4 compares each control with the first render's state instead. No
+  production page reaches the calculator with a query by soft navigation today
+  (the result page's back link is a plain <a>), but the rule now holds on both
+  paths.
+- R1059: HomeCounter's mount read removed -> its held test RED (label 62 for
+  72); restored by file copy, hash verified, test GREEN again.
+- gate:changed, per code commit, each on the uncommitted paths and committed
+  unchanged: a4711fa1 (5 paths) typecheck 0, lint 0, test 4 097, build 0,
+  test:e2e 398 (388 + the 10 new), test:visual 174, test:late 10;
+  5c20d5d4 (CalculatorForm + the new unit file) test 4 099, e2e 398, visual
+  174, late 10, typecheck/lint/build 0.
+- gate:clone ALONE: on a4711fa1 PASSED on its second run (the first failed
+  only the R711 sweep timeout: NO RESULT, UNNUMBERED-5); on the tip 5c20d5d4:
+  PASSED, exit 0, first run (test 4 099 of 4 099,
+  241 files; size 21 routes; test:db 816 of 843; test:container:write 10).
+
+====================================================================
+STATUS (R391)
+====================================================================
+STATUS: COMPLETE. On the code tip 5c20d5d4: gate:changed GREEN (exit 0) on
+its two paths, committed unchanged (committed blob hash-verified), and
+gate:clone ALONE GREEN (exit 0) on 5c20d5d4, both run in this session. The
+first code commit a4711fa1 had its own gate:changed GREEN and gate:clone
+GREEN. The report commits add only this file and were not gated. Pending
+merge: the orchestrator merges. Main has moved to 3111fc0f (round 8: R380 and
+W23); git merge-tree against it is CLEAN, but the merged tree is not gated
+here.
+
+====================================================================
+R1056 - THE RED FIRST
+====================================================================
+THE PLANT: web/e2e/support/hydration.ts, typeBeforeHydration(page, path,
+field, type) - W18's R1041 plant, parameterised by the page and the field
+whose React fiber marks hydration. Holds every /_next/static/*.js request
+until the typing is done; goto with 'domcontentloaded'; verified in every
+call: (1) at least one script waiting, (2) no fiber on the field before AND
+after the typing, (3) the fiber appears within 20 s after release. Each held
+test prints an [R1056] line with what waited and for how long.
+
+THE SPEC: web/e2e/prehydration.spec.ts, every test in two orders ("as
+loaded" with no wait, and "before hydration (R1056)" under the plant):
+  the comparator keeps the income, the birth year and the accident box
+  the home counter follows a slider moved
+  the calculator keeps the canton, the days, the missions answer and a chip
+  a shared link left untouched shows the link's result
+  a shared link edited shows the edit, and the link for the rest
+10 tests. Expected figures are never typed (R171/R181): the calculator's
+result is compared with the same page opened on a shared link carrying the
+same values (a second page); the counter's figures with the same position
+reached through its own onChange.
+
+RED on base (the three base components put back by `git show HEAD:`, the final
+spec, pnpm dev on 3781, 2 workers; .w21-evidence/red-run-final.log):
+4 failed, 6 passed (32.9 s), STEP_EXIT=1.
+  comparator, held (5 scripts held 891-896 ms: webpack.js, main-app.js,
+    app-pages-internals.js, app/(public)/layout.js,
+    app/(public)/calculateur-lamal-cmu/page.js):
+      expect(locator('[data-panel="comparison"]')).toBeVisible() - element(s)
+      not found: Comparer refused what was on screen.
+  home counter, held (5 scripts, 233-236 ms, the home page's chunk among them):
+      Expected "Jours teletravailles depuis le 1er janvier : 72"
+      Received "Jours teletravailles depuis le 1er janvier : 62"   (ASCII here;
+      the assertion reads HOME_COPY)
+  calculator, held (6 scripts, 795-801 ms, its page chunk among them):
+      expect(locator('#resultat [data-panel="rate"]')).toBeVisible() failed -
+      the result stayed the empty state.
+  shared link edited, held (6 scripts, 305-309 ms):
+      rate slot Expected "41,66 %" / "51,7 %" (the link with tt=100)
+                Received "39,16 %" / "45,0 %" (the link's own 84 days)
+  The untouched shared link, held (6 scripts, 383-387 ms), PASSED on base, as
+  it must: base seeds from the URL. It is proven load-bearing by PLANT A below.
+  The five as-loaded variants passed on base in this run.
+  An earlier RED run (.w21-evidence/red-run.log, before one assertion change,
+  UNNUMBERED-2) failed the same four held tests, the edited link there on
+  #jours-teletravail Expected "100" Received "84".
+
+WHAT WAS HELD BACK, per island (the [R1056] lines): the same five framework
+chunks every time (webpack.js, main-app.js, app-pages-internals.js,
+app/(public)/layout.js, plus app/(public)/page.js on the calculator, which
+the dev build requests there too) and the island's own page chunk.
+
+====================================================================
+R1057 - THE FIX, PER ISLAND
+====================================================================
+ComparatorForm.tsx (app/(public)/calculateur-lamal-cmu):
+  three refs (incomeField, birthYearField on person 0, accidentField on
+  person 0) and one useLayoutEffect: setIncome(field value); persons[0] gets
+  the field's birth year and checked state, and setPersons returns the SAME
+  array when they already match, so an untouched form renders nothing new.
+  The joint fields, the start date, further persons and the slider are not in
+  the server HTML; the toggles are type="button" and do nothing before
+  hydration.
+HomeCounter.tsx (lib/ui/react/HomeCounter):
+  two refs and one useLayoutEffect reading both sliders. The header's "holds
+  no effect" sentence is corrected (no test guarded it; grep).
+CalculatorForm.tsx (app/(public)/calculateur-teletravail-frontalier):
+  - a module function typedBefore(form, rendered) returning an updater: for
+    each control whose value differs from `rendered` - the state the first
+    render put into the controls (the effect's own closure; it runs once) -
+    the canton select, taux and tt, the missions radio switched on
+    (hasMissions, with "Non" resetting the mission days as its onChange does),
+    each rhythm chip. No change returns the same state. (a4711fa1 compared
+    with defaultValue/defaultChecked/defaultSelected instead; see SUMMARY.)
+  - ONE ref on the <form>.
+  - THE ORDERING: the URL effect becomes a useLayoutEffect. No query: it
+    applies the typed update. A query: stateFrom(link) as before, then
+    setState(current => typed({ ...current, rhythm: decoded.rhythm })) - the
+    link first, the typed controls last. Everything else in that effect
+    (setLink, the accordion) is unchanged. A layout effect, so the read and the
+    seed both happen in the hydration commit's own task (W18's argument 3):
+    nothing typed after the read can be overwritten by a later passive seed.
+  - Not read: the mission-day fields and the advanced section, which are not
+    rendered until state asks for them (no pre-hydration typing possible).
+  - Kept to the mount read and its ordering (the launch message): R380's
+    onSubmit and errorFor are untouched. git merge-tree of this change against
+    origin/fw-canton-required (cd0defde) and against origin/main: both CLEAN.
+
+THE CALCULATOR'S SHARED-LINK ORDER, both cases (held, pnpm dev):
+  untouched link ?canton=GE&tt=84&mfr=24&decompte=dj: canton GE, days 84,
+    mission days 24, rate slot equal to the link's own -> PASS.
+  the same link with the days edited to 100 before hydration: days 100,
+    canton GE and mission days 24 from the link, rate slot equal to the link
+    with tt=100 (41,66 %) -> PASS.
+PLANT A (the wholesale reading the prompt's premise implies - every control
+  read as changed; .w21-evidence/plant-a.log): all four shared-link tests RED,
+  untouched held: #canton Expected "GE" Received "" ; untouched as loaded:
+  the same; edited held: the same; edited as loaded: #jours-teletravail
+  Expected "84" Received "0". Restored by copy, sha256 a1605f9d... verified.
+PLANT A2, the same on the final code (5c20d5d4's comparisons on canton, taux
+  and tt replaced by `true`; 3 markers, 0 originals left;
+  .w21-evidence/plant-a2.log): the same four tests RED for the same reasons.
+  Restored by copy (sha256 e842ee15... = the committed blob), shared-link tests
+  4/4 again (plant-a2-restored.log).
+THE CLIENT-RENDER CASE (tests/unit/pages/calculateur-link-mount.test.tsx,
+  jsdom, render() with ?canton=GE&tt=84&mfr=24&decompte=dj&rythme=ma in the
+  location): RED on a4711fa1 "expected '' to be 'GE'"; GREEN on 5c20d5d4
+  (canton GE, days 84, mission days 24, the Tuesday chip checked; with no link,
+  the defaults).
+
+No copy, visual or dependency change; no figure or rule changes.
+
+====================================================================
+R1058 - GREEN UNDER THE PLANT AND NORMALLY
+====================================================================
+- pnpm dev: 10/10 (.w21-evidence/green-run.log, 38.3 s); five repeats with 4
+  workers: 50/50 (green-repeat5.log, 1.9 m); on the final code three repeats
+  with 4 workers: 30/30 (green-run-2.log).
+- THE PLANT ON THE PRODUCTION BUILD (gate:changed's e2e, next start on 3782),
+  the [R1056] lines of a4711fa1's run: comparator held 8 scripts 883-885 ms
+  (webpack-*, 07a4fdd4-*, 5355-*, main-app-*, app/(public)/layout-*, 3749-*,
+  9086-*, app/(public)/calculateur-lamal-cmu/page-*); home counter 9 scripts
+  477-486 ms; calculator 12 scripts 630-636 ms; untouched link 12 scripts
+  420-435 ms; edited link 12 scripts 564-573 ms. All ten tests passed there.
+- e2e/comparateur.spec.ts on dev: 4/4. e2e/calculateur.spec.ts on dev: 28
+  passed, 3 failed - the three canonical tests, which need a configured site
+  origin (canonicalsAvailable) that pnpm dev here does not have; the head is
+  server-rendered and untouched. gate:changed's production run is the record.
+- tests/unit/pages/calculateur-form.test.tsx alone: 37/37.
+- eslint on the five files: 0.
+- gate:changed (production build, next start on 3782): test:e2e 398 passed,
+  the 10 of this spec among them, and every existing spec unchanged.
+No existing test was edited.
+
+====================================================================
+R1059 - A VERIFIED PLANT
+====================================================================
+HomeCounter.tsx: the two setTelework/setBasis lines of the mount read replaced
+by a comment (anchor asserted to match once; the planted file grepped: the
+comment present at :124, the read lines 0). Run (-g "home counter"):
+1 failed, 1 passed - held: Expected label "...: 72" Received "...: 62"; the
+as-loaded variant passed (it moves the slider after hydration on dev).
+Restored by copying the saved fixed file: sha256 5fb90be6... equals the saved
+copy, "PLANT" 0 matches; re-run 2 passed (.w21-evidence/plant-r1059*.log).
+
+====================================================================
+R1060 - NOTHING ELSE MOVES
+====================================================================
+Six paths: three components, one new spec, one new support module, one new
+unit test file (plus this report). No
+baseline regenerated; test:visual in gate:changed: 174 passed, none
+regenerated ("photographed: 4d933cec plus 5 uncommitted path(s)"; sole
+container of mcr.microsoft.com/playwright:v1.63.0-noble, R961 REUSED).
+e2e/rappel-delai.spec.ts keeps its own copy of the plant (NOTICED N1).
+
+====================================================================
+WALKTHROUGH (R176) - pnpm dev on 3781, throttled, typing early
+(.w21-evidence/walkthrough.mjs, walk/walkthrough.log, walk/*.png)
+====================================================================
+CDP: CPU x6, 1.6 Mbit/s down, 150 ms latency; fr-FR, Europe/Paris; real
+keystrokes.
+- Comparator: income visible 4.0 s (not hydrated); 73519, 1985 and the box
+  typed by 6.1 s (not hydrated); hydrated 20.8 s. Comparer: income 73519,
+  birth 1985, box ticked, 0 invalid fields, the case sentence shown. Link out:
+  /guides/droit-option-lamal-cmu 200.
+- Home: slider visible 6.5 s, rate 28,18 %; moved to 72 by 8.0 s (not
+  hydrated); hydrated 24.0 s; label "...: 72", rate 32,72 %; the other slider
+  moved: the thumb stays 72. Link out: /calculateur-teletravail-frontalier 200.
+- Calculator, bare: canton GE and 84 typed by 3.8 s (not hydrated); hydrated
+  22.9 s; canton GE, days 84, rate 35,00 %; the rate typed after: 80 -> 43,75 %,
+  canton and days kept. Calculer: the URL follows
+  (?canton=GE&taux=80&tt=84&decompte=dj), focus on #resultat. /sources 200.
+- Calculator, shared link ?canton=GE&tt=84&mfr=24&decompte=dj, days changed to
+  100 by 3.8 s (not hydrated); hydrated 22.5 s; canton GE, days 100, mission
+  days 24, rate 41,66 %. What the reader sees before hydration is the DEFAULT
+  form, not the link (QUESTION 1).
+WALKTHROUGH PASSED.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1. e2e/rappel-delai.spec.ts keeps W18's plant inline (typeBeforeHydration
+    fixed to the comparator's date field). This task's support module is the
+    same mechanism parameterised; moving rappel-delai onto it is a one-file
+    change left out under R1060. R206 says one home: a follow-up, not done.
+N2. A missions answer given before hydration reaches the state but fires no
+    missions_declared analytics event (the event is sent from onChange, which
+    did not exist yet). Not changed: no analytics change was asked for.
+N3. The port block 3700-3799 named in the launch message is also the one in
+    W16's live session lock (C:/wt/fw-wt-cleanup/.session-lock.json). Ports
+    3781/3782 were each probed free (netstat LISTENING, with 5436 as the
+    known-open control) before use.
+N4. R380 (fw-canton-required cd0defde) merged into main in round 8 (b844ddb7)
+    while this session ran. git merge-tree of this branch against origin/main
+    3111fc0f is CLEAN; the merged tree is not gated here. R380's onSubmit check
+    (`state.canton === ''`) now also sees a canton chosen before hydration.
+
+====================================================================
+DEVIATIONS
+====================================================================
+UNNUMBERED-1. The calculator's read is per control against the first
+    render's state, not a wholesale read: the prompt's stated premise is false
+    (QUESTION 1). Ruling 36's two outcomes are what is implemented and tested.
+UNNUMBERED-2. After the first RED run the comparator's "no error" assertion
+    changed from `[role="alert"]` count 0 to `form [aria-invalid="true"]`
+    count 0: the page carries one role="alert" element outside the form even
+    when nothing is wrong (the as-loaded test met it). The RED was then re-run
+    on base with the final spec (the one quoted above).
+UNNUMBERED-3. The RED, plants and walkthrough ran on pnpm dev outside the lock
+    (rule 4: one spec against my own dev server), dev stopped by PID tree each
+    time and 3781 read free. A batch of nine unit files was refused by the
+    permission classifier; only calculateur-form.test.tsx ran alone, the rest
+    is gate:changed's unit run.
+UNNUMBERED-4. The calculator's URL effect changed from useEffect to
+    useLayoutEffect, which is the ordering the prompt asks for; it moves the
+    link's seed from after paint to before it.
+
+UNNUMBERED-5. gate:clone run 1 on a4711fa1 (lock 21:07:26-21:18:03Z, start
+    7 213 MB, minimum 5 520): pnpm test 4 096 of 4 097, the one failure
+    HomeCounter.test.tsx's sweep "Test timed out in 300000ms". Read before
+    re-running whether this change could slow it: the test renders ONCE and
+    then drives both sliders by fireEvent.change; the new effect has empty
+    deps and runs once per mount, so it adds nothing per step. The same sweep
+    passed in gate:changed's unit run on the same code. Recorded as NO RESULT
+    and re-run once (lock 21:20:28-21:37:36Z): PASSED.
+MEMORY (sampler every 5 s, .w21-evidence/*-sampler.log): gate:changed start
+    7 277 MB (lock reading), minimum 5 277 MB commit / 658 MB physical;
+    gate:clone run 2 start 6 609 MB, minimum 5 422 / 501 MB. No abort.
+SIZE (gate:clone run 2): /calculateur-teletravail-frontalier 123.9 KiB, GATE A
+    pass with 1.1 KiB spare (B 1.7) - main read 123.6 / 1.4 after W10b, so this
+    change costs about 0.3 KiB on the calculator; /calculateur-lamal-cmu 122.3
+    (2.7 spare, unchanged at this precision); / 112.3 (12.7 spare; 112.2
+    before). See QUESTION 2.
+
+UNNUMBERED-6. A SECOND CODE COMMIT after the report's first commit (55a7da30):
+    the final review's client-render finding (SUMMARY). It was fixed test-first
+    and re-gated (gate:changed on the two paths, then gate:clone on the tip)
+    rather than handed back, because it is inside R1057's own mechanism and a
+    regression against main. gate:changed's minimum commit free on that run was
+    4 180 MB (physical 283 MB), with W12 and W24 live; no abort.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. THE CALCULATOR'S SHARED LINK, the premise. Web Ruling 36's default reads
+    "the server renders the shared link's values into the fields". It does
+    not: the page is static (its own header: reading searchParams moves the
+    canonical out of <head>), so before hydration a shared link shows the
+    DEFAULT form and the link's values arrive on mount. Implemented: per
+    control, touched wins, untouched takes the link. Consequence: a reader who
+    edits a default-looking field on a slow phone then sees the OTHER fields
+    jump to the link's values at hydration, their edit kept. The alternatives
+    are the operator's: (a) keep this; (b) any touch discards the link
+    entirely (an untouched canton then stays empty); (c) render the link on the
+    server (the canonical ruling would have to move).
+Q2. THE CALCULATOR'S BYTES. This change takes about 0.3 KiB of the 1.4 KiB
+    W10b freed (1.1 KiB spare on a4711fa1, without R380; on 5c20d5d4:
+    123.9 KiB, 1.1 KiB spare, unchanged by the follow-up). R380, now on main, adds its own - main's post-round-8 figure is
+    not in the records this session read (WEB-QUEUE-STATE, the rulings) - and
+    W12 needs about 1.3 KiB. 1.4 - 0.3 - R380 - 1.3 may go negative: measured
+    here only for this branch alone. A GATE A change is not
+    this session's (R174's shape); the orchestrator's merge gate measures the
+    union.
+
+====================================================================
+PUSH PROOF
+====================================================================
+- Branch fw-prehydration-sites, base 4d933cec (origin/main at launch).
+- Code commits, in order, each pushed and read back with git ls-remote:
+    a4711fa17e3bd6ad4cf52698c3c1eff282a17b5b  the three islands and the spec
+    55a7da300ff5bff74bf2743c7e71dda9e2a1a808  the report's first version
+    5c20d5d42fadcb71c22fcdb3c85ba280febd688a  the calculator's rendered-state
+                                              comparison and its unit test
+- The report commit is this file's second commit, its parent 5c20d5d4; pushed
+  after it (the hand-back gives its SHA).
+- gate:changed's printed selection (in the commit body):
+    GATE PASSED for the paths changed.
+    gate selection (R132):
+      5 path(s) matched:
+        web/app/(public)/calculateur-lamal-cmu/ComparatorForm.tsx  ->  app/**
+        web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx  ->  app/**
+        web/e2e/prehydration.spec.ts  ->  a spec file, which selects the suite it belongs to (R144)
+        web/e2e/support/hydration.ts  ->  a spec file, which selects the suite it belongs to (R144)
+        web/lib/ui/react/HomeCounter/HomeCounter.tsx  ->  lib/ui/**
+      suites: typecheck, lint, test, build, test:e2e, test:visual, test:late
+      measured: typecheck exit 0; lint exit 0; test 4097 passed; build exit 0;
+                test:e2e 398 passed; test:visual 174 passed; test:late 10 passed
+    STEP_EXIT=0. Lock: ACQUIRED 20:37:24Z commitFree=7277 line=5900;
+    RELEASED 20:52:20Z.
+- gate:clone ALONE on a4711fa1 (run 2): "GATE:CLONE PASSED", commit
+  a4711fa17e3bd6ad4cf52698c3c1eff282a17b5b, claim: "this commit builds and
+  passes register-coverage, fixture-coverage, install, typecheck, lint, test
+  (4097 of 4097 tests passed, 240 files), build, size (21 routes measured),
+  db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files),
+  test:container:write (10 checks passed) from a clean checkout"; exit 0.
+  Lock: ACQUIRED 21:20:28Z commitFree=6609 line=5300; RELEASED 21:37:36Z.
+- gate:changed on 5c20d5d4's paths (in its commit body):
+    GATE PASSED for the paths changed.
+    gate selection (R132):
+      1 path(s) matched:
+        web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx  ->  app/**
+      suites: typecheck, lint, test, build, test:e2e, test:visual, test:late
+      measured: typecheck exit 0; lint exit 0; test 4099 passed; build exit 0;
+                test:e2e 398 passed; test:visual 174 passed; test:late 10 passed
+    STEP_EXIT=0. Lock: ACQUIRED 22:21:13Z commitFree=7552 line=5900;
+    RELEASED 22:37:10Z. "photographed: 55a7da30 plus 2 uncommitted path(s)".
+    (The new unit file matched no rule of its own; it is in the base chain's
+    test run, 4 099 = 4 097 + its 2.)
+- gate:clone ALONE on 5c20d5d4: "GATE:CLONE PASSED", commit
+  5c20d5d42fadcb71c22fcdb3c85ba280febd688a, claim: "this commit builds and
+  passes register-coverage, fixture-coverage, install, typecheck, lint, test
+  (4099 of 4099 tests passed, 241 files), build, size (21 routes measured),
+  db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files),
+  test:container:write (10 checks passed) from a clean checkout"; exit 0.
+  Lock: ACQUIRED 22:38:45Z commitFree=7477 line=5300; RELEASED 22:54:47Z;
+  sampler minimum 5 905 MB commit / 901 MB physical.
+- Cleanup, done before this report was committed: scratch database
+  monreleve_w21 dropped twice (it was recreated for the follow-up's gate;
+  gate:clone's own monreleve_gate_clone_* were already gone; monreleve_* left:
+  fw_web_account_2, w24, web_orch - not mine); web/.env removed (twice, same
+  reason); image monreleve:write removed by exact name twice - the tags
+  gate:clone's test:container:write built at 21:35:55Z and 22:53:16Z, each
+  inside this session's lock window. The shared Playwright image and the
+  visual node_modules volume are kept (not this session's). All three dev
+  servers were stopped by PID tree; 3781 and 3782 read free (netstat
+  LISTENING, empty, with 5436 seen listening as the control earlier). The
+  session lock is removed after this report is pushed, last.
+
+END OF REPORT-FW-PREHYDRATION-SITES

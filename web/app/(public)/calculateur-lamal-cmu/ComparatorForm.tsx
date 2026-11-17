@@ -47,7 +47,7 @@
 
 'use client';
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useLayoutEffect, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { comparatorCalculated } from '@/lib/analytics/events';
 import { track } from '@/lib/analytics/track';
@@ -135,6 +135,44 @@ export function ComparatorForm() {
   const [errors, setErrors] = useState<Errors>(NO_ERRORS);
   const [view, setView] = useState<View | null>(null);
   const [shift, setShift] = useState(0);
+
+  /**
+   * WHAT WAS TYPED BEFORE THE ISLAND HYDRATED (FW-PREHYDRATION-SITES, R1057;
+   * DeadlineHelper's R1042, the same mechanism). The income, the first birth
+   * year and the first accident box are in the server's HTML, so a reader on
+   * a slow phone can fill them before the scripts arrive. Hydration never
+   * writes a field's value and the state starts from its initializer, so the
+   * first re-render (Comparer) wrote the empty state back over what was
+   * typed. Read once, on mount, in a layout effect: it runs in the hydration
+   * commit's own task, so nothing can be typed between the commit and the
+   * read, and from then on every change comes through onChange. An untouched
+   * form gives back the values the state already holds, which renders
+   * nothing, so it renders exactly as before.
+   */
+  const incomeField = useRef<HTMLInputElement>(null);
+  const birthYearField = useRef<HTMLInputElement>(null);
+  const accidentField = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    if (incomeField.current !== null) setIncome(incomeField.current.value);
+
+    const birthYear = birthYearField.current?.value;
+    const withAccident = accidentField.current?.checked;
+
+    setPersons((current) => {
+      const [first, ...rest] = current;
+
+      if (first === undefined) return current;
+
+      const read = {
+        ...first,
+        birthYear: birthYear ?? first.birthYear,
+        withAccident: withAccident ?? first.withAccident,
+      };
+
+      return read.birthYear === first.birthYear && read.withAccident === first.withAccident ? current : [read, ...rest];
+    });
+  }, []);
 
   const update = (key: number, change: Partial<PersonDraft>): void =>
     setPersons((current) => current.map((person) => (person.key === key ? { ...person, ...change } : person)));
@@ -305,6 +343,7 @@ export function ComparatorForm() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
+                  ref={incomeField}
                   value={income}
                   onChange={(event) => setIncome(event.target.value)}
                 />
@@ -424,6 +463,7 @@ export function ComparatorForm() {
                         inputMode="numeric"
                         autoComplete="off"
                         maxLength={4}
+                        ref={index === 0 ? birthYearField : undefined}
                         value={person.birthYear}
                         onChange={(event) => update(person.key, { birthYear: event.target.value })}
                       />
@@ -435,6 +475,7 @@ export function ComparatorForm() {
                       id={accidentId}
                       className={styles.checkbox}
                       type="checkbox"
+                      ref={index === 0 ? accidentField : undefined}
                       checked={person.withAccident}
                       onChange={(event) => update(person.key, { withAccident: event.target.checked })}
                       {...(index === 0 ? { 'aria-describedby': `${accidentId}-pourquoi` } : {})}

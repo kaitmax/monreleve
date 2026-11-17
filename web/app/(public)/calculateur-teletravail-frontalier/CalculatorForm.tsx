@@ -35,7 +35,7 @@
 
 'use client';
 
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import {
   type Canton,
@@ -291,6 +291,87 @@ function stateFrom(input: TeleworkInput): FormState {
 }
 
 /**
+ * WHAT THE READER CHANGED BEFORE THE ISLAND HYDRATED, as an update to apply.
+ * FW-PREHYDRATION-SITES, R1057.
+ *
+ * The canton, the rate, the telework days, the missions answer and the rhythm
+ * chips are in the server's HTML, so a reader on a slow phone can use them
+ * before the scripts arrive. Hydration never writes a field's value, and the
+ * state starts from INITIAL, so without this the screen showed what was typed
+ * while the result was computed from the defaults, and the next keystroke put
+ * the defaults back.
+ *
+ * ONLY WHAT WAS CHANGED, judged per control against `rendered` - the state the
+ * first render put into the controls. The page is static, so the server renders
+ * the DEFAULTS even for a shared link, whose values arrive on mount: a control
+ * still holding what was rendered was not touched and takes the link's value,
+ * and a control the reader changed keeps the change (Web Ruling 36). With no
+ * link the two readings are the same thing.
+ *
+ * AGAINST THE RENDERED STATE, NOT THE DOM's default attributes: those exist only
+ * on the server's HTML. On a client render (an in-site navigation) React sets a
+ * select's `selected` property and never `defaultSelected`, so judging by the
+ * attributes read every control as changed and put the defaults back over the
+ * link (tests/unit/pages/calculateur-link-mount.test.tsx).
+ *
+ * The mission-day fields and the advanced section are not rendered until the
+ * state asks for them, so they cannot have been typed into before hydration.
+ */
+function typedBefore(form: HTMLFormElement, rendered: FormState): (state: FormState) => FormState {
+  const changes: ((state: FormState) => FormState)[] = [];
+
+  for (const control of Array.from(form.elements)) {
+    if (control instanceof HTMLSelectElement) {
+      const canton = control.value as Canton | '';
+
+      if (control.name === 'canton' && canton !== rendered.canton) {
+        changes.push((state) => ({ ...state, canton }));
+      }
+    } else if (control instanceof HTMLInputElement) {
+      const { name, value } = control;
+
+      if (name === 'taux' && value !== rendered.employmentRate) {
+        changes.push((state) => ({ ...state, employmentRate: value }));
+      }
+
+      if (name === 'tt' && value !== rendered.teleworkDays) {
+        changes.push((state) => ({ ...state, teleworkDays: value }));
+      }
+
+      // The radio switched ON is the answer. "Non" resets the mission days, as
+      // the control's onChange does.
+      const yes = value === COPY.missions.yes;
+
+      if (name === 'missions' && control.checked && yes !== rendered.hasMissions) {
+        changes.push((state) => ({
+          ...state,
+          hasMissions: yes,
+          missionDaysFrance: yes ? state.missionDaysFrance : NO_DAYS,
+          missionDaysThirdState: yes ? state.missionDaysThirdState : NO_DAYS,
+        }));
+      }
+
+      const weekday = WEEKDAYS_IN_ORDER.find((day) => RHYTHM_DAY_CODES[day] === value);
+      const { checked } = control;
+
+      if (name === 'rythme' && weekday !== undefined && checked !== (rendered.rhythm[weekday] === 'HOME')) {
+        changes.push((state) => {
+          const rhythm = { ...state.rhythm };
+
+          if (checked) rhythm[weekday] = 'HOME';
+          else delete rhythm[weekday];
+
+          return { ...state, rhythm };
+        });
+      }
+    }
+  }
+
+  // No change gives back the same state, so an untouched form renders nothing.
+  return (state) => changes.reduce((next, change) => change(next), state);
+}
+
+/**
  * Which field an error belongs to, or null for one that belongs to no control.
  *
  * EXHAUSTIVE OVER THE UNION, ending in a `never` assignment, so a new
@@ -403,16 +484,31 @@ export function CalculatorForm({
    * ONCE, NOT ON EVERY CHANGE. The URL is where the reader STARTED; from
    * mount onwards the form is the truth and the URL follows it (increment
    * 4). An effect that re-read the location would fight its own writes.
+   *
+   * AND WHAT WAS TYPED BEFORE HYDRATION GOES ON TOP OF IT (R1057, see
+   * typedBefore): the link seeds the state, then every control the reader
+   * changed overrides its own field. A LAYOUT effect, so the read and the
+   * seed happen in the hydration commit's own task: nothing can be typed
+   * between the commit and the read, and nothing typed after it can be
+   * overwritten by a seed that runs later.
    */
   const [link, setLink] = useState<{
     readonly ignored: readonly string[];
     readonly invalid: readonly string[];
   }>({ ignored: [], invalid: [] });
 
-  useEffect(() => {
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useLayoutEffect(() => {
+    // `state` is the first render's here: the effect runs once, on mount.
+    const typed = formRef.current === null ? (current: FormState) => current : typedBefore(formRef.current, state);
     const query = window.location.search;
 
-    if (query === '' || query === '?') return;
+    if (query === '' || query === '?') {
+      setState(typed);
+
+      return;
+    }
 
     const decoded = decode(new URLSearchParams(query), taxYear);
 
@@ -420,8 +516,9 @@ export function CalculatorForm({
 
     // SEPARATELY FROM THE INPUT, because a rhythm is not part of it: a
     // link may carry a rhythm and no scenario, or a scenario and no
-    // rhythm, and stateFrom only knows about the engine fields.
-    setState((current) => ({ ...current, rhythm: decoded.rhythm }));
+    // rhythm, and stateFrom only knows about the engine fields. The typed
+    // controls go last, so a field the reader changed wins (R1057).
+    setState((current) => typed({ ...current, rhythm: decoded.rhythm }));
 
     // THE SAME FILTER THE RESULT PAGE USES (R206, R267). `missions` is a
     // control of this very form, so naming it as a param the calculator
@@ -992,7 +1089,7 @@ export function CalculatorForm({
         row, provisional notice, result (R137, page-section-order.test.tsx).
       */}
       <div className={styles.formColumn}>
-      <form method="get" action={RESULT_PATH} onSubmit={onSubmit}>
+      <form method="get" action={RESULT_PATH} onSubmit={onSubmit} ref={formRef}>
         <fieldset className={styles.card}>
           <legend className={styles.legend}>{COPY.legend}</legend>
 
