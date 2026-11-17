@@ -47,6 +47,8 @@ import { join } from 'node:path';
 // count patterns and the thing that makes them readable belong together.
 import { stripAnsi } from './gate-selection.mjs';
 import { renderVerdict } from './container-render-verdict.mjs';
+// FW-DB-STOPPED (R945-R947): the step run after this harness's own teardown.
+import { runDatabaseStoppedPhase } from './container-db-stopped.mjs';
 
 const PORT = process.env.FRONTALIER_PORT ?? '3100';
 const IMAGE = process.env.CONTAINER_IMAGE ?? 'monreleve:e2e';
@@ -354,6 +356,10 @@ function vitestPass(slug, files, verificationOrigin) {
 
 let failure = null;
 
+// Whether IMAGE was built by this run, so the database-stopped step below has
+// an image to run. Set once, after the build and nowhere else.
+let imageBuilt = false;
+
 try {
   await assertPortFree();
   removeContainer();
@@ -426,6 +432,8 @@ try {
     // impatient harness.
     timeout: 2_400_000,
   });
+
+  imageBuilt = true;
 
   console.log(`\n--- starting ${IMAGE} on ${PORT} ---`);
   startContainer(origin);
@@ -688,6 +696,39 @@ try {
   }
 
   rmSync(reportDir, { recursive: true, force: true });
+}
+
+// ============================================================================
+// FW-DB-STOPPED (R945-R947): THE PUBLIC SITE, WITH THE DATABASE STOPPED
+// ============================================================================
+//
+// Plan Checkpoint D item 5's second half, against the image built above. It
+// lives in its own module, scripts/container-db-stopped.mjs, because it needs
+// what this harness must never have: a database it OWNS and may stop. The
+// compose server above holds other worktrees' scratch databases, and its
+// container names here are fixed; the step brings its own Postgres, its own
+// network and its own unique names, and removes only what it created.
+//
+// AFTER THE TEARDOWN, ON THE SAME PORT, and whenever the image exists - even
+// when a step above is already red. A first-failure-wins harness would
+// otherwise answer "did the public site survive the stop?" only on green runs,
+// and a page made to read the database can redden an e2e spec too (its
+// metadata leaves <head> once it renders per request), which would hide the
+// step that names it. Its refusals join the last line.
+if (imageBuilt) {
+  const phase = await runDatabaseStoppedPhase({
+    image: IMAGE,
+    port: PORT,
+    pgPort: process.env.CONTAINER_DB_STOPPED_PG_PORT,
+  });
+
+  if (phase.failure !== null) {
+    const said = `the database-stopped step (R946): ${phase.failure}`;
+
+    failure = failure === null ? said : `${failure}; and ${said}`;
+  }
+} else {
+  console.log('\n--- the database-stopped step (R946) did not run: this run built no image ---');
 }
 
 if (failure !== null) {

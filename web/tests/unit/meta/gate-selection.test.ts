@@ -419,14 +419,15 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the twenty-seven names R132 now carries', () => {
+  it('is exactly the twenty-eight names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
     // R246 ADDED TWO, and this census is how they were noticed as a
     // deliberate act rather than absorbed: middleware.ts and next.config.ts
     // are invoked by Next, reachable from no import, and until FW28 matched
-    // by nothing at all. R936 added the container PDF step's rule.
+    // by nothing at all. R936 added the container PDF step's rule, and R947
+    // the database-stopped step's.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
       '**/*.module.scss',
       'a baseline, which is the record test:visual compares against (R144)',
@@ -449,6 +450,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
       'the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db imports)',
+      'the database-stopped step of the container e2e suite: the module that runs it and the verdict it reads (R947)',
       'the production write, and the client whose defect it catches (R256)',
       'the restore probe, which defines that suite (R247)',
       'the scheduler probe, which defines that suite (R247)',
@@ -1156,5 +1158,55 @@ describe("R990: what the container PDF step renders and reads selects it (R267's
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('R947: the database-stopped step selects the suite that runs it', () => {
+  // FW-DB-STOPPED. Plan Checkpoint D item 5's second half - the public site
+  // keeps serving with the database stopped - is measured against the image
+  // by scripts/container-db-stopped.mjs, which scripts/container-e2e.mjs runs
+  // after its own teardown, and judged by container-db-stopped-verdict.mjs.
+  //
+  // A MODULE OF test:container:e2e, NOT A SUITE OF ITS OWN. A new script in
+  // package.json selects EVERY suite on the commit that adds it (R414); this
+  // keeps the claim in the suite that already builds and serves the image.
+  // So the rule's claim - "this file decides what test:container:e2e does" -
+  // is only true while the harness runs the step, and that is asserted below
+  // rather than assumed (R154).
+  const STEP = 'scripts/container-db-stopped.mjs';
+  const VERDICT = 'scripts/container-db-stopped-verdict.mjs';
+
+  it.each([
+    ['the module that starts its own database, stops it and reads every answer', STEP],
+    ['the verdict that decides what those answers mean', VERDICT],
+  ])('selects test:container:e2e for %s', (_label, path) => {
+    expect(suitesFor([`web/${path}`])).toContain('test:container:e2e');
+  });
+
+  it('selects nothing else: the step needs no browser run and no test:db', () => {
+    // NARROW BY DESIGN (R251's argument): a gate that grows a test:db or a
+    // visual run for a harness edit is a gate people route around.
+    for (const path of [STEP, VERDICT]) {
+      expect(suitesFor([`web/${path}`]), path).toEqual([...BASE_SUITES, 'test:container:e2e']);
+    }
+  });
+
+  it('is run by the harness, so the rule maps a file to a suite that really runs it (R154)', () => {
+    // PRESENCE OF THE CALL, NOT ONLY THE FILE. Delete the call and the step
+    // stops running while this rule keeps "covering" it - a selector claim
+    // that no gate would contradict.
+    const harness = readFileSync(join(PACKAGE_ROOT, 'scripts', 'container-e2e.mjs'), 'utf8');
+
+    expect(harness).toMatch(/import \{ runDatabaseStoppedPhase \} from '\.\/container-db-stopped\.mjs';/u);
+    expect(harness).toMatch(/await runDatabaseStoppedPhase\(\{/u);
+  });
+
+  it('leaves the container PDF closure alone: neither module is something the PDF renders through', () => {
+    // W3d's 18-path census (R990) pins the closure exactly; this names the
+    // two files so a later import cannot quietly fold them into it.
+    const closure = containerPdfClosure(PACKAGE_ROOT);
+
+    expect(closure.has(STEP)).toBe(false);
+    expect(closure.has(VERDICT)).toBe(false);
   });
 });
