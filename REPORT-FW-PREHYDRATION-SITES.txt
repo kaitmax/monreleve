@@ -26,30 +26,43 @@ SUMMARY
   the fields even for a shared link (curl of ?canton=GE&tt=84&mfr=24&decompte=dj
   on pnpm dev: <option value="" selected="">, name="tt" value="0"). Reading the
   field wholesale would blank every untouched link. So the read is PER CONTROL:
-  a control whose value differs from what the server rendered into it
-  (defaultValue / defaultChecked / defaultSelected) was touched and wins; every
-  other control takes the link's value. Both of Web Ruling 36's cases hold, and
-  a plant of the wholesale reading (PLANT A) turns both shared-link cases RED.
-  QUESTION 1.
+  a control whose value differs from the state the first render put into it
+  was touched and wins; every other control takes the link's value. Both of
+  Web Ruling 36's cases hold, and a plant of the wholesale reading (PLANT A,
+  PLANT A2) turns both shared-link cases RED. QUESTION 1.
+- TWO CODE COMMITS. a4711fa1 judged "touched" by the DOM's default attributes
+  (defaultSelected and the like). The final review found that on a CLIENT render
+  (an in-site navigation, no server HTML) React never sets defaultSelected, so
+  every control read as changed and a shared link lost its canton - a
+  regression against main on that path. RED first
+  (tests/unit/pages/calculateur-link-mount.test.tsx: canton '' for 'GE'), then
+  5c20d5d4 compares each control with the first render's state instead. No
+  production page reaches the calculator with a query by soft navigation today
+  (the result page's back link is a plain <a>), but the rule now holds on both
+  paths.
 - R1059: HomeCounter's mount read removed -> its held test RED (label 62 for
   72); restored by file copy, hash verified, test GREEN again.
-- gate:changed: PASSED on the uncommitted five paths, committed unchanged as
-  a4711fa1: typecheck 0, lint 0, test 4 097, build 0, test:e2e 398 (388 + the
-  10 new), test:visual 174, test:late 10.
-- gate:clone ALONE on a4711fa1: PASSED, exit 0, on its second run. The first
-  run (21:07-21:18Z) failed only HomeCounter's R711 sweep by its 300 000 ms
-  timeout (Web Ruling 34; rule 7: re-run once): NO RESULT, see UNNUMBERED-5.
+- gate:changed, per code commit, each on the uncommitted paths and committed
+  unchanged: a4711fa1 (5 paths) typecheck 0, lint 0, test 4 097, build 0,
+  test:e2e 398 (388 + the 10 new), test:visual 174, test:late 10;
+  5c20d5d4 (CalculatorForm + the new unit file) test 4 099, e2e 398, visual
+  174, late 10, typecheck/lint/build 0.
+- gate:clone ALONE: on a4711fa1 PASSED on its second run (the first failed
+  only the R711 sweep timeout: NO RESULT, UNNUMBERED-5); on the tip 5c20d5d4:
+  PASSED, exit 0, first run (test 4 099 of 4 099,
+  241 files; size 21 routes; test:db 816 of 843; test:container:write 10).
 
 ====================================================================
 STATUS (R391)
 ====================================================================
-STATUS: COMPLETE. gate:changed GREEN (exit 0) on the five paths, committed
-unchanged as a4711fa1 (committed blobs hash-verified against the gated files),
-and gate:clone ALONE GREEN (exit 0) on a4711fa1, both run in this session. The
-report commit on top adds only this file and was not gated. Pending merge:
-the orchestrator merges. Main has since moved to 3111fc0f (round 8: R380 and
-W23); git merge-tree a4711fa1 x origin/main 3111fc0f is CLEAN, but the merged
-tree is not gated here.
+STATUS: COMPLETE. On the code tip 5c20d5d4: gate:changed GREEN (exit 0) on
+its two paths, committed unchanged (committed blob hash-verified), and
+gate:clone ALONE GREEN (exit 0) on 5c20d5d4, both run in this session. The
+first code commit a4711fa1 had its own gate:changed GREEN and gate:clone
+GREEN. The report commits add only this file and were not gated. Pending
+merge: the orchestrator merges. Main has moved to 3111fc0f (round 8: R380 and
+W23); git merge-tree against it is CLEAN, but the merged tree is not gated
+here.
 
 ====================================================================
 R1056 - THE RED FIRST
@@ -119,12 +132,13 @@ HomeCounter.tsx (lib/ui/react/HomeCounter):
   two refs and one useLayoutEffect reading both sliders. The header's "holds
   no effect" sentence is corrected (no test guarded it; grep).
 CalculatorForm.tsx (app/(public)/calculateur-teletravail-frontalier):
-  - a module function typedBefore(form) returning an updater: for each control
-    of the form that differs from what the server rendered into it - the
-    canton select (selected option not defaultSelected), taux and tt
-    (value !== defaultValue), the missions radio switched on (hasMissions,
-    with "Non" resetting the mission days as its onChange does), each rhythm
-    chip (checked !== defaultChecked). No change returns the same state.
+  - a module function typedBefore(form, rendered) returning an updater: for
+    each control whose value differs from `rendered` - the state the first
+    render put into the controls (the effect's own closure; it runs once) -
+    the canton select, taux and tt, the missions radio switched on
+    (hasMissions, with "Non" resetting the mission days as its onChange does),
+    each rhythm chip. No change returns the same state. (a4711fa1 compared
+    with defaultValue/defaultChecked/defaultSelected instead; see SUMMARY.)
   - ONE ref on the <form>.
   - THE ORDERING: the URL effect becomes a useLayoutEffect. No query: it
     applies the typed update. A query: stateFrom(link) as before, then
@@ -150,6 +164,16 @@ PLANT A (the wholesale reading the prompt's premise implies - every control
   untouched held: #canton Expected "GE" Received "" ; untouched as loaded:
   the same; edited held: the same; edited as loaded: #jours-teletravail
   Expected "84" Received "0". Restored by copy, sha256 a1605f9d... verified.
+PLANT A2, the same on the final code (5c20d5d4's comparisons on canton, taux
+  and tt replaced by `true`; 3 markers, 0 originals left;
+  .w21-evidence/plant-a2.log): the same four tests RED for the same reasons.
+  Restored by copy (sha256 e842ee15... = the committed blob), shared-link tests
+  4/4 again (plant-a2-restored.log).
+THE CLIENT-RENDER CASE (tests/unit/pages/calculateur-link-mount.test.tsx,
+  jsdom, render() with ?canton=GE&tt=84&mfr=24&decompte=dj&rythme=ma in the
+  location): RED on a4711fa1 "expected '' to be 'GE'"; GREEN on 5c20d5d4
+  (canton GE, days 84, mission days 24, the Tuesday chip checked; with no link,
+  the defaults).
 
 No copy, visual or dependency change; no figure or rule changes.
 
@@ -157,7 +181,14 @@ No copy, visual or dependency change; no figure or rule changes.
 R1058 - GREEN UNDER THE PLANT AND NORMALLY
 ====================================================================
 - pnpm dev: 10/10 (.w21-evidence/green-run.log, 38.3 s); five repeats with 4
-  workers: 50/50 (green-repeat5.log, 1.9 m).
+  workers: 50/50 (green-repeat5.log, 1.9 m); on the final code three repeats
+  with 4 workers: 30/30 (green-run-2.log).
+- THE PLANT ON THE PRODUCTION BUILD (gate:changed's e2e, next start on 3782),
+  the [R1056] lines of a4711fa1's run: comparator held 8 scripts 883-885 ms
+  (webpack-*, 07a4fdd4-*, 5355-*, main-app-*, app/(public)/layout-*, 3749-*,
+  9086-*, app/(public)/calculateur-lamal-cmu/page-*); home counter 9 scripts
+  477-486 ms; calculator 12 scripts 630-636 ms; untouched link 12 scripts
+  420-435 ms; edited link 12 scripts 564-573 ms. All ten tests passed there.
 - e2e/comparateur.spec.ts on dev: 4/4. e2e/calculateur.spec.ts on dev: 28
   passed, 3 failed - the three canonical tests, which need a configured site
   origin (canonicalsAvailable) that pnpm dev here does not have; the head is
@@ -225,16 +256,16 @@ N3. The port block 3700-3799 named in the launch message is also the one in
     W16's live session lock (C:/wt/fw-wt-cleanup/.session-lock.json). Ports
     3781/3782 were each probed free (netstat LISTENING, with 5436 as the
     known-open control) before use.
-N4. origin/fw-canton-required (cd0defde) sits on an old base (merge-base
-    98099448); the merge-tree probe against it is CLEAN, but R380 will be
-    re-cut on a newer main. Its onSubmit's `state.canton === ''` now also sees a
-    canton chosen before hydration.
+N4. R380 (fw-canton-required cd0defde) merged into main in round 8 (b844ddb7)
+    while this session ran. git merge-tree of this branch against origin/main
+    3111fc0f is CLEAN; the merged tree is not gated here. R380's onSubmit check
+    (`state.canton === ''`) now also sees a canton chosen before hydration.
 
 ====================================================================
 DEVIATIONS
 ====================================================================
-UNNUMBERED-1. The calculator's read is per control against the server's
-    rendered value, not a wholesale read: the prompt's stated premise is false
+UNNUMBERED-1. The calculator's read is per control against the first
+    render's state, not a wholesale read: the prompt's stated premise is false
     (QUESTION 1). Ruling 36's two outcomes are what is implemented and tested.
 UNNUMBERED-2. After the first RED run the comparator's "no error" assertion
     changed from `[role="alert"]` count 0 to `form [aria-invalid="true"]`
@@ -267,6 +298,13 @@ SIZE (gate:clone run 2): /calculateur-teletravail-frontalier 123.9 KiB, GATE A
     (2.7 spare, unchanged at this precision); / 112.3 (12.7 spare; 112.2
     before). See QUESTION 2.
 
+UNNUMBERED-6. A SECOND CODE COMMIT after the report's first commit (55a7da30):
+    the final review's client-render finding (SUMMARY). It was fixed test-first
+    and re-gated (gate:changed on the two paths, then gate:clone on the tip)
+    rather than handed back, because it is inside R1057's own mechanism and a
+    regression against main. gate:changed's minimum commit free on that run was
+    4 180 MB (physical 283 MB), with W12 and W24 live; no abort.
+
 ====================================================================
 QUESTIONS
 ====================================================================
@@ -282,9 +320,11 @@ Q1. THE CALCULATOR'S SHARED LINK, the premise. Web Ruling 36's default reads
     entirely (an untouched canton then stays empty); (c) render the link on the
     server (the canonical ruling would have to move).
 Q2. THE CALCULATOR'S BYTES. This change takes about 0.3 KiB of the 1.4 KiB
-    W10b freed (1.1 KiB spare on a4711fa1, without R380). R380, now on main,
-    adds its own; W12 needs about 1.3 KiB. The three may not all fit under
-    GATE A: measured here only for this branch alone. A GATE A change is not
+    W10b freed (1.1 KiB spare on a4711fa1, without R380; on 5c20d5d4:
+    123.9 KiB, 1.1 KiB spare, unchanged by the follow-up). R380, now on main, adds its own - main's post-round-8 figure is
+    not in the records this session read (WEB-QUEUE-STATE, the rulings) - and
+    W12 needs about 1.3 KiB. 1.4 - 0.3 - R380 - 1.3 may go negative: measured
+    here only for this branch alone. A GATE A change is not
     this session's (R174's shape); the orchestrator's merge gate measures the
     union.
 
@@ -292,10 +332,13 @@ Q2. THE CALCULATOR'S BYTES. This change takes about 0.3 KiB of the 1.4 KiB
 PUSH PROOF
 ====================================================================
 - Branch fw-prehydration-sites, base 4d933cec (origin/main at launch).
-- Code commit a4711fa17e3bd6ad4cf52698c3c1eff282a17b5b, pushed: git ls-remote
-  origin refs/heads/fw-prehydration-sites read a4711fa1 after the push.
-- The report commit is this file's commit, its parent a4711fa1; pushed after
-  it (the hand-back gives its SHA).
+- Code commits, in order, each pushed and read back with git ls-remote:
+    a4711fa17e3bd6ad4cf52698c3c1eff282a17b5b  the three islands and the spec
+    55a7da300ff5bff74bf2743c7e71dda9e2a1a808  the report's first version
+    5c20d5d42fadcb71c22fcdb3c85ba280febd688a  the calculator's rendered-state
+                                              comparison and its unit test
+- The report commit is this file's second commit, its parent 5c20d5d4; pushed
+  after it (the hand-back gives its SHA).
 - gate:changed's printed selection (in the commit body):
     GATE PASSED for the paths changed.
     gate selection (R132):
@@ -317,14 +360,36 @@ PUSH PROOF
   db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files),
   test:container:write (10 checks passed) from a clean checkout"; exit 0.
   Lock: ACQUIRED 21:20:28Z commitFree=6609 line=5300; RELEASED 21:37:36Z.
+- gate:changed on 5c20d5d4's paths (in its commit body):
+    GATE PASSED for the paths changed.
+    gate selection (R132):
+      1 path(s) matched:
+        web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx  ->  app/**
+      suites: typecheck, lint, test, build, test:e2e, test:visual, test:late
+      measured: typecheck exit 0; lint exit 0; test 4099 passed; build exit 0;
+                test:e2e 398 passed; test:visual 174 passed; test:late 10 passed
+    STEP_EXIT=0. Lock: ACQUIRED 22:21:13Z commitFree=7552 line=5900;
+    RELEASED 22:37:10Z. "photographed: 55a7da30 plus 2 uncommitted path(s)".
+    (The new unit file matched no rule of its own; it is in the base chain's
+    test run, 4 099 = 4 097 + its 2.)
+- gate:clone ALONE on 5c20d5d4: "GATE:CLONE PASSED", commit
+  5c20d5d42fadcb71c22fcdb3c85ba280febd688a, claim: "this commit builds and
+  passes register-coverage, fixture-coverage, install, typecheck, lint, test
+  (4099 of 4099 tests passed, 241 files), build, size (21 routes measured),
+  db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files),
+  test:container:write (10 checks passed) from a clean checkout"; exit 0.
+  Lock: ACQUIRED 22:38:45Z commitFree=7477 line=5300; RELEASED 22:54:47Z;
+  sampler minimum 5 905 MB commit / 901 MB physical.
 - Cleanup, done before this report was committed: scratch database
-  monreleve_w21 dropped (gate:clone's own monreleve_gate_clone_* was already
-  gone; monreleve_* left: fw_web_account_2, w24, web_orch - not mine);
-  web/.env removed; image monreleve:write - the tag gate:clone's
-  test:container:write built at 21:35:55Z inside this session's lock window -
-  removed by exact name. The shared Playwright image and the visual
-  node_modules volume are kept (not this session's). Both dev servers were
-  stopped by PID tree; 3781 read free. The session lock is removed after this
-  report is pushed, last.
+  monreleve_w21 dropped twice (it was recreated for the follow-up's gate;
+  gate:clone's own monreleve_gate_clone_* were already gone; monreleve_* left:
+  fw_web_account_2, w24, web_orch - not mine); web/.env removed (twice, same
+  reason); image monreleve:write removed by exact name twice - the tags
+  gate:clone's test:container:write built at 21:35:55Z and 22:53:16Z, each
+  inside this session's lock window. The shared Playwright image and the
+  visual node_modules volume are kept (not this session's). All three dev
+  servers were stopped by PID tree; 3781 and 3782 read free (netstat
+  LISTENING, empty, with 5436 seen listening as the control earlier). The
+  session lock is removed after this report is pushed, last.
 
 END OF REPORT-FW-PREHYDRATION-SITES
