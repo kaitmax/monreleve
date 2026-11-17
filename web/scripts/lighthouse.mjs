@@ -50,9 +50,36 @@
 // a hardcoded port and no idea what answered on it - and would have reported a
 // performance score for somebody else's application without a word.
 // ---------------------------------------------------------------------------
+// FW-LIGHTHOUSE-CALC (R951-R953): TWO COLLECTIONS, AND IT RUNS IN A GATE
+//
+// The desktop floor now holds the calculator and the comparator beside the
+// four routes it held (R951). A second collection measures the calculator
+// under Lighthouse's simulated slow 4G and asserts SPEC 21 criterion 8,
+// LCP < 2500 ms, on the median of three runs (R952). Both are preceded by the
+// same identity check (R169) and the same styles check (R177), run on every
+// page each collection measures rather than on / alone. Both always run, and
+// both verdicts are printed before the exit code is decided, so one failure
+// cannot hide the other's numbers.
+//
+// The routes, the stated conditions and the verdicts are in
+// lighthouse-plan.mjs, which a unit test can import; this file is the I/O.
+// gate:changed selects it for this file, its plan, lighthouserc.json and
+// identity.json (R953), and reads the count line it prints last (R133).
+// ---------------------------------------------------------------------------
 
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  DESKTOP_ROUTES,
+  LCP_ROUTE,
+  MOBILE_SETTINGS,
+  countLine,
+  desktopVerdict,
+  lcpVerdict,
+  mobileRc,
+  summarizeRuns,
+} from './lighthouse-plan.mjs';
 
 /**
  * RFC 2606. Reserved, unresolvable, unmistakable for the real domain.
@@ -96,7 +123,11 @@ const TOKEN = '--colour-brand';
 const SERVICE = JSON.parse(readFileSync(new URL('../identity.json', import.meta.url), 'utf8'))
   .service;
 
-const ROUTES = ['/', '/guides', '/guides/teletravail-frontalier-40-pourcent', '/guides/geneve'];
+/**
+ * Where lhci keeps its results: `.lighthouseci` in ITS working directory,
+ * which is this process's, since every lhci run below inherits it.
+ */
+const LHCI_DIR = join(process.cwd(), '.lighthouseci');
 
 const env = {
   ...process.env,
@@ -153,6 +184,8 @@ async function assertOurs() {
         refuse('the server is not this product', `a server identifying as "${body.service}"`);
       }
 
+      console.log(`lighthouse: ${BASE} is ${SERVICE} (R169)`);
+
       return;
     } catch (error) {
       last = error instanceof Error ? error.message : String(error);
@@ -175,9 +208,18 @@ async function assertOurs() {
  *
  * It is the absence-satisfied-by-absence shape that R169's corollary names,
  * arriving in the one tool that measures how fast a page paints.
+ *
+ * EVERY PAGE UNDER MEASUREMENT, NOT THE HOME PAGE FOR ALL OF THEM (R952). It
+ * used to fetch / alone, which said nothing about the calculator's own CSS
+ * chunks; R177 asks about "the page under test". And it must answer 200 first:
+ * a 404 page is styled too, and would pass everything below (R169's
+ * corollary - presence before absence).
  */
-async function assertStyled() {
-  const response = await fetch(BASE, { cache: 'no-store' });
+async function assertStyled(route) {
+  const response = await fetch(`${BASE}${route}`, { cache: 'no-store' });
+
+  if (!response.ok) refuse('a page to be measured did not answer', `HTTP ${response.status} for ${route}`);
+
   const html = await response.text();
 
   const hrefs = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map(
@@ -219,9 +261,47 @@ async function assertStyled() {
   }
 
   console.log(
-    `lighthouse: ${BASE} is ${SERVICE}, ${hrefs.length} stylesheet(s), ` +
-      `${bytes} bytes, ${TOKEN} present`,
+    `lighthouse: ${route} served ${hrefs.length} stylesheet(s), ${bytes} bytes, ${TOKEN} present (R177)`,
   );
+}
+
+/** lhci, with its exit status kept: one collection failing must not hide the other's numbers. */
+function lhci(args) {
+  const result = spawnSync('lhci', args, { stdio: 'inherit', shell: true, env });
+
+  return result.status ?? 1;
+}
+
+/** Every result the last lhci collection saved, in run order. */
+function savedResults() {
+  if (!existsSync(LHCI_DIR)) return [];
+
+  return readdirSync(LHCI_DIR)
+    .filter((name) => /^lhr-\d+\.json$/u.test(name))
+    .sort()
+    .map((name) => JSON.parse(readFileSync(join(LHCI_DIR, name), 'utf8')));
+}
+
+const SHORT = { performance: 'perf', accessibility: 'a11y', 'best-practices': 'bp', seo: 'seo' };
+
+/** Every sample and median, per route (R174: the samples are the evidence). */
+function printSummary(title, lhrs) {
+  console.log('');
+  console.log(`lighthouse: ${title}`);
+
+  for (const route of summarizeRuns(lhrs)) {
+    const parts = Object.entries(route.categories).map(
+      ([id, scores]) => `${SHORT[id] ?? id} ${scores.median} [${scores.samples.join(' ')}]`,
+    );
+
+    if (route.lcp !== null) {
+      parts.push(
+        `LCP ${route.lcp.median.toFixed(1)} ms [${route.lcp.samples.map((value) => value.toFixed(1)).join(' ')}]`,
+      );
+    }
+
+    console.log(`  ${route.url.slice(BASE.length) || '/'}  (${route.runs} runs)  ${parts.join('  ')}`);
+  }
 }
 
 console.log(`lighthouse: building with NEXT_PUBLIC_SITE_URL=${env.NEXT_PUBLIC_SITE_URL}`);
@@ -285,11 +365,99 @@ process.on('SIGINT', () => {
 });
 
 await assertOurs();
-await assertStyled();
 
+for (const route of new Set([...DESKTOP_ROUTES, LCP_ROUTE])) await assertStyled(route);
+
+// ---------------------------------------------------------------------------
+// 1. THE DESKTOP FLOOR (R152, R174, R951): lighthouserc.json, every route at
+// 100 in all four categories, median of three.
+//
 // The URLs are built from the port rather than read from lighthouserc, for
 // R171's reason: the config's list would be a literal standing in for "the
 // routes on the server this script just started".
-run('lhci', ['autorun', ...ROUTES.map((route) => `--collect.url=${BASE}${route}`)]);
+//
+// The previous run's assertion results are removed first, so a collection
+// that dies before lhci asserts reads as NO RESULT rather than as whatever
+// the last run concluded.
+// ---------------------------------------------------------------------------
+const desktopUrls = DESKTOP_ROUTES.map((route) => `${BASE}${route}`);
+
+rmSync(join(LHCI_DIR, 'assertion-results.json'), { force: true });
+
+const desktopExit = lhci(['autorun', ...desktopUrls.map((url) => `--collect.url=${url}`)]);
+
+printSummary('desktop (lighthouserc.json, preset desktop): median [samples] per route', savedResults());
+
+const assertionFile = join(LHCI_DIR, 'assertion-results.json');
+const assertions = existsSync(assertionFile) ? JSON.parse(readFileSync(assertionFile, 'utf8')) : [];
+let desktop = desktopVerdict(assertions, desktopUrls);
+
+if (desktop.status === 'pass' && desktopExit !== 0) {
+  desktop = { ...desktop, status: 'fail', why: `lhci autorun exited ${desktopExit} although every assertion passed` };
+}
+
+// ---------------------------------------------------------------------------
+// 2. SPEC 21 CRITERION 8 (R952): the calculator under simulated slow 4G, LCP
+// strictly below 2500 ms on the median of three - after the same identity and
+// styles checks as the desktop run.
+//
+// A whole config of its own, passed by RELATIVE path (lhci resolves it from
+// this working directory, and a checkout path may hold a space that a shell
+// would split). lhci reads only that file when --config is given, so nothing
+// of the desktop preset reaches this run; lcpVerdict reads the conditions
+// back from every result to prove it.
+// ---------------------------------------------------------------------------
+await assertOurs();
+await assertStyled(LCP_ROUTE);
+
+const lcpUrl = `${BASE}${LCP_ROUTE}`;
+const mobileConfig = '.lighthouseci/mobile.lighthouserc.json';
+
+mkdirSync(LHCI_DIR, { recursive: true });
+writeFileSync(join(process.cwd(), mobileConfig), `${JSON.stringify(mobileRc(), null, 2)}\n`);
+
+const { throttling } = MOBILE_SETTINGS;
+
+console.log('');
+console.log(
+  `lighthouse: ${LCP_ROUTE}, mobile, simulated slow 4G (rtt ${throttling.rttMs} ms, ` +
+    `${throttling.throughputKbps} kbps, CPU x${throttling.cpuSlowdownMultiplier}), stated in lighthouse-plan.mjs`,
+);
+
+const mobileExit = lhci(['collect', `--config=${mobileConfig}`, `--url=${lcpUrl}`]);
+const mobileResults = savedResults();
+
+printSummary('mobile, simulated slow 4G: median [samples]', mobileResults);
+
+const lcp =
+  mobileExit === 0
+    ? lcpVerdict(mobileResults, lcpUrl)
+    : { status: 'refused', why: `lhci collect exited ${mobileExit}` };
 
 stop();
+
+// ---------------------------------------------------------------------------
+// THE VERDICT, both halves printed before the exit code is decided. `refused`
+// is NO RESULT (R391): the run could not answer, which is neither a pass nor
+// a measured miss.
+// ---------------------------------------------------------------------------
+const label = (status) => (status === 'pass' ? 'PASS' : status === 'fail' ? 'FAIL' : 'NO RESULT');
+const passed = desktop.status === 'pass' && lcp.status === 'pass';
+
+console.log('');
+console.log(`lighthouse: desktop floor (R951)   ${label(desktop.status)} - ${desktop.why}`);
+for (const failure of desktop.failures) console.log(`    ${failure}`);
+console.log(`lighthouse: slow-4G LCP (R952)     ${label(lcp.status)} - ${lcp.why}`);
+
+if (!passed) {
+  console.log('');
+  console.log('LIGHTHOUSE FAILED. A floor it cannot reach is a question with these numbers, never a');
+  console.log('looser gate (R174, R952, R954).');
+}
+
+// THE LAST LINE IS THE ONE THE GATE READS (R133), so the exit waits for it to
+// be written: process.exit() does not wait for a pipe to drain, and a count
+// lost on the way out would read as a suite that printed nothing.
+process.stdout.write(passed ? `${countLine(desktop.passed + 1)}\n` : '\n', () => {
+  process.exit(passed ? 0 : 1);
+});

@@ -335,7 +335,7 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     expect(readCount('test:e2e', '  1 passed\n', undefined).failure).toBeUndefined();
   });
 
-  it('counts exactly the nine suites that report counts', () => {
+  it('counts exactly the ten suites that report counts', () => {
     // R63 again: the assertions above would all still pass if a suite were
     // quietly dropped from the map and began being judged on exit code.
     //
@@ -352,7 +352,13 @@ describe('R133: a suite that reports nothing must not read as a pass', () => {
     // SEVEN SINCE R256. test:container:write makes the only production-write
     // claim in the repository, and a claim nobody counts is the shape that
     // let a 500 on the main use case live for three weeks.
+    //
+    // TEN SINCE R953. `pnpm lighthouse` is selectable now, and it is neither
+    // vitest nor Playwright: it prints its own line once the desktop floor and
+    // the slow-4G LCP have both passed, so a run that measured nothing cannot
+    // read as a pass.
     expect(Object.keys(SUITE_COUNTS).sort()).toEqual([
+      'lighthouse',
       'test',
       'test:container',
       'test:container:restore',
@@ -419,15 +425,15 @@ describe('the database layer selects its own suite (FW14)', () => {
 });
 
 describe('the pattern list is the ruling, stated once', () => {
-  it('is exactly the twenty-eight names R132 now carries', () => {
+  it('is exactly the twenty-nine names R132 now carries', () => {
     // R63's shape: if a pattern were dropped, every table row above that
     // does not use it would still pass. This pins the list itself.
     //
     // R246 ADDED TWO, and this census is how they were noticed as a
     // deliberate act rather than absorbed: middleware.ts and next.config.ts
     // are invoked by Next, reachable from no import, and until FW28 matched
-    // by nothing at all. R936 added the container PDF step's rule, and R947
-    // the database-stopped step's.
+    // by nothing at all. R936 added the container PDF step's rule, R947
+    // the database-stopped step's, and R953 the Lighthouse harness's.
     expect(SELECTOR_PATTERNS.map((pattern) => pattern.label).sort()).toEqual([
       '**/*.module.scss',
       'a baseline, which is the record test:visual compares against (R144)',
@@ -446,6 +452,7 @@ describe('the pattern list is the ruling, stated once', () => {
       'playwright.config.ts, which defines both browser projects (R247)',
       'playwright.runtime.config.ts, which is the runtime project (R247)',
       'pnpm-workspace.yaml and tsconfig.json, which decide whether anything compiles (R416)',
+      'the Lighthouse harness, its plan, its config and the identity it checks, which define that suite (R247, R953)',
       'the container PDF step: its vitest files and what they read, the print page, the export route and what those alone render through (R936, R982, R990)',
       'the container e2e harness, which defines that suite (R247)',
       'the container, and what decides whether it serves (R251)',
@@ -1208,5 +1215,87 @@ describe('R947: the database-stopped step selects the suite that runs it', () =>
 
     expect(closure.has(STEP)).toBe(false);
     expect(closure.has(VERDICT)).toBe(false);
+  });
+});
+
+describe('R953: `pnpm lighthouse` runs in a gate, selected by the files that decide what it does', () => {
+  // FW-LIGHTHOUSE-CALC. Before this rule `lighthouse` was in NO gate: absent
+  // from EVERY_SUITE, matched by no pattern, named by gate:clone only in the
+  // list of steps it cannot run, and lighthouserc.json was ROOT_TOOL_CONFIGS'
+  // second argued null - "configures `pnpm lighthouse`, which no gate, no
+  // gate:clone step and no CI workflow runs". So R152's floor, R174's median
+  // and R177's styles check held only when somebody chose to run them
+  // (docs/audit-adversarial.md, PARK30-23).
+  //
+  // R247'S SHAPE, which is where the selector's own rules put it: the harness,
+  // the module holding its routes, conditions and verdicts, its config, and
+  // identity.json - which the harness reads for the service it refuses to
+  // measure without and for the origin it builds with - select the suite.
+  //
+  // NOT HERE, AND RECORDED AS A QUESTION RATHER THAN DECIDED (R947's
+  // precedent): the PAGES it measures. A page edit that pushed the
+  // calculator's slow-4G LCP over 2.5 s is the defect R952 exists to catch,
+  // and app/** selects e2e and visual, not this. Widening it is a production
+  // build and 21 Chrome runs on every page edit, against a sampled number that
+  // sits close to its line - a cost call for the operator, not for this task.
+  const FILES = ['lighthouserc.json', 'identity.json', 'scripts/lighthouse.mjs', 'scripts/lighthouse-plan.mjs'];
+  const LABEL =
+    'the Lighthouse harness, its plan, its config and the identity it checks, which define that suite (R247, R953)';
+
+  it.each(FILES)('selects lighthouse for %s', (path) => {
+    expect(suitesFor([`web/${path}`])).toContain('lighthouse');
+  });
+
+  it('selects nothing else for the harness, its plan and its config: no browser suite, no database', () => {
+    for (const path of ['lighthouserc.json', 'scripts/lighthouse.mjs', 'scripts/lighthouse-plan.mjs']) {
+      expect(suitesFor([`web/${path}`]), path).toEqual([...BASE_SUITES, 'lighthouse']);
+    }
+  });
+
+  it('keeps identity.json on the unit test that asserts it: a union, not a move (R234)', () => {
+    const { suites, matched } = selectSuites(['web/identity.json']);
+
+    expect(suites).toEqual([...BASE_SUITES, 'lighthouse']);
+    expect(matched.map((hit) => hit.pattern)).toEqual([
+      'identity.json, which a unit test asserts (R416)',
+      LABEL,
+    ]);
+  });
+
+  it('is a suite the dependency files select, like every other (R414)', () => {
+    expect(EVERY_SUITE).toContain('lighthouse');
+    expect(suitesFor(['web/package.json'])).toContain('lighthouse');
+    expect(suitesFor(['web/pnpm-lock.yaml'])).toContain('lighthouse');
+  });
+
+  it('is run by gate:changed under the name it is selected by (R154)', () => {
+    // gate-for-changes.mjs runs `pnpm ${suite}` for each selected suite, so
+    // the suite's name has to BE the script that measures.
+    const scripts = (
+      JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')) as {
+        scripts: Record<string, string>;
+      }
+    ).scripts;
+
+    expect(scripts.lighthouse).toBe('node scripts/lighthouse.mjs');
+  });
+
+  it('names files the harness really reads, so the rule maps a file to a suite it decides (R154)', () => {
+    // lighthouserc.json needs no line here: the desktop autorun passes no
+    // --config, so lhci reads it from its working directory by name.
+    const harness = readFileSync(join(PACKAGE_ROOT, 'scripts', 'lighthouse.mjs'), 'utf8');
+
+    expect(harness).toMatch(/from '\.\/lighthouse-plan\.mjs';/u);
+    expect(harness).toContain("'../identity.json'");
+  });
+
+  it('does NOT select it for the pages it measures: that widening is recorded, not decided', () => {
+    for (const path of [
+      'app/(public)/calculateur-teletravail-frontalier/page.tsx',
+      'app/(public)/calculateur-lamal-cmu/page.tsx',
+      'lib/ui/core/styles/tokens.scss',
+    ]) {
+      expect(suitesFor([`web/${path}`]), path).not.toContain('lighthouse');
+    }
   });
 });

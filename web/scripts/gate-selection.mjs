@@ -81,6 +81,11 @@ export const SUITE_COUNTS = Object.freeze({
   // FW31/R256. A suite that reports nothing must not read as a pass, and this
   // one makes the only production-write claim in the repository.
   'test:container:write': /Production write checks {2}(\d+) passed/,
+  // R953. scripts/lighthouse.mjs is neither vitest nor Playwright, so it
+  // prints its own line - lighthouse-plan.mjs's countLine - once every desktop
+  // assertion and the slow-4G LCP verdict have passed. lhci's "All results
+  // processed!" would also print for a run that asserted nothing.
+  lighthouse: /Lighthouse checks {2}(\d+) passed/,
 });
 
 /**
@@ -738,6 +743,11 @@ export const EVERY_SUITE = Object.freeze([
   // config whose suite cannot be selected is the hole R247 is about. It runs
   // in `pnpm gate` and in gate:clone already; it simply could not be CHOSEN.
   'parity:check',
+  // R953 (FW-LIGHTHOUSE-CALC). It ran in no gate at all until it was made
+  // selectable: R152's floor and SPEC 21's slow-4G LCP held only when a
+  // person chose to run them. A dependency bump can move a Lighthouse score
+  // as easily as anything else, which is R414's whole argument.
+  'lighthouse',
 ]);
 
 export const ROOT_TOOL_CONFIGS = Object.freeze({
@@ -809,18 +819,19 @@ export const ROOT_TOOL_CONFIGS = Object.freeze({
   // configures nothing that is run. The answer is a suite (R251).
   'tsconfig.parity.json': ['parity:check'],
 
-  // READ BY tests/unit/content/identity.test.ts, which is in `test`. Also by
-  // scripts/lighthouse.mjs, which no gate runs - so `test` is the whole
-  // obligation rather than a partial one.
-  'identity.json': ['test'],
+  // READ BY tests/unit/content/identity.test.ts, which is in `test`, AND BY
+  // scripts/lighthouse.mjs, for the service it refuses to measure without
+  // (R169, R174) and the origin it builds with. This used to say "which no
+  // gate runs - so `test` is the whole obligation"; R953 made lighthouse a
+  // selectable suite, so the obligation is both.
+  'identity.json': ['test', 'lighthouse'],
 
-  // NULL, AND THE CLAIM IS CHECKED RATHER THAN ASSUMED. It configures
-  // `pnpm lighthouse`, and lighthouse appears in no gate, no gate:clone step
-  // and no CI workflow - it is run by a person, deliberately (R174 runs it
-  // three times and asserts a median, which is not a thing a gate does).
-  // So it configures no suite that is RUN, which is exactly what null means
-  // here. If lighthouse ever joins a gate, this entry is where that shows.
-  'lighthouserc.json': null,
+  // NULL UNTIL R953, AND THIS IS WHERE IT SHOWS, as the old entry said it
+  // would. It was null because lighthouse ran in no gate, no gate:clone step
+  // and no CI workflow, so it configured no suite that was RUN. lighthouse is
+  // selectable now, so this is R247's ordinary obligation: change the desktop
+  // floor's config and the floor is measured.
+  'lighthouserc.json': ['lighthouse'],
 });
 
 /** Extensions Next will route to. */
@@ -1348,6 +1359,37 @@ export const SELECTOR_PATTERNS = Object.freeze([
     label: 'the production write, and the client whose defect it catches (R256)',
     suites: Object.freeze(['test:container:write']),
     matches: (path) => path === 'scripts/container-write.mjs' || path === 'lib/db/client.ts',
+  },
+  {
+    // FW-LIGHTHOUSE-CALC (R953). `pnpm lighthouse` ran in NO gate: it was in
+    // no pattern and not in EVERY_SUITE, gate-clone.mjs names it among the
+    // steps a clone cannot run, and lighthouserc.json was ROOT_TOOL_CONFIGS'
+    // argued null. So R152's floor, R174's median, R177's styles check and,
+    // since R952, SPEC 21's slow-4G LCP on the calculator held only when a
+    // person chose to measure them (docs/audit-adversarial.md, PARK30-23).
+    //
+    // R247 EXACTLY, which is where this selector's own rules put it: the
+    // harness selects the suite it DEFINES; lighthouse-plan.mjs holds its
+    // routes, its stated conditions and both verdicts; lighthouserc.json is
+    // the desktop floor; identity.json is the service the harness refuses to
+    // measure without and the origin it builds with. identity.json also keeps
+    // its R416 rule above - a union (R234), not a move.
+    //
+    // NOT HERE, AND RECORDED AS A QUESTION RATHER THAN DECIDED (R947's
+    // precedent): the PAGES it measures. A page edit that pushed the
+    // calculator's slow-4G LCP over 2.5 s is the defect R952 catches, and
+    // app/** selects e2e and visual, not this. Widening it puts a production
+    // build and 21 Chrome runs on every page edit, against a sampled number
+    // that sits close to its line - the operator's cost call, with its
+    // measured duration in REPORT-FW-LIGHTHOUSE-CALC.txt.
+    label:
+      'the Lighthouse harness, its plan, its config and the identity it checks, which define that suite (R247, R953)',
+    suites: Object.freeze(['lighthouse']),
+    matches: (path) =>
+      path === 'scripts/lighthouse.mjs' ||
+      path === 'scripts/lighthouse-plan.mjs' ||
+      path === 'lighthouserc.json' ||
+      path === 'identity.json',
   },
   {
     label: 'lib/ui/**',

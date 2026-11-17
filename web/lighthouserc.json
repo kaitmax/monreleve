@@ -5,7 +5,7 @@
       "settings": {
         "preset": "desktop"
       },
-      "_comment": "R174: three runs, median asserted, floor unchanged at 100. The server and the URL list belong to scripts/lighthouse.mjs, which starts the server itself so it can verify WHOSE it is before anything is measured - a check after autorun reports on numbers it cannot retract."
+      "_comment": "R174: three runs, median asserted, floor unchanged at 100. The server belongs to scripts/lighthouse.mjs, which starts it itself so it can verify WHOSE it is before anything is measured - a check after autorun reports on numbers it cannot retract. The URL list (six routes since R951, the two calculators included) and the slow-4G collection's own config (R952) belong to scripts/lighthouse-plan.mjs; this file is the desktop floor only. assert.includePassedAssertions (R953) is load-bearing: without it lhci records only FAILED assertions in .lighthouseci/assertion-results.json, and desktopVerdict - which counts the passed ones and refuses a route lhci did not assert - reads a fully green run as NO RESULT, as the first planted run measured."
     },
     "assert": {
       "assertions": {
@@ -34,7 +34,8 @@
           }
         ]
       },
-      "aggregationMethod": "median"
+      "aggregationMethod": "median",
+      "includePassedAssertions": true
     },
     "upload": {
       "target": "filesystem",
