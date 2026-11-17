@@ -942,3 +942,270 @@ DECISION (the orchestrator, under Web Rulings 7 and 17):
 4. From here, every launch's lines carry +1 200 (four other live
    sessions: W9, W7, W14, then W5 and W10b).
 APPLIED: these records join round 3's record commit.
+
+====================================================================
+WEB RULING 19 - W9 VERIFIED; ITS D-1 BECOMES W15
+====================================================================
+EVIDENCE:
+- W9: fw-docs-email-from 84562ff (code e0e9fa6; base bfdb1d4). Its
+  gate:changed: test 3 869, test:container 28. Its gate:clone ALONE on
+  e0e9fa6 PASSED.
+- V1: six files, all docs or comments; merge-tree is clean against main
+  9868254.
+- W9 removed the image tag monreleve:fw28 after checking that it pointed
+  at its own build; container-check.mjs rebuilds that tag on every run.
+  So no other session's artefact was removed.
+- Its D-1: dcac1df moved the sender to MAIL_DOMAIN (the site's own
+  domain), but docs/domain-checklist.md item 3 still tells the operator
+  to verify the dropped subdomain in Resend, with proofs for it. W9
+  flagged it in section 2 without rewriting it. deploy.md section 8 N3
+  and the emails.ts comment above EMAIL_FROM say the same.
+DECISION (the orchestrator, under Web Ruling 9's exception: it shows a
+defect):
+1. W9 is verified (V1). Its merge waits for the next verified branch, or
+   one hour (Web Ruling 10).
+2. D-1 becomes W15 FW-DOCS-SENDER-DOMAIN: relay/FW-DOCS-SENDER-DOMAIN.txt
+   (R1031-R1035). An operator who follows item 3 at promotion verifies a
+   domain the code no longer sends from. So this is a launch risk, and
+   it can be closed by naming the constant rather than restating its
+   value. The checklist must never state the operator's Resend or DNS
+   state as done.
+3. W15 launches at the next free slot (four sessions live now: W7, W14,
+   W5 and W10b).
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 20 - W14's R1022 STOP RULED: OPTION (a), WITH CONDITIONS;
+W14 RESUMED
+====================================================================
+EVIDENCE:
+- W14 stopped at R1022's status clause, correctly. In Next 15.5.25 an
+  App Router page answers only 404/403/401 (the access fallbacks), a
+  redirect, 500 for any escaping error, or 200. forbidden() and
+  unauthorized() also need experimental.authInterrupts, which is not
+  set. Its branch carries only its report (3c4573a, base e75b70c).
+- (b) was MEASURED on a throwaway error boundary in a production build.
+  The served HTML is the empty __next_error__ document (h1 []); the
+  heading and sentence appear only after hydration; the boundary gets a
+  redacted message plus a digest, so it cannot tell an outage from a
+  defect; and it adds client JS to a page that ships none.
+- Outage shapes measured with the lookup's own query: a refused port and
+  an unresolvable host give P1001 (DatabaseNotReachable); a server that
+  accepts and never answers gives P1008 (SocketTimeout) after 21 460 ms.
+  Controls: a missing table gives P2010; a bad argument gives a
+  PrismaClientValidationError. A warm pool losing its server: NOT
+  measured.
+- The blocking check (the advisor's): nothing reads /verifier's status
+  as a verdict. android/ has no reference to it. In web,
+  verification-qr.test.ts's 200s are the PDF export route's,
+  verifier.spec.ts asserts content, and W4's step does not judge
+  /verifier yet.
+DECISION (the advisor, under "Advisor decides"; overturnable by the
+operator, operator item 7):
+1. R1022's status clause is AMENDED to option (a): 200, noindex,
+   no-store, with the heading and ONE sentence server-rendered.
+   Middleware stays closed.
+2. The content must discriminate, since the status no longer does. The
+   stopped case is judged with a REAL code issued while the database is
+   up (W4's step issues one through the export route if it does not
+   already). Asserted with the database stopped: the new sentence
+   present; the unknown-code copy and the verified content absent;
+   no-store read off the degraded response itself.
+3. Two plants, each verified (R180): R1024's (the page throws again),
+   and a new one where the catch renders the unknown-code state. Both
+   must go RED.
+4. Q3: an allow-list by connection-level cause. P1001 and P1008 take
+   the degraded path; everything else throws as today, asserted with the
+   P2010 and validation controls. The warm-pool shape, the production
+   case, is measured in W4's step by reading /verifier before any other
+   database-touching route after the stop. It joins the list only if it
+   is connection-level. Until it is measured, W14 does not report
+   COMPLETE.
+5. Q4: unchanged. Malformed codes and the rate limit keep their answers.
+6. Q5: the intro is DROPPED. The degraded state is the heading plus one
+   sentence.
+7. Q2: W14 authors the sentence in lib/fr/verification.ts under its own
+   key. The report's ASCII draft is not a source. The wording goes to
+   the operator.
+8. W14 is RESUMED by message, not relaunched: it holds the measurements,
+   and its branch carries only the report. It keeps its base e75b70c and
+   takes the fourth slot, so W15 waits.
+9. W14's merge is the first container run on a tree with W11, which
+   closes Web Ruling 18 item 2's gap. The record says so when it passes.
+   That merge is not batched with a branch that selects test:db unless
+   the line is re-read: that is the 6 745 pair.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 21 - THE OPERATOR'S CLEANUP; MERGED WORKTREES REMOVED BY
+HAND; W16 AMENDED; W7 VERIFIED FOR ROUND 4; W17 QUEUED
+====================================================================
+THE OPERATOR, 2026-11-17, verbatim:
+  "when a branch is done and merged to the main delete its folder on
+  c:/wt add script to claude md i'm having a big size folder optimize
+  space"
+EVIDENCE:
+- C: had 40 238 MB free (92 % used).
+- Inventory of the 32 worktrees, by R392's checks:
+  - removable: merged into origin/main, clean, unlocked;
+  - kept: the live sessions (locked); the parked or unmerged ones
+    (fw-calc-bytes, fw-web-account, fw-canton, fw-docs-email-from);
+  - refused as dirty: ten merged worktrees. Eight hold only an old
+    session's untracked evidence or a Kotlin cache (an-*, ios2a,
+    ios2a-device, fw-followup). Two hold uncommitted edits to Android
+    gradle files (als-a, als-b).
+  - C:/wt/kmp-0 and kmp-1 are not worktrees: only android/app/build,
+    with no source file.
+  - C:/wt/queue-evidence is not a worktree; QUEUE-STATE points at it, and
+    it holds the R8 mapping files. It is NEVER removed.
+- Removed by hand, each check re-run immediately before: the eleven
+  merged, clean worktrees of this run (W1, W2, W3, W3b, W3c, W3d, W3e,
+  W4, W6, W8, W10a), then fw-delai-rappel once W7 had handed back.
+  - Queue Ruling 26 had kept fw-delai-rappel because C10's uncommitted
+    work lived there. Its reasons lapsed when W11 committed everything
+    and merged in round 3, and C10's evidence was already copied to
+    queue-evidence/fw-delai-rappel/. The words were a queue ruling, not
+    the operator's.
+- MEASURED: `git worktree remove` (no --force) unregistered every one,
+  then failed on each ("Directory not empty"; "Function not
+  implemented"). It left about 2 840 pnpm directory junctions per folder,
+  plus up to 52 851 files.
+  - Node's fs.readlinkSync read every junction, dangling ones included.
+    All of them pointed INSIDE their own folder (0 outside, in all 11).
+  - `cmd /c rmdir /s /q` run from PowerShell then removed the rest
+    without following a link. From Git Bash, MSYS rewrote the switches
+    and the command failed.
+  - PowerShell 5.1's Remove-Item -Recurse can follow junctions, and is
+    never used.
+- Freed: about 5.3 GB. pnpm hard-links node_modules to a store, so
+  deleting a copy frees little.
+- DOCKER is the larger share. docker_data.vhdx is 78.9 GB. Images are
+  30.47 GB (23.92 GB reclaimable), the build cache 35.74 GB (21.35 GB),
+  volumes 7.1 GB (6.7 GB). It was NOT pruned: a prune also takes other
+  projects' objects, and the VHDX shrinks only after a WSL shutdown and
+  a compaction. Both are the operator's.
+- The advisor caught two defects in W16's specification: the script
+  would meet the same junctions, which its temp-dir tests could never
+  show; and a new session's worktree is merged, clean and unlocked in
+  the seconds before its lock is written.
+- W7: fw-visual-filter f0114c5 (code 4aeaef9). Its gate:clone ALONE on
+  4aeaef9 PASSED. visual.mjs still passes CI=true to the container
+  (line 306), with its isolation and R184 lines intact.
+DECISION (the operator's instruction, the advisor's V3 and rulings):
+1. Merged worktrees are removed under R392's checks, now and after every
+   merge: by hand until W16 merges, then by its script. The first real
+   --apply on C:/wt is the orchestrator's, after W16's merge, and the
+   record does not say the script works on C:/wt before that run.
+2. W16 is AMENDED by message (R1036/R1037):
+   - every R392 check runs before the remove;
+   - the script completes the delete itself, never following a link,
+     and only for a path it has just unregistered; "gone" means the
+     directory is absent;
+   - a test where a link inside the worktree points at a sentinel
+     outside it, and the sentinel survives;
+   - --apply recomputes every verdict;
+   - an age guard against a worktree too new to hold its lock yet.
+3. The ten dirty, merged worktrees and kmp-0/kmp-1 go to the operator
+   in ONE question. The Android and iOS records point into the an-* and
+   ios2a* evidence (RULINGS-2026-11-03-MOBILE, IOS-2a, IOS-2a-DEVICE,
+   IOS-2b), so the offered default MOVES that evidence to queue-evidence
+   and deletes the rest. als-a and als-b default to KEEP.
+4. Docker is REPORTED to the operator, not pruned.
+5. W7 is verified (V1, V3). ROUND 4 is W9 + W7 on main.
+   - Its gate is gate:changed PLUS an explicit `pnpm test:visual` in
+     the same hold, because visual.mjs selects nothing.
+   - Read the visual run's header against round 3's log (image,
+     isolation, commit and dirty lines), and look for "R961: REUSED" and
+     "Already up to date": this is the cache's first use from another
+     worktree, and a full install is a finding.
+   - A visual red is the harness or the cached volume first, since round
+     3 ran the same 174 green on this tree.
+   - EXPECTED: test 4 012 (3 980 + 32); test:container 28; test:visual
+     174.
+6. W7's DEFECT 1 becomes W17 FW-SELECTOR-SUITE-SCRIPTS, after W5 merges:
+   a derived guard that every script a test:* entry invokes selects that
+   suite. Until then, any merge touching visual.mjs runs test:visual
+   explicitly. W5 is not amended mid-run.
+7. W7's Q2: the cache volume is KEPT.
+APPLIED: these records join round 4's record commit.
+
+====================================================================
+WEB RULING 22 - W10b STOPPED; WHAT IS ATTRIBUTABLE; W18; THE CLEANUP'S
+OUTCOME; DOCKER; ROUND 4's FIRST GATE IS NO RESULT
+====================================================================
+EVIDENCE:
+- W10b (fw-calc-bytes-2 91f8ed9, report only) stopped at R1016/R977
+  with NO code commit:
+  - the increment applied and hashed exactly;
+  - the calculator gains 1 371 B of spare (58 -> 1 429 B);
+  - gate run 1 failed 2 tests of e2e/rappel-delai.spec.ts;
+  - gate run 2 failed 1 of them, then test:visual failed
+    calculateur-panneau-avis-provisoire desktop (28 px at x1285-1287,
+    delta <= 2), identical over three attempts.
+- Timing: gate run 1 was 06:57-07:06Z. Gate run 2 was 07:48-08:28Z. The
+  orchestrator's own cleanup (size scans, deletions, hashing, 62 volume
+  inspections) ran from about 07:50 to 08:50Z.
+- Round 4's first gate:changed (08:29-08:49Z, inside that window)
+  failed ONE test: HomeCounter's R711 sweep timed out at 300 s (it took
+  326 865 ms). Neither W9 nor W7 touches it, and round 3 ran it green.
+  The same run's explicit test:visual passed 174 and reused W7's cache
+  from another worktree ("Already up to date", node_modules on the
+  named volume).
+- DeadlineHelper.tsx holds the date in useState('') behind a controlled
+  input. A date typed before hydration is not in state: no deadline, no
+  form.
+- The cleanup's outcome: 22 worktree folders and kmp-0/kmp-1 deleted;
+  C: went from 40 238 to 50 410 MB free.
+  - Seven Android/iOS evidence folders were MOVED (renamed) into
+    C:/wt/queue-evidence/<name>/, 1 338 files, hashes equal before and
+    after, with a SHA256SUMS per folder.
+  - als-a and als-b are kept (uncommitted gradle edits).
+  - One deletion stalled on EPERM: a du.exe from the orchestrator's own
+    stopped size scan still held handles (TaskStop kills the shell, not
+    the tree). It was stopped by PID, and the folder then went.
+  - W10a's evidence went with its folder, so W10b's Q2 cannot be
+    answered from it.
+- Docker: the operator answered "Prune all unused, all projects".
+  Listed first, the unused volumes include three NAMED data volumes of
+  other projects (luxurykitchen_counterworthy-postgres-data,
+  fortniteislands_fnmetrics-data, supabase_edge_runtime_AI_Morocco_Planner).
+  Read-only inspection classified the 62 anonymous ones as 41 Postgres
+  data directories (PG_VERSION), 7 node_modules caches and 14 empty.
+- web/Dockerfile pins chromium=156.0.8078.79-1~deb12u1 on
+  node:22-bookworm-slim. If the archive has rotated it out, the cached
+  layers are the only copies.
+DECISION (the advisor's V3 and rulings; the operator's words where
+quoted):
+1. Round 4's first gate:changed is NO RESULT, caused by the
+   orchestrator's own disk load. It is re-run on the same staged tree;
+   the visual run stands (same tree). Read the sweep's duration in the
+   re-run: near 300 s on a quiet machine is a finding of its own.
+2. MASS DELETES, HASHING AND VOLUME INSPECTIONS ARE HEAVY. From now on
+   they run under the lock, and so does W16's first real --apply.
+3. W10b's stop stands, and neither red is attributed to the increment
+   yet.
+   - The e2e race is real (gate run 1 was outside any load) and it is a
+     PRODUCT defect: it becomes W18 FW-DEADLINE-PREHYDRATION
+     (R1041-R1045), proven by a test that holds the helper's scripts
+     back. networkidle is not a hydration signal.
+   - The visual variant was seen only inside the cleanup window, so it
+     is NO RESULT. It is settled by repetition, with the rule stated
+     before the run: the one spec, N runs on base and N on the increment,
+     in one hold, through W7's filter. If only the increment gives the
+     variant, R977's stop holds and the counts come back. If both flip,
+     the capture is unstable on main, a task of its own.
+   - Q2 is NO RESULT: W10a's captures were deleted with its worktree.
+4. ORDER: round 4 lands (it carries W7's filter), then W18, then W10b
+   resumes by message. It merges main into its dirty tree and re-checks
+   the 18 hashes first.
+5. DOCKER, on the operator's word:
+   - unused IMAGES and BUILD CACHE are pruned;
+   - the 7 node_modules caches and the 14 empty anonymous volumes are
+     removed by ID;
+   - the three named data volumes, the 41 Postgres volumes and this
+     app's visual cache are KEPT and named to the operator (item 8).
+   - It runs after round 4 is pushed, under the lock, AFTER checking from
+     a throwaway node:22-bookworm-slim container that the archive still
+     offers the pinned chromium. If it does not, the build cache and the
+     images holding that layer are NOT pruned until the pin moves.
+APPLIED: these records join round 4's record commit.
