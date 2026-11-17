@@ -1,0 +1,529 @@
+REPORT-FW-DB-STOPPED
+====================
+
+Web run step W4 (relay/ORCH-WEB-COMPLETE.txt Part C), prompt
+relay/FW-DB-STOPPED.txt, rulings R945-R949. Branch fw-db-stopped in worktree
+C:/wt/fw-db-stopped, cut from origin/main
+a2c502a809be691ef812e0f335c07359495332b4. Parallel mode (Web Ruling 7):
+every heavy run went through C:/wt/.heavy-run.lock as holder W4; port block
+3300-3399 (the app on 3300, the step's own Postgres on 3301).
+- The lock .session-lock.json was written at 00:10:00Z and is gitignored.
+- Evidence is in C:/wt/fw-db-stopped/.w4-evidence/ (gitignored): every log
+  named below, the plant script, the batch scripts and the memory samples.
+- Nothing was written to the orchestrator's scratchpad.
+
+SUMMARY
+-------
+- Plan Checkpoint D item 5's second half is now proven against the production
+  IMAGE, in the gated container suite: with its database stopped, the image
+  kept serving all 20 sitemap routes, each 200 with the same <h1> it served
+  with the database running.
+- The staging half stays NOT MET: no staging exists (it needs Coolify and the
+  token, QUEUE-STATE BLOCKED 1).
+- R945: the step starts its OWN Postgres (postgres:16-alpine, read from
+  docker-compose.yml) on its own Docker network, migrates it, serves the
+  image against it, reads a reference, STOPS ITS OWN database container, and
+  measures. frontalier-postgres was never touched.
+- R946, measured with the database stopped:
+  - 20 of 20 sitemap routes: 200, same <h1>;
+  - /api/health 200, naming this product and this run's instance;
+  - /api/ready 503, ready false, database check false, reason unreachable;
+  - GET /api/v1/entries?year=2026 (a real sign-in, minted before the stop):
+    500 = the documented read_failed status, EMPTY body (no stack trace, no
+    connection string; see FINDING 1: not the documented envelope);
+  - after `docker start`: /api/ready 200 within tens of ms of Postgres
+    accepting connections, the entries GET 200 again, and the app container's
+    id, StartedAt and RestartCount (0) unchanged.
+- R947: no harness owned a database's lifecycle (all five borrow the shared
+  compose server). The claim is "what the image serves", so it joins
+  test:container:e2e: container-e2e.mjs calls a new module,
+  scripts/container-db-stopped.mjs, after its own teardown; a pure verdict
+  module decides. One selector rule maps both new files to
+  test:container:e2e, with tests. No package.json change (R414 would select
+  EVERY suite).
+- R948: /a-propos made to read the database per request (verified: one-match
+  anchors, blob and diff; landed: the image's build table lists it as dynamic
+  and it served `no-store` with the database up). `pnpm test:container:e2e`
+  went RED naming /a-propos and nothing else. Reverted to HEAD's blob.
+- R949: no route, readiness, entrypoint or Dockerfile change (diff empty).
+
+STATUS (R391)
+-------------
+COMPLETE for the web gates this task owns.
+- gate:clone ran ALONE on the code tip
+  8b912ab794613f1bcb7e0883a5f376aef543dcea, in this session, exit 0 (claim
+  line under PUSH PROOF).
+- gate:changed ran on the same content before the commit, exit 0. Its
+  selection included test:container:e2e, which ran to its end: CONTAINER
+  E2E PASSED, the database-stopped step 57 of 57.
+- This report commit adds only REPORT-FW-DB-STOPPED.txt on top of 8b912ab.
+- No Android code changed, so there is no :app:gate.
+- Not merged: the orchestrator merges.
+- Plan Checkpoint D item 5: the local half (the public site keeps serving
+  with the database stopped) is MET by this task, against the image; the
+  staging half is NOT MET - no staging exists (Coolify and the token,
+  QUEUE-STATE BLOCKED 1).
+
+R945. THE SCENARIO IS THE REAL ONE
+----------------------------------
+scripts/container-db-stopped.mjs, runDatabaseStoppedPhase(), in this order:
+1. Its own names, random per run: network monreleve-dbstop-<run>, database
+   container monreleve-dbstop-<run>-pg, app container
+   monreleve-dbstop-<run>-app, instance container-db-stopped-<run>. A name
+   that already exists is REFUSED, never removed. Containers and the network
+   carry the label monreleve.harness=container-db-stopped; anything an
+   earlier, killed run left is printed, never removed (R334).
+2. Its own Postgres: the image docker-compose.yml runs (postgres:16-alpine,
+   read by composePostgresImage, exactly one match or a refusal), a random
+   user and password, database monreleve_db_stopped (R877's pattern), host
+   port 127.0.0.1:3301 (CONTAINER_DB_STOPPED_PG_PORT; unset, Docker picks a
+   free one). Ready = pg_isready over TCP inside the container (the init-time
+   server answers on the socket only), then SELECT 1 from the host (a TCP
+   connect is not evidence on this machine).
+3. prisma migrate deploy into it, from the host.
+4. The image on the SAME network, DATABASE_URL naming the database
+   container by name - production's shape on the coolify network
+   (docs/deploy.md) - with the origin read out of the image
+   (/etc/frontalier-site-origin) and a per-run FRONTALIER_INSTANCE_ID.
+   /api/health must name this product (R169) and this run (R301).
+5. "Proves a page served": a real sign-in (VerificationToken row, then
+   /api/v1/auth/callback, as container-write.mjs does), then the reference -
+   every sitemap route, /api/health, /api/ready, /sitemap.xml and the
+   entries GET - all read with the database running.
+6. `docker stop` OF ITS OWN database container; docker then reports
+   State.Running false, and the verdict refuses the run otherwise.
+7. The measurement (R946), then `docker start`, then the recovery.
+frontalier-postgres and every other container were never stopped: `docker ps -a`
+at 01:11:32Z (after the run made to fail), 02:14:55Z and 03:43:22Z shows
+frontalier-postgres "Up 5 days (healthy)" and the four other projects'
+containers unchanged (.w4-evidence/a-cleanup-proof.txt, ps-midrun.txt).
+
+R946. WHAT "KEEPS SERVING" MEANS, ASSERTED - AND MEASURED
+--------------------------------------------------------
+The verdict is scripts/container-db-stopped-verdict.mjs, pure, with 33 unit
+cases (tests/unit/meta/container-db-stopped-verdict.test.ts). It asserts what
+R946 states and nothing else; it counts 17 checks plus 2 per route (57 for 20
+routes), so a check that stopped being made shrinks the count (R133).
+"Its own content" is each route's <h1> AS THE SAME IMAGE SERVED IT with the
+database running, a minute earlier - read, not transcribed (R181); a route
+added to the sitemap is measured the day it ships, and an error page cannot
+pass for a page. The reference must itself be sound first (presence, R169).
+
+The measured behaviour, first real run (standalone, 01:06:17Z-01:06:50Z,
+.w4-evidence/a-phase-dev.log; the planted and gated runs read the same):
+- the sitemap: 20 routes; with the database stopped the same document, 200;
+- every route 200 with the database stopped, each with the <h1> it had with
+  it running: /, /mentions-legales, /confidentialite, /cgu,
+  /calculateur-teletravail-frontalier, /calculateur-lamal-cmu, /guides, the
+  seven guides, /application, /releve-annuel, /tarifs, /sources, /a-propos,
+  /alertes. 18 are prerendered (s-maxage=31536000); the calculator and
+  /sources are ISR (s-maxage=3600, stale-while-revalidate=31532400). None
+  reads the database at request time, which is why they survive.
+- /api/health: 200 in 10 ms,
+  {"service":"monreleve","instance":"container-db-stopped-4a2e370f",
+   "status":"ok","reasons":[],"origin":"https://monreleve.example",
+   "runtime":true}
+- /api/ready: 503 in 1238 ms,
+  {"ready":false,"checks":[{"name":"site-origin","ok":true},
+   {"name":"database","ok":false,"reason":"unreachable","detail":"The
+   database did not answer. Check the database service is running and that
+   DATABASE_URL points at it from inside the container. Ruling R353."}]}
+  The deploy gate would refuse. No host, port, user or password in it.
+- GET /api/v1/entries?year=2026 with the access token minted before the stop:
+  500 in 16 ms, body "" (empty). 500 is the status docs/api-v1.md section 7
+  documents for read_failed on GET (read from the document, exactly one row,
+  R211). No stack trace, no connection string, no secret (checked by value
+  against this run's password, user and host, and by shape). FINDING 1.
+- Recovery, no container restart: `docker start`; once Postgres accepted
+  connections, /api/ready answered 200 17 ms later (25 ms in the planted
+  run); the entries GET answered 200 again; /api/health named the same
+  instance; the app container's Id, State.StartedAt and RestartCount (0)
+  were unchanged and it was running.
+- The idle-pool error did not kill the process: @prisma/adapter-pg registers
+  pool.on('error') (dist/index.mjs:781), and the container kept serving.
+
+FINDING 1 (not asserted; R946: "a FINDING to hand back, not an assertion to
+adjust"). The entries GET's 500 is NOT the documented envelope
+{status:"error",code:"read_failed",message}. app/api/v1/entries/route.ts:218
+calls authenticate() BEFORE its try/catch (:260-:283; the read_failed
+refusal is :282), and inspectAccessToken
+(lib/auth/tokens.ts:137) queries sessionToken outside any catch, so the throw
+reaches Next, which answers a bare 500. The server log says so:
+"Invalid prisma.sessionToken.findUnique() invocation: Can't reach database
+server at <the database host> ... at async q (.next/server/app/api/v1/
+entries/route.js...)". By reading, all ten bearer routes (devices, dossier,
+entries, me, account/delete, account/export, auth/revoke-all, auth/sign-out,
+export/csv, export/pdf) call authenticate() before any try, so the same is
+expected of each; only the entries GET was measured. The status matches the
+contract; the code a client branches on is absent. No change made (R949).
+
+R947. WHERE IT RUNS (R251)
+--------------------------
+Established by reading the five container harnesses:
+- container-e2e.mjs (test:container:e2e), container-write.mjs
+  (test:container:write), container-scheduler.mjs (test:container:scheduler)
+  and backup-restore.mjs (test:container:restore) each make a scratch
+  database on the SHARED compose server (frontalier-postgres) or on one CI
+  supplies. container-check.mjs (test:container) runs no database, by design.
+- None owns a database's LIFECYCLE, and the shared server may never be
+  stopped (other worktrees' scratch databases live there). So no harness
+  could make this claim as written.
+- The claim is about what the IMAGE SERVES, which is container-e2e.mjs's
+  (R249: "the deployed artefact served the whole suite"), and that harness
+  already builds the image for the suite's origin. container-write.mjs owns
+  a production WRITE (R256), not this.
+- So it EXTENDS container-e2e.mjs, through a module: container-e2e.mjs calls
+  runDatabaseStoppedPhase() after its own teardown, on the same port,
+  against the image it built. The step keeps its own resources, names and
+  cleanup, apart from the harness's fixed ones (monreleve-e2e,
+  monreleve_container_e2e).
+- Why not a suite of its own: a new `test:*` script edits package.json, and
+  package.json selects EVERY suite (R414) on that commit, with no start line
+  for it; it would also need a CI step, MAPPING_TARGETS, EVERY_SUITE and
+  SUITE_COUNTS. CI already runs test:container:e2e (the container-e2e job),
+  so the step is in CI with no workflow change (CI is off, R248).
+- The step runs WHENEVER THE IMAGE WAS BUILT, even when a step above it is
+  already red, and its refusals join the harness's last line. Otherwise a
+  first-failure-wins harness would answer "did the site survive the stop?"
+  only on green runs.
+
+The selector (web/scripts/gate-selection.mjs), one new rule, label "the
+database-stopped step of the container e2e suite: the module that runs it
+and the verdict it reads (R947)": scripts/container-db-stopped.mjs and
+scripts/container-db-stopped-verdict.mjs select test:container:e2e (R247:
+each decides what the suite does). container-e2e.mjs already selected it.
+Tests (tests/unit/meta/gate-selection.test.ts, new R947 block, 5):
+- each module selects test:container:e2e;
+- each selects NOTHING else (base chain + test:container:e2e: no test:db, no
+  browser run);
+- the harness really runs the step: container-e2e.mjs imports
+  runDatabaseStoppedPhase and awaits it (R154: a rule mapping a file to a
+  suite that no longer runs it would be a claim no gate contradicts);
+- neither module is in W3d's container PDF closure.
+- The label census moved 27 -> 28 names. W3d's 18-path closure census is
+  unchanged and green.
+RED first (00:37:30Z, .w4-evidence/red-selector.log): "Tests 4 failed | 113
+passed (117)" - the census and the three selection cases; the harness-call
+and closure cases already held. Green 00:37:47Z: 117 passed, with the
+verdict, declaration-parity, entry-points, gate-covers-ci,
+scratch-database-census and french-literals files (283 tests, 7 files).
+The verdict's own RED (00:31:23Z, red-verdict-unit.log): "Cannot find module
+'../../../scripts/container-db-stopped-verdict.mjs'". Green 00:32:29Z: 42
+(33 cases + declaration parity, which covers the new .d.mts, R185).
+
+Cleanup, in the step's finally, including on failure:
+- exactly what this run created, tracked by its unique names, each added
+  BEFORE its create command (a `docker run` that fails after creating its
+  container still leaves one, and it is still this run's);
+- the app's last 60 log lines (both streams, redacted by value) on failure;
+- `docker rm -f -v` each container (the postgres image's anonymous data
+  volume goes with it), then `docker network rm`;
+- READ BACK, not assumed: each container, the network and each volume
+  inspected again; anything still there fails the step by name.
+It never removes a name it did not create, and refuses one that exists.
+
+R948. A VERIFIED PLANT (R180)
+-----------------------------
+.w4-evidence/scripts/plant.mjs. Before writing, each anchor must match
+exactly once (R211); after, the new text present once and the old signature
+gone; the diff printed. Proven once outside the lock (apply, then revert,
+00:41:18Z-00:41:19Z), and the planted page type-checked on its own (00:41Z).
+The edit, web/app/(public)/a-propos/page.tsx, blob a1ac066d -> 632e3b72:
+  +import { prisma } from '@/lib/db/client';
+  +export const dynamic = 'force-dynamic';
+  -export default function AProposPage() {
+  +export default async function AProposPage() {
+  +  await prisma.$queryRaw`SELECT 1`;
+LANDED IN THE IMAGE, by two things only the plant produces:
+- the image build's route table: "<U+0192> /a-propos 503 B 103 kB"
+  (U+0192 is Next's dynamic marker; every neighbour is prerendered);
+- with the database RUNNING, /a-propos answered 200 with cache-control
+  "private, no-cache, no-store, max-age=0, must-revalidate", where its
+  neighbours answer "s-maxage=31536000".
+THE RED, `pnpm test:container:e2e` itself, CONTAINER_IMAGE=
+monreleve:fw-db-stopped, FRONTALIER_PORT=3300, 01:06:50Z-01:11:31Z, exit 1
+(.w4-evidence/a-plant-run.log):
+  354 passed (1.5m)                       [e2e against the image: green]
+  Tests  33 passed | 1 skipped (34)       [vitest pass 1: green]
+  Tests  1 passed | 1 skipped (2)         [vitest pass 2: green]
+  /a-propos  running 200 [private, no-cache, no-store, ...]  stopped 500  h1 []
+  REFUSED: with the database stopped, /a-propos answers 200 with its own
+    heading: status 500 (200 with it running), heading [] (its h1 with it
+    running)
+  Database-stopped checks  56 passed (57)
+  CONTAINER E2E FAILED: the database-stopped step (R946): 1 refused: with the
+    database stopped, /a-propos answers 200 with its own heading: ...
+- Exactly one check failed, naming the route; every other suite in the run
+  was green, so the red is the step's alone. (routing.spec's head-scoped
+  canonical stayed green for the dynamic page: 354 passed.)
+- The server log (redacted): "Invalid prisma.$queryRaw() invocation ... Can't
+  reach database server at <the database host> at async m
+  (.next/server/app/(public)/a-propos/page.js...)".
+REVERTED 01:11:33Z: blob a1ac066d equals HEAD's; git diff --quiet exit 0.
+
+R949. NOTHING ELSE MOVES
+------------------------
+`git diff a2c502a -- web/app web/lib web/Dockerfile web/.dockerignore
+web/scripts/entrypoint.mjs` is empty (0 lines). No route, readiness,
+entrypoint, Dockerfile, package.json or CI change. Changed (7 files):
+- web/scripts/container-db-stopped.mjs (new): the step;
+- web/scripts/container-db-stopped-verdict.mjs (new) and its .d.mts (new):
+  the verdict;
+- web/scripts/container-e2e.mjs: the import, an imageBuilt flag, the call;
+- web/scripts/gate-selection.mjs: the R947 rule;
+- web/tests/unit/meta/container-db-stopped-verdict.test.ts (new): 33 cases;
+- web/tests/unit/meta/gate-selection.test.ts: the R947 block and the census.
+No public page failed to survive, so there was no R949 stop.
+
+THE CLEANUP PROOF (R947)
+------------------------
+After the run made to fail on purpose (the R948 plant, exit 1, 01:11:31Z):
+- the step's own read-back: "removed container monreleve-dbstop-e264942b-app
+  ... removed container monreleve-dbstop-e264942b-pg ... removed network
+  monreleve-dbstop-e264942b ... left by this run: nothing";
+- docker ps -a at 01:11:32Z (.w4-evidence/a-cleanup-proof.txt):
+    tizicorp-app-1        tizicorp-app        Exited (0) 4 days ago
+    frontalier-postgres   postgres:16-alpine  Up 5 days (healthy)
+    tizicorp-postgres-1   postgres:16         Exited (0) 4 days ago
+    mustapha-postgres     postgres:16-alpine  Exited (0) 6 days ago
+    zagora-postgres-1     postgres:16-alpine  Exited (0) 6 days ago
+  no monreleve-dbstop-* container, and none labelled
+  monreleve.harness=container-db-stopped; no network of either kind.
+- The machine's dangling-volume list holds other projects' volumes and was
+  not touched; the step's own volume is checked by name in its read-back
+  (the read-back line now names it; in the gate of record: "read back: 2
+  container(s), 1 network, 1 volume(s) [4bb3309718ac...]; left by this run:
+  nothing").
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. FINDING 1 (R946 above): with the database down, every bearer-
+   authenticated /v1 route answers a bare 500 with an empty body, not the
+   documented {status,code,message} envelope, because authenticate() runs
+   before each route's try and inspectAccessToken does not catch. The status
+   matches docs/api-v1.md section 7; the `code` a client branches on is
+   absent. QUESTION 2.
+2. /verifier/[code] (public, noindex, NOT in the sitemap) answers 500 with
+   the database stopped: running 200 with its h1, stopped 500 with no h1;
+   no secret in the body (checked by value). It reads the database by
+   design (lookupVerification -> issuanceRecord.findUnique, logged as
+   "Can't reach database server"). R946 scopes the assertion to the
+   sitemap, so it is measured and printed by the step, not judged.
+   QUESTION 3.
+3. The step's app container logged "[scheduler ...] not started
+   (non_local_database)": the scheduler refuses a database it does not
+   consider local, so whether pg-boss survives a database stop is NOT
+   measured here. In production the scheduler switch is parked (QUEUE-STATE
+   BLOCKED 6).
+4. The memory sampler did not run in Hold A: this machine's execution policy
+   refuses .ps1 files ("l'execution de scripts est desactivee sur ce
+   systeme"). Hold A's minimum is therefore NO RESULT; its start reading is
+   the lock's. Hold B's inline sampler then failed on its path (MEMORY,
+   note 2), so Hold B's minimum is NO RESULT too; Hold C's sampled.
+5. The other harnesses still use FIXED container names (monreleve-e2e,
+   monreleve-write, monreleve-sched-a/b) and `docker rm -f` them on start
+   (Web Ruling 9). Not touched; the new step does not.
+6. A page that renders per request kept its canonical in <head> in this
+   Next (15.5.25): routing.spec's head-scoped test passed for the planted
+   /a-propos. That agrees with the calculator page's own table ("async page,
+   no searchParams ... head intact"); it is searchParams, not dynamic
+   rendering alone, that moved metadata into the body.
+
+DEVIATIONS
+----------
+1. R947's choice is "extend", through a module of test:container:e2e
+   rather than a new suite (reason under R947: R414's full matrix). Offered
+   the other way as QUESTION 4.
+2. The step runs even when the harness is already red (whenever the image
+   was built), so container-e2e.mjs is no longer purely first-failure-wins
+   at its end. Its refusals are appended to the harness's last line.
+3. "Its own content" is the route's <h1> as the same image served it with
+   the database running (derived at run time, R181), not a heading list
+   typed into the test.
+4. After the plant's RED, two OUTPUT lines of the step changed (the recovery
+   line now says the ms are counted from Postgres accepting connections;
+   the teardown's read-back names what it checked, volumes included). No
+   check, order or condition changed; the gate of record ran the final code.
+5. The plant RED went through `pnpm test:container:e2e` (the gated path).
+   Before it, the step ran once standalone against an image built from the
+   same tree (01:04:24Z-01:06:50Z), to prove it worked before reading a red.
+6. Plan Checkpoint D item 5's staging half: NOT MET. No staging exists; it
+   needs Coolify and the token (QUEUE-STATE BLOCKED 1). Only the local half
+   is proven here.
+
+QUESTIONS
+---------
+1. Selection (Web Ruling 9's cost call). The pages this step measures do not
+   select it: app/** selects test:e2e and test:visual, and the same e2e
+   specs PASSED against the planted image (354). So a page edit that makes
+   a public page read the database is caught only when something else selects
+   test:container:e2e (the harness, the PDF closure, this rule's two
+   files). Widening app/(public)/** to the step costs a Docker build and
+   the container suite (about 5 minutes here) on every page edit. A cheap
+   alternative is a structural unit test in `pnpm test`: no sitemap page's
+   import graph reaches lib/db/client.ts. The same holds, more narrowly,
+   for lib/content/readiness.ts, app/api/ready, app/api/health and
+   app/sitemap.xml, whose stopped-database answers only this step checks.
+   Not done here (R947 asks for the script's registration; R949).
+2. FINDING 1: should a database outage on a /v1 route answer the documented
+   envelope (read_failed, or a 503)? That is a route change (R949) and the
+   codes are frozen (api-v1 section 7), so it is the operator's.
+3. /verifier/[code] answers 500 with the database down. Is a 500 right for a
+   database-backed public page, or should it degrade (a "temporarily
+   unavailable" state, as /api/alertes does for the form)? If the latter,
+   R949 calls a public page that does not survive a defect, and this is it.
+4. Should the step become a suite of its own (test:container:db-stopped)?
+   Cost: one full-matrix gate (R414) and a CI step.
+
+DEFECTS
+-------
+None among the routes R946 names: every sitemap route survived, liveness
+held, readiness refused, the database route gave its documented status with
+no leak, and recovery needed no restart. FINDING 1 and QUESTION 3 are
+handed back as questions, not fixed (R949).
+
+THE CONTAINER SUITE, RUN TO ITS END (step 4)
+--------------------------------------------
+`pnpm test:container:e2e`, inside the gate of record below (CONTAINER_IMAGE=
+monreleve:fw-db-stopped, FRONTALIER_PORT=3300, CONTAINER_DB_STOPPED_PG_PORT=
+3301), on the content committed as 8b912ab (.w4-evidence/b-gate-changed.log):
+  --- building monreleve:fw-db-stopped for origin https://monreleve.example ---
+  /api/health names: monreleve (status ok)
+  --- excluded, with the reason (R133) ---
+    e2e/composants.spec.ts  reaches /dev/**, which R129 keeps OUT of the production build
+    e2e/rail-parity.spec.ts  reaches /dev/**, which R129 keeps OUT of the production build
+  --- pnpm test:e2e against the container: 27 spec files ---
+    354 passed (1.6m)
+  [pdf] image: 163933 bytes, 10 pages, 595.92x842.88pt x10; here: 198559 bytes, 10 pages, 595.92x842.88pt x10
+  [page] R991: the renderer asks for format "A4"; ... @page size: a4
+  Tests  33 passed | 1 skipped (34)          [pass 1]
+  Tests  1 passed | 1 skipped (2)            [pass 2]
+  34 tests; refusals: 0
+  scratch database monreleve_container_e2e dropped
+  === the database-stopped step (FW-DB-STOPPED, R945-R947) ===
+  image monreleve:fw-db-stopped   port 3300   run ed5872bb
+    the reference: 20 route(s) in the sitemap, read with the database running
+    stopped monreleve-dbstop-ed5872bb-pg; docker says running: false
+    started monreleve-dbstop-ed5872bb-pg again; once it accepted connections,
+    /api/ready answered 200 28 ms later
+    20 routes: running 200, stopped 200, same h1 (each listed in the log)
+    /api/health: 200 in 9 ms; /api/ready: 503 in 1226 ms (database false,
+    unreachable); GET /api/v1/entries?year=2026: 500 in 18 ms, body ""
+    not judged: /verifier/<code> running 200, stopped 500, leaks []
+  Database-stopped checks  57 passed (57)
+    read back: 2 container(s), 1 network, 1 volume(s) [4bb3309718ac...];
+    left by this run: nothing
+  CONTAINER E2E PASSED - the deployed artefact served the whole suite (R249).
+The same counts as main for everything that was there before (354; 33+1; 1+1;
+34 tests, 0 refusals): the step added to the suite and changed nothing in it.
+
+PUSH PROOF
+----------
+Branch: fw-db-stopped (pushed; not merged). Base a2c502a.
+Code commit: 8b912ab794613f1bcb7e0883a5f376aef543dcea, pushed before
+gate:clone (ls-remote: refs/heads/fw-db-stopped at 8b912ab). This report is
+the commit on top of it, adding only REPORT-FW-DB-STOPPED.txt.
+
+gate:changed, the gate of record (.w4-evidence/b-gate-changed.log):
+- Under the lock as W4: ACQUIRED 02:58:24.902Z, commitFree=8934, line 6 340
+  (container e2e alone, +900 for three other live sessions).
+- FRONTALIER_PORT=3300, CONTAINER_IMAGE=monreleve:fw-db-stopped,
+  CONTAINER_DB_STOPPED_PG_PORT=3301 set; DATABASE_URL,
+  MONRELEVE_VERIFICATION_ORIGIN and CONTAINER_E2E_DATABASE_URL unset; no
+  web/.env (no suite selected needs one).
+- 02:58:25Z-03:09:59Z, GATE_EXIT=0. The tree's `git diff HEAD` digest was
+  c1e24d6a7352 before and after, and every changed file was last written
+  before the start (latest 01:12:53Z), so the commit is the gated content.
+- Minimum commit free: NO RESULT (the sampler was given a POSIX path and
+  wrote nothing; NOTICED 4). The lock's start reading 8 934 is recorded.
+- Printed selection:
+  gate selection (R132):
+    3 path(s) matched:
+      web/scripts/container-db-stopped-verdict.mjs  ->  the database-stopped step of the container e2e suite: the module that runs it and the verdict it reads (R947)
+      web/scripts/container-db-stopped.mjs  ->  the database-stopped step of the container e2e suite: the module that runs it and the verdict it reads (R947)
+      web/scripts/container-e2e.mjs  ->  the container e2e harness, which defines that suite (R247)
+    suites: typecheck, lint, test, build, test:container:e2e
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3850 passed
+      build: exit 0 (no count to check)
+      test:container:e2e: exit 0 (no count to check)
+  GATE PASSED for the paths changed.
+  - test: 3 850 = main's 3 811 + 33 verdict cases + 5 selector cases + 1
+    declaration-parity case (the new .d.mts). Exactly as expected.
+
+gate:clone, ALONE, on 8b912ab (.w4-evidence/c-gate-clone.log):
+- Under the lock as W4: ACQUIRED 03:34:04.080Z, commitFree=8892, line 5 576.
+  ALONE means no other HEAVY run (the lock); light work in the other live
+  sessions (W6, W8, W10a, W11, the orchestrator) may have overlapped.
+- FRONTALIER_PORT=3300 and CONTAINER_IMAGE=monreleve:fw-db-stopped set, so
+  its test:container:write built this session's tag and no other session's
+  (monreleve:e2e, monreleve:write untouched); DATABASE_URL,
+  MONRELEVE_VERIFICATION_ORIGIN, CONTAINER_E2E_DATABASE_URL and
+  CONTAINER_DB_STOPPED_PG_PORT unset in the shell.
+- DATABASE_URL came from a session web/.env naming the local server's
+  `postgres` database, written by script (.w4-evidence/scripts/db-env.mjs)
+  from the main checkout's host, port and credentials, never printed;
+  written at 03:34:05Z and removed in the same hold, before the lock was
+  released at 03:43:30Z.
+- 03:34:06Z-03:43:22Z, GATE_CLONE_EXIT=0. It made and dropped its own
+  monreleve_gate_clone_8b912ab7 (absent from pg_database afterwards); its
+  sweep found no stale clone; its clone directory was removed.
+- Memory: sampler first reading 8 680 (03:34:05Z), minimum commit free
+  6 815 MB at 03:40:17Z - a drop of 2 077 from the lock's reading; minimum
+  free physical 810 MB.
+
+  GATE:CLONE PASSED
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  8b912ab794613f1bcb7e0883a5f376aef543dcea
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-JFb2yR (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test, build, size, db:deploy, test:db, test:container:write from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+  GATE_CLONE_EXIT=0
+- gate:clone does not run test:container:e2e (it names test:e2e among what
+  it does not run), so the database-stopped step's proof is the gate of
+  record's container run above, not gate:clone.
+
+MEMORY, every heavy hold of this session (the lock's start reading; lines
+include +900 for three other live sessions):
+  hold  what                                      acquired (Z)  start  line   minimum
+  A     build, the step standalone, the plant RED 01:04:23      9 021  6 340  NO RESULT (1)
+  B     gate:changed (+ test:container:e2e)       02:58:24      8 934  6 340  NO RESULT (2)
+  C     gate:clone                                03:34:04      8 892  5 576  6 815 (drop 2 077)
+  (1) the sampler was a .ps1 file, which this machine's execution policy
+      refuses; (2) it was given a POSIX path, which PowerShell read as
+      C:\c\wt\..., so it wrote nothing and never saw its stop file - the
+      orphaned sampler (PID 15272, mine by its command line) was stopped at
+      03:10Z. Hold C's inline sampler converts its paths (cygpath -m) and
+      was proven to start and stop before use. Every hold started above
+      its line; no line is lowered (Web Ruling 7).
+
+END-OF-SESSION CLEANUP (ORCH-WEB-COMPLETE Part B, Web Ruling 3), 03:45:19Z
+-------------------------------------------------------------------------
+- Images: this session built monreleve:fw-db-stopped four times (Hold A
+  ab362bc221a5, the plant 822f672699c2, gate:changed 3b473582aca6,
+  gate:clone's write probe ac86781049bb). The first three were already
+  absent to `docker image inspect` (this store drops an image when its tag
+  moves; `docker images -f dangling=true` lists none). `docker image rm
+  monreleve:fw-db-stopped`: "Untagged ... Deleted: sha256:ac86781049bb...";
+  inspect afterwards exit 1. No other tag was built or touched
+  (monreleve:e2e, monreleve:write and the rest are other sessions').
+- Containers and networks: none labelled monreleve.harness=container-db-
+  stopped, none named monreleve-dbstop-*; every run's own read-back said
+  "left by this run: nothing".
+- Databases: none of this session's lives on frontalier-postgres. The step's
+  databases lived in its own containers, removed with their volumes;
+  container-e2e.mjs dropped monreleve_container_e2e and gate:clone dropped
+  monreleve_gate_clone_8b912ab7 themselves. pg_database at 03:43Z: frontalier,
+  monreleve_fw_cascade_order, monreleve_fw_delai_rappel,
+  monreleve_fw_wt_setup_guard, monreleve_web_orch, postgres, template0,
+  template1 - other sessions' and the server's, left alone.
+- web/.env: removed (ls: No such file or directory).
+- frontalier-postgres was never stopped ("Up 5 days (healthy)" at 01:11Z,
+  02:14Z and 03:43Z); no other project's container was touched.
+- The plant is reverted (blob a1ac066d equals HEAD's).
+- The session lock .session-lock.json is removed last, after this report is
+  pushed.
