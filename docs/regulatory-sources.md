@@ -122,6 +122,7 @@ question for the operator.
 | 6 | *(day classification)* | — | Over 4 h = 1 day; 2–4 h = ½ day | Circular no. 45 of 12 June 2019, point 7.5.1 | ☐ **pending — NOT covered by the 09.09.2026 pass.** The published cases count days, not hours, so no fixture reaches it |
 | 7 | `residence1983Cantons` | BE, SO, BS, BL, VD, VS, NE, JU | Same 40 % ceiling; frontalier **status** itself at risk on breach | Amicable agreement on the accord of 11 April 1983 | ☐ **pending — NOT covered by the 09.09.2026 pass.** Genève is a `source` canton, so no published example reaches this list |
 | 8 | `a1ThresholdRate` | `0.25` | The telework share from which the EU framework agreement — and so its A1 — applies; below it **art. 13 of reg. (EC) 883/2004** governs instead | bsv.admin.ch/fr/teletravail. **Added at Checkpoint A**, replacing the provisional reading that fired `A1_REQUIRED` on any counted day at all | ☑ transcription: ge.ch/admin.ch, 09.09.2026 — legal review pending |
+| 9 | *(period fraction)* | — | `periodFraction` for a start during the year: the calendar days from the activity start date to 31 December, both included, ÷ the days in that calendar year. **The product's own convention**, stated in SPEC §7.2 step 2 (Web Ruling 6, 16.11.2026) | **No instrument states it.** The accord's 1(d) (Source A below) and row 3 prorate without naming a day-count basis | ☐ **pending — the product's convention, NOT a transcription.** Unlike rows 6 and 7, no source speaks here: the expert reviewer is asked to confirm the convention or name the rule |
 
 ## Notes per entry
 

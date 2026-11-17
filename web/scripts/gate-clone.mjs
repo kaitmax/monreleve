@@ -49,9 +49,22 @@
 // AND EVERY STEP THAT CANNOT RUN IS NAMED, never silently omitted. A harness
 // that quietly drops the browser suites reports the same green as one that
 // ran them.
+//
+// R955-R957: every step that runs a suite, and the size step, prints its own
+// summary read from its whole output (a missing one fails the step); the
+// claim carries those counts; and the scratch database is created and dropped
+// through the server's `postgres` database, never the one DATABASE_URL names.
+// The parts a unit test can reach live in gate-clone-parts.mjs.
 
 import { ciReadiness, describeReadiness } from './ci-readiness.mjs';
 import { stripAnsi } from './gate-selection.mjs';
+import {
+  administer,
+  adminTarget,
+  describeRan,
+  readStepSummary,
+  scratchDatabaseUrl,
+} from './gate-clone-parts.mjs';
 import { scratchDatabaseName } from '../lib/db/scratch-database.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
@@ -267,7 +280,7 @@ function sweepStaleClones() {
   return { count, bytes };
 }
 
-function run(label, command, args, cwd, expect, env) {
+function run(label, command, args, cwd, expect, env, summary) {
   process.stdout.write(`--- ${label} ---\n`);
 
   const child = spawnSync(command, args, {
@@ -281,6 +294,23 @@ function run(label, command, args, cwd, expect, env) {
   const output = `${child.stdout ?? ''}${child.stderr ?? ''}`;
 
   process.stdout.write(`${output.split('\n').slice(-14).join('\n')}\n`);
+
+  // R955: THE COUNT, READ FROM THE WHOLE OUTPUT AND PRINTED IN FULL. The tail
+  // above is stdout followed by stderr, and every suite prints its summary on
+  // stdout and its noise on stderr - so the tail was canvas warnings, docker's
+  // build log, the middle of the size table, and a run with fewer tests than
+  // the last one read exactly like a full one. Read BEFORE the exit code is
+  // judged, because a red run's short count is the one that matters most.
+  const read = summary === undefined ? undefined : readStepSummary(label, summary, output);
+
+  if (read !== undefined && read.found) {
+    process.stdout.write('  summary (R955, read from the whole output, not the tail):\n');
+    for (const line of read.lines) {
+      process.stdout.write(`    ${line}\n`);
+    }
+  } else if (read !== undefined) {
+    process.stdout.write('  summary (R955): NOT FOUND\n');
+  }
 
   if (child.status !== 0) {
     return { ok: false, why: `${label} exited ${String(child.status)}`, output };
@@ -308,7 +338,16 @@ function run(label, command, args, cwd, expect, env) {
     };
   }
 
-  return { ok: true, output };
+  // R955, R391: exit 0 and R133's pattern matched, and still no count - NO
+  // RESULT, so the step fails with the reader's reason, which names it.
+  // `=== false`, not `!read.found`: tsconfig.scripts.json runs with strict
+  // off, where negating the flag does not narrow StepSummary to its
+  // not-found half (gate:changed's typecheck refused `read.why`, TS2339).
+  if (read !== undefined && read.found === false) {
+    return { ok: false, why: read.why, output };
+  }
+
+  return { ok: true, output, counts: read !== undefined && read.found ? read.phrase : undefined };
 }
 
 function git(args, cwd = repo) {
@@ -378,19 +417,24 @@ let scratchDatabase = null;
 
 /** Whether the production-write suite actually ran, so the summary can say so. */
 let wroteInProduction = false;
-let admin = null;
+
+/**
+ * DATABASE_URL, parsed: WHERE the server is. R957: it is never connected to
+ * as it stands - every administration statement goes through administer(),
+ * which opens the server's `postgres` database with this URL's host, port and
+ * credentials, never the database it names.
+ */
+let server = null;
+
+/** R956: every step that completed, with its count when its summary gave one. */
+const ran = [];
 
 async function dropScratch() {
-  if (scratchDatabase === null || admin === null) {
+  if (scratchDatabase === null || server === null) {
     return;
   }
 
-  const { Client } = await import('pg');
-  const client = new Client({ connectionString: admin.toString() });
-
-  await client.connect();
-  await client.query(`DROP DATABASE IF EXISTS "${scratchDatabase}" WITH (FORCE)`);
-  await client.end();
+  await administer(server, [`DROP DATABASE IF EXISTS "${scratchDatabase}" WITH (FORCE)`]);
 }
 
 /**
@@ -579,6 +623,8 @@ try {
       console.error('so a report commit used to red :app:gate invisibly after the push (R327).');
       throw new GateCloneFailure(result.why);
     }
+
+    ran.push({ step: 'register-coverage' });
   }
 
   // R348: THE FIXTURE-SECTION COVERAGE CENSUS, the ONE definition FixtureCoverageTest.kt
@@ -606,11 +652,17 @@ try {
       console.error('is web/scripts/fixture-coverage.mjs; FixtureCoverageTest also runs it in :app:gate.');
       throw new GateCloneFailure(result.why);
     }
+
+    ran.push({ step: 'fixture-coverage' });
   }
 
   // THE CHAIN. Ordered cheapest-signal-first, with build before size because
   // size reads .next, and the database last because it is the only step that
   // is handed a connection string.
+  //
+  // R955: a fifth element names the reader for a step's own summary - the
+  // suites and the size table. A step without one reports no count and is
+  // judged by its exit code and its pattern, as before.
   const steps = [
     [
       'pnpm install --frozen-lockfile',
@@ -623,7 +675,7 @@ try {
     ],
     ['pnpm typecheck', 'pnpm', ['typecheck'], /tsc --noEmit/],
     ['pnpm lint', 'pnpm', ['lint'], /eslint \./],
-    ['pnpm test', 'pnpm', ['test'], /Test Files\s+\d+ passed/],
+    ['pnpm test', 'pnpm', ['test'], /Test Files\s+\d+ passed/, 'vitest'],
     // `build` runs copy-fonts first, so public/fonts - which is gitignored and
     // therefore absent from the clone - has to be produced here or the build
     // fails. That is the "web/public missing on a fresh checkout" defect.
@@ -632,11 +684,11 @@ try {
     // looser pattern - /budget/i, say - would match the script's own
     // explanatory output and turn a failed measurement into a pass, which is
     // the failure mode R133 exists to stop rather than an example of it.
-    ['pnpm size', 'pnpm', ['size'], /All gated routes pass both gates/],
+    ['pnpm size', 'pnpm', ['size'], /All gated routes pass both gates/, 'size'],
   ];
 
-  for (const [label, command, args, expect] of steps) {
-    const result = run(label, command, args, there, expect);
+  for (const [label, command, args, expect, summary] of steps) {
+    const result = run(label, command, args, there, expect, scrubbed(), summary);
 
     if (!result.ok) {
       console.error('');
@@ -647,6 +699,8 @@ try {
       console.error('node_modules nobody rebuilt. A fresh clone has none of those.');
       throw new GateCloneFailure(result.why);
     }
+
+    ran.push({ step: args[0], counts: result.counts });
   }
 
   // ---------------------------------------------------------------------
@@ -671,22 +725,23 @@ try {
     // R877: the name comes from the pattern's one home, so test:db's guard -
     // which runs on exactly this database below - admits it by construction.
     scratchDatabase = scratchDatabaseName(`gate_clone_${head.slice(0, 8)}`);
-    admin = local;
+    server = local;
 
-    const { Client } = await import('pg');
-    const client = new Client({ connectionString: admin.toString() });
+    // R957: through the server's `postgres` database, never the one
+    // DATABASE_URL names - from a checkout whose web/.env names `frontalier`,
+    // this used to open a session on the shared development database.
+    await administer(server, [
+      `DROP DATABASE IF EXISTS "${scratchDatabase}" WITH (FORCE)`,
+      `CREATE DATABASE "${scratchDatabase}"`,
+    ]);
 
-    await client.connect();
-    await client.query(`DROP DATABASE IF EXISTS "${scratchDatabase}" WITH (FORCE)`);
-    await client.query(`CREATE DATABASE "${scratchDatabase}"`);
-    await client.end();
-
-    const scratchUrl = new URL(admin.toString());
-
-    scratchUrl.pathname = `/${scratchDatabase}`;
+    // Derived from DATABASE_URL itself, query string and all, exactly as it
+    // always was: what the suites below are handed does not change (R959).
+    const scratchUrl = scratchDatabaseUrl(local, scratchDatabase);
 
     console.log('');
     console.log(`--- database: scratch database ${scratchDatabase} created ---`);
+    console.log(`  admin     ${adminTarget(server)} (R957: DATABASE_URL's host, port and credentials, never its database)`);
 
     // CONTAINER_WRITE_DATABASE_URL hands the SAME scratch database to the
     // production-write suite, so it too is talking to something this script
@@ -694,8 +749,8 @@ try {
     // suite rewrites `localhost` to `host.docker.internal` for the container's
     // own connection string; the host-side tools keep this one.
     const withDatabase = scrubbed({
-      DATABASE_URL: scratchUrl.toString(),
-      CONTAINER_WRITE_DATABASE_URL: scratchUrl.toString(),
+      DATABASE_URL: scratchUrl,
+      CONTAINER_WRITE_DATABASE_URL: scratchUrl,
     });
 
     const database = [
@@ -711,7 +766,7 @@ try {
         ['db:deploy'],
         /migration\(s\) have been applied|No pending migrations to apply|Database schema is up to date/i,
       ],
-      ['pnpm test:db', 'pnpm', ['test:db'], /Test Files\s+\d+ passed/],
+      ['pnpm test:db', 'pnpm', ['test:db'], /Test Files\s+\d+ passed/, 'vitest'],
     ];
 
     // ---------------------------------------------------------------------
@@ -736,6 +791,7 @@ try {
         'pnpm',
         ['test:container:write'],
         /Production write checks {2}\d+ passed/,
+        'production-write',
       ]);
 
       wroteInProduction = true;
@@ -747,8 +803,8 @@ try {
       console.log('  which is the one claim this gate was extended to make (R256).');
     }
 
-    for (const [label, command, args, expect] of database) {
-      const result = run(label, command, args, there, expect, withDatabase);
+    for (const [label, command, args, expect, summary] of database) {
+      const result = run(label, command, args, there, expect, withDatabase, summary);
 
       if (!result.ok) {
         console.error('');
@@ -759,13 +815,18 @@ try {
         console.error('only works against a database somebody prepared by hand.');
         throw new GateCloneFailure(result.why);
       }
+
+      ran.push({ step: args[0], counts: result.counts });
     }
   }
 
   // FW32, AC3: ONE SOURCE for what ran, shared by the "ran" line and the
   // claim sentence below it - so the two can never say something different
   // from each other, the way a hand-kept list drifts from what actually runs.
-  const ranSteps = `register-coverage, fixture-coverage, install, typecheck, lint, test, build, size${local === null ? '' : ', db:deploy, test:db'}${wroteInProduction ? ', test:container:write' : ''}`;
+  // R956: and that source is now the record of the steps that COMPLETED, each
+  // with the count its own summary printed (R955), so the claim carries the
+  // same numbers the log shows above it.
+  const ranSteps = describeRan(ran);
 
   console.log('');
   console.log('GATE:CLONE PASSED');
