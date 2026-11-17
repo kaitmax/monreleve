@@ -1,0 +1,213 @@
+REPORT-FW-NOTICE-SPACE - Mon Releve, web run step W24
+====================================================================
+Session: W24 FW-NOTICE-SPACE. Worktree C:/wt/fw-notice-space, branch
+fw-notice-space, base 3111fc0f17dfd275367d626b0e100e223611a3c8 (origin/main,
+carrying R380 and W23). Ports 3600-3699 (FRONTALIER_PORT=3600). Prompt
+relay/FW-NOTICE-SPACE.txt (orchestrator worktree). Rulings R1061-R1063.
+
+====================================================================
+SUMMARY
+====================================================================
+The calculator's provisional notice rendered its bold reading name run into
+the next sentence ("...des jours de missionVos jours..." and "...au decompte
+exactVous utilisez..."). Cause: JSX drops the line break between the closing
+</span> of the bold name and the {body} expression on the next line
+(CalculatorForm.tsx:1491-1492 at base). Fix: one {' '} after </span>, the
+same idiom the line already uses before the link. A new rendered-text test
+covers every site of the pattern (R267). The two notice baselines were
+regenerated, named first, and the produced set equals the expected set.
+
+====================================================================
+STATUS (R391)
+====================================================================
+COMPLETE on the code commit b27d1896ada8c2b7e8e0ab52190ece7ba7376a35:
+gate:changed GATE PASSED (exit 0) and gate:clone GATE:CLONE PASSED (exit 0),
+both run in this session on that commit's tree. Pending merge: the
+orchestrator merges. This report rides in a later commit on the same branch
+(report only, no code).
+
+====================================================================
+R1061 - THE CAUSE, FOUND, AND A TEST FIRST
+====================================================================
+- Cause: web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx
+  lines 1489-1492 at base:
+      <span className={styles.provisionalName}>
+        {PROVISIONAL_COPY.items[id].interpretation}
+      </span>
+      {PROVISIONAL_COPY.items[id].body}{' '}
+  JSX removes whitespace containing a line break between an element and the
+  next child, so the rendered text is name+body with nothing between. The copy
+  (lib/fr/provisional.ts) is correct: interpretation has no trailing space and
+  body no leading one, as every other copy string. The class .provisionalName
+  only sets font-weight; the li is not flex/grid, so the text node renders.
+- The only render site of the notice is CalculatorForm.tsx (grep for
+  PROVISIONAL_COPY / provisionalFor in app and lib: one consumer).
+- Every site of the pattern (R267), swept by tag and by class:
+  - JSX multiline grep for an inline close followed by text or an expression
+    on the next line (span, strong, b, em, a, abbr, code) in app, lib, components;
+  - every *.module.scss class that sets font-weight, mapped to its JSX and
+    its neighbours;
+  - content/guides for **bold**Word and </strong>Word.
+  Bold-lead-with-text sites found, all included in the test:
+  1. the provisional notice, P1 and P3 (CalculatorForm.tsx) - BROKEN;
+  2. the comparator's limits list, <strong> lead + {' '} + rest
+     (app/(public)/calculateur-lamal-cmu/page.tsx:180) - correct;
+  3. the deadline helper's step 1 (<strong> lead, {' '}, text) and step 2
+     (text, {' '}, <strong> date) (calculateur-lamal-cmu/DeadlineHelper.tsx:103-114)
+     - correct.
+  Examined and not the pattern: ComparisonPanel's attribution and priminfo
+  links and /sources' premiums line (the copy ends in a space or no-break
+  space); ComparisonPanel rateLead + <strong> (lead ends in a space, the bold
+  value ends the paragraph); print page rateValue/rateLabel (display: block);
+  the a2 source rows and Projection's "Aujourd'hui" + rate (flex with a gap -
+  see NOTICED N1).
+- The test: web/tests/unit/pages/bold-lead-space.test.tsx. One helper,
+  expectOneSpaceBeside(container, bold): the character beside the bold text in
+  the container's rendered textContent is exactly one ASCII space followed by
+  a non-space (equality on two characters, so zero spaces and two spaces both
+  fail; no \s folding, the copy carries no-break spaces, R91). For the notice
+  it also asserts each entry's whole text equals
+  interpretation + ' ' + body + ' ' + readMore, composed from PROVISIONAL_COPY
+  (R181). Cases: P1, P3, P1 and P3 at once; the limits list; both deadline steps.
+- RED (base code, the new test only), .fw-notice-space-evidence/red.log:
+      x P1 / P3 / P1 and P3 at once: each entry reads name, one space, sentence
+      x P1 / P3 / P1 and P3 at once: the bold name is followed by exactly one space
+      AssertionError: after "l'ordre d'imputation des jours de mission":
+        expected 'Vo' to match /^ [^ \t\n\r]/u
+      AssertionError: after "la reduction du quota de missions au decompte exact":
+        expected 'Vo' to match /^ [^ \t\n\r]/u
+      Tests  6 failed | 2 passed (8)        STEP_EXIT=1
+  The 2 passes are the comparator's sites, correct before this task: the
+  notice's RED through the same helper is the proof the helper can fire on
+  them (R178's shape: a live instance, no plant needed).
+
+====================================================================
+R1062 - THE FIX
+====================================================================
+- CalculatorForm.tsx:1491: `</span>` -> `</span>{' '}`. One line, the same
+  idiom as {' '} on the next line. No copy string changed, no space typed into
+  lib/fr, no other copy or layout change.
+- GREEN: bold-lead-space + provisional-notice + calculateur-accordion,
+  58 of 58, STEP_EXIT=0 (.fw-notice-space-evidence/green.log). eslint on both
+  files: clean.
+- For W21 (C:/wt/fw-prehydration-sites, changing CalculatorForm.tsx's mount
+  logic): this branch touches CalculatorForm.tsx at ONE line, 1491, inside the
+  provisional notice's JSX. Nothing in the mount logic.
+
+====================================================================
+R1063 - THE BASELINES (R207, R135)
+====================================================================
+- EXPECTED SET, written 2026-11-17T21:17:39Z before the regeneration
+  (.fw-notice-space-evidence/expected-set.txt):
+    web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+    web/tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png
+  Reason: the notice renders only when provisionalFor(input) is non-empty
+  (P1: missions in France AND a third state; P3: exact method with rate < 100
+  or a part year); of the calculator's captured states only
+  panneau-avis-provisoire reaches either, and /resultat renders no notice.
+- Command, under the lock (acquired 21:18:06Z, commitFree 7 097, line 5 900;
+  released 21:20:22Z): pnpm test:visual:update -- --grep "panneau-avis-provisoire"
+  It printed: "photographed: 3111fc0f plus 2 uncommitted path(s)" (the fix and
+  the new test), 2 passed, and R135's list:
+    re-generated  tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+    re-generated  tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png
+  PRODUCED SET = EXPECTED SET.
+- Each image compared with its base version pixel by pixel, and cropped and
+  looked at (crops in .fw-notice-space-evidence/crop-{old,new}-{desktop,mobile}.png):
+  - desktop: 1440x4097 both; 4 613 px differ, all inside x 865-1272,
+    y 339-459 (the notice). Row bands 339-351 (P1's first line: the space
+    after "mission") and 429-439, 447-459 (P3's first two lines: the space
+    after "exact" pushes "utilisez" to the second line, which re-wraps). The
+    entry keeps its line count, so nothing below moves.
+  - mobile: 390x7833 both; 2 225 px differ, all inside x 93-346, y 2711-2867.
+    Row bands 2711-2721 (after "mission") and 2855-2867 (after "exact"). No
+    re-wrap.
+  - Reason, for R135: the space between the bold reading name and its
+    sentence is now rendered; nothing else changed.
+
+====================================================================
+BASELINES
+====================================================================
+Regenerated, exactly the named set (R207), reason as R1063 above:
+  web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+  web/tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png
+No other baseline written. The full visual suite then compared 174 of 174
+in gate:changed with the new pair in place.
+
+====================================================================
+GATES
+====================================================================
+- gate:changed, under the lock (acquired 21:39:42Z, commitFree 7 471, line
+  5 900; released 21:58:17Z), FRONTALIER_PORT=3600, DATABASE_URL the migrated
+  scratch monreleve_w24, web/.env absent. Selection, pasted:
+    3 path(s) matched:
+      web/app/(public)/calculateur-teletravail-frontalier/CalculatorForm.tsx  ->  app/**
+      web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png  ->  a baseline (R144)
+      web/tests/visual/baselines/calculateur-panneau-avis-provisoire-mobile.png  ->  a baseline (R144)
+    suites: typecheck, lint, test, build, test:visual, test:e2e, test:late
+  GATE PASSED for the paths changed: test 4110 passed (241 files),
+  test:visual 174 passed, test:e2e 389 passed, test:late 10 passed.
+  No flaky, no retry. STEP_EXIT=0. (The new test file was untracked at that
+  moment; it is under tests/unit, run by the base chain's `pnpm test`.)
+- gate:clone ALONE, under the lock (acquired 22:00:13Z, commitFree 8 207,
+  line 5 300; released 22:15:15Z), on b27d1896, tree clean. Claim, pasted:
+    "this commit builds and passes register-coverage, fixture-coverage,
+    install, typecheck, lint, test (4110 of 4110 tests passed, 241 files),
+    build, size (21 routes measured), db:deploy, test:db (816 of 843 tests
+    passed, 27 skipped, 60 files), test:container:write (10 checks passed)
+    from a clean checkout"
+  GATE:CLONE PASSED, STEP_EXIT=0. Not run there, by its own list: test:e2e,
+  test:runtime, lighthouse (browser or Chrome), the Node matrix, test:container.
+- WALKTHROUGH (R176), under the lock (acquired 22:37:17Z, line 4 600):
+  pnpm dev on PORT=3600. /api/health answered
+  {"service":"monreleve",...,"status":"ok",...} (R169). GET
+  /calculateur-teletravail-frontalier?canton=GE&tt=40&taux=80&mfr=6&mtiers=4
+  served 149 302 B, with NO provisional notice in the HTML (0 matches for
+  data-notice="provisional", 0 for "missionVos"): the notice is derived from
+  client state after mount, so a fetch cannot see it. The notice was driven
+  in a real browser by the visual run (the state fills the form, R1063) and
+  by jsdom in the test; the dev-server drive is therefore NO RESULT for the
+  notice itself. The dev tree I spawned (pnpm dev -> next dev, PIDs
+  19248..11088) was killed by PID tree; the four PIDs are gone and nothing
+  answers on 3600 (curl 000). Lock released 22:38:40Z.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- N1. Two flex rows separate a bold element from its neighbour by `gap`, not
+  by a space, so their textContent runs together while the picture is fine:
+  Projection.tsx:97-101 ("Aujourd'hui" + the current rate, .current is
+  display: flex) and ComparatorSections.tsx:225-226 (the a2 sources' name and
+  what, flex row). Not the run-in defect on screen; whether an assistive
+  technology reads them joined was not measured.
+- N2. The notice line now reads "...des jours de mission Vos jours de
+  mission...": a lowercase bold phrase, then a capitalised sentence, with no
+  punctuation between them. R1062 forbids a copy change here (QUESTION Q1).
+
+====================================================================
+DEVIATIONS
+====================================================================
+- D1. R176's walkthrough could not show the notice from the dev server (see
+  WALKTHROUGH): the browser drive of the notice is the visual run's, against
+  the container's server, not pnpm dev.
+- D2. web/.env was absent for the visual run and gate:changed (as W23's N4),
+  and present only for gate:clone, written by script from the main checkout's
+  file, never printed, and removed at the end.
+
+====================================================================
+QUESTIONS
+====================================================================
+- Q1. Should the bold reading name end with punctuation (a colon or a full
+  stop) before its sentence? Today it is "name Sentence". That is a copy
+  decision, outside R1062.
+
+====================================================================
+PUSH PROOF
+====================================================================
+- Code: `git push -u origin fw-notice-space` -> "* [new branch]
+  fw-notice-space -> fw-notice-space" at b27d1896ada8c2b7e8e0ab52190ece7ba7376a35,
+  before gate:clone; gate:clone then ran on that same commit.
+- This report: committed on b27d1896 and pushed to origin/fw-notice-space;
+  a report cannot carry its own SHA, so the session's final message gives
+  it, read back with git ls-remote.
+- NOT merged to main (the orchestrator merges).
