@@ -280,4 +280,40 @@ DEFECTS
 ====================================================================
 PUSH PROOF
 ====================================================================
-(appended after gate:clone)
+- Branch fw-avis-capture. Code commit 74c92a7c was pushed before
+  gate:clone (the prompt's step 4). The first report commit 6e322299
+  carried a placeholder here; this commit fills it in. The tip is this
+  commit (`git ls-remote origin fw-avis-capture`).
+- gate:changed: hold 19:29:40Z-19:39:15Z, start 7 767 MB, line 5 900,
+  FRONTALIER_PORT=3400, STEP_EXIT=0. The printed selection:
+    gate selection (R132):
+      2 path(s) matched:
+        web/e2e/calculateur.visual.spec.ts  ->  a visual spec, which test:e2e deliberately ignores (R144)
+        web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png  ->  a baseline, which is the record test:visual compares against (R144)
+      suites: typecheck, lint, test, build, test:visual, test:late
+        test: 4040 passed (235 files)
+        test:visual: 174 passed (0 flaky)
+        test:late: 10 passed
+    GATE PASSED for the paths changed.
+- gate:clone ran ALONE on commit 74c92a7c234d7d262f9f11a687887c53c8db102e,
+  under the heavy lock: hold 19:56:52Z-20:14:24Z, start 7 391 MB, line
+  5 300. The result was GATE:CLONE PASSED, STEP_EXIT=0.
+  - Claim line: "this commit builds and passes register-coverage,
+    fixture-coverage, install, typecheck, lint, test (4040 of 4040 tests
+    passed, 235 files), build, size (21 routes measured), db:deploy, test:db
+    (816 of 843 tests passed, 27 skipped, 60 files), test:container:write
+    (10 checks passed) from a clean checkout".
+  - "DIRTY" was this report only (?? REPORT-FW-AVIS-CAPTURE.txt), with 0
+    tracked changes.
+  - Its scratch database, monreleve_gate_clone_74c92a7c, was created and
+    dropped by gate:clone.
+- Cleanup:
+  - Images: monreleve:write (built by this gate:clone's
+    test:container:write at 20:12:43Z, id 63d3a60d) was removed by exact
+    name after its id was checked. monreleve:e2e (built 19:52Z, outside
+    this session's holds) was not touched.
+  - No scratch database of this session remains. pg_database lists
+    frontalier, monreleve_w21, monreleve_web_orch, postgres, template0 and
+    template1, none of them this session's.
+  - web/.env was removed.
+  - .session-lock.json is removed last, after the final push.
