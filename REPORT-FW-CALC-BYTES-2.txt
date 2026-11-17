@@ -866,3 +866,71 @@ CLEANUP (Part B), after this report's push:
   gate:clone hold); both temporary worktrees already removed.
 - .session-lock.json removed LAST. The worktree C:/wt/fw-calc-bytes-2 stays
   (clean: the code is committed) with .calcbytes2-evidence/ in it.
+
+RESUMED AGAIN (Web Ruling 32) - STOPPED: THE CAUSE IS ON MAIN
+=============================================================
+The coordinator's message (about 18:10Z): round 6's gate failed the desktop
+panneau-avis-provisoire capture on attempt 1 and retry 1 ("10 pixels
+different" while waiting for two consecutive screenshots to agree, then the
+5 000 ms timeout); make it repeat on this tip with R912's pattern; "If the
+cause turns out to be on main and not in your increment, STOP and hand back
+with the evidence: the control runs decide."
+- About 18:10Z: a fresh .session-lock.json; origin/main still b794b588; tip
+  aabf67c0, tree clean.
+
+THE DIAGNOSIS (one hold: diag1.lock.log - ACQUIRED 18:15:45Z at 6 444 MB, line
+6 245, released 18:20:31Z; no abort)
+- A TEMPORARY spec (tools/zz-w10b-diag.visual.spec.ts, never committed,
+  removed from both trees after the run) through the real visual.mjs and its
+  filter, in the container: the avis-provisoire state reached exactly as the
+  real spec reaches it, at 1440 x 900; four arms; per arm 4 FRESH contexts x 6
+  consecutive full-page captures, hashed; the layout read at capture time.
+- Run in MINE (aabf67c0, this branch) and in BASE (a temporary detached
+  worktree of main b794b588, C:/wt/fw-calc-bytes-2-base3), the same hold.
+  Capture hashes (count of 24 per arm):
+    arm              MINE                              BASE (main)
+    asIs             9585b2a3 x21, 5a4c348f x3          9585b2a3 x22, 5a4c348f x2
+    blur             7c2765ed x18, 4c84a439 x6          7c2765ed x21, 4c84a439 x3
+    scrollTop        5a4c348f x24                       5a4c348f x24
+    blurScrollTop    4c84a439 x24                       4c84a439 x24
+  (diag1-mine/, diag1-base/: the JSON per arm and the first and last capture
+  of every page.)
+- THE SAME TWO RENDERINGS, BYTE FOR BYTE, IN BOTH TREES, at the same rate.
+  The two asIs hashes differ by exactly the variant: 28 px at x1285-1287
+  y1819-2007, max channel delta 2 (tools/bbox.cjs). The majority one
+  (9585b2a3) differs from the committed baseline only inside the canton
+  select's label (42 px at x754-763 y426-432; the diagnostic used
+  `color: transparent` where the real spec's e2e/visual-select.css uses
+  -webkit-text-fill-color), so the majority rendering IS the baseline's.
+- WHAT DECIDES IT: the scroll position. Every arm captured at scrollY 763
+  (where `page.fill('#total-jours')`, the state's last step, leaves the page)
+  gives two renderings; every arm scrolled to 0 before capturing gives ONE,
+  24 of 24, in both trees - and that one is the variant. Focus is not the
+  cause: blurring alone (R912's remedy) still gives two. The geometry is
+  identical in both trees: the AppCard at x 824.65625, width 463.328125
+  (its right edge at x 1287.98, sub-pixel), inside the result column, which
+  is `position: sticky` from the md breakpoint (CalculatorForm.module.scss:
+  39-44) and is 1 754 px tall, docY 301. So a full-page capture of a page
+  scrolled 763 px renders the sticky column's AppCard edge one of two ways;
+  at scroll 0 it renders one way.
+- MAIN HAS IT, AND THE INCREMENT DOES NOT CHANGE IT: same hashes, same
+  geometry, MINE 3 of 24 against BASE 2 of 24 for the variant. The full-suite
+  sightings on this branch and none on main's tips today are consistent with
+  a capture-level race of this rate; no full-suite control run was made,
+  because the coordinator's stop condition was met by the control above.
+- So, per the message: STOPPED. Nothing was changed, committed or
+  regenerated for the capture; no fix was attempted on this branch.
+- THE FIX, for whoever takes it on main (a task of its own): in the spec,
+  scroll to the top before the full-page capture of this state (one
+  rendering, 24/24 in both trees) - not a threshold, mask, retry or sleep;
+  the PRODUCT does not move after load (both trees settle on one image at
+  scroll 0). It moves this state's desktop baseline to the scroll-0 image,
+  which is today's 28 px variant, so it is a named regeneration of one file
+  (R207). Other states captured while scrolled with the sticky column may
+  share the race; not examined here.
+
+STATUS (R391) of this resumption: STOPPED (the cause is on main). The code
+commit 9beab805 and its gates stand as reported above; FULL GATE NOT RUN
+again; no new code. The branch tip is this report's commit. Not merged.
+CLEANUP: the diagnostic spec removed from both trees; C:/wt/fw-calc-bytes-2-base3
+removed after its porcelain read empty; .session-lock.json removed last.
