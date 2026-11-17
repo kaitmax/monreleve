@@ -32,7 +32,9 @@ import styles from './verification.module.scss';
 export type VerificationState =
   | { readonly kind: 'found'; readonly view: VerificationView }
   | { readonly kind: 'unknown' }
-  | { readonly kind: 'rate-limited' };
+  | { readonly kind: 'rate-limited' }
+  // FW-VERIFIER-OUTAGE (Web Ruling 20): the database could not be reached.
+  | { readonly kind: 'unavailable' };
 
 /**
  * The PARIS DAY of an ISO instant, Swiss dots - never the time (R330 subset).
@@ -106,16 +108,26 @@ export function VerificationContent({ state }: { readonly state: VerificationSta
   return (
     <main className={styles.page}>
       <h1 className={styles.title}>{VERIFICATION_COPY.title}</h1>
-      <p className={styles.intro}>{VERIFICATION_COPY.intro}</p>
 
-      {state.kind === 'found' ? (
-        <Found view={state.view} />
+      {state.kind === 'unavailable' ? (
+        // FW-VERIFIER-OUTAGE (R1022, Web Ruling 20): the database could not be
+        // reached, so nothing was looked up. The heading and ONE sentence - not
+        // the intro, and nothing about the code or the document (R160).
+        <p className={styles.neutral}>{VERIFICATION_COPY.unavailable}</p>
       ) : (
-        // R330: unknown and withdrawn are the SAME neutral answer; the rate
-        // limit is its own, and reveals nothing about whether a code exists.
-        <p className={styles.neutral}>
-          {state.kind === 'rate-limited' ? VERIFICATION_COPY.rateLimited : VERIFICATION_COPY.unknown}
-        </p>
+        <>
+          <p className={styles.intro}>{VERIFICATION_COPY.intro}</p>
+
+          {state.kind === 'found' ? (
+            <Found view={state.view} />
+          ) : (
+            // R330: unknown and withdrawn are the SAME neutral answer; the rate
+            // limit is its own, and reveals nothing about whether a code exists.
+            <p className={styles.neutral}>
+              {state.kind === 'rate-limited' ? VERIFICATION_COPY.rateLimited : VERIFICATION_COPY.unknown}
+            </p>
+          )}
+        </>
       )}
     </main>
   );

@@ -26,6 +26,13 @@
 // Anything the product does beyond that is printed by the step and reported,
 // never asserted here: a finding is not an assertion to adjust (R946).
 //
+// AND ONE PAGE OUTSIDE THE SITEMAP (FW-VERIFIER-OUTAGE, R1023, Web Ruling 20):
+// /verifier/<a code the export route issued with the database up>. With the
+// database stopped it answers 200 with its own heading and ONE sentence -
+// VERIFICATION_COPY.unavailable - and NOT the unknown-code sentence nor any of
+// the releve's content, no-store read off that response, and the page's own
+// [verifier] log line on record. Ten checks; nothing above changed.
+//
 // "ITS OWN CONTENT" IS THE SAME IMAGE'S <h1> WITH THE DATABASE RUNNING. Read,
 // not transcribed (R181): the reference is taken a minute before the stop, so
 // a route added to the sitemap tomorrow is measured the day it ships, and an
@@ -96,6 +103,53 @@ export function documentedStatus(markdown, code, method) {
   }
 
   return Number(found[0][1]);
+}
+
+/**
+ * The value of `key` in a lib/fr module's source, when it is ONE plain string
+ * literal on the key's line or the next: '...', "..." or a template with no
+ * `${`. FW-VERIFIER-OUTAGE: the step judges /verifier by VERIFICATION_COPY's
+ * sentences, and an .mjs cannot import TypeScript, so it reads them out of
+ * lib/fr/verification.ts - derived, never typed (R181). The unit test pins
+ * every value read here against the module's own export.
+ *
+ * R211: EXACTLY ONE PLAIN LITERAL, OR A REFUSAL. An interpolated or
+ * concatenated value cannot be read without evaluating the module, and two keys
+ * of one name cannot be told apart: either fails by name, never returning some
+ * other sentence.
+ */
+export function copyLiteral(source, key) {
+  const lines = source.split(/\r?\n/u);
+  const head = new RegExp(`^\\s*${escapeForPattern(key)}:\\s*(.*)$`, 'u');
+  const values = [];
+  let keyLines = 0;
+
+  lines.forEach((line, index) => {
+    const match = head.exec(line);
+
+    if (match === null) return;
+
+    keyLines += 1;
+
+    const sameLine = (match[1] ?? '').trim();
+    const rest = sameLine === '' ? (lines[index + 1] ?? '').trim() : sameLine;
+    const literal = /^(['"`])(.*)\1,?$/u.exec(rest);
+
+    if (literal === null) return;
+
+    const [, quote, value] = literal;
+
+    if (!value.includes(quote) && !value.includes('\\') && !value.includes('${')) values.push(value);
+  });
+
+  if (keyLines !== 1 || values.length !== 1) {
+    throw new Error(
+      `\`${key}\` is not exactly one plain string literal (${keyLines} key line(s), ${values.length} ` +
+        'plain literal(s)); this step reads exactly one (R211)',
+    );
+  }
+
+  return values[0];
 }
 
 /**
@@ -182,6 +236,30 @@ function databaseCheck(answer) {
   const checks = body !== null && Array.isArray(body.checks) ? body.checks : [];
 
   return { body, check: checks.find((check) => check !== null && check.name === 'database') };
+}
+
+/** Markup as text: tags out, entities decoded, whitespace collapsed. */
+function textOf(html) {
+  return decodeEntities(html.replace(/<[^>]*>/gu, ' '))
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+/** The whole body with its entities decoded: an ABSENCE is read here, scripts included. */
+function decodedBody(answer) {
+  return decodeEntities(answer?.body ?? '');
+}
+
+/** The text of every <p> inside <main>: what the reader is told under the heading. */
+function mainParagraphsOf(html) {
+  const main = /<main\b[^>]*>([\s\S]*?)<\/main>/iu.exec(html)?.[1] ?? '';
+
+  return [...main.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/giu)].map((match) => textOf(match[1] ?? ''));
+}
+
+/** The text of every <dl>: the releve's printed fields, as the found state lists them. */
+function printedFieldsOf(html) {
+  return [...html.matchAll(/<dl\b[^>]*>([\s\S]*?)<\/dl>/giu)].map((match) => textOf(match[1] ?? '')).join(' ');
 }
 
 /**
@@ -332,6 +410,87 @@ export function judgeDatabaseStopped(o) {
       `status ${said(down)} (${said(up)} with it running), heading ${JSON.stringify(downHeadings)} (${JSON.stringify(upHeadings)} with it running)`,
     );
   }
+
+  // ==========================================================================
+  // /verifier/<a code the export route issued> (FW-VERIFIER-OUTAGE, R1023)
+  // ==========================================================================
+  // The public page that DOES read the database. Web Ruling 20 made its
+  // degraded answer a 200, like the unknown-code answer, so the status cannot
+  // tell them apart and the CONTENT must: the unavailable sentence present, the
+  // unknown-code sentence and the releve's content absent, no-store read off
+  // the degraded response itself. The code is a REAL one, issued with the
+  // database up, where the unknown-code text would be a false statement about a
+  // real releve. The copy is VERIFICATION_COPY's, read from lib/fr by the step.
+  const v = o.verifier;
+  const issuedUpHeadings = headingsOf(v.up.issued.body);
+
+  // Presence first (R169's corollary): an absence below means something only
+  // once the same image has served what it would be the absence of.
+  check(
+    "with the database running, /verifier/<the issued code> answers 200 with the releve's printed fields, its holder's name among them",
+    v.up.issued.status === 200 && issuedUpHeadings.length > 0 && printedFieldsOf(v.up.issued.body).includes(v.holderName),
+    `status ${said(v.up.issued)}, headings ${JSON.stringify(issuedUpHeadings)}, holder's name in the printed fields: ${printedFieldsOf(v.up.issued.body).includes(v.holderName)}`,
+  );
+
+  check(
+    'with the database running, /verifier/<an unknown code> answers 200 with VERIFICATION_COPY.unknown, the sentence the stopped answer must not carry',
+    v.up.unknown.status === 200 && textOf(v.up.unknown.body).includes(v.copy.unknown),
+    `status ${said(v.up.unknown)}, the unknown sentence present: ${textOf(v.up.unknown.body).includes(v.copy.unknown)}`,
+  );
+
+  check(
+    'the app held a database connection when its database stopped (pg_stat_activity): the warm pool the first read after the stop is judged on',
+    typeof v.connectionsAtStop === 'number' && v.connectionsAtStop > 0,
+    `connections read at the stop: ${JSON.stringify(v.connectionsAtStop)}`,
+  );
+
+  const first = v.down.first;
+  const firstHeadings = headingsOf(first.body);
+  const paragraphs = mainParagraphsOf(first.body);
+
+  check(
+    'with the database stopped, /verifier/<the issued code> answers 200 with its own heading (Web Ruling 20: a 200, so the status cannot tell it apart)',
+    first.status === 200 && issuedUpHeadings.length > 0 && sameList(firstHeadings, issuedUpHeadings),
+    `status ${said(first)}, heading ${JSON.stringify(firstHeadings)} (${JSON.stringify(issuedUpHeadings)} with it running)`,
+  );
+
+  check(
+    'with the database stopped, /verifier/<the issued code> carries VERIFICATION_COPY.unavailable as the one sentence under its heading',
+    paragraphs.length === 1 && paragraphs[0] === v.copy.unavailable,
+    `the paragraphs under its heading: ${JSON.stringify(paragraphs)}`,
+  );
+
+  check(
+    'with the database stopped, /verifier/<the issued code> does not carry VERIFICATION_COPY.unknown',
+    !decodedBody(first).includes(v.copy.unknown),
+    'the unknown-code sentence is in the body: a false statement about a real releve',
+  );
+
+  check(
+    "with the database stopped, /verifier/<the issued code> carries none of the releve's content: no printed field, not its holder's name",
+    printedFieldsOf(first.body) === '' && !decodedBody(first).includes(v.holderName),
+    `printed fields ${JSON.stringify(printedFieldsOf(first.body))}, holder's name in the body: ${decodedBody(first).includes(v.holderName)}`,
+  );
+
+  check(
+    'with the database stopped, /verifier/<the issued code> is no-store, read off that response',
+    /\bno-store\b/iu.test(first.cacheControl ?? ''),
+    `Cache-Control ${JSON.stringify(first.cacheControl ?? null)}`,
+  );
+
+  check(
+    'with the database stopped, the server log names the error the verifier page got (its [verifier] line)',
+    v.down.log.some((line) => line.includes('[verifier]')),
+    `NO RESULT: no [verifier] line among the ${v.down.log.length} log line(s) after the stop, so what the page got is not on record`,
+  );
+
+  const verifierLeaks = leaksIn(first.body, o.secrets, { api: false });
+
+  check(
+    'with the database stopped, /verifier/<the issued code> carries no secret (by value)',
+    verifierLeaks.length === 0,
+    `it carries ${verifierLeaks.join(', ')}`,
+  );
 
   // ==========================================================================
   // THE RECOVERY: THE DATABASE STARTED AGAIN, THE CONTAINER NOT RESTARTED
