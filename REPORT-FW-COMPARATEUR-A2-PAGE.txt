@@ -1,0 +1,605 @@
+================================================================================
+REPORT-FW-COMPARATEUR-A2-PAGE (web run step W20, Web Ruling 27)
+================================================================================
+Session W20. Worktree C:/wt/fw-comparateur-a2-page, branch
+fw-comparateur-a2-page, cut from origin/main 41ddc9e4 (BASE_SHA, what
+production serves since 2026-11-17 12:23Z). Ports 3600-3699. Rulings
+R1046-R1050. Pure ASCII by transport (R168): every French string below is
+transliterated; the accented originals are in web/lib/fr/lamal.ts or in
+docs/design/comparateur-lamal-a2.dc.html, as each entry says.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+/calculateur-lamal-cmu is now the droit d'option page of the approved A2
+artboard: the pill, the long h1, the lead and nine chips in the head; the
+banner; the comparison (unchanged); the delay with its source line; then
+"Ce qui est definitif", "Qui suit votre choix" beside "Ce que couvre
+l'option", the France and Suisse cards, the limits in three columns, and
+"Sources". All new sections are server components; their words live in a
+new lib/fr/lamal-page.ts no client module imports; their styles hang on one
+class, so the comparator ends 128 B LIGHTER than before (1 201 B under GATE
+A). Every rule stated maps to a register row (L18-L21 added from the October
+collection already in docs/sources/) or to a source the artboard names;
+five pieces of the artboard ship without their sentence or value (R1047
+below), one box is withheld because the register and the guide contradict
+it. No calculation, constant, rounding rule, dataset, island, DeadlineHelper
+or other page changed. The 34 comparator baselines were named, regenerated,
+matched and looked at; the full visual suite passed (174) with nothing else
+moved.
+
+  code commit  46fbdf35  (pushed; gate:changed PASSED on that tree)
+  this report  the commit after it (see STATUS and PUSH PROOF)
+
+--------------------------------------------------------------------------------
+STATUS (R391)
+--------------------------------------------------------------------------------
+GREEN on 63c88a01: gate:clone ran ALONE on that exact commit (the heavy
+lock, 16:02:18-16:18:16) and printed GATE:CLONE PASSED, exit code 0 - claim
+line in PUSH PROOF. gate:changed PASSED (exit 0) on 46fbdf35's tree, the
+code commit; 63c88a01 adds only this report's text to it. The pushed tip
+is the commit after 63c88a01, which adds only PUSH PROOF to this file: it
+is text at the repository root and was not itself cloned.
+
+--------------------------------------------------------------------------------
+R1046 - THE GAP, MEASURED FIRST (before any code)
+--------------------------------------------------------------------------------
+How: `pnpm dev` on port 3600 (R169: /api/health answered service
+"monreleve"), driven by Playwright (.w20-evidence/drive.mjs, not committed)
+at 1440, 390 and 320, EMPTY and FILLED (one adult born 1985, 42 000 EUR,
+2027 - R737's sample), full-page captures read in parts. Compared section by
+section with docs/design/comparateur-lamal-a2.dc.html (read in full) and the
+operator's screenshot (1440 x 6377, read in six parts). The screenshot is
+the artboard rendered with its demo state; no element differs between the
+two, so no STOP on that clause.
+Live, measured: h1 "Comparateur LAMal / CMU"; headings (empty) Votre
+situation / Le delai de trois mois / Votre delai / Ce que ce comparatif ne
+compare pas; (filled) adds Estimation pour 2027 and five h3 cards; no nav in
+main; no section id; horizontal overflow 0 at 1440, 390 and 320, empty and
+filled; page height 3532 / 4092 px at 1440.
+
+  ARTBOARD ELEMENT                         LIVE (41ddc9e4)
+  ---------------------------------------  -------------------------------------
+  SITE HEADER / FOOTER
+  header: wordmark, 4 links, current       DIFFERENT - the shared PublicShell
+    underlined                             (logo, "Calculateurs" menu, Guides,
+                                           Le releve, Tarifs). Shared by every
+                                           page: out of scope (R1050).
+  footer: one line + 3 legal links         DIFFERENT - the shared site footer.
+                                           Out of scope (R1050).
+  PAGE HEAD
+  pill "Comparateur LAMal / CMU"           MISSING
+  h1 "Le droit d'option des frontaliers :  DIFFERENT - h1 is "Comparateur
+    LAMal ou assurance maladie francaise"  LAMal / CMU"
+  lead "Tout ce qu'il faut savoir avant    DIFFERENT - the long method intro
+    de choisir, sur une seule page : ..."  ("Le droit d'option vous fait
+                                           choisir ... Code de la securite
+                                           sociale.")
+  chips nav "Sur cette page", 9 links to   MISSING (and none of the 9 target
+    #comparer #delai #definitif #famille   ids exists)
+    #couverture #france #suisse #limites
+    #sources
+  warning box "Ce choix ne se reprend      PRESENT in form (error border, soft
+    pas", icon, text, link to the guide    fill, icon, heading, guide link);
+                                           DIFFERENT text - live also lists what
+                                           reopens the option and the four
+                                           events; the link is its own
+                                           paragraph, not inline
+  #comparer - FORM CARD "Votre situation"
+  year toggle 2027 / 2026 + helper         PRESENT (real, CA1)
+  declaration toggle, income field         PRESENT; DIFFERENT - the suffix is
+    "EUR" inside the field frame + helper  the euro sign beside the frame
+  Commune: two fields + "Ici : X EUR"      PRESENT
+  affiliation toggle + date + helper       PRESENT (helper words differ: R744's
+                                           fallback wording, row L16)
+  persons legend + helper "Vous d'abord,   PRESENT; DIFFERENT helper - live
+    puis les membres ... votre choix."     adds who follows (D8) and the spouse
+  person row: "Vous, annee de naissance",  PRESENT; DIFFERENT label punctuation
+    year input, accident checkbox,         ("Vous - annee de naissance", em
+    "Retirer"                              dash) and "Retirer la personne N"
+                                           with an icon
+  accident default sentence, under the     PRESENT; DIFFERENT - inside the first
+    list, shorter                          row, and longer (adds "la couverture
+                                           accidents ... peut alors etre
+                                           suspendue")
+  "Ajouter une personne"                   PRESENT
+  (no submit button; the sketch computes   DIFFERENT - live has "Comparer" and
+    live from demo defaults)               no result until it is pressed, form
+                                           alone at the narrow measure (logic,
+                                           zero storage: unchanged, R1050)
+  #comparer - RESULT COLUMN (after "Comparer"; checked by filling the form)
+  h2 "Estimation pour 2027"                PRESENT
+  Swiss card: lowest / median / highest    PRESENT; DIFFERENT - francs under
+    EUR, "En francs, par an : ..." line,   each euro total, not one sentence
+    basis line, rate note                  (FW-CALCS-A2 deviation 9)
+  French card: amount, "par an", formula,  PRESENT (+ a source line)
+    "Plafond 2027 annonce" badge, floored
+    note, prorata line
+  chart "Les 13 assureurs ..."             PRESENT (8 px dots, not 16:
+                                           deviation 1, no token)
+  "Une annee avec beaucoup de soins"       PRESENT (S1 sourced; its source line
+                                           replaces the sketch's "Source a
+                                           collecter avant publication")
+  "Et si le franc varie ?"                 PRESENT
+  verdict sentence on a pale-blue fill     PRESENT; DIFFERENT - brand rule on
+                                           the surface (no pale-blue token,
+                                           PARK-CA4)
+  source line (OFSP, CSS, Urssaf, BCE,     PRESENT; DIFFERENT - two paragraphs;
+    priminfo) + legal line                 the CSS/Urssaf citation sits in the
+                                           French card
+  #delai - "LE DELAI DE TROIS MOIS"
+  h2, lead, the four events                PRESENT
+  "Sources : cleiss.fr, ameli.fr (lu le    MISSING
+    27.10.2026)" under the events
+  "Votre delai" helper, steps, warning,    DIFFERENT - number discs brand-filled
+    reminder form                          (drawn pale, the third red); the
+                                           warning an icon line, not a yellow
+                                           box; the select's event wording.
+                                           DeadlineHelper is W18's file: listed,
+                                           not touched (DEVIATIONS 6, N9)
+  white band                               DIFFERENT - on the canvas, top rule
+  #definitif - "CE QUI EST DEFINITIF"      MISSING: h2, lead, two cards ("Ce qui
+                                           permet d'y revenir" / "Ce qui ne le
+                                           permet pas"), source line
+  #famille - "QUI SUIT VOTRE CHOIX"        MISSING: h2, two paragraphs, source
+  #couverture - "CE QUE COUVRE L'OPTION"   MISSING: h2, two paragraphs, source
+  #france - card "Si vous choisissez       MISSING: label dot, h2, six bullets,
+    l'assurance maladie francaise"         source line
+  #suisse - card "Si vous restez a         MISSING: label dot, h2, five
+    l'assurance maladie suisse (LAMal)"    bullets, priminfo link, source line
+  #limites - "CE QUE CE COMPARATIF NE      PRESENT (8 items, full text, lead
+    COMPARE PAS"                           bold); DIFFERENT - two columns, not
+                                           three at 1440; no id; the band ends
+                                           with the guide link and "Sources et
+                                           verifications", which the artboard
+                                           moves into #sources
+  #sources - "SOURCES"                     MISSING: h2, lead "Toutes lues le
+                                           ...", 7 rows (name + what it
+                                           sources), box "Ce que cette page ne
+                                           dit pas", link "Toutes les sources
+                                           et verifications du site"
+
+--------------------------------------------------------------------------------
+R1047 - EVERY FACT HAS A SOURCE: the map (accented originals in
+web/lib/fr/lamal-page.ts; [ref] = docs/sources/primes-lamal/sources-2026-10.md,
+read 27.10.2026; Dn/Ln = docs/regulatory-sources.md rows)
+--------------------------------------------------------------------------------
+Rows L18-L21 were ADDED to docs/regulatory-sources.md (table + quoted notes),
+each from the October collection already in docs/sources/ (R1047's condition):
+L18 CLEISS worker page [7c]; L19 URSSAF 6c [6f]; L20 URSSAF 6a [6d]; L21
+URSSAF 6d [7d]. No SOURCE_IDS entry was added (/sources and its baseline do
+not move).
+
+  Head
+    h1 "Le droit d'option des frontaliers : LAMal ou assurance maladie
+      francaise"; lead "Tout ce qu'il faut savoir ..."   no rule stated
+  Delay section
+    "Sources : cleiss.fr, ameli.fr (lu le 27.10.2026)"   D1, D2 [7a, 7b]
+  Ce qui est definitif
+    lead (once, irrevocable; some changes reopen it)     D3, D4 [7a]
+    reopens: reprise d'activite (par ex. apres chomage);
+      transfert de residence / prise de domicile en
+      France; retraite du seul regime suisse             D4 [7a, verbatim order]
+    does not: mariage, divorce; naissance, deces;
+      changement d'employeur sans chomage                D5 [7a]
+    "Source : cleiss.fr, FAQ ... (lu le 27.10.2026)"     [7a]
+  Qui suit votre choix
+    family without own activity / Swiss-only pension
+      has no option, follows yours                       D8 [7a]
+    a working spouse has their own affiliation           D8
+  Ce que couvre l'option
+    health cover only; AT/MP, invalidite, perte de
+      gain maladie/maternite under Swiss law             L18 [7c]
+  Si vous choisissez la France
+    annual contribution by Urssaf: <rate> of the income
+      of the year before last, after an allowance of
+      <allowance> of the PASS (both read from the
+      newest year's data, never typed)                   L7, L8 [6a-6c]
+    the declaration is individual; a frontalier spouse
+      insured in France files their own                  L11 [6e]
+    proches (conjoint, concubin, pacs, enfants)
+      attached, no extra contribution                    L11 [6e]
+    paid quarterly, monthly by direct debit; employer
+      may pay part or all                                L19 [6f]
+    no declaration: flat base; late declaration: a
+      surcharge on the base                              L20 [6d] (values out)
+    salaried: no return to the Swiss insurance for the
+      contract's duration                                L21 [7d]
+    "Sources : CSS art. L380-3-1 et D380-2 ; urssaf.fr ;
+      ameli.fr (lu le 27.10.2026)"                       [6, 7b, 16]
+  Si vous restez a l'assurance maladie suisse (LAMal)
+    a monthly premium per insured person, varying by
+      insurer, age class and accident cover              L1, L3, L5
+    for a resident of France: by country of residence,
+      not by canton of work                              L4
+    8 hours a week with one employer: insured under the
+      LAA; accident cover suspended on request           L6
+    each family member pays their own premium            L11 ("one premium
+                                                         per person")
+    "Pour comparer les assureurs et en choisir un :
+      priminfo.admin.ch."                                R668
+    "Sources : LAMal art. 8, 16a et 61 ; OLAA art. 13 ;
+      priminfo.admin.ch ; OFSP, ... (lu le 27.10.2026)"  [9, 10, 11; L1]
+  Sources
+    "Toutes lues le 27.10.2026."                         the seven rows are
+                                                         all in the October
+                                                         collection
+    seven rows (OFSP data, CSS, urssaf.fr, CLEISS FAQ,
+      ameli, LAMal/OLAA, BCE) with what each sources     the artboard's own
+                                                         list
+  Form copy (island, shorter as drawn)
+    persons helper; "Vous, annee de naissance";
+      accident sentence without its suspension clause    L5, L6 (the clause is
+                                                         the Suisse card's)
+Every "lu le" date is formatDate(COMPARATOR_PASS) (lib/content/sources.ts).
+NOTE: /sources dates the D rows 16.09.2026 (CLEISS_PASS) while the October
+collection re-read CLEISS and ameli on 27.10.2026 [7a-7d]; the page's lines
+say 27.10.2026, which [7] supports.
+
+SHIPPED WITHOUT (R1047: no source, or a value no constant carries)
+  1. The box "Ce que cette page ne dit pas" - WITHHELD WHOLE. It says the
+     filing procedure, its forms and the body to address them to have "no
+     primary source verified". Rows D9 and D10 (CLEISS, 16.09.2026),
+     sources-2026-11.md S3.2 and the droit d'option guide's FAQ
+     (droitOptionFiling, droitOptionForm) state exactly those. Shipping it
+     would contradict the register and the guide (R172's shape). QUESTION.
+  2. "Chaque chiffre et chaque regle de cette page renvoie a l'une d'elles."
+     - LEFT OUT of the Sources lead. Not true as drawn: the care card cites
+     LAMal art. 64 / OAMal art. 103 (L15, read 02.11.2026) and "Ce que couvre
+     l'option" cites the CLEISS worker page (L18); neither is among the
+     seven rows. QUESTION.
+  3. France card: "egale a cinq fois le plafond annuel" and "de 10 %" - the
+     two VALUES of L20 (no constant carries them; R147, R153). The sentence
+     names the rule: "une base forfaitaire ; ... une majoration de la base".
+  4. Suisse card: "de 19 a 25 ans" - the young adults' bounds (L5) are
+     inline literals in lib/lamal/compare.ts, exported by no constant, and
+     R1050 forbids adding one. The classes are named without bounds.
+  5. Suisse card: ", le site de l'Office federal de la sante publique" after
+     priminfo.admin.ch - no collected source says whose site it is.
+  6. Not carried over from the artboard's result column / limits (as
+     FW-CALCS-A2 recorded): "treize" and "n'en recommande aucun" (R673).
+
+--------------------------------------------------------------------------------
+R1048 - THE BUILD, in the artboard's layout and order
+--------------------------------------------------------------------------------
+Files (web/):
+  app/(public)/calculateur-lamal-cmu/ComparatorSections.tsx   NEW - server
+      components: ToolPill, OnThisPage (the chips), DeadlineSource,
+      FinalSection, FamilyAndScope, ChoiceCards, SourcesSection. No
+      'use client', no state, no handler.
+  app/(public)/calculateur-lamal-cmu/section-ids.ts           NEW - the nine
+      section ids, one list: chips, sections and tests read it.
+  app/(public)/calculateur-lamal-cmu/page.tsx                 the head (pill,
+      h1, lead, chips), ids on #comparer #delai #limites, the delay source
+      line, the new sections in the artboard's order; the limits band ends
+      at its list (its two links moved: /sources into "Sources", the guide's
+      is the banner's).
+  app/(public)/calculateur-lamal-cmu/comparateur.module.scss  the new
+      sections' styles: ONE class, `a2`, on each root, with `data-a2`
+      attribute hooks selected under it (one entry in the class map that
+      ships in the client chunk; `.a2` paints no fill, so the contrast audit
+      resolves every text rule against the page's surfaces); the limits list
+      in as many columns as fit (1 / 2 / 3, as drawn); the unused .links rule
+      removed. (A first build had a stylesheet of its own, one class per
+      element: its map cost 380 B gzip in the client chunk - see the byte
+      section. It was replaced before the commit and is not on the branch.)
+  lib/fr/lamal-page.ts                                        NEW - every word
+      of the static sections, imported by server components only.
+  lib/fr/lamal.ts                                             intro = the
+      artboard's lead; persons helper, "Vous, annee de naissance" /
+      "Personne N, annee de naissance", accident sentence as drawn;
+      sourcesLink and guideLink removed (unused now).
+  tests/unit/pages/comparateur-a2-page.test.tsx               NEW (11 tests)
+  e2e/comparateur.nojs.spec.ts                                one test added
+  ../docs/regulatory-sources.md                               rows L18-L21
+Order on the page: head (pill, h1, lead, chips) / banner / #comparer (form,
+result) / #delai / #definitif / #famille + #couverture / #france + #suisse /
+#limites / #sources. Bands alternate canvas and surface as drawn, except
+#delai (see DEVIATIONS).
+Tokens only: stylelint clean; no new token. The pill
+and the verdict keep PARK-CA4's answer (no pale-blue token): brand text on a
+surface pill, as the calculator's year badge.
+Anchors (R173): the chips are styled links (text-primary, border, pill);
+every other new link takes the base layer. Overflow at 320: 0 (measured,
+empty and filled; also 1440 and 390).
+Unchanged on purpose (R1048, R1050, the advisor's ruling on /dev/composants):
+DeadlineHelper.tsx, ReminderOutcomes.tsx, ComparatorForm.tsx's code,
+ComparisonPanel, IrrevocabilityBanner, Notice, ResultCard, SegmentedButtons,
+every LAMAL_COPY.result.* and banner.* string, lib/lamal, the data.
+
+TEST-FIRST (tests/unit/pages/comparateur-a2-page.test.tsx)
+  RED on the untouched page: "Tests 7 failed | 4 passed (11)" - e.g.
+    "expected 'Comparateur LAMal / CMU' to be 'Le droit d'option des
+    frontaliers : L...'", "#delai: expected to have a length of 1 but got
+    +0", "Unable to find an accessible element with the role "navigation"
+    and name "Sur cette page"".
+  One of the four passes was an absence satisfied by absence (no amount in
+  a section that did not exist): rewritten to assert presence first.
+  GREEN: 11 of 11. PLANT (R180): "abattement 25 %." planted in a string of
+  lib/fr/lamal-page.ts, the edit confirmed by grep at line 190, the scan
+  failed ("expected [ 'the A1 threshold' ] to deeply equal []"), the file
+  restored and confirmed byte-identical (cmp).
+  What it asserts: the pill, the long h1, the lead, chips before the banner;
+  each section once, by id, under its heading, in the artboard's order; the
+  chips' hrefs equal the section ids both ways; the France card's rate and
+  allowance delivered from the newest year; every "lu le" from
+  COMPARATOR_PASS; no typed figure, percentage, age bound or amount in
+  lib/fr/lamal-page.ts; no "recommand" and no insurer number over the whole
+  page, empty and with a result; no amount in any static section (presence
+  first); the seven source rows and the /sources link.
+  e2e/comparateur.nojs.spec.ts: with scripting off, the h1, the six new
+  headings, one target per chip, and a chip followed ("Sources": the URL
+  ends #sources and the section is in the viewport).
+
+--------------------------------------------------------------------------------
+R1048 / R2 - FIRST-LOAD JS, BEFORE AND AFTER (GATE A 125 KiB = 128 000 B, unchanged)
+--------------------------------------------------------------------------------
+Plain `pnpm build && pnpm size` under the heavy lock each time; bytes by
+.w20-evidence/bytes.mjs, check-budgets.mjs's own arithmetic (root main files +
+ancestor layouts + page, each file gzipped level 9 alone, .js only).
+  route                               BEFORE (41ddc9e4)  AFTER-1   AFTER (final)  spare
+  /calculateur-lamal-cmu              126 927            127 170   126 799        1 201
+                                      (124.0 KiB)        (+243)    (-128, 123.8 KiB)
+  /calculateur-teletravail-frontalier 127 941            127 940   127 942 (+1)   58
+  every other route                   -                  -3..+3    -3..+3         >= 11 272
+`pnpm size`: "All gated routes pass both gates" on BEFORE, AFTER-1 and AFTER.
+AFTER-1 is the first build: the new sections in a stylesheet of their own,
+one class per element. The comparator's chunk then carried that module's
+class map - 943 bytes raw, 380 B gzip (measured by removing it from the
+chunk and re-gzipping) - although only server components import it; the
+new copy itself (lib/fr/lamal-page.ts) was in no client chunk. So the final
+build styles the sections through ONE class (`a2`, in comparateur.module.scss)
+and `data-a2` attribute hooks: the static sections add no client JS beyond
+that one class-map entry, and the comparator ends 128 B LIGHTER than BEFORE
+(LAMAL_COPY shrank: the shorter intro and form copy, two link keys removed).
+The -3..+3 B on every other route: the webpack runtime's chunk-hash map
+moves whenever a comparator chunk's hash changes (BEFORE/AFTER-1 showed the
+same). The calculator's +1 B leaves it 58 B under GATE A.
+
+--------------------------------------------------------------------------------
+gate:changed - on 46fbdf35's tree, BEFORE the commit (R132)
+--------------------------------------------------------------------------------
+FRONTALIER_PORT=3600, under the heavy lock (acquired 15:26:46, commit free
+6 755 MB; released 15:44:29), scratch DATABASE_URL monreleve_w20 (created and
+migrated with db:deploy: 16 migrations). Printed selection:
+  43 path(s) matched (the 9 source/test paths and the 34 baselines;
+  docs/regulatory-sources.md and this report match no rule)
+  suites: typecheck, lint, test, build, test:e2e, test:visual, test:db, test:late
+  a11y: covered by pnpm test
+Counts: test 233 files / 4037 passed; test:e2e 382 passed; test:visual 174
+passed (the full suite); test:db 57 files passed, 3 skipped / 816 passed,
+27 skipped; test:late 2 files / 10 passed. "GATE PASSED for the paths
+changed." STEP_EXIT=0. `git status` identical before and after the run.
+The new nojs test is among the 382 by name: "ok 344 [nojs] ...
+comparateur.nojs.spec.ts:102:3 ... the A2 sections and their chips are
+served without JavaScript". register-coverage.mjs, run alone before
+gate:clone: "register coverage: OK - 230 cited id(s) across 181 report(s)".
+
+--------------------------------------------------------------------------------
+R1050 - NOTHING ELSE MOVES
+--------------------------------------------------------------------------------
+`git diff --stat 41ddc9e4 46fbdf35` touches only: the comparator's directory
+(page.tsx, comparateur.module.scss, two new files), lib/fr/lamal.ts and the
+new lib/fr/lamal-page.ts, one new unit test, one e2e spec, the 34 comparator
+baselines, and docs/regulatory-sources.md. lib/lamal, the data, ComparatorForm
+.tsx, ComparisonPanel, DeadlineHelper.tsx, ReminderOutcomes.tsx,
+gate-selection.mjs, visual.mjs: untouched. e2e/calcs-figures.spec.ts (R737's
+identical figures) passed unedited inside test:e2e's 382. No other page's
+baseline moved (test:visual 174 passed, full suite).
+
+--------------------------------------------------------------------------------
+R1049 - BASELINES, NAMED FIRST (R135, R207)
+--------------------------------------------------------------------------------
+EXPECTED, written before any regeneration (.w20-evidence/baselines-expected
+.txt): the 34 comparateur-<state>-desktop|mobile.png - every state of
+e2e/comparateur.visual.spec.ts, because each is a full-page capture and the
+head, the chips and five new sections are on every one - and NOTHING ELSE.
+Not composants-comparison-banner|panel|refusal (IrrevocabilityBanner and
+ComparisonPanel unchanged), not /sources (no SOURCE_IDS row added), not any
+page sharing the shell (the shell is unchanged).
+  states: vide rempli inferieur superieur adulte-seul plancher erreur
+          commune annee-partielle points-inferieur points-entre
+          points-superieur soins franc-deplace delai-sans-s3
+          delai-rappel-envoye rappel-confirme  (x desktop 1440, mobile 390)
+Reason, for every one of the 34: the operator's request (Web Ruling 27) -
+the A2 head (pill, long h1, lead, chips), the shorter form copy, and the
+new sections below the delay; the result column itself is unchanged.
+PRODUCED: `pnpm test:visual:update -- --grep comparateur.visual` under the
+lock (15:05:55, 7 527 MB free): "34 passed (3.5m)", "R135: 34 baseline(s)
+written BY THIS RUN (0 new, 34 re-generated)"; photographed "41ddc9e4 plus
+10 uncommitted path(s)" (this branch's tree). `git status` on
+web/tests/visual/baselines afterwards: the same 34 names - diff against the
+expected list empty. Two earlier attempts wrote nothing (NOTICED N1, N2).
+LOOKED AT: all 34, as contact sheets (desktop 0-3000 px at 0.33, the lower
+half of rempli at 0.42; mobile 0-6000 px at 0.4): each shows the pill, the
+long h1, the lead, the chips and the banner, then its own state - the empty
+form, the error borders, the joint return's two fields, the dated heading
+and prorata of the partial year, the dots' three cases, the care card with
+three children, the slider at +5 %, the deadline helper with "environ", the
+sent reminder, the confirmation outcome - then the delay with its source
+line and the five new sections in the artboard's order. Mobile: everything
+stacks, the chips wrap, no capture is wider than its 390 px viewport (R128).
+No other page's baseline moved (the full suite in gate:changed below).
+
+--------------------------------------------------------------------------------
+WALKTHROUGH (R176) - pnpm dev on 3600, after the commit (.w20-evidence/walk.mjs)
+--------------------------------------------------------------------------------
+- /calculateur-lamal-cmu answered 200 (R169: /api/health named monreleve).
+  h1 "Le droit d'option des frontaliers : LAMal ou assurance maladie
+  francaise". No console error or warning.
+- Each of the nine chips clicked from the top: the URL took its fragment
+  and the target's top sat at 24 px (the scroll margin) - #comparer #delai
+  #definitif #famille #couverture #france #suisse #limites #sources.
+- Compared one adult born 1985 at 42 000 EUR: "Estimation pour 2027"; "La
+  cotisation francaise est inferieure au total suisse le plus bas."; the
+  result's formula reads "8 % x (revenu - 25 % du plafond ... 2027, 48 900
+  EUR)" and the static France card "8 % de vos revenus ... abattement de
+  25 % du plafond" - the page agrees with itself (both from the same year's
+  data).
+- Links out: the banner's guide link /guides/droit-option-lamal-cmu -> 200;
+  "Toutes les sources et verifications du site" /sources -> 200, which still
+  carries the premium attribution; the Suisse card's priminfo link is the
+  same PRIMINFO_URL the result uses (external, not fetched).
+- The guide page states the filing body (Institution commune LAMal) and the
+  form ("Choix du systeme ..."): the evidence for withholding the
+  "Ce que cette page ne dit pas" box (Q3).
+- Read across the page for a contradiction with itself: the banner, "Ce
+  qui est definitif" and "Le moment du choix" agree. ONE TENSION between two
+  sources, both on the page as their sources word them: L21 (URSSAF: a
+  salaried worker who opts for France cannot return to the Swiss insurance
+  for the contract's duration) and D4 (CLEISS: a transfer of residence to
+  France reopens the option) - a move during a contract is covered by both.
+  For the expert reviewer (Q8).
+- At 1440, 390 and 320: horizontal overflow 0, empty and filled (R127).
+--------------------------------------------------------------------------------
+NOTICED (not touched here; parking.md is not written in parallel mode)
+--------------------------------------------------------------------------------
+N1. visual.mjs CANNOT --update WITH A SPEC FILTER. `pnpm test:visual:update
+    -- e2e/comparateur.visual.spec.ts` put the path right after
+    --update-snapshots, whose mode argument is optional, and Playwright
+    refused: "option '-u, --update-snapshots [mode]' argument
+    'e2e/comparateur.visual.spec.ts' is invalid. Allowed choices are all,
+    changed, missing, none." `-- --grep comparateur.visual` works (a dash
+    keeps it out of the mode slot; --list showed "34 tests in 1 file").
+    visual.mjs is W7's area (R1048's list): not changed.
+N2. A BACKSLASH IN A FILTER ARRIVES DOUBLED. `--grep 'comparateur\.visual'`
+    reached the container as comparateur\.visual and matched nothing
+    ("Error: No tests found"); the run failed and claimed nothing (R208).
+N3. `next dev` WITH NEXT_DIST_DIR REWRITES web/tsconfig.json's include (it
+    added ".next-visual-w20dev/types/**/*.ts"). My own side effect: restored
+    from HEAD (git checkout of that one file), and the directory removed
+    under the lock. The visual runner restores the same two files itself.
+N4. THE DEV OVERLAY'S "1 Issue" appeared once, on the cold first drive of
+    the untouched page (41ddc9e4); two warm repeats showed no console error
+    or warning and an empty overlay. Its content is NO RESULT.
+N5. THE VISUAL CONTAINER'S SERVER logs "[scheduler] failed to start ...
+    ECONNREFUSED 127.0.0.1:5436" when web/.env names the host's scratch
+    database: inside the container that address is not the host. Not fatal
+    to the photographs.
+N6. W18 MERGES FIRST and both branches rewrite comparator baselines: every
+    comparateur-* file is regenerated here, so whichever merges second
+    regenerates on the merged tree (Web Ruling 27 item 2's order).
+N7. THE CALCULATOR HAS 58 B OF GATE A. Any change to a comparator chunk moves
+    every route by -3..+3 B through the webpack runtime's chunk-hash map
+    (measured three times here); a future comparator task can push the
+    calculator over without touching it.
+N8. /sources dates the D rows 16.09.2026 (CLEISS_PASS); the October
+    collection re-read CLEISS and ameli on 27.10.2026 [7a-7d], which is the
+    date this page's source lines carry.
+N9. THE ARTBOARD'S DELAY HELPER DIFFERS from DeadlineHelper (disc colours,
+    the warning's box, the select's wording) - W18's file; listed for it.
+
+--------------------------------------------------------------------------------
+DEVIATIONS FROM THE ARTBOARD (kept as they are, each for a stated reason)
+--------------------------------------------------------------------------------
+ 1. SITE HEADER AND FOOTER: the shared shell, not the artboard's. They are
+    every page's (R1050: no other page).
+ 2. THE BANNER keeps its current, longer text (it also names what reopens
+    the option and the four events) and its link on its own line.
+    IrrevocabilityBanner is photographed on /dev/composants
+    (composants-comparison-banner.png): another page's baseline, which R1049
+    makes a STOP. QUESTION 2.
+ 3. THE RESULT COLUMN is as FW-CALCS-A2 built it (francs under each euro
+    total; 8 px dots; the verdict on a brand rule, not pale blue; the
+    attribution in two paragraphs): ComparisonPanel is photographed on
+    /dev/composants too.
+ 4. THE EMPTY FIRST LOAD: the artboard and the screenshot show a filled demo
+    (42 000 EUR, born 1985) with its result; the page opens empty and shows
+    no result until "Comparer" (zero storage, R658/R750; no default income
+    is invented). QUESTION 1.
+ 5. THE FORM'S STRUCTURE: the euro sign beside the field (not "EUR" inside
+    its frame); the accident sentence inside the first person's row (not
+    under the list); "Retirer la personne N" with its icon (an accessible
+    name per row). Copy-only differences were closed (helper, labels, the
+    accident sentence's words); the structural ones are the island's, left.
+ 6. #delai STAYS ON THE CANVAS, not the artboard's white band: its styling
+    was left alone (the helper is DeadlineHelper's, W18's file; R121's
+    comment on that band). The helper's own differences - brand-filled
+    number discs (the artboard's are pale, the third red), the warning as an
+    icon line rather than a yellow box, the events' wording in the select -
+    are DeadlineHelper's
+    and are listed for its owner, not changed (R1048: list and hand back).
+ 7. THE PILL AND THE VERDICT: no pale-blue token (PARK-CA4); the pill is the
+    calculator's year badge (brand text, surface, hairline border). A token
+    is ask-first; none was added.
+ 8. CHIPS: 44 px high (the touch-target token), 13 px label type, not 40 px
+    and 14 px; no hover colour (the artboard draws none per chip, and the
+    contrast audit pins its nested-rule list).
+ 9. LIMITS: the guide link line under the list is gone, as drawn; R659's
+    link back to the guide is the banner's.
+10. WITHHELD COPY (R1047): the "Ce que cette page ne dit pas" box, the
+    Sources lead's second sentence, two values of L20, the age bounds, the
+    priminfo clause - see R1047 above.
+
+--------------------------------------------------------------------------------
+QUESTIONS (wordings and choices for the operator)
+--------------------------------------------------------------------------------
+Q1. THE FIRST LOAD. The screenshot shows the result filled from demo inputs;
+    the page shows the form alone until "Comparer". Keep it so (nothing is
+    computed from inputs nobody typed), or pre-fill an example the reader
+    can see is an example?
+Q2. THE BANNER. Shorten it to the artboard's two sentences ("Le droit
+    d'option ne s'exerce qu'une fois et il est irrevocable. Il s'exerce dans
+    un delai de trois mois ; sans choix dans ce delai, l'affiliation se fait
+    d'office en Suisse.") with the guide link inline? It regenerates
+    composants-comparison-banner.png, which this task could not move.
+Q3. "CE QUE CETTE PAGE NE DIT PAS". The artboard says no primary source was
+    verified for the filing procedure, forms and body; rows D9-D10 and the
+    guide say where and on which form it is filed. Drop the box, or reword
+    it to point at the guide (new copy to approve)?
+Q4. THE SOURCES LEAD. "Chaque chiffre et chaque regle de cette page renvoie a
+    l'une d'elles" holds only if rows are added for LAMal art. 64 / OAMal
+    art. 103 (read 02.11.2026) and the CLEISS worker page - and then "Toutes
+    lues le 27.10.2026" no longer holds. Add the rows with their own dates
+    and reword the lead, or keep the lead to its first sentence?
+Q5. THE LEAD "Tout ce qu'il faut savoir avant de choisir, sur une seule
+    page" - the filing procedure is not on the page (Q3). Keep the wording?
+Q6. THE FRANCE CARD'S L20 VALUES (five times the PASS; 10 %) and the Suisse
+    card's "de 19 a 25 ans": ship them as constants (lib/lamal, a constant
+    addition - R1050 kept this task out of it), or keep the rule named
+    without them?
+Q7. "Un changement d'employeur sans periode de chomage" - CLEISS says
+    "changement d'activite professionnelle"; the artboard's word is kept
+    (row D5 reads "changing jobs").
+Q8. FOR THE EXPERT REVIEWER: L21 (URSSAF: a salaried worker cannot return
+    to the Swiss insurance for the contract's duration) beside D4 (CLEISS: a
+    transfer of residence to France reopens the option) - both stated as
+    their sources word them; which governs a move during a contract?
+Q9. THE PERSONS HELPER. The form now uses the artboard's short helper ("Vous
+    d'abord, puis les membres de votre famille qui suivront votre choix.");
+    the qualifier it carried (only members without their own activity or a
+    Swiss-only pension follow; a working spouse has their own affiliation,
+    row D8) is now in "Qui suit votre choix", several sections below, while
+    the form is where a reader decides whom to add. Keep the artboard's
+    short helper, or put the qualifier back in the form?
+
+
+--------------------------------------------------------------------------------
+PUSH PROOF
+--------------------------------------------------------------------------------
+gate:clone, ALONE (under the heavy lock: acquired 16:02:18 with commit free
+6 187 MB, released 16:18:16; light work in other sessions may have
+overlapped), FRONTALIER_PORT=3600, DATABASE_URL -> the scratch database
+monreleve_w20's server - STEP_EXIT=0. Verbatim:
+
+  GATE:CLONE PASSED
+
+    CI readiness: quiet - the repository is private and CI_FULL is unset - jobs will skip.
+    commit  63c88a0179b2f1ce3ba7a833be454e99a9fecfec
+    clone   %TEMP%\monreleve-clone-kCKWjD (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test (4037 of 4037 tests passed, 233 files), build, size (21 routes measured), db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files), test:container:write (10 checks passed)
+
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (4037 of 4037 tests passed, 233 files), build, size (21 routes measured), db:deploy, test:db (816 of 843 tests passed, 27 skipped, 60 files), test:container:write (10 checks passed) from a clean checkout -
+            a machine with no .env, no prior node_modules and no generated
+            file this run did not produce itself.
+
+Its size step: /calculateur-lamal-cmu 123.8 KiB "pass (A 1.2 spare, B 1.8
+spare)"; /calculateur-teletravail-frontalier 124.9 "pass (A 0.1 spare, B 0.7
+spare)"; "All gated routes pass both gates." Not run in the clone, as it
+states: test:e2e, test:visual, test:runtime, Lighthouse - test:e2e (382) and
+test:visual (174, the full suite) ran in gate:changed on 46fbdf35's tree.
+Lighthouse was not run by this task.
+
+Pushed: origin/fw-comparateur-a2-page - 46fbdf35 (code), 1e784f2d and
+63c88a01 (this report), then this PUSH PROOF commit. NOT MERGED: the
+orchestrator merges (W18 first, Web Ruling 27).

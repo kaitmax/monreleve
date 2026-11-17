@@ -108,15 +108,16 @@ export const LAMAL_COPY = {
 
   title: 'Comparateur LAMal / CMU',
 
+  /**
+   * FW-COMPARATEUR-A2-PAGE (W20): the A2 artboard's lead, under its h1
+   * (LAMAL_PAGE_COPY.heading). Also the JSON-LD description. Where the
+   * figures come from is said by the result's attribution and "Sources".
+   */
   intro:
-    'Le droit d’option vous fait choisir entre l’assurance maladie suisse et ' +
-    'l’assurance maladie française. Cette page estime, sur une année ' +
-    'complète ou à partir d’une date d’affiliation, ce que coûterait ' +
-    'chacune pour votre foyer' +
+    'Tout ce qu’il faut savoir avant de choisir, sur une seule page' +
     n(':') +
-    ' la prime suisse, d’après les primes publiées par l’Office fédéral de la ' +
-    'santé publique pour les résidents de France, et la cotisation française, ' +
-    'd’après la formule du Code de la sécurité sociale.',
+    ' le coût estimé pour votre foyer, le délai, ce qui est définitif, et ce ' +
+    'que chaque choix implique ensuite.',
 
   /** Shown when the island has not run: the page still explains itself. */
   noScript:
@@ -248,24 +249,26 @@ export const LAMAL_COPY = {
 
     persons: {
       legend: 'Les personnes à assurer',
-      helper:
-        'Vous d’abord, puis les membres de votre famille qui suivront votre ' +
-        'choix' +
-        n(':') +
-        ' ceux qui résident en France sans activité professionnelle propre ni ' +
-        'pension du seul régime suisse. Un conjoint qui travaille relève de sa ' +
-        'propre affiliation.',
-      you: 'Vous — année de naissance',
-      other: (position: number): string => `Personne ${position} — année de naissance`,
+      /**
+       * W20: the A2 artboard's words. Who follows the choice - and the
+       * working spouse who does not (row D8) - is said in full by the page's
+       * "Qui suit votre choix" section, which the chips link to.
+       */
+      helper: 'Vous d’abord, puis les membres de votre famille qui suivront votre choix.',
+      you: 'Vous, année de naissance',
+      other: (position: number): string => `Personne ${position}, année de naissance`,
       accident: 'Avec la couverture accidents',
-      /** R667 (G4): why the frontalier's default is what it is, in one sentence. */
+      /**
+       * R667 (G4): why the frontalier's default is what it is, in one
+       * sentence - the artboard's (W20). That the cover can then be suspended
+       * on request (row L6) is the "Si vous restez" card's.
+       */
       accidentDefaultYou:
         'Décochée par défaut pour vous' +
         n(':') +
         ' employé au moins huit heures par semaine chez un même employeur, ' +
         'vous êtes assuré contre les accidents par la loi sur ' +
-        'l’assurance-accidents, et la couverture accidents de l’assurance ' +
-        'maladie peut alors être suspendue.',
+        'l’assurance-accidents.',
       add: 'Ajouter une personne',
       remove: (position: number): string => `Retirer la personne ${position}`,
     },
@@ -547,14 +550,9 @@ export const LAMAL_COPY = {
       ' l’encadré ci-dessus le rappelle.',
   ],
 
-  sourcesLink: { text: 'Sources et vérifications', href: '/sources' },
-
-  /** The guide link, after the result (R659: the comparator links back to the guide). */
-  guideLink: {
-    lead: 'Le délai, les situations qui l’ouvrent, ce qui le rouvre' + n(':') + ' ',
-    text: 'le guide du droit d’option',
-    href: '/guides/droit-option-lamal-cmu',
-  },
+  // W20: the band's two closing links are gone, as the artboard draws it -
+  // the link to /sources is "Sources"'s own (LAMAL_PAGE_COPY.sources.allLink)
+  // and the guide's is the banner's (R659: the comparator links back to it).
 
   /** "2026 et 2027" for the description, from the data's years (R171). */
   yearsList: (years: readonly number[]): string =>

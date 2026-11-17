@@ -630,6 +630,10 @@ relevé per employer) and the **residence-change** PARK item.
 | L15 | *Swiss cost-sharing caps* | Franchise **300 CHF** a calendar year (none for a child); quote-part **10 %** of the costs above it, capped at **700 CHF** a year for an adult and **350 CHF** for a child; several children with the same insurer pay together at most an adult's franchise and quote-part; applies to insured persons residing in the EU and insured in Switzerland. The hospital contribution (al. 5) comes on top and has no annual cap | LAMal art. 64 al. 2, 4, 5; OAMal art. 103 al. 1, 2, 7; priminfo; OFSP | ☑ 02.11.2026 |
 | L16 | *A partial first month* | General rule: the basic premium is divisible and computed in days - **for a birth, a move to or from Switzerland, a death only**. **NOT ESTABLISHED for a frontalier**: no text found names that case. The comparator counts whole months from the month after the start (R744's fallback) and says so | priminfo FAQ; OFSP FAQ and PDF; LAMal art. 5; OAMal art. 7 al. 4, 90, 92a | ☐ NOT ESTABLISHED, 02.11.2026 |
 | L17 | *How the three months are counted* | **NOT FOUND**: every source gives the period (three months) and the events that open it, none says from which day to which day. The helper shows an indicative end date with *environ* and a warning | ameli; CLEISS; URSSAF; OFSP; ALCP annexe II; OAMal art. 7 al. 4 | ☐ NOT FOUND, 02.11.2026 (Légifrance blocked) |
+| L18 | *What the option covers* | The option is for **health cover only**; occupational accidents and diseases, invalidity and loss of earnings due to sickness or maternity remain under **Swiss law** in every case | CLEISS, *« Vous travaillez en Suisse et vous résidez en France (travailleur frontalier) »* | ☑ 27.10.2026 |
+| L19 | *How the French contribution is paid* | **Each quarter**, or **monthly** with direct debit; the employer may pay part or all of it | URSSAF 6c | ☑ 27.10.2026 |
+| L20 | *No declaration, or a late one* | Without a declaration the contribution is assessed on a **flat base** (five times the PASS); a later declaration recomputes it with a **10 % surcharge on the base** | URSSAF 6a | ☑ 27.10.2026 |
+| L21 | *A salaried worker who opts for France* | Cannot switch back to the Swiss insurance **for the whole duration of the employment contract** | URSSAF 6d | ☑ 27.10.2026 |
 
 ### L1 — the Swiss premium data. VERIFIED from the files.
 
@@ -1052,6 +1056,34 @@ target month (`optionPeriodEnd`, `web/lib/lamal/deadline.ts`) - **with
 les trois mois n'est pas vérifiée ici. Confirmez-la auprès de votre caisse
 d'assurance maladie avant de vous y fier. »* (the design file's sentence),
 which stays whatever S3 later says. The reminder e-mail is not built (R749).
+
+### L18-L21 — the droit d'option page's own rules. W20, FW-COMPARATEUR-A2-PAGE.
+
+Added when the page was built to its A2 artboard (R1047): four rules its
+static sections state that no row carried. Each is quoted from the October
+collection, `docs/sources/primes-lamal/sources-2026-10.md` (section in
+brackets), read 27 October 2026; nothing was re-fetched.
+
+**L18**, CLEISS's page for workers, https://www.cleiss.fr/particuliers/je_reside_en_france_et_travaille_en_suisse.html
+(no page date) [§7c] - *« Ce que couvre l'option »*:
+
+> L'option ne vaut que pour la couverture maladie. Toutes les autres prestations (au titre des accidents du travail ou des maladies professionnelles, de l'invalidité ainsi que la perte de gains liée à la maladie ou à la maternité) relèvent de la législation applicable en Suisse. […]
+
+**L19**, URSSAF 6c, *« Publié le 02 juillet 2026 »* [§6f] - the France card:
+
+> Vous devez payer votre cotisation chaque trimestre. Cependant, pour faciliter votre gestion, l'Urssaf vous permet de payer mensuellement si vous adhérez au prélèvement automatique. […]
+> En tant que travailleur frontalier en Suisse, vous bénéficiez peut-être d'une prise en charge par votre employeur du paiement, partiel ou total, de votre cotisation maladie. […]
+
+**L20**, URSSAF 6a, *« Mis à jour le 24 septembre 2026 »* [§6d] - the France
+card names the rule and **not its two values**: no constant carries the
+multiple or the surcharge, and copy types no figure (R147, R153).
+
+> Si vous ne déclarez pas vos revenus, votre cotisation maladie sera calculée sur une base forfaitaire (taxation d'office). Son montant est égal à 240 300 € en 2026, soit cinq fois le plafond annuel de la Sécurité sociale.
+> Si vous déclarez ultérieurement vos revenus, un nouveau calcul de votre cotisation sera effectué sur la base de vos revenus déclarés mais une majoration de 10 % sera appliquée à cette base pour retard de déclaration de revenus.
+
+**L21**, URSSAF 6d, *« Publié le 19 avril 2024 »* [§7d] - the France card:
+
+> Si vous optez pour l'assurance maladie française et que vous êtes salarié, vous ne pourrez pas changer pour l'assurance maladie suisse pendant toute la durée de votre contrat de travail.
 
 ### Source D, and the URSSAF line under "NOT rowed", after this pass
 

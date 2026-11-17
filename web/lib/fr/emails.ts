@@ -80,11 +80,11 @@ export const EMAIL_COPY = {
 /**
  * The sender.
  *
- * A subdomain rather than the apex: SPF and DKIM records for a sending
- * subdomain can be changed without touching the records the apex uses for
- * everything else, and a deliverability problem stays contained. Those DNS
- * records are an operator task and belong to FW28 - noted there rather than
- * attempted here, because nothing in this repository can create them.
+ * Its domain is MAIL_DOMAIN (lib/content/identity.ts). The sending subdomain
+ * this comment used to argue for was dropped on 2026-10-14, and MAIL_DOMAIN's
+ * comment records why and what the change gives up. The domain's DNS records
+ * are an operator task (docs/domain-checklist.md item 3) - noted there rather
+ * than attempted here, because nothing in this repository can create them.
  */
 // THE NAME AND THE DOMAIN BOTH DERIVE (R188). This line carried the only
 // `.fr` host in the repository - notifications.frontalier.fr - which was a

@@ -1,0 +1,490 @@
+REPORT - FW-DOCS-SENDER-DOMAIN (web run step W15) - Mon Releve
+====================================================================
+Session W15. Worktree C:/wt/fw-docs-sender-domain, branch
+fw-docs-sender-domain, cut from origin/main
+986825421349b427500adc2d84675a1040d4b8a1 (2026-11-17, about 09:00Z).
+Prompt C:/wt/web-orch/relay/FW-DOCS-SENDER-DOMAIN.txt (the orchestrator's
+copy, read-only); Web Ruling 19; rulings R1031-R1035; port block
+3500-3599. Parallel mode (Web Ruling 7): every heavy run went through
+C:/wt/.heavy-run.lock.
+
+====================================================================
+SUMMARY
+====================================================================
+- R1031: the sender's domain is MAIL_DOMAIN, web/lib/content/identity.ts:160
+  (= SITE_DOMAIN, :115). Both senders are built on it, emails.ts:101 and
+  :111. dcac1df (2026-10-14T22:55:29Z) moved it off the subdomain.
+- R1032: four searches over the tracked tree (REPORT-*.txt and relay/
+  excluded), run on main 9868254 AND on W9's tip 84562ff7, plus a
+  multi-line search and a bare `notifications\.` grep. 22 hit lines,
+  classified below. Two sites the prompt did not name were found: the
+  release audit's N5 (history) and W9's own new checklist sentence
+  (a DEFECT on main the moment this branch merges, QUESTIONS Q3).
+  W9 is on main since round 4 (96bfe58; origin/main 41ddc9e4 at the
+  10:23Z and 12:10Z fetches); this branch stays on 9868254.
+- R1033: checklist item 3 rewritten (names MAIL_DOMAIN, proofs query
+  the names Resend lists under it, a dated reading from this machine);
+  the emails.ts JSDoc corrected (comment only). deploy.md section 8 N3
+  was first held back (line 746, adjacent to W9's 745; proven conflict)
+  and then, after W9 reached main, APPLIED in 7b90dd7 with W9's stale
+  checklist sentence (Q2, Q3; Web Ruling 24, RESUMED below).
+- R1034: gate:changed PASSED (run 2; run 1 RED at e2e, attributed to
+  W18's pre-hydration defect) and gate:clone ALONE PASSED on 7b90dd7.
+  The first attempt (09:18-12:09Z) never got the lock above its line:
+  NO RESULT. RESUMED below.
+- R1035: 2 files, 47 insertions, 17 deletions; no code line, no test,
+  no baseline, no DNS change, no Resend action.
+
+====================================================================
+STATUS (R391)
+====================================================================
+GREEN on the code tip 7b90dd72914c5de3c393f7f63ea8a9d95f8e5209, in this
+session:
+- gate:changed PASSED, STEP_EXIT=0, on exactly the tree 7b90dd7 commits
+  (run 2, 13:12-13:27Z). Run 1 was RED at test:e2e (RESUMED below).
+- gate:clone ALONE PASSED on 7b90dd7, STEP_EXIT=0 (14:01-14:14Z).
+R1033 is COMPLETE since 7b90dd7. The FULL GATE did not run on the
+report commit that adds this file's final form (report only).
+History of the first attempt: the lock helper took the lock repeatedly
+from 10:37Z and released it each time (commit free 2 478-5 325 MB
+against 6 245). At 12:09Z the session stopped its own pending acquire
+(PID 14132) and handed back by mistake; Web Ruling 24 resumed it.
+Not merged: the orchestrator merges.
+
+====================================================================
+R1031 - THE TRUTH, ESTABLISHED FIRST
+====================================================================
+The definitions (line numbers are the same at 9868254 and on this
+branch: the JSDoc edit keeps its nine lines):
+  web/lib/content/identity.ts:115
+      export const SITE_DOMAIN = 'monreleve.ch';
+  web/lib/content/identity.ts:160
+      export const MAIL_DOMAIN = SITE_DOMAIN;
+  web/lib/fr/emails.ts:26
+      import { MAIL_DOMAIN } from '@/lib/content/identity';
+  web/lib/fr/emails.ts:101
+      export const EMAIL_FROM = `${APP_NAME} <alertes@${MAIL_DOMAIN}>`;
+  web/lib/fr/emails.ts:111
+      export const AUTH_EMAIL_FROM =
+        `${APP_NAME} <notifications@${MAIL_DOMAIN}>`;   (one line in
+        the file; wrapped here)
+Every sender, by `git grep -n -E "from: [A-Z_a-z...]"` over web/lib,
+web/app and web/scripts, and `git grep MAIL_DOMAIN` over the tree:
+  web/lib/alerts/confirmation.ts:70   from: EMAIL_FROM,
+  web/lib/auth/request.ts:193         from: AUTH_EMAIL_FROM,
+  web/lib/rappel/mail.ts:62 and :81   from: AUTH_EMAIL_FROM,
+  web/lib/alerts/mailer.ts:148        from: message.from,  (to Resend)
+No other sender exists. MAIL_DOMAIN has no other user outside the test.
+web/lib/content/legal-entity.ts:134 (contactEmail 'contact@monreleve.ch')
+is a contact address, not a sender, and is not built on MAIL_DOMAIN.
+The test that pins it: web/tests/unit/content/identity.test.ts:79-80
+(MAIL_DOMAIN is 'monreleve.ch' and is SITE_DOMAIN) and :92-103 (both
+senders on it, neither on notifications.monreleve.ch, the two distinct).
+Run singly in this session: 19 of 19 passed.
+The commit that moved it: dcac1df4c04d66293d2365032ef128c4bae34830,
+2026-10-14T22:55:29Z, "mail: send from alertes@ and notifications@ on
+the apex, not an unverified subdomain" (git log -S "export const
+MAIL_DOMAIN = SITE_DOMAIN" finds only it).
+Its reason, from identity.ts:148-159:
+  "THE REASONING WAS SOUND AND THE SUBDOMAIN WAS NEVER CREATED. That
+  last sentence was the whole risk: the containment only exists once
+  somebody adds the records, and nobody did. notifications.monreleve.ch
+  returned NXDOMAIN, Resend had no such domain, and every send was
+  refused 403 "domain is not verified" - while the alert form told the
+  reader it had worked, because the mailer swallows a provider refusal.
+  Measured in production on 2026-10-14.
+  The apex already carries verified DKIM and SPF, so mail sent from it
+  works today rather than after a DNS task that had been outstanding
+  since FW28. The containment argument is given up knowingly: a
+  deliverability problem on this domain now also touches the apex's
+  reputation."
+At cd98b9c (2026-10-06, the commit that wrote the checklist) EMAIL_FROM
+was alertes@${MAIL_SUBDOMAIN} and MAIL_SUBDOMAIN was
+notifications.${SITE_DOMAIN}: item 3 was true when written.
+
+====================================================================
+R1032 - EVERY SITE, CLASSIFIED (R267)
+====================================================================
+The searches, each over the tracked tree with the pathspec
+':!relay/' ':!REPORT-*.txt' (node_modules is not tracked), run on main
+9868254 and on W9's tip 84562ff7, then again after the edits:
+  S1 git grep -n -I -i -F "notifications.monreleve.ch"
+  S2 git grep -n -I "MAIL_SUBDOMAIN"
+  S3 git grep -n -I -i -E "sending[ -]sub-?domain"
+  S4 git grep -n -I -i -E "sous-domaine|sous domaine": no hit
+  S5 multi-line, case-insensitive (ripgrep -U) over the whole worktree,
+     android included: sending\s+(\*\s+)?(//\s*)?sub-?domain, plus
+     "sous[- ]domaine|domaine d.envoi|domaine exp.diteur". It found
+     emails.ts 83-84, which S3 cannot see because the phrase wraps.
+  S6 the union with a bare `notifications\.`. It found checklist 152
+     (`resend._domainkey.notifications...`), which S1 cannot see.
+  S7 a broad `sub-?domain` (case-insensitive), for anything else.
+  Also: the main checkout's 29 untracked android/scripts/an*.mjs, by a
+  plain grep (no git): no hit.
+Main 9868254 gave 19 lines by S6's union, 2 more by S5; W9's tree gave
+1 more (H7): 22. Line numbers are 9868254's unless marked.
+
+H1  docs/domain-checklist.md:125,126,128 - current claim, FALSE
+    (alertes@notifications.monreleve.ch, "derived from MAIL_SUBDOMAIN",
+    the subdomain "must be verified"). FIXED by W9 (e0e9fa6, 125-131),
+    ON MAIN since round 4 (96bfe58). NOT touched here: W9's lines.
+H2  docs/domain-checklist.md:144 - the 2026-10-06 reading: history. Its
+    next sentence (145-146), "The sending domain is not set up", was a
+    present-tense state claim. KEPT as a dated past-tense bullet
+    (151-153); the consequence became a conditional (173-174).
+H3  docs/domain-checklist.md:150 - current claim, FALSE: "add and
+    verify the sending domain notifications.monreleve.ch". FIXED
+    (178-179): the domain MAIL_DOMAIN holds.
+H4  docs/domain-checklist.md:152 - current claim, FALSE: the example
+    `resend._domainkey.notifications...` (S6 only). FIXED (181).
+H5  docs/domain-checklist.md:160,161 - current claims, FALSE: the SPF
+    and DKIM proofs queried the subdomain. FIXED (190-191).
+H6  docs/domain-checklist.md:146,152,166 ON THIS BRANCH - new lines.
+    146 and 152 are history (dated); 166 is the 2026-11-17 reading,
+    dated and labelled. Left as written.
+H7  [FIXED in 7b90dd7] docs/domain-checklist.md:129-131 ON W9's TREE
+    84562ff7 (S1 hits
+    129) - W9's new sentences: "Item 3 names `notifications.monreleve.ch`,
+    ... Item 3 was written on 2026-10-06, before that change, and has not
+    been revised since." On main since round 4; FALSE the moment this
+    branch merges. First attempt: NOT touched (W9's lines); then
+    applied (QUESTIONS Q3, RESUMED).
+H8  [FIXED in 7b90dd7] docs/deploy.md:746 (both trees) - section 8 N3,
+    "SPF and DKIM for
+    the sending subdomain": current claim, FALSE. First attempt: NOT
+    FIXED, adjacent to W9's 745, a proven conflict (R1033); then applied
+    (QUESTIONS Q2, RESUMED).
+H9  docs/release-audit-web.md:342 (both trees) - N5, "SPF and DKIM on
+    the sending subdomain": HISTORY. FW29's audit: its header pins commit
+    abfab6a and "Audited 2026-09-24", says every line cites evidence
+    produced in that session, and the file has not changed since
+    (3a5787b, 2026-09-24). On that date the code did send from a
+    subdomain. Left.
+H10 tasks/todo.md:693-695 - current claim, FALSE ("`EMAIL_FROM` sends
+    from a subdomain (`notifications.frontalier.fr`)"). FIXED by W9
+    (struck, with a SUPERSEDED note), on main since round 4. NOT touched.
+H11 web/lib/content/identity.ts:141,144,150 (S7 adds 143,148) -
+    history: MAIL_DOMAIN's comment quoting the decision it superseded and
+    the 2026-10-14 measurement. Left.
+H12 web/lib/fr/emails.ts:83-84 - the JSDoc above EMAIL_FROM, "A
+    subdomain rather than the apex: SPF and DKIM records for a sending
+    subdomain ...": current claim, FALSE. FIXED (83-87). The new 83-84
+    say "sending subdomain" as history ("used to argue for was dropped on
+    2026-10-14").
+H13 web/lib/fr/emails.ts:90 - history (R188: the `.fr` host that line
+    once carried). Left.
+H14 web/lib/fr/notifications.ts:1 - the file's own path comment (S6
+    noise, not mail). Left.
+H15 web/tests/unit/content/identity.test.ts:95,98,99 (S7 adds 76-77) -
+    test, CITED: neither sender contains notifications.monreleve.ch, and
+    MAIL_DOMAIN is SITE_DOMAIN. 19 of 19 passed singly.
+Not hits (S7 only): SPEC-frontalier-web.md:662 ("Same domain, no
+subdomain" is about URLs, not mail) and android/app/src/debug/res/xml/
+network_security_config.xml:15,24 (includeSubdomains).
+After the edits S1-S7 were re-run on the worktree: every remaining hit
+has a row above.
+
+====================================================================
+R1033 - THE EDITS (minimal, in place)
+====================================================================
+git diff --numstat 9868254 f000dd27 (the code commit):
+  42  12  docs/domain-checklist.md
+   5   5  web/lib/fr/emails.ts
+
+docs/domain-checklist.md, item 3 ONLY (base 141-165, now 141-195).
+Nothing at or above line 142 changed, so W9's 125-131 are untouched:
+`git merge-file -p mine base theirs` (mine = this file, base 9868254,
+theirs = W9's 84562ff7) exits 0 for the checklist, for emails.ts and
+for deploy.md.
+- 143-147 name the domain by the constant (R153, R181): "The sending
+  domain is the one `MAIL_DOMAIN` holds in web/lib/content/identity.ts;
+  the senders in web/lib/fr/emails.ts are built on it. This item names
+  the constant, not its value, so read the domain there." dcac1df and
+  the constant's comment are the pointer for the move.
+- 149-171 "Readings", headed "dated records: none is this item's proof,
+  and none says it is done":
+  - 2026-10-06: the old reading, kept, in the past tense. Its
+    present-tense "The sending domain is not set up" is gone.
+  - 2026-10-14: a pointer to MAIL_DOMAIN's comment.
+  - 2026-11-17: this session's reading, labelled as one PC's view, with
+    what was queried and how (below).
+- 173-174: the consequence, now a conditional ("Without these
+  records, ...").
+- Step 1 names the domain MAIL_DOMAIN holds. Step 2's example is
+  `resend._domainkey.<MAIL_DOMAIN>`, and "the names and values are
+  Resend's". Step 3 (DMARC at `_dmarc.monreleve.ch`) is unchanged: it
+  is not a hit, and DMARC sits at the organizational domain, which
+  covers MAIL_DOMAIN whether it is the apex or a subdomain.
+- The proofs (190-191) query "<SPF name Resend lists for MAIL_DOMAIN>"
+  and "<DKIM name Resend lists for MAIL_DOMAIN>". Markdown cannot
+  interpolate, so the constant is named and its value is not typed
+  (R153). The old SPF line assumed the record sits at the sending
+  domain itself; nothing in the repository establishes where Resend
+  puts it, so the proof defers to Resend's list (NOTICED N1).
+- "the Resend dashboard shows that domain Verified" (195).
+- Pure ASCII, as its line 21 requires: 0 bytes above 0x7F. The same
+  counter reads 273 on docs/deploy.md (the positive control).
+
+web/lib/fr/emails.ts 83-87, the JSDoc above EMAIL_FROM, in its own
+voice: "Its domain is MAIL_DOMAIN (lib/content/identity.ts). The sending
+subdomain this comment used to argue for was dropped on 2026-10-14, and
+MAIL_DOMAIN's comment records why and what the change gives up. The
+domain's DNS records are an operator task (docs/domain-checklist.md
+item 3) - noted there rather than attempted here, because nothing in
+this repository can create them." It points at the constant instead of
+restating its value, and at item 3 instead of FW28. Five comment lines
+for five, so EMAIL_FROM stays at :101. No line outside the /** */
+block changed (checked on the diff). eslint on the file: exit 0. Run
+singly: identity 19/19, accents 8/8, copy-codepoints 8/8,
+french-typography 15/15, typed-numbers 7/7, errors 14/14,
+french-literals 5/5, personal-data 30/30, product-state 41/41.
+
+docs/deploy.md section 8 N3: NOT EDITED.
+- W9 changes line 745 (N2's citation); N3 is line 746. Git conflicts on
+  adjacent-line edits: a scratch repository (two branches changing
+  lines 3 and 4 of one file) gave "CONFLICT (content)", and on the real
+  file `git merge-file -p mine base theirs`, with N3 planted in a copy
+  (the plant was asserted to match exactly once, and the diff showed
+  line 746 changed), exited 1 with one conflict spanning 745-751.
+- So, per the launch message, the question is handed back rather than
+  the line edited (Q2, with the row). No rewording of 746 avoids it.
+
+The DNS reading (rule 10: read-only lookups, MEASURED FROM THIS
+MACHINE, 2026-11-17, 09:09:02Z-09:11Z). Raw output is in
+.sender-evidence/dns-2026-11-17/ (gitignored, not committed).
+  How: nslookup addressed to 8.8.8.8; nslookup through the system
+  resolver (10.2.0.1); HTTPS GET https://dns.google/resolve. The TXT
+  values were compared byte for byte across the three: equal.
+  nslookup addressed to 1.1.1.1 timed out on every query, the positive
+  control included: NO RESULT for that resolver.
+  Controls: _dmarc.google.com TXT -> "v=DMARC1; p=reject;
+  rua=mailto:mailauth-reports@google.com" (positive);
+  w15-nx-5ca445fa.monreleve.ch TXT -> NXDOMAIN (negative, a never-used
+  name).
+  Answers:
+    notifications.monreleve.ch A, TXT    NXDOMAIN
+    resend._domainkey.monreleve.ch TXT   "p=MIGfMA0GCSqGSIb3DQEB..."
+                                         (218 characters)
+    monreleve.ch TXT                     one record,
+                                         "google-site-verification=..."
+    monreleve.ch MX                      10 inbound-smtp.eu-west-1.
+                                         amazonaws.com
+    _dmarc.monreleve.ch TXT              NXDOMAIN
+    send.monreleve.ch TXT, MX            CNAME send.forge.rmta.net;
+                                         TXT "v=spf1 ip4:52.3.252.119
+                                         ip4:44.222.39.36
+                                         ip4:199.249.231.0/24 ~all";
+                                         MX 10 feedback.forge.rmta.net
+    monreleve.ch A                       104.21.65.7, 172.67.138.177
+  No verdict is drawn from them, in the checklist or here. They do not
+  say what Resend shows, and one PC's view is not the world's.
+
+====================================================================
+R1034 - THE GATE THE DIFF SELECTS
+====================================================================
+The selection, printed with `node scripts/gate-for-changes.mjs --print`
+(before and after main moved; identical):
+  2 path(s) matched:
+    web/lib/fr/emails.ts  ->  lib/fr/**
+    web/lib/fr/emails.ts  ->  the database layer (prisma/**, lib/db/**,
+                              tests/db/**, and anything test:db imports)
+  suites: typecheck, lint, test, build, test:e2e, test:visual, test:db,
+          test:late
+Line taken: 6 245 (the launch message's e2e+visual line; test:db's own
+line is lower, and round 3's merge gate measured this same four-suite
+set at a 1 869 MB drop).
+Prepared and NOT used: scratch database monreleve_fw_docs_sender_domain
+(created by script, migrated with db:deploy: 16 migrations), web/.env
+naming it (copied by script, not printed), FRONTALIER_PORT=3501 (3500-3599
+had no listener).
+Lock: acquire W15 --min-free 6245 --wait-min 240, queued 09:18:43Z.
+Never held with commit free >= 6 245. No start reading and no minimum
+exist, because no gate started. Stopped by me at 12:09Z on the
+instruction to hand back. NO RESULT (R391).
+
+====================================================================
+R1035 - NOTHING ELSE MOVES
+====================================================================
+git diff --stat 9868254 f000dd27: the 2 files above. The emails.ts diff
+is comment lines only. No test, no baseline, no parking.md, no relay
+record, no DNS change, no Resend action. No ruling number beyond
+R1031-R1035.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1 The old item 3's SPF proof queried TXT at the sending domain itself.
+   From this machine on 2026-11-17 the apex's only TXT is a
+   google-site-verification token, while send.monreleve.ch (a CNAME to
+   send.forge.rmta.net) answers a v=spf1. If Resend lists its SPF under
+   such a name, that proof shape could not have returned it even with
+   SPF in place. This is not established from the repository, so the
+   new proof defers to the names Resend lists (DEVIATIONS V2 says why
+   send.monreleve.ch was queried).
+N2 The apex MX answers `10 inbound-smtp.eu-west-1.amazonaws.com` from
+   this machine. No tracked document mentions an inbound MX. It routes
+   mail for contact@monreleve.ch, the published contact address
+   (web/lib/content/legal-entity.ts:134). Whether that reaches anybody is
+   not established, and is not this task's.
+N3 _dmarc.monreleve.ch answered NXDOMAIN from this machine. Item 3 step
+   3 has no reading that says it is done.
+N4 identity.ts:155 ("The apex already carries verified DKIM and SPF",
+   2026-10-14) and item 3's 2026-10-06 reading ("no SPF, DKIM, DMARC,
+   or MX") disagree. Both are dated, eight days apart. Recorded so that
+   neither is read as current.
+N5 H9: docs/release-audit-web.md:342 keeps "sending subdomain" as part
+   of a dated audit. A reader who takes FW29's NEEDS table as current
+   would see it. Left (history).
+
+====================================================================
+DEVIATIONS
+====================================================================
+V1 [Superseded: N3 applied in 7b90dd7, Web Ruling 24.] R1033 was
+   PARTIAL: deploy.md section 8 N3 was not edited, under the
+   launch message's rule ("If they would [conflict], hand back the
+   question rather than editing those lines"). Q2 carries the cell.
+V2 UNNUMBERED-1 (R156): the DNS reading queried send.monreleve.ch, a name
+   no tracked file mentions. It was chosen from general knowledge that
+   Resend commonly lists its SPF and MX records under a `send.` name -
+   not from the repository. The checklist records the answer and says
+   nothing about what the name is; no proof line uses it.
+V3 UNNUMBERED-2 (R156): a third DNS path, HTTPS GET to
+   https://dns.google/resolve, beside nslookup. Read-only. Added because
+   1.1.1.1 gave no result and a bare network answer from this PC is not
+   evidence on its own (TCP connects are intercepted here); a TLS answer
+   from the resolver itself is harder to forge.
+V4 Git outside my worktree: in the main checkout only `git fetch` and
+   `git worktree add` (HOW THIS SESSION RUNS). W9's branch was read with
+   `git show`, `git diff` and `git grep <sha>` from my own worktree, as
+   rule 1 allows; nothing was run in C:/wt/fw-docs-email-from. Files (no
+   git) were read in C:/wt/web-orch (the prompt, RULINGS-2026-11-16.txt,
+   FW-HEALTH-IMAGE.txt) and C:/wt/.run-tools. The adjacency test used a
+   throwaway repository in this session's own scratchpad.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1 (for the operator, the prompt's question): which domain is verified
+   in Resend today? The code sends only from MAIL_DOMAIN
+   (identity.ts:160). The records point one way and prove nothing about
+   today: dcac1df's message says that on 2026-10-14 "Resend's account
+   holds monreleve.ch", and that a control send from alertes@monreleve.ch
+   succeeded; from this machine on 2026-11-17 a DKIM TXT answers at
+   resend._domainkey.monreleve.ch. Neither is a reading of the Resend
+   dashboard, so item 3 stays open until the operator reads it there.
+Q2 [APPLIED in 7b90dd7, Web Ruling 24] (for the orchestrator):
+   docs/deploy.md section 8 N3 (line 746) is not
+   edited on this branch: from base 9868254 it conflicts with W9's 745,
+   now on main. Applied as a probe on main's deploy.md (blob 66ffe24),
+   asserted single match, line 746, cell 2 only:
+     before: **SPF and DKIM** for the sending subdomain
+     after:  **SPF and DKIM** for the sending domain, the one
+             `MAIL_DOMAIN` holds in `web/lib/content/identity.ts`
+             (`docs/domain-checklist.md` item 3)
+   On a tree holding W9's 745 it conflicts with nothing.
+Q3 [APPLIED in 7b90dd7, Web Ruling 24] (a DEFECT on main the moment
+   this branch merges): W9's checklist
+   129-131 (on main since round 4) read "Item 3 names
+   `notifications.monreleve.ch`, ... Item 3 was written on 2026-10-06,
+   before that change, and has not been revised since." Applied as a
+   probe on the merged file (this branch with main, merge-file exit 0),
+   asserted single match:
+     before (129-131): in Resend. Item 3 names ... revised since.
+     after  (129):     in Resend (item 3).
+   125-128 unchanged, so deploy.md:745's citation of 125-127 still lands
+   on "Nothing reads it from the environment" (126). Pure ASCII.
+Q4 [DONE: both PASSED, RESUMED below] The gate. gate:changed (8
+   suites, line 6 245) and gate:clone (line
+   5 876) still have to run on f000dd27 or on the merge.
+
+====================================================================
+RESUMED - WEB RULING 24 (the coordinator: "keep working")
+====================================================================
+1. git merge origin/main (41ddc9e4) into the branch, no rebase: clean.
+   Merge commit cd309c41b9e9b228cb4404fe4e02d05ce364f3ae (pushed).
+2. Q2 and Q3 applied on the merged tree, each asserted to match exactly
+   once; both files are byte-equal to the probes in QUESTIONS:
+   - deploy.md:746: "for the sending subdomain" -> "for the sending
+     domain, the one `MAIL_DOMAIN` holds in
+     `web/lib/content/identity.ts` (`docs/domain-checklist.md` item 3)"
+   - domain-checklist.md:129-131: "in Resend. Item 3 names ... revised
+     since." -> "in Resend (item 3)." (pure ASCII; 125-127 still cited)
+   After them S1-S7 find only history, the dated readings and tests.
+3. gate:changed. So that the selection covers f000dd2's emails.ts as
+   well as the two docs, it ran with HEAD detached at 41ddc9e4 (main)
+   and the branch's whole diff uncommitted (git checkout --detach; git
+   reset --soft 41ddc9e4). The branch ref never moved. Selection, the
+   same as the earlier --print: typecheck, lint, test, build, test:e2e,
+   test:visual, test:db, test:late. Line 6 245, FRONTALIER_PORT=3501,
+   web/.env naming monreleve_fw_docs_sender_domain (db:deploy: 16).
+   Run 1: lock 12:45:58Z (start 7 071 MB) to 12:56:33Z; minimum 2 231
+     MB commit free, physical 180 MB at 12:55:24Z. typecheck, lint,
+     test (4012/4012, 232 files, no Errors line) and build were green.
+     test:e2e: 1 failed, 380 passed. e2e/rappel-delai.spec.ts:118 timed
+     out waiting for the reminder field. Page state: the date is in the
+     field, no deadline is computed and no form shows. That is the
+     pre-hydration mechanism Web Ruling 22 gave to W18 (DeadlineHelper's
+     controlled input); it is not the same test as W10b's (45, 104).
+     The memory low coincides with it; that it caused it is not shown.
+     W18's fix (38936bc) is not on main. test:visual, test:db and
+     test:late did not start: NO RESULT. The failure context is kept in
+     .sender-evidence/e2e-red-1/ (not committed).
+   Run 2: lock 13:12:21Z (start 6 792 MB) to 13:27:50Z; minimum 3 666
+     MB (physical 690). GATE PASSED for the paths changed. STEP_EXIT=0.
+       test: 4012 passed; test:e2e: 381 passed; test:visual: 174
+       passed; test:db: 816 passed (27 skipped); test:late: 10 passed;
+       typecheck, lint, build: exit 0.
+   The branch was then checked out again (reset --soft to cd309c4,
+   checkout) and the two files committed as 7b90dd7 with the selection
+   in the body. git status was clean and git diff HEAD empty, so the
+   committed tree is the gated one.
+4. gate:clone ALONE on 7b90dd7: lock 14:01:19Z (start 6 459 MB, line
+   5 876) to 14:14:48Z; minimum 4 784 MB (physical 1 533). No other
+   heavy run held the lock meanwhile; light work in other sessions may
+   have overlapped. FRONTALIER_PORT=3502,
+   CONTAINER_IMAGE=monreleve:fw-docs-sender-domain, web/.env naming the
+   scratch database (host and credentials copied by script, never
+   printed). Header: commit 7b90dd7, "tree clean - HEAD is everything
+   you have", "swept no stale clones".
+     claim   this commit builds and passes register-coverage,
+             fixture-coverage, install, typecheck, lint, test (4012 of
+             4012 tests passed, 232 files), build, size (21 routes
+             measured), db:deploy, test:db (816 of 843 tests passed, 27
+             skipped, 60 files), test:container:write (10 checks
+             passed) from a clean checkout - a machine with no .env, no
+             prior node_modules and no generated file this run did not
+             produce itself.
+     GATE:CLONE PASSED. STEP_EXIT=0
+   Named as not run in a clone: test:e2e, test:visual, test:runtime,
+   lighthouse, parity:check, test:container. gate:changed ran test:e2e
+   and test:visual above.
+5. Q1 (which domain is verified in Resend) goes to the operator's list;
+   nothing was done about it.
+NOTICED (resumed):
+N6 test:visual's web server logged "[scheduler] failed to start:
+   connect ECONNREFUSED 127.0.0.1:5436" inside its container; the suite
+   passed 174.
+N7 Run 1's drop (7 071 -> 2 231 MB) is larger than the 3 045 MB the
+   6 245 line assumes. Recorded; the line is not this session's to move.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Branch fw-docs-sender-domain (base 9868254):
+  f000dd27  code: item 3 and the emails.ts JSDoc
+  a2e280f4  report, first form
+  cd309c41  merge of origin/main 41ddc9e4 (clean)
+  7b90dd72  code: deploy.md N3 and the checklist's 129-131 (gated)
+  git ls-remote after the code push:
+    7b90dd72914c5de3c393f7f63ea8a9d95f8e5209
+gate:clone vouches for 7b90dd7. This report's final form is one more
+report-only commit on top; its SHA is in the handback.
+Cleanup (Web Ruling 3), after gate:clone:
+- scratch database monreleve_fw_docs_sender_domain dropped;
+- web/.env removed;
+- image monreleve:fw-docs-sender-domain (109e5c76b0ba, built 14:13:30Z
+  by this session's gate:clone) removed by exact name;
+- monreleve:write (53da68af980b, built 13:43Z, before this session's
+  gate:clone) is not this session's and was not touched;
+- no container of this session remains;
+- the session lock is removed last.
