@@ -35,12 +35,15 @@ THE PLAN (three gated commits; each baseline file written once)
 STATE
   commit 1  60a1bf3, gated (GATE PASSED), pushed. Baselines #1 regenerated once
             (SET EQUAL) and measured by shift (.rappel-evidence/w11/regen1-*).
-  commit 2  increments 2-6 ported by .rappel-evidence/w11/port-inc2-6.cjs (37
-            copied and verified, 7 already equal); diff -rq against the scratch
-            copy: confidentialite.test.tsx and the two regenerated baselines
-            only. Named set #2: .rappel-evidence/w11/regen2-expected.txt.
-  commit 3  drafted in .rappel-evidence/w11/stage3/ (tests first; stepA/ is
-            R1002 alone, for R1003's own RED); base hashes in
-            stage3/base/BASE-SHA256SUMS - apply a draft only over its base.
+  commit 2  6d52427, gated (GATE PASSED), pushed: increments 2-6 ported by
+            .rappel-evidence/w11/port-inc2-6.cjs (37 copied and verified, 7
+            already equal) + six comparator baselines (SET EQUAL).
+  commit 3  5cbc815, gated (GATE PASSED), pushed: R1002-R1004, R1000, R1001,
+            R1008 + the delete page's two baselines (SET EQUAL; the update run
+            exited 1 on visual.mjs's R208 counter - DEFECT 1 in the report).
+            GATE:CLONE PASSED on 5cbc815 alone under the lock, its "ran" line
+            naming db:deploy, test:db and test:container:write.
+  DONE      REPORT-FW-DELAI-RAPPEL.txt is the record. Nothing is owed by a
+            session; the merge and the promotion are the orchestrator's.
   see the commit log of fw-delai-rappel; each gated commit's body carries its
   selection. If this file says less than the log, the log wins.
