@@ -9,8 +9,9 @@ C:/wt/.heavy-run.lock.
 ====================================================================
 SUMMARY
 ====================================================================
-- R970: nothing reads EMAIL_FROM from the environment, and no commit on any
-  ref ever has. It is a constant, web/lib/fr/emails.ts:101:
+- R970: nothing reads EMAIL_FROM from the environment. No commit on any
+  local ref (git log --all) matches either of two search shapes for such a
+  read (R970 below). It is a constant, web/lib/fr/emails.ts:101:
       export const EMAIL_FROM = `${APP_NAME} <alertes@${MAIL_DOMAIN}>`;
   It goes out as the alert mail's sender at
   web/lib/alerts/confirmation.ts:70 ("from: EMAIL_FROM,") and reaches Resend
@@ -26,7 +27,7 @@ SUMMARY
 - R972: 6 files, 23 insertions, 18 deletions. Under web/, ONE file changes,
   two comment lines in web/scripts/container-check.mjs.
 - R973: gate:changed selected the base chain plus test:container. gate:clone
-  ran ALONE on the code commit. Both results are under PUSH PROOF.
+  ran ALONE on the code commit. Both results are under R973.
 - R974: nothing else moved. No code, no test, no baseline, no parking.md.
 
 ====================================================================
@@ -194,7 +195,16 @@ Line citations were re-opened after the edits:
 - domain-checklist.md 129 -> item 3 names notifications.monreleve.ch at 149.
 - todo.md shifts by +5 after 695, SPEC by +1 after 1010, and the checklist
   by -1 after 132. No tracked file outside REPORT-*.txt and relay/ cites a
-  line in those ranges.
+  line in those ranges, or a line changed in place. The first search, before
+  the review, allowed no backtick before the number. It therefore could not
+  match the house's style (`docs/domain-checklist.md` 126-130). The claim
+  rests on the second search, run after the review:
+    git grep -n -E "(SPEC-frontalier-web\.md|SPEC|todo\.md|
+      domain-checklist\.md)`?(:| |, line | lines? | line |#L)[0-9]{2,4}"
+    (one pattern, wrapped here)
+  It matched 615 citations. None falls in a shifted range. In the ranges
+  changed in place it finds one: deploy.md:745's, the citation this task
+  re-pointed, which is the positive control.
 No test reads an edited doc: the tests that open docs/ open api-v1.md,
 regulatory-sources.md, lamal-refresh.md, sources/primes-lamal and
 brand/rejected. Three files scan scripts/ or cite the senders, and each was
@@ -352,7 +362,22 @@ Code commit e0e9fa6e45565d701773687bb102b4593cde7627, base bfdb1d4, 6 files:
 gate:clone ran on e0e9fa6 after that push. The tip did not move, so step 4
 had nothing new to push.
 Report commit: on top of e0e9fa6, adding only this file. A file cannot carry
-its own commit id, so its SHA and push are in the handback.
+its own commit id, so its SHA and push are in the handback. The first report
+commit, ec8a26d, was pushed (e0e9fa6..ec8a26d). This file's final form is a
+second report-only commit on top of it, made after the review.
+
+main moved after this branch was cut. git fetch, run after the report's
+first push, read origin/main 9868254: merge rounds 2 and 3 (W4, W10a, W8,
+W11) and their records.
+- git diff --name-only bfdb1d4 origin/main lists none of the six files.
+- git merge-tree --write-tree origin/main ec8a26d: exit 0, clean.
+- main's new content adds 11 EMAIL_FROM lines and no 2026-10-14 line:
+  - web/lib/rappel/mail.ts 11, 21, 62, 81 - code. It imports and passes the
+    constant AUTH_EMAIL_FROM, and the file reads no process.env.
+  - web/tests/db/rappel-delai-job.test.ts 17, 88; rappel-delai-mail.test.ts
+    24, 133, 198; rappel-delai-request.test.ts 27, 109 - tests, cited.
+  None is a current claim to fix. R970 holds on main: git grep finds no line
+  joining EMAIL_FROM and process.env.
 
 Cleanup (Web Ruling 3), 06:37Z, before this report commit:
 - Databases. pg_database before gate:clone: frontalier,
@@ -366,7 +391,9 @@ Cleanup (Web Ruling 3), 06:37Z, before this report commit:
   - monreleve:fw-docs-email-from 4ecd7e54a0f4 (gate:clone's
     test:container:write): untagged, deleted.
   - monreleve:fw28 3c13f0247829 (gate:changed's test:container): untagged,
-    deleted.
+    deleted. That tag name is shared. Only web/scripts/container-check.mjs
+    defaults to it (line 53), and its package script always passes
+    --build, so the next test:container run rebuilds it.
   Before the build, monreleve:fw28 named 0d104b04fdda (5 days old, not this
   session's). After the build moved the tag, that image is no longer listed,
   and docker image ls -a lists no untagged image. Nothing removed it by
