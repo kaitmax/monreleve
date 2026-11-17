@@ -1,0 +1,202 @@
+REPORT-FW-CANTON
+================
+
+TASK   R380 - a reader who submits the calculator without a canton is told
+       so, in red, on the field.
+BASE   9809944 (origin/main, with fw-followup merged)
+BRANCH fw-canton-required, worktree C:/wt/fw-canton (R349), lock released
+
+
+SUMMARY
+-------
+
+THE REQUEST, as given: "when a user forgot to add a canton I want to
+highlight it to the user in red and add the message that he should add it".
+
+IT CONFLICTED WITH A RECORDED DECISION, so it was raised before anything was
+written. lib/fr/calculateur.ts says of the empty-canton state:
+
+    Before a canton is chosen. Not an error and not styled as one: the user
+    has not done anything wrong, the form simply cannot resolve a regime yet.
+
+Both that note and the request are right, about different moments. The
+resolution the operator approved:
+
+    WHILE FILLING THE FORM   neutral, exactly as before. Somebody halfway
+                             through a sentence has not made a mistake.
+    ON PRESSING Calculer     an error. They have asked for an answer and
+                             cannot be given one, and the reason is a field
+                             they can see and fix.
+
+
+WHAT WAS ALREADY THERE
+----------------------
+
+Almost all of it, which is why this is small.
+
+  - FieldGroup already renders the 2 px error border, sets aria-invalid, and
+    points aria-describedby at the error text, from one `error` prop.
+  - The canton field has been wired since FW11: error={errorFor('canton')}.
+  - The French sentence for the neutral state already existed.
+
+THE FIELD COULD NEVER RECEIVE AN ERROR, and the file header says why without
+drawing the conclusion: "nothing is validated until a canton exists, because
+that is what it takes to build an input at all". No canton, no TeleworkInput,
+no engine run, no errors, so errorFor('canton') was permanently undefined.
+The one field that can be empty is the one field the engine cannot report on,
+because it cannot run without it.
+
+
+THE CHANGE
+----------
+
+lib/fr/calculateur.ts   form.canton.missing - new, with the reasoning for why
+                        it differs from result.empty and why it is shorter
+                        (it sits under a label that already names the field).
+
+CalculatorForm.tsx      submittedWithoutCanton state; onSubmit refuses and
+                        moves focus to the field; errorFor returns the new
+                        message for 'canton' while the flag is set and the
+                        field is still empty.
+
+THE STATE IS NOT DERIVED, deliberately. What it records is not "the canton is
+empty" - the form knows that at every keystroke - but "the reader has ASKED
+for an answer". Those differ by an event, and only the second is an error.
+
+IT CLEARS WITHOUT A SECOND setState, because the condition includes
+`state.canton === ''`. Choosing a canton makes the error false immediately;
+nothing has to remember to reset a flag.
+
+onSubmit RETURNS BEFORE MOVING FOCUS TO THE RESULT REGION. With no canton the
+region has nothing to say, so sending focus there would announce the neutral
+line while leaving the field that needs attention unmarked and off-screen -
+the behaviour this ruling replaces.
+
+IT IS ROUTED THROUGH errorFor rather than passed at the call site, so the
+canton field keeps one source of error text (R206) and FieldGroup keeps doing
+the aria work.
+
+
+THE COPY, VERBATIM
+------------------
+
+    missing: 'Choisissez votre canton de travail.'
+
+(ASCII-safe as written; the file is the authority - R155.)
+
+Same verb as the existing neutral line, so the two read as one voice. It drops
+"pour lancer le calcul" because the reader has just pressed Calculer and has
+demonstrated they know that part; what they need is which field.
+
+
+TESTS - RED FIRST
+-----------------
+
+tests/unit/pages/calculateur-form.test.tsx, five new tests. The RED run was
+3 failed | 39 passed:
+
+    x shows the message once the form is submitted without one
+        AssertionError: expected null not to be null
+    x marks the field invalid, so it is not red ALONE
+        AssertionError: expected null to be 'true'
+    x clears as soon as a canton is chosen
+        AssertionError: expected null not to be null
+
+TWO OF THE FIVE PASSED IN THAT SAME RED RUN, and they are the ones that
+matter most:
+
+    - says nothing about the canton before the form is submitted
+    - does not fire for a form that HAS a canton
+
+They were green because nothing fired at all, and they are there to keep the
+recorded decision intact: "show the error" would otherwise be satisfied by
+showing it always, which is precisely what result.empty's note forbids
+(R196 - both directions).
+
+RED IS NOT ONLY ABOUT COLOUR. One test reads aria-invalid and follows
+aria-describedby to the text, because colour alone is not an accessible
+signal; the border is a presentation of something that is also announced.
+
+GREEN: 42 passed in that file.
+
+
+SCOPE - THE NO-JS PATH WAS LEFT NEUTRAL, AND WHY
+-------------------------------------------------
+
+With scripting off the form submits by GET to /resultat, which already shows
+the neutral sentence AND a link back to the calculator. So the defect
+described in the request - forgot a canton, got nothing - DOES NOT EXIST on
+that path. It is answered, just not in red.
+
+Making it red there means distinguishing "arrived with parameters but no
+canton" (they submitted) from "arrived with none at all" (they just followed
+a link), which is a second surface and a second decision. Parked rather than
+guessed: see PARK-C1.
+
+
+PARKED
+------
+
+PARK-C1  /resultat shows the empty-canton state neutrally. Under R380's
+         reasoning a reader who ARRIVED THERE BY SUBMITTING has made the same
+         error, so the same treatment would follow - but a bare link to
+         /resultat with no parameters is not an error and must stay neutral.
+         The distinguishing signal is whether any calculator parameter is
+         present. One page, one condition, one string decision.
+
+
+DEVIATIONS
+----------
+
+1. NOT FROM A RELAY PROMPT. This came as a direct operator request mid-
+   session. It conflicted with a recorded decision, so the conflict was put
+   to the operator before any code was written (CLAUDE.md: stop and ask), and
+   the split above is what was approved.
+
+2. ANDROID IS UNTOUCHED. The request named the telework simulation page; the
+   operator's standing instruction is that the Android side is theirs
+   ("keep her only web part"). android/ has a SimulationScreen with its own
+   canton handling, which was not examined and may have the same gap.
+   See QUESTIONS.
+
+
+QUESTIONS
+---------
+
+Q1 PARK-C1 - make /resultat red when a submission arrives without a canton?
+
+Q2 Does the ANDROID simulation screen have the same gap? It was not looked
+   at, by the standing instruction. If it does, it is the same decision in
+   the same shape and worth doing in one pass rather than twice.
+
+
+PUSH PROOF
+----------
+
+GATE:CHANGED  typecheck 0, lint 0, test 3273, build 0, test:e2e 339,
+              test:visual 111, test:late 10.
+
+NO BASELINE WAS REGENERATED. The error exists only after a submit, and the
+visual suite photographs the page as it loads - so the 111 are unchanged and
+that is a result rather than an omission (R135).
+
+AN EXISTING E2E TEST FAILED FIRST, AND IT WAS RIGHT TO.
+
+    e2e/calculateur.spec.ts:283  the Calculer button hands focus to the
+                                 result
+    expect(await page.evaluate(focusProbe)).toBe('id:resultat')
+
+It loaded the calculator fresh - no canton - pressed Calculer and expected
+focus on the result region. Under R380 focus goes to the FIELD instead, so
+the failure was the ruling landing, not a regression.
+
+UPDATED, NOT DELETED, and its original claim kept: it now chooses a canton
+first and still asserts that Calculer hands focus to the result, because
+that is still true once the form can produce one. The comment records that
+it used to pass WITHOUT a canton because the button moved focus
+unconditionally - to a region that said "choose a canton" - which is exactly
+the behaviour this ruling replaces. A second test asserts the new half in a
+real browser: focus on #canton, aria-invalid=true, and the message visible.
+
+GATE:CLONE AND THE PUSH FOLLOW THIS COMMIT; their results are recorded in
+the message of the commit that carries them (R334).

@@ -273,7 +273,13 @@ test.describe('the keyboard path (increment 5)', () => {
   });
 
   test('the Calculer button hands focus to the result', async ({ page }) => {
+    // A CANTON IS CHOSEN FIRST SINCE R380, and the claim this test makes is
+    // unchanged: once the form can produce a result, Calculer hands focus to
+    // it. It used to pass WITHOUT a canton because the button moved focus
+    // unconditionally - to a region that said "choose a canton". That is the
+    // behaviour R380 replaced, and it is asserted directly below.
     await page.goto(CALCULATOR_PATH);
+    await page.selectOption('#canton', 'GE');
 
     const button = page.getByRole('button', { name: CALCULATEUR_COPY.result.calculate });
 
@@ -281,6 +287,25 @@ test.describe('the keyboard path (increment 5)', () => {
     await page.keyboard.press('Enter');
 
     expect(await page.evaluate(focusProbe)).toBe('id:resultat');
+  });
+
+  test('R380: with no canton, Calculer hands focus to the FIELD instead', async ({ page }) => {
+    // The other half, in a real browser rather than jsdom: focus is the part
+    // of this that a unit test cannot see going to the right element on a
+    // real page, and it is what makes the red border reachable by keyboard
+    // rather than merely visible.
+    await page.goto(CALCULATOR_PATH);
+
+    const button = page.getByRole('button', { name: CALCULATEUR_COPY.result.calculate });
+
+    await button.focus();
+    await page.keyboard.press('Enter');
+
+    expect(await page.evaluate(focusProbe)).toBe('id:canton');
+    await expect(page.locator('#canton')).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+      page.getByText(CALCULATEUR_COPY.form.canton.missing),
+    ).toBeVisible();
   });
 });
 

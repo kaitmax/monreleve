@@ -125,6 +125,27 @@ export const CALCULATEUR_COPY = {
       helper:
         'Le canton détermine le régime applicable et ce que coûte un ' +
         'dépassement.',
+
+      /**
+       * ONLY AFTER THE FORM HAS BEEN SUBMITTED WITHOUT ONE (R380).
+       *
+       * `result.empty` below says the opposite thing deliberately, and both
+       * are right at different moments. Its note - "not an error and not
+       * styled as one: the user has not done anything wrong, the form simply
+       * cannot resolve a regime yet" - describes somebody still filling the
+       * form in, and turning that red would scold a reader who is halfway
+       * through a sentence.
+       *
+       * PRESSING Calculer CHANGES WHAT IS TRUE. They have asked for an
+       * answer and cannot be given one, and the reason is a field they can
+       * see and fix. That is an error by any reading, so it is styled as one.
+       *
+       * SHORTER THAN result.empty, because it sits directly under the label.
+       * "pour lancer le calcul" is the part the reader has just demonstrated
+       * they know; what they need here is which field, and the field is
+       * named immediately above it.
+       */
+      missing: 'Choisissez votre canton de travail.',
     },
 
     rate: {

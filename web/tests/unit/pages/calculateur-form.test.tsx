@@ -516,3 +516,80 @@ describe('ruling R112: what left the pixel layer is picked up here', () => {
     expect(shown).toContain(String.fromCharCode(0x00e2));
   });
 });
+
+describe('R380: submitting with no canton says so, on the field', () => {
+  // ==========================================================================
+  // THE STATE THIS CHANGES, AND THE ONE IT DELIBERATELY DOES NOT
+  // ==========================================================================
+  //
+  // Before this ruling an empty canton produced SILENCE on the field. A
+  // TeleworkInput cannot be built without one, so the engine never ran, so
+  // `errors` was empty, so errorFor('canton') was undefined - the field was
+  // already wired for an error it could never receive.
+  //
+  // The neutral line in the result region (result.empty) stays exactly as it
+  // was, and its own comment says why: somebody still filling the form in has
+  // not done anything wrong. Pressing Calculer is what changes that.
+
+  const submit = (): void => {
+    fireEvent.click(screen.getByRole('button', { name: CALCULATEUR_COPY.result.calculate }));
+  };
+
+  it('says nothing about the canton before the form is submitted', () => {
+    // THE HALF THAT PROTECTS THE EXISTING DECISION. Without this, "show the
+    // error" would be satisfied by showing it always, which is the behaviour
+    // result.empty's note exists to prevent.
+    setUp();
+
+    expect(screen.queryByText(FORM.canton.missing)).toBeNull();
+  });
+
+  it('shows the message once the form is submitted without one', () => {
+    setUp();
+    submit();
+
+    expect(screen.queryByText(FORM.canton.missing)).not.toBeNull();
+  });
+
+  it('marks the field invalid, so it is not red ALONE', () => {
+    // Colour is not an accessible signal on its own. FieldGroup already sets
+    // aria-invalid and points aria-describedby at the error, which is what
+    // makes the red border a presentation of something announced rather than
+    // the whole message.
+    setUp();
+    submit();
+
+    const select = cantonSelect();
+
+    expect(select.getAttribute('aria-invalid')).toBe('true');
+
+    const describedBy = select.getAttribute('aria-describedby') ?? '';
+    const described = describedBy
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ');
+
+    expect(described).toContain(FORM.canton.missing);
+  });
+
+  it('clears as soon as a canton is chosen', () => {
+    setUp();
+    submit();
+
+    expect(screen.queryByText(FORM.canton.missing)).not.toBeNull();
+
+    fireEvent.change(cantonSelect(), { target: { value: 'GE' satisfies Canton } });
+
+    expect(screen.queryByText(FORM.canton.missing)).toBeNull();
+  });
+
+  it('does not fire for a form that HAS a canton', () => {
+    // R196's other direction: a guard that fired on every submit would pass
+    // the "shows the message" test perfectly.
+    setUp();
+    fireEvent.change(cantonSelect(), { target: { value: 'GE' satisfies Canton } });
+    submit();
+
+    expect(screen.queryByText(FORM.canton.missing)).toBeNull();
+  });
+});

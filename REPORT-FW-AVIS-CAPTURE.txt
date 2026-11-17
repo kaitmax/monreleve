@@ -1,0 +1,319 @@
+REPORT-FW-AVIS-CAPTURE - Mon Releve, web run step W23 (Web Ruling 35)
+Rulings R1051-R1055. Session W23, worktree C:/wt/fw-avis-capture, branch
+fw-avis-capture, cut from BASE_SHA b794b588e3065bd8819d388e8d86fe20aea315f7
+(origin/main = production). Port block 3400-3499 (FRONTALIER_PORT=3400).
+Evidence: C:/wt/fw-avis-capture/.aviscapture-evidence/ (gitignored by
+/.*-evidence/): every log, JSON line, capture, crop and tool named below.
+
+====================================================================
+SUMMARY
+====================================================================
+- R1051 was measured, not guessed. One full test:visual ran with a
+  temporary instrumentation of e2e/baseline.ts. It logged the scroll
+  position and every sticky or fixed element at capture time for all 169
+  captures (112 full-page, 57 element).
+  - ONE state is captured scrolled with a sticky element on screen:
+    calculateur-panneau-avis-provisoire-desktop (scrollY 763, the result
+    column sticky and on screen).
+  - Repeated (4 fresh pages x 6 consecutive full-page captures), it gives
+    TWO images (19 + 5 of 24). Scrolled to 0, it gives ONE (24 of 24).
+  - Its four nearest neighbours each give one image as they stand. They are
+    scrolled, with a sticky element in the DOM but off screen. So does the
+    avis state's mobile twin.
+- R1052, the fix: one step at the end of that state's reach in
+  e2e/calculateur.visual.spec.ts. It scrolls to top 0 (instant) and then
+  asserts that scrollY is 0. There is no product code, and no threshold,
+  mask, retry or sleep.
+- R1053:
+  - The fixed spec's own steps, under the same repetition, give ONE image
+    per width: desktop 24 of 24, mobile 24 of 24, with scrollY 0 before and
+    after every page.
+  - Then two consecutive FULL test:visual runs: 174 passed each, 0 failed,
+    0 flaky, 0 retries. Both avis tests were first-time green in both runs.
+  - The gate's own test:visual was a third full run: 174 passed, 0 flaky.
+- R1054:
+  - The set was named before the run, in expected-regeneration.txt: exactly
+    calculateur-panneau-avis-provisoire-desktop.png, the scroll-0 image.
+  - The produced set equals it.
+  - Old vs new: 28 px at x1285-1287 y1819-2007, max channel delta 2. The
+    new pixel hash is ee76f3072500, as predicted from the census.
+  - Cropped and looked at.
+- R1055: two files change, the spec (one step plus its comment) and that
+  one baseline.
+
+====================================================================
+STATUS (R391)
+====================================================================
+GREEN for the code commit 74c92a7c. Details:
+- gate:changed ran on 74c92a7c's tree before the commit, in this session:
+  GATE PASSED, STEP_EXIT=0.
+- gate:clone ran ALONE on 74c92a7c, in this session. Its claim line and
+  exit code are in PUSH PROOF.
+- The tip is this report's commit, which adds only this .txt.
+- NOT merged (the orchestrator merges).
+
+====================================================================
+R1051 - THE CENSUS (measured)
+====================================================================
+How it was measured:
+- Hold census-full: ACQUIRED 18:37:40Z at 6 428 MB (line 5 900),
+  released 18:41:08Z.
+- A temporary patch to e2e/baseline.ts, never committed
+  (tools/census-patch.mjs; reverted by copying the pristine file back, then
+  `git diff --quiet` gave exit 0). Before each capture, expectPageBaseline
+  and expectElementBaseline appended one JSON line:
+  - the name, scrollY and document height;
+  - the focused element;
+  - every element whose computed position is sticky or fixed, with its box
+    and whether it intersects the viewport.
+- The run itself: 174 passed, 0 flaky (census-full.log). The lines are in
+  census-full-results/census/; tools/analyse-census.cjs reads them, and its
+  output is census-table.txt.
+- Not routed through the helper: e2e/og.visual.spec.ts takes two element
+  screenshots of a 1200x630 card. No page is scrolled there.
+
+What it found (169 captures, first attempts, no retries):
+
+| Class | Count |
+|---|---|
+| Full-page, scrolled, a sticky element ON screen (THE CENSUS) | 1 |
+| Full-page, scrolled, a sticky element in the DOM but OFF screen | 4 |
+| Full-page, scrolled, no sticky element (comparator 30, calculator mobile 8, guides mobile 1) | 39 |
+| Full-page, scroll 0, a sticky element present (calculator desktop 10, guides desktop 5) | 15 |
+| Full-page, scroll 0, no sticky element | 53 |
+| Element captures with a sticky element on screen | 0 |
+| Any capture with a position: fixed element on screen | 0 |
+
+- The comparator and /resultat have no sticky element at either width.
+- The guides' TableOfContents is sticky from 64rem, and every guides
+  desktop state is at scroll 0, except article-faq-ouverte (scrolled, TOC
+  off screen).
+- The "sticky header" in page.dev.tsx's comment matched nothing: no
+  sticky or fixed element appears in any composants capture.
+
+THE REPETITION (W10b's method)
+- Method: 4 FRESH pages per arm, 6 consecutive full-page captures per
+  page, hashed.
+- The steps were the REAL spec's steps. tools/gen-rep.mjs copied
+  e2e/calculateur.visual.spec.ts and e2e/guides.visual.spec.ts verbatim. It
+  made exactly two kinds of edit, each asserted to match its count before
+  writing (R211): the './baseline' import, and the state-loop registration.
+- Captures used the real e2e/visual-select.css, animations disabled,
+  caret hidden, scale css, pointer parked.
+- Results were compared as DECODED PIXELS against the committed baselines
+  (tools/analyse-rep.cjs).
+- Hold rep1: ACQUIRED 18:59:40Z at 6 340 MB; 49 passed; table in
+  rep1-table.txt.
+
+| Capture (scrollY as reached) | as-is | scrolled to 0 |
+|---|---|---|
+| calculateur-panneau-avis-provisoire-desktop (763, column ON screen) | 2 images, 19 + 5 of 24 (per page 2,2,1,2); the 19 = the baseline, the 5 = 28 px x1285-1287 y1819-2007 delta 2 | 1 image, 24 of 24 = the 5's image |
+| calculateur-panneau-avis-provisoire-mobile (1219, column not sticky at 390) | 1 image, 24 of 24 = baseline | 1 image, 24 of 24 = baseline |
+| calculateur-capture-erreur-desktop (1365, column OFF screen) | 1, 24 of 24 = baseline | 1, 24 of 24, NOT the baseline (313 542 px, x824-1287 y301-1193) |
+| calculateur-capture-succes-desktop (1365, column OFF screen) | 1, 24 of 24 = baseline | 1, 24 of 24, NOT the baseline (same box) |
+| calculateur-faq-ouverte-desktop (1852, column OFF screen) | 1, 24 of 24 = baseline | 1, 24 of 24, NOT the baseline (same box) |
+| guides-article-faq-ouverte-desktop (1055, TOC OFF screen) | 1, 24 of 24 = baseline | 1, 24 of 24 = baseline |
+
+- So the census is ONE state, and it is the one W10b found.
+- The three calculator neighbours already repeat. A blanket scroll (in the
+  helper or the spec loop) would MOVE them by 313 542 px each, so the fix is
+  scoped to the member (R1055). See QUESTIONS.
+
+====================================================================
+R1052 - THE FIX IN THE SPEC
+====================================================================
+- Where: e2e/calculateur.visual.spec.ts, state 'panneau-avis-provisoire',
+  at the end of its reach (after `page.fill('#total-jours', '200')`), with
+  the comment giving the measurement:
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+- It is the same step comparateur's 'rappel-confirme' state already takes.
+- It runs at both widths; at 390 it changes no pixel (rep1 and rep2).
+- No `scroll-behavior` is set in lib/ or app/ styles; 'instant' is stated
+  anyway.
+- The product is not touched. Both trees settle on one image at scroll 0,
+  so nothing in the product moves after load.
+
+====================================================================
+R1053 - THE PROOF
+====================================================================
+1. Repetition through the FIXED spec.
+   - Hold rep2: ACQUIRED 19:04:55Z at 6 925 MB.
+   - A fresh verbatim copy carried the fix; arm 'fixed' (nothing added by
+     the harness).
+   - desktop: 1 image, 24 of 24, pixel ee76f3072500 (per page 1,1,1,1).
+   - mobile: 1 image, 24 of 24, pixel-EQUAL to its committed baseline.
+   - scrollY was 0 before and after the captures on all 8 pages
+     (rep2-table.txt).
+2. Two consecutive FULL runs, after the regeneration, in one hold.
+   - Hold final: ACQUIRED 19:08:02Z at 7 515 MB, released 19:15:34Z.
+   - full1 (19:10:03Z-19:12:49Z): `174 passed (2.6m)`,
+     `visual suite: 174 passed`, STEP_EXIT=0.
+   - full2 (19:12:50Z-19:15:34Z): `174 passed (2.5m)`,
+     `visual suite: 174 passed`, STEP_EXIT=0.
+   - Both logs (and their copied visual-run.txt): "flaky" 0, "retry" 0,
+     a fail mark 0, a pass mark 174.
+   - desktop > panneau-avis-provisoire: passed on attempt 1 in both
+     (3.1s, 3.2s). The mobile twin passed on attempt 1 in both.
+   - The gate's own test:visual (a third full run, 19:29-19:39Z hold):
+     174 passed, "flaky"/"retry #" 0.
+- The test-first shape:
+  - RED: rep1's as-is arm, two images from the unchanged spec.
+  - Green: rep2 with the step. The census-full run itself was green
+    (174 passed) only because the comparison accepts any first stable
+    capture that equals the baseline. That is why a full-suite pass was
+    never evidence of repetition here.
+
+====================================================================
+R1054 - THE REGENERATION, NAMED FIRST
+====================================================================
+- Named before the run, in .aviscapture-evidence/expected-regeneration.txt:
+  exactly web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png.
+  - Expected content: pixel hash ee76f3072500.
+  - Expected diff against the old file: 28 px at x1285-1287 y1819-2007,
+    max delta 2.
+  - The mobile file and every other baseline were named as NOT moving.
+- Attempt 1 was REFUSED by Playwright and wrote nothing (see DEFECTS):
+  `--update e2e/calculateur.visual.spec.ts`. The log is
+  update-attempt1-refused.log.
+- Attempt 2: `node scripts/visual.mjs --update --grep panneau-avis-provisoire`
+  (2 tests).
+  - visual.mjs printed: "R135: 1 baseline(s) written BY THIS RUN (0 new, 1
+    re-generated): re-generated
+    tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png".
+    The mobile test passed against its stored file.
+  - The hold script compared `git status --porcelain --
+    web/tests/visual/baselines` to the expected line before going on:
+    PRODUCED_EQUALS_EXPECTED.
+- After the run:
+  - Old (b794b588) vs new: 1440x4097 both, 28 px differ, x1285-1287
+    y1819-2007, max channel delta 2 (regen-diff.txt).
+  - The new file's pixel hash is ee76f3072500, equal to the census
+    scroll-top capture and to rep2's fixed capture.
+- Looked at (R135), in crops/:
+  - new-baseline-edge.png (x1240-1320 y1800-2030 at 4x) against
+    avis-baseline-edge.png: the AppCard's rounded right edge is identical
+    to the eye.
+  - new-baseline-top.png (the first 900 px) and avis-scroll0-column.png
+    (the whole result column): notice, result, tiles, banners, AppCard and
+    sources link all present and in order.
+- Reason: the scroll-0 rendering of the same state. The product is
+  unchanged; this is the image the capture now takes every time.
+
+====================================================================
+BASELINES
+====================================================================
+Regenerated (1): web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png
+  (R1054 above). No other baseline changed (`git show --stat 74c92a7c`).
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+- N1. Three calculator desktop baselines are scroll-dependent pictures.
+  - The files: capture-erreur, capture-succes and faq-ouverte.
+  - They are captured scrolled (1365, 1365, 1852 px), with the sticky
+    result column displaced.
+  - Census docY is 808 against 301 at scroll 0. Scrolled to 0, each differs
+    from its baseline by 313 542 px in the result column's box.
+  - They repeat (24 of 24 each), so they are stable. The picture records
+    where the fill or fragment left the viewport, not the layout a reader
+    lands on. (QUESTION Q1.)
+- N2. In the provisional notice, the bold reading name runs straight into
+  the next sentence with no space: "...des jours de missionVos jours de
+  mission..." and "...au decompte exactVous utilisez...". This is visible
+  in the old and the new baseline alike (crops/avis-scroll0-column.png).
+  The copy or markup is product code, outside R1055.
+- N3. The comment in app/dev/composants/page.dev.tsx (FW-HOME-A2) says the
+  shell specimen's "header is sticky". The census found no sticky or fixed
+  element in any composants capture.
+- N4. With web/.env present, the visual container's webServer tries the
+  scheduler and logs ECONNREFUSED 127.0.0.1:5436 (rep2.log). Without .env
+  it logs "not started (no_database_url)". This is harmless to the
+  pictures. web/.env was therefore absent for every visual run and for
+  gate:changed, and present only for gate:clone.
+
+====================================================================
+DEVIATIONS
+====================================================================
+- D1. The regeneration was filtered by `--grep panneau-avis-provisoire`,
+  not by the spec path. The spec-path form is refused by Playwright 1.63
+  (DEFECT 1). The grep form ran 2 tests: desktop regenerated, mobile
+  compared unchanged.
+- D2. web/.env: see N4. It was written by `cp` from the main checkout's
+  file, never printed, and removed at the end.
+
+====================================================================
+QUESTIONS
+====================================================================
+- Q1. Should the three N1 baselines be retaken at scroll 0? They are
+  stable today, so R1052 does not cover them and R1055 forbids moving them
+  here. Retaking them would be a named regeneration of three files, each
+  313 542 px, in a task of its own.
+- Q2. Should a guard keep R1051's census true for future states? For
+  example, expectPageBaseline could fail when a full-page capture is taken
+  scrolled with a sticky element on screen. This is proposed, not built:
+  it is outside R1051-R1055. Its RED is already measured (rep1's as-is
+  arm).
+
+====================================================================
+DEFECTS
+====================================================================
+- DEFECT 1: a filtered regeneration by spec path does not run.
+  - What runs: `pnpm test:visual:update -- <spec>`, which reaches
+    Playwright as `--update-snapshots <spec>`.
+  - Playwright 1.63's `-u, --update-snapshots [mode]` takes an optional
+    VALUE, so it consumes the spec as the mode and exits:
+      error: option '-u, --update-snapshots [mode]' argument
+      'e2e/calculateur.visual.spec.ts' is invalid. Allowed choices are
+      all, changed, missing, none.
+  - tests/unit/meta/visual-filter.test.ts ("keeps a filtered regeneration
+    a regeneration of only what was named") asserts exactly that argv,
+    ['--update-snapshots', 'e2e/calculateur.visual.spec.ts']. The unit
+    test is green; the command it certifies cannot run.
+  - The `--grep` form works, because `--grep` starts with a dash.
+  - Not touched: scripts/visual.mjs and its tests are off-limits to this
+    session (PARALLEL MODE rule 4).
+  - A candidate fix is to emit `--update-snapshots=changed`, with the test
+    asserting it. It needs a positive test that the container run accepts
+    it (R154).
+
+====================================================================
+PUSH PROOF
+====================================================================
+- Branch fw-avis-capture. Code commit 74c92a7c was pushed before
+  gate:clone (the prompt's step 4). The first report commit 6e322299
+  carried a placeholder here; this commit fills it in. The tip is this
+  commit (`git ls-remote origin fw-avis-capture`).
+- gate:changed: hold 19:29:40Z-19:39:15Z, start 7 767 MB, line 5 900,
+  FRONTALIER_PORT=3400, STEP_EXIT=0. The printed selection:
+    gate selection (R132):
+      2 path(s) matched:
+        web/e2e/calculateur.visual.spec.ts  ->  a visual spec, which test:e2e deliberately ignores (R144)
+        web/tests/visual/baselines/calculateur-panneau-avis-provisoire-desktop.png  ->  a baseline, which is the record test:visual compares against (R144)
+      suites: typecheck, lint, test, build, test:visual, test:late
+        test: 4040 passed (235 files)
+        test:visual: 174 passed (0 flaky)
+        test:late: 10 passed
+    GATE PASSED for the paths changed.
+- gate:clone ran ALONE on commit 74c92a7c234d7d262f9f11a687887c53c8db102e,
+  under the heavy lock: hold 19:56:52Z-20:14:24Z, start 7 391 MB, line
+  5 300. The result was GATE:CLONE PASSED, STEP_EXIT=0.
+  - Claim line: "this commit builds and passes register-coverage,
+    fixture-coverage, install, typecheck, lint, test (4040 of 4040 tests
+    passed, 235 files), build, size (21 routes measured), db:deploy, test:db
+    (816 of 843 tests passed, 27 skipped, 60 files), test:container:write
+    (10 checks passed) from a clean checkout".
+  - "DIRTY" was this report only (?? REPORT-FW-AVIS-CAPTURE.txt), with 0
+    tracked changes.
+  - Its scratch database, monreleve_gate_clone_74c92a7c, was created and
+    dropped by gate:clone.
+- Cleanup:
+  - Images: monreleve:write (built by this gate:clone's
+    test:container:write at 20:12:43Z, id 63d3a60d) was removed by exact
+    name after its id was checked. monreleve:e2e (built 19:52Z, outside
+    this session's holds) was not touched.
+  - No scratch database of this session remains. pg_database lists
+    frontalier, monreleve_w21, monreleve_web_orch, postgres, template0 and
+    template1, none of them this session's.
+  - web/.env was removed.
+  - .session-lock.json is removed last, after the final push.
