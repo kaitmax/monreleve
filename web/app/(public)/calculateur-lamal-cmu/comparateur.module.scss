@@ -85,7 +85,13 @@
   }
 }
 
-.form > * + * {
+// The card's stack. :not(:first-child) rather than * + * - the same children,
+// one pseudo-class heavier, (0,2,0) - because three of them are SegmentedButtons
+// fieldsets whose own `.root { margin: 0 }` is (0,1,0) in another module: at
+// equal weight the build's CSS chunk order decided which rule won, and this
+// gap held only because that order happened to favour it (FW-CASCADE-ORDER,
+// R1011; CalculatorForm.module.scss's card does the same).
+.form > :not(:first-child) {
   margin-top: var(--space-6);
 }
 
