@@ -743,7 +743,7 @@ person.
 |---|---|---|---|
 | N1 | A Firebase project, a service account, and its private key | `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, `FCM_PRIVATE_KEY` | the reminder job is not scheduled, and says so by name |
 | N2 | A Resend API key, and a verified sending domain | `RESEND_API_KEY` only. The sender addresses are constants in `web/lib/fr/emails.ts`, and nothing reads `EMAIL_FROM` from the environment (section 2's `EMAIL_FROM` row; `docs/domain-checklist.md` 125-127) | confirmation mail is collected in memory and delivered to nobody |
-| N3 | **SPF and DKIM** for the sending subdomain | DNS | double opt-in lands in spam and the list silently stops growing — a failure that looks like nobody being interested |
+| N3 | **SPF and DKIM** for the sending domain, the one `MAIL_DOMAIN` holds in `web/lib/content/identity.ts` (`docs/domain-checklist.md` item 3) | DNS | double opt-in lands in spam and the list silently stops growing — a failure that looks like nobody being interested |
 | N4 | The production domain and its TLS certificate | `NEXT_PUBLIC_SITE_URL`, **as a build argument** | the image serves the localhost stand-in and omits canonicals |
 | N5 | The Android package name and signing certificate fingerprints | `ANDROID_PACKAGE_NAME`, `ANDROID_SHA256_CERT_FINGERPRINTS` | `/.well-known/assetlinks.json` is withheld (R205) |
 | N6 | A generated `AUTH_SECRET` | the host's environment | **the container refuses to start** |

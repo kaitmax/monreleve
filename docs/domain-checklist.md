@@ -126,9 +126,7 @@ The sender address is **fixed in code**: `EMAIL_FROM`, a constant in
 `web/lib/fr/emails.ts`. Nothing reads it from the environment, so there is
 nothing to set for it (deploy.md section 2's `EMAIL_FROM` row). Its domain is
 `MAIL_DOMAIN` in `web/lib/content/identity.ts`, and that domain must be verified
-in Resend. Item 3 names `notifications.monreleve.ch`, the subdomain the code used
-before `MAIL_DOMAIN`; identity.ts records why it changed. Item 3 was written
-on 2026-10-06, before that change, and has not been revised since.
+in Resend (item 3).
 
 **Proof** (the operator does this with their own address - the session cannot):
 subscribe on https://monreleve.ch/alertes and **confirm the confirmation email
