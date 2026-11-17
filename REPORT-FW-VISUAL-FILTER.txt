@@ -1,0 +1,421 @@
+REPORT-FW-VISUAL-FILTER.txt - Mon Releve, web run step W7
+visual.mjs RUNS ONE SPEC AND REUSES ITS INSTALL (R960-R964), and its
+regeneration counter counts NEW baselines (R1020, Web Ruling 17)
+
+Session W7. Worktree C:/wt/fw-visual-filter (R349 lock .session-lock.json,
+gitignored, written 04:47:10Z, removed last). Branch fw-visual-filter, cut
+from origin/main bfdb1d490354f064d49aa60b7e3e3d8aa64f0442. Port block
+3500-3599 (FRONTALIER_PORT=3500 on every gate). Every heavy run went
+through C:/wt/.heavy-run.lock as holder W7, each in its own hold, with a
+15 s commit-free sampler; logs in the gitignored .visual-filter-evidence/.
+
+====================================================================
+SUMMARY
+====================================================================
+- R960: `pnpm test:visual -- <spec>` and `-- --grep <pattern>` run only
+  what was named. The filter travels as docker argv AFTER one constant
+  shell script, which hands it to Playwright as "$@"; it is never text in
+  a shell string. Only filters pass; every other option is refused before
+  Docker is called. Live: the filtered run ran exactly the 4 tests the
+  --list probe named, with a pattern containing a space.
+- R961: node_modules lives in the named volume
+  monreleve-visual-node-modules-a7691087f3e172ce (sha256 of the
+  lockfile), labelled ch.monreleve.product=monreleve. Full suite: 950 s
+  before (cold) -> 180 s after (warm); the install went from
+  "Done in 12m 36.7s" to "Already up to date / Done in 1s".
+- R962: a test reads gate:changed, gate:clone and visual.mjs, so a filter
+  cannot reach a gate by argument, by step or by environment.
+- R963: six verified plants (two for R960, three for R962 including the
+  environment path, one for R1020), each RED naming its tests, each
+  restored to HEAD.
+- R964: retries, zero tolerance and baselines untouched; nothing
+  regenerated; no retry, flaky or failed test in any visual run.
+- R1020 (Web Ruling 17, scope amendment): the regeneration counter reads
+  both Playwright 1.63 lines and lists each file with its kind; proven on
+  W11's captured lines, RED first.
+- Code commit 4aeaef9a299a55ed7f6cdcbcb9117346a738802f. Not merged.
+
+====================================================================
+STATUS (R391)
+====================================================================
+GREEN. gate:clone ALONE on the code commit 4aeaef9 PASSED, exit 0
+(GATE_CLONE_EXIT=0, STEP_EXIT=0), its claim line pasted under GATES;
+gate:changed (base chain) PASSED on the change before the commit. The
+branch tip is the report commit on top of 4aeaef9, which adds this file
+only. Not merged: the orchestrator verifies and merges.
+
+====================================================================
+R960 - A FILTER PASS-THROUGH
+====================================================================
+What changed (web/scripts/visual.mjs):
+- visualArguments(argv) reads `--update` (anywhere), drops `--`, and
+  accepts as a filter: a spec (any non-option argument), `--grep <p>`,
+  `-g <p>`, `--grep=<p>`. Anything else starting with `-` is refused, and
+  so is an empty spec or an empty, missing or option-like pattern (each
+  would match every spec and run the full suite as a "filtered" run).
+  Refusal: "REFUSING TO RUN: <token> is not a filter ...", exit 2, before
+  refuseIfOrphans() or any docker call.
+- pnpm 11.17.0 passes `--` through VERBATIM, measured with a probe
+  package in the scratchpad: `pnpm probe:visual -- e2e/a.visual.spec.ts`
+  gave the script ["--","e2e/a.visual.spec.ts"]; `-- --grep "x y"` gave
+  ["--","--grep","x y"]; nothing after the script name gave [].
+- CONTAINER_SCRIPT is ONE constant. Its last step is
+  `pnpm exec playwright test --project=visual "$@" 2>&1 | tee ...`.
+  dockerRunArguments() puts `bash -lc CONTAINER_SCRIPT visual` and then
+  `--update-snapshots` (when --update) and the filter as separate argv
+  elements. execFileSync takes an array, so no host shell is involved
+  either.
+- A filtered run says so before it starts and beside its count:
+    filter (R960): ["e2e/composants.visual.spec.ts","--grep","spec.ts badge-"] - ONLY what was named: not the full suite, and no gate result
+    visual suite: 4 passed, FILTERED (R960) to [...] - not the full suite, so no floor applies and this is no gate result
+  The R133 floor (suite-floor.json visual 81) applies only to an
+  unfiltered run; a filtered run is held to >= 1 passed (readCount with
+  no floor). An unfiltered run prints "filter: none - the full suite".
+- visual.mjs is importable without side effects: the run is main(),
+  called only by isMain() (realpath of argv[1] equals this file - the
+  register-coverage.mjs pattern). Proven: `import()` printed nothing and
+  started nothing; `node scripts/visual.mjs` with docker hidden from PATH
+  printed its banner and exited 1. scripts/visual.d.mts declares its eight
+  value exports; declaration-parity asserts them (R185) - its new case
+  "scripts/visual.d.mts declares exactly what scripts/visual.mjs exports"
+  passed.
+- `--update` composes with a filter (regenerating only what was named,
+  R207's direction). Unit-tested as a command; NOT exercised live, because
+  R964 regenerates nothing.
+
+Test (test-first): web/tests/unit/meta/visual-filter.test.ts, R960 block
+(8 tests): no filter -> nothing reaches Playwright (the full suite);
+--update -> only --update-snapshots; a spec, --grep, -g, --grep= and a
+pattern with a space as ONE element are carried; the script is the same
+constant for every argv and contains no typed token (among them
+`erreur; touch /tmp/owned` and a command substitution); the -e pairs are
+the same with or without a filter; ten non-filter options are refused
+naming the token; empty or missing filters are refused.
+RED (before the exports existed): visual-filter.test.ts failed to
+collect, "TypeError: nodeModulesCache is not a function"; the gates file
+"visualArguments is not a function" and "visual.mjs does not read argv
+through the parser": 2 failed | 8 passed.
+STEP A, BEFORE ANY RED RUN: importing the BASE visual.mjs runs a real
+`docker run` (all of it was top-level code), so a test importing it would
+have started the visual suite outside the lock. The run was put behind
+isMain() first (no behaviour change) and verified safe before any test
+imported the file.
+
+Live (step 4):
+- AFTER (cold), FILTERED:
+  `node scripts/visual.mjs -- e2e/composants.visual.spec.ts --grep "spec.ts badge-"`
+    Running 4 tests using 4 workers
+      badge-compliant, badge-mission, badge-social, badge-regime
+      4 passed (1.6m)
+    visual suite: 4 passed, FILTERED (R960) to [...]
+  The --list probe on the host had named exactly those 4 for that filter
+  ("Total: 4 tests in 1 file"), out of 168 tests in 7 files. The pattern
+  "spec.ts badge-" contains a space: split into two arguments it would
+  have become a spec filter "badge-" matching no file.
+- AFTER (warm), FULL: `node scripts/visual.mjs` -> "filter: none - the
+  full suite", "Running 168 tests using 4 workers", "168 passed (2.7m)",
+  "visual suite: 168 passed" (floor 81 applied).
+
+====================================================================
+R961 - A CACHED INSTALL
+====================================================================
+- Volume: monreleve-visual-node-modules-<first 16 hex of
+  sha256(lockfile content, CRLF->LF)>. This lockfile:
+  monreleve-visual-node-modules-a7691087f3e172ce, 1.1G (du, read in a
+  1 s container), created 2026-11-17T06:38:24Z by the AFTER cold run.
+- Labels (read back with `docker volume inspect` after creation):
+    ch.monreleve.product=monreleve
+    ch.monreleve.cache=visual-node-modules
+    ch.monreleve.lockfile-sha256=a7691087f3e172ceb4c25b54a008e4b3d6cacb7e2a41803c8b0bf7041291b63e
+    ch.monreleve.image=mcr.microsoft.com/playwright:v1.63.0-noble
+- Lifecycle: `docker volume inspect <exact name>`; absent -> `docker
+  volume create --label ... <exact name>` ("CREATED now, so this run
+  installs into it cold"); present with every label equal -> reused
+  ("REUSED: the install made for this lockfile"); present with any label
+  different -> REFUSING TO RUN, the volume neither used nor touched. The
+  script never lists, prunes or removes a volume (a unit test reads its
+  code: the only docker volume verbs are inspect and create).
+- Removal: by exact name only - `docker volume rm
+  monreleve-visual-node-modules-a7691087f3e172ce`; to see ours,
+  `docker volume ls --filter label=ch.monreleve.product=monreleve`.
+- .next and the per-run distDir stay ANONYMOUS volumes (R98: the build
+  is per run, --rm removes them). Only dependencies persist.
+- The install still runs every time and is the check: pnpm verifies the
+  volume against the lockfile ("Already up to date") or installs.
+- THE PRISMA CLIENT IS GENERATED EVERY RUN (`pnpm run postinstall` in the
+  container script). Measured on the host with pnpm 11.17.0: a second
+  `pnpm install --frozen-lockfile` printed "Already up to date" and ran no
+  postinstall. The client lives inside node_modules, and two worktrees on
+  one lockfile share one volume, so without this a warm run would build
+  against the client of whichever schema installed it. Warm run: the
+  explicit generate ran in 291 ms.
+
+Timings (each its own lock hold; elapsed from the wrapper):
+  run                         tests  install                     Playwright          elapsed  lock start / min (MB)
+  BEFORE cold full (bfdb1d4)  168    Done in 12m 36.7s           168 passed (3.0m)   950 s    7 247 / 5 821
+  AFTER cold filtered         4      Done in 13m 3.2s (CREATED)  4 passed (1.6m)     898 s    7 354 / 5 626
+  AFTER warm full             168    Already up to date, 1s      168 passed (2.7m)   180 s    7 946 / 6 518
+                                     (REUSED)
+  Full suite: 950 s -> 180 s. The cold install is unchanged (12.6 vs
+  13.1 min); it is now paid once per lockfile instead of once per run.
+  The BEFORE run used base visual.mjs from a detached worktree
+  C:/wt/fw-visual-filter-before at bfdb1d4 ("photographed: bfdb1d4, clean
+  tree"), created and removed by this session; both AFTER runs
+  photographed 4aeaef9, clean tree. The warm elapsed includes a 1 s
+  `docker volume inspect` after the run.
+
+Unit tests (visual-filter.test.ts, R961 block, 6 tests): the name from
+the hash (same lockfile same name, one byte more another name, CRLF =
+LF); the four labels; the create argv with every label and the exact
+name; the mounts (named node_modules, anonymous .next and distDir); the
+verdict (absent -> create, ours -> reuse, a foreign or label-mismatched
+volume -> refuse, naming the volume and the label); the code's docker
+volume verbs are exactly inspect and create.
+
+====================================================================
+R962 - THE GATE STILL RUNS THE FULL SUITE
+====================================================================
+web/tests/unit/meta/visual-filter-gates.test.ts (10 tests), its OWN file,
+READING the gate scripts (it edits neither gate-selection.mjs nor its
+test, rule 8):
+- gate:changed (gate-for-changes.mjs, comments removed): the only process
+  start is `spawn(command, ...)` inside `function run(command)`; the only
+  call of run() is run(`pnpm ${suite}`), over selection.suites; the only
+  read of process.argv is `.includes('--print')`; every name in
+  EVERY_SUITE is a bare script name; a visual-selecting path yields
+  exactly 'test:visual'; package.json's test:visual is exactly
+  `node scripts/visual.mjs`; visualArguments([]) is the full suite.
+- gate:clone (gate-clone.mjs and gate-clone-parts.mjs): presence first -
+  the step parser finds install, typecheck, lint, test, build, size,
+  db:deploy, test:db and test:container:write; then no step's arguments
+  mention visual, neither file names visual.mjs, --project=visual or
+  test:visual:update, and the CANNOT_RUN_HERE row names test:visual.
+- visual.mjs reads its filter from process.argv.slice(2) and reads no
+  environment variable (process.env / import.meta.env absent from its
+  code), so a gate's shell cannot hand it a filter.
+gate:changed's own floor would likely also refuse a filtered count, but
+"would likely" is not the rule; this test is.
+
+====================================================================
+R963 - VERIFIED PLANTS (R180), on the committed tip 4aeaef9
+====================================================================
+Harness .visual-filter-evidence/plant.mjs: the anchor must match exactly
+once (R211) and the file must equal HEAD before planting; git's diff of
+the plant is printed (where it landed is SEEN); only the target test file
+runs; the original bytes are written back and git must report the file
+clean. All six: anchor 1 match, RED, restored "clean (equal to HEAD)".
+- P1 R960, filter dropped (`...filter,` removed from dockerRunArguments):
+  visual-filter.test.ts 3 failed | 11 passed - "carries a named spec",
+  "carries --grep ...", "keeps a filtered regeneration ...".
+- P2 R960, filter pasted into the shell string (`[CONTAINER_SCRIPT,
+  ...filter].join(' ')`): 4 failed | 10 passed - the three above and
+  "never puts the filter in a shell string".
+- P3 R962, gate:changed forwards its argv (run(`pnpm ${suite}
+  ${process.argv.slice(2).join(' ')}`)): visual-filter-gates.test.ts
+  2 failed | 8 passed - "builds every command from the selected suite
+  name and nothing else", "forwards none of its own arguments".
+- P4 R962, gate:clone gains ['test:visual', '--', '--grep', 'home']:
+  1 failed | 9 passed - "runs no visual step, here or in its parts".
+- P5 R1020, the new-file pattern dropped: visual-regeneration.test.ts
+  5 failed | 2 passed (the two refusal cases stay green, as they should).
+- P6 R962, visual.mjs takes VISUAL_GREP from the environment: 2 failed |
+  8 passed - "reads the filter from its own argv", "reads no environment
+  variable".
+
+====================================================================
+R964 - NOTHING ELSE MOVES
+====================================================================
+- playwright.config.ts untouched: retries `process.env.CI ? 2 : 0` (CI=true
+  still passed into the container, so 2), threshold 0, maxDiffPixels 0.
+  No retry line, no flaky and no failed test in any of the three runs.
+- No baseline regenerated: no --update run; tests/visual/baselines/
+  unchanged (git status clean after every run).
+- Changed files: web/scripts/visual.mjs, and new web/scripts/visual.d.mts,
+  web/tests/unit/meta/visual-filter.test.ts, visual-filter-gates.test.ts,
+  visual-regeneration.test.ts. Not package.json (it would select every
+  suite), not gate-selection.mjs or its test (rule 8).
+- visual.mjs's diff is large (+627/-219 ignoring whitespace) because the
+  top-level run moved into main(), the docker argv into
+  dockerRunArguments() and the R135/R208 block into regenerationReport();
+  the existing comments moved with their code, verbatim.
+
+====================================================================
+R1020 - THE REGENERATION COUNTER COUNTS NEW BASELINES (Web Ruling 17)
+====================================================================
+- Playwright 1.63's own source (lib/matchers/expect.js) prints, under
+  --update-snapshots (preset "changed"):
+    A snapshot doesn't exist at <path>, writing actual.   (handleMissing)
+    <path> is re-generated, writing actual.               (toHaveScreenshot)
+  The old pattern expected the path FIRST for a new file, which 1.63 does
+  not print. All 7 visual specs go through e2e/baseline.ts's
+  toHaveScreenshot.
+- baselinesWritten(printed) now reads both, once per file (a Map; 'all'
+  mode prints the re-generated line twice per file), sorted, kind 'new'
+  or 're-generated'. regenerationReport() prints
+    R135: 6 baseline(s) written BY THIS RUN (4 new, 2 re-generated) - list these in the report with a reason:
+      new           tests/visual/baselines/comparateur-delai-rappel-envoye-desktop.png
+      re-generated  tests/visual/baselines/comparateur-delai-sans-s3-desktop.png
+  and keeps R208's two refusals and R207's NOTE verbatim.
+- Test: web/tests/unit/meta/visual-regeneration.test.ts (7 tests). The
+  input is W11's captured lines, COPIED by script into the test (read-only
+  from C:/wt/fw-delai-rappel/.rappel-evidence/w11/; nothing written
+  there): h3-regen.log lines 507 and 524 (two new), h2-regen.log lines
+  420-449 (four new, two re-generated, 24 progress lines). Asserted: the
+  new-only list, the mixed list with kinds, once per file, the report for
+  both (exit 0, "(2 new, 0 re-generated)" / "(4 new, 2 re-generated)", no
+  WROTE NOTHING), R208's refusal when neither line appears (the same real
+  log minus its six writing lines: exit 1, stderr), and no claim when the
+  run failed.
+- RED, the counter extracted with the OLD pattern: 5 failed - the
+  new-only run gave [] and its report exited 1 (the "WROTE NOTHING" W11
+  met), the mixed run gave 2 of 6, the report header said 2 where 6 were
+  written.
+- Plant P5 above.
+- Not exercised live: no regeneration ran (R964).
+
+====================================================================
+GATES
+====================================================================
+gate:changed on the change, before the commit, its own hold:
+  gate selection (R132):
+    no path matched the selector - base chain only
+    suites: typecheck, lint, test, build
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 3901 passed            (Test Files 226 passed)
+      build: exit 0 (no count to check)
+  GATE PASSED for the paths changed. Lock ACQUIRED 06:17:15Z commitFree
+  7213 (line 4 854), minimum 5 967, 415 s. 3 901 = main's 3 869 (Web
+  Ruling 12's expected count) + this task's 32 tests (14 + 10 + 7, and
+  one new declaration-parity case).
+
+gate:clone ALONE on 4aeaef9, its own hold (ACQUIRED 07:31:33Z commitFree
+8275, line 5 576; minimum 5 380; 773 s). The hold ran, in sequence, a
+1 s container reading the cache volume's size (done 07:31:36Z), then
+gate:clone, then `docker image rm monreleve:write` (the tag its
+production-write step built: "Untagged: monreleve:write", "Deleted:
+sha256:28008fd1fbaf..."). No other heavy run overlapped (the lock); light
+work in other sessions may have.
+  GATE:CLONE PASSED
+    commit  4aeaef9a299a55ed7f6cdcbcb9117346a738802f
+    claim   this commit builds and passes register-coverage,
+            fixture-coverage, install, typecheck, lint, test (3901 of
+            3901 tests passed, 226 files), build, size (20 routes
+            measured), db:deploy, test:db (724 of 751 tests passed, 27
+            skipped, 53 files), test:container:write (10 checks passed)
+            from a clean checkout - a machine with no .env, no prior
+            node_modules and no generated file this run did not produce
+            itself.
+  GATE_CLONE_EXIT=0. test:db 724 / 27 skipped equals Web Ruling 12's
+  expected count. Scratch database monreleve_gate_clone_4aeaef9a: created
+  and dropped by gate:clone (pg_database count by exact name afterwards:
+  0). web/.env (DATABASE_URL on the local server's `postgres` database,
+  host and credentials copied from the main checkout by script, never
+  printed) was removed after the run.
+
+====================================================================
+WALKTHROUGH (R176)
+====================================================================
+The harness is the product here, so it was driven as a person would:
+- `node scripts/visual.mjs -- --ignore-snapshots`, `-- --retries=0`,
+  `-- --grep`, `--update -- --update-snapshots` (docker hidden from PATH):
+  each "REFUSING TO RUN: ...", exit 2, nothing started.
+- The filtered cold run and the full warm run above, read end to end:
+  banner, filter line, isolation line (CREATED / REUSED), photographed
+  line, the install, the explicit Prisma generate, the Playwright list,
+  the count line; tsconfig.json and next-env.d.ts restored after each
+  run; `git status` clean and no .next-visual-* left in web/ after each.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+1. DEFECT (R247/R251 gap, in the selector W5 owns): scripts/visual.mjs
+   matches NO selector rule. `gate:changed --print` for this change:
+   "no path matched the selector - base chain only". The harness that
+   DEFINES test:visual can change without test:visual running - R247's
+   "a harness selects the suite it defines", which container-e2e.mjs,
+   container-scheduler.mjs, backup-restore.mjs and container-write.mjs
+   each have. The same holds for scripts/visual.d.mts. This session
+   covered it by running test:visual itself (filtered, and the full 168).
+   Not edited: gate-selection.mjs is W5's next (rule 8).
+2. The isolation line says "sole container ... (checked)" even when
+   docker did not answer: refuseIfOrphans() returns silently on a docker
+   error (seen with docker hidden from PATH). Pre-existing; the run then
+   fails on the real docker call, so nothing is certified.
+3. Playwright 1.63's toMatchSnapshot prints two more writing lines ("is
+   not the same, writing actual.", "does not match, writing actual.").
+   The counter does not read them; no visual spec uses toMatchSnapshot.
+   A spec that did would meet the R208 cross-check NOTE.
+4. A cold install interrupted mid-way leaves a partial volume; the next
+   run's `pnpm install --frozen-lockfile` is what repairs it (pnpm's own
+   idempotent install, as on any developer's node_modules). Not measured
+   here; the remedy if ever suspect is `docker volume rm <name>`.
+5. Old cache volumes accumulate, one per lockfile, never swept (R334: an
+   old lockfile's volume may be another worktree's live cache). They are
+   removed by name; the label filter lists only ours.
+6. Every cold container install writes its pnpm STORE onto the bind
+   mount, at <worktree>/.pnpm-store (gitignored; pnpm puts the store on
+   the project's filesystem when it cannot hard-link): the BEFORE run left
+   one in C:/wt/fw-visual-filter-before (removed with that directory), the
+   AFTER cold run one in C:/wt/fw-visual-filter/.pnpm-store (left with
+   the worktree). Pre-existing. It is likely part of why a cold install
+   takes 13 minutes (the store is written through the Windows bind mount,
+   then copied into the volume). A store volume would speed the cold case;
+   not done (R964).
+7. CI's visual job runs `pnpm exec playwright test --project=visual`
+   directly (no filter) and is not covered by R962's test; CI is off
+   (R248).
+8. Prisma's generate prints an "Update available 7.10.0 -> 8.0.0-rc.34"
+   box on the explicit run; informational only.
+9. `git worktree remove` of the BEFORE worktree deregistered it but could
+   not delete its node_modules ("Function not implemented", pnpm's
+   junctions); `cmd /c rmdir /s /q` removed the directory. Any later
+   cleanup of a pnpm worktree on this machine will meet the same.
+10. Lock contention: holds were won by polling race, not in order (W9,
+    W10b, W14, W5 and the orchestrator between my requests); waits of
+    12, 50, 13, 20 and 13 minutes.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. R961 also generates the Prisma client every run (`pnpm run
+    postinstall`). Not in the prompt's words; required for correctness
+    (a warm install runs no lifecycle script, measured).
+D2. The volume NAME is the lockfile hash with a product prefix; the
+    image and the full hash are LABELS checked on reuse. Line endings are
+    normalised before hashing (content, not checkout).
+D3. "Filter pass-through" read conservatively: only a spec and --grep
+    pass; all other options are refused (they change what a pass means).
+D4. The plants ran on the committed tip after gate:changed rather than
+    before it, so each restore is verified against a commit (git clean).
+D5. The BEFORE timing ran base visual.mjs from a second, detached
+    worktree C:/wt/fw-visual-filter-before (created by `git worktree add`
+    in the main checkout, removed by this session), so the code could be
+    written in parallel without touching the tree being photographed.
+D6. R1020 folded into this task's one code commit, by the orchestrator's
+    amendment.
+D7. The cache volume's size was read by a 1 s container in the gate:clone
+    hold, sequentially BEFORE gate:clone started (the first read, in the
+    warm-run hold, was mangled by Git Bash's path conversion).
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. NOTICED 1 (a defect): should scripts/visual.mjs (and visual.d.mts)
+    select test:visual? For W5, who owns the selector next.
+Q2. The cache volume is KEPT: monreleve-visual-node-modules-a7691087f3e172ce
+    (1.1G). Once this branch merges, every visual run on this lockfile
+    (the orchestrator's merge rounds, W10b, W12) reuses it and skips the
+    ~13-minute install. Remove with `docker volume rm
+    monreleve-visual-node-modules-a7691087f3e172ce` if unwanted.
+
+====================================================================
+PUSH PROOF
+====================================================================
+- Code commit 4aeaef9a299a55ed7f6cdcbcb9117346a738802f pushed to
+  origin/fw-visual-filter (git ls-remote after the push:
+  4aeaef9a299a55ed7f6cdcbcb9117346a738802f refs/heads/fw-visual-filter).
+- This report is committed on top of it and pushed to the same branch;
+  the remote ref after that push is in the session's handback.
+- Not merged to main.
