@@ -66,10 +66,12 @@ import { Stepper } from '@/lib/ui/react/Stepper/Stepper';
 /**
  * PublicShell IS NOT RENDERED HERE, and it is the one exception.
  *
- * It is already a client component of its own, so it enters a client bundle
- * on every public page and is measured by GATE A there - the calculator's 118,8
- * KiB includes it. Rendering it inside this island would measure it twice and
- * make GATE I's number harder to read, and the completeness test below names
+ * Its client code - since FW-CALC-BYTES (R976) the leaves in
+ * PublicShell/ShellNav.tsx, the shell itself rendering on the server - enters a
+ * client bundle on every public page and is measured by GATE A there; the
+ * calculator's figure includes it. Rendering it inside this island would
+ * measure it twice and make GATE I's number harder to read, and the
+ * completeness test below names
  * the exception rather than leaving the absence to be noticed.
  */
 

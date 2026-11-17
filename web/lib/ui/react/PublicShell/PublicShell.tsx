@@ -1,5 +1,3 @@
-'use client';
-
 // web/lib/ui/react/PublicShell/PublicShell.tsx
 //
 // The public header, and the shell its children sit in. FW9 increment 4;
@@ -18,15 +16,29 @@
 //
 // tests/unit/meta/no-next-link.test.ts pins the absence.
 //
-// 'use client' AND WHY IT IS UNAVOIDABLE HERE. Two disclosures hold state -
-// the Calculateurs menu and the mobile panel - and both must close on Escape
-// and return focus, which needs a ref and a key handler. This is the
-// interactive leaf the code style permits it at. The children it wraps are
-// untouched and stay server-rendered, so a page's own content pays nothing for
-// this.
+// A SERVER COMPONENT SINCE FW-CALC-BYTES (R976), AND THE REASON IS BYTES.
+// Until then this whole file was 'use client', so everything it imported
+// shipped to every public page: the route registry - every registered route,
+// with its status, gate, task and sitemap weight - the footer's columns, the
+// legal sentence and the review date. On the calculator, the page with the
+// least GATE A headroom, a new route entry anywhere cost bytes (QUEUE-STATE
+// BLOCKED 11). So the shell is split where the browser is actually needed:
 //
-// NO CONTEXT AND NO STORE (FW9 protocol item 5): two useState booleans and one
-// ref each. Nothing here is shared with anything.
+//   here, on the server   WHAT the navigation contains: R85's liveness, R54's
+//                         gate and R172's offer, decided against the registry;
+//                         the markup that never changes after it is sent; the
+//                         footer, which has nothing interactive in it at all
+//   ShellNav.tsx          the interactive leaves, handed the RESOLVED entries
+//                         as plain data: the Calculateurs disclosure (state),
+//                         aria-current on both lists (the router's path), and
+//                         the phone menu's Escape (a key handler)
+//
+// The rendered HTML is the same as before, element for element; what changed
+// is which of it hydrates. `pnpm size` fails any build whose client chunks
+// carry the registry (scripts/client-registry-leak.mjs).
+//
+// NO CONTEXT AND NO STORE (FW9 protocol item 5). The leaves hold one useState
+// boolean and one ref each, and the native disclosure holds its own state.
 //
 // THE NAV IS RENDERED FROM DATA, TWICE. lib/fr/shell.ts declares four entries
 // and the desktop bar and the mobile panel both loop over the same list. Two
@@ -42,9 +54,7 @@
 // IT EMITS NO h1. The page owns that (protocol item 8); a shell that emitted
 // one would give every page two.
 
-import { ChevronDown, Menu } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { Menu } from 'lucide-react';
 import {
   collapseLoneDisclosures,
   ctaHrefIfOffered,
@@ -57,110 +67,30 @@ import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { FOOTER_COLUMNS, MENU_ACTION, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { FooterColumn, NavEntry, NavLink } from '@/lib/fr/shell';
+import { CurrentNavMenu, MenuTrigger, MobileMenuList } from './ShellNav';
 import styles from './PublicShell.module.scss';
+
+// THE LEAVES THE TESTS AND THE WORKBENCH RENDER DIRECTLY, re-exported so this
+// stays the one place the shell is imported from. They are client components;
+// importing them through a server module keeps them client references.
+export { NavItem, NavMenu } from './ShellNav';
 
 export interface PublicShellProps {
   readonly children: React.ReactNode;
   /**
    * Every published guide, for the footer's Guides column (FW33, H10).
    *
-   * A PROP, AND REQUIRED, because this is a client component and the guide
-   * registry reads content/ from disk. The pages that render the shell are
-   * server components and pass guideNavLinks() from lib/guides/registry.ts.
-   * Required rather than defaulted: a default of [] would render a footer
-   * with no guides and no error, and a call site that forgot the prop would
-   * look finished. As it is, forgetting it is a type error.
+   * A PROP, AND REQUIRED. It became one because this used to be a client
+   * component and the guide registry reads content/ from disk, so the pages
+   * that render the shell - server components - pass guideNavLinks() from
+   * lib/guides/registry.ts. The shell renders on the server now and could read
+   * it itself; moving that read inside would change every call site's
+   * contract, which FW-CALC-BYTES does not do. Required rather than defaulted:
+   * a default of [] would render a footer with no guides and no error, and a
+   * call site that forgot the prop would look finished. As it is, forgetting
+   * it is a type error.
    */
   readonly guideLinks: readonly NavLink[];
-}
-
-/** FD11: the Calculateurs caret, Lucide chevron-down at a 1.75 stroke. */
-const STROKE = 1.75;
-
-/**
- * One nav entry: a link, or a disclosure holding links.
- *
- * The disclosure closes on Escape and puts focus back on its own trigger.
- * Without that, closing the panel drops focus to <body> and a keyboard user is
- * silently returned to the top of the document.
- *
- * EXPORTED SINCE FW33, for one reason: no disclosure ships today, because
- * Calculateurs has one live child and renders as a link to it. The disclosure
- * branch still exists and returns on its own the day a second child goes
- * live, so the test suite and the workbench render it directly - it is the
- * only way its keyboard behaviour and its caret stay proven meanwhile.
- */
-/**
- * FW-CALCS-A2: aria-current="page" on the link to the page being read, and on
- * nothing else. The header is the shell's; this task marks the current page
- * and adds no menu. An exact match only - a guide is not "the guides hub".
- */
-function currentFor(href: string | undefined, pathname: string | null): 'page' | undefined {
-  return href !== undefined && pathname !== null && href === pathname ? 'page' : undefined;
-}
-
-export function NavItem({
-  entry,
-  pathname = null,
-}: {
-  readonly entry: NavEntry;
-  /** The current path, so the link to it is marked aria-current (FW-CALCS-A2). */
-  readonly pathname?: string | null;
-}) {
-  const [open, setOpen] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
-
-  const close = useCallback(() => {
-    setOpen(false);
-    trigger.current?.focus();
-  }, []);
-
-  if (entry.children === undefined) {
-    return (
-      <li className={styles.navItem}>
-        <a className={styles.navLink} href={entry.href} aria-current={currentFor(entry.href, pathname)}>
-          {entry.label}
-        </a>
-      </li>
-    );
-  }
-
-  return (
-    <li
-      className={styles.navItem}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && open) close();
-      }}
-    >
-      <button
-        ref={trigger}
-        type="button"
-        className={styles.navLink}
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        {entry.label}
-        {/* ONLY HERE, never on a plain link: a caret promises a menu, and
-            the lone-child link is not one. */}
-        <ChevronDown className={styles.chevron} aria-hidden="true" strokeWidth={STROKE} />
-      </button>
-
-      {/* Rendered only when open, rather than hidden with CSS: a panel that
-          stays in the tree is reachable by Tab while invisible, which is the
-          keyboard trap version of this component's whole risk. */}
-      {open ? (
-        <ul className={styles.submenu}>
-          {entry.children.map((child) => (
-            <li key={child.href}>
-              <a className={styles.navLink} href={child.href} aria-current={currentFor(child.href, pathname)}>
-                {child.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  );
 }
 
 /**
@@ -215,27 +145,10 @@ const ctaHref = ctaHrefIfOffered(SHELL_COPY.ctaHref, PRODUCT_STATE.trackerExists
 // THEN LONE DISCLOSURES COLLAPSE (FW33, H4). A menu left with one live child
 // is a link to that child, under the child's own label - so today the header
 // offers "Calculateur de télétravail" by name rather than a one-item menu.
+//
+// RESOLVED HERE, ON THE SERVER, AND HANDED TO THE LEAVES AS DATA (R976): the
+// two lists in ShellNav.tsx receive exactly these entries and decide nothing.
 const NAV: readonly NavEntry[] = collapseLoneDisclosures(visibleNav(SHELL_NAV));
-
-/**
- * The desktop nav's list, exported for the workbench's disclosure specimen so
- * the specimen is styled by this file rather than by a copy of it.
- */
-export function NavMenu({
-  entries,
-  pathname = null,
-}: {
-  readonly entries: readonly NavEntry[];
-  readonly pathname?: string | null;
-}) {
-  return (
-    <ul className={styles.navList}>
-      {entries.map((entry) => (
-        <NavItem key={entry.label} entry={entry} pathname={pathname} />
-      ))}
-    </ul>
-  );
-}
 
 /**
  * The footer's columns, with the published guides appended to the one column
@@ -250,32 +163,13 @@ function footerColumns(guideLinks: readonly NavLink[]): readonly FooterColumn[] 
 }
 
 export function PublicShell({ children, guideLinks }: PublicShellProps) {
-  // NO STATE FOR THE MENU ANY MORE: details/summary owns "open", so React
-  // holding a second copy of it would be two answers to one question. The ref
-  // exists only for Escape, which is a progressive enhancement - with no
-  // script the disclosure still opens, closes and reports itself correctly.
-  const menu = useRef<HTMLDetailsElement>(null);
-  const pathname = usePathname();
-
-  const closeMenu = useCallback(() => {
-    const element = menu.current;
-
-    if (element === null || !element.open) return;
-
-    element.open = false;
-    // Focus goes back to the summary, not to <body>: closing a panel and
-    // dropping focus to the top of the document is the keyboard trap this
-    // component has been guarded against since FW9.
-    element.querySelector('summary')?.focus();
-  }, []);
-
   return (
     <>
       <header className={styles.header}>
         <div className={styles.bar}>
           {/* THE PHONE MENU, AND IT NEEDS NO SCRIPT (FW-SHELL-BURGER).
 
-              It was a useState disclosure from FW9 until this task: the panel
+              It was a useState disclosure from FW9 until that task: the panel
               was `{menuOpen ? <div/> : null}`, so with scripting off the button
               was inert and a phone reader had no navigation at all. Every gate
               passed, because jsdom runs the handler and Playwright's default
@@ -296,22 +190,18 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
 
               The hamburger sits FIRST in the DOM, which is where FD2 draws it
               and also the order a screen reader should meet it: the thing that
-              reveals the navigation before the navigation. */}
-          <details
-            ref={menu}
-            className={styles.menu}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') closeMenu();
-            }}
-          >
-            <summary className={styles.menuButton} aria-label={SHELL_COPY.menuOpen}>
+              reveals the navigation before the navigation.
+
+              RENDERED ON THE SERVER SINCE FW-CALC-BYTES. Escape is the one
+              part that needs a script, and MenuTrigger (ShellNav.tsx) adds it
+              to this element from its summary. */}
+          <details className={styles.menu}>
+            <MenuTrigger label={SHELL_COPY.menuOpen}>
               <Menu aria-hidden="true" />
-            </summary>
+            </MenuTrigger>
 
             {/* The SAME list as the desktop bar, so the two cannot drift, and
-                ALWAYS RENDERED - the disclosure hides it, not a branch. The
-                nested menu is flattened: on a phone a menu inside a menu is
-                two taps to reach a link.
+                ALWAYS RENDERED - the disclosure hides it, not a branch.
 
                 ITS OWN ACCESSIBLE NAME. The desktop nav is also in the
                 document at this width (display:none, so out of the tree in a
@@ -322,38 +212,13 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
               data-mobile-panel
               aria-label={SHELL_COPY.menuNavLabel}
             >
-              <ul className={styles.mobileList}>
-                {NAV.flatMap((entry) =>
-                  entry.children !== undefined
-                    ? entry.children.map((child) => (
-                        <li key={child.href}>
-                          <a
-                            className={styles.mobileLink}
-                            href={child.href}
-                            aria-current={currentFor(child.href, pathname)}
-                          >
-                            {child.label}
-                          </a>
-                        </li>
-                      ))
-                    : [
-                        <li key={entry.href}>
-                          <a
-                            className={styles.mobileLink}
-                            href={entry.href}
-                            aria-current={currentFor(entry.href, pathname)}
-                          >
-                            {entry.label}
-                          </a>
-                        </li>,
-                      ],
-                )}
-                <li key={MENU_ACTION.href}>
+              <MobileMenuList entries={NAV}>
+                <li>
                   <a className={styles.mobileAction} href={MENU_ACTION.href}>
                     {MENU_ACTION.label}
                   </a>
                 </li>
-              </ul>
+              </MobileMenuList>
             </nav>
           </details>
 
@@ -373,7 +238,7 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
           </a>
 
           <nav className={styles.nav} aria-label={SHELL_COPY.navLabel}>
-            <NavMenu entries={NAV} pathname={pathname} />
+            <CurrentNavMenu entries={NAV} />
           </nav>
 
           {/* OUTSIDE the panel below, on every viewport - and rendered ONLY

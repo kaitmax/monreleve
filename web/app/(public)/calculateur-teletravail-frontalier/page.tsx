@@ -36,12 +36,13 @@
 import type { Metadata } from 'next';
 import { ruleSetFor } from '@/lib/calc-engine';
 import { faqPageLd, webApplicationLd } from '@/lib/content/jsonld';
-import { CALCULATOR_PATH, gateRobotsDirective } from '@/lib/content/routes';
+import { CALCULATOR_PATH, gateRobotsDirective, liveHrefs } from '@/lib/content/routes';
 import { canonicalsAvailable, siteOrigin } from '@/lib/content/site';
 import { currentTaxYear } from '@/lib/content/tax-year';
 import { CALCULATEUR_COPY as COPY } from '@/lib/fr/calculateur';
 import { FAQ_COPY } from '@/lib/fr/faq';
 import { HOME_COPY } from '@/lib/fr/home';
+import { RESULT_COPY } from '@/lib/fr/result';
 import { SOURCE_CITATIONS } from '@/lib/fr/sources';
 import { formatDays, formatPercent } from '@/lib/ui/core';
 import { Container } from '@/lib/ui/react/Container/Container';
@@ -223,6 +224,9 @@ export default function CalculateurPage() {
         <div className={styles.layout}>
           <CalculatorForm
             taxYear={year}
+            // R976: the result panel's link, resolved HERE against the route
+            // registry, so the island receives four answers and no registry.
+            liveLinks={liveHrefs(RESULT_COPY.links)}
             aside={
               <>
                 <AppCard />

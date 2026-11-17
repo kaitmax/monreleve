@@ -23,9 +23,9 @@
 
 import { ChevronRight } from 'lucide-react';
 import { type TeleworkResult, type Warning } from '@/lib/calc-engine';
-import { ctaHrefIfLive } from '@/lib/content/routes';
 import { RESULT_COPY as COPY, warningEntry } from '@/lib/fr/result';
 import {
+  type Status,
   type ZoneThresholds,
   formatPercent,
   formatSignedDays,
@@ -110,13 +110,35 @@ type EveryCodeHasAPosition = Warning['code'] extends (typeof WARNING_ORDER)[numb
 
 export const ORDER_COVERS_EVERY_CODE: EveryCodeHasAPosition = true;
 
+/**
+ * R85's answer for slot 7, per status: the contextual link's href when its
+ * target is live, null when it is not.
+ */
+export type LiveResultLinks = Readonly<Record<Status, string | null>>;
+
 export interface ResultPanelProps {
   readonly result: TeleworkResult;
   /** The year's ceilings, for the rail and the tile labels (R35, R73). */
   readonly thresholds: ZoneThresholds;
+  /**
+   * Slot 7's liveness, DECIDED ON THE SERVER (R976, FW-CALC-BYTES).
+   *
+   * This panel renders inside the calculator's client island, and it used to
+   * call ctaHrefIfLive itself - which put the whole route registry in the
+   * calculator's first-load JS. The two pages that render it now pass
+   * liveHrefs(RESULT_COPY.links), resolved where the registry lives.
+   *
+   * OPTIONAL, AND ABSENT READS AS "NOT KNOWN TO BE LIVE": the link renders as
+   * text. That is R85's own direction - a link renders only when its target
+   * is known to be live - and it is what a page that forgot the table would
+   * show: tests/unit/pages/result-links-server.test.tsx and both pages'
+   * baselines photograph the anchor, so the omission fails there rather than
+   * shipping quietly.
+   */
+  readonly liveLinks?: LiveResultLinks;
 }
 
-export function ResultPanel({ result, thresholds }: ResultPanelProps) {
+export function ResultPanel({ result, thresholds, liveLinks }: ResultPanelProps) {
   const status = statusFor(result);
   const zone = zoneFor(result.declarableRate, thresholds);
   const fiscal = ceiling(thresholds.fiscalCeiling);
@@ -137,7 +159,7 @@ export function ResultPanel({ result, thresholds }: ResultPanelProps) {
   );
 
   const link = COPY.links[status];
-  const liveHref = ctaHrefIfLive(link.href);
+  const liveHref = liveLinks?.[status] ?? null;
 
   return (
     // FW-CALCS-A2, R726: the A2 result card - ResultCard's frame, included
@@ -269,7 +291,8 @@ export function ResultPanel({ result, thresholds }: ResultPanelProps) {
         live. An anchor here would promise a 404 from the one place a reader
         has just been told something about their own money. Naming it says the
         guide is coming; ctaHrefIfLive decides, so the day FW17 ships the
-        anchor appears with no edit here.
+        anchor appears with no edit here. Since FW-CALC-BYTES it decides on
+        the SERVER, through liveHrefs, and arrives here as liveLinks (R976).
       */}
       <div className={styles.link} data-panel="link">
         {liveHref === null ? (

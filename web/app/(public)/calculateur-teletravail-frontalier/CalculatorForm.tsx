@@ -59,7 +59,9 @@ import {
   type ParamName,
   strayParams,
 } from '@/lib/params/schema';
-import { RESULT_PATH } from '@/lib/content/routes';
+// FROM THE LEAF, NOT THE REGISTRY (R976, FW-CALC-BYTES): importing a path from
+// lib/content/routes.ts shipped every registered route in this island's bundle.
+import { RESULT_PATH } from '@/lib/content/route-paths';
 import { writeHandoff } from '@/lib/params/handoff';
 import { CALCULATEUR_COPY } from '@/lib/fr/calculateur';
 import { PARAM_NOTICE, SHARE_COPY } from '@/lib/fr/params';
@@ -89,7 +91,7 @@ import { track } from '@/lib/analytics/track';
  * the page.
  */
 const ADVANCED_SECTION_ID = 'options-avancees';
-import { ResultPanel } from './ResultPanel';
+import { type LiveResultLinks, ResultPanel } from './ResultPanel';
 import styles from './CalculatorForm.module.scss';
 
 const COPY = CALCULATEUR_COPY.form;
@@ -359,9 +361,22 @@ export interface CalculatorFormProps {
    * product (REPORT-FW-HOME-A2, R723).
    */
   readonly aside?: ReactNode;
+  /**
+   * The result panel's contextual link, per status, RESOLVED BY THE SERVER PAGE
+   * (R976, FW-CALC-BYTES) with liveHrefs - for the same reason as `aside`: the
+   * decision needs the route registry, and the registry must not enter this
+   * island's bundle. Passed straight to ResultPanel, which documents why an
+   * absent table renders the link as text.
+   */
+  readonly liveLinks?: LiveResultLinks;
 }
 
-export function CalculatorForm({ taxYear, initial = null, aside = null }: CalculatorFormProps) {
+export function CalculatorForm({
+  taxYear,
+  initial = null,
+  aside = null,
+  liveLinks,
+}: CalculatorFormProps) {
   // SEEDED ONCE, from the server render. useState's initial value is used on
   // the first render and ignored afterwards, which is exactly right here: the
   // URL is where the user STARTED, and from then on the form is the truth and
@@ -1487,7 +1502,7 @@ export function CalculatorForm({ taxYear, initial = null, aside = null }: Calcul
         // A FRAGMENT, because this branch now renders two things. The
         // panel was the whole branch until R343 put a line underneath it.
         <>
-          <ResultPanel result={result} thresholds={rules} />
+          <ResultPanel result={result} thresholds={rules} liveLinks={liveLinks} />
 
           {/*
             WHERE THE PROJECTION IS (R343). A reader who has checked some days

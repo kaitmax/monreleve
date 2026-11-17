@@ -125,8 +125,9 @@ export const GUIDES_PATH = '/guides';
  * cluster keep the registry's order exactly as the hub renders them.
  *
  * SERVER-ONLY, like everything in this file: it reads content/ from disk.
- * PublicShell is a client component and cannot call it, so the pages that
- * render the shell pass the result in as a prop.
+ * PublicShell was a client component and could not call it, so the pages that
+ * render the shell pass the result in as a prop. It renders on the server
+ * since FW-CALC-BYTES (R976) and the prop stays: see PublicShellProps.
  */
 export function guideNavLinks(): readonly { readonly label: string; readonly href: string }[] {
   return [...publishedGuides()]
