@@ -16,7 +16,8 @@ relay/FW-CALC-BYTES.txt still bind. Parallel mode (Web Ruling 7).
   (crops/) and the report's parts (report-parts/).
 - READ-ONLY sources: C:/wt/fw-calc-bytes/.calcbytes-evidence/increment/ (read,
   checksummed and copied; no git, no write there); W10's and W10a's reports
-  via git show from my worktree.
+  via `git show` in the main checkout, before my worktree existed
+  (DEVIATIONS 1).
 - Ports (block 3800-3899): 3810 (both gates' e2e webServer, the control's
   MINE arm), 3811 (the control's BASE arm), 3820 (the walkthrough's pnpm dev).
 - Database: the scratch monreleve_fw_calc_bytes_2 (created 06:30Z through the
@@ -24,7 +25,7 @@ relay/FW-CALC-BYTES.txt still bind. Parallel mode (Web Ruling 7).
   script from the main checkout's web/.env, never printed), migrated by
   db:deploy. Never `frontalier`.
 - A second worktree C:/wt/fw-calc-bytes-2-base (detached at 9868254, its own
-  lock file) served the e2e control only (DEVIATIONS 6).
+  lock file) served the e2e control only, and is removed (DEVIATIONS 4).
 
 SUMMARY
 -------
@@ -76,8 +77,10 @@ twice). FULL GATE NOT GREEN, and NO CODE COMMIT exists:
   same hold: RED, 1 failed / 173 passed. STEP_EXIT=1, ABORTED=False.
 - test:db and test:late: NOT RUN in either run.
 - gate:clone: NOT RUN (no code commit; R1016 says stop).
-- This report is the only commit on the branch (its SHA: the hand-back and
-  `git ls-remote`). FULL GATE NOT RUN on it; it adds this one ASCII file.
+- The branch carries report-only commits on top of 9868254: this report
+  (010858a5) and its correction (the tip; its SHA: the hand-back and
+  `git ls-remote`). FULL GATE NOT RUN on either; both touch this one ASCII
+  file only.
 - The worktree is DELIBERATELY DIRTY: the increment's 18 files are
   uncommitted there (10 M, 8 ??), identical to W10's saved copy. Do not
   clean or remove it (R392).
@@ -424,7 +427,8 @@ RESULT: no order-dependent pair, so nothing stops here and nothing was fixed.
 R1018. W10's QUESTIONS, AS RULED
 --------------------------------
 - Q1 (the control) and Q2 (the uniform gap): answered by Web Ruling 11 and
-  W10a. Nothing to do here beyond R977, which the gate below proves.
+  W10a. What is left of them is R977, and R977 was NOT met here (see
+  "R977 / R1016'S GATE").
 - Q3, liveLinks stays OPTIONAL. An absent prop renders slot 7 as TEXT:
   ResultPanel.tsx reads `const liveHref = liveLinks?.[status] ?? null;`
   and renders the anchor only when liveHref is not null.
@@ -543,7 +547,8 @@ NOTICED BUT NOT TOUCHING
 3. The size table now has 21 routes, one more than W10 measured:
    /rappel-delai/suppression (W11), 110 919 B before.
 4. gate:clone's container step still defaults FRONTALIER_PORT to 3120
-   (W10 NOTICED 5, W10a NOTICED 5); this session set 3830.
+   (W10 NOTICED 5, W10a NOTICED 5). This session never ran gate:clone; its
+   prepared hold would have set 3830 (tools/hold4-clone.mjs, unused).
 5. The byte variant's header lines read "GATE A total <= 128000 KiB": the
    derivation changes kib() only, so a label that says KiB prints bytes.
    A cosmetic artefact of the derived copy, not of check-budgets.mjs.
@@ -566,12 +571,17 @@ DEVIATIONS
    there. I also ran `git show origin/main:<file>` (the prompt and the
    files it lists), `git rev-parse`, `git cat-file -t`, `git worktree list`,
    `git branch --list` and `git ls-remote`. All read-only; nothing was
-   written, staged or checked out there. Every later git command ran in
-   C:/wt/fw-calc-bytes-2 only.
-2. W10's worktree: beyond increment/, I listed its .calcbytes-evidence/
-   root (`ls`) once, to confirm nothing had been written there. I read
-   and copied nothing outside increment/; my byte, chunk, census, plant
-   and walkthrough tools are my own (.calcbytes2-evidence/tools/).
+   written, staged or checked out there. Every later git command ran in my
+   own worktrees: C:/wt/fw-calc-bytes-2, and C:/wt/fw-calc-bytes-2-base
+   (DEVIATIONS 4).
+2. OTHER SESSIONS' WORKTREES, read-only and without git, beyond what launch
+   rule 2 names: I listed W10's .calcbytes-evidence/ root (`ls`) once, to
+   confirm nothing had been written there; and, for the lock file's format,
+   I read C:/wt/fw-verifier-outage/.session-lock.json (W14's) and tried
+   C:/wt/fw-calc-bytes/.session-lock.json (absent). Launch rule 1 says never
+   to touch those worktrees; nothing was written, run or changed in either.
+   I read and copied nothing else outside increment/; my byte, chunk,
+   census, plant and walkthrough tools are my own (.calcbytes2-evidence/tools/).
 3. The lock was acquired with --poll-sec 5 (the helper's own option),
    because W10 lost 47 minutes to races at the 30 s default. For gate run
    2 that still lost three races in a row (W5 at 07:24:47Z, W7 at
@@ -580,14 +590,19 @@ DEVIATIONS
    it held nothing, and its chain's release was correctly REFUSED:
    gate2-attempt1.lock.log) and restarted it with --poll-sec 1, which
    acquired at 07:48:33Z.
-6. A SECOND WORKTREE, C:/wt/fw-calc-bytes-2-base, detached at 9868254, for
+4. A SECOND WORKTREE, C:/wt/fw-calc-bytes-2-base, detached at 9868254, for
    the e2e control (the advisor's design: no stash, since refs/stash is
    shared by every worktree and stashing would break the applied tree's
-   hash continuity). It carried its own lock file and install, ran only
-   the control, and is removed at cleanup once its porcelain is empty.
-4. pnpm install --frozen-lockfile ran outside the lock (it is not in the
-   heavy list, as W10a recorded).
-5. Single test files ran outside the lock, one file per vitest run: the
+   hash continuity). It carried its own lock file and install and ran only
+   the control. REMOVED at cleanup (after the first report commit): its
+   porcelain was empty; `git worktree remove` (no --force) removed its
+   registration, its tracked files and its lock, then stopped on the
+   ignored install ("failed to delete ... Directory not empty"). With no
+   .git left and no longer listed by `git worktree list`, the leftover
+   (only my own web/node_modules) was deleted with `rm -rf`.
+5. pnpm install --frozen-lockfile ran outside the lock in both worktrees (it
+   is not in the heavy list, as W10a recorded).
+6. Single test files ran outside the lock, one file per vitest run: the
    four new tests, island-harness, declaration-parity, gate-selection,
    PublicShell, aria-current, cta-gate, nav-collapse, result-path, routes,
    shell-reachable, no-js-coverage and no-next-link (light-single-files.log),
@@ -604,7 +619,10 @@ QUESTIONS
    - For the increment: two of two full-suite runs with it were red in
      e2e/rappel-delai.spec.ts (run 1: :45 and :104; run 2: :59), against
      W11's own gate (5cbc815, 494 MB free physical at its minimum) and round
-     3's merge gate (416 MB), both green with this spec on main's code.
+     3's merge gate (416 MB), both green with this spec on main's code. And
+     run 2 went red with MORE free physical in its e2e window (minimum
+     1 244 MB) than either green run had, though with less commit free
+     (3 693 MB); run 1's window bottomed at 224 MB physical / 4 460 commit.
    - Against: the failing state is consistent with a fill that landed before
      the island hydrated; every one of the spec's tests fills immediately
      after page.goto with no wait; W11's own walkthrough met the same
@@ -641,9 +659,11 @@ Branch: fw-calc-bytes-2 (pushed; NOT merged). Base 9868254 = origin/main at
 launch and at the end. NO CODE COMMIT: the increment is uncommitted in the
 worktree and identical to W10's saved copy (C:/wt/fw-calc-bytes/
 .calcbytes-evidence/increment/, SHA256SUMS 20 OK; my copy in
-.calcbytes2-evidence/w10-increment/, 20 OK). The branch carries ONE commit,
-this report, staged by name on top of 9868254; its SHA is in the hand-back,
-checked with `git ls-remote`.
+.calcbytes2-evidence/w10-increment/, 20 OK). The branch carries TWO
+report-only commits on top of 9868254, each staged by name with one path
+staged: 010858a5 (this report, pushed, `git ls-remote` equal) and its
+correction (the tip; its SHA is in the hand-back, checked with
+`git ls-remote`).
 
 gate:changed - RED in both runs; the printed selection, the same both times:
   gate selection (R132):
@@ -680,9 +700,20 @@ gate:changed - RED in both runs; the printed selection, the same both times:
 gate:clone: NOT RUN (no code commit; R1016 says stop). No image was built,
 so there is no monreleve:fw-calc-bytes-2 to remove.
 
-CLEANUP (Part B), PENDING when this report was committed and done after its
-push; the after-state is in the hand-back: drop monreleve_fw_calc_bytes_2;
-no web/.env was ever written; no image; remove the base worktree
-C:/wt/fw-calc-bytes-2-base if its porcelain is empty; remove
-.session-lock.json last. THIS worktree stays, dirty on purpose, with the
-increment and .calcbytes2-evidence/ in it.
+CLEANUP (Part B), as it happened after the first report commit's push:
+- monreleve_fw_calc_bytes_2 DROPPED (WITH FORCE, through `postgres`); the
+  pg_database listing of monreleve_* then read monreleve_fw_verifier_outage
+  and monreleve_web_orch only (W14's and the orchestrator's).
+- web/.env: never written, in either worktree (checked absent).
+- Images: none built; `docker images` lists no fw-calc-bytes tag.
+  Containers: none is mine. My visual run's container was gone at 08:25:52Z
+  (docker ps: frontalier-postgres only) and my last hold released at
+  08:28:05Z. A postgres:16-alpine "Created" container seen at 08:37Z was
+  gone by 08:41Z, and the Playwright container created 08:39:04Z ran while
+  the orchestrator held the lock (from 08:29:51Z). Neither was touched.
+- No node process of mine survives (no heavy-lock waiter, no server), and
+  ports 3810, 3811 and 3820 are not listening. The lock is held by others.
+- C:/wt/fw-calc-bytes-2-base: removed (DEVIATIONS 4).
+- .session-lock.json: removed LAST, after this correction's push.
+- THIS worktree stays, dirty on purpose: the increment's 18 paths
+  uncommitted (porcelain equal to status.txt) and .calcbytes2-evidence/.
