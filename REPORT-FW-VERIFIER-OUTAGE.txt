@@ -31,10 +31,10 @@ SUMMARY
   - any other error escaping the render: 500 (app-render.js:1418-1420);
   - otherwise 200.
   next/navigation's server exports are exactly those
-  (navigation.react-server.d.ts:12-17); next/headers is read-only. Middleware
-  and a route handler were READ and do not qualify (R1022 below). Per R1022
-  nothing was implemented and nothing is picked: the choice is handed back
-  with what was measured.
+  (navigation.react-server.d.ts:12-17); next/headers sets no response
+  status. Middleware and a route handler were READ and do not qualify
+  (R1022 below). Per R1022 nothing was implemented and nothing is picked:
+  the choice is handed back with what was measured.
 - R1021, read: the one database read is lib/verification/lookup.ts:82, reached
   from page.tsx:73. Nothing catches a throw, and the app has no error.tsx,
   global-error.tsx or loading.tsx anywhere, so a throw becomes Next's 500
@@ -51,10 +51,13 @@ SUMMARY
   that accepts and then never answers throws P1008 / SocketTimeout after
   21.5 s; a code defect looks like neither (a missing table: P2010 /
   TableDoesNotExist; a bad argument: PrismaClientValidationError, no code).
-- WHAT EACH CHOICE DELIVERS, MEASURED: see R1022, THE CHOICES. In one line:
-  (a) is the only one whose heading and sentence are in the served HTML;
-  (b)'s boundary renders only in the browser, after hydration, and receives a
-  redacted error it cannot classify.
+- WHAT EACH CHOICE DELIVERS: see R1022, THE CHOICES. (b) was MEASURED on a
+  throwaway prototype in a production build: its boundary renders only in
+  the browser, after hydration (the served HTML stays the empty
+  __next_error__ document), and receives a redacted error it cannot
+  classify. (a) was NOT BUILT: what it would serve is INFERRED from today's
+  measured 200 answers - the heading and sentence would be in the served
+  HTML.
 - NO SENTENCE EXISTS IN lib/fr: the STOP came before any code. A draft for the
   operator is in QUESTIONS, in ASCII, marked illustrative (R155, R168).
 
@@ -64,9 +67,9 @@ STOPPED at R1022 (the framework offers no supported 503 for this page). NO
 CODE COMMIT, and the full gate was not run:
 - gate:changed: NOT RUN (nothing to gate but this report).
 - gate:clone: NOT RUN (no code commit to run it on).
-- The report commit is the only commit on the branch (its SHA: the hand-back
-  and `git ls-remote`). FULL GATE NOT RUN on it; it adds this one ASCII file
-  at the repository root.
+- The commits on this branch add only this report (the tip SHA: the
+  hand-back and `git ls-remote`). FULL GATE NOT RUN on them; they add this
+  one ASCII file at the repository root.
 - Two heavy holds ran under the lock, for MEASUREMENT only: a production
   build of today's tree and one of a throwaway option-(b) tree (MEMORY).
 - No Android code changed. Not merged.
@@ -131,11 +134,15 @@ TWO DOORS, CLOSED BY READING (not built):
 - MIDDLEWARE. Next takes a middleware's own status when the middleware
   answers the request itself (router-utils/resolve-routes.js:405-407 mark it
   x-middleware-refresh, :478-485 finish with middlewareRes.status and its
-  body); on next() or a rewrite the page renders. Middleware is invoked
-  before the page (:333-338), so it cannot know the page's lookup failed: it
-  would need its own database probe, which can disagree with the lookup, and
-  its own HTML for the 503, a second rendering of the page. web/middleware.ts
-  matches only the calculator and its result page (:81-83).
+  body); on next() or a rewrite the page renders. resolve-routes.js:344 also
+  sets res.statusCode = middlewareRes.status before the page renders;
+  whether a status given with next() or a rewrite survives the page's render
+  was NOT established. The door closes on order alone: middleware is
+  invoked before the page (:333-338), so it cannot know the page's lookup
+  failed. It would need its own database probe, which can disagree with the
+  lookup, and, to answer the 503 itself, its own HTML - a second rendering
+  of the page. web/middleware.ts matches only the calculator and its result
+  page (:81-83).
 - A ROUTE HANDLER in place of page.tsx. route-modules/app-route/module.js
   dispatches to the handler's own method (this.methods[method], :196) and
   returns its Response: no layout, no metadata (so no robots meta), no React
@@ -174,8 +181,12 @@ heavy/; the copy keys READ from lib/fr, headings by W4's headingsOf):
   - Plant verified: sha256 b04efd967615 = its source; porcelain exactly
     "?? web/app/(public)/verifier/[code]/error.tsx"; LANDED true. It landed
     in the build: the served 500 references its client chunk
-    app/(public)/verifier/%5Bcode%5D/error-d9283dd9b5c489bf.js, and the
-    browser rendered its marker (below).
+    "static/chunks/app/(public)/verifier/%5Bcode%5D/error-d9283dd9b5c489bf.js",
+    and the browser rendered its marker (below). The hold's own line "build
+    output naming the boundary: NONE" is a SEARCH THAT MISSED (it looked for
+    the literal "verifier/[code]/error" under .next/server/app/(public)/
+    verifier, where the manifest spells the path another way), not a probe
+    that failed to land.
   - Database unreachable, an unknown well-formed code: 500 (669 ms); the same
     Cache-Control and the same two robots metas as today; the served HTML is
     STILL the empty __next_error__ document: h1 [], no <main>, the marker 0
@@ -192,13 +203,14 @@ heavy/; the copy keys READ from lib/fr, headings by W4's headingsOf):
 THE CHOICES (handed back; not picked):
 (a) 200 WITH NOINDEX AND NO-STORE. page.tsx would catch ONLY the classified
     outage around lookupVerification and render the heading and the new
-    sentence itself; every other error rethrows to today's 500.
-    - Measured shape: it is the same force-dynamic page with another body, so
-      it carries today's 200 headers (hold 1, database up): Cache-Control
-      "private, no-cache, no-store, max-age=0, must-revalidate" and the
-      page's robots meta. The heading and sentence are in the served HTML:
-      a reader without JS, W4's headingsOf and a `pnpm test` render all see
-      them.
+    sentence itself; every other error would rethrow to today's 500.
+    - INFERRED, NOT BUILT: it would be the same force-dynamic page with
+      another body, so it would carry the headers of today's MEASURED 200
+      answers (hold 1, database up): Cache-Control "private, no-cache,
+      no-store, max-age=0, must-revalidate" and the page's robots meta. Its
+      heading and sentence would be server-rendered like every 200 state
+      today, so a reader without JS, W4's headingsOf and a `pnpm test` render
+      would see them.
     - Cost: the status says success for an answer that did not happen; what
       reads the status alone (a monitor, a crawler) sees 200. noindex keeps it
       out of an index, no-store out of any cache.
@@ -226,11 +238,15 @@ THE CHOICES (handed back; not picked):
       route, today's default "Application error: a server-side exception has
       occurred..." screen.
     - Its status is 500, not R1022's 503; (a)'s is 200.
-(c) OTHER SUPPORTED ANSWERS, NONE OF THEM 503. notFound(), forbidden() and
-    unauthorized() answer 404, 403 and 401 (http-access-fallback.js:35-40):
-    each says something about the code or the reader, which R1022 forbids.
-    No other status mechanism exists (THE STATUS, READ). So (c) holds
-    nothing new unless the operator accepts one of those statuses.
+(c) OTHER SUPPORTED ANSWERS, NONE OF THEM 503. notFound() answers 404;
+    forbidden() and unauthorized() answer 403 and 401
+    (http-access-fallback.js:35-40) but are EXPERIMENTAL: each throws unless
+    experimental.authInterrupts is enabled (forbidden.js:26-27,
+    unauthorized.js:27-28), and web/next.config.ts sets no experimental key,
+    so as configured only notFound() is available. Each says something about
+    the code or the reader, which R1022 forbids. No other status mechanism
+    exists (THE STATUS, READ). So (c) holds nothing new unless the operator
+    accepts one of those statuses.
 What the other clauses of R1022 would need, from what was measured (for the
 session that implements the choice):
 - THE CLASSIFICATION: P1001 + DatabaseNotReachable is the measured outage;
@@ -350,7 +366,7 @@ DEVIATIONS
 ----------
 1. STOPPED AT R1022, as the prompt directs. THE WORK's steps 2-5 did not
    run: no lib/fr string, no degraded branch, no test, no R1024 plant, no
-   gate:changed, no gate:clone. The report is the only commit.
+   gate:changed, no gate:clone. The branch's commits add only this report.
 2. MEASUREMENT PLANTS, not R1024's: a throwaway option-(b) boundary
    (probe/error.tsx) was planted in dev and in hold 2's build, each time
    verified landed (sha256 and porcelain) and verified removed. Never
@@ -366,7 +382,9 @@ DEVIATIONS
    database server at <the database host>", P1001's wording). Measured here:
    a refused loopback port, an unresolvable host (db.invalid, the nearest
    local analogue of a stopped container's name) and an accept-then-silent
-   address.
+   address. Every measured shape is a FRESH client's first connect; a warm
+   pool whose server goes away (W4's case: the app had served with the
+   database up before the stop) was not measured here.
 5. The walkthrough ran on `pnpm dev` (R176, R177) AND on `next start`,
    because option (b) turns on production's error redaction, which dev does
    not apply.
@@ -388,8 +406,10 @@ QUESTIONS
    cause DatabaseNotReachable (a refused port, 161 ms; an unresolvable host,
    79 ms) and P1008 with SocketTimeout (an address that accepts and goes
    silent, 21 460 ms). Is P1008 an outage for this page? Not measured: a
-   connection closed mid-query, a pool that cannot hand out a connection.
-   The rule "any other error keeps today's behaviour" needs the list closed.
+   warm pool whose server goes away (each shape above was a fresh client's
+   first connect), a connection closed mid-query, a pool that cannot hand
+   out a connection. The rule "any other error keeps today's behaviour"
+   needs the list closed.
 4. MALFORMED CODES AND THE RATE LIMIT DURING AN OUTAGE (NOTICED 1): do they
    keep today's 200 answers?
 5. THE INTRO. R1022 says "its own heading and ONE sentence". Every state today
@@ -419,9 +439,11 @@ gate:changed line from the launch message)
 PUSH PROOF
 ----------
 - Branch fw-verifier-outage, base e75b70c, pushed; NOT merged.
-- One commit: this report. Its SHA is in the hand-back and in
-  `git ls-remote origin refs/heads/fw-verifier-outage`; before it was made,
-  `git status --porcelain` listed exactly "?? REPORT-FW-VERIFIER-OUTAGE.txt".
+- The commits on this branch add only this report: 0ba5410 (the report),
+  then its review edits. The tip SHA is in the hand-back and in
+  `git ls-remote origin refs/heads/fw-verifier-outage`; before the first
+  commit, `git status --porcelain` listed exactly
+  "?? REPORT-FW-VERIFIER-OUTAGE.txt".
 - gate:changed: NOT RUN. Its printed selection for this commit, recorded
   (`node scripts/gate-for-changes.mjs --print`, gate-print.log):
     gate selection (R132):
