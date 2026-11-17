@@ -301,42 +301,48 @@ function stateFrom(input: TeleworkInput): FormState {
  * while the result was computed from the defaults, and the next keystroke put
  * the defaults back.
  *
- * ONLY WHAT WAS CHANGED, judged per control against what the server rendered
- * into it (defaultValue, defaultChecked, defaultSelected - which hydration sets
- * from the same initial state). The page is static, so the server renders the
- * DEFAULTS even for a shared link, whose values arrive on mount: a control
- * still holding its server value was not touched and takes the link's value,
+ * ONLY WHAT WAS CHANGED, judged per control against `rendered` - the state the
+ * first render put into the controls. The page is static, so the server renders
+ * the DEFAULTS even for a shared link, whose values arrive on mount: a control
+ * still holding what was rendered was not touched and takes the link's value,
  * and a control the reader changed keeps the change (Web Ruling 36). With no
  * link the two readings are the same thing.
+ *
+ * AGAINST THE RENDERED STATE, NOT THE DOM's default attributes: those exist only
+ * on the server's HTML. On a client render (an in-site navigation) React sets a
+ * select's `selected` property and never `defaultSelected`, so judging by the
+ * attributes read every control as changed and put the defaults back over the
+ * link (tests/unit/pages/calculateur-link-mount.test.tsx).
  *
  * The mission-day fields and the advanced section are not rendered until the
  * state asks for them, so they cannot have been typed into before hydration.
  */
-function typedBefore(form: HTMLFormElement): (state: FormState) => FormState {
+function typedBefore(form: HTMLFormElement, rendered: FormState): (state: FormState) => FormState {
   const changes: ((state: FormState) => FormState)[] = [];
 
   for (const control of Array.from(form.elements)) {
     if (control instanceof HTMLSelectElement) {
       const canton = control.value as Canton | '';
 
-      if (control.name === 'canton' && control.selectedOptions[0]?.defaultSelected === false) {
+      if (control.name === 'canton' && canton !== rendered.canton) {
         changes.push((state) => ({ ...state, canton }));
       }
     } else if (control instanceof HTMLInputElement) {
       const { name, value } = control;
 
-      if (value !== control.defaultValue) {
-        if (name === 'taux') changes.push((state) => ({ ...state, employmentRate: value }));
-        if (name === 'tt') changes.push((state) => ({ ...state, teleworkDays: value }));
+      if (name === 'taux' && value !== rendered.employmentRate) {
+        changes.push((state) => ({ ...state, employmentRate: value }));
       }
 
-      if (control.checked === control.defaultChecked) continue;
+      if (name === 'tt' && value !== rendered.teleworkDays) {
+        changes.push((state) => ({ ...state, teleworkDays: value }));
+      }
 
-      // The radio switched ON is the answer; the one switched off says nothing
-      // more. "Non" resets the mission days, as the control's onChange does.
-      if (name === 'missions' && control.checked) {
-        const yes = value === COPY.missions.yes;
+      // The radio switched ON is the answer. "Non" resets the mission days, as
+      // the control's onChange does.
+      const yes = value === COPY.missions.yes;
 
+      if (name === 'missions' && control.checked && yes !== rendered.hasMissions) {
         changes.push((state) => ({
           ...state,
           hasMissions: yes,
@@ -346,10 +352,9 @@ function typedBefore(form: HTMLFormElement): (state: FormState) => FormState {
       }
 
       const weekday = WEEKDAYS_IN_ORDER.find((day) => RHYTHM_DAY_CODES[day] === value);
+      const { checked } = control;
 
-      if (name === 'rythme' && weekday !== undefined) {
-        const { checked } = control;
-
+      if (name === 'rythme' && weekday !== undefined && checked !== (rendered.rhythm[weekday] === 'HOME')) {
         changes.push((state) => {
           const rhythm = { ...state.rhythm };
 
@@ -495,7 +500,8 @@ export function CalculatorForm({
   const formRef = useRef<HTMLFormElement>(null);
 
   useLayoutEffect(() => {
-    const typed = formRef.current === null ? (current: FormState) => current : typedBefore(formRef.current);
+    // `state` is the first render's here: the effect runs once, on mount.
+    const typed = formRef.current === null ? (current: FormState) => current : typedBefore(formRef.current, state);
     const query = window.location.search;
 
     if (query === '' || query === '?') {
