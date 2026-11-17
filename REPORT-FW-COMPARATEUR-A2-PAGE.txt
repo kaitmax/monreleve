@@ -129,8 +129,12 @@ filled; page height 3532 / 4092 px at 1440.
   h2, lead, the four events                PRESENT
   "Sources : cleiss.fr, ameli.fr (lu le    MISSING
     27.10.2026)" under the events
-  "Votre delai" helper, steps, warning,    PRESENT (DeadlineHelper - W18's file,
-    reminder form                          not touched here)
+  "Votre delai" helper, steps, warning,    DIFFERENT - number discs brand-filled
+    reminder form                          (drawn pale, the third red); the
+                                           warning an icon line, not a yellow
+                                           box; the select's event wording.
+                                           DeadlineHelper is W18's file: listed,
+                                           not touched (DEVIATIONS 6, N9)
   white band                               DIFFERENT - on the canvas, top rule
   #definitif - "CE QUI EST DEFINITIF"      MISSING: h2, lead, two cards ("Ce qui
                                            permet d'y revenir" / "Ce qui ne le
@@ -261,9 +265,6 @@ Files (web/):
       components: ToolPill, OnThisPage (the chips), DeadlineSource,
       FinalSection, FamilyAndScope, ChoiceCards, SourcesSection. No
       'use client', no state, no handler.
-  app/(public)/calculateur-lamal-cmu/sections.module.scss     NEW - their
-      styles; imported by server components only, so no class name joins
-      the island's chunk.
   app/(public)/calculateur-lamal-cmu/section-ids.ts           NEW - the nine
       section ids, one list: chips, sections and tests read it.
   app/(public)/calculateur-lamal-cmu/page.tsx                 the head (pill,
@@ -271,9 +272,15 @@ Files (web/):
       line, the new sections in the artboard's order; the limits band ends
       at its list (its two links moved: /sources into "Sources", the guide's
       is the banner's).
-  app/(public)/calculateur-lamal-cmu/comparateur.module.scss  the limits
-      list in as many columns as fit (1 / 2 / 3, as drawn); the unused
-      .links rule removed.
+  app/(public)/calculateur-lamal-cmu/comparateur.module.scss  the new
+      sections' styles: ONE class, `a2`, on each root, with `data-a2`
+      attribute hooks selected under it (one entry in the class map that
+      ships in the client chunk; `.a2` paints no fill, so the contrast audit
+      resolves every text rule against the page's surfaces); the limits list
+      in as many columns as fit (1 / 2 / 3, as drawn); the unused .links rule
+      removed. (A first build had a stylesheet of its own, one class per
+      element: its map cost 380 B gzip in the client chunk - see the byte
+      section. It was replaced before the commit and is not on the branch.)
   lib/fr/lamal-page.ts                                        NEW - every word
       of the static sections, imported by server components only.
   lib/fr/lamal.ts                                             intro = the
@@ -287,7 +294,7 @@ Order on the page: head (pill, h1, lead, chips) / banner / #comparer (form,
 result) / #delai / #definitif / #famille + #couverture / #france + #suisse /
 #limites / #sources. Bands alternate canvas and surface as drawn, except
 #delai (see DEVIATIONS).
-Tokens only: stylelint clean on both stylesheets; no new token. The pill
+Tokens only: stylelint clean; no new token. The pill
 and the verdict keep PARK-CA4's answer (no pale-blue token): brand text on a
 surface pill, as the calculator's year badge.
 Anchors (R173): the chips are styled links (text-primary, border, pill);
@@ -361,6 +368,10 @@ Counts: test 233 files / 4037 passed; test:e2e 382 passed; test:visual 174
 passed (the full suite); test:db 57 files passed, 3 skipped / 816 passed,
 27 skipped; test:late 2 files / 10 passed. "GATE PASSED for the paths
 changed." STEP_EXIT=0. `git status` identical before and after the run.
+The new nojs test is among the 382 by name: "ok 344 [nojs] ...
+comparateur.nojs.spec.ts:102:3 ... the A2 sections and their chips are
+served without JavaScript". register-coverage.mjs, run alone before
+gate:clone: "register coverage: OK - 230 cited id(s) across 181 report(s)".
 
 --------------------------------------------------------------------------------
 R1050 - NOTHING ELSE MOVES
@@ -552,4 +563,11 @@ Q8. FOR THE EXPERT REVIEWER: L21 (URSSAF: a salaried worker cannot return
     to the Swiss insurance for the contract's duration) beside D4 (CLEISS: a
     transfer of residence to France reopens the option) - both stated as
     their sources word them; which governs a move during a contract?
+Q9. THE PERSONS HELPER. The form now uses the artboard's short helper ("Vous
+    d'abord, puis les membres de votre famille qui suivront votre choix.");
+    the qualifier it carried (only members without their own activity or a
+    Swiss-only pension follow; a working spouse has their own affiliation,
+    row D8) is now in "Qui suit votre choix", several sections below, while
+    the form is where a reader decides whom to add. Keep the artboard's
+    short helper, or put the qualifier back in the form?
 
