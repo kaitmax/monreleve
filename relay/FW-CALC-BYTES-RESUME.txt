@@ -1,0 +1,135 @@
+FW-CALC-BYTES-RESUME SESSION PROMPT - Mon Releve
+THE ROUTE REGISTRY STOPS SHIPPING TO THE BROWSER, RESUMED ON THE CASCADE
+FIX (web run step W10b)
+Written by the orchestrating session on 2026-11-17 for
+relay/ORCH-WEB-COMPLETE.txt step W10b (Web Rulings 11, 14 and 15). Read
+first:
+- relay/ORCH-WEB-COMPLETE.txt, Part B including PARALLEL MODE and the
+  lines after it;
+- relay/FW-HEALTH-IMAGE.txt's "HOW THIS SESSION RUNS". It applies here
+  with this task's names: worktree C:/wt/fw-calc-bytes-2, branch
+  fw-calc-bytes-2, report REPORT-FW-CALC-BYTES-2.txt;
+- relay/FW-CALC-BYTES.txt, the original task. Its R975-R979 STILL BIND,
+  except where this prompt amends them;
+- REPORT-FW-CALC-BYTES.txt on branch fw-calc-bytes (4e3453d), all of it;
+- REPORT-FW-CASCADE-ORDER.txt on main (W10a), its R1010 census above all;
+- CLAUDE.md: R2, R85, R135, R172, R180, R206, R207, R391, R392.
+Ruling numbers for this task: R1015-R1019.
+
+====================================================================
+THE STATE
+====================================================================
+- W10 stopped, correctly, at R977 (Web Ruling 11). Its refactor was green
+  everywhere except two visual baselines, which a latent cascade defect
+  on main had flipped.
+- W10a then made that cascade order-independent on main and regenerated
+  exactly those two baselines, by ruling.
+- W10's code is UNCOMMITTED in C:/wt/fw-calc-bytes, parked and dirty on
+  purpose. It is saved with checksums in
+  C:/wt/fw-calc-bytes/.calcbytes-evidence/increment/:
+  - SHA256SUMS: one line per saved file;
+  - status.txt: the 10 tracked files W10 changed and the 8 it added;
+  - tracked.diff: a patch against 56b7116;
+  - files/: full copies of all 18.
+- That worktree is READ-ONLY to you (R392). Read and copy from it. Never
+  run git in it and never write there.
+- The orchestrator measured two things; RE-CHECK both on your own base,
+  since a claim is not a fact you inherit:
+  - none of the 18 files changed on main between 56b7116 and bfdb1d4;
+  - W10a changed only CalculatorForm.module.scss and
+    comparateur.module.scss, neither of which is among the 18. W11, if it
+    is merged before you start, touches comparateur.module.scss and the
+    comparator's pages, also none of the 18.
+
+R1015. THE INCREMENT, VERIFIED, THEN APPLIED.
+    - Check every line of SHA256SUMS against files/ BEFORE using
+      anything. A mismatch stops the task: hand back.
+    - On your base, run `git apply --check` on tracked.diff. If it
+      applies, apply it, then copy the 8 added files from files/ (the ??
+      lines of status.txt).
+    - If it does not apply, resolve per file by a three-way reading:
+      base = 56b7116's blob, theirs = files/, ours = your base. List each
+      file and how it was resolved. Never overwrite a file that main
+      changed since 56b7116 with the saved copy.
+    - After applying, each of the 18 paths hashes to its SHA256SUMS
+      value, or differs only by a resolution you reported. Paste the
+      comparison.
+    - The commit says the code is W10's, re-applied by W10b.
+
+R1016. THE BYTES AND THE BEHAVIOUR, PROVEN AGAIN ON THE NEW BASE.
+    - R975's before table comes from a fresh build of YOUR base, and
+      R978's after table from a fresh build with the increment. Main's
+      bytes moved after 56b7116, so W10's tables are evidence of their
+      day and are not reused.
+    - R977 holds as written. Every visual baseline passes in the
+      container with ZERO regenerated, and the full e2e suite passes.
+      If any baseline fails, STOP and hand back the failing list and its
+      crops. The cascade is now order-independent, so a re-chunked build
+      must not move a pixel.
+    - The R976 guard's plant (R979) is run again on the new base and
+      verified (R180).
+    - Say how many bytes C9's 97 B header link would now leave spare on
+      the calculator.
+
+R1017. THE CASCADE CENSUS REACHES THE NEW CODE (Web Ruling 14 item 5).
+    Run W10a's R1010 search again over every stylesheet that the
+    increment's components import, and over every SCSS file main gained
+    or changed after a2c502a: a sibling-gap margin rule (`> * + *`,
+    `> * ~ *`, owl-style) whose container's direct children include a
+    component root that resets its own margin at equal specificity.
+    - List each pair you find, with file:line on both sides.
+    - If one is order-dependent, STOP and hand back. Nothing is fixed in
+      this task.
+
+R1018. W10's QUESTIONS, AS RULED.
+    - Q1, the control: answered. W11's gate, on a tree without W10's
+      change, passed both avis-provisoire tests (Web Ruling 11). W10a
+      showed that the build configuration (the dev routes the e2e and
+      visual build includes) decided, not the platform.
+    - Q2: ruled (Web Ruling 11). The uniform gap, made order-independent
+      by W10a.
+    - Q3, liveLinks: it stays OPTIONAL as built, because an absent prop
+      renders the link as TEXT, which is R85's safe direction.
+      - A test asserts that direction: ResultPanel rendered without
+        liveLinks has no anchor at slot 7.
+      - If an absent prop would render a link, the prop becomes required
+        instead and the 17 render calls are edited.
+    - Q4, 'server-only': not added. It is an Ask-first dependency, and the
+      client-chunk scan is the guard.
+    - Q5, size in gate:changed: recorded only. gate:clone runs size.
+    - DEVIATION 1, the edit to tests/unit/meta/island-harness.test.ts, is
+      accepted ONLY in the shape W10 reported. The test still requires
+      the shell's interactive island to declare 'use client' (now
+      ShellNav.tsx), AND requires PublicShell.tsx not to. Paste that
+      test's diff against main. Any assertion removed or weakened beyond
+      that shape is a stop.
+
+R1019. NOTHING ELSE MOVES.
+    - GATE A and every other budget stay unchanged (R2).
+    - No baseline is regenerated.
+    - W10's NOTICED 1-2 are not touched here: lib/fr/shell.ts's two
+      literal paths and middleware.ts's registry import.
+
+====================================================================
+THE WORK
+====================================================================
+0. Worktree from the BASE_SHA in the launch message; lock.
+1. R1015 and R1017 (light: copying, hashing, git apply and reading).
+2. R1016: the before build, the after build and the plant (heavy, under
+   the lock).
+3. gate:changed. It selects e2e and visual, so take the line from the
+   launch message. Its visual run passes with nothing regenerated.
+   Commit; push the branch.
+4. gate:clone ALONE on the tip (it runs size); push.
+5. Report; commit; push; cleanup per Part B; remove the lock last.
+Push the branch after every green increment.
+
+====================================================================
+REPORT - REPORT-FW-CALC-BYTES-2.txt (ASCII, committed and pushed)
+====================================================================
+SUMMARY / STATUS (R391 shape) / R1015-R1019 with evidence and the byte
+tables / WALKTHROUGH (R176: pnpm dev, the shell on four pages, the menu
+open and closed, the footer, the calculator's result links) / NOTICED BUT
+NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+
+END OF FW-CALC-BYTES-RESUME PROMPT

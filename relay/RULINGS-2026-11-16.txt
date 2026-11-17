@@ -647,3 +647,184 @@ DECISION (the orchestrator, under Web Rulings 9 and 10):
 APPLIED: the merge is staged in C:/wt/web-orch with these records.
 gate:changed runs under the priority lock; then the merge commit, then
 the record commit, then gate:clone on the tip.
+
+====================================================================
+WEB RULING 13 - W4 VERIFIED AND MERGED ALONE (ROUND 2); W9 LAUNCHED;
+W13 AND W14 AS CANDIDATES
+====================================================================
+EVIDENCE:
+- W4: fw-db-stopped d1949e0 (code 8b912ab; base a2c502a, behind main
+  bfdb1d4). Its gate:changed: test 3 850; container e2e 354; the
+  database-stopped step 57 of 57. Its gate:clone ALONE on 8b912ab: exit 0.
+- V1: the diff is web/scripts (two new modules and a .d.mts),
+  container-e2e.mjs (+41), gate-selection.mjs (+25, one rule) and two
+  tests. R949's diff of web/app, web/lib, Dockerfile and .dockerignore
+  against a2c502a is empty. merge-tree is clean against bfdb1d4.
+- The step names its containers and network per run, labels them, and
+  REPORTS an earlier run's leftovers without removing them (R334).
+- W4's note: the step's database port is pinned by
+  CONTAINER_DB_STOPPED_PG_PORT; unset, Docker picks a free one. Every run
+  of the session pinned it, and its one unset run was NOT ACQUIRED (NO
+  RESULT). So the default path has never run.
+- V3: the advisor timed out. The orchestrator decided alone and says so.
+DECISION (the orchestrator, under Web Rulings 9 and 10):
+1. W4 is verified. It merges ALONE in round 2, because it blocks W5's
+   launch (the selector area), which is Web Ruling 10's "blocks a launch"
+   clause. It is not batched with W11: W11's union with the container
+   suite would need a line near 7 600 MB, which this machine does not
+   reach with four live sessions.
+2. The merge gate runs the step on its DEFAULT port path, unpinned. The
+   default is the path every later run takes, and a default nobody ran is
+   a setting nobody tested (R345's shape). A failure there is a finding
+   against W4's branch and stops the merge; it is not routed around by
+   pinning.
+3. EXPECTED on the merged tree: test 3 908 (main's 3 869 plus W4's 39).
+   A different count is a finding.
+4. Q1 (selection) and Q4 (a suite of its own) are recorded, not tasked
+   (Web Ruling 9's stop rule): neither shows a defect.
+5. FINDING 1 becomes CANDIDATE W13 FW-AUTH-OUTAGE-ENVELOPE.
+   - The defect: a database outage inside authenticate() answers a bare
+     500 with no code, while api-v1 section 7 documents the 500 codes
+     (read_failed for GET, write_failed for POST) and section 6.5 tells a
+     client to branch on code.
+   - Emitting a documented, frozen code is conformance, not a new
+     decision. Where a route documents no 500 code, the session must stop
+     and ask.
+   - The advisor rules before it launches.
+6. QUESTION 3 becomes CANDIDATE W14 FW-VERIFIER-OUTAGE.
+   - /verifier/[code] answers 500 with no heading while the database is
+     down; the app has no error page of its own above it.
+   - A degraded state must say nothing about the code's validity.
+   - Its French copy is new, so the advisor rules before it launches.
+7. W9 FW-DOCS-EMAIL-FROM is launched from bfdb1d4, port block 3700-3799.
+   It touches no selector file, so it runs beside the selector queue.
+APPLIED: W4's merge is staged in C:/wt/web-orch with these records.
+gate:changed runs under the priority lock with FRONTALIER_PORT=3900;
+then the merge commit, the record commit, and gate:clone on the tip.
+
+====================================================================
+WEB RULING 14 - W13 AND W14 RULED; THE APP'S FLUSH READ; WHERE A RED
+LANDS
+====================================================================
+EVIDENCE:
+- The advisor answered on the second call (the first timed out, Web
+  Ruling 13). Its rulings below are overturnable by the operator.
+- The Android flush, read: android/shared/src/commonMain/kotlin/ch/
+  monreleve/app/data/sync/SyncEngine.kt:102-139 maps the entries POST by
+  STATUS. 200 reconciles; 400 isolates (or FAILED for one item); 409 and
+  413 are FAILED; ANY OTHER STATUS, a codeless 500 included, is
+  Retryable, and the rows stay PENDING. So no queued day is discarded
+  when the server answers a bare 500. The GET path treats a body that is
+  not a whole year like read_failed: the person is told, with a retry
+  (EntriesDownload.kt, R484).
+- container-e2e.mjs takes from the environment only FRONTALIER_PORT,
+  CONTAINER_IMAGE and CONTAINER_E2E_DATABASE_URL (unset here: it then
+  creates monreleve_container_e2e inside frontalier-postgres, the
+  compose server), so web-orch has what it needs. This is web-orch's
+  FIRST test:container:e2e run.
+DECISION (the advisor, under "Advisor decides"):
+1. W13 FW-AUTH-OUTAGE-ENVELOPE is QUEUED as conformance, after W12.
+   - Each bearer route answers the 500 row that its OWN section of
+     docs/api-v1.md already documents: the same status, the same frozen
+     code, nothing new. A route with no documented 500 row is listed in
+     the report and left.
+   - Both directions are asserted. With the database down, the
+     documented code, and never a 401. With it up, an unknown token still
+     gives invalid_token and a missing header still gives missing_token.
+   - It does NOT settle data safety: a proxy answers without the envelope
+     during any restart gap, whatever the server does. What the app does
+     with a codeless 5xx stays an Android re-plan item. It jumps ahead of
+     W12 only if the app discards queued days, and the read above shows
+     it does not.
+2. W14 FW-VERIFIER-OUTAGE is QUEUED, after W13.
+   - With the database down, /verifier/[code] answers 503 with the page's
+     own heading and noindex unchanged, plus one sentence that
+     verification is temporarily unavailable. It says nothing about the
+     code or the document.
+   - The string is new and separate from the unknown-code state (R165).
+     The session authors it in lib/fr; its prompt carries no French
+     (R168). The wording goes on the operator's list.
+   - Both directions are asserted. A stopped database gives this state,
+     never the unknown-code text. An unknown code with the database up is
+     unchanged.
+3. W13 and W14 run one AFTER the other, never side by side. Both put
+   their positive test in W4's verdict module, so in parallel they
+   collide.
+4. WHERE ROUND 2's RED LANDS DECIDES WHAT IT MEANS.
+   - A failure in the step's own port path is the default-path finding
+     of Web Ruling 13 item 2: the "-p 127.0.0.1::5432" run, the
+     "docker port" parse, or the host-side migrate.
+   - A red in the e2e passes is web-orch's ENVIRONMENT until shown
+     otherwise, because W4 ran this selection green on the same content.
+5. THE CASCADE CENSUS REACHES NEW STYLESHEETS. W10a's census read
+   a2c502a, so it never saw W11's stylesheets or W10's parked increment.
+   W11's V1 and W10b's prompt each run the same search over the new SCSS:
+   a sibling-gap rule meeting a component that resets its own margin. The
+   visual gate cannot catch a latent pair, which is how the first one hid.
+6. Web Ruling 13 stands as written: it was true when written.
+APPLIED: these records join round 2's record commit.
+
+====================================================================
+WEB RULING 15 - W10a VERIFIED, MERGING IN ROUND 3; OPERATOR ITEM 5
+CORRECTED; W10b's PROMPT
+====================================================================
+EVIDENCE:
+- W10a: fw-cascade-order 89ab6aa (code e2ee0c6; base a2c502a, behind
+  main). Its gate:changed was green: test 3 811, test:visual 168,
+  test:e2e 367, test:late 10. Its gate:clone ALONE on e2ee0c6 PASSED.
+- V1: the diff is two SCSS rules (with comments) and two PNGs. The
+  census was read. No child of the three stacks sets a margin at (0,2,0),
+  so the heavier selector creates no reverse pair. merge-tree is clean
+  against bfdb1d4, against W4 and against W11.
+- W10a's correction: the build CONFIGURATION decided the cascade, not
+  the platform. Production builds of a2c502a already showed the gap; the
+  dev-routes build that e2e and visual photograph showed "Decompte"
+  flush.
+- W10's saved increment: 18 files; none changed on main between 56b7116
+  and bfdb1d4; W10a and W11 touch none of them.
+DECISION (the orchestrator; the advisor checks W10a with W11's handback):
+1. W10a is verified (V1). It merges in round 3, with W11 if W11 is
+   verified by then. Otherwise it merges alone, since it blocks W10b's
+   launch (Web Ruling 10).
+2. Operator item 5 is corrected. It no longer says main shows the flush
+   look: only the test build did. Nothing is claimed about the live site.
+3. W10a's Q1 is recorded, not tasked: the e2e and visual build includes
+   the dev routes, so its CSS chunking differs from production's, and a
+   baseline can certify a cascade that production lacks. R1014's class
+   guard over the built CSS would close it. It goes to the advisor with
+   the next check.
+4. W10b's prompt is relay/FW-CALC-BYTES-RESUME.txt (R1015-R1019). It
+   launches after round 3, from main. It re-applies W10's increment after
+   verifying its checksums, proves R977 again with zero baselines
+   regenerated, runs the cascade census over the new code (Web Ruling 14
+   item 5), and closes W10's questions as ruled there (liveLinks stays
+   optional because an absent prop renders TEXT; island-harness's edit
+   is accepted only in the shape W10 reported).
+5. W7 FW-VISUAL-FILTER is launched from bfdb1d4, port block 3500-3599.
+   Its R962 assertion goes in its own test file, which may READ the gate
+   scripts, so it is not a selector-touching task and runs beside W5.
+APPLIED: these records join round 2's record commit.
+
+====================================================================
+WEB RULING 16 - W8 VERIFIED, MERGING IN ROUND 3 WITH W10a
+====================================================================
+EVIDENCE:
+- W8: fw-wt-setup-guard 643c48a (code 5941f09; base bfdb1d4). Its
+  gate:changed ran the base chain: test 3 883 (main's 3 869 plus 14).
+  Its gate:clone ALONE on 5941f09 PASSED.
+- V1: the diff is one script removed (_wt-setup.mjs), one guarded
+  (_mint-readback.mjs: read once, judged by judgeTestDatabase from its
+  one home, Prisma imported only after the verdict) and one new test.
+- Its census turns RED if `_wt-setup` appears in a tracked file outside
+  REPORT-*.txt and relay/. No branch in flight (W4, W10a, W11) and no
+  tracked file on the working tree names it there.
+- merge-tree is clean against W4, W10a and W11.
+DECISION (the orchestrator, under Web Rulings 9 and 10):
+1. W8 is verified (V1). It merges in round 3 with W10a: two verified
+   branches wait. W11 joins the round if it is verified by then.
+2. Its Q1 (may a session run the guarded script on its own scratch
+   database for a walkthrough?) is recorded, not tasked; it goes to the
+   advisor with the next check.
+3. The run's records keep `_wt-setup` in relay/ only, so W8's census
+   stays true.
+APPLIED: these records join round 2's record commit.
