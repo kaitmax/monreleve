@@ -1,5 +1,17 @@
 # QUEUE-STATE - the no-phone queue (relay/ORCH-NO-PHONE-QUEUE.txt)
 
+**SECURITY INCIDENT, MEASURED 2026-11-17 ~12:15Z (P2 item 1's baseline; the known condition of
+REPORT-FW-SECRETS.txt, now counted).** The image serving production until the 12:23Z promotion,
+pkptabevr1nhtyygrq0mc8qx:52caca8, carries in its `docker history` RESEND_API_KEY (4 lines) and
+FCM_PRIVATE_KEY (4), plus FCM_CLIENT_EMAIL, FCM_PROJECT_ID, EMAIL_FROM and ANDROID_PACKAGE_NAME
+(4 each); DATABASE_URL and AUTH_SECRET 0; NEXT_PUBLIC_SITE_URL 5 (the presence control). Counts
+only; no value was printed. Scope: the images exist only on the VPS (no registry), so a reader
+needs root there. CONTAINED SO FAR: the six variables were switched to runtime-only through the
+API before the promotion (values hash-verified unchanged), so the new build cannot bake them.
+**NOT CONTAINED until the operator acts:** P2 item 5, rotate RESEND_API_KEY and FCM_PRIVATE_KEY
+(new keys from Resend and Google Cloud) and REVOKE the old ones (5d); then P2 item 4 removes the
+old images. 52caca8's image stays while it is the rollback target.
+
 The queue's memory. After any compaction, or when unsure where the queue is: read this file and
 `relay/RULINGS-2026-11-11.txt` first, re-verify the last DONE step (V1-V2), then continue.
 
