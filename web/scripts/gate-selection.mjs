@@ -1295,6 +1295,31 @@ export const SELECTOR_PATTERNS = Object.freeze([
       containerPdfClosure(PACKAGE_ROOT).has(path),
   },
   {
+    // FW-DB-STOPPED (R947). Plan Checkpoint D item 5's second half - the
+    // public site keeps serving with the database stopped - measured against
+    // the image. container-e2e.mjs runs the step after its own teardown;
+    // the step starts its OWN Postgres (the compose server holds other
+    // worktrees' scratch databases and may never be stopped), stops it, and
+    // reads every sitemap route, /api/health, /api/ready and one
+    // database-backed route; the verdict module decides what they mean.
+    //
+    // A MODULE OF test:container:e2e RATHER THAN A SUITE OF ITS OWN: a new
+    // script in package.json selects EVERY suite on the commit that adds it
+    // (R414), and the image this needs is the one that suite already builds.
+    // R247's shape for the two files: each decides what the suite does.
+    //
+    // NOT HERE, AND RECORDED AS A QUESTION RATHER THAN DECIDED: the pages the
+    // step measures. A page edit that made one read the database is the
+    // defect it exists to catch, and app/** selects the browser suites, not
+    // this one - widening it is a Docker build on every page edit, the same
+    // cost call as W3d's shared-module question (Web Ruling 9).
+    label:
+      'the database-stopped step of the container e2e suite: the module that runs it and the verdict it reads (R947)',
+    suites: Object.freeze(['test:container:e2e']),
+    matches: (path) =>
+      path === 'scripts/container-db-stopped.mjs' || path === 'scripts/container-db-stopped-verdict.mjs',
+  },
+  {
     label: 'the scheduler probe, which defines that suite (R247)',
     suites: Object.freeze(['test:container:scheduler']),
     matches: (path) => path === 'scripts/container-scheduler.mjs',
