@@ -214,6 +214,20 @@ export const PERSONAL_DATA: Readonly<Record<string, Disclosure>> = {
   'SessionToken.createdAt': 'credentials',
   'SessionToken.consumedAt': 'credentials',
 
+  // FW-WEB-ACCOUNT (R899): the website's session, one line of its own. Every
+  // column is true of a clause of that line - when it began, when it expires,
+  // whether it ended by a sign-out (revokedAt, revokedReason), the hashed
+  // identifier the browser holds (tokenHash), and the person and row it is.
+  // NOT mapped onto 'sessions' / 'credentials' (Queue Ruling 12): those speak
+  // of devices and rotation, which a web session has neither of.
+  'WebSession.id': 'webSession',
+  'WebSession.userId': 'webSession',
+  'WebSession.tokenHash': 'webSession',
+  'WebSession.createdAt': 'webSession',
+  'WebSession.expiresAt': 'webSession',
+  'WebSession.revokedAt': 'webSession',
+  'WebSession.revokedReason': 'webSession',
+
   // The address plus a hashed link, held while the link is outstanding. It
   // exists BEFORE any account does, which is why it is disclosed by the
   // public-site sentence rather than by the account enumeration: there is no

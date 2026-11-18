@@ -1042,12 +1042,17 @@ describe("R990: what the container PDF step renders and reads selects it (R267's
     expect([...closure].sort()).toEqual([
       // What the print page and the export route ALONE render through: every
       // product importer of each is already in this list.
+      // FW-WEB-ACCOUNT (W12, Web Ruling 37 R1071): the account area's PDF
+      // download is the third entry point, and the module it shares with the
+      // API route is rendered through by nothing else.
+      'app/(account)/mon-releve/export/pdf/route.ts',
       'app/api/v1/export/pdf/route.ts',
       'app/releve/print/page.tsx',
       'app/releve/print/print.module.scss',
       'lib/export/pdf.ts',
       'lib/export/print-token.ts',
       'lib/export/render-queue.ts',
+      'lib/export/respond-pdf.ts',
       'lib/issuance/record.ts',
       'lib/ui/react/index.ts',
       'lib/verification/origin.ts',

@@ -28,6 +28,16 @@ const NB = String.fromCharCode(0x00a0);
 /** A punctuation mark with the no-break space French sets before it (R91). */
 const n = (mark: string): string => `${NB}${mark}`;
 
+/**
+ * WHERE TO TYPE THE CODE, IN WORDS TRUE FOR BOTH CLIENTS (FW-WEB-ACCOUNT,
+ * Queue Ruling 13 item 6). The same mail answers a sign-in asked from the
+ * application and one asked from the website's account area, and it used to
+ * say "dans l'application" - which sends a person standing on the website's
+ * code page to an app they may not have. Written generic once (R165), not
+ * lifted per client: the code goes wherever it was asked for.
+ */
+const AUTH_EMAIL_COPY_CODE_INSTRUCTION = `Ou saisissez ce code là où il vous est demandé${n(':')}`;
+
 export const AUTH_EMAIL_COPY = {
   signIn: {
     /**
@@ -35,6 +45,9 @@ export const AUTH_EMAIL_COPY = {
      * what this is, then whose.
      */
     subject: `Votre lien de connexion ${APP_NAME}`,
+
+    /** The line before the code (Queue Ruling 13 item 6). Asserted on the mail a web sign-in produces. */
+    codeInstruction: AUTH_EMAIL_COPY_CODE_INSTRUCTION,
 
     /**
      * The body, as lines. Kept as an array so a test can assert what is in it
@@ -59,7 +72,7 @@ export const AUTH_EMAIL_COPY = {
       `Voici votre lien de connexion${n(':')}`,
       signInUrl,
       ``,
-      `Ou saisissez ce code dans l${APOS}application${n(':')}`,
+      AUTH_EMAIL_COPY_CODE_INSTRUCTION,
       code,
       ``,
       `Le lien et le code sont valables ${minutes}${NB}minutes et ne fonctionnent ` +

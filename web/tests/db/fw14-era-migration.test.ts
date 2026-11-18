@@ -356,6 +356,8 @@ describe('the FW21 migration on an FW14-era database', () => {
       'SessionToken',
       'User',
       'VerificationToken',
+      // FW-WEB-ACCOUNT (R899): additive, alongside like every table above.
+      'WebSession',
       '_prisma_migrations',
     ]);
   });
@@ -400,6 +402,12 @@ describe('the FW21 migration on an FW14-era database', () => {
       'SessionToken_consumed_after_created',
       'User_employmentRate_range',
       'User_exactTotalWorkDays_iff_exact',
+      // FW-WEB-ACCOUNT (R899, R196): the four hand-written below Prisma's
+      // output, each asserted both ways in tests/db/web-session.test.ts.
+      'WebSession_revoked_after_created',
+      'WebSession_revoked_pair',
+      'WebSession_short_life',
+      'WebSession_token_hash_shape',
     ]);
   });
 

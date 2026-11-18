@@ -35,7 +35,10 @@ import { LAST_REGULATORY_REVIEW, reviewNotice } from '@/lib/content/regulatory';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { PRODUCT_STATE } from '@/lib/content/product-state';
 import {
+  ACCOUNT_ROUTE,
+  ACCOUNT_SIGN_IN_PATH,
   CALCULATOR_PATH,
+  accountHrefIfLive,
   collapseLoneDisclosures,
   ctaHrefIfLive,
   ctaHrefIfOffered,
@@ -836,5 +839,41 @@ describe('the review date never lies (R51)', () => {
     expect(screen.getByRole('contentinfo').textContent ?? '').toContain(
       reviewNotice(LAST_REGULATORY_REVIEW),
     );
+  });
+});
+
+describe('the sign-in link, rendered by the server shell itself (FW-WEB-ACCOUNT, W12)', () => {
+  it('sits in the header bar, outside the phone panel, and leads to step one', () => {
+    renderShell();
+
+    const link = screen.getByRole('link', { name: SHELL_COPY.signIn });
+
+    expect(link.getAttribute('href')).toBe(ACCOUNT_SIGN_IN_PATH);
+    expect(link.closest('header')).not.toBeNull();
+    expect(link.closest('[data-mobile-panel]')).toBeNull();
+  });
+
+  it('is rendered exactly once, by the shell - no layout has to remember to pass it', () => {
+    renderShell();
+
+    expect(screen.getAllByRole('link', { name: SHELL_COPY.signIn })).toHaveLength(1);
+  });
+
+  it('is absent while the area is not live (R85): the href is null, so nothing renders', () => {
+    expect(accountHrefIfLive({ ...ACCOUNT_ROUTE, status: 'planned' })).toBeNull();
+    expect(accountHrefIfLive(ACCOUNT_ROUTE)).toBe(ACCOUNT_ROUTE.status === 'live' ? ACCOUNT_SIGN_IN_PATH : null);
+  });
+
+  // THE BYTES (R2, R1065). The link costs the client nothing only while it stays
+  // out of the shell's one client module: ShellNav.tsx ships to every public
+  // page, and the calculator has the least GATE A headroom. The server shell
+  // renders the link; the client leaves never import it, its icon or its branch.
+  it('stays out of the client module (ShellNav.tsx): no SignInLink, no LogIn icon, no branch', () => {
+    const client = readFileSync(join(DIR, 'ShellNav.tsx'), 'utf8');
+
+    expect(client).toMatch(/^'use client';/u);
+    expect(client).not.toMatch(/SignInLink/u);
+    expect(client).not.toMatch(/\bLogIn\b/u);
+    expect(client).not.toMatch(/accountHrefIfLive/u);
   });
 });

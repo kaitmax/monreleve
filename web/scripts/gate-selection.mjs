@@ -436,6 +436,10 @@ export function databaseClosure(root) {
 const PRINT_ENTRY_POINTS = Object.freeze([
   'app/releve/print/page.tsx',
   'app/api/v1/export/pdf/route.ts',
+  // FW-WEB-ACCOUNT (W12, Web Ruling 37 R1071): the account area's PDF download
+  // renders through the same pipeline (lib/export/respond-pdf.ts), so it is a
+  // third entry point of the same step - R246's designed extension.
+  'app/(account)/mon-releve/export/pdf/route.ts',
 ]);
 
 /** The package's test directories. Nothing in them makes a module shared. */

@@ -30,6 +30,7 @@
 
 import { LAST_REGULATORY_REVIEW } from './regulatory';
 import { CALCULATOR_PATH, COMPARATOR_PATH, RESULT_PATH } from './route-paths';
+import { PRODUCT_STATE } from './product-state';
 
 // THE SLUGS LIVE IN ./route-paths, A LEAF, SINCE FW-CALC-BYTES (R976). This file
 // is the registry, and a client module that imported a path from here shipped
@@ -85,6 +86,72 @@ export interface PublicRoute {
  * R52's placeholders, one directory over.
  */
 export const UNASSIGNED_TASK = 'UNASSIGNED';
+
+/**
+ * FW-WEB-ACCOUNT (R898-R900): the website's read-only account area, and the
+ * Path its one cookie is scoped to.
+ *
+ * DELIBERATELY ABSENT FROM PUBLIC_ROUTES, like RESULT_PATH. That registry feeds
+ * the sitemap and every registry-driven "public page" loop, and this area is
+ * the one place a public-page guarantee does NOT hold - it sets a cookie. The
+ * two sets are asserted disjoint in tests/unit/content/account-path.test.ts.
+ *
+ * THE PATH IS ALSO THE COOKIE'S SCOPE, and that is why it is pinned. RFC 6265
+ * sends a cookie with Path=/mon-releve to /mon-releve and /mon-releve/... and
+ * to nothing else - not /mon-relevex, not /releve-annuel, not /releve/print.
+ * The same test runs RFC 6265's path-match against every public route and
+ * requires none to match. Renaming it is a published URL changing AND every
+ * signed-in browser losing its session, so a rename is a failing test first.
+ *
+ * Not indexed: the pages emit noindex. NOT added to NON_INDEXED, which R53
+ * fixes at three prefixes "and no more" - and a robots disallow would stop a
+ * crawler reading the noindex anyway.
+ */
+export const ACCOUNT_PATH = '/mon-releve';
+
+/**
+ * Step one of the area's sign-in, and the header link's target.
+ *
+ * NOT ACCOUNT_PATH ITSELF, measured: the signed-in page answers a signed-out
+ * reader - every crawler, and every reader of a public page, since a public
+ * page never carries the cookie - with a 307 to this page, and the home page's
+ * link walk (R713, e2e/home.spec.ts) rightly counts a link that redirects as
+ * one that does not resolve. This page answers 200 to a signed-out reader and
+ * sends a signed-in one on to the area.
+ */
+export const ACCOUNT_SIGN_IN_PATH = `${ACCOUNT_PATH}/connexion`;
+
+/**
+ * The account area's own registry entry: a status for R85, and no sitemap fields.
+ *
+ * NO task FIELD (W12). C9 gave it one; since FW-CALC-BYTES (R976) every literal
+ * task string in this file is a probe the client-registry leak check looks
+ * for in client chunks, and the probes must be PUBLIC_ROUTES' own
+ * (tests/unit/meta/client-registry-leak.test.ts). This entry is not a public
+ * route, and nothing read the field.
+ */
+export interface AccountRoute {
+  readonly path: string;
+  readonly status: RouteStatus;
+}
+
+/**
+ * Whether the account area is offered.
+ *
+ * DERIVED, NOT TYPED (R172). PRODUCT_STATE.webAccountExists is the one fact;
+ * this status, the header's sign-in link (R85: it renders only when its target
+ * is live) and the privacy notice's cookie sentence all read it, so the link
+ * and the sentence that discloses the cookie behind it cannot disagree.
+ */
+export const ACCOUNT_ROUTE: AccountRoute = {
+  path: ACCOUNT_PATH,
+  status: PRODUCT_STATE.webAccountExists ? 'live' : 'planned',
+};
+
+/** R85 for the header's sign-in link: step one of the sign-in, or null while the area is not live. */
+export function accountHrefIfLive(route: AccountRoute = ACCOUNT_ROUTE): string | null {
+  return route.status === 'live' ? ACCOUNT_SIGN_IN_PATH : null;
+}
 
 export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   // ---- live today -------------------------------------------------------

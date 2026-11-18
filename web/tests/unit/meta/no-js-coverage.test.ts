@@ -152,6 +152,14 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   // FW-HOME-A2 (R711): the home counter's GET form, the A2 page's no-JS
   // journey - home.nojs.spec.ts submits it with scripting off.
   'lib/ui/react/HomeCounter/HomeCounter.tsx': 'home.nojs.spec.ts',
+  // FW-WEB-ACCOUNT (R901-R903): the account area is plain POST forms answered
+  // by 303s - no client script at all - so its whole journey is a no-JS one,
+  // and mon-releve.nojs.spec.ts drives it with scripting off: both sign-in
+  // steps, the signed-in page and sign-out.
+  'app/(account)/mon-releve/connexion/page.tsx': 'mon-releve.nojs.spec.ts',
+  'app/(account)/mon-releve/connexion/code/page.tsx': 'mon-releve.nojs.spec.ts',
+  // The signed-in page's forms (both downloads, sign-out) live in its view.
+  'app/(account)/mon-releve/SignedIn.tsx': 'mon-releve.nojs.spec.ts',
   'app/releve/print/page.tsx': {
     why:
       'The print document is rendered by Chromium to a PDF on the server and ' +

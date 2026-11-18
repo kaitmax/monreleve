@@ -219,15 +219,30 @@ function logReplayDelta(consumedAt: Date): void {
   }
 }
 
-/** End every session a person has. Sign-out-everywhere, and FW26's deletion. */
+/**
+ * End every session a person has. Sign-out-everywhere, and FW26's deletion.
+ *
+ * FW-WEB-ACCOUNT: "EVERY" INCLUDES THE WEBSITE. Since R899 a person can also
+ * hold a session in a browser, on the account area, and "déconnexion de tous
+ * les appareils" that left it running would be a sentence the product does
+ * not keep. One transaction, one instant: both tables or neither.
+ */
 export async function revokeAllSessions(
   userId: string,
   reason: SessionRevocation,
 ): Promise<void> {
-  await prisma.deviceSession.updateMany({
-    where: { userId, revokedAt: null },
-    data: { revokedAt: new Date(), revokedReason: reason },
-  });
+  const now = new Date();
+
+  await prisma.$transaction([
+    prisma.deviceSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now, revokedReason: reason },
+    }),
+    prisma.webSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now, revokedReason: reason },
+    }),
+  ]);
 }
 
 /**

@@ -47,6 +47,7 @@ import { A_PROPOS_COPY } from '@/lib/fr/a-propos';
 import { LEGAL_COPY } from '@/lib/fr/legal';
 import { RELEVE_COPY } from '@/lib/fr/releve-annuel';
 import { TARIFS_COPY } from '@/lib/fr/tarifs';
+import { CONFIDENTIALITE_COPY } from '@/lib/fr/confidentialite';
 import {
   CLAIM_PATTERNS,
   EXEMPT,
@@ -246,6 +247,21 @@ const EVIDENCE: Record<keyof ProductState, Flag> = {
       'real signing decision to flip.',
     check: () => androidReleaseIsSigned(),
   },
+
+  webAccountExists: {
+    capability:
+      'A reader can sign in on the website by a code sent by e-mail and read their year, read-only.',
+    proxy: 'app/(account)/mon-releve/page.tsx and the code step that opens a session',
+    last:
+      'FW-WEB-ACCOUNT (R898-R903). The WebSession table, the cookie module and the ' +
+      'sign-in pages all precede it; the code-step handler is what turns a proven ' +
+      'code into a session, and the page is what a signed-in reader opens. Both ' +
+      'must exist: a page with no way in is a link to a sign-in form that cannot ' +
+      'finish, and the header link and the notice cookie sentence both follow this.',
+    check: () =>
+      existsSync(join(WEB, 'app', '(account)', 'mon-releve', 'page.tsx')) &&
+      existsSync(join(WEB, 'app', '(account)', 'mon-releve', 'connexion', 'verification', 'route.ts')),
+  },
 };
 
 describe('the flags are facts, checked against the code', () => {
@@ -427,6 +443,20 @@ const WIRING: ReadonlyArray<{
         where: '/tarifs positionDetail',
         file: 'tarifs.ts',
         render: (s) => TARIFS_COPY.positionDetail(s),
+      },
+    ],
+  },
+  {
+    // FW-WEB-ACCOUNT (R172, Queue Ruling 12 condition 4): the privacy notice's
+    // public-site section gains the account area's cookie sentence exactly
+    // while the area exists. The header link follows the same fact through
+    // ACCOUNT_ROUTE (tests/unit/content/account-path.test.ts asserts it).
+    flag: 'webAccountExists',
+    wired: [
+      {
+        where: '/confidentialite public-site section',
+        file: 'confidentialite.ts',
+        render: (s) => CONFIDENTIALITE_COPY.webFor(s).join(' '),
       },
     ],
   },

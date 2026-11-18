@@ -63,6 +63,11 @@ export const PRINT_TOKEN_TTL_MS = 120 * 1000;
  * rather than carrying a copy. Every existing importer is unaffected.
  */
 import { PLACEHOLDER_SECRET } from '@/lib/deploy/placeholders.mjs';
+// THE SIGNING KEY'S ONE READER moved to lib/auth/secret.ts (FW-WEB-ACCOUNT, W12):
+// the website's sign-in derives its step key from the same secret, and a leaf
+// both import keeps one answer to which values count as unset (R206) without
+// making the sign-in an importer of this module.
+import { authSecret } from '@/lib/auth/secret';
 
 export { PLACEHOLDER_SECRET };
 
@@ -76,23 +81,6 @@ export type PrintTokenFailure =
 export type PrintTokenResult =
   | { readonly ok: true; readonly userId: string; readonly year: number }
   | { readonly ok: false; readonly code: PrintTokenFailure };
-
-/**
- * The signing key, or null when there is not one.
- *
- * IT RETURNS NULL RATHER THAN FALLING BACK. R205's shape applied to a key: a
- * route that signs with a default is worse than a route that refuses, because
- * the refusal is visible and the default is not. An unset secret is a
- * deployment that is not finished, and the honest answer is to say so.
- */
-function secret(): string | null {
-  const value = process.env.AUTH_SECRET;
-
-  if (value === undefined || value === '') return null;
-  if (value === PLACEHOLDER_SECRET) return null;
-
-  return value;
-}
 
 function sign(payload: string, key: string): string {
   return createHmac('sha256', key).update(payload).digest('base64url');
@@ -118,7 +106,7 @@ function sameSignature(a: string, b: string): boolean {
  * `not_configured` rather than serving something unsigned.
  */
 export function mintPrintToken(userId: string, year: number, now = Date.now()): string | null {
-  const key = secret();
+  const key = authSecret();
 
   if (key === null) return null;
 
@@ -139,7 +127,7 @@ export function readPrintToken(
   year: number,
   now = Date.now(),
 ): PrintTokenResult {
-  const key = secret();
+  const key = authSecret();
 
   if (key === null) return { ok: false, code: 'not_configured' };
   if (token === null || token === '') return { ok: false, code: 'missing_token' };

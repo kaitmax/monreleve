@@ -21,6 +21,7 @@ import {
   type LegalEntityField,
 } from '@/lib/content/legal-entity';
 import { CONFIDENTIALITE_COPY as COPY } from '@/lib/fr/confidentialite';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { LEGAL_ENTITY_TERMS } from '@/lib/fr/mentions-legales';
 import { Container } from '@/lib/ui/react/Container/Container';
 import styles from '../legal.module.scss';
@@ -104,7 +105,10 @@ export function ConfidentialiteContent({ entity }: ConfidentialiteContentProps) 
         <EntityList entity={entity} fields={CONTROLLER_FIELDS} />
 
         <h2 className={styles.heading}>{COPY.webHeading}</h2>
-        <Bullets items={COPY.web} />
+        {/* FW-WEB-ACCOUNT (R900): the section as the product state makes it
+            true - the account area's cookie sentence appears only while the
+            area exists (R172). */}
+        <Bullets items={COPY.webFor(PRODUCT_STATE)} />
 
         <h2 className={styles.heading}>{COPY.appHeading}</h2>
         <p className={styles.prose}>{COPY.appIntro}</p>

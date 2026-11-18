@@ -199,6 +199,30 @@
   white-space: nowrap;
 }
 
+// FW-WEB-ACCOUNT (R901): THE WAY INTO THE ACCOUNT AREA. On a phone, an icon
+// button the size and border of the menu button, pushed to the bar's right
+// edge; its text is visually hidden by the global utility (the TSX applies
+// u-visually-hidden) so the accessible name is the same at every width.
+.signIn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-icon-button);
+  height: var(--size-icon-button);
+  margin-left: auto;
+  border: var(--size-rule) solid var(--colour-border-strong);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--colour-brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.signInIcon {
+  width: var(--size-icon-lg);
+  height: var(--size-icon-lg);
+}
+
 // THE PANEL HANGS OFF THE DISCLOSURE (design/home's phone view): absolute, so
 // opening the menu does not push the page down and shift what the reader was
 // looking at. It was a full-width block under the bar until FW-SHELL-BURGER.
@@ -298,6 +322,40 @@
   .cta {
     height: var(--size-button-height);
     margin-left: 0;
+  }
+
+  // THE A2 PILL (docs/design/home-a2.dc.html: brand fill, surface text, a
+  // full radius). The type is the body-m family whole, like the CTA (R70: no
+  // size from one family and weight from another) - the design's 600 is the
+  // h3 family's, at a size the header does not use. It follows the nav at the bar's gap, like the
+  // CTA, and its text comes back while the icon goes.
+  .signIn {
+    width: auto;
+    height: var(--size-button-height);
+    margin-left: 0;
+    padding: 0 var(--space-5);
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--colour-brand);
+    color: var(--colour-surface);
+    font-size: var(--type-body-m-size);
+    font-weight: var(--type-body-m-weight);
+    line-height: var(--type-body-m-line);
+  }
+
+  .signInIcon {
+    display: none;
+  }
+
+  // Undoes u-visually-hidden. Two classes, so it wins over the global one
+  // whatever order the stylesheets load in.
+  .signIn .signInText {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
   }
 }
 

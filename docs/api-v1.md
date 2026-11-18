@@ -1636,6 +1636,7 @@ in this API breaks on this route. The top level is still an **object**, so
 | `devices` | one row per registered device | `createdAt` ascending |
 | `reminders` | one row per reminder actually sent | `sentOn` ascending |
 | `sessions` | every sign-in ever made, including the ended ones | `createdAt` ascending |
+| `webSessions` | every sign-in on the website's account area (FW-WEB-ACCOUNT, additive under R217) | `createdAt` ascending |
 
 **Everything is ordered, so two exports of an unchanged account differ only in
 `exportedAt`.** An export that shuffled its rows between downloads would be
@@ -1715,6 +1716,7 @@ which is the natural key of an entry. There is nothing else to join on: these
 | `devices` | `platform`, `createdAt` | **the FCM token**, and the `id`, `appVersion` and `lastSeenAt` §10 returns on registration |
 | `reminders` | `sentOn`, `sentAt` | anything about what the reminder said |
 | `sessions` | `createdAt`, `lastUsedAt`, `revokedAt`, `revokedReason` | the token hashes |
+| `webSessions` | `createdAt`, `expiresAt`, `revokedAt`, `revokedReason` | the token hash |
 
 **A push token is not a fact about the person.** It is how the server
 *addresses* a device, and the same reasoning excludes the session token hashes:

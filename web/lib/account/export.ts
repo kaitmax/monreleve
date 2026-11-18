@@ -99,6 +99,13 @@ export const EXPORTED = {
   // FW-VERIFY (R331). The dates the holder name changed are the person's data;
   // the former value is not stored, so the export carries only the dates.
   NameChange: 'nameChanges',
+  // FW-WEB-ACCOUNT (R899). Every sign-in on the website's account area, for the
+  // reason DeviceSession is here: the person can see every time their account
+  // was opened, and how each session ended. ADDITIVE (R217): a new key, no
+  // field of an existing one moved. The token HASH is not exported, as for
+  // DeviceSession's tokens - a credential-shaped artefact in a file somebody
+  // e-mails is a liability, not information.
+  WebSession: 'webSessions',
 } as const;
 
 /**
@@ -137,6 +144,7 @@ export interface AccountExport {
   readonly reminders: readonly Record<string, unknown>[];
   readonly issuances: readonly Record<string, unknown>[];
   readonly nameChanges: readonly Record<string, unknown>[];
+  readonly webSessions: readonly Record<string, unknown>[];
 }
 
 const day = (value: Date): string => value.toISOString().slice(0, 10);
@@ -151,7 +159,7 @@ const instant = (value: Date | null): string | null =>
  * is the first thing somebody checking a record wants to do.
  */
 export async function buildAccountExport(userId: string): Promise<AccountExport> {
-  const [user, entries, trail, devices, sessions, reminders, issuances, nameChanges] =
+  const [user, entries, trail, devices, sessions, reminders, issuances, nameChanges, webSessions] =
     await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: ME_SELECT }),
     prisma.entry.findMany({
@@ -167,6 +175,7 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       orderBy: [{ taxYear: 'asc' }, { version: 'asc' }],
     }),
     prisma.nameChange.findMany({ where: { userId }, orderBy: { changedAt: 'asc' } }),
+    prisma.webSession.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
   ]);
 
   return {
@@ -251,6 +260,14 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
     // FW-VERIFY (R331): the dates only. There is no former name to carry.
     nameChanges: nameChanges.map((change) => ({
       changedAt: change.changedAt.toISOString(),
+    })),
+
+    // FW-WEB-ACCOUNT (R899): no token hash, as for the device sessions.
+    webSessions: webSessions.map((session) => ({
+      createdAt: session.createdAt.toISOString(),
+      expiresAt: session.expiresAt.toISOString(),
+      revokedAt: instant(session.revokedAt),
+      revokedReason: session.revokedReason,
     })),
   };
 }

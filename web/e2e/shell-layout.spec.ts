@@ -48,20 +48,42 @@ test.describe('the header, on desktop', () => {
     // phone menu's panel, which comes FIRST in the DOM because FD2 draws the
     // hamburger first - so the loose selector started measuring a list that
     // is display:none at this width, and reported a correct header as broken.
+    //
+    // FW-WEB-ACCOUNT: THE BAR MAY END WITH AN ACTION. The sign-in link (and the
+    // CTA, the day it renders) follows the nav at the bar's gap, as the A2
+    // header draws "Se connecter" after the last nav item. So the property is
+    // stated for both shapes: the RIGHT-MOST visible thing in the bar sits on
+    // the content edge, and when that is an action rather than the nav, the nav
+    // ends exactly one bar gap before it - centre-right, never mid-bar.
     const edges = await page.evaluate((navLabel) => {
       const bar = document.querySelector('header > div');
-      const list = document.querySelector(`header nav[aria-label="${navLabel}"] ul`);
+      const navElement = document.querySelector(`header nav[aria-label="${navLabel}"]`);
+      const list = navElement?.querySelector('ul') ?? null;
 
-      if (bar === null || list === null) return null;
+      if (bar === null || navElement === null || list === null) return null;
 
       const box = bar.getBoundingClientRect();
-      const padding = Number.parseFloat(getComputedStyle(bar).paddingRight);
+      const style = getComputedStyle(bar);
+      const visible = [...bar.children].filter((child) => getComputedStyle(child).display !== 'none');
+      const after = visible.slice(visible.indexOf(navElement) + 1)[0] ?? null;
 
-      return { content: box.right - padding, nav: list.getBoundingClientRect().right };
+      return {
+        content: box.right - Number.parseFloat(style.paddingRight),
+        rightmost: visible.at(-1)?.getBoundingClientRect().right ?? 0,
+        nav: list.getBoundingClientRect().right,
+        gap: Number.parseFloat(style.columnGap),
+        nextLeft: after === null ? null : after.getBoundingClientRect().left,
+      };
     }, SHELL_COPY.navLabel);
 
     expect(edges, 'no bar or no nav list was found').not.toBeNull();
-    expect(Math.abs((edges?.content ?? 0) - (edges?.nav ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((edges?.content ?? 0) - (edges?.rightmost ?? 0))).toBeLessThanOrEqual(1);
+
+    if (edges?.nextLeft === null || edges?.nextLeft === undefined) {
+      expect(Math.abs((edges?.content ?? 0) - (edges?.nav ?? 0))).toBeLessThanOrEqual(1);
+    } else {
+      expect(Math.abs(edges.nextLeft - edges.nav - edges.gap)).toBeLessThanOrEqual(1);
+    }
   });
 
   test('RED: nav items are 32 px apart (FD11 section 1)', async ({ page }) => {

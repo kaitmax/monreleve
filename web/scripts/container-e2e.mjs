@@ -526,8 +526,14 @@ try {
     // SERVING_DECLARATION is the same kind of claim (R931): this process
     // started an image marked as serving, and home.spec.ts checks the server
     // agrees before asserting the serving state of /api/ready.
+    // DATABASE_URL IS THE CONTAINER'S (W12, FW-WEB-ACCOUNT): the account-area
+    // specs seed their person and read the request row through
+    // e2e/support/database.ts, and must reach the database the container
+    // serves from - as the vitest passes below already do. Inherited, it named
+    // the session's own scratch database, so the server never saw the person.
     env: {
       ...process.env,
+      DATABASE_URL: toolUrl,
       FRONTALIER_PORT: PORT,
       FRONTALIER_SERVER_IS_OURS: '1',
       [SERVING_DECLARATION]: '1',

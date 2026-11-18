@@ -812,6 +812,11 @@ describe('every colour rule in the five stylesheets, at the bar its size implies
       // are the page's own pairs, so the audit's ratios are unchanged.
       '(public)/calculateur-lamal-cmu/comparateur .reminderError -> --colour-canvas',
       '(public)/calculateur-lamal-cmu/comparateur .reminderHint -> --colour-canvas',
+
+      // FW-WEB-ACCOUNT (W12): each year's heading sits on the year card's
+      // surface fill, and arrived here by failing this assertion. Text-primary
+      // on the surface is the page's own pair, so the ratio is unchanged.
+      '(account)/mon-releve/mon-releve .yearHeading -> --colour-surface',
     ].sort());
   });
 

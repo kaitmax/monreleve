@@ -173,7 +173,9 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
       // added two, both R91 no-break spaces in new copy - one before the colon
       // that opens what the service keeps, one before the semicolon that
       // introduces the purge of an unconfirmed request.
-      'lib/fr/confidentialite.ts': 25,
+      // 25 -> 26 in FW-WEB-ACCOUNT (R899, W12): DISCLOSED_RECORDS.webSession
+      // added one, before the semicolon that ends the web-session bullet.
+      'lib/fr/confidentialite.ts': 26,
       'lib/fr/errors.ts': 2,
       // FW18b: FOUR BECAME TWO, and the two that left are the point. R147
       // now reaches lib/fr, so the home description no longer types "40 %"
@@ -233,7 +235,9 @@ describe('the whitespace codepoints in French copy are on the record (R66)', () 
     // FW-DELAI-RAPPEL: 44 -> 46. DISCLOSED_RECORDS.deadlineReminder carries
     // two, the colon and the semicolon of the third case, and the per-file
     // map above moved in step.
-    expect(occurrences).toHaveLength(46);
+    // FW-WEB-ACCOUNT (W12): 46 -> 47. DISCLOSED_RECORDS.webSession's semicolon,
+    // and the per-file map above moved in step.
+    expect(occurrences).toHaveLength(47);
   });
 
   it('puts every one of them immediately before : ; ? ! or %', () => {

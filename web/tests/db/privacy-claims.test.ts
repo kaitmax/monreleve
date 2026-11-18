@@ -31,7 +31,7 @@
 import { TEST_ORIGIN } from '../../lib/content/identity';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
 import { GET as exportRoute } from '@/app/api/v1/account/export/route';
@@ -59,6 +59,19 @@ import { resetRateLimit } from '@/lib/alerts/rate-limit';
 import { POST as registerDevice } from '@/app/api/v1/devices/route';
 import { runDailyReminders } from '@/lib/reminders/job';
 import { FakeTransport } from '@/lib/reminders/transport';
+import { PRODUCT_STATE } from '@/lib/content/product-state';
+import { ACCOUNT_PATH } from '@/lib/content/routes';
+import { SESSION_COOKIE, SESSION_COOKIE_NAME } from '@/lib/web-account/cookie';
+import { accountSessionFrom } from '@/lib/web-account/session';
+import { cookieReadsOutsideTheArea, entryPointsReachingTheCookie } from '@/tests/support/account-cookie-scope';
+import { cookiePairOf, setCookies, signInOnSite, signOutOnSite } from '@/tests/support/web-account';
+
+// next/server's after() as a queue: step one sends a known address's mail after
+// its response (Web Ruling 37, R1072). tests/support/after-work.ts says why.
+vi.mock('next/server', async (original) => ({
+  ...(await original<typeof import('next/server')>()),
+  after: (await import('@/tests/support/after-work')).queueAfter,
+}));
 
 /** Written once: a literal escape in a heredoc has bitten this session three times. */
 const NEWLINE = String.fromCharCode(10);
@@ -107,15 +120,96 @@ function subscribePost(email: string): NextRequest {
 /** Every sentence on the page, flattened, so a claim can be located in it. */
 const pageText = (): string =>
   [
-    ...CONFIDENTIALITE_COPY.web,
+    // AS RENDERED: the section the page shows for today's product state (R172).
+    ...CONFIDENTIALITE_COPY.webFor(PRODUCT_STATE),
     ...CONFIDENTIALITE_COPY.basis,
     ...CONFIDENTIALITE_COPY.retention,
   ].join(' ');
 
-describe('CLAIM 1: the public site sets no cookie and asks for no account', () => {
-  it('is still on the page', () => {
+// ============================================================================
+// CLAIM 1, REWRITTEN BY FW-WEB-ACCOUNT (R900, Queue Ruling 12 condition 1)
+// ============================================================================
+//
+// WHAT IT ASSERTED BEFORE: a phrase match - noCookies contains "aucun cookie"
+// and "aucun compte" - and ONE route, the alert subscription, answering with
+// no Set-Cookie. That held the words, not the claim: a sentence keeping both
+// phrases while the site set a cookie would have passed.
+//
+// WHAT IT ASSERTS NOW: each claim the two sentences make is held by a test of
+// the behaviour, tied to R900's pair -
+//   "public pages set no cookie"      no public route's module graph reaches or
+//                                     reads the cookie (the static census), and
+//                                     the subscription answers with none;
+//   "one session cookie, only there"  the account area's sign-in sets exactly
+//                                     one, with the attributes it states;
+//   "effacé à la déconnexion"         sign-out clears it and ends the session;
+//   "jamais envoyé aux pages          its Path is the account path, which no
+//    publiques"                       public route path-matches (asserted in
+//                                     tests/unit/content/account-path.test.ts,
+//                                     and the browser crawl in
+//                                     e2e/mon-releve.spec.ts);
+// and the exception appears on the page exactly while the area exists (R172).
+describe('CLAIM 1: public pages set no cookie; the account area sets one session cookie', () => {
+  it('is on the page as the product state makes it true, the exception right after the rule', () => {
+    const web = CONFIDENTIALITE_COPY.webFor(PRODUCT_STATE);
+
+    expect(web).toContain(WEB_STATEMENTS.noCookies);
+    expect(web.includes(WEB_STATEMENTS.accountCookie)).toBe(PRODUCT_STATE.webAccountExists);
+
+    if (PRODUCT_STATE.webAccountExists) {
+      expect(web.indexOf(WEB_STATEMENTS.accountCookie)).toBe(web.indexOf(WEB_STATEMENTS.noCookies) + 1);
+    }
+  });
+
+  it('drops the exception when the area does not exist, and keeps the rule', () => {
+    const web = CONFIDENTIALITE_COPY.webFor({ ...PRODUCT_STATE, webAccountExists: false });
+
+    expect(web).toContain(WEB_STATEMENTS.noCookies);
+    expect(web).not.toContain(WEB_STATEMENTS.accountCookie);
+  });
+
+  it('says what the tests below hold, and nothing more', () => {
+    // The rule, scoped to the public pages it is true of.
     expect(WEB_STATEMENTS.noCookies).toContain('aucun cookie');
     expect(WEB_STATEMENTS.noCookies).toContain('aucun compte');
+    // The exception: one place, one session cookie, never on a public page,
+    // cleared at sign-out or expiring by itself. No duration typed (R153).
+    expect(WEB_STATEMENTS.accountCookie).toContain('seule partie du site qui dépose un cookie');
+    expect(WEB_STATEMENTS.accountCookie).toContain('cookie de session');
+    expect(WEB_STATEMENTS.accountCookie).toContain('jamais envoyé aux pages');
+    expect(WEB_STATEMENTS.accountCookie).toContain('effacé à la déconnexion');
+    expect(WEB_STATEMENTS.accountCookie).not.toMatch(/[0-9]/u);
+  });
+
+  it('holds on every public route: none reaches the cookie, none reads one (R900, static half)', () => {
+    expect(entryPointsReachingTheCookie()).toEqual([]);
+    expect(cookieReadsOutsideTheArea()).toEqual([]);
+  });
+
+  it('holds on the account area: one session cookie, with exactly the stated attributes', async () => {
+    await prisma.user.create({ data: { email: 'claim-one@monreleve.test' } });
+
+    const cookies = setCookies(await signInOnSite('claim-one@monreleve.test'));
+
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]?.startsWith(`${SESSION_COOKIE_NAME}=`)).toBe(true);
+    expect(cookies[0]).toContain(`Path=${ACCOUNT_PATH}`);
+    expect(cookies[0]).toContain(`Max-Age=${String(SESSION_COOKIE.maxAgeSeconds)}`);
+    expect(cookies[0]).toContain('HttpOnly');
+    expect(cookies[0]).toContain('Secure');
+    expect(cookies[0]).toContain('SameSite=Lax');
+    expect(String(cookies[0]).toLowerCase()).not.toContain('domain=');
+  });
+
+  it('holds: "effacé à la déconnexion" - sign-out clears the cookie and ends the session', async () => {
+    await prisma.user.create({ data: { email: 'claim-one-out@monreleve.test' } });
+
+    const cookie = cookiePairOf(String(setCookies(await signInOnSite('claim-one-out@monreleve.test'))[0]));
+    const cleared = setCookies(await signOutOnSite(cookie));
+
+    expect(cleared).toHaveLength(1);
+    expect(cleared[0]).toContain('Max-Age=0');
+    expect(await accountSessionFrom(cookie)).toEqual({ state: 'ended' });
   });
 
   it('holds: subscribing sets no cookie', async () => {
@@ -407,6 +501,8 @@ describe('the map covers the page rather than a chosen part of it', () => {
     // and requires it to be one this file has taken a position on.
     const MAPPED = [
       WEB_STATEMENTS.noCookies,
+      // FW-WEB-ACCOUNT: the account area's cookie sentence, owned by CLAIM 1.
+      WEB_STATEMENTS.accountCookie,
       DISCLOSED_RECORDS.alertList,
       CONFIDENTIALITE_COPY.basis[1],
       CONFIDENTIALITE_COPY.retention[0],
@@ -445,7 +541,7 @@ describe('the map covers the page rather than a chosen part of it', () => {
     const NOT_THIS_TASK = [WEB_STATEMENTS.analytics];
 
     const mentionsAlerts = [
-      ...CONFIDENTIALITE_COPY.web,
+      ...CONFIDENTIALITE_COPY.webFor(PRODUCT_STATE),
       ...CONFIDENTIALITE_COPY.basis,
       ...CONFIDENTIALITE_COPY.retention,
     ].filter(
