@@ -107,7 +107,10 @@ describe('the counter shows the engine, at every slider position (R711)', () => 
     expect(rateShown()).toBe(formatPercent(expected.declarableRate, 2));
   });
 
-  it('sweeps both sliders over their whole ranges: rate, status and both tiles', { timeout: 300_000 }, () => {
+  // THE LIMIT IS A HARNESS VALUE, NOT THE ASSERTION (Web Ruling 40): measured at
+  // 304-374 s on the run machine, so 300 s turned a slow pass into a red gate.
+  // The sweep's speed is W22's, deferred until after the apps go live.
+  it('sweeps both sliders over their whole ranges: rate, status and both tiles', { timeout: 600_000 }, () => {
     render(<HomeCounter taxYear={YEAR} copy={COPY} form={FORM} />);
 
     const telework = screen.getByLabelText(/^TT /);

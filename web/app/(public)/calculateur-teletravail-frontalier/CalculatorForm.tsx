@@ -1585,7 +1585,7 @@ export function CalculatorForm({
               <li key={id}>
                 <span className={styles.provisionalName}>
                   {PROVISIONAL_COPY.items[id].interpretation}
-                </span>
+                </span>{' '}
                 {PROVISIONAL_COPY.items[id].body}{' '}
                 {/*
                   ONE LINK PER READING, to that reading. The notice knows
