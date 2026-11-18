@@ -31,7 +31,7 @@
 import { TEST_ORIGIN } from '../../lib/content/identity';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/alertes/route';
 import { GET as exportRoute } from '@/app/api/v1/account/export/route';
@@ -150,6 +150,22 @@ const pageText = (): string =>
 //                                     e2e/mon-releve.spec.ts);
 // and the exception appears on the page exactly while the area exists (R172).
 describe('CLAIM 1: public pages set no cookie; the account area sets one session cookie', () => {
+  // THE SIGN-IN SEALS ITS STEP WITH AUTH_SECRET (lib/auth/secret.ts). A clean clone has
+  // no web/.env, so the two account-area cases below set a test secret, as
+  // web-sign-in.test.ts does, and put back whatever was there (found by
+  // gate:clone, W12).
+  let savedSecret: string | undefined;
+
+  beforeAll(() => {
+    savedSecret = process.env.AUTH_SECRET;
+    process.env.AUTH_SECRET ??= 'privacy-claims-test-secret';
+  });
+
+  afterAll(() => {
+    if (savedSecret === undefined) delete process.env.AUTH_SECRET;
+    else process.env.AUTH_SECRET = savedSecret;
+  });
+
   it('is on the page as the product state makes it true, the exception right after the rule', () => {
     const web = CONFIDENTIALITE_COPY.webFor(PRODUCT_STATE);
 
