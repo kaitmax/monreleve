@@ -1727,3 +1727,47 @@ DECISION (advisor, product decisions delegated 2026-11-16):
    visible). The 3700-3799 block shared with W16's lock: recorded.
 4. W21 merges in round 9, alone (W24 still running).
 APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 39 - W24 VERIFIED; ITS DEV SERVER'S PURGE ON `frontalier`
+====================================================================
+EVIDENCE: REPORT-FW-NOTICE-SPACE.txt v2 (tip 80f3be66; code 13bec935,
+both gates PASSED alone on it). V1: the diff is one `{' '}` after the
+notice's bold name (CalculatorForm.tsx:1491), a rendered-text test over
+every bold-lead site found (R267), and the two avis-provisoire
+baselines named before regeneration; merge-tree clean onto 57225543
+(W21's round 9), where W21's CalculatorForm edits are in the mount
+logic, not at :1491.
+DECISION:
+1. W24 merges in round 10, on top of round 9, and the two rounds are
+   promoted together.
+2. Q1 (should the bold name end with a colon or a full stop): a copy
+   change, which is the operator's (French copy). Added to the operator's
+   list; the space alone fixes the defect.
+3. N1 (flex rows separated by gap, read joined by assistive technology?):
+   not measured; deferred until after the apps go live (Web Ruling 36).
+4. D3, RECORDED AS A LOCAL DATA INCIDENT (not a security one, not
+   production): W24's walkthrough ran `pnpm dev` with a web/.env naming
+   the shared development database `frontalier`, and the scheduler's
+   purge-code-attempts job deleted 9 sign-in code-attempt rows older than
+   24 h (the product's own retention rule) on 2026-11-17 22:37:49Z.
+   Nothing to restore; nothing was sent. RULE FROM NOW ON: a session's
+   web/.env names only its own scratch database, never `frontalier`; a
+   session that needs a dev server against data seeds its scratch one.
+   The mechanical guard (the scheduler refusing a database it was not
+   told to own in development) is deferred with W22/W17's kind.
+APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 40 - THE HOMECOUNTER SWEEP'S LIMIT IS 600 s
+====================================================================
+EVIDENCE: round 10's gate:changed timed out on the R711 sweep twice
+(331 s, 323 s), and the file alone timed out at 374 s on the merged tree.
+It timed out before W21 too (rounds 4 and 6b, 304-328 s), and W21's
+mount read runs once per mount, adding nothing per sweep step.
+DECISION (the operator, 2026-11-18: "direct to the goal"): the sweep's
+`timeout` goes from 300_000 to 600_000, stated as a value (R345). The
+limit is a harness value, not the assertion; every check in the sweep is
+unchanged. The sweep's speed stays W22's, deferred (Web Ruling 36).
+Landed inside round 10's merge commit, which says so.
+APPLIED: these records join the next record commit.
