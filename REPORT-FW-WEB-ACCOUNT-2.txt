@@ -1,0 +1,475 @@
+REPORT-FW-WEB-ACCOUNT-2 - web run step W12, FW-WEB-ACCOUNT resumed
+Session: W12. Worktree C:/wt/fw-web-account-2, branch fw-web-account-2, cut from
+3111fc0f, moved onto main 455c7e67 (which carries W21 and W24) under R1073
+before the baselines and the final byte table. Prompt
+relay/FW-WEB-ACCOUNT-RESUME.txt. Rulings: Web Rulings 30, 32, 36, 37
+(R1071-R1075). Evidence (gitignored, kept):
+C:/wt/fw-web-account-2/.webaccount2-evidence/
+This report is ASCII. The French texts for the operator are named by their
+lib/fr keys (R168); the accented originals are in those files on this branch.
+
+SUMMARY
+  The read-only signed-in area is REBUILT on today's main, not patched.
+  - The header's sign-in link is rendered by the server shell itself
+    (PublicShell is a server component since W10b), so no layout passes it
+    and no test file outside the area changes.
+  - The area lives at /mon-releve, with one session cookie: Path=/mon-releve,
+    Max-Age=1800, HttpOnly, Secure, SameSite=Lax, no Domain.
+  - R898 (SPEC D14 plus section 10) lands with this branch.
+  - Web Ruling 30: a web sign-in mails and admits only an address the app
+    already knows. An unknown address writes no row, is sent no mail and gets
+    the same answer. Since R1072, the two paths also do the same work in the
+    request, because the known address's row and mail run in next/server's
+    after().
+  - Web Ruling 32: the page shows the current tax year and the one before,
+    both, with no selector. A year with no rule set of its own carries the
+    engine's RULE_SET_FALLBACK warning, and every other engine warning is
+    shown too (api-v1 6.5).
+  - Bytes: the link costs +47 to +60 B per public route, from the shell's
+    class map. The calculator goes 126 915 -> 126 975 B, leaving 1 025 B of
+    GATE A spare. No budget moved.
+  - Baselines: 115 moved and 2 new, regenerated last, on 455c7e67 plus this
+    tree.
+
+STATUS (R391)
+  GREEN on the code tip 84d40080. Both gates ran in this session, on these
+  exact trees:
+  - gate:changed run 3 (on 3b68eaad's tree): GATE PASSED for the paths
+    changed. STEP_EXIT=0.
+  - gate:changed run 4 (on 84d40080's tree): GATE PASSED. STEP_EXIT=0.
+  - gate:clone ALONE on 84d40080: GATE:CLONE PASSED. STEP_EXIT=0.
+  NOT PROMOTED, and not to be until the operator has read the five texts
+  (Web Ruling 32). The branch is pushed; it was not merged to main (R1073).
+
+R1064 - THE REBUILD (the full list with hashes: r1064-list-final.txt)
+  Reference tree. C9's refactor-tree (base db68601), overlaid with
+  inc4-tree-2's files per inc4-wip/restore-plan.txt, except its
+  calculateur.visual.spec.ts (the withdrawn fix). The saved archives match
+  saved-trees-sha.txt:
+    refactor-tree tracked.diff 7cd5727e.. and untracked.tar 117d904e..
+    inc4-tree-2 tracked.diff ceafd862.. and untracked.tar 79248d9d..
+  That file holds archive-level hashes only. Each copied file's sha256
+  (16 hex) is therefore listed against the LF-normalised reconstruction. The
+  reconstructions come out CRLF; the repository is pinned LF.
+
+  COPIED, main unchanged since db68601 (12):
+    lib/content/product-state.ts, lib/fr/auth.ts,
+    confidentialite/ConfidentialiteContent.tsx, lib/auth/tokens.ts,
+    lib/fr/shell.ts, e2e/shell-layout.spec.ts,
+    app/api/v1/auth/code/route.ts, lib/auth/magic-link.ts,
+    tests/unit/content/product-state.test.ts, docs/api-v1.md,
+    lib/account/export.ts, PublicShell.module.scss.
+
+  COPIED byte for byte from C9's new files (20):
+    lib/web-account/{cookie,csrf,open,respond,session,code-shape}.ts
+    lib/auth/{web-session,code-exchange}.ts
+    the connexion page, the code page, the verification route, the
+      deconnexion route
+    tests/unit/web-account/{cookie,csrf,step,flag-off}.test.ts
+    tests/unit/content/account-path.test.ts
+    tests/unit/meta/account-cookie-scope.test.ts
+    tests/db/web-session.test.ts
+    e2e/mon-releve.nojs.spec.ts
+
+  REWRITTEN on today's main (35):
+    the shell (PublicShell.tsx, SignInLink.tsx, PublicShell.test.tsx)
+    routes.ts (no `task` field on the account route: R976's probe check)
+    schema.prisma and personal-data.ts (C9's blocks on today's files)
+    confidentialite.ts (C9's sentences on today's file)
+    fr/mon-releve.ts
+    the page, SignedIn and AccountYear (two years, the warnings)
+    the stylesheet
+    envoi (Web Ruling 30 and R1072)
+    year.ts, export.ts, paths.ts, step.ts (secret leaf)
+    print-token.ts (the leaf)
+    the four export routes (split modules)
+    the layout (no prop)
+    e2e/mon-releve.spec.ts, e2e/support/database.ts
+    tests/support/{web-account,account-cookie-scope}.ts
+    the DB tests web-sign-in, web-round-trip, privacy-claims,
+      alert-subscriber, fw14-era-migration
+    the unit tests mon-releve, copy-codepoints, no-js-coverage
+
+  W12 ONLY (14):
+    SPEC (C9's commit 7af6a06, applied cleanly)
+    lib/auth/request.ts (requestKnownAddressSignIn)
+    lib/auth/secret.ts
+    lib/export/respond-pdf.ts and lib/export/respond-csv.ts (C9's respond.ts,
+      split: R990)
+    the migration, renamed 20261112090000 -> 20261117220000_web_session with
+      byte-identical SQL, so that it sorts after production's
+      20261112120000_deadline_reminder; deployed onto a scratch database
+      already at BASE
+    scripts/gate-selection.mjs and its test (R1071)
+    tests/support/after-work.ts
+    shell-reachable, contrast and year tests
+    e2e/pages.visual.spec.ts (the sign-in page)
+    scripts/container-e2e.mjs (one env line: the Playwright pass gets the
+      container's DATABASE_URL, as the vitest passes already did - see R1072)
+
+  NOT CARRIED (17), with reasons:
+    - C9 changed these only to pass the signIn prop, which no longer exists:
+      app/(public)/layout.tsx, app/not-found.tsx, app/dev/composants,
+      PublicShell aria-current and accessibility tests, and 11 page tests.
+    - C9's lib/export/respond.ts (split instead).
+    - C9's 109 baselines (regenerated afresh).
+    - inc4's calculateur.visual.spec.ts.
+    None of W21's or W24's files are touched.
+
+R1065 - THE BYTES (gzip-9 per route, as check-budgets sums them; GATE A = 128 000 B)
+  Measured under one lock hold: main 455c7e67 (this work set aside, diff sha
+  checked before and after), then the combined tree.
+
+  route                                        455c7e67  combined  delta  A spare
+  /                                              114995    115044    +49    12956
+  /_not-found                                    105960    106046    +86    21954
+  /a-propos /releve-annuel /sources /tarifs      105686    105735    +49    22265
+  /alertes                                       105716    105765    +49    22235
+  /alertes/confirmation|desinscription/[etat]    105536    105584    +48    22416
+  /application                                   105633    105682    +49    22318
+  /calculateur-lamal-cmu                         125208    125255    +47     2745
+  /calculateur-teletravail-frontalier            126915    126975    +60     1025
+  /calculateur-teletravail-frontalier/resultat   107007    107057    +50    20943
+  /cgu /confidentialite /mentions-legales        105581    105631    +50    22369
+  /guides                                        105557    105606    +49    22394
+  /guides/[slug]                                 106919    106968    +49    21032
+  /rappel-delai/suppression                      105536    105584    +48    22416
+  /releve/print                                  104414    104413     -1    23587
+  /verifier/[code]                               105488    105537    +49    22463
+  /mon-releve                                       new    105923    new    22077
+  /mon-releve/connexion, /connexion/code            new    105833    new    22167
+
+  pnpm size passed on both builds. The calculator reads "A 1.0 spare, B 1.6
+  spare". GATE A and GATE B are unchanged.
+
+R1066 - WEB RULING 30, BOTH DIRECTIONS (tests/db/web-sign-in.test.ts, through the real handlers)
+  RED: C9's step one (requestMagicLink) planted back, sha verified and
+  restored. 2 failed:
+    "R1066: an unknown address writes NO row and is sent NO mail" (mail sent)
+    "...spends the same buckets" (5 mails)
+  GREEN (37 of 37):
+    - A known address gets the code by mail and its one request row, and
+      signs in.
+    - An unknown address writes no User, VerificationToken, CodeAttempt or
+      WebSession row, is sent no mail, and gets the same 303 shape. It spends
+      the same buckets.
+    - An unknown address cannot get in (any code is code-invalide), and
+      nothing is created.
+    - The app's /api/v1/auth/code still creates the account (a new address
+      ends with 1 User).
+  Scope note. "No row" holds for step one. Step two's consumeCode still
+  claims a CodeAttempt row for any sealed address typed there, as the app's
+  door does. The privacy notice's codeAttempts sentence already covers that.
+
+R1067 - THE YEARS (tests/unit/pages/mon-releve.test.tsx; 15 of 15)
+  Every year is derived, never typed:
+    - which year has rules: ruleSetFor(y).taxYear === y
+    - which years are shown: accountYears(currentTaxYear(clock))
+    - both clocks are built from the engine's ruled year
+  In November of the ruled year, the year before warns. In January after it,
+  the current year warns. Each test first asserts that one year of each kind
+  is on the page.
+  RED, plant 1 (no warnings rendered): 3 failed, "2025 / 2027 has no rules of
+  its own and must warn".
+  RED, plant 2 (a fallback forced on): 3 failed, "2026 has its own rules and
+  must not warn".
+  Downloads for any other year are refused back to the page
+  (web-round-trip). There is no selector, no year link and no year in any
+  href.
+
+R1068 - THE PROMISES
+  Static markers: all 48 routes of 455c7e67 keep their marker. The 8 new
+  routes are dynamic (f) under /mon-releve. Evidence: main455-markers.txt
+  against after455-markers.txt.
+  No cookie on public routes:
+    - CLAIM 1 in privacy-claims (48 of 48; the census walk memoised, 10 s ->
+      2.7 s, the same assertions);
+    - the import and read census;
+    - the nojs crawl;
+    - the walkthrough below.
+  R898's sentences, quoted:
+    D14: "Reversed in part by the operator's ruling of 2026-11-11 (the no-phone
+    queue's C9, R898): the web gains one read-only signed-in area, at
+    /mon-releve, entered by a code sent by e-mail and held by a session cookie
+    scoped to that path."
+    Section 10: "The web authenticates in one place only (D14 as amended,
+    R898). ... The one exception is the read-only account area under
+    /mon-releve: one session cookie, scoped to that path, and bounded by a test
+    rather than by prose."
+    I read the path and the code-by-mail entry as particulars of the same
+    area, not as more scope. The orchestrator may overrule.
+
+  R907 - THE SECURITY TABLE. Each row has green tests and a verified plant
+  that bit (r907-plants.log, each restored with matching sha256).
+
+  SESSION FIXATION
+    Mechanism: each sign-in inserts a new row with a server-minted value;
+      nothing a browser presents is adopted; step one sets no cookie.
+    Proof: web-session "never reuses a row or a value"; web-sign-in "opens a
+      NEW session on every sign-in".
+    Plant (a fixed session value): 1 failed.
+
+  ENUMERATION
+    Mechanism: one 303 shape for known, unknown, rate-limited and
+      provider-down addresses; no row and no mail for unknown (Web Ruling
+      30); equal work in the request (R1072).
+    Proof: R1066 and R1072 REDs above; the timing below.
+
+  RATE LIMITS
+    Mechanism: the same functions and keys as the API. One budget, two doors.
+    Proof: web-sign-in "shares the request buckets / the edge window /
+      FW-CODE-CAP's daily budget both ways".
+    Plant (the edge window bypassed): 1 failed.
+
+  COOKIE SCOPE
+    Mechanism: Path=/mon-releve, no Domain; only the area imports the cookie
+      module.
+    Proof: account-path (RFC 6265 path-match over every route),
+      account-cookie-scope, privacy-claims CLAIM 1, the nojs crawl.
+    Plant (Path=/): 3 failed.
+
+  CSRF
+    Mechanism: Sec-Fetch-Site and an Origin check against Host or
+      X-Forwarded-Host, first, on every POST.
+    Proof: csrf.test both ways; web-sign-in R902 (5); web-round-trip (a
+      cross-origin download gets 403 and nothing is recorded).
+    Plant (the check bypassed): 4 failed.
+
+  REVOCATION
+    Mechanism: sign-out revokes the row and clears the cookie at the same
+      Path; revoke-all and cascade.
+    Proof: web-session; web-sign-in R899/R210.
+    Plant (sign-out made a no-op): 2 failed.
+
+  COOKIE ATTRIBUTES
+    Mechanism: one writer; life 1800 s = Max-Age = the CHECK interval (R345).
+    Proof: cookie.test; web-session R345.
+    Plant (HttpOnly dropped): 2 failed.
+
+  TIMING (R1072)
+    Measured equal (below).
+
+  DOWNLOADS
+    Mechanism: PDF and CSV through respond-pdf/respond-csv, which the API
+      routes share; POST plus the same-origin check.
+    Proof: web-round-trip; the walkthrough's PDF (%PDF-, 199 667 B); the
+      container e2e browser round trip.
+
+  NOT PROVEN
+    - Secure over production HTTPS (the R911 after-deploy check).
+
+  R909 WALKTHROUGH: see WALKTHROUGH.
+  R911 CHECKLIST (parked for the orchestrator; promotion waits for the
+  operator's reading, Web Ruling 32):
+    1. The operator reads the five texts and Q2.
+    2. gate:clone on the exact SHA.
+    3. migrate status; deploy 20261117220000_web_session through
+       docs/deploy.md section 4; status again.
+    4. After the deploy:
+       - public pages carry no Set-Cookie;
+       - the header link leads to /mon-releve/connexion (200);
+       - a known @monreleve.test account signs in over HTTPS, with the
+         cookie's attributes checked (this also proves after() in production);
+       - an unknown address: the same 303, no mail delivered, no row;
+       - both years show, with the warning on the unruled one;
+       - both downloads work, with the PDF page count recorded;
+       - sign-out revokes, and the old cookie gets session-terminee;
+       - a cross-origin POST gets 403.
+    5. Rollback: the previous image. The migration only adds a table.
+
+R1071 - THE SELECTOR (Web Ruling 37 amends launch rule 5, narrowly)
+  scripts/gate-selection.mjs: PRINT_ENTRY_POINTS gains
+  'app/(account)/mon-releve/export/pdf/route.ts' (+4 lines).
+  The R990 census gains that route and lib/export/respond-pdf.ts (+5 lines).
+  Nothing else changes in either file.
+  RED: expected 18, received 20 (+ those two); 1 failed, 116 passed.
+  GREEN: 117 passed. Re-checked on the final tree by gate:changed's
+  `pnpm test`.
+  What made the residue exactly the four pipeline modules first:
+    - ThresholdRail is imported by its own path (the barrel is the print
+      page's);
+    - the AUTH_SECRET reader moved to the leaf lib/auth/secret.ts;
+    - C9's respond.ts is split into PDF and CSV modules.
+  lib/auth/secret.ts alone selects typecheck, lint, test, build and test:db.
+  Print tokens ARE exercised there: tests/unit/export/print-token.test.ts
+  mints and verifies with AUTH_SECRET (12 passed on the leaf), and
+  tests/db/print-route.test.ts.
+  FINDING (not fixed): it does NOT select test:container:e2e, which
+  print-token.ts itself selects.
+
+R1072 - TIMING
+  From the code:
+    - Unknown address: zod validation, two in-memory bucket checks, one
+      indexed User.findUnique, the seal, a 303.
+    - Known address, before: the same, plus issueMagicLink (a deleteMany and
+      a create) and an AWAITED sendMail (in production, an HTTP call to the
+      provider).
+  Fix: an existing mechanism, Next's after() (next/server). There is no new
+  dependency, and /api/v1/auth/code and requestMagicLink are unchanged.
+  requestKnownAddressSignIn takes an optional defer, and the web route passes
+  after().
+  Measured through the real handler, in-process, N=200 pairs, each from its
+  own network source (medians):
+    inline:    known 9.28 ms,  unknown 3.18 ms  (gap 6.1 ms, without the
+               provider round trip)
+    deferred:  known 3.69 ms / unknown 3.71 ms (run 1)
+               known 2.65 ms / unknown 2.69 ms (run 2)
+  Test: "R1072: the known address writes and mails only AFTER the response;
+  the unknown leaves nothing to do". RED with the inline send; GREEN since.
+  Two container-only test faults, found by gate:changed (the account specs
+  had never run against the image before):
+    run 1: 3 account specs failed - the seam minted a code that the deferred
+      issuance could then replace. e2e/support/database.ts's mintCode now
+      waits for the server's own request row, then replaces it.
+    run 2: the same 3 failed with "the server wrote no request" - the
+      Playwright pass against the container inherited the session's
+      DATABASE_URL, so the spec's person lived in another database than the
+      container's (Web Ruling 30 then, rightly, wrote nothing).
+      scripts/container-e2e.mjs now hands that pass DATABASE_URL: toolUrl,
+      as its vitest passes already did.
+    run 3: test:container:e2e 389 passed - the browser round trip, both
+      downloads and sign-out against the PRODUCTION image, so after() is
+      proven there too.
+
+R1069 - THE BASELINES (regenerated last, on 455c7e67 plus this tree)
+  Named before regeneration in r1069-expected-455.txt:
+    - 115 MOVED: every baseline derive-shell-set.cjs classifies as showing the
+      header (full-page captures of non-/dev routes, element captures of the
+      shell-desktop specimen), including calculateur-panneau-avis-provisoire-
+      desktop/mobile as W24 left them;
+    - 2 NEW: page-mon-releve-connexion-desktop/mobile (the sign-in page,
+      added to e2e/pages.visual.spec.ts; the code step and the signed-in page
+      need a sealed step or a session and are covered by unit tests and the
+      walkthrough);
+    - 54 unchanged.
+  `pnpm test:visual:update`: "photographed: 455c7e67 plus 56 uncommitted
+  path(s)", 176 passed.
+  Queue Ruling 13's three conditions:
+    1. The independent expectation equals the produced set: 117 = 117 (the
+       diff is empty).
+    2. The count reconciles: 169 + 2 = 171 files; 115 + 2 produced; 54 not
+       touched.
+    3. Every diff's bounding box except the privacy pair sits in the header:
+       - 110 pages: y <= 55 (the bar);
+       - the 3 shell specimens: y 50-98, the specimen's own header bar, below
+         its caption;
+       - page-confidentialite-desktop/mobile grew (6554 -> 6786 and
+         9838 -> 10226 px) for the notice's sentences.
+  Crops looked at:
+    - the header at 390 px, before and after: the icon button at the right
+      edge, the bar's height unchanged;
+    - the desktop specimen: the "Se connecter" pill after Tarifs;
+    - the sign-in page at 390 px.
+  The 320/360 widths are covered by e2e/narrow.spec.ts in test:e2e (green).
+
+GATES
+  gate:changed run 1: RED at test:container:e2e (3 account specs, the e2e
+    seam race).
+  gate:changed run 2: RED at test:container:e2e (3 account specs, the wrong
+    database).
+  gate:changed run 3, PASSED (commit 3b68eaad):
+    suites: typecheck, lint, test, build, test:visual, test:e2e,
+            test:container:e2e, test:db, test:late
+    test 4226/4226 (250 files); test:visual 176 passed; test:e2e 402 passed;
+    test:container:e2e 389 passed plus database-stopped 67/67 plus the vitest
+    passes; test:db 885 passed, 28 skipped; test:late 10.
+  gate:clone on 3b68eaad: FAILED at test:db, 2 of 913. A clean clone has no
+    AUTH_SECRET, so CLAIM 1's two account cases could not seal step one.
+    Fixed: those cases set a test secret (84d40080), proven with AUTH_SECRET
+    unset (48/48).
+  gate:changed run 4, PASSED (commit 84d40080):
+    suites: typecheck, lint, test, build, test:db
+    test 4226/4226; test:db 885 passed, 28 skipped.
+  gate:clone ALONE on 84d40080, PASSED:
+    claim: this commit builds and passes register-coverage, fixture-coverage,
+    install, typecheck, lint, test (4226 of 4226, 250 files), build, size
+    (24 routes measured), db:deploy, test:db (885 of 913, 28 skipped,
+    63 files) and test:container:write (10 checks) from a clean checkout.
+
+WALKTHROUGH (R176/R909; pnpm dev on 3381 on the scratch DB; the seed was removed afterwards)
+  - Health names "monreleve".
+  - GET /: 200, no Set-Cookie, header link /mon-releve/connexion.
+  - Sign-in page: 200, no cookie, h1 "Se connecter a Mon Releve" (accented on
+    the page).
+  - Step one, unknown address: 303 to code?etape=<sealed>, no cookie. Rows
+    stay users 1, tokens 0, attempts 0. The dev log shows no mail.
+  - Step one, known address: the same shape (true). 0 token rows at response
+    time; then the mail is in the dev log via after(), and its code is read
+    (masked here).
+  - The code page shows the conditional sentence.
+  - Verification: 303 to /mon-releve with monreleve_session=...;
+    Path=/mon-releve; Max-Age=1800; HttpOnly; Secure; SameSite=Lax.
+  - /mon-releve: years 2026 and 2025. 2026 has no warnings; 2025 has
+    [RULE_SET_FALLBACK].
+  - CSV 2026: 200, text/csv, 7 276 B. CSV 2025: 200, 7 303 B. PDF 2025: 200,
+    application/pdf, 199 667 B, %PDF-.
+  - CSV 2024: 303 to ?export=echec. A cross-origin download: 403.
+  - Sign-out: 303 to ?etat=deconnecte, the cookie cleared with Max-Age=0. The
+    old cookie then gets a 307 to ?etat=session-terminee.
+  - After it, /, the calculator, /confidentialite, the comparator and /guides
+    each give 200 with no Set-Cookie.
+  - The port was free before and after.
+  (The masked log shows "Path=<value>" on the cleared cookie; that is the
+  masking regex. The header carries Path=/mon-releve.)
+
+NOTICED BUT NOT TOUCHING
+  N1. SPEC lines still describe the pre-amendment D14 (section 9, section 3's
+      R209 note, section 14, section 19). R898 allowed one sentence.
+  N2. The sign-in mail's LINK opens the app's callback. The code page says so
+      (C9's help line).
+  N3. R1071 FINDING: lib/auth/secret.ts alone does not select
+      test:container:e2e.
+  N4. The dossier PDF does not render the engine's warnings, as far as a
+      grep of lib/fr/result's users shows. Only the calculator and now this
+      page do.
+
+DEVIATIONS
+  D1. Test-first was not kept strictly. The area's tests were written
+      alongside the port. Each behaviour's RED was produced afterwards by a
+      verified plant of the prior design (R1066, R1067 both ways, R1072, and
+      the six R907 rows).
+  D2. I took ports 3381-3389 inside 3300-3399 because W5's lock also named
+      that block (R1075 records it).
+  D3. Two account baselines (the code step and the signed-in page) were not
+      photographed, for the reasons in R1069.
+  D4. gate:changed ran three times: runs 1 and 2 RED at test:container:e2e
+      on the two test faults in R1072, each fixed and the whole gate re-run;
+      run 3 PASSED. The harness fix touches scripts/container-e2e.mjs (one
+      env line), outside the files the launch named.
+  D6. gate:clone on 3b68eaad failed. That commit is on the branch, followed
+      by its fix 84d40080; the branch tip is the one gate:clone vouches for.
+  D5. tests/unit/tokens/contrast.test.ts gains one census line, at the end
+      of its list (W24 also edits that file).
+
+QUESTIONS (R1074; the operator reads these before promotion, Web Ruling 32)
+  Q1, the five texts. Keys only here; the accented sentences are in the
+  files.
+    T1  lib/fr/confidentialite.ts DISCLOSED_RECORDS.webSession (new)
+    T2  lib/fr/confidentialite.ts WEB_STATEMENTS.accountCookie (new)
+    T3  lib/fr/confidentialite.ts DISCLOSED_RECORDS.signInLink (changed:
+        "la connexion a l'application" -> "la connexion a votre compte")
+    T4  lib/fr/auth.ts AUTH_EMAIL_COPY_CODE_INSTRUCTION, the mail's code line
+        ("... la ou il vous est demande :")
+    T5  lib/fr/mon-releve.ts MON_RELEVE_COPY.code.requested, reworded for Web
+        Ruling 30: a code is sent IF an account uses the address, and the
+        account is created in the app
+  Q2. The CLAUDE.md R209 bullet says "to provide a session model D14 already
+      deleted". The needed edit: R898 restored one read-only area, held by
+      this product's own WebSession table and cookie, not by Auth.js. I did
+      not edit CLAUDE.md.
+
+PUSH PROOF
+  branch fw-web-account-2, never main.
+  Commits on 455c7e67:
+    3b68eaad  the area (gate:changed run 3 PASSED)
+    84d40080  CLAIM 1's test secret (gate:changed run 4 PASSED)
+    this report's own commit, gated with gate:changed (base chain)
+  gate:clone ALONE on 84d40080: PASSED (claim above). It is the last code
+  tip; the report commit changes no code.
+  ls-remote refs/heads/fw-web-account-2 = 84d40080 before this report's
+  commit; the report's push is given in the hand-back.
+
+CLEANUP (done after this report's push; the hand-back carries the proof)
+  scratch database monreleve_fw_web_account_2 dropped; web/.env removed; no
+  image of mine to remove (the gates' own containers are their harnesses');
+  ports 3381-3389 free; the session lock removed last.
