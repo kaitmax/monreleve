@@ -12,7 +12,8 @@ SUMMARY
   release after 1.3.5 is an alpha. Paparazzi is :app-only; :shared also pins compileSdk 35. Play's
   pages (read 2026-11-19) state a targetSdk requirement only - no compileSdk rule. Decision table
   in the R1081 section.
-- R1080 (emulator API 36, debug then minified audit): every screen and flow driven. One crash
+- R1080 (emulator API 36, debug then minified audit): the screens and flows listed in the
+  walkthrough were driven; what was NOT is listed under NOT EXERCISED. One crash
   found and FIXED test-first in :app (D1, R1082: any network failure during a PDF/CSV export killed
   the app). The big API-35/36 finding is NOT fixed: every screen outside the main shell's Scaffold
   ignores the system-bar insets (N1) - on a 3-button-navigation phone the welcome "Commencer", the
@@ -20,8 +21,11 @@ SUMMARY
   Comparaison buttons sit under the navigation bar. Also new: the sampler stays scheduled after a
   sign-out (N3), and Licences' system Back leaves the app (N5).
 - Minified audit build: sign-in, one recorded day and a PDF export work; with the D1 fix an offline
-  export shows the connectivity toast instead of crashing. One unexplained first-sign-in routing to
-  onboarding on that build (N9), not reproduced.
+  export shows the connectivity toast instead of crashing. BUT D2 (NOT fixed): on the minified
+  build, a returning user whose first GET /me hits a cold server is sent to onboarding step 1 with
+  an EMPTY form - reproduced 2/2 cold on the audit APK, 0/2 cold on the debug APK of the same
+  commit, 0/2 warm on the audit APK. Finishing that onboarding would PATCH the account's server
+  settings. Release builds strip logs, so the branch taken is not proven; it needs its own task.
 
 STATUS (R391)
 COMPLETE. The FULL :app:gate ran in this session on 014e5e7b3d905e72ffc97b02b32d7a129e56dedb (the
@@ -152,15 +156,16 @@ between typing it and the screen changing (R574); EditText digits are masked in 
 
 System insets measured with `dumpsys window` (they matter for the findings below):
   statusBars [0,0][1080,66]; 3-button navigationBars [0,2148][1080,2280] (132 px);
-  gesture nav: a 66 px-high handle area at the bottom.
+  gesture navigation (read at the end, gestural mode): navigationBars [0,2214][1080,2280] (66 px),
+  mandatorySystemGestures [0,2192][1080,2280] (88 px).
 
 WALKTHROUGH (debug variant; nav mode named where it matters)
 | Screen / flow | What was driven | What was shown | API-36 behaviour |
 |---|---|---|---|
-| Launch (fresh install) | uninstall, install, am start | Welcome; once a "System UI isn't responding" (Wait) | none from the app |
+| Launch (fresh install) | uninstall, install, am start | Welcome; a "System UI isn't responding" dialog (Wait) on BOTH boots | none from the app |
 | Welcome | gesture nav, then 3-button | gesture: OK. 3-button: "Commencer" (bounds ~2081-2232) is under the nav bar from y=2148; its label is hidden; the 67 px strip above the bar still takes a tap | EDGE-TO-EDGE, see NOTICED N1 |
 | Sign-in: address | typed camille, then an unseeded address | keyboard covers "Recevoir mon lien de connexion"; the IME action submits it (POST /auth/magic-link 202). 3-button: the terms line [2144-2236] sits under the nav bar | N1 |
-| Sign-in: code | code piped from the dev log | auto-submit at 6 digits: POST /auth/code 200, GET /me, /entries 200, "Bonjour Camille". Back icon [55,33..99] overlaps the 66 px status bar; "Rien recu ? ..." line [2127-2236] reaches into the nav area | N1 |
+| Sign-in: code | code piped from the dev log | auto-submit at 6 digits: POST /auth/code 200, GET /entries 200 and GET /me 200 (5 814 ms, cold - logged after the screen had changed), "Bonjour Camille". Back icon [55,33..99] overlaps the 66 px status bar; "Rien recu ? ..." line [2127-2236] reaches into the nav area | N1 |
 | Onboarding 1-8 (new account api36.pass) | name, canton search, 100 %, simplifiee, journees entieres, toute l'annee, Automatiquement, evening reminder Oui | all steps work; PATCH /me 200; "Tout est pret". The step progress bar draws inside the status bar (over the clock/icons); "Continuer" on every step is under the 3-button bar | N1 |
 | Onboarding disclosure -> permissions | Automatiquement -> disclosure -> Autoriser | disclosure shown BEFORE the system dialog (Precise/Approximate, While using / Only this time / Don't allow); then Settings "Allow all the time" for background (API 30+) | the disclosure overlay ignores insets: title under the status bar, "Rester en saisie manuelle" under the nav bar (N1) |
 | ... Approximate | picked Approximate | COARSE granted, FINE not; silently back on step 7 with nothing said | N4 (API 31+, not 36-specific) |
@@ -172,7 +177,7 @@ WALKTHROUGH (debug variant; nav mode named where it matters)
 | Day sheet back | KEYCODE_BACK; nav-bar Back tap; nav-bar Back LONG-PRESS (3-button predictive back, new in 16) | expanded sheet: 1st back -> partial, 2nd -> dismissed; partial: one tap dismisses; long-press dismisses | predictive back on 3-button EXERCISED; the sheet's callback answers it |
 | Gesture back (edge swipe) | `input swipe` and `input motionevent` from x=0..2 | no back delivered (no CoreBackPreview event) on this boot | NOT EXERCISED - the injected swipe never became a system back; this boot's SystemUI had an ANR and later an NPE (below) |
 | Back from a tab root | Calendrier / Releve, back | leaves the app to the launcher (no tab back-stack) | back-to-home predictive animation path; pre-existing design |
-| Prevision / Simulation (BackHandler) | Parametres -> Votre rythme habituel; nav Back | Back returns to Parametres. 3-button: "Voir ma prevision" / "Indiquer mon rythme" under the nav bar - a tap at (800,2170) went to the system Recents button | BackHandler works under API 36 (OnBackInvokedCallback); N1 |
+| Prevision (BackHandler; Simulation NOT reached) | Parametres -> Votre rythme habituel; nav Back | Back returns to Parametres. 3-button: "Voir ma prevision" / "Indiquer mon rythme" under the nav bar - a tap at (800,2170) went to the system Recents button | BackHandler works under API 36 (OnBackInvokedCallback); N1 |
 | Comparaison (BackHandler) | Releve -> Comparer avec mon employeur; nav Back | Back returns to Releve; "Voir mes journees jour par jour" [2135-2183] under the nav bar | N1 |
 | Licences | Parametres -> Licences; nav Back | system Back LEAVES THE APP (to the launcher) instead of returning to Parametres; only the in-screen "Retour" returns | N5 (no BackHandler; :shared) |
 | Releve | scroll; annex expand; Exporter en PDF; Exporter en CSV | PDF: GET /export/pdf 200, chooser "releve-2026.pdf", cache file starts %PDF-1.4 (217 792 B). CSV: GET /export/csv 200, chooser "releve-2026-camille-martin.csv" (16 743 B) | FileProvider share works |
@@ -219,6 +224,15 @@ behavior-changes-all, read 2026-11-19) - which apply to this app:
 | Notification permission (API 33+) | YES | EXERCISED (two runtime dialogs, both via the app's own opt-in path) |
 
 DEFECTS FOUND
+D2 (NOT FIXED, minified build only, reproducible): see the AUDIT PASS D2 matrix. After a sign-in,
+   ResolvingRoute -> decideStartAfterSignIn(GET /me) on the MINIFIED build sends a returning user
+   with complete server settings to onboarding step 1 with an empty form - the shape of the
+   MeFetch.Unreachable branch (fresh flow, no prefill) - whenever the server is cold; the debug
+   build of the same commit does not. Server answered GET /me 200 each time. Consequence: a
+   returning user on a slow network after an update/reinstall is asked to re-onboard, and
+   completing it PATCHes (overwrites) their server settings. Cause not found: the release build has
+   no logging, the R8 keep set is empty by design (AN14a), and finding it needs instrumentation or
+   a minified test harness - not a small :app fix. QUESTION Q6.
 D1 (FIXED in :app, R1082 - see FIX below): UrlConnectionTransport.executeForBytes - the bytes path
    used by the PDF/CSV exports - had no IOException -> TransportException translation, unlike
    execute (R386). AuthApi.authenticatedGetBytes catches TransportException only (R387), so any
@@ -248,11 +262,16 @@ installed after an uninstall; pkgFlags without DEBUGGABLE; emulator API 36, 3-bu
 | One recorded day | "En Suisse" -> POST /api/v1/entries 200 -> "Enregistre" |
 | PDF export (route cold after a server restart) | GET /releve/print 200 in 3 735 ms, GET /export/pdf 200 in 9 649 ms -> chooser "releve-2026.pdf"; no crash |
 | PDF export offline (D1 after-proof) | airplane mode -> toast "L'export necessite une connexion. Reconnectez-vous a Internet, puis rees..." (shot 84); same pid 5035 before and after, no FATAL in logcat. Before the fix the same tap killed the app (ConnectException) |
-| First sign-in attempt (camille, seeded, complete settings) | landed in ONBOARDING step 1 with no name prefill - see N9. The same account on the debug APK from the same commit went straight to "Bonjour Camille"; alex on the audit APK went straight to Aujourd'hui |
+| D2 matrix: sign-in of a COMPLETE seeded account, server cold (just restarted, only /api/health compiled) vs warm (routes compiled) | audit cold, camille: ONBOARDING step 1, empty name (GET /me 200 in 2 915 ms). audit cold, camille again: ONBOARDING step 1, empty (GET /entries 8 137 ms, GET /me 9 125 ms). audit warm, alex: "Bonjour Alex". audit warm, camille: "Bonjour Camille". debug cold, camille: "Bonjour Camille" (GET /me 5 814 ms, first sign-in of the session). debug cold, camille, after a server restart: "Bonjour Camille" (GET /me 2 684 ms). Onboarding was never completed on the audit build (it would PATCH the record) |
+| Releve year switch (camille, audit) | chip 2025 -> GET /api/v1/dossier 200 -> "Releve de l'annee close - L'annee 2025 est terminee. Ce releve est complet." |
+| Threshold alert switch (camille, audit) | switch ON -> POST_NOTIFICATIONS dialog -> Allow -> switch shown ON (no alert fired: no crossing on that account) |
+| Code entry by injected input (audit only) | `input text <6 digits>` dropped digits twice on the audit APK (1 of 6, then 3 of 6, with the fields then refusing further input until a new code was requested); slow per-digit key events worked. On the debug APK the same `input text` worked 4/4. Injection-speed artefact or a real OTP-field race - not decided; recorded as N12 |
 
 NOTICED BUT NOT TOUCHING
 N1 (LAUNCH BLOCKER for Android 15+ phones in 3-button navigation): every screen drawn outside the
-   main shell's Scaffold ignores the system-bar insets. There is no WindowInsets / safeDrawing /
+   main shell's Scaffold ignores the system-bar insets. This contradicts PARKAN-33's note
+   "edge-to-edge was already handled from AN1's targetSdk 35" - true of the Scaffold screens only.
+   No park covers it (parking.md grep: inset / edge-to-edge / navigation bar). There is no WindowInsets / safeDrawing /
    systemBarsPadding anywhere in app/src/main or shared/src/commonMain (grep); the only inset
    handling is Material3 Scaffold's default in MainShell. Measured against statusBars [0,66] and
    the 3-button navigationBars [2148,2280]:
@@ -276,11 +295,15 @@ N1 (LAUNCH BLOCKER for Android 15+ phones in 3-button navigation): every screen 
    31/32-detection-priming*, 46-prevision-bottom, 48-comparison-bottom, 63-step7 (session
    scratchpad, not committed).
 N2 (with D1): the server's first PDF render took 14 993 ms against the client's 15 000 ms read
-   timeout. After the fix a slow render no longer crashes but is reported as a network failure.
+   timeout. After the fix a slow render no longer crashes; it becomes a network failure, which -
+   INFERRED from the code path, not seen - shows the same "L'export necessite une connexion" toast
+   on a perfectly good connection.
    Whether the export deserves a longer read timeout is a product question.
 N3 (privacy, not 36-specific): after a USER sign-out the SamplingWorker unique work stays
    scheduled (dumpsys jobscheduler shows the app's androidx.work job after the POST /auth/sign-out
-   200), while monreleve.detection is emptied (mode no longer AUTO). SamplingWorker.doWork has no
+   200; it is identified as the SamplingWorker from the earlier WorkManager log that rescheduled the
+   SamplingWorker work id as that job, and from stopSampling having a single caller - the job's
+   class was not read back from WorkManager itself), while monreleve.detection is emptied (mode no longer AUTO). SamplingWorker.doWork has no
    mode or session gate (it checks only the check window and today's tally) and
    DetectionScheduling.stopSampling is called only by ParametresController's switch. So at the
    next check window the phone would take a background location fix and record a tally for
@@ -299,19 +322,28 @@ N7 (emulator, not the app): SystemUI crashed once (FATAL wmshell.main, NullPoint
    to MainActivity after the nav mode had been switched at runtime. Its own process, AOSP code.
 N8: PARK-E3 (onboarding's automatic choice never reaches the phone) is CONFIRMED at runtime on the
    emulator API 36 - still open.
-N9 (UNEXPLAINED, seen once): the FIRST sign-in on the minified audit build (camille, whose server
-   record is complete: GE, 100, SIMPLIFIED240, DAY, name set) went to onboarding step 1 with an
-   EMPTY name field - the shape of StartupDecider's MeFetch.Unreachable branch (fresh flow, no
-   prefill), although the server logged GET /api/v1/me 200 in 2 915 ms. It was the first request
-   burst after a dev-server restart (routes compiling) and the request order differed from the
-   good runs (me before entries). Not reproduced: alex on the same audit APK, and camille on the
-   debug APK, both resolved correctly. The release build strips logs, so the branch taken is not
-   proven, and R8 is neither proven nor ruled out. Worth one targeted run with a slow /me.
+N9: promoted to DEFECT D2 after a cold repeat reproduced it (see DEFECTS FOUND).
 N10 (API 31+): the offline export toast is cut at two lines on API 36 ("... puis rees..."): text
    toasts are limited to two lines since Android 12, and the sentence is longer than that.
+N12 (audit build only): fast injected code entry (`adb shell input text`) lost digits twice and
+   left the six-box field refusing input until a new code was requested; slow key events worked.
+   A person typing does not do this; pasting a code from the mail (one commit of six characters)
+   was NOT tried and is the case worth checking.
 N11: gesture-navigation back was NOT exercised: `input swipe` / `input motionevent` from the left
    edge never produced a system back on either boot (both boots also showed a "System UI isn't
    responding" dialog). The nav-bar Back tap and the 3-button long-press (predictive) were.
+
+NOT EXERCISED (named so their absence is a decision, not an omission)
+- a detection PROPOSAL on Aujourd'hui in automatic mode, and the automatic evening notices
+  (Proposed / NotSure): only the Manual notice fired (the onboarding's automatic choice never set
+  the mode, PARK-E3, and the sampler windows were over for the day);
+- the threshold ALERT itself (switch turned on; no crossing to alert on);
+- the Simulation route (only Prevision reached);
+- the date picker (Debut d'activite: sheet opened, "Choisir une date" not tapped);
+- the magic-link CallbackActivity (App Link; sign-in was by code only);
+- gesture-swipe back (N11); adaptive layouts on sw >= 600 dp (phone AVD);
+- the legal web links (production host);
+- pasting a sign-in code (N12).
 
 DEVIATIONS
 - A `tail` of the dev-server log printed one GET /releve/print URL WITH its short-lived print
@@ -345,8 +377,9 @@ Q4 (R1081): which row of the decision table - stay on 1.3.5 / compileSdk 35 unti
    alpha04 on this toolchain first?
 Q5 (N5): Licences needs a back handler in :shared commonMain; Compose Multiplatform 1.7.3 has no
    common BackHandler - an expect/actual in :shared, or route Licences through :app?
-Q6 (N9): one targeted run of the first sign-in against a slow /me on the minified build before
-   launch - which task owns it?
+Q6 (D2): the minified-only re-onboarding of a returning user on a cold /me is reproducible and
+   unexplained, and completing it overwrites server settings. Which task owns finding it (it needs
+   instrumentation of the release-shaped build), and is it a launch blocker?
 
 PUSH PROOF
 PENDING.
