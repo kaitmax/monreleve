@@ -1,0 +1,319 @@
+REPORT-AN-SIGNIN-RESOLVE - Mon Releve - ORCH-ANDROID step A9
+Pure ASCII. Branch an-signin-resolve, cut from origin/main 99d24cdf4003f87964cbb8a5f79ffb90ee0a46b8.
+Worktree C:/wt/an-signin-resolve (lock .session-lock.json, removed last). Rulings R1160-R1169 (used:
+R1160-R1164, the prompt's own numbers; none added). Prompt: relay/AN-SIGNIN-RESOLVE.txt (Android Ruling 8).
+Every device claim below is "emulator API 36" (AVD MonReleve_API36, x86_64). Nothing here is an S9 claim.
+
+SUMMARY
+- R1160, THE CAUSE (measured): the empty onboarding is not an R8 effect. It is the designed fall-through
+  MeFetch.Unreachable -> StartDecision.Onboard(freshOnboardingSnapshot()) in StartupDecider, reached when
+  the TRANSPORT fails while GET /me is pending. On the emulator the failure was a network change: the
+  emulated Wi-Fi dropped (wificond "Regulatory domain changed to country: 00" -> ConnectivityService
+  "[WIFI] CONNECTED to DISCONNECTED"), the in-flight socket died, Android's HttpURLConnection silently
+  retried the GET on a new connection, that connect failed (java.net.ConnectException "Failed to connect
+  to /10.0.2.2:3963"), AuthApi mapped it to NetworkError -> Unreachable -> step 1 with an EMPTY form.
+  The server-side 200 is explained: the /me reached the server on the first socket and its 200 was
+  written into a socket the phone had already lost (the proxy logs it DELIVERED after the client's
+  ConnectException). Separation from R8: the DEBUG build lands on the same empty form under the same
+  fault (X1), and the minified build reaches the shell under the same delay with no network event
+  (E3, E6, I1). A cold `pnpm dev` only widens the window in which a network event can hit /me.
+  A second path to the same empty form was found by reading and proven on the emulator: any non-401
+  status was handed to the /me reader as if it were the account's settings (AuthedOutcome.Ok dropped
+  the status), so a 500 read as a brand-new account (X4).
+- R1161, THE INVARIANT (shipped): onboarding only on a POSITIVE answer that the settings are absent - a
+  200 whose body is recognisably a /me answer (isMeAnswer: the keys "canton" and "loggingMode" present)
+  with canton null. A transport failure, a non-200, a body that is not a /me answer, or one the strict
+  reader refuses is StartDecision.Unresolved(UNREACHABLE | UNREADABLE): RESOLVING stays, shows a failure
+  line and a retry button (ResolvingScreen), and writes NOTHING. AuthedOutcome.Ok now carries the status
+  (:shared). onboardingPlanFor no longer accepts null (:shared).
+- R1162, PARK-E3 (shipped): every positive /me answer restores the server's logging mode on the phone
+  (parseLoggingMode, fail-closed) BEFORE the settings are cached; onboarding's automatic choice, once the
+  server ACCEPTED the PATCH (2xx), reaches the phone through a new OnboardingController.onModeSaved seam,
+  also before the settings are cached. One function decides the phone's mode for both moments
+  (LoggingModeRestore.kt): AUTO_DETECT only when the server holds it AND the location permission is
+  held, with the sampler started; MANUAL with the sampler stopped otherwise. Nothing is sent to the
+  server. The "restored from /me" comments are corrected (six sites, the DeviceLocalStore twins together).
+- R1163 PROOF (emulator API 36, minified audit build of a310917e): three sign-ins of returning accounts
+  with /me held 8 s and airplane mode switched on for 6 s under it -> spinner, then the retry line, then
+  (after the retry) the main screen, 3/3, never step 1. Control: the PRE-FIX audit build under the same
+  recipe -> empty step 1. A brand-new account -> onboarding step 1. An automatic account on a fresh install
+  with the location permission granted -> automatic on the phone (Parametres switch checked, Aujourd'hui's
+  automatic surface, the WorkManager sampler job scheduled); without the permission -> manual, no job.
+- R1164: :shared changed, so R573 ran: ios-shared.yml run 44601892813 on a310917e, conclusion success.
+
+STATUS (R391)
+COMPLETE. The FULL :app:gate ran in this session on a310917e77580c074ef3bc3c7290b165a3a83a5c (the code
+tip; every later commit changes this report only), emulator shut down, heavy lock held by
+an-signin-resolve (acquired 19:23:17Z at commitFree 9606 MB; 7744 MB free read just before the gate,
+after `./gradlew --stop`):
+    BUILD SUCCESSFUL in 6m 4s
+    261 actionable tasks: 109 executed, 152 up-to-date
+    GATE EXIT=0
+(log copied to C:/wt/queue-evidence/an-signin-resolve/gate-a310917e.log)
+fastCheck on the tree that became a310917e: BUILD SUCCESSFUL in 18s, exit 0 (it re-ran only what the
+last lint fixes touched; the run before it, with :app:testDebugUnitTest, passed every unit test and
+failed only ktlint/detekt, all fixed - comments, import order, one unused import, two @Suppress).
+web/ unchanged: no gate:clone owed. :shared changed: R573 run 44601892813, success (R1164 below).
+
+================================================================================================
+R1160 - THE CAUSE, MEASURED
+================================================================================================
+
+RIG (scripts and logs in C:/wt/queue-evidence/an-signin-resolve/, SHA256SUMS beside it):
+- The worktree's own dev server on :3962 (`pnpm dev`, scratch DB monreleve_an_signin_resolve, seeded),
+  routes pre-compiled with requests before the runs so compile-on-demand is out of the picture.
+- delay-proxy.mjs on :3963 in front of it (the pattern of the operator's untracked
+  android/scripts/an-audit-faultserver.mjs, read only, not edited or moved). Rules are re-read on every
+  request: hold a path's answer until N ms after arrival, destroy the socket, answer 500, truncate, or
+  replace the body with {}. Per request it logs arrival, the client's source port (connection reuse),
+  upstream status and time, bytes written, and DELIVERED vs CLIENT-CLOSED-BEFORE-FINISH. It never logs a
+  header or a body. It gives each request its own x-forwarded-for, so the in-memory sign-in rate bucket
+  per IP (5 / 10 min) never decides a run.
+- debug and audit APKs of 99d24cdf built ONCE with -PfrontalierPort=3963 (faults changed at runtime).
+- drive.mjs: fresh install, the real sign-in screens, the code read from the dev log and typed as slow
+  key events (never printed, R574 below), then the screen classified every ~400 ms.
+- netdrop.sh / netdrop-air.sh: when the next GET /me reaches the proxy, wait 1 s and switch the
+  emulator's Wi-Fi off (or airplane mode on), back 6 s later.
+- One INSTRUMENTED audit build (temporary Log lines in UrlConnectionTransport, StartupDecider and
+  ResolvingRoute: method, path, status, body LENGTH, exception class and message - no body, no header),
+  built, used, and reverted with `git checkout` of my own three edits before the first commit. Its
+  mapping.txt is kept to read the obfuscated class names.
+
+MATRIX (pre-fix 99d24cdf builds unless named; times UTC 2026-11-19; results.log has every line)
+| run | build | fault | outcome |
+| C1 | audit | none | MAIN (/me 323 ms) |
+| E1 | audit | /me held 4 s | EMPTY STEP 1 (/me DELIVERED 4008 ms; YearDownload "year 2025: not downloaded") |
+| E2 | debug | /me held 4 s (sam: tiny record) | MAIN |
+| E3 | audit | /me held 12 s (sam) | MAIN |
+| E4 | debug | /me held 4 s (alex) | MAIN |
+| E5 | audit | /me held 4 s, /entries destroyed | MAIN |
+| E6 | audit | /me held 4 s (camille) | MAIN |
+| I1 | audit, instrumented | /me held 4 s (alex) | MAIN; logcat: transport GET v1/me status=200 len=265; resolve fetch=MeFetch.Ok view=true settings=true; decision=Main |
+| I-rep | audit, instrumented | /me held 4 s (camille) | EMPTY STEP 1; logcat below |
+| X1 | DEBUG | /me held 8 s + Wi-Fi off under it | EMPTY STEP 1 (/me DELIVERED 8016 ms after the client lost it) |
+| X3 | audit | /me socket destroyed | EMPTY STEP 1 (the client sent /me TWICE - the silent retry) |
+| X4 | DEBUG | /me answered 500 | EMPTY STEP 1 |
+I-rep's logcat (instrumented minified build; obfuscated names read through its mapping.txt;
+transcribed from the terminal because the next run's `logcat -c` cleared the buffer - labelled as such
+in I-rep-camille-logcat-TRANSCRIBED.txt):
+    19:09:16.977 wificond: Regulatory domain changed to country: 00
+    19:09:17.124 ConnectivityService: [101 WIFI] CONNECTED to DISCONNECTED
+    19:09:17.944 R1160 transport GET v1/entries FAILED java.net.ConnectException: Failed to connect to /10.0.2.2:3963
+    19:09:18.084 R1160 transport GET v1/me FAILED java.net.ConnectException: Failed to connect to /10.0.2.2:3963
+    19:09:18.085 authedGet me -> AuthedOutcome.NetworkError
+    19:09:18.086 resolve fetch=MeFetch.Unreachable ... decision=StartDecision.Onboard
+  and the proxy for the same moments: #68 GET /api/v1/me arrived 19:09:16.337 on the pooled
+  connection, END DELIVERED bytes=295 at 19:09:20.353 - after the phone had given up.
+
+WHAT THE MATRIX SAYS, AND WHAT IT DOES NOT
+- "200 every time" is explained by the answer arriving after the client lost its socket: the proxy
+  wrote 200 into a connection that existed only on the host side (X1, I-rep).
+- Build type is not the variable: X1 (debug) shows the empty form under the network event; E3, E6, I1
+  (minified) reach MAIN under the same delay without one. Spontaneous failures were audit 2 of 7 delayed
+  runs and debug 0 of 2 - too few to separate anything; A3's 2/2 vs 0/2 is not explained by this
+  session's data and is not claimed to be. Its runs cannot be re-read.
+- E1 had no connectivity capture (the buffer was not saved); its cause is INFERRED from the same shape
+  (both pending requests failed together, the /me then DELIVERED).
+- WHY the emulator's Wi-Fi drops: observed, not explained. One spontaneous drop at ~3 min after a boot
+  (19:09:17); after the forced toggle in P1 a burst of spontaneous drops every 12-20 s
+  (19:50:30, 19:50:42, 19:51:02), each "Regulatory domain changed to country: 00" -> DISCONNECTED ->
+  reconnected ~4 s later, then quiet. The real-world equivalent is a Wi-Fi/cellular handover.
+- The silent retry: Android's HttpURLConnection re-sends an idempotent GET on a new connection when the
+  pooled one fails (X3: two /me arrivals for one fetch; the Wi-Fi-toggle P runs: two arrivals, the
+  second succeeded over cellular). So a network change only becomes a transport failure when the
+  new connection cannot be made in time - which is why a Wi-Fi toggle alone was not deterministic and
+  the proof uses airplane mode.
+- Build-type comparison asked for: timeouts and retries are identical (one UrlConnectionTransport,
+  15 s connect / 15 s read, no app-level retry); BuildConfig differs only in API_BASE_URL (the same
+  host:port here); the R8 keep set is unchanged and the instrumented minified build parsed every /me it
+  received (view=true settings=true). No R8 cause, so no keep rule was added.
+
+HOW A LATE, FAILED OR UNPARSED /me WAS MAPPED (99d24cdf, read):
+- transport failure -> AuthedOutcome.NetworkError -> MeFetch.Unreachable -> Onboard(fresh) (empty);
+- non-401 status -> AuthedOutcome.Ok(body), status dropped -> the error JSON read as a MeView with no
+  canton -> Onboard(DEFAULT_STEPS, nothing prefilled) (empty);
+- unparseable body -> parseMeView null -> onboardingPlanFor(null) -> Onboard(fresh) (empty);
+- complete-but-strict-refused -> "defensive" Onboard(fresh) (empty);
+- pending: a spinner, no timeout of its own (the transport's 15 s apply).
+
+================================================================================================
+R1161 - THE INVARIANT
+================================================================================================
+
+WHAT CHANGED (code tip a310917e)
+- shared/.../auth/SessionManager.kt: AuthedOutcome.Ok(status, body) - the status reaches the caller,
+  from the first request and from the retry after a refresh (the two places an Ok is built).
+- app/.../startup/StartupDecider.kt: StartDecision.Unresolved(UnresolvedCause.UNREACHABLE|UNREADABLE);
+  MeFetch.Ok(status, body); decideStartAfterSignIn(fetchMe, store, restoreMode). Onboard only via a 200 +
+  isMeAnswer + a readable view; Main only when the strict reader also reads it; everything else
+  Unresolved with nothing written. UnresolvedCause.message() maps to SignInCopy.NETWORK_ERROR /
+  SignInCopy.GENERIC_ERROR (referenced, not copied - R206; see Q1).
+- app/.../settings/MeWire.kt: isMeAnswer(body); two KDocs that called onboarding "the safe direction"
+  corrected (R267).
+- shared/.../onboarding/Completeness.kt: onboardingPlanFor(view: MeView) - null removed, KDoc says why.
+- app/.../ui/shell/ResolvingScreen.kt (new): spinner while pending; the failure line + SignInCopy.RETRY
+  button otherwise (the Releve error state's treatment, tokens only).
+- app/.../MainActivity.kt ResolvingRoute: the attempt is the effect's key; Unresolved stays on screen,
+  the button re-runs the resolve; nothing else is handed on.
+
+TESTS (written first; RED shown, then GREEN)
+- StartupDeciderTest (14): every branch - complete, partial (name, granularity, several), brand-new, gone
+  session, unreachable, non-200 (with an error body AND with a /me-shaped body), 200 non-/me bodies
+  (error JSON, {}, {"status":"ok"}, not JSON, empty, []), a /me-shaped body with an unreadable field,
+  the mode restore and its write order, meFetchOf keeping the status.
+- ResolveFlowTest (5, R204): through the real SessionManager + AuthApi against TokenServer - /me lost
+  -> Unresolved, nothing written, the retry -> Main; 500 -> Unresolved; 200 {"status":"ok"} ->
+  Unresolved; a 500 met on the RETRY after a refresh -> Unresolved (refreshRequests == 1); a brand-new
+  account -> Onboard.
+- TokenServer: an unscripted /me now answers a REAL brand-new /me body (meBody(null), moved here from
+  ForcedSignOutTest's meOf so the fake and the tests share one function); a meFault seam (Unreachable
+  before the request arrives, Answer after the token checks).
+- ForcedSignOutTest: its three RESOLVING calls pass restoreMode; unchanged otherwise, green.
+- RED (before the implementation, API surface stubbed to the old behaviour; logs red1-shared.log,
+  red2-app.log): 16 :app failures, e.g. "expected:<Unresolved(cause=UNREACHABLE)> but was:<Onboard(
+  prefill=OnboardingSnapshot(step=NOM, name=, canton..." - the empty form itself, for the unreachable,
+  500 and non-/me cases; "expected:<[AUTO_DETECT]> but was:<[]>" for the restore; and in :shared
+  "expected:<[mode:AUTO_DETECT, settings]> but was:<[settings]>".
+
+================================================================================================
+R1162 - PARK-E3
+================================================================================================
+- app/.../detection/LoggingModeRestore.kt (new): phoneLoggingMode(serverMode, locationFullyGranted) and
+  applyServerLoggingMode(..., store, startSampling, stopSampling) - AUTO_DETECT + start only with both;
+  MANUAL + stop otherwise; nothing to the server (R316's reasoning). LoggingModeRestoreTest (4).
+- RESOLVING: restoreMode(parseLoggingMode(body)) on every positive answer (Main and Onboard), BEFORE
+  store.save(settings): cached settings send the next launch past RESOLVING, so a process death between
+  the two writes re-runs the resolve rather than opening the shell unrestored.
+- Onboarding: OnboardingController(..., onModeSaved) (:shared; required, no default, like patchBody) is
+  called with AUTO_DETECT only when the PATCH carried it AND the server answered 2xx, before the settings
+  are cached. OnboardingModeSavedPinTest (3, commonTest): accepted automatic -> handed on once, before
+  the settings; manual -> nothing; refused/failed (network, session ended, 400) -> nothing.
+- MainActivity: one restoreLoggingMode(context, mode) used by both seams.
+- The comments PARK-E3 names (re-derived by grep, R267): DeviceLocalStore.kt (:app AND its iOS twin,
+  byte-identical, one commit; wording true on both platforms), DetectionMode.kt ("re-read on launch"),
+  LoggingMode.kt (:shared, clear()'s KDoc - a sixth site PARK-E3 did not list), LocalStoreTest.kt,
+  ErasureCensusTest.kt. They now say what is true: restored at the next sign-in's RESOLVING on Android,
+  fail-closed, MANUAL without the permission.
+- PARK-E3 is closed by this branch (pending merge). PARK-E7's FIRST half (restore loggingMode after a
+  forced sign-out) is done by the same restore; its second half (the device-only opt-ins keyed by account)
+  is untouched. Sessions do not write parking.md; this paragraph is the record for the orchestrator.
+
+================================================================================================
+R1163 - PROOF (emulator API 36, MINIFIED audit build of a310917e, -PfrontalierPort=3963)
+================================================================================================
+RECIPE (DEVIATION D1): no delay ALONE flips the outcome (R1160), so "the delay R1160 found" is /me held
+8 s with airplane mode ON from 1 s after /me arrives, OFF 6 s later (netdrop-air.sh); the driver taps
+the retry 12 s after the retry line appears.
+| run | account | screens (driver timeline) | result |
+| R1163-1 | alex (returning, complete) | SPINNER -> RETRY (SignInCopy.NETWORK_ERROR) -> retry -> SPINNER -> MAIN "Bonjour Alex" | never step 1 |
+| R1163-2 | sam | same | never step 1 |
+| R1163-3 | camille | same | never step 1 |
+| CONTROL | demo, PRE-FIX audit 99d24cdf | SPINNER -> EMPTY STEP 1 (name field "") | the recipe reproduces the defect (R180) |
+Extra rows, fixed audit, the fault cleared once the retry line showed:
+| /me socket destroyed (demo) | SPINNER -> RETRY (NETWORK_ERROR) -> retry -> MAIN |
+| /me 500 (alex) | RETRY (SignInCopy.GENERIC_ERROR) -> retry -> MAIN |
+| /me 200 {} (camille) | RETRY (GENERIC_ERROR) -> retry -> MAIN |
+| first {} row (sam) - see D4 | RETRY (NETWORK_ERROR: the proxy kept content-encoding, a transport failure) -> MAIN |
+| Wi-Fi toggle instead of airplane (P1 alex; sam; camille) | P1: four RETRYs while the emulator's Wi-Fi flapped, then MAIN; sam and camille: the silent retry over cellular succeeded, straight to MAIN |
+A brand-new account (nouveau.r1163@example.invalid, no fault): ONBOARDING step 1, name "" - the server's
+positive answer (GET /me 200, 249 bytes). Not finished.
+AUTOMATIC account (camille: server AUTO_DETECT with consent), fresh install, FINE + COARSE + BACKGROUND
+granted by `pm grant` before launch: MAIN "Bonjour Camille"; Aujourd'hui shows DetectionCopy.MODE_AUTO and
+the automatic not-sure line; Parametres' switch checked=true (screenshot
+R1163-auto-granted-parametres.png); dumpsys jobscheduler: one androidx.work SystemJobService job for the
+package (the 15-minute sampler, next run +14m52s).
+Same server mode WITHOUT the permission (demo, AUTO_DETECT with consent, nothing granted): MAIN with the
+manual surface, no DetectionCopy.MODE_AUTO on Aujourd'hui, 0 jobs for the package.
+(The driver's "auto surface=false" labels before 20:05Z used a too-narrow marker and are not evidence
+either way; the two rows above were read from full UI dumps.)
+No onboarding was finished over an existing account. Sign-in codes: read from the dev log by the
+driver and typed as key events, never printed; UI dumps go to stdout, a dump showing the code screen
+is discarded unread, every other dump is masked (\d{6}) before anything reads it, and the one dump of
+the code screen that is used (for the field's bounds) is taken BEFORE a digit is typed (R574).
+
+================================================================================================
+R1164 - iOS (R573)
+================================================================================================
+gh workflow run ios-shared.yml --ref an-signin-resolve -> run 44601892813, head a310917e, job
+ios-shared-tests 19:47:06Z-19:55:26Z, conclusion success. origin/main moved during the task to
+270f2686, which changes relay/ only (records); the android tree of the merge result equals the tested
+one. macOS: job 8 m 20 s -> 9 billed minutes (per-job rounding); the timing API reports billable 0 ms,
+run_duration 504 000 ms. Within the 30-minute allotment.
+
+================================================================================================
+WALKTHROUGH (R176) - emulator API 36, minified audit build of a310917e
+================================================================================================
+Driven: welcome -> address -> code (six key events) -> RESOLVING's spinner -> the retry line and
+button under a network loss (both causes' sentences seen) -> the retry -> Aujourd'hui, 9 sign-ins of
+returning accounts; a brand-new account to onboarding step 1; a second brand-new account
+(nouveau2.r1163@example.invalid, permissions granted) through all eight steps choosing "Automatiquement"
+-> the disclosure -> "Autoriser la localisation" (permissions already held, no dialog) -> rappel
+"Pas maintenant" -> "Tout est pret" (the sampler job was already scheduled at that moment, before
+"Continuer") -> Aujourd'hui "Bonjour Nouveau" with the automatic surface (screenshot
+R1162-new-account-onboarded-auto-aujourdhui.png). Parametres opened on the automatic account; switch on.
+What it showed that the tests do not: the retry line sits alone on the screen with the button, the
+spinner is visible for the whole hold, and nothing else on RESOLVING can be tapped - see Q2.
+NOT EXERCISED: the debug build after the fix (the minified build is the one the defect named); a
+process death while Unresolved (the start decision re-runs RESOLVING by construction - startDestination
+is unchanged); TalkBack on the new screen; the S9.
+
+================================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================================
+N1 OnboardingController.save treats ANY PostOutcome.Ok as saved - a 400/409 PATCH still caches the
+   settings and shows READY (pre-existing; ParametresController checks the status). onModeSaved is
+   gated on 2xx, the cache is not. See Q3.
+N2 DossierApi and EntriesDownload now receive the status in AuthedOutcome.Ok but still ignore it: a 500
+   body is parsed and fails (DossierResult / YearDownload.Failed - safe, nothing written).
+N3 freshOnboardingSnapshot has no production caller left (kept; pinned by OnboardingControllerPinTest).
+N4 The emulator API 36's Wi-Fi flaps (regulatory domain "00" resets) - an emulator artefact that makes
+   every network-bound walkthrough on this AVD flaky; worth knowing for A10/A11/A4's walkthroughs.
+N5 MANUAL restore stops the sampler (WorkManager cancelUniqueWork, a no-op when nothing is scheduled) -
+   it overlaps A11's session-end seam; harmless, but A11 should know it is there.
+N6 A3's N12 (fast injected code entry loses digits) - avoided by slow key events; not re-measured.
+
+================================================================================================
+DEVIATIONS
+================================================================================================
+D1 R1163's "under the delay R1160 found": a delay alone does not flip the outcome; the proof adds a 6 s
+   airplane-mode window under the held /me (recipe above), with the pre-fix control.
+D2 A temporary instrumented minified build was made to read the branch taken (logging only, no body or
+   header), never committed; its three edits were reverted before the first commit. Two extra heavy
+   steps (emulator down, lock held) beyond the two the plan needed.
+D3 Evidence lives outside the repository and outside Temp: C:/wt/queue-evidence/an-signin-resolve/
+   (logs, scripts, logcat extracts, screenshots, the instrumented build's mapping) with
+   an-signin-resolve.SHA256SUMS. dev.log (it holds codes and links) is NOT copied anywhere. The I-rep
+   logcat lines are transcribed from terminal output (labelled), because a later `logcat -c` cleared them.
+D4 The first {} row kept the upstream's content-encoding, so the phone met a corrupt-gzip transport
+   failure (UNREACHABLE) rather than a non-/me body; the proxy was fixed and the row re-run (UNREADABLE).
+   Both are retry, never onboarding.
+D5 TokenServer's unscripted /me body changed from {"status":"ok"} to a real brand-new answer - a test
+   fake brought to the server's shape; ForcedSignOutTest's meOf moved into TokenServer as meBody.
+D6 Scratch database monreleve_an_signin_resolve and two new accounts in it (nouveau.r1163,
+   nouveau2.r1163) are left in place, mine, local; web/.env (gitignored) names only that database.
+
+================================================================================================
+QUESTIONS
+================================================================================================
+Q1 COPY: the retry line reuses SignInCopy.NETWORK_ERROR / SignInCopy.GENERIC_ERROR and SignInCopy.RETRY
+   by reference - true at RESOLVING, which ends the sign-in. Does RESOLVING want its own sentence (for
+   instance that the settings could not be loaded yet)? French copy is the operator's.
+Q2 THE RETRY HAS NO OTHER EXIT: during a long outage the person waits on RESOLVING (a relaunch re-runs
+   it). Add a sign-out link there, or is retry-only right?
+Q3 N1 - should onboarding's save refuse to cache on a non-2xx (its own small task)?
+Q4 A server AUTO_DETECT met on a phone without the location permission is shown as MANUAL silently, as
+   R316's revocation path does. Should that case say something (N4 of A3 is the neighbouring finding)?
+
+================================================================================================
+PUSH PROOF
+================================================================================================
+Branch an-signin-resolve on origin, NOT merged (the orchestrator merges):
+  a310917e AN-SIGNIN-RESOLVE: onboarding only on a positive "no settings" answer; the mode restored from /me
+  (+ this report's commit, named in the handback)
+Emulator: MonReleve_API36 left booted, airplane mode off, Wi-Fi on, ch.monreleve.app = the orchestrator's
+C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk (fresh install, signed out).
+My processes stopped: the :3962 dev server tree and the :3963 proxy (taskkill /T on the trees I
+spawned); afterwards :3962 refuses (curl 000) while the orchestrator's :3900 still answers 200.
+R-number re-scan before push (this worktree, C:/wt/web-orch, the main checkout incl. untracked): R1160-
+R1169 appear only in AN-SIGNIN-RESOLVE.txt, ORCH-ANDROID.txt and RULINGS-2026-11-16.txt (the allocation).
+END OF REPORT-AN-SIGNIN-RESOLVE
