@@ -382,4 +382,12 @@ Q6 (D2): the minified-only re-onboarding of a returning user on a cold /me is re
    instrumentation of the release-shaped build), and is it a launch blocker?
 
 PUSH PROOF
-PENDING.
+Branch an-api36-pass on origin (NOT merged; the orchestrator merges). Commits on top of 5c18f513:
+  d3b0f198 report stage 1 (R1081 probe)
+  d815a7be report stage 2 (R1080 debug walkthrough)
+  014e5e7b R1082 test + fix (the gated code tip: :app:gate BUILD SUCCESSFUL in 7m 7s, exit 0)
+  c14609ca report stage 3 (gate, audit pass)
+  21a86fba report stage 4 (D2, NOT EXERCISED, corrections)
+Before this commit: git ls-remote origin refs/heads/an-api36-pass ->
+  21a86fba12b3fc23fe25a59bd42e46158b9effa5  refs/heads/an-api36-pass
+This commit (PUSH PROOF only) is pushed the same way; its sha is in the handback.
