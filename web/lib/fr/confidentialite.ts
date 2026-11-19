@@ -52,6 +52,7 @@
 import { APP_NAME } from '@/lib/fr';
 import { PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
 import { DAYS_BEFORE } from '@/lib/rappel/window';
+import type { ProductState } from '@/lib/content/product-state';
 
 /**
  * THE ENUMERATED RECORDS, KEYED - and keyed so that something else can point
@@ -93,7 +94,7 @@ export const DISCLOSED_RECORDS = {
     'votre accord est enregistrée, et chaque message contient un lien de ' +
     'désinscription en un clic.',
   signInLink:
-    'Deuxième cas, la connexion à l’application, lorsqu’un lien de connexion ' +
+    'Deuxième cas, la connexion à votre compte, lorsqu’un lien de connexion ' +
     'est demandé pour cette adresse. Le service enregistre alors, le temps ' +
     'que le lien reste valable, l’adresse et une empreinte du lien — jamais ' +
     'le lien lui-même. Tant que ce lien n’a pas été ouvert, aucun compte ' +
@@ -188,6 +189,18 @@ export const DISCLOSED_RECORDS = {
     'les identifiants de connexion eux-mêmes, sous forme d’empreinte et ' +
     'jamais en clair, avec leur date d’émission et d’expiration. Une ' +
     'empreinte ne permet pas de reconstituer l’identifiant ;',
+  // FW-WEB-ACCOUNT (R899). The website's account area keeps one row per
+  // sign-in. The enumeration is CLOSED, so the table needs its line before a
+  // single row is written; it is tied to the SCHEMA (personal-data.ts), not to
+  // whether the area is offered, because a table that exists is disclosed.
+  // Each column is true of a clause: when it began (createdAt), when it
+  // expires (expiresAt), whether and why it ended (revokedAt, revokedReason),
+  // the person (userId, id) and the hashed identifier (tokenHash).
+  webSession:
+    'si vous vous connectez à votre espace sur le site, une ligne par ' +
+    'connexion, indiquant quand elle a commencé, quand elle expire et si ' +
+    'elle a pris fin par une déconnexion. L’identifiant que garde votre ' +
+    'navigateur n’est enregistré que sous forme d’empreinte ;',
   emailConfirmed:
     'la date à laquelle vous avez confirmé votre adresse en ouvrant un lien ' +
     'de connexion.',
@@ -242,6 +255,19 @@ export const WEB_STATEMENTS = {
     'Le site public ne dépose aucun cookie, ne vous demande aucun compte et ' +
     'ne vous identifie pas. Vous pouvez utiliser le calculateur sans rien ' +
     'communiquer.',
+  // FW-WEB-ACCOUNT (R900, Queue Ruling 12). THE ONE EXCEPTION, AND IT IS
+  // DERIVED: CONFIDENTIALITE_COPY.webFor(state) places it after noCookies only
+  // while PRODUCT_STATE.webAccountExists, the same fact that puts the header's
+  // sign-in link on the page (R172). Its two claims are each held by a test
+  // (tests/db/privacy-claims.test.ts CLAIM 1): never sent to a public page
+  // (R900's census and crawl), and one session cookie with the attributes the
+  // account area states. No duration is typed (R153): it says the cookie
+  // expires, and lib/auth/web-session.ts says when.
+  accountCookie:
+    'Votre espace sur le site, si vous vous y connectez, est la seule partie ' +
+    'du site qui dépose un cookie. Ce cookie de session sert uniquement à vous ' +
+    'garder connecté dans cet espace. Il n’est jamais envoyé aux pages ' +
+    'publiques, et il est effacé à la déconnexion ou expire de lui-même.',
   // COUNTED, NOT TYPED (Queue Ruling 24). « deux cas seulement » went false
   // by count the day a third case was stored, with every guard green; the
   // number now comes from the list of cases the page renders.
@@ -317,6 +343,25 @@ export const CONFIDENTIALITE_COPY = {
     WEB_STATEMENTS.analytics,
   ],
 
+  /**
+   * The public-site section AS RENDERED: `web`, with the account area's
+   * cookie sentence directly after noCookies while the area exists.
+   *
+   * FW-WEB-ACCOUNT (R900, Queue Ruling 12, R172). A function of the state, not
+   * a second list: the page renders this, and tests/unit/content/product-state
+   * .test.ts flips webAccountExists and requires the section to change. The
+   * sentence sits right after noCookies because it is that sentence's one
+   * exception, and a reader should meet the rule and its exception together.
+   */
+  webFor: (state: ProductState): readonly string[] =>
+    state.webAccountExists
+      ? [
+          CONFIDENTIALITE_COPY.web[0],
+          WEB_STATEMENTS.accountCookie,
+          ...CONFIDENTIALITE_COPY.web.slice(1),
+        ]
+      : CONFIDENTIALITE_COPY.web,
+
   // THE HEADING SAID l’application, AND THE APPLICATION DOES NOT EXIST.
   // Every row FW22 writes is written by the SERVER - the sign-in token, the
   // account, the session, the credentials - and there is no Android client in
@@ -344,6 +389,8 @@ export const CONFIDENTIALITE_COPY = {
     DISCLOSED_RECORDS.reminderLog,
     DISCLOSED_RECORDS.sessions,
     DISCLOSED_RECORDS.credentials,
+    // FW-WEB-ACCOUNT (R899): beside the device sessions it parallels.
+    DISCLOSED_RECORDS.webSession,
     DISCLOSED_RECORDS.emailConfirmed,
     // FW-VERIFY: the issuance record. It sits last because it is produced by an
     // explicit act - generating a releve - rather than held from sign-in.

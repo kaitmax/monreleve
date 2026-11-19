@@ -68,6 +68,7 @@ import { PRODUCT_STATE } from '@/lib/content/product-state';
 import { FOOTER_COLUMNS, MENU_ACTION, SHELL_COPY, SHELL_NAV } from '@/lib/fr/shell';
 import type { FooterColumn, NavEntry, NavLink } from '@/lib/fr/shell';
 import { CurrentNavMenu, MenuTrigger, MobileMenuList } from './ShellNav';
+import { SignInLink } from './SignInLink';
 import styles from './PublicShell.module.scss';
 
 // THE LEAVES THE TESTS AND THE WORKBENCH RENDER DIRECTLY, re-exported so this
@@ -253,6 +254,12 @@ export function PublicShell({ children, guideLinks }: PublicShellProps) {
               {SHELL_COPY.cta}
             </a>
           )}
+
+          {/* FW-WEB-ACCOUNT (R901): the way into the account area, OUTSIDE the
+              phone panel like the CTA, and after it, as the A2 header draws
+              "Se connecter" after the nav. A server component like this shell;
+              it renders nothing while the area is not live (R85). */}
+          <SignInLink />
         </div>
 
       </header>

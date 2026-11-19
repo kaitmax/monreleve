@@ -197,6 +197,9 @@ describe('the row, and the constraint that keeps it one row', () => {
       'SessionToken',
       'User',
       'VerificationToken',
+      // FW-WEB-ACCOUNT (R899): one row per sign-in on the website's read-only
+      // account area, short-lived and revocable by row.
+      'WebSession',
       '_prisma_migrations',
     ]);
   });

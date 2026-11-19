@@ -9,9 +9,10 @@
 // renders the SAME loop, so the two cannot drift - which matters because the
 // mobile panel is the half nobody looks at during a desktop review.
 //
-// NO "CONNEXION". D14: there is no signup and no signed-in web area, so a
-// login link would be an entry point to nothing. SPEC 9.2's header diagram
-// still shows one; that diagram is stale and the prompt is explicit.
+// NO "CONNEXION" UNTIL FW-WEB-ACCOUNT. D14 deleted the signed-in web area, so
+// a login link was an entry point to nothing. The operator's ruling of
+// 2026-11-11 (R898) brought back ONE read-only area, and SHELL_COPY.signIn is
+// its way in - there is still no signup.
 //
 // TODO-COPY: realistic French, not reviewed.
 
@@ -105,6 +106,14 @@ export const SHELL_COPY = {
   /** The single primary action. D14: it leads to the app, not to a signup. */
   cta: 'Suivre mes jours',
   ctaHref: '/application',
+
+  /**
+   * FW-WEB-ACCOUNT (R901): the way into the website's read-only account area.
+   * D14 as amended (R898) is why it exists; R85 is why it renders only while
+   * the area is live (ACCOUNT_ROUTE, derived from PRODUCT_STATE). Its href is
+   * ACCOUNT_PATH, read from the registry - never typed here.
+   */
+  signIn: 'Se connecter',
 } as const;
 
 // ---------------------------------------------------------------------------

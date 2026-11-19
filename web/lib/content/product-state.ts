@@ -56,6 +56,13 @@ export interface ProductState {
   readonly comparatorExists: boolean;
   /** The Android application (the AN series). */
   readonly appExists: boolean;
+  /**
+   * The website's read-only account area: a person signs in by code and reads
+   * their year (FW-WEB-ACCOUNT, R898). It is the one place the site sets a
+   * cookie, so the privacy notice's cookie sentence and the header's sign-in
+   * link both derive from this one fact.
+   */
+  readonly webAccountExists: boolean;
 }
 
 export const PRODUCT_STATE: ProductState = {
@@ -110,4 +117,11 @@ export const PRODUCT_STATE: ProductState = {
   // Flipped by: the AN series, at the release task (provisional - see
   // tests/unit/content/product-state.test.ts EVIDENCE.appExists).
   appExists: false,
+
+  // BUILT, FW-WEB-ACCOUNT (R898-R903): app/(account)/mon-releve/ renders the
+  // sign-in steps and the signed-in page, and lib/web-account/cookie.ts is the
+  // one cookie it sets. ONE FACT, THREE SURFACES (R172): the header's sign-in
+  // link (through ACCOUNT_ROUTE in lib/content/routes.ts), the privacy notice's
+  // cookie sentence, and its sign-in purpose. Flip it and all three change.
+  webAccountExists: true,
 };

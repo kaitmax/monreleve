@@ -246,6 +246,10 @@ model User {
   /// FW-VERIFY (R331). The dates this person's holder name changed - never the
   /// former value. Cascades, like every other owned row.
   nameChanges NameChange[]
+
+  /// FW-WEB-ACCOUNT (R899). One row per sign-in on the website's read-only
+  /// account area. Cascades, so it joins FW26's negative sweep automatically.
+  webSessions WebSession[]
 }
 
 /// D21. Replaces the PushSubscription a web-push design would have needed.
@@ -841,4 +845,52 @@ model DeadlineReminder {
   @@index([confirmedAt, createdAt])
   /// The reminder pass reads the date.
   @@index([deadline])
+}
+
+
+// ---------------------------------------------------------------------------
+// FW-WEB-ACCOUNT (R899): the website's read-only account area, and the one
+// cookie it sets.
+//
+// A TABLE OF ITS OWN, NOT DeviceSession. A device session is long-lived (its
+// refresh token lives ninety days, SPEC 10) and rotates a chain of bearer
+// tokens; a web session is SHORT, holds exactly one credential, and never
+// rotates. Folding the two together would put a thirty-minute rule and a
+// ninety-day rule on one row, and the one that loses is the short one.
+//
+// NOT THE FW21 `Session` TABLE EITHER. That one is Auth.js residue with no
+// writer (R209) and no revocation columns; R899 asks for a new table, and a
+// table nobody writes is a promise nobody keeps (R187).
+//
+// THE HASH IS STORED, NEVER THE TOKEN - the same reasoning as SessionToken:
+// this table must not be a list of working credentials for whoever reads a
+// backup. Every timestamp is server-assigned: no request field reaches a
+// column here.
+//
+// The invariants the database can express are CHECK constraints in the
+// migration (R196), asserted in both directions by tests/db/web-session.test.ts.
+// ---------------------------------------------------------------------------
+
+/// One sign-in on the website's account area (FW-WEB-ACCOUNT, R899).
+model WebSession {
+  id     String @id @default(cuid())
+  userId String
+
+  /// SHA-256 of the cookie's value, hex. Never the value itself.
+  tokenHash String @unique
+
+  /// Both stamps are written from ONE server instant at sign-in, so the life
+  /// the database enforces is exactly the life the cookie states.
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  /// Set by sign-out (or "every device"), never cleared. A revoked session
+  /// says why - the same pair rule as DeviceSession.
+  revokedAt     DateTime?
+  revokedReason SessionRevocation?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

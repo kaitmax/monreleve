@@ -64,7 +64,7 @@ export const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
 const TOKEN_BYTES = 32;
 
 /** Digits in the code that travels in the same email. */
-const CODE_DIGITS = 6;
+export const CODE_DIGITS = 6;
 
 /**
  * Wrong-code attempts allowed against one request before it is dead.

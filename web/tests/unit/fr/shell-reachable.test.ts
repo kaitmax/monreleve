@@ -39,6 +39,8 @@ import { SHELL_COPY } from '@/lib/fr/shell';
  */
 const SURFACES = [
   'lib/ui/react/PublicShell/PublicShell.tsx',
+  // FW-WEB-ACCOUNT (W12): the header's sign-in link, which PublicShell renders.
+  'lib/ui/react/PublicShell/SignInLink.tsx',
   'lib/content/regulatory.ts',
 ];
 

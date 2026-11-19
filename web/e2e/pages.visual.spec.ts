@@ -95,6 +95,14 @@ const PAGES = [
   // is covered by tests/unit/pages/verifier.test.tsx plus the walkthrough.
   { id: 'verifier-inconnu', path: '/verifier/aucun-code-de-ce-type' },
 
+  // FW-WEB-ACCOUNT (R910, W12): the account area's first step, where the
+  // header's "Se connecter" leads. Signed out it reads no cookie and no
+  // database, so it is deterministic in the container. The code step needs a
+  // step sealed with AUTH_SECRET and the signed-in page needs a session, so
+  // those two are covered by tests/unit/pages/mon-releve.test.tsx and the
+  // walkthrough instead (REPORT-FW-WEB-ACCOUNT-2.txt, DEVIATIONS).
+  { id: 'mon-releve-connexion', path: '/mon-releve/connexion' },
+
   { id: '404', path: '/cette-page-nexiste-pas' },
 ] as const;
 

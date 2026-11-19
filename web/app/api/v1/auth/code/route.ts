@@ -20,7 +20,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AUTH_API_COPY } from '@/lib/fr/auth-api';
-import { checkRate, clientKey } from '@/lib/alerts/rate-limit';
+import { codeExchangeAllowed, normaliseAddress } from '@/lib/auth/code-exchange';
 import { consumeCode } from '@/lib/auth/magic-link';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { prisma } from '@/lib/db/client';
@@ -34,30 +34,9 @@ function refuse(code: string, message: string, status: number): NextResponse {
   return NextResponse.json({ status: 'error', code, message }, { status, headers: HEADERS });
 }
 
-/**
- * A BACKSTOP, SET WELL ABOVE THE PER-REQUEST COUNTER. The per-code guard is
- * consumeCode's five-attempt limit; this edge window exists only to stop a source
- * hammering the endpoint across many requests. Twenty per ten minutes is far more
- * than any honest person needs (even someone who exhausts one code's five tries,
- * asks for a new one, and tries again stays under it) and far below what a script
- * would want - so a legitimate fat-fingered user meets `too_many_attempts`, never
- * `rate_limited`, and only abuse meets this.
- */
-const EXCHANGE_RATE_LIMIT = 20;
-
-/**
- * The existing rate limits per address and per network source, namespaced so the
- * exchange does not share the request form's or the alert form's buckets. Both
- * are checked and both are counted: by IP to stop one source hammering many
- * addresses, by address to stop many sources hammering one.
- */
-function allowed(email: string, headers: Headers): boolean {
-  const ip = clientKey(headers);
-  const byAddress = checkRate(`auth:code:email:${email}`, Date.now(), EXCHANGE_RATE_LIMIT);
-  const byIp = checkRate(`auth:code:ip:${ip}`, Date.now(), EXCHANGE_RATE_LIMIT);
-
-  return byAddress.allowed && byIp.allowed;
-}
+// THE EDGE BUDGET MOVED TO lib/auth/code-exchange.ts (FW-WEB-ACCOUNT, R901),
+// unchanged: the same keys, the same twenty per ten minutes. The website's
+// sign-in calls the same function, so the two doors spend ONE budget.
 
 export async function POST(request: Request): Promise<NextResponse> {
   let raw: unknown;
@@ -74,9 +53,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     return refuse('malformed_body', AUTH_API_COPY.malformedBody, 400);
   }
 
-  const email = parsed.data.email.trim().toLowerCase();
+  const email = normaliseAddress(parsed.data.email);
 
-  if (!allowed(email, request.headers)) {
+  if (!codeExchangeAllowed(email, request.headers)) {
     return refuse('rate_limited', AUTH_API_COPY.codeRateLimited, 429);
   }
 
