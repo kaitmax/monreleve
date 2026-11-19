@@ -67,6 +67,9 @@ The runs (AGP 8.10.1, Gradle 8.11.1, ANDROID_HOME set, emulator down, heavy lock
    in 3m 5s. The APK's textproto:
        generate_error_reason: NO_SUPPORTED_VCS_FOUND
    The worktree hypothesis is REFUTED: a non-worktree clone fails identically.
+   The main checkout was not built (it is never edited), but the path was read: `ls -d` of
+   "c:/Users/KAMXKAM/Downloads/frontier work/android/.git" -> No such file or directory, while
+   ".../frontier work/.git" exists. So a main-checkout build meets the same lookup.
 3. POSITIVE CONTROL. `git archive 6f9dbc05 | tar -x -C C:/wt/an-release-vcs-ctl`, then in
    C:/wt/an-release-vcs-ctl/android: `git init -b ctl`, commit -> 4069b3afb66f0378d9c4b321da91cd649c2b558f
    (android/ is now itself a git root). `./gradlew :app:extractReleaseVersionControlInfo`, the
@@ -118,6 +121,12 @@ All in android/app/build.gradle.kts, code commit 47f8e6235008505147357f1a3fa6ba5
   47f8e623, `./gradlew :app:checkReleaseVcsInfo` with NO clean re-ran
   :app:extractReleaseVersionControlInfo and the APK now reads revision: "47f8e6235008505147357f1a3fa6ba558cbea3ca"
   (BUILD SUCCESSFUL in 3s, 5 executed).
+- AUDIT VARIANT, measured after the gate on the report tip e859295f (no Kotlin or script change):
+  `./gradlew :app:extractAuditVersionControlInfo` (executed, BUILD SUCCESSFUL in 22s); its
+  intermediate app/build/intermediates/version_control_info_file/audit/
+  extractAuditVersionControlInfo/version-control-info.textproto reads
+      revision: "e859295f1ed562e768ae0f17f6262cc786822a3d"
+  (= HEAD then). No audit APK was built, and checkReleaseVcsInfo reads the release APK only.
 - WIRED: "checkReleaseVcsInfo" added to :app:gate's dependsOn and to its printed RAN list.
 - fastCheck after the change: BUILD SUCCESSFUL in 2m 2s (108 actionable tasks), including
   :app:ktlintKotlinScriptCheck over the build script.
@@ -174,8 +183,15 @@ N3. vcsInfo { include = true } would make AGP THROW instead of writing the error
 N4. The fix depends on AGP internals: the task-name pattern and com.android.tools.idea.insights.proto
     classes on the build-script classpath. An AGP change that renames the task is caught by the
     check (planted above); one that removes the proto classes fails the build script's compilation.
-N5. Every release/audit APK built BEFORE this commit carries NO_SUPPORTED_VCS_FOUND, including the
+N5. Every release APK built BEFORE this commit carries NO_SUPPORTED_VCS_FOUND, including the
     five C4 recorded; nothing here changes them.
+
+N6. The refuted hypothesis is still written down (R267), and none of these is edited here (they
+    are the orchestrator's records / history): relay/QUEUE-STATE.md:202 ("worktree builds carry
+    no commit id ... a worktree's .git is a file"); relay/RULINGS-2026-11-11.txt:632 and :686
+    ("every session builds in a worktree, so no release APK would carry its commit id");
+    REPORT-AN-APK-DIFF.txt:421 and :1076 ("Every worktree-built release ..."). The measured cause
+    is the Gradle root (android/) not being the git root; the parked task can close on this report.
 
 ======================================================================================================
 DEVIATIONS
@@ -217,7 +233,7 @@ PUSH PROOF
 ======================================================================================================
 Code: `git push -u origin an-release-vcs` -> "* [new branch] an-release-vcs -> an-release-vcs";
 `git ls-remote origin refs/heads/an-release-vcs` -> 47f8e6235008505147357f1a3fa6ba558cbea3ca.
-Report: this file is committed on top of 47f8e623 and pushed to the same branch after this line is
+Report: this file is committed (two commits) on top of 47f8e623 and pushed to the same branch after this line is
 written; the resulting remote sha is stated in the session's hand-back, not here (a report states
 only what has happened). NOT merged - pending merge by the orchestrator.
 R-numbers re-scanned before pushing (relay/ and REPORT-*.txt in this worktree, C:/wt/web-orch and
