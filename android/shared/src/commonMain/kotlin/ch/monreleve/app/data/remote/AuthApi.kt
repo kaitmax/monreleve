@@ -469,13 +469,31 @@ private fun encode(value: String): String {
 /** U+0022-quoted filename from a Content-Disposition header. R237: the CSV's only carrier of its titulaire. */
 private val FILENAME = Regex("""filename\*?=(?:UTF-8'')?"?([^\";]+)"?""", RegexOption.IGNORE_CASE)
 
-/** The download filename the server named in Content-Disposition, or null if it named none. */
+/**
+ * The download filename the server named in Content-Disposition, or null if it named none.
+ *
+ * AN-SHARED-FIXES (R1092): OR NAMED ONE THAT IS NOT A PLAIN FILE NAME. Both platforms join this name to their exports
+ * directory (Android MainActivity.shareFile, iOS IosExportFiles.write), so a separator or a ".." segment would write
+ * outside it and escape the sign-out's export clear. Such a name is treated EXACTLY as an absent one - null - so each
+ * caller's existing no-name path (the controllers' year-named fallback, R237) applies and nothing new is invented.
+ */
 internal fun filenameOf(headers: Map<String, String>): String? {
     val disposition =
         headers.entries.firstOrNull { it.key.equals("Content-Disposition", ignoreCase = true) }?.value
             ?: return null
-    return FILENAME.find(disposition)?.groupValues?.get(1)?.trim()?.ifEmpty { null }
+    return FILENAME.find(disposition)?.groupValues?.get(1)?.trim()?.takeIf(::isPlainFileName)
 }
+
+/**
+ * R1092: not empty, no "/" or "\", no NUL or other control character, and not "..". Once both separators are
+ * refused, ".." can only be a path segment by being the whole name, so "releve..2026.pdf" stays a plain name.
+ */
+private fun isPlainFileName(name: String): Boolean =
+    name.isNotEmpty() &&
+        name != PARENT_SEGMENT &&
+        name.none { it == '/' || it == '\\' || it.isISOControl() }
+
+private const val PARENT_SEGMENT = ".."
 
 /**
  * AN-FORCED-SIGNOUT (R526): a refresh answer that is not a 200. ONLY the route's own refusal - 401
