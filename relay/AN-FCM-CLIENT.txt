@@ -1,0 +1,60 @@
+AN-FCM-CLIENT SESSION PROMPT - Mon Releve
+THE APP RECEIVES THE DAILY PUSH REMINDER (ORCH-ANDROID step A8)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 4 and 7). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android
+Rulings 4 and 7 in C:/wt/web-orch/relay/RULINGS-2026-11-16.txt (the operator's words); SPEC 13.3
+(D21: exactly one reminder, opt-in, expired tokens pruned on 404/410) and SPEC 8/10 for Device and
+reminderEnabled; the server side that ALREADY exists: web/app/api/v1/devices/route.ts, web/lib/push/*,
+web/lib/reminders/*, web/lib/scheduler/*, web/lib/devices/*, and the FW27 report; the app's
+notification code: EveningNotifier.kt and the AN-NOTIF / AN-ALERT reports (R339, R323, PARKAN-45..47);
+CLAUDE.md R133, R154, R181, R196, R204, R205, R225, R391, R573, R574, and SPEC section 20's
+"Ask first" list. Names: worktree C:/wt/an-fcm-client, branch an-fcm-client, report
+REPORT-AN-FCM-CLIENT.txt. Ruling numbers: R1150-R1159. YOUR OWN advisor may advise you;
+production, a schema change, or a second new dependency comes back to the orchestrator.
+
+R1150. THE DEPENDENCY (authorised by Android Ruling 4, :app ONLY): the Firebase Cloud Messaging
+    client - the smallest artefact that receives FCM messages and yields a registration token,
+    at a current stable version; name the exact coordinates and version in the report, and the
+    APK size delta against AN14a's 12 MB budget (measured on the minified audit/release build).
+    NO analytics, NO crash reporting, no other Firebase product, and Firebase's own
+    auto-init/analytics collection turned OFF in the manifest. The google-services Gradle plugin
+    is NOT required: prefer initialising FirebaseApp from FirebaseOptions whose values come from
+    build properties (project id, application id, API key, sender id), so the operator supplies
+    them later and NOTHING real is committed. Missing values = push UNAVAILABLE, the app builds
+    and runs exactly as today (fail closed for push, open for the app). A placeholder is never a
+    plausible-looking key.
+R1151. REGISTRATION. When the person is signed in AND has granted notification permission (API
+    33+ POST_NOTIFICATIONS) AND push is available, the app POSTs its token to /api/v1/devices
+    (read the route's contract - derive, do not transcribe, R181); on token refresh it re-posts;
+    on sign-out it does whatever the route/SPEC say about unregistering (read; if nothing exists,
+    NOTICED, not invented). Test-first in :app with a fake transport; one R204 test drives the
+    real route handler with a token the fake produced.
+R1152. RECEIPT. A message from the server's reminder job (read lib/push/message.ts for its exact
+    payload) posts the app's EXISTING evening notification surface (reuse the R339 notification:
+    same channel, actions, lock-screen privacy - no new copy unless the payload demands it).
+    EXACTLY ONE PER DAY (Android Ruling 7): receipt shows nothing if today is already confirmed
+    on the phone or a reminder was already shown today; and the auto-mode evening notice
+    (SamplingWorker) and the push must not both show for one day - map every path in a table and
+    prove the rule with tests on each pair. The table has a SIGNED-OUT row (Android Ruling 8): a
+    push arriving while nobody is signed in shows nothing, and the token handling on session end
+    attaches to A11's "session ended" seam (REPORT-AN-SESSION-END.txt) rather than a new hook.
+R1153. "PUSH AVAILABLE" is ONE named state in :app (token registered and accepted by the server,
+    permission granted, Play services present) that A7 will read to decide its 19:00 fallback.
+    Expose it; do not build A7's fallback here.
+R1154. PROOF on the emulator (MonReleve_API36, Google Play image): without Firebase values the app
+    runs as today (say so, with evidence). A real delivery needs the operator's Firebase config
+    and the rotated server key - NOT available: say so plainly and prove receipt by delivering a
+    message to the app's real FirebaseMessagingService entry point through an instrumented test
+    or `adb shell am broadcast` equivalent, and registration through your local server's route
+    with a fake token. Mask sign-in codes before captures (R574).
+R1155. iOS: if :shared changes, R573 (budget 30 min). An iOS push client is NOT built (no app host).
+
+THE WORK: worktree + lock; test-first per ruling; fastCheck per increment; the FULL :app:gate
+(R391) with the emulator shut down and the heavy lock held; gate:changed + gate:clone if web/
+changed; R573 if :shared changed; push the branch (DO NOT MERGE); report; push; lock removed last;
+emulator booted again at the end with the orchestrator's APK reinstalled
+(C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1150-R1155 with evidence / THE PATH TABLE (R1152) /
+WHAT THE OPERATOR MUST SUPPLY (exact Firebase console steps and the build properties' names) /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-FCM-CLIENT PROMPT

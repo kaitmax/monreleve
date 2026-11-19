@@ -1,0 +1,39 @@
+AN-MANUAL-REMINDER SESSION PROMPT - Mon Releve
+THE 19:00 FALLBACK REMINDER ON PHONES WITHOUT PUSH (ORCH-ANDROID step A7; PARKAN-45)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 3 and 7). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Rulings
+3 and 7 in relay/RULINGS-2026-11-16.txt (on main by the time you run, or at
+C:/wt/web-orch/relay/); parking.md PARKAN-45 and PARKAN-46/47; REPORT-AN-NOTIF.txt (R339, R323);
+REPORT-AN-FCM-CLIENT.txt (A8: its "push available" state and its PATH TABLE - your input);
+SPEC 13.3; CLAUDE.md R133, R154, R204, R225, R391, R573, R574.
+Names: worktree C:/wt/an-manual-reminder, branch an-manual-reminder, report
+REPORT-AN-MANUAL-REMINDER.txt. Ruling numbers: R1140-R1149. YOUR OWN advisor may advise you.
+
+R1140. THE SCHEDULER. A periodic job fires the EXISTING manual-mode evening notification
+    (EveningNotice.Manual, R339 - its content, decision and receiver are built and gated) at
+    19:00 device-local time, in MANUAL mode, ONLY when A8's "push available" state is false.
+    Choose the mechanism (WorkManager periodic with an initial delay to the next 19:00, or an
+    inexact alarm) by what survives reboot and Doze WITHOUT the exact-alarm permission, and state
+    the drift you measured or read; 19:00 is a target, not a guarantee, and the copy must not
+    promise a minute. Re-plan on time-zone change and reboot.
+R1141. EXACTLY ONE (Android Ruling 7): the fallback shows nothing if today is confirmed, a
+    reminder was already shown today by any path, push is available, or the mode is auto (the
+    auto-mode evening notice is SamplingWorker's), or nobody is SIGNED IN (Android Ruling 8:
+    signed out -> nothing shown and nothing scheduled; attach the cancel to A11's "session ended"
+    seam, REPORT-AN-SESSION-END.txt). Extend A8's path table with this path and the signed-out
+    row, and prove every pair with a test (RED first).
+R1142. OPT-IN AND PERMISSION: it obeys the same opt-in and POST_NOTIFICATIONS gate as the other
+    notifications (read how R339's is gated); never asks for a new permission.
+R1143. PROOF on MonReleve_API36 (labelled "emulator API 36"): manual mode, push unavailable, the
+    clock moved past 19:00 (`adb shell` date/time or WorkManager's test driver - say which) ->
+    one notification; record the day -> no second one; push available -> none. Mask sign-in codes
+    (R574). The real S9 check stays PARKAN-46/47's (not this session's).
+R1144. iOS: if :shared changes, R573 (budget 30 min).
+
+THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
+emulator shut down and the heavy lock held; R573 if :shared changed; push the branch (DO NOT
+MERGE); report; push; lock removed last; emulator booted again with the orchestrator's APK
+reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1140-R1144 with evidence / THE PATH TABLE / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-MANUAL-REMINDER PROMPT

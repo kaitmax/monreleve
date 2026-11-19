@@ -1,0 +1,42 @@
+AN-SESSION-END SESSION PROMPT - Mon Releve
+WHEN THE SESSION ENDS, BACKGROUND LOCATION STOPS (ORCH-ANDROID step A11; A3's N3)
+Written by the orchestrating session on 2026-11-19 (Android Ruling 8). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Ruling 8
+in relay/RULINGS-2026-11-16.txt; REPORT-AN-API36-PASS.txt section N3 (on main);
+REPORT-AN-FORCED-SIGNOUT.txt (R521's key census, the forced sign-out paths);
+android/app/src/main/kotlin/ch/monreleve/app/detection/SamplingWorker.kt and its scheduler;
+android/shared/src/commonMain/kotlin/ch/monreleve/app/auth/SessionManager.kt; the account deletion
+and Parametres mode-toggle paths; docs/play-background-location.md; CLAUDE.md R133, R154, R175,
+R196, R204, R267, R391, R573.
+Names: worktree C:/wt/an-session-end, branch an-session-end, report REPORT-AN-SESSION-END.txt.
+Ruling numbers: R1180-R1189. YOUR OWN advisor may advise you.
+
+THE DEFECT (A3, read from code, emulator API 36): after a sign-out the background location sampler
+stays scheduled, and the worker has no mode or session check, so at its next window it takes a
+location fix for nobody. No coordinate is stored, but a background fix with no signed-in person in
+automatic mode contradicts the background-location declaration.
+
+R1180. THE WORKER GUARD (carries the load): SamplingWorker, before requesting any fix, checks that
+    a session exists AND the phone's mode is automatic; otherwise it requests NO fix and cancels
+    its own schedule. RED first, with a fake location source that counts requests (assert zero).
+R1181. ONE SEAM: a single "session ended" point that every session-ending path goes through - user
+    sign-out, forced sign-out (every cause R521 lists), account deletion - and that cancels the
+    sampler; automatic -> manual cancels it too. Enumerate the paths from the code (R267), one test
+    per path asserting the cancel, and name the seam so A8 (push token) and A7 (fallback reminder)
+    attach to it. Do not build their attachments.
+R1182. BOTH SIDES (R196's shape): a signed-in person in automatic mode with the permission still
+    gets their windows sampled - assert the positive case beside each negative one.
+R1183. PROOF on MonReleve_API36 (labelled "emulator API 36"): automatic mode, sampler scheduled
+    (read from `adb shell dumpsys jobscheduler` or WorkManager's own state - say which), sign out ->
+    no pending work; sign in again in automatic mode -> scheduled again; a forced sign-out path you
+    can trigger locally -> cancelled. Mask sign-in codes (R574).
+R1184. iOS: if :shared changes, R573 (budget 30 min).
+
+THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
+emulator shut down and the heavy lock held; R573 if :shared changed; push the branch (DO NOT
+MERGE); report; push; lock removed last; emulator booted again with the orchestrator's APK
+reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1180-R1184 with evidence / THE PATH TABLE (every session-ending
+path -> the seam -> cancelled) / WALKTHROUGH / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF AN-SESSION-END PROMPT

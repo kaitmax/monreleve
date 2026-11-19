@@ -1,0 +1,43 @@
+AN15-AUDIT SESSION PROMPT - Mon Releve
+THE ANDROID RELEASE AUDIT: WOULD YOU SIGN IT? (ORCH-ANDROID step A6; tasks/todo.md AN15)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 1-8). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Rulings
+1-8 in relay/RULINGS-2026-11-16.txt; tasks/todo.md AN15 whole and Checkpoint E/G in tasks/plan.md;
+SPEC section 21 (the Android criteria); docs/audit-android.md (AN-AUDIT's adversarial register -
+reuse its evidence, do not redo what it proved unless the code under it changed since);
+docs/release-audit-web.md (the web half's shape - follow it); every REPORT-AN-*.txt of this run
+(A1-A5, A7-A11); CLAUDE.md R133, R169, R176, R178, R391, R573, R574.
+Names: worktree C:/wt/an15-audit, branch an15-audit, report REPORT-AN15-AUDIT.txt. Ruling numbers:
+R1130-R1139. YOUR OWN advisor may advise you. This is an AUDIT: it fixes only what is small and in
+:app, test first; everything else is a finding with evidence.
+
+R1130. docs/release-audit-android.md: every Android section-21 criterion, one row each - the claim,
+    the evidence (command, commit, output tail, or the report and line that holds it), and its
+    provenance (unit test / emulator API 36 / renderer / S9 / person). An emulator result never
+    closes a criterion that names the real phone or real people.
+R1131. RE-RUN, ON THE TIP YOU AUDIT: engine conformance (the Geneva fixtures), coordinate absence
+    (lint + API guard + the on-device database read), the screenshot baselines, the full :app:gate;
+    and AN15's identical-dossier check - manual-mode and auto-mode dossiers built from the SAME days
+    are byte-identical apart from provenance strings (derive how from the existing tests; if none
+    asserts it, write it, RED first).
+R1132. ON MonReleve_API36 (labelled), the MINIFIED audit build: the F4 cross-account check (two
+    seeded accounts on one phone, signing out of one and into the other: nothing of the first is
+    visible, in any screen or export), 200 % font on the main screens, a TalkBack pass over
+    sign-in, Aujourd'hui and the export, and one recorded day plus a PDF export. Mask sign-in codes
+    (R574).
+R1133. THE LAUNCH BLOCKERS, LISTED EXPLICITLY (AN15's AC3), each with its owner: the release key and
+    the Play account; Play's acceptance (including the background-location declaration's LIKELY
+    REFUSED verdict and R1124's fallback); "compileSdk 35 with targetSdk 36 is unproven until the
+    first upload" (Android Ruling 8, Q4); the Firebase config and the FCM key rotation; assetlinks
+    fingerprints; the S9 checks (cold start, battery, PARKAN-46/47); the Checkpoint E expert
+    reviewer; Checkpoint G, which gates LEAVING BETA, not this release (Android Ruling 1).
+R1134. THE POST-LAUNCH LIST, by name (so absence reads as a decision): from Android Rulings 5 and 8
+    and ORCH-ANDROID's DEFERRED list.
+
+THE WORK: worktree + lock; the FULL :app:gate (R391) with the emulator shut down and the heavy lock
+held; R573 if :shared changed; push the branch (DO NOT MERGE); report; push; lock removed last;
+emulator booted again with the orchestrator's APK reinstalled
+(C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1130-R1134 with evidence / WALKTHROUGH / FINDINGS / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF - and its last line answers "would you sign it?" plainly.
+END OF AN15-AUDIT PROMPT

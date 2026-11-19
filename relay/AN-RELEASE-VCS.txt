@@ -1,0 +1,35 @@
+AN-RELEASE-VCS SESSION PROMPT - Mon Releve
+A RELEASE APK CARRIES THE COMMIT IT WAS BUILT FROM (relay/ORCH-ANDROID.txt step A2)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 1-2). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you);
+relay/QUEUE-STATE.md PARKED TASKS, the bullet "A RELEASE PREREQUISITE: worktree builds carry no
+commit id"; relay/RULINGS-2026-11-11.txt around line 632; CLAUDE.md R133, R154, R171, R181, R391.
+Names: worktree C:/wt/an-release-vcs, branch an-release-vcs, report REPORT-AN-RELEASE-VCS.txt.
+Ruling numbers: R1100-R1109. YOUR OWN advisor may advise you; a dependency or AGP version change
+comes back to the orchestrator.
+
+THE DEFECT (recorded, cause a HYPOTHESIS): every release APK built so far carries
+META-INF/version-control-info.textproto = NO_SUPPORTED_VCS_FOUND. Every session builds in a git
+worktree, whose `.git` is a FILE, which may be why AGP finds no repository.
+
+R1100. THE CAUSE, MEASURED NOT ASSUMED. Build the release variant (unsigned is fine - R250 forbids
+    creating the release key) in your worktree and read the textproto; then establish the cause by
+    experiment (e.g. the same commit built from a non-worktree clone such as `git clone --local`
+    into a temp dir), and read AGP's own source/docs for how it locates the repository. Record
+    each run's command, path and the textproto it produced.
+R1101. THE FIX OR THE PROCEDURE, whichever is smaller and honest. If a build setting makes a
+    worktree build carry the commit, apply it. If AGP cannot, the answer is a written release-build
+    procedure (docs/play-release.md, a short section the operator follows) that builds from a
+    clone, AND a check that refuses: a gradle task or a test that FAILS a release build whose
+    textproto is NO_SUPPORTED_VCS_FOUND, so the next APK built in a worktree cannot ship silently
+    (R133: a positive signal - the textproto names a 40-hex commit equal to HEAD).
+R1102. PROOF ON A BUILT APK: the textproto of a release APK built by the documented path names
+    the exact HEAD commit (derived from `git rev-parse HEAD`, R171), and the refusal fires on a
+    build that lacks it (verify the plant landed, R180).
+
+THE WORK: worktree + lock; R1100; R1101 test-first where code is involved; fastCheck per increment;
+the FULL :app:gate on the code tip (R391) with the emulator shut down and the heavy lock held;
+push the branch (DO NOT MERGE); report; push; remove the lock last.
+REPORT: SUMMARY / STATUS (R391) / R1100-R1102 with evidence / NOTICED BUT NOT TOUCHING /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-RELEASE-VCS PROMPT

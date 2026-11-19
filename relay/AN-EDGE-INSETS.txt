@@ -1,0 +1,42 @@
+AN-EDGE-INSETS SESSION PROMPT - Mon Releve
+NO BUTTON UNDER THE NAVIGATION BAR, ON ANY SCREEN (ORCH-ANDROID step A10; A3's N1)
+Written by the orchestrating session on 2026-11-19 (Android Ruling 8). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Ruling 8
+in relay/RULINGS-2026-11-16.txt; REPORT-AN-API36-PASS.txt section N1 whole (on main), and
+parking.md PARKAN-33 (whose "edge-to-edge handled" note Ruling 8 records as contradicted);
+android/app/src/main/kotlin/ch/monreleve/app/MainActivity.kt and the shell; CLAUDE.md R135, R173,
+R175, R178, R207, R246, R391, R573.
+Names: worktree C:/wt/an-edge-insets, branch an-edge-insets, report REPORT-AN-EDGE-INSETS.txt.
+Ruling numbers: R1170-R1179. YOUR OWN advisor may advise you; a dependency or a version change
+comes back to the orchestrator.
+
+THE DEFECT (A3, emulator API 36): targetSdk 36 forces edge-to-edge. Only screens inside the main
+shell's Scaffold respect the system bars. On the welcome screen, sign-in, every onboarding step,
+the detection disclosure, Prevision and Comparaison the main button sits under the navigation bar;
+with 3-button navigation a tap on Prevision's button opened the system Recents screen.
+
+R1170. ONE ROOT. The system-bar insets are handled at ONE wrapper that hosts every destination (the
+    shell or a root composable), not per call site; consume them once so the Scaffold screens do
+    not pad twice. Say where it lives and why there.
+R1171. THE CENSUS (RED first, run by a GATE - an instrumented-only test is not enough, since no gate
+    runs instrumented tests): a test that enumerates every destination / top-level screen from its
+    source of truth and fails on one not hosted by the root wrapper - discovery, not a typed list
+    (R246). Its first run on today's code must FAIL naming the screens N1 lists (R178: those are
+    the proof). Add a positive assertion that the wrapper applies the insets (R154).
+R1172. BASELINES: before any Paparazzi regeneration, state the exact set you expect to move and why
+    (R207); regenerate only those; any other moved file stops the regeneration and is
+    investigated. Crop and look at each (R135).
+R1173. PROOF on MonReleve_API36 (labelled "emulator API 36") with 3-BUTTON NAVIGATION (A3 left the
+    emulator gestural; switch with the overlay command or the Settings path - say which - and
+    restore gestural at the end): each screen N1 lists shows its main button fully above the bar
+    (bounds from a UI dump), and a tap on Prevision's button does what it says, not Recents. Then
+    gestural, once; and landscape on two screens. Mask sign-in codes (R574).
+R1174. iOS: if :shared changes, R573 (budget 30 min).
+
+THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
+emulator shut down and the heavy lock held; R573 if :shared changed; push the branch (DO NOT
+MERGE); report; push; lock removed last; emulator booted again with the orchestrator's APK
+reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1170-R1174 with evidence / BASELINES (R207 list) / WALKTHROUGH /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-EDGE-INSETS PROMPT

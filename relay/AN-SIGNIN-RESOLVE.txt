@@ -1,0 +1,55 @@
+AN-SIGNIN-RESOLVE SESSION PROMPT - Mon Releve
+A RETURNING PERSON IS NEVER SENT TO AN EMPTY ONBOARDING; THE PHONE LEARNS ITS MODE FROM /me
+(ORCH-ANDROID step A9; A3's D2 and PARK-E3)
+Written by the orchestrating session on 2026-11-19 (Android Ruling 8). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Ruling 8
+in relay/RULINGS-2026-11-16.txt; REPORT-AN-API36-PASS.txt sections D2 and N8 whole (on main);
+parking.md PARK-E3 and the R527 entry around it; the RESOLVING path: android/shared/src/commonMain/
+kotlin/ch/monreleve/app/auth/SignInSync.kt, android/app/src/main/kotlin/ch/monreleve/app/ShellState.kt
+and MainActivity.kt; settings/DetectionMode.kt (parseLoggingMode, no caller today);
+CLAUDE.md R133, R154, R180, R196, R204, R391, R573, R574.
+Names: worktree C:/wt/an-signin-resolve, branch an-signin-resolve, report
+REPORT-AN-SIGNIN-RESOLVE.txt. Ruling numbers: R1160-R1169. YOUR OWN advisor may advise you;
+a schema change, a dependency, or anything production comes back to the orchestrator.
+
+THE DEFECT (A3, emulator API 36, reproduced 2/2): on the MINIFIED audit build, a returning person
+whose settings are complete on the server is sent to onboarding step 1 with an EMPTY form when the
+dev server is cold at sign-in; the debug build of the same commit, and the minified build against a
+warm server, reach the main screen. The server logged GET /me 200 every time. Finishing that form
+would overwrite the person's settings on the server - DATA LOSS. Cause unknown.
+
+R1160. THE CAUSE, MEASURED. A cold `pnpm dev` is a compile-on-demand artefact, not a reproducer.
+    Build a deterministic one: a small host proxy in front of your dev server that delays chosen
+    endpoints by a chosen time (the fault-server at
+    "c:/Users/KAMXKAM/Downloads/frontier work/android/scripts/an-audit-faultserver.mjs" is an
+    UNTRACKED operator file: read or copy its pattern, never edit or move it, R334). Find which
+    request, delayed by how much, flips the outcome; run the DEBUG build under the same delay to
+    separate timing from R8. Compare the build types (timeouts, retries, BuildConfig flags, R8
+    keep rules) and read how a late, failed or unparsed /me is mapped in the resolve path. State
+    whether a /me the server answered 200 AFTER the client gave up explains "200 every time".
+R1161. THE INVARIANT (holds whatever R1160 finds): onboarding is shown ONLY on a POSITIVE server
+    answer that the person's settings are absent. A timeout, a transport failure, a non-200, an
+    unparseable body or a pending request gives a loading or retry state, never the empty form.
+    The decision is a pure function where the resolve logic lives (:shared if it is there), tested
+    on every branch, RED first. If R1160 finds an R8 cause, fix that too (keep rule or code), with
+    the evidence.
+R1162. PARK-E3 (the same seam): at RESOLVING the phone restores loggingMode from /me (fail-closed,
+    as parseLoggingMode reads it), and onboarding's automatic choice saves the mode on the phone;
+    the sampler is started only where the location permission is held (where it is not, the phone
+    shows manual and nothing samples silently). Correct the four comments PARK-E3 names that claim
+    "restored from /me". Test first.
+R1163. PROOF on MonReleve_API36 (labelled "emulator API 36"), MINIFIED audit build: three sign-ins
+    of a returning account under the delay R1160 found -> the main screen, never step 1 (and the
+    loading/retry state visible while delayed); a genuinely new account -> onboarding; an account
+    whose server mode is automatic, signing in on a fresh install with location granted -> the
+    phone shows automatic. Mask sign-in codes (R574). Never finish an onboarding over an existing
+    account's settings.
+R1164. iOS: if :shared changes, R573 (budget 30 min).
+
+THE WORK: worktree + lock; R1160 before any fix; test-first; fastCheck per increment; the FULL
+:app:gate (R391) with the emulator shut down and the heavy lock held; R573 if :shared changed;
+push the branch (DO NOT MERGE); report; push; lock removed last; emulator booted again with the
+orchestrator's APK reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1160-R1164 with evidence / WALKTHROUGH (R176) / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-SIGNIN-RESOLVE PROMPT

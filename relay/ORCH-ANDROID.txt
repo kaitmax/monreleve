@@ -1,0 +1,78 @@
+ORCH-ANDROID - the Android run to the Play upload (Android Rulings 1-2, 2026-11-19)
+Written by the orchestrating session (worktree C:/wt/web-orch). The scope is derived from the
+records (relay/QUEUE-STATE.md PARKED TASKS, parking.md PARKAN-33, tasks/todo.md AN14/AN15), not
+from todo.md's checkboxes, which are never ticked.
+
+HOW EVERY SESSION IN THIS RUN WORKS
+- One task per session; its prompt is relay/<TASK>.txt; it ends with REPORT-<TASK>.txt pushed.
+- Its OWN worktree C:/wt/<task> on a NEW branch cut from origin/main at the BASE_SHA in the launch
+  message, its lock in it (R349, R392). Push the branch only; the orchestrator merges.
+- `ANDROID_HOME=C:\Users\KAMXKAM\AppData\Local\Android\Sdk` in the environment: a worktree has no
+  local.properties (gitignored), and the build fails "SDK location not found" without it.
+  Never create local.properties in a shared checkout.
+- `./gradlew fastCheck` per increment (R390); the FULL `:app:gate` on the reported tip (R391);
+  gate:clone before every push where web/ changed (R199); the R573 iOS cloud run when :shared
+  changed.
+- MEMORY: heavy Gradle steps need >= 8 000 MB commit-free after `./gradlew --stop`; web heavy
+  steps >= 5 000 MB. Take C:/wt/.run-tools/heavy-lock.mjs (`acquire <task> --min-free <MB>`,
+  `release <task>`). The emulator costs ~3.6 GB: SHUT IT DOWN (`adb -s emulator-5554 emu kill`)
+  before a heavy step and boot it again after.
+- THE EMULATOR: AVD `MonReleve_API36` (API 36, x86_64, Google Play image). Boot:
+  `$ANDROID_HOME/emulator/emulator.exe -avd MonReleve_API36 -no-snapshot -no-audio -no-boot-anim
+  -memory 2048`, wait for `getprop sys.boot_completed` = 1. Debug/audit builds reach the host at
+  10.0.2.2; build with `-PfrontalierPort=<your port>` - the default 3000 is ANOTHER PROJECT's.
+  Your local server: your worktree's own scratch DB in web/.env (Web Ruling 39), seeded with
+  `pnpm db:seed` (camille.martin@example.invalid etc.), AUTH_SECRET passed on the command line.
+  The dev server prints the sign-in mail (no RESEND_API_KEY).
+- R574: mask the sign-in code BEFORE any screenshot, UI dump or recording.
+- THE RECIPE IS PROVEN (orchestrator, 2026-11-19 ~14:29Z, debug APK built with
+  -PfrontalierPort=3900): welcome -> address -> code read from the dev log (never printed) ->
+  "Bonjour Camille", GET /api/v1/me and /entries 200; a tap on Domicile -> POST /api/v1/entries
+  200, "Enregistre". DRIVING NOTES: in Git Bash set MSYS_NO_PATHCONV=1 or /sdcard becomes a
+  Windows path; the soft keyboard covers bottom buttons (a tap there types a letter) - hide it
+  with keyevent 4 BEFORE tapping, but six typed digits auto-submit the code, after which keyevent 4
+  leaves the app. A "System UI isn't responding" dialog appeared once while booting (tap Wait).
+- THE iOS TWINS (Queue Ruling 11; relay/QUEUE-STATE.md "THE iOS TWINS"): account/DeviceLocalStore.kt,
+  detection/EveningNotificationDecision.kt, detection/ThresholdAlertDecision.kt exist byte-identical
+  under android/app/src/main/kotlin/ch/monreleve/app/ and android/shared/src/iosMain/kotlin/ch/monreleve/app/;
+  edit both in one commit (IosAndroidTwinsTest), and such an edit owes R573.
+- macOS MINUTES: 14 spent of the last queue's 200 (QUEUE-STATE.md); this run allots <= 30 per
+  task, and each report states its runs' billed minutes.
+- R-NUMBERS: before pushing, re-scan relay/ in YOUR worktree, C:/wt/web-orch and the main checkout
+  ("c:/Users/KAMXKAM/Downloads/frontier work", untracked files included) for your range.
+- `connectedAndroidTest` uninstalls the app and its data.
+- An emulator result NEVER closes a criterion that names the real phone (S9) or real people;
+  label the provenance of every device claim (emulator API 36 / renderer / S9).
+
+THE QUEUE (in order; one at a time - the memory budget allows no parallel Gradle)
+| Step | Task | What | Rulings |
+| A1 | AN-SHARED-FIXES | Two :shared defects, one R573 run: the sign-out dialog at 200 % font scrolls (exactly one baseline moves: ParametresScreenScreenshotTest_signOutPendingDialogLarge); filenameOf refuses a server name with a separator or ".." (both platforms) | R1090-R1099 |
+| A2 | AN-RELEASE-VCS | Release APKs carry the commit: version-control-info is NO_SUPPORTED_VCS_FOUND in every worktree build; find why, fix or document the release-build procedure, prove on a built APK | R1100-R1109 |
+| A3 | AN-API36-PASS | The owed API 35->36 runtime pass on MonReleve_API36 (no Paparazzi), PLUS a probe only: which Paparazzi release has an API-36 layoutlib, what it requires of Kotlin/Compose/AGP vs libs.versions.toml, and whether Play gates compileSdk (PARKAN-33). The upgrade itself is a separate decision | R1080-R1089 |
+| A4 | AN-FORCE-UPDATE | AN14's minimum-supported-version flag from the API, and the app's refusal screen; product rules written in its prompt first | R1110-R1119 |
+| A5 | AN-PLAY-PACK | docs/play-release.md: data-safety answers traced to code (spec section 13, PARKAN-32), the background-location declaration text, the store listing draft, the demo video recorded on the emulator; the AN14b steps the operator runs once the account exists | R1120-R1129 |
+| A6 | AN15 | docs/release-audit-android.md: every Android section-21 item with evidence; the F4 cross-account check on the minified audit build (emulator); the open human gates listed as launch blockers | R1130-R1139 |
+| A7 | AN-MANUAL-REMINDER | PARKAN-45: the 19:00 local reminder as the FALLBACK on phones without push, exactly one reminder a day across all paths (Android Rulings 3, 7); emulator-verified, labelled so | R1140-R1149 |
+| A8 | AN-FCM-CLIENT | AN13's push client (Android Ruling 4): FCM dependency, token registration with /api/v1/devices, message handling; proven against a fake; the real config and key are the operator's | R1150-R1159 |
+| A9 | AN-SIGNIN-RESOLVE | A3's D2 (minified + slow /me -> a returning person sent to an EMPTY onboarding: data loss) and PARK-E3 (loggingMode never restored from /me); onboarding only on a positive "no settings" answer | R1160-R1169 |
+| A10 | AN-EDGE-INSETS | A3's N1: outside the main Scaffold buttons sit under the navigation bar (3-button nav); one root inset wrapper + a census test run by a gate | R1170-R1179 |
+| A11 | AN-SESSION-END | A3's N3: the location sampler survives sign-out; worker guard + one "session ended" seam every ending path goes through (A8/A7 attach to it) | R1180-R1189 |
+DONE: A1 (6f9dbc05), A2 (5c18f513), A3 (99d24cdf).
+RUN ORDER (Android Ruling 8, superseding Ruling 7's): A9, A10, A11, A4, A8, A7, then A5 and A6
+LAST - the Play pack (data safety: the FCM token is collected data) and the audit describe the
+finished app. A10 lands before A5's demo video, which films the disclosure screen.
+
+NOT IN THIS RUN (the operator's, Android Ruling 2): the release key; the Play Console account,
+upload, App Signing and closed testing; ANDROID_SHA256_CERT_FINGERPRINTS (assetlinks); the FCM key
+rotation; Checkpoint G's field test; the S9 checks; iOS beyond the cloud run.
+
+DEFERRED / UNRULED (named so their absence is a decision, not an omission):
+- ANSWERED 2026-11-19: reminder 19:00 (Android Ruling 3 -> A7); FCM at launch (Android Ruling 4 -> A8).
+- PARKAN-47 (dumpsys on API 31+ and the lock-screen PIN check): S9/operator.
+- PARKAN-35 (API-26 matrix): needs cmdline-tools + an android-26 image; deferred.
+- PARK-IE1 (S9 signed out, R823): the operator's to schedule.
+- S9 dialog width / DatePicker, PB1-PB3 baselines: the S9.
+- android/scripts/*.test.mjs run by no gate: a tooling task, after launch.
+- PARK-J2/IB10 and days before the activity start date: operator rulings, after launch.
+- PARK-E4/E7/E8, PARK-T3/T4/T5/T7, PARK-Q1, PARK-IF4 and the cosmetic/tooling parks: after launch
+  (Web Ruling 36's logic), unless the operator promotes one.

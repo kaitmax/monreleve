@@ -1,0 +1,65 @@
+AN-PLAY-PACK SESSION PROMPT - Mon Releve
+EVERYTHING PLAY NEEDS, READY FOR THE DAY THE ACCOUNT EXISTS (ORCH-ANDROID step A5; AN14's pack)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 1, 2, 6, 8). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Rulings
+1-8 in relay/RULINGS-2026-11-16.txt; tasks/todo.md AN14 whole; SPEC section 13 (data, D18) and the
+copy rules; docs/play-background-location.md WHOLE (its verdict is LIKELY REFUSED, a risk the
+operator took knowingly, REPORT-AN-AUTO.txt R273); docs/android-skills.md 7.2; parking.md PARKAN-32's
+closing row; REPORT-AN-RELEASE-VCS.txt (A2, its Q2/Q3); REPORT-AN-FCM-CLIENT.txt (A8: the FCM token
+is new collected data); REPORT-AN-API36-PASS.txt (N4); CLAUDE.md R133, R153, R160, R181, R196, R250,
+R391, R574, and "Never claim more than the record supports".
+Names: worktree C:/wt/an-play-pack, branch an-play-pack, report REPORT-AN-PLAY-PACK.txt. Ruling
+numbers: R1120-R1129. YOUR OWN advisor may advise you; a dependency, a version change, or anything
+needing the Play account or the release key comes back to the orchestrator. R250: NEVER create a
+release signing key, not even a throwaway one.
+
+R1120. docs/play-release.md - THE RELEASE-BUILD PROCEDURE the operator follows, short and exact:
+    from a committed tree, `bundleRelease`, the checks, what the operator signs and uploads, the
+    mapping file. AND TWO CHECKS THAT REFUSE (A2's Q2/Q3, Android Ruling 6), wired into what the
+    procedure runs and tested both ways (R196): a release/bundle build from a DIRTY tree fails,
+    naming the dirty paths; and the BUILT .aab (not only the APK) is checked - its
+    version-control-info names HEAD (R171, derived from `git rev-parse HEAD`) and its manifest
+    declares exactly the permission set checkReleaseLocationPermissions asserts for the APK.
+    Verify each plant landed before reading its result (R180).
+R1121. DATA SAFETY, TRACED TO CODE (AN14's AC2): every answer on Play's Data safety form, each with
+    the file/test that ENFORCES it - not the intention. Location: on-device only, Case 1 local-only
+    while D18 holds (name the code that discards the fix and the API guard that rejects a
+    coordinate). The FCM registration token (A8): what Play calls it, collected, purpose, not
+    shared, deletable - traced. E-mail, recorded days, settings, the export, account deletion,
+    encryption in transit. Where an answer cannot be traced, it is a QUESTION, never a guess.
+R1122. THE BACKGROUND-LOCATION DECLARATION: the Permissions Declaration Form text, built on the
+    "honest framing" in docs/play-background-location.md (do not re-derive it, do not strengthen
+    it); and THE DEMO VIDEO recorded on MonReleve_API36 (labelled "emulator API 36"), <= 30 s,
+    `adb shell screenrecord`: the in-app disclosure unmistakably BEFORE the system dialog, then the
+    feature in use. Run AFTER A10's inset fix is on main (check; if not, stop and say so). The video
+    is NOT committed: save it to C:/wt/play-assets/ (create it; it is yours) and record its path,
+    sha256, duration and the commit it was filmed from. Mask any sign-in code (R574) - better,
+    start the recording after sign-in.
+R1123. THE STORE LISTING DRAFT (French, accented, R155): app name, short description, full
+    description, the "beta" framing of detection, the privacy-policy URL (the site's real route,
+    derived - and confirm Parametres links to it, AN14), and the phone screenshots taken on the
+    emulator (labelled). Binding: never certifie/atteste/conforme; never a typed threshold value
+    where a name will do (R153); and NOTHING may imply detection works with approximate location
+    or without background permission (Android Ruling 8, N4). List the texts in QUESTIONS for the
+    operator's approval; they ship as written unless refused. Screenshots go to C:/wt/play-assets/.
+R1124. THE MANUAL-ONLY FALLBACK, READY: if Play refuses background location, the designed fallback
+    is "manual mode only" (docs/play-background-location.md). Make it ONE build property away: a
+    property producing a release whose manifest declares NO location permission and whose app
+    shows no detection entry point, with checkReleaseLocationPermissions asserting each variant's
+    exact set (both directions). If this needs more than a manifest overlay plus one build flag
+    gating the detection entry points, STOP, measure the size, and return it as a QUESTION.
+R1125. THE AN14b OPERATOR STEPS: numbered, exact Play Console steps from "create the app" through
+    App Signing, the internal and closed testing tracks, the declarations (R1121, R1122), the upload,
+    the mapping file, the testers, and what to do on a background-location refusal (R1124). Mark
+    every step that needs the account or the key as the operator's.
+R1126. THE MEASURABLE AC1 PARTS: the minified release APK size against the 12 MB budget (say exactly
+    what was measured and how it differs from Play's download size); cold start measured on the
+    emulator, labelled - the "mid-range device" figure is the S9's (human gate, not closed here).
+
+THE WORK: worktree + lock; test-first for R1120/R1124's checks; fastCheck per increment; the FULL
+:app:gate (R391) with the emulator shut down and the heavy lock held; R573 if :shared changed;
+push the branch (DO NOT MERGE); report; push; lock removed last; emulator booted again with the
+orchestrator's APK reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1120-R1126 with evidence / THE DATA SAFETY TABLE / ASSETS
+(paths, sha256) / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS (listing texts first) / PUSH PROOF
+END OF AN-PLAY-PACK PROMPT

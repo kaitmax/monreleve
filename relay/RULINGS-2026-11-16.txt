@@ -1794,3 +1794,225 @@ DECISION:
 3. W12's R1071 finding (lib/auth/secret.ts alone does not select
    test:container:e2e) is deferred with W17's kind.
 APPLIED: this records commit.
+
+====================================================================
+WEB RULING 42 - THE VERIFICATION LINK IS ON IN PRODUCTION
+====================================================================
+THE OPERATOR, 2026-11-19: "SWITCH ON THE VERIFICATION LINK ON EVERY
+REPORT LIVE OR LOCALHOST".
+DECISION: this is the deliberate naming of the permanent origin that R332
+waits for, and it SUPERSEDES RULINGS-2026-11-03 Advisor Ruling 4 (never set
+MONRELEVE_VERIFICATION_ORIGIN in Coolify).
+DONE, measured: a production-only, runtime-only env row
+MONRELEVE_VERIFICATION_ORIGIN=https://monreleve.ch on app
+pkptabevr1nhtyygrq0mc8qx (Coolify's auto preview copy deleted), then a
+Coolify RESTART (not a deploy): deployment klmrno71vgtwhgmnnsf1xknr
+finished 12:03Z; the new container (started 12:02:03Z) prints the value;
+/api/health and /api/ready 200; https://monreleve.ch/verifier/<code> 200.
+PDF PROOF (the PARKED TASKS fields): LOCAL dev server on :3900 with the
+value on its command line (not an image, so no baked origin); signed in
+as camille.martin@example.invalid over HTTP, POST /mon-releve/export/pdf
+annee=2025 rendered 2026-11-19T14:26:13Z: 200, 243 383 bytes, 13 pages;
+its extracted text reads "Adresse : https://monreleve.ch/verifier/<32 hex>"
+and "Code : <the same>". NOT READ on production: no seeded account exists
+there and the operator's own account is not ours to sign in to.
+Locally the value is passed on the dev-server command line only, never
+written to web/.env, because the gate's suites read .env and some assert
+the default-off state.
+APPLIED: this records commit.
+
+====================================================================
+ANDROID RULING 1 - THE FIRST PLAY RELEASE SHIPS THE DETECTION BETA
+====================================================================
+THE OPERATOR, 2026-11-19, asked "What should the first Android release
+contain?" with manual-only recommended: "Detection beta too".
+DECISION: R316 stands (detection ships, opt-in, labelled beta). The first
+release therefore owes, besides AN14b: the Play background-location
+declaration text and its demo video (<= 30 s, the in-app disclosure
+visibly BEFORE the system dialog), the data-safety answers for on-device
+location (PARKAN-32). Checkpoint G is NOT a gate on this release: the
+operator already ruled detection ships opt-in, labelled beta, BEFORE the
+field test (REPORT-AN-AUTO.txt R273, docs/play-background-location.md
+"WHAT THIS MEANS FOR THE BUILD"); G stays a HUMAN gate on leaving beta, and
+no emulator result closes it. plan.md's "Checkpoint F ships regardless" is
+the fallback if Play refuses the declaration, not the plan.
+
+====================================================================
+ANDROID RULING 2 - NO STORE ACCOUNTS YET: BUILD TO THE UPLOAD
+====================================================================
+THE OPERATOR, 2026-11-19: neither a Google Play Console nor an Apple
+Developer account exists yet ("Neither yet").
+DECISION: every Android item a session can do on this PC with the
+emulator AVD MonReleve_API36 (API 36, x86_64, created 2026-11-19 by hand
+in ~/.android/avd; no cmdline-tools) and a local server is done now, in
+relay/ORCH-ANDROID.txt's order, up to and NOT including: creating the
+release key, the Play upload, Play App Signing, closed testing, and the
+assetlinks fingerprint (all need the account). iOS: no app host exists and
+no simulator can run on Windows; iOS stays at the shared-code cloud run
+(R573) until the operator supplies a Mac or cloud Mac and the account.
+
+====================================================================
+ANDROID RULING 3 - THE MANUAL-MODE EVENING REMINDER FIRES AT 19:00
+====================================================================
+THE OPERATOR, 2026-11-19, asked the reminder TIME PARKAN-45 waits for
+(options 18:00 / 19:00 / 20:00 / none at launch): "19:00".
+DECISION: PARKAN-45 is unblocked. The manual-mode evening notification
+(EveningNotice.Manual, R339) is fired by a periodic scheduler at 19:00
+device-local time, in the first release. Whether the person may change the
+time (SPEC 13.3's reminderTime) is the task's to read from SPEC; where SPEC
+is silent, 19:00 fixed is the launch behaviour. relay/ORCH-ANDROID.txt
+step A7.
+
+====================================================================
+ANDROID RULING 4 - THE FCM PUSH CLIENT IS IN THE FIRST RELEASE
+====================================================================
+THE OPERATOR, 2026-11-19, asked whether server push (FCM) is in the first
+release, "Not at launch" recommended: "Yes, at launch".
+DECISION: AN13's FCM path is launch scope. The answer authorises adding the
+Firebase Cloud Messaging client dependency to :app (the SPEC section 20
+"Ask first" item, answered by this choice; the session names the exact
+artefact and version in its report). The app registers its token with the
+existing /api/v1/devices route. The release WAITS on the operator for: the
+Firebase app config (google-services.json or its values, from the Firebase
+console of the project FCM_PROJECT_ID names) and the FCM_PRIVATE_KEY
+rotation that turns the server's daily push on (WEB-QUEUE-STATE.md). Until
+then the session builds and proves the client against a fake transport and
+a placeholder config that is NEVER a real key. relay/ORCH-ANDROID.txt
+step A8.
+
+====================================================================
+ANDROID RULING 5 - A1 MERGED; ITS Q1 AND Q2
+====================================================================
+A1 AN-SHARED-FIXES merged as 6f9dbc05 (tree == branch tip 3e27526c; main
+unmoved since e73c846d), pushed. R1090 and R1092 green; :app:gate on
+f7d299b3 BUILD SUCCESSFUL 12m 23s exit 0; R573 run 44552898476 SUCCESS,
+9 billed min (running total of this run: 9).
+Q1 (R1091 not met - no baseline moved; Paparazzi photographs a scrolling
+body at its top): (a) ACCEPTED. The proof the days are reachable is the
+instrumented SignOutPendingLargeFontInstrumentedTest (RED before, GREEN
+after, emulator API 36). It is compiled by the gate and RUN by none - that
+gap is recorded, with option (b) (a taller-DeviceConfig 200 % baseline,
+:app only), as a post-launch item (Web Ruling 36's logic).
+Q2 (a bare "."): not refused; File(dir, ".") names the directory itself,
+so a write fails rather than escapes. Post-launch, with the four
+unscrolled dialog bodies A1 noticed (SignOutClearDialog first).
+
+====================================================================
+ANDROID RULING 6 - A2 MERGED; ITS QUESTIONS
+====================================================================
+A2 AN-RELEASE-VCS merged as 5c18f513 (tree == branch tip 04990bce; main
+unmoved since 6f9dbc05), pushed. :app:gate on 47f8e623 BUILD SUCCESSFUL
+4m 50s exit 0; checkReleaseVcsInfo OK; the APK names 47f8e623. 0 macOS min.
+N6: the QUEUE-STATE PARKED TASKS bullet "A RELEASE PREREQUISITE: worktree
+builds carry no commit id" is CLOSED by this merge, and its hypothesis
+("a worktree's .git is a file") is REFUTED by measurement: AGP reads only
+<gradle root>/.git, and android/ is below the git root in every checkout.
+The older records that state the hypothesis (QUEUE-STATE.md:202,
+RULINGS-2026-11-11.txt:632/:686, REPORT-AN-APK-DIFF.txt:421/:1076) are
+history and stay; this ruling is the correction.
+Q1 (a newer AGP): no AGP change before launch; the fix holds on 8.10.1 and
+fails loudly if a future AGP changes the task's shape.
+Q2 (refuse a dirty tree for a distributed build) and Q3 (a check on the
+.aab, which is what Play takes): both join A5 (AN-PLAY-PACK), whose
+release-build procedure must refuse a dirty tree and prove the bundle.
+
+====================================================================
+ANDROID RULING 7 - ONE REMINDER A DAY: PUSH AT 17:30, 19:00 ONLY WITHOUT PUSH
+====================================================================
+CONFLICT FOUND by the orchestrator: SPEC 13.3 (D21) says "One daily
+reminder, exactly one: FCM ... at the user's chosen time, default 17:30
+Europe/Paris, sent only if today is unconfirmed". Android Rulings 3 (a
+19:00 manual-mode reminder) and 4 (FCM at launch) together would give two.
+THE OPERATOR, 2026-11-19, choosing among "one reminder, push first at
+19:00", "one reminder, app only" and this: "Keep 17:30 for push".
+DECISION:
+1. The push reminder is SPEC's, unchanged: the server sends it at the
+   person's reminderTime, default 17:30 Europe/Paris, only if today is
+   unconfirmed. No schema change, no migration.
+2. The app's own scheduled reminder (PARKAN-45) fires at 19:00 local ONLY
+   on a phone where push is NOT available (no FCM token registered with
+   /api/v1/devices, Play services absent, or notifications for push
+   disabled) - it is the fallback, never a second reminder.
+3. EXACTLY ONE per device per day across every path (the push, the
+   manual-mode fallback, and the auto-mode evening notice SamplingWorker
+   already posts): a path that finds today confirmed, or a reminder
+   already shown today, shows nothing. The sessions map every path and
+   prove it.
+Android Ruling 3's "19:00" now means the fallback's time. Queue: A8
+(the push client) runs BEFORE A7 (the fallback), which reads A8's
+"push available" state.
+
+====================================================================
+ANDROID RULING 8 - A3 MERGED; THREE LAUNCH BLOCKERS BECOME TASKS
+====================================================================
+A3 (AN-API36-PASS) merged to main as 99d24cdf (the merge of afa13086;
+main was unmoved at 5c18f513, merge tree == branch tree, token hits 0).
+Its gate evidence carries: :app:gate BUILD SUCCESSFUL in 7m 7s, exit 0,
+on the code tip 014e5e7b (REPORT-AN-API36-PASS.txt line 31-36); the
+commits after it change the report only. No web/ or :shared change: no
+gate:clone, no R573 run, macOS minutes 0. R1082 (executeForBytes
+translates IOException to TransportException, test first) is on main.
+
+ON A3's QUESTIONS (the orchestrator's, reviewed by its advisor):
+Q6 / D2 (minified build, cold server: a returning user with complete
+  server settings is sent to onboarding step 1 with an empty form):
+  LAUNCH BLOCKER - finishing that onboarding overwrites the person's
+  settings on the server, which is data loss. Its own task, FIRST of the
+  new ones: A9 AN-SIGNIN-RESOLVE. THE INVARIANT it ships whatever the
+  cause: onboarding is shown ONLY on a positive server answer that the
+  settings are absent; a timeout, a failure or a pending answer gives a
+  loading or retry state, never the empty form. PARK-E3 (onboarding's
+  automatic choice never reaches the phone, and no sign-in reads
+  loggingMode back from /me) joins A9: it is the same RESOLVING seam,
+  and its deferral (R527, 2026-10-24) predates Android Ruling 1 - with
+  detection beta in this release it is a visible beta defect.
+Q1 / N1 (edge-to-edge: outside the main shell's Scaffold the main button
+  sits under the 3-button navigation bar; a tap on Prevision's button
+  opened Recents): LAUNCH BLOCKER for Android 15+ phones with 3-button
+  navigation. Its own task: A10 AN-EDGE-INSETS - the inset handling at
+  ONE root wrapper rather than per call site, plus a census test that
+  every destination is hosted by it (R173/R246's shape). It lands BEFORE
+  A5, whose demo video films the disclosure screen N1 names.
+  CORRECTION: PARKAN-33's note that edge-to-edge was already handled is
+  CONTRADICTED by A3's runtime evidence (emulator API 36). Sessions do
+  not write parking.md; this ruling is the record.
+Q2 / N3 (after sign-out the background location sampler stays scheduled;
+  the worker has no mode or session check): LAUNCH BLOCKER - a
+  background fix taken for nobody contradicts the background-location
+  declaration A5 writes. BOTH: the worker guard carries the load (no
+  session, or not automatic mode -> no fix, and it cancels itself), AND
+  every session-ending path cancels it (R267: user sign-out, forced
+  sign-out, account deletion, automatic -> manual). Built around ONE
+  "session ended" seam that A8 and A7 then attach to. Its own task:
+  A11 AN-SESSION-END.
+Q3 (the 15 s export read timeout): NOT ruled blind. A3's 14 993 ms was
+  measured on `pnpm dev` (compile on demand). A4 measures one PDF export
+  against a BUILT server (`pnpm start`, R1115). Well under 15 s: the
+  timeout stays and N2 (a slow export blamed on the connection) is
+  post-launch. Otherwise N2 becomes pre-launch.
+Q4 (R1081): ROW A - compileSdk 35, Paparazzi 1.3.5, until the first
+  upload. No alpha Paparazzi before launch. Recorded as a NAMED LAUNCH
+  RISK for A6: "Play's acceptance of compileSdk 35 with targetSdk 36 is
+  unproven until the first upload" (Play states only a targetSdk rule,
+  read 2026-11-19).
+Q5 / N5 (system Back from Licences leaves the app): post-launch.
+OTHER FINDINGS:
+- N4 (approximate location or a permanent denial: no feedback, nothing
+  points to Settings): post-launch by name, with one binding condition -
+  A5's store listing and declaration must not imply detection works with
+  approximate location.
+- N6 and N10 (200 % font bottom-bar labels; the export toast cut at two
+  lines): post-launch, with A1's large-font items.
+- N7, N11, N12: emulator or injection artefacts, recorded, no action.
+- N8 is PARK-E3: into A9 above.
+- A3's DEVIATION (one local print URL with its short-lived print token
+  reached the transcript through a dev-log tail): ASSESSED, NOT AN
+  INCIDENT - a local scratch server on a scratch database with a seeded
+  .invalid account, a short-lived token, nothing production; the session
+  stopped printing URLs at once. Recorded here, not only in A3's report.
+- PATH TABLES: A7 and A8 each gain a SIGNED-OUT row (signed out: nothing
+  shown, nothing scheduled), attached to A11's seam.
+RUN ORDER (supersedes Android Ruling 7's): A9, A10, A11, A4, A8, A7,
+then A5 and A6 LAST. Sequential: every task shuts down and reboots the
+one emulator, so two sessions would break each other's walkthroughs.
+Ranges: A9 R1160-R1169, A10 R1170-R1179, A11 R1180-R1189.

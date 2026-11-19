@@ -1,0 +1,37 @@
+AN-API36-PASS SESSION PROMPT - Mon Releve
+THE OWED API 35->36 RUNTIME PASS, AND A PAPARAZZI PROBE (ORCH-ANDROID step A3)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 1-2). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); parking.md
+PARKAN-33 whole; REPORT-AN14a.txt (targetSdk 36, R8, the audit variant); CLAUDE.md R176, R391.
+Names: worktree C:/wt/an-api36-pass, branch an-api36-pass, report REPORT-AN-API36-PASS.txt.
+Ruling numbers: R1080-R1089. YOUR OWN advisor may advise you. CHANGING ANY VERSION (compileSdk,
+Paparazzi, AGP, Kotlin, Compose) IS NOT THIS TASK: it is the probe's output, handed back.
+
+R1080. THE RUNTIME PASS on MonReleve_API36 (API 36), labelled "emulator API 36" throughout, never
+    "device". Build the debug variant against your own local server (ORCH-ANDROID's recipe) and
+    drive every screen and flow the app has, in manual AND automatic mode (grant location on the
+    emulator; set a mock fix with `adb emu geo fix` if you need detection to run - no coordinate
+    is stored by the app, R-rules unchanged): onboarding and its permission priming (the
+    disclosure BEFORE the system dialog), sign-in, Aujourd'hui, Calendrier, Releve and both
+    exports, Parametres and every sheet, the evening notification's debug trigger, sign-out,
+    rotation, 200 % font on two screens, back navigation, process death (`adb shell am kill`)
+    and return. For each: what was driven, what was shown, and any API-36 behaviour change
+    found (edge-to-edge, predictive back, foreground-service types, notification permission,
+    exact alarms, intent/broadcast restrictions). Read Android 16's behaviour-change list from
+    the official docs and say which items apply to this app and which you exercised.
+    Defects: a test-first fix ONLY if small and in :app; anything else is NOTICED with
+    evidence. Then build the MINIFIED audit variant and repeat sign-in + one recorded day + one
+    PDF export on it (R8 can break at runtime what debug does not).
+R1081. THE PROBE (read-only, nothing changed): which Paparazzi release ships an API-36 layoutlib;
+    what Kotlin, Compose, AGP and Gradle versions it requires, against android/gradle/
+    libs.versions.toml; whether it touches :shared; and what Google Play requires of compileSdk
+    for a new app (cite the Play/Android docs with the date read) - is compileSdk 35 with
+    targetSdk 36 accepted at upload? Answer as a decision table for the orchestrator.
+
+THE WORK: worktree + lock; R1081 first (reading only); R1080; fastCheck per code increment; if
+code changed, the FULL :app:gate (R391) with the emulator shut down and the heavy lock held;
+push the branch (DO NOT MERGE); report; push; remove the lock last; boot the emulator at the end
+with the orchestrator's APK reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1080 (WALKTHROUGH table) / R1081 (decision table) / NOTICED BUT
+NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-API36-PASS PROMPT

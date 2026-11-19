@@ -1,0 +1,44 @@
+AN-SHARED-FIXES SESSION PROMPT - Mon Releve
+TWO RELEASE-RELEVANT :shared DEFECTS, ONE iOS RUN (relay/ORCH-ANDROID.txt step A1)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 1-2). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); relay/QUEUE-STATE.md
+PARKED TASKS, the two bullets "RELEASE-RELEVANT: at 200 % font, the sign-out dialog..." and "The export
+file's name is the server's, joined unchecked"; CLAUDE.md R135, R180, R207, R225, R267, R391, R573.
+Names: worktree C:/wt/an-shared-fixes, branch an-shared-fixes, report REPORT-AN-SHARED-FIXES.txt.
+Ruling numbers: R1090-R1099 (R1094-R1099 spare for your own UNNUMBERED->numbered entries).
+YOUR OWN advisor may advise you; dependencies, iOS minutes beyond 30, and anything touching
+production come back to the orchestrator.
+
+R1090. THE DIALOG, A TEST FIRST. `SignOutStillPendingDialog` (:shared,
+    ParametresAccountSection.kt:99 per the record) has no vertical scroll, so at 200 % font the
+    dates and the loss sentence are cut while "Se deconnecter quand meme" is still offered. Prove
+    it first with a failing test that would see the cut (R225: the sentence that answers "which
+    days do I lose" must be reachable at the surface that asks), then make the dialog's body
+    scroll the way `DeleteDialog` (ParametresDeleteSection.kt:46) does. Search for every other
+    AlertDialog/dialog body in :shared and :app with unbounded text and no scroll (R267); fix
+    only this one, list the others under NOTICED.
+R1091. THE BASELINE, NAMED FIRST (R207, R135): exactly ONE baseline may move,
+    `ParametresScreenScreenshotTest_signOutPendingDialogLarge`. Write that expectation before
+    regenerating; the produced set must equal it; crop and look at the image: every date and
+    the loss sentence present. Any other moved baseline stops the regeneration.
+R1092. THE FILENAME, A TEST FIRST. `filenameOf`
+    (android/shared/src/commonMain/kotlin/ch/monreleve/app/data/remote/AuthApi.kt:473) returns the
+    Content-Disposition name unchecked, and MainActivity.kt:1172 (`File(dir, event.filename)`)
+    and IosExportFiles.kt:44 join it. Decision (the orchestrator's, conservative): a name holding
+    "/", "\\", a NUL or other control character, or equal to/containing ".." as a path segment,
+    or empty after trimming, is treated EXACTLY as an absent name (return null), so each caller's
+    existing no-name path applies; nothing new is invented. Test-first in commonTest, with each
+    refused shape and the legitimate server names (read the real ones from web/'s export
+    routes - derive, do not transcribe, R181) asserted to pass through unchanged. Prove both
+    platforms still produce the right file with the existing Android and iOS export tests.
+R1093. THE iOS RUN (R573): one `gh workflow run ios-shared.yml --ref an-shared-fixes` on your code
+    tip, green, run id and billed minutes in the report. Budget: 30 minutes.
+
+THE WORK: worktree + lock; R1090 RED -> GREEN; R1092 RED -> GREEN; fastCheck per increment;
+R1091 under the heavy lock with the emulator SHUT DOWN; the FULL :app:gate on the code tip (R391);
+R1093; push the branch (DO NOT MERGE); report; push; remove the lock last.
+On the emulator (optional, after the gate): the sign-out flow at 200 % font on MonReleve_API36,
+labelled "emulator API 36", never "device".
+REPORT: SUMMARY / STATUS (R391) / R1090-R1093 with evidence (RED runs with reasons) / BASELINES /
+iOS RUN / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-SHARED-FIXES PROMPT

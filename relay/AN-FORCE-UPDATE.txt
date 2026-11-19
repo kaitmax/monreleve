@@ -1,0 +1,53 @@
+AN-FORCE-UPDATE SESSION PROMPT - Mon Releve
+THE API FLAGS A MINIMUM SUPPORTED VERSION; THE APP SHOWS A PLAIN UPDATE SCREEN (ORCH-ANDROID step A4)
+Written by the orchestrating session on 2026-11-19 (Android Rulings 1-2). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); SPEC section 18.1
+(its last bullet is this task's whole normative text) and section 18.1's "no breaking change to a
+shipped endpoint, ever"; tasks/todo.md AN14 ("Forced-update mechanism wired to a
+minimum-supported-version flag from the API"); android/app/build.gradle.kts's versionCode comment
+(AN14a increment 5); CLAUDE.md R133, R153, R154, R155, R169, R181, R196, R204, R205, R225, R391, R573.
+Names: worktree C:/wt/an-force-update, branch an-force-update, report REPORT-AN-FORCE-UPDATE.txt.
+Ruling numbers: R1110-R1119. YOUR OWN advisor may advise you. A new dependency, a schema change,
+or anything production comes back to the orchestrator.
+
+THE PRODUCT RULES (the orchestrator's, conservative, because SPEC says only one sentence):
+R1110. THE FLAG. A new PUBLIC, unauthenticated, cacheable-for-minutes route under /api/v1 (name it
+    by the house conventions - read web/app/api/v1/*) answers the minimum supported Android
+    versionCode. Its source is ONE server setting read at request time (e.g. an env var with a
+    named constant for its key); UNSET, EMPTY OR MALFORMED MEANS NO MINIMUM (the route says so
+    explicitly, never a guessed number) - so the mechanism ships INERT and the operator turns it
+    on in Coolify by setting a value. No database table (no schema change). The response names
+    the product the way /api/health does, so a client can tell the right server answered (R169).
+    Tests first: unset, empty, malformed, a valid value, and the route never needs a session.
+R1111. THE APP. On launch and when returning to the foreground, :shared asks the route. If the
+    app's versionCode is BELOW a valid minimum, a full-screen, plain update screen replaces the
+    app: a title, one sentence, and one button that opens the Play listing of ch.monreleve.app
+    (market:// with the https Play URL as fallback). Nothing else is reachable from it.
+    FAIL OPEN: unreachable server, a non-200, a foreign or malformed answer, or no minimum ->
+    the app works exactly as today, with no screen and no delay to first paint beyond what the
+    request already costs (it must not block startup on the network). The decision is a pure
+    function in :shared commonMain, tested on every branch above (RED first).
+R1112. THE COPY: French, in the app's string home (never inline), plain and accented (R155). Write
+    the title, the sentence and the button label, and list them VERBATIM-BY-KEY in the report's
+    QUESTIONS as T1-T3 for the operator to approve; they ship as written unless refused.
+R1113. THE END-TO-END PROOF (R204): one test drives the real route handler and the app's real
+    client parsing together over a fixture, and on the emulator (MonReleve_API36, labelled so):
+    with the setting unset the app opens normally; with your dev server started with the setting
+    above the build's versionCode the update screen appears; the Play button fires an intent to
+    the listing (it may land on a Play page that says not found - the app is unpublished; say so).
+    Mask any sign-in code before captures (R574).
+R1114. iOS: the decision and the client live in :shared, so R573 applies (budget 30 min). An iOS
+    UI for the screen is NOT built (no app host exists); say so.
+R1115. ONE MEASUREMENT FOR ANDROID RULING 8 (Q3): against a BUILT server (`pnpm build` then
+    `pnpm start` on your port, not `pnpm dev`), time three PDF exports of a seeded account's
+    fullest year from the emulator (the server's own log timing for /mon-releve or /api/v1 export,
+    plus the app's wall clock) and report them beside the app's 15 s read timeout. Measure only;
+    change nothing.
+
+THE WORK: worktree + lock; web part test-first, then :shared/:app test-first; fastCheck per
+increment; gate:changed for web/ and the FULL :app:gate (R391) with the emulator shut down and the
+heavy lock held; gate:clone before the push (web/ changed, R199); R573; the emulator proof; push the
+branch (DO NOT MERGE); report; push; remove the lock last; boot the emulator again at the end.
+REPORT: SUMMARY / STATUS (R391) / R1110-R1114 with evidence / WALKTHROUGH (R176) / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS (T1-T3 first) / PUSH PROOF
+END OF AN-FORCE-UPDATE PROMPT
