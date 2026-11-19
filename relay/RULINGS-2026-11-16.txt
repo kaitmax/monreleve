@@ -1771,3 +1771,26 @@ limit is a harness value, not the assertion; every check in the sweep is
 unchanged. The sweep's speed stays W22's, deferred (Web Ruling 36).
 Landed inside round 10's merge commit, which says so.
 APPLIED: these records join the next record commit.
+
+====================================================================
+WEB RULING 41 - THE OPERATOR APPROVES W12's TEXTS; W12 SHIPS
+====================================================================
+THE OPERATOR, 2026-11-19 (answers to the orchestrator's questions):
+- the five texts T1-T5 of REPORT-FW-WEB-ACCOUNT-2.txt QUESTIONS:
+  "Approve all 5";
+- Q2, the CLAUDE.md R209 bullet: "Yes, correct it" - one sentence added:
+  R898 restored one read-only area at /mon-releve, held by this
+  product's own WebSession, not by Auth.js;
+- W24's Q1, punctuation after the notice's bold name: "Add a colon".
+DECISION:
+1. W12 merges in round 11 (a1815b7c; the merged tree is W12's gated
+   tree, main unmoved since its base). The migration
+   20261117220000_web_session (additive) is deployed from the server per
+   docs/deploy.md section 4, then production is promoted and R911's
+   after-deploy checks are run.
+2. The colon after the notice's bold name is a copy change in
+   lib/fr/provisional.ts or the component, with its two baselines: a
+   small follow-up task, QUEUED after the apps go live (Web Ruling 36).
+3. W12's R1071 finding (lib/auth/secret.ts alone does not select
+   test:container:e2e) is deferred with W17's kind.
+APPLIED: this records commit.
