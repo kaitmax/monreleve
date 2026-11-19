@@ -1,0 +1,256 @@
+REPORT-AN-EDGE-INSETS - Mon Releve - ORCH-ANDROID step A10
+Pure ASCII. Branch an-edge-insets, cut from origin/main 86186b29948aad6d4bfd7f3105dd00988bd6b588.
+Worktree C:/wt/an-edge-insets (lock .session-lock.json, removed last). Rulings R1170-R1179 (used:
+R1170-R1174, the prompt's own numbers; none added - rescanned in this worktree, C:/wt/web-orch and the
+main checkout: only the range declarations). Prompt: relay/AN-EDGE-INSETS.txt (Android Rulings 8-9).
+Every device claim below is "emulator API 36" (AVD MonReleve_API36, x86_64, debug APK of df2c25f6 built
+with -PfrontalierPort=3964). Nothing here is an S9 claim.
+
+SUMMARY
+- R1170: the system-bar insets are handled at ONE root, AppRoot
+  (android/app/src/main/kotlin/ch/monreleve/app/ui/shell/AppRoot.kt): FrontierTheme + the full-bleed
+  canvas Surface + a Box with windowInsetsPadding(WindowInsets.systemBars.union(displayCutout)). It is
+  the whole content of BOTH shipped activities' setContent (MainActivity, CallbackActivity - the main
+  manifest's two activities). windowInsetsPadding pads AND consumes; Material3 1.3.1's Scaffold
+  (onConsumedWindowInsetsChanged -> contentWindowInsets.exclude(consumed)) and NavigationBar
+  (windowInsetsPadding, which excludes consumed insets) therefore add nothing beneath it - read in the
+  material3-android-1.3.1 sources, measured in Paparazzi, and seen on the emulator (bottom bar ends exactly
+  at the bar's top edge, normal 220 px height, both nav modes). No per-call-site change: the three MainShell
+  overlays (forecast, comparison, disclosure) and every sign-in/onboarding route sit inside it already.
+- R1171: fences/EdgeToEdgeCensusTest (JVM, run by :app:testDebugUnitTest, so by :app:gate) discovers the
+  ROOTS from src/main/AndroidManifest.xml and the SCREENS from every top-level non-private `fun *Screen(`
+  under both ui/ roots, and fails on any screen not hosted by AppRoot. FIRST RUN on 86186b29's code:
+  RED, 17 of 17 screens unhosted, both roots opening with FrontierTheme (below). Positive half
+  (R154): AppRootScreenshotTest measures the padding and its consumption - RED on a padding-less stub
+  ("left expected:<22.0> but was:<0.0>"), green with the padding.
+- R1172: Paparazzi - expected set stated before recording: exactly one NEW baseline, ZERO moved. The
+  record produced exactly the one new file (list in BASELINES); "zero moved" verified by the FULL gate's verifyPaparazziDebug over all 160 (STATUS).
+- R1173: emulator API 36, 3-BUTTON navigation (switched with `cmd overlay enable-exclusive --category
+  com.android.internal.systemui.navbar.threebutton`, restored to gestural the same way): every screen N1
+  lists has its main button fully above the bar (UI dumps, bounds below); Prevision's button tapped at its
+  right side opened the rhythm editor it names, focus stayed in MainActivity - not Recents. Then gestural
+  once, landscape on two screens. Sign-in codes never printed; the code screen dumped before any digit.
+- R1174: :shared NOT changed (git diff 86186b29..df2c25f6 -- android/shared is empty), so no R573 run;
+  macOS minutes 0.
+
+STATUS (R391)
+COMPLETE. The FULL :app:gate ran in this session on the CODE TIP
+df2c25f61710e91cf984e09391e84667e0d8794d (every later commit changes this report only), emulator shut down,
+my dev server and my Gradle/Kotlin daemons stopped, heavy lock held (acquired 2026-11-19T22:17:08Z,
+commitFree 8 071 MB, line 8 000; released 22:28:53Z):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1446 unit tests observed (>= 10)
+    > Task :app:verifyPaparazziDebug   (all 160 baselines)
+    BUILD SUCCESSFUL in 11m 21s
+    261 actionable tasks: 126 executed, 135 up-to-date
+    GATE EXIT=0
+(log: C:/wt/queue-evidence/an-edge-insets/logs/gate-df2c25f6.log). `git status` after it: clean, 160 baselines.
+The same commit is the one the emulator proof's APK was built from (-PfrontalierPort=3964).
+Before it, per increment: `fastCheck :app:ktlintCheck :app:testDebugUnitTest --tests EdgeToEdgeCensusTest
+--tests AppRootScreenshotTest` -> BUILD SUCCESSFUL in 1m 36s (logs/fastcheck3.log).
+GETTING THE LOCK TOOK TWO FAILED ATTEMPTS (memory under the line, nothing of mine left running):
+    2026-11-19T21:44:27Z NOT ACQUIRED holder=AN-EDGE-INSETS after 30 min (NO RESULT for the run it guarded)
+    2026-11-19T22:08:43Z NOT ACQUIRED holder=AN-EDGE-INSETS after 20 min (NO RESULT for the run it guarded)
+  commitFree read 6 203-6 888 MB from 21:18 to 22:08 (largest holders, none mine: vmmemWSL 4 989 MB, the
+  editor and Claude processes, the orchestrator's :3900 server, a browser started 21:16; the orchestrator
+  itself held the lock at 22:05-22:16). At 22:16:50 the lock read FREE at 8 271 MB and was taken at once.
+  The gate was never run under the line and the line was never lowered.
+R573: not owed (:shared unchanged). gate:clone: not owed (web/ unchanged). macOS minutes: 0.
+
+R1170 - ONE ROOT, AND WHY THERE
+Where: android/app/src/main/kotlin/ch/monreleve/app/ui/shell/AppRoot.kt, called as
+  setContent { AppRoot { ... } }   in MainActivity.kt and CallbackActivity.kt.
+Why there:
+- One wrapper hosts every destination, so a screen added later is covered by being reachable, not by a
+  modifier somebody remembers; the census fails on one that is not.
+- At the root, windowInsetsPadding consumes the insets once; the Scaffold screens (the four tabs) do not
+  pad twice - Scaffold and NavigationBar subtract consumed insets.
+- In :app, not :shared: the insets are the Android window's. iOS hosts the shared screens in its own view
+  controllers with its own safe areas; :shared stays untouched (no R573, no shared baseline moves).
+- The set: systemBars + displayCutout. NOT the IME (see NOTICED K1): the keyboard covering a bottom button
+  predates N1 and is a behaviour change outside it.
+- No enableEdgeToEdge() call was added: it would change API 26-34 rendering, which nothing in this task can
+  verify. Below Android 15 the window is not edge-to-edge and the reported insets are zero, so AppRoot pads
+  nothing there - the same inset source Scaffold already read. That is REASONING, not S9 evidence.
+- android/app/build.gradle.kts's targetSdk comment said edge-to-edge "is already handled from AN1's
+  targetSdk 35" - the sentence Android Ruling 8 records as contradicted. Corrected in the same commit (R267).
+
+R1171 - THE CENSUS (fences/EdgeToEdgeCensusTest.kt) AND THE POSITIVE ASSERTION
+Three tests:
+ 1. everyScreenIsHostedByTheRootWrapper - roots from the main manifest (each setContent must be exactly
+    one AppRoot { }); screens discovered (17 today); a screen is hosted when it has >= 1 Android call site
+    and every call site is in a wrapped activity's file or inside another hosted screen (Licences inside
+    Parametres). Overloads delegating to their :shared namesake (OnboardingScreen, ParametresScreen) are
+    not counted. It prints its census (R133) on every run.
+ 2. theRootWrapperAppliesTheSystemBarInsets - AppRoot.kt declares AppRoot, its default is
+    WindowInsets.systemBars.union(WindowInsets.displayCutout), and it applies .windowInsetsPadding(insets).
+ 3. noOtherShippedSourceHandlesTheSystemBarInsets - no other shipped source (app main minus dev/,
+    shared commonMain) uses windowInsetsPadding / *BarsPadding / safe*Padding / consumeWindowInsets /
+    contentWindowInsets / fitsSystemWindows / setDecorFitsSystemWindows / enableEdgeToEdge (one root).
+Roots are pinned (R460): FenceRoot pins WelcomeScreen.kt, ResolvingScreen.kt, MainActivity.kt,
+SharedModule.kt; positive controls WelcomeScreen, AujourdhuiScreen, ResolvingScreen and MainActivity.
+dev/ is excluded with an asserted reason (debug-manifest-only activities; checkReleaseNoDevComponent).
+Stated limits (in the header): lexical, not a compiler; a function reference is not a call site.
+
+FIRST RUN, on 86186b29's code (only the test added) - RED. CONDENSED (paths shortened to file:line, two
+columns; its first lines are verbatim). Its JUnit XML was overwritten by the next run; the full text of
+the second and final RED runs is kept as logs/census-red2.xml and logs/census-red-final.xml:
+  EdgeToEdgeCensusTest (R1171): 17 of 17 screens are NOT hosted by AppRoot,
+  so on an edge-to-edge window (targetSdk 36, Android 15+) they draw under the system bars.
+  ROOTS (main manifest activities):
+    .MainActivity: setContent at line 248 opens with `FrontierTheme`, not `AppRoot { }`
+    .CallbackActivity: setContent at line 55 opens with `FrontierTheme`, not `AppRoot { }`
+  UNHOSTED SCREENS:
+    AujourdhuiScreen <- MainActivity.kt:865, shared/.../pilot/AujourdhuiPilot.kt:47
+    CalendrierScreen <- MainActivity.kt:882          CallbackScreen <- CallbackActivity.kt:62
+    CodeScreen <- MainActivity.kt:446                 ComparisonScreen <- MainActivity.kt:1035
+    DisclosureScreen <- MainActivity.kt:625, :1059    LicencesScreen <- ParametresScreen.kt:61 (inside ParametresScreen)
+    OnboardingScreen <- MainActivity.kt:601           ParametresScreen <- MainActivity.kt:1086
+    PretScreen <- MainActivity.kt:597                 PrevisionScreen <- MainActivity.kt:966
+    ReleveScreen <- MainActivity.kt:908               RequestLinkScreen <- MainActivity.kt:385
+    ResolvingScreen <- MainActivity.kt:486            RythmeScreen <- MainActivity.kt:956
+    SimulationScreen <- MainActivity.kt:985           WelcomeScreen <- MainActivity.kt:383
+  (theRootWrapperAppliesTheSystemBarInsets also RED: AppRoot.kt not there; the third test green.)
+It names every screen N1 lists (Welcome, RequestLink + Code = sign-in, Onboarding, Disclosure x2,
+Prevision/Simulation, Comparison) - and, as a SUPERSET, the four Scaffold tabs, Licences, Rythme,
+Resolving (A9's new screen), Pret and Callback. The census asks "hosted by the ONE root", which none was;
+it is not shaped to N1's list (the tabs were inset-correct through Scaffold, which R1170 replaces).
+TWO FINDINGS OF THE CENSUS'S OWN FIRST RUNS (R178), both fixed in the census before the commit:
+ a) shared/.../pilot/AujourdhuiPilot.kt calls AujourdhuiScreen - iOS's pilot host, called only from
+    iosMain. The rule now classes a :shared call site inside a function NO Android shipped source calls
+    as "not an Android destination" and LISTS it on every run (it is never dropped silently).
+ b) that rule's first version classed CallbackScreen as off-Android, because CallbackActivity.onCreate has
+    no caller in any source - the FRAMEWORK calls it (R246's blind spot, met live). The rule is now :shared
+    only, where nothing but :app code enters.
+Final census version, RED again on the unwired tree (stub AppRoot present, not yet used): "17 screens, 0
+hosted by AppRoot", the same 17, the pilot listed under NOT ANDROID DESTINATIONS.
+GREEN after the fix (printed by the test):
+  EdgeToEdgeCensusTest (R1171): 17 screens, 17 hosted by AppRoot.
+    .MainActivity: wrapped by AppRoot / .CallbackActivity: wrapped by AppRoot
+  NOT ANDROID DESTINATIONS: shared/src/commonMain/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt:47 in AujourdhuiPilot
+POSITIVE ASSERTION (R154), ui/shell/AppRootScreenshotTest.appRootPadsTheInsetsOnce: AppRoot gets fixed
+insets (8/24/16/48 dp; Paparazzi's window has no bars, hence the `insets` parameter, default = the real
+set); the content's bounds are asserted exactly inside them on all four sides (APPLIED), and a second
+windowInsetsPadding of the same insets beneath AppRoot - what Scaffold/NavigationBar do - is asserted to
+move nothing (CONSUMED). RED on a stub without the padding: "left expected:<22.0> but was:<0.0>"; green
+after. No new dependency (Robolectric would have been one).
+
+BASELINES (R207 / R135)
+Stated BEFORE recording: exactly ONE new file, ZERO existing baselines moved - no composable rendered by
+an existing screenshot test changed (AppRoot is new; the activities are not Paparazzi subjects; :shared
+untouched). Recorded with `recordPaparazziDebug --tests ch.monreleve.app.ui.shell.AppRootScreenshotTest`;
+`git status` afterwards showed exactly:
+  ?? android/app/src/test/snapshots/images/ch.monreleve.app.ui.shell_AppRootScreenshotTest_appRootPadsTheInsetsOnce.png  (NEW)
+and nothing modified (159 -> 160 files). Looked at: canvas bands of 8/24/16/48 dp around a white field,
+with no second band inside it.
+WHAT THAT PROVES, AND WHAT IT DOES NOT: a `--tests` record can only ever write that one file, so git
+status cannot show another baseline moving. "Zero moved" is established only by verifyPaparazziDebug over
+all 160 - which the FULL gate ran on df2c25f6: green over all 160 (STATUS). Zero moved is VERIFIED.
+
+WALKTHROUGH / R1173 PROOF (emulator API 36; evidence C:/wt/queue-evidence/an-edge-insets/: dump.mjs, one
+.xml per dump - EditText digits masked before writing - and .png screenshots)
+Live bars from `dumpsys window`, not reused: portrait 3-button statusBars [0,0][1080,66],
+navigationBars [0,2148][1080,2280]; gestural navigationBars [0,2214][1080,2280]; landscape 3-button
+statusBars [0,0][2280,66], navigationBars [2148,0][2280,1080] (RIGHT); no displayCutout source on this AVD.
+Local server: this worktree's `pnpm dev` on :3964, scratch DB monreleve_an_edge_insets (migrated, seeded).
+Each line: screen - main button bounds (A3's N1 bounds) - dump result.
+3-BUTTON, portrait (nav bar top 2148):
+- Welcome "Commencer" [66,1950][1014,2104] (A3 ~[2081,2232]) - 11 nodes, 0 outside.
+- Sign-in address "Recevoir mon lien de connexion" [1825,1979]; terms line [2012,2104] (A3 [2144,2236]);
+  back [55,99][121,165] - 0 outside.
+- Sign-in code (dumped before any digit): back [55,99] (A3 [33,99], over the status bar); "Valider le
+  code" [1621,1775]; resend line [1995,2104] (A3 [2127,2236]) - 19 nodes, 0 outside.
+- RESOLVING (A9's screen, caught mid-sign-in): spinner [485,1052][595,1162], centre 1107 = the centre of
+  the padded area (66+2148)/2, not of the window (1140) - padded.
+- Aujourd'hui (Scaffold, consumed-once check): bottom items [*,1928][*,2148] - end EXACTLY at the bar's
+  top, height 220 px (80 dp at 2.75), no second inset - 25 nodes, 0 outside.
+- Parametres - 0 outside unscrolled; scrolled, 2 rows report [55,0][1025,55] / [55,58][1025,256]: rows
+  scrolled partly off the top of the ScrollView viewport [0,66][1080,1928] - a merged semantics node's
+  unclipped bounds, not drawing under the bar.
+- Rythme "Voir ma prevision" [1950,2104] - 0 outside.
+- Prevision (no rhythm): "Indiquer mon rythme" [66,1950][1014,2104]; Retour [22,88][154,220] (A3: Retour
+  overlapped the status bar by 11 px; button text [2135,2183]). TAP at (800,2027), the right side A3 used:
+  the rhythm editor opened ("Votre rythme habituel"), mCurrentFocus ch.monreleve.app/.MainActivity - NOT
+  Recents. With one rhythm day set: "Tester un changement" [1785,1939], "Modifier mon rythme"
+  [1972,2104] - 0 outside.
+- Simulation: top and scrolled end, "Revenir a ma prevision" [1763,1917], "Adopter ce rythme"
+  [1950,2104] - 0 outside.
+- Comparaison: "Voir mes journees jour par jour" [1950,2104] (A3 [2135,2183]) - 0 outside.
+- Disclosure from Parametres: title [55,121] (A3 from 55, under the status bar); at the scroll end
+  "Autoriser la localisation" [1741,1895], "Rester en saisie manuelle" [1939,2093] (A3 [2123,2173]).
+  Unscrolled, one node reports [55,2094][1025,2214]: the Autoriser button partly scrolled in, its inner
+  Button clipped at [2094,2148] by the ScrollView viewport [0,66][1080,2148]; the screenshot shows the
+  button cut at the viewport edge, above the opaque bar. Same artefact as Parametres. "Rester en saisie
+  manuelle" tapped -> manual kept.
+- Signed out (dialog "Se deconnecter"), signed up edge.insets@example.invalid (scratch DB):
+  Onboarding steps 1-8, every "Continuer" [66,1950][1014,2104] (A3 [2135,2183]); step 8 "Pas maintenant"
+  [1972,2104] (A3 [2146,2194]); progress line "Etape n sur 8" [176,128][381,170] (A3: over the status
+  icons); 0 outside on every step. Onboarding's own disclosure (the second call site): same bounds as the
+  Parametres one, "Rester en saisie manuelle" -> step 7 manual.
+- Pret "Continuer" [1950,2104] - 0 outside.
+- CallbackActivity (an invalid link, am start -d .../api/v1/auth/callback?token=not-a-token): text from
+  y=121, "Revenir a la connexion" [274,406] - 0 outside. (Not in N1; the census's second root.)
+LANDSCAPE, 3-button (nav bar on the RIGHT, x >= 2148):
+- Aujourd'hui (Scaffold): content and bottom bar end before x=2148 (screenshot: the bar stops at the side
+  nav bar), labels [*,995][*,1034] - 0 outside.
+- Rythme (overlay): choice buttons to x=2038, "Voir ma prevision" [915,935][1233,983] - 0 outside.
+GESTURAL, once (handle top 2214):
+- Rythme "Voir ma prevision" [2069,2117]; Prevision "Indiquer mon rythme" [66,2016][1014,2170];
+  Aujourd'hui bottom items [*,1994][*,2214] (end at the handle, 220 px) - 0 outside each.
+- The strip under the gesture handle on a tab is now the canvas (grey), below a white bottom bar
+  (gest-03-aujourdhui.png) - before, NavigationBar's surface colour reached the bottom edge. QUESTION Q1.
+Restored: rotation (user_rotation 0, accelerometer_rotation 1 as found), gestural navigation; the
+orchestrator's APK reinstalled after the gate (PUSH PROOF).
+
+NOTICED BUT NOT TOUCHING
+K1 The soft keyboard still covers bottom buttons (sign-in "Recevoir mon lien", A3's note): AppRoot does not
+   include the IME inset, by decision (R1170 is about the system bars; adding ime changes every text-field
+   screen). Under edge-to-edge on API 35+ adjustResize no longer resizes, so this is the next inset task if
+   the operator wants it (Q2).
+K2 Debug-only activities (dev/ in src/main and src/debug's DebugSeeder/SessionInjection) are not under
+   AppRoot - not shipped (checkReleaseNoDevComponent), excluded from the census with the reason asserted.
+K3 uiautomator reports UNCLIPPED bounds for a merged Compose node partly scrolled out of its container
+   (disclosure, Parametres). A future dump-based check must clip to the scroll viewport or read pixels.
+K4 The census is lexical (stated in its header): a function reference passed as a screen, or a top-level
+   function in a wrapped activity's file called from another file outside the wrapper, would read as
+   hosted. None exists today.
+
+DEVIATIONS
+D1 The census's "hosted" rule was refined twice on its own first runs (findings a and b above) before the
+   commit; both refinements are recorded in its comments. The RED quoted first is the ORIGINAL census on
+   86186b29's code; the final version's RED was re-run on the unwired tree before the fix.
+D2 `./gradlew --stop` was run after the proof, to free memory for the gate; the two daemons it ended
+   (Gradle 20996, Kotlin 17652) were created at 20:43:38 / 20:44:15 by this session's first Gradle run
+   (lock taken 20:43:30 at commitFree 10 268 MB). My dev server's `next` process (PID 25076, this
+   worktree's start-server.js, confirmed by its command line) kept :3964 after TaskStop and was stopped by
+   PID; the port then read free. Nothing else was stopped: WSL's vmmem (~5 GB, Docker), the orchestrator's
+   :3900 server, the editor, Claude and a browser started 21:16 are not mine.
+D3 The FULL gate ran only after two NOT ACQUIRED lock attempts (STATUS); nothing was run under the line.
+
+QUESTIONS
+Q1 THE STRIP UNDER THE GESTURE HANDLE (Scaffold tabs, gestural navigation): it is now canvas grey under a
+   white bottom bar (C:/wt/queue-evidence/an-edge-insets/gest-03-aujourdhui.png). Acceptable, or should the
+   NavigationBar colour reach the screen edge? The latter needs the tabs' bottom inset handled at the bar,
+   i.e. an exception to "one root" that the census would have to name. Not blocking; nothing was changed.
+Q2 THE IME: should AppRoot also take the keyboard inset (ime), so a bottom button rises above the
+   keyboard on API 35+? A behaviour change to every text-field screen; its own task if yes.
+Q3 The census covers the shipped activities only. Should the debug activities (dev/, DebugSeeder,
+   SessionInjection) also go under AppRoot, or stay out as tooling?
+
+PUSH PROOF
+- Code: branch an-edge-insets pushed at df2c25f61710e91cf984e09391e84667e0d8794d before the gate ran
+  (`git ls-remote origin refs/heads/an-edge-insets` -> df2c25f61710e91cf984e09391e84667e0d8794d). One code commit on 86186b29; android/ only,
+  no web/, no android/shared. NOT MERGED (the orchestrator merges).
+- This report: committed on top of df2c25f6 and pushed to the same branch; that commit changes
+  REPORT-AN-EDGE-INSETS.txt only. Its sha is in the handback (a report cannot name its own commit).
+- Token check on the pushed diff: no sign-in code, token, AUTH_SECRET or database password in any committed
+  file (the evidence dumps mask EditText digits; dev-3964.log, which holds the sign-in mails, stays in the
+  session scratchpad and is not in evidence or git).
+- Emulator restored at 22:30Z: MonReleve_API36 booted (cold, -no-snapshot), my build uninstalled (its data
+  held the scratch Edge Insets session), C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk
+  installed (firstInstallTime 2026-11-19 22:30:50), opened on Bienvenue signed out; gestural overlay [x];
+  user_rotation 0 / accelerometer_rotation 1 as found. A "System UI isn't responding" dialog at boot was
+  answered Wait (the ORCH-ANDROID driving note).
+- Left in place, mine, local: web/.env and web/node_modules in this worktree (gitignored), the scratch
+  database monreleve_an_edge_insets with the account edge.insets@example.invalid, the evidence directory
+  C:/wt/queue-evidence/an-edge-insets/. The lock C:/wt/an-edge-insets/.session-lock.json is removed last.

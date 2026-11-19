@@ -43,9 +43,10 @@ android {
         // prompt: https://developer.android.com/google/play/requirements/target-sdk - fetched 2026-10-01,
         // verbatim: "New apps and app updates must target Android 16 (API level 36) or higher to be submitted
         // to Google Play". An extension to 2026-11-01 is offered via Play Console; this app targets 36 now
-        // rather than relying on it. The API 35 -> 36 runtime behaviour changes (edge-to-edge is already
-        // handled from AN1's targetSdk 35) are OWED an emulator pass - the gate proves it compiles and the
-        // unit/paparazzi suites pass, not that every 36 behaviour is exercised on a device.
+        // rather than relying on it. The API 35 -> 36 runtime behaviour changes were OWED an emulator pass,
+        // which AN-API36-PASS ran. Edge-to-edge was NOT already handled, as this comment used to say: that was
+        // true of MainShell's Scaffold screens only (A3's N1, Android Ruling 8). AN-EDGE-INSETS handles the
+        // system bars at ONE root, ui/shell/AppRoot.kt, held by fences/EdgeToEdgeCensusTest (R1170/R1171).
         targetSdk = 36
         // AN14a increment 5. versionCode MUST strictly increase with every Play upload, forever (Play rejects
         // an upload whose code is <= the highest already uploaded), and the ceiling is 2_100_000_000. THE
