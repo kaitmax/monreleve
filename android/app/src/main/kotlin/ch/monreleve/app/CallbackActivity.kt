@@ -4,12 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.auth.CallbackController
@@ -19,8 +15,8 @@ import ch.monreleve.app.auth.handle
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.data.sync.buildSyncEngine
-import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.ui.screens.signin.CallbackScreen
+import ch.monreleve.app.ui.shell.AppRoot
 
 /**
  * The App Link callback target (SPEC 10, R195). This is the ONE activity the OS
@@ -53,14 +49,10 @@ class CallbackActivity : ComponentActivity() {
             )
         controller.handle(intent?.data?.toString())
         setContent {
-            FrontierTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    val state by controller.state.collectAsState()
-                    CallbackScreen(state = state, onBackToSignIn = ::goToSignIn)
-                }
+            // AN-EDGE-INSETS (R1170): the same root as MainActivity's - this is a second window, so it needs its own.
+            AppRoot {
+                val state by controller.state.collectAsState()
+                CallbackScreen(state = state, onBackToSignIn = ::goToSignIn)
             }
         }
     }
