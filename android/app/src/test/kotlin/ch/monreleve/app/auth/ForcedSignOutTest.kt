@@ -215,6 +215,11 @@ private class Device(
             clearExports = { exportsCleared = true },
         )
 
+    // AN-SESSION-END (R1181): the store the app's one construction hands out - DeviceLocalStore inside the
+    // SessionEndingStore - with the seam built as the app builds it (deviceSessionEndSeam) over a spy of the one stop.
+    var samplerStops = 0
+    val sessionStore = SessionEndingStore(deviceStore, deviceSessionEndSeam(stopSampling = { samplerStops += 1 }))
+
     // R520/R521: the process's session-end record, and the session told of each ending - processSession's wiring,
     // through the same handler the app runs (onServerEndedSession: the clear, then the signal).
     val ends = SessionEnds()
@@ -222,7 +227,7 @@ private class Device(
         SessionManager(
             AuthApi(server, TOKEN_SERVER_BASE),
             tokens,
-            onEnded = { onServerEndedSession(deviceStore, ends) },
+            onEnded = { onServerEndedSession(sessionStore, ends) },
         )
     val repository =
         LocalEntryRepository(
@@ -351,6 +356,8 @@ private suspend fun assertTookTheForcedPath(
 ) {
     shell.destination shouldBe Destination.SIGN_IN
     device.ends.ends.value shouldBe 1
+    // AN-SESSION-END (R1181): the ending passed the seam - once, with the one ending - and the sampler was cancelled.
+    device.samplerStops shouldBe 1
     device.tokens.load() shouldBe null
     device.settings.load() shouldBe null
     device.cache.load(TAX_YEAR) shouldBe null
@@ -456,6 +463,8 @@ private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
         // STILL SIGNED IN - nothing cleared, nothing signalled, nothing revoked, the day held.
         device.tokens.load() shouldBe device.firstPair
         device.ends.ends.value shouldBe 0
+        // R1182: TRY LATER is not an ending - the sampler keeps running for the person still signed in.
+        device.samplerStops shouldBe 0
         shell.destination shouldBe Destination.MAIN
         sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe false
         device.settings.load() shouldBe SETTINGS
@@ -470,6 +479,7 @@ private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
         device.drain() shouldBe SyncOutcome.Settled(written = 1, defects = 0)
         device.server.mutationsOf(EMAIL_A) shouldBe listOf(held)
         device.ends.ends.value shouldBe 0
+        device.samplerStops shouldBe 0
     } finally {
         shell.close()
     }
