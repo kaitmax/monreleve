@@ -1,3 +1,7 @@
+import com.android.tools.idea.insights.proto.BuildStamp
+import com.android.tools.idea.insights.proto.RepositoryInfo
+import com.android.tools.idea.insights.proto.VersionControlSystem
+import com.google.protobuf.TextFormat
 import java.io.ByteArrayOutputStream
 import java.util.zip.ZipFile
 
@@ -927,6 +931,117 @@ tasks.register("checkMinifiedWireContract") {
     }
 }
 
+// AN-RELEASE-VCS (R1100-R1101) - THE FIX. AGP 8.10.1's ExtractVersionControlInfoTask (read in its own source)
+// looks for `<Gradle rootDir>/.git/HEAD` and a LOOSE `.git/refs/heads/<branch>` only, and both properties are
+// disallowChanges(), so no setting points it elsewhere. Our Gradle root is android/, and the repository root is
+// its PARENT - so android/.git exists in no checkout at all (main, clone, worktree) and every release APK said
+// NO_SUPPORTED_VCS_FOUND. The worktree was not the cause: a `git clone --local` with a real .git directory said
+// the same. Measured further (REPORT-AN-RELEASE-VCS.txt): with android/ as its own git root AGP names the commit;
+// as a WORKTREE of that root it says NO_VALID_GIT_FOUND (.git is a file); after `git pack-refs` it says
+// NO_VALID_GIT_FOUND too. So reading .git by hand is the fragile part, and git itself is asked instead.
+//
+// This keeps AGP's task and AGP's wiring - the same artifact feeds the APK (PackageAndroidArtifact) and the
+// bundle (PerModuleBundleTask) - and REPLACES ITS OUTPUT with the same proto AGP writes (AGP's own BuildStamp
+// classes and TextFormat printer, so the format is AGP's by construction, R181), carrying `git rev-parse HEAD`.
+// It matches every extract*VersionControlInfo task by name (release, and audit via initWith). The revision is a
+// declared INPUT: the task's own inputs are paths under android/.git that never exist, so without it the task
+// would stay UP-TO-DATE after a commit and the APK would name the previous one. If git prints no 40-hex commit,
+// AGP's error output is left as it is and checkReleaseVcsInfo refuses the build. If a future AGP renames the
+// task, nothing is matched, the APK keeps AGP's own answer, and checkReleaseVcsInfo refuses that too (R133).
+val gitHeadRevision: Provider<String> =
+    providers.exec {
+        commandLine("git", "rev-parse", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.map { it.trim() }
+
+tasks.named { it.startsWith("extract") && it.endsWith("VersionControlInfo") }.configureEach {
+    inputs.property("gitRevParseHead", gitHeadRevision)
+    doLast {
+        val outputFiles = outputs.files.files
+        if (outputFiles.size != 1) {
+            throw GradleException(
+                "$name: expected exactly one output (AGP's version-control-info.textproto), found $outputFiles " +
+                    "- refusing to write (R211)",
+            )
+        }
+        val head = gitHeadRevision.get()
+        if (!head.matches(Regex("[0-9a-f]{40}"))) {
+            logger.warn("$name: `git rev-parse HEAD` printed no 40-hex commit (\"$head\"); AGP's output kept")
+            return@doLast
+        }
+        val stamp =
+            BuildStamp.newBuilder()
+                .addRepositories(
+                    RepositoryInfo.newBuilder()
+                        .setSystem(VersionControlSystem.GIT)
+                        .setLocalRootPath("\$PROJECT_DIR")
+                        .setRevision(head),
+                ).build()
+        outputFiles.single().writeText(TextFormat.printer().printToString(stamp))
+    }
+}
+
+// AN-RELEASE-VCS (R1100-R1102). A release APK names the commit it was built from, and this proves it on the
+// BUILT APK: META-INF/version-control-info.textproto must carry exactly one 40-hex `revision` equal to
+// `git rev-parse HEAD`, read when this task runs (R171 - the commit is DERIVED, never typed). It fails on
+// a missing entry, on AGP's `generate_error_reason` (NO_SUPPORTED_VCS_FOUND, NO_VALID_GIT_FOUND), and on a
+// revision that is not HEAD. A positive signal (R133): an entry that merely EXISTS proves nothing, because
+// AGP writes one even when it found no repository - which every release APK before this task carried.
+// Its FIRST run found that live (R178): NO_SUPPORTED_VCS_FOUND on 6f9dbc05. R182: it dependsOn
+// assembleRelease, the task that PRODUCES its subject. If HEAD cannot be read, that is NO RESULT and it
+// fails rather than passing on nothing. Equality with HEAD says nothing about UNCOMMITTED changes in the
+// tree that was built; the gate's R393 refusal (below) covers unstaged edits, not untracked files.
+tasks.register("checkReleaseVcsInfo") {
+    dependsOn("assembleRelease")
+    doLast {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val apk =
+            apkDir.walkTopDown().firstOrNull { it.isFile && it.extension == "apk" }
+                ?: throw GradleException(
+                    "checkReleaseVcsInfo: no release APK under $apkDir - assembleRelease produced none",
+                )
+        val entryName = "META-INF/version-control-info.textproto"
+        val textproto =
+            ZipFile(apk).use { zip ->
+                zip.getEntry(entryName)?.let { entry -> zip.getInputStream(entry).use { it.readBytes() } }
+            }?.toString(Charsets.UTF_8)
+                ?: throw GradleException(
+                    "checkReleaseVcsInfo FAILED - the BUILT release APK carries no $entryName, so it cannot " +
+                        "name the commit it was built from.\nAPK: $apk",
+                )
+        val head =
+            providers.exec {
+                commandLine("git", "rev-parse", "HEAD")
+                isIgnoreExitValue = true
+            }.standardOutput.asText.get().trim()
+        if (!head.matches(Regex("[0-9a-f]{40}"))) {
+            throw GradleException(
+                "checkReleaseVcsInfo: NO RESULT - `git rev-parse HEAD` did not print a 40-hex commit " +
+                    "(got \"$head\"), so there is nothing to compare the APK against (R391).",
+            )
+        }
+        val revisions =
+            Regex("""(?m)^\s*revision:\s*"([0-9a-f]{40})"\s*$""")
+                .findAll(textproto)
+                .map { it.groupValues[1] }
+                .toList()
+        val error = Regex("""generate_error_reason:\s*(\S+)""").find(textproto)?.groupValues?.get(1)
+        if (error != null || revisions.size != 1 || revisions.single() != head) {
+            throw GradleException(
+                "checkReleaseVcsInfo FAILED (R1101) - the BUILT release APK does not name the commit it " +
+                    "was built from.\n" +
+                    "  HEAD (git rev-parse HEAD): $head\n" +
+                    "  revision(s) in the APK:    $revisions\n" +
+                    "  generate_error_reason:     ${error ?: "(none)"}\n" +
+                    "  $entryName:\n" +
+                    textproto.lines().joinToString("\n") { "    $it" } +
+                    "\nAPK: $apk",
+            )
+        }
+        println("checkReleaseVcsInfo OK: the built release APK names HEAD $head in $entryName ($apk)")
+    }
+}
+
 tasks.register("gate") {
     dependsOn(
         "assembleDebug",
@@ -940,6 +1055,8 @@ tasks.register("gate") {
         "checkReleaseLocationPermissions",
         "checkReleaseNoDevComponent",
         "checkMinifiedWireContract",
+        // AN-RELEASE-VCS (R1101): the BUILT release APK names HEAD in version-control-info.textproto.
+        "checkReleaseVcsInfo",
         "checkLicences",
         // R308 (AN-STATE): Android Lint's NewApi check, scoped to NewApi only (lint{} above). The
         // comprehensive partner of ApiLevelFenceTest - it catches every platform member used above minSdk 26,
@@ -996,6 +1113,10 @@ tasks.register("gate") {
             |     checkMinifiedWireContract (AN14a R307 static half: every /v1 field
             |     key and enum value, derived from docs/api-v1.md, survives in the
             |     MINIFIED release dex - the wire R8 could have renamed on the server),
+            |     checkReleaseVcsInfo (AN-RELEASE-VCS R1101: the BUILT release APK's
+            |     META-INF/version-control-info.textproto names exactly one 40-hex
+            |     revision equal to `git rev-parse HEAD` - never AGP's
+            |     NO_SUPPORTED_VCS_FOUND),
             |     checkLicences (R298: every release runtime dependency is
             |     attributed on the licences screen, derived from the build),
             |     lintDebug (R308: Android Lint's NewApi check, scoped to NewApi,
