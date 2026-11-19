@@ -53,6 +53,11 @@ What DID run on the code tip's tree:
   - :app unit test classes touched, run directly: SamplingWakeTest 6/6, SessionEndSeamTest 7/7,
     ForcedSignOutTest 27/27, DetectionSettingsTest 6/6, SessionEndSeamFenceTest 3/3 - all BUILD SUCCESSFUL.
   - :app:assembleDebug -PfrontalierPort=3966 on 88dc2b0a: BUILD SUCCESSFUL in 49s (the walkthrough APK).
+  - After the walkthrough, as named classes on the same tree: FencesTest, LogFenceTest,
+    SettingsCaptureFenceTest, AccountCaptureFenceTest, OneSessionPerProcessFenceTest, SessionEndSeamFenceTest,
+    LocalStoreTest, ParametresAccountTest, every class in ch.monreleve.app.detection and ch.monreleve.app.auth:
+    BUILD SUCCESSFUL in 1m 14s, 43 classes, 243 tests, 0 failures (extra-classes.log). The signatures I
+    changed (deviceLocalStore, onServerEndedSession) are referenced in no source set but main and test.
 NOT run: the rest of :app's ~1 450 unit tests, verifyPaparazziDebug, lint/release checks - i.e. the gate.
 To close: run `./gradlew :app:gate` on 88dc2b0a with the emulator down (the orchestrator, or this task
 re-run with permission to stop the emulator). No baseline should move: no composable changed.
@@ -70,7 +75,8 @@ automatic mode, and the threshold alert keeps its foreground run (MainActivity) 
 signed-in manual person whose sampler was (wrongly) still scheduled, that wake's incidental alert check is
 lost and the schedule cancelled - which is the point.
 SELF-CANCEL: an explicit cancelUniqueWork (DetectionScheduling.stopSampling), not a failed Result.
-RED FIRST (the extraction committed with the seams in the signature but no guard, then the test):
+RED FIRST (the extraction WRITTEN with the seams in the signature but no guard, then the test, run before
+the guard existed; 5d50b735 holds both, committed after GREEN):
   SamplingWakeTest 4 of 6 failed, each "expected:<0> but was:<1>" on fixes.requests - one fix requested
   for nobody: NO SESSION + automatic; signed in + MANUAL; no session + manual; a sign-out between two wakes.
   (logs: red-R1180.log, red-R1180-SamplingWakeTest.xml)
@@ -191,12 +197,17 @@ D2 R574 INCIDENT, MINE. During the last sign-in (done only to leave the emulator
    had landed into this session's transcript: my dump masked 6-digit runs but not one digit per field.
    Not consumed with that code: I requested a fresh one at once from the email screen, which DELETES the
    previous unused code server-side (lib/auth/magic-link.ts:176-181), and signed in with the new one
-   (typed unseen). Local scratch server, scratch DB, seeded .invalid account, nothing production. The
+   (typed unseen). MEASURED: VerificationToken rows for that address in monreleve_an_session_end = 0.
+   Local scratch server, scratch DB, seeded .invalid account, nothing production. The
    driver now never prints a digit field's text. No code, token or AUTH_SECRET is in any committed file
-   or in the evidence directory (the dev log with the mails is in the session scratchpad only).
-D3 `./gradlew --stop` stopped one daemon that predates this session (started 22:17, A10's gate window)
-   and that every build of mine had then run in; ORCH-ANDROID's memory rule prescribes it before a heavy
-   step. Nothing else was stopped that was not mine.
+   or in the evidence directory - SCANNED: grep for the mail-block marker, accessToken, refreshToken,
+   Bearer and AUTH_SECRET over the evidence dir matches only drive.mjs's own source (names, no values);
+   no screenshot was taken on the code screen (01, 04, 05, 06, 08 are Aujourd'hui, the sign-out dialog,
+   welcome, Aujourd'hui, the email screen). The dev log with the mails is in the session scratchpad only.
+D3 `./gradlew --stop` stopped one Gradle daemon that predates this session (started 22:17, A10's gate
+   window) and that every build of mine had then run in; the Kotlin compile daemon beside it (started
+   22:18) exited with it. ORCH-ANDROID's memory rule prescribes the stop before a heavy step. A second
+   `--stop` after the extra test run stopped the daemon that run spawned. No java process is left.
 D4 Emulator permissions: I `pm grant`ed FINE, COARSE, BACKGROUND location and POST_NOTIFICATIONS for the
    walkthrough and `pm revoke`d all four afterwards. I did not record their state before granting, so if
    the orchestrator's install had any of them granted, they are now revoked.
