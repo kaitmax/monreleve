@@ -2,8 +2,8 @@ REPORT-AN-API36-PASS - Mon Releve - ORCH-ANDROID step A3
 Pure ASCII. Branch an-api36-pass, cut from origin/main 5c18f513ca39230e01b0504d2e81130008936385.
 Worktree C:/wt/an-api36-pass. Rulings R1080-R1089.
 
-THIS FILE IS WRITTEN IN STAGES. This first commit carries R1081 (the probe) only; the R1080
-walkthrough is NOT YET DRIVEN at this commit. Sections below marked PENDING have not happened.
+THIS FILE IS WRITTEN IN STAGES. Stage 2 adds the R1080 debug walkthrough; the D1 fix, the gate
+and the minified audit pass are NOT YET DONE at this commit. Sections marked PENDING have not happened.
 
 SUMMARY
 PENDING (R1080 not yet driven at this commit).
@@ -33,7 +33,10 @@ release RENDERS is the level of the layoutlib-runtime it pins, read from that ja
   (alpha01: 15.1.4; alpha03: "Ignore; use 2.0.0-alpha04 instead"; alpha05: 16.2.1 - not probed)
 
 So:
-  - Today's 159 baselines are API-34 renders (layoutlib 14.0.11), not API-35 ones.
+  - The layoutlib that renders today's 159 baselines was BUILT at API 34 (layoutlib 14.0.11's
+    build.prop says sdk=34), not 35. What Paparazzi additionally takes from the compileSdk
+    platform directory (android.jar / resources of android-35) is UNVERIFIED here, so "the
+    baselines are API-34 renders" would claim more than build.prop shows.
   - 2.0.0-alpha02 is the release that STOPS CRASHING on compileSdk 36 (#1877 milestone; the
     crash was android.os._Original_Build lacking VERSION_CODES_FULL), but its layoutlib is
     API 35. "Accepts compileSdk 36" and "ships an API-36 layoutlib" are different releases.
@@ -116,13 +119,153 @@ NOT this task (AN-API36-PASS prompt: "CHANGING ANY VERSION ... IS NOT THIS TASK"
 ================================================================================================
 R1080 - THE RUNTIME PASS (emulator API 36)
 ================================================================================================
-PENDING at this commit.
+Every device claim below is "emulator API 36": AVD MonReleve_API36, x86_64, Google Play image,
+ro.build.version.sdk=36 / release 16, 1080x2280 @ 440 dpi. Nothing here closes a criterion that
+names the S9 or real people. Server: this worktree's own `pnpm dev` on port 3961 against the
+scratch database monreleve_an_api36 (seeded), AUTH_SECRET random on the command line. APKs built
+from 5c18f513 with -PfrontalierPort=3961 (debug 12 134 342 B; audit 2 030 760 B). aapt2 badging
+of the audit APK: targetSdkVersion 36, compileSdkVersion 35, minSdk 26. The sign-in code was read
+from the dev log by a pipe into `adb shell input text` and never printed; no capture was taken
+between typing it and the screen changing (R574); EditText digits are masked in every dump.
+
+System insets measured with `dumpsys window` (they matter for the findings below):
+  statusBars [0,0][1080,66]; 3-button navigationBars [0,2148][1080,2280] (132 px);
+  gesture nav: a 66 px-high handle area at the bottom.
+
+WALKTHROUGH (debug variant; nav mode named where it matters)
+| Screen / flow | What was driven | What was shown | API-36 behaviour |
+|---|---|---|---|
+| Launch (fresh install) | uninstall, install, am start | Welcome; once a "System UI isn't responding" (Wait) | none from the app |
+| Welcome | gesture nav, then 3-button | gesture: OK. 3-button: "Commencer" (bounds ~2081-2232) is under the nav bar from y=2148; its label is hidden; the 67 px strip above the bar still takes a tap | EDGE-TO-EDGE, see NOTICED N1 |
+| Sign-in: address | typed camille, then an unseeded address | keyboard covers "Recevoir mon lien de connexion"; the IME action submits it (POST /auth/magic-link 202). 3-button: the terms line [2144-2236] sits under the nav bar | N1 |
+| Sign-in: code | code piped from the dev log | auto-submit at 6 digits: POST /auth/code 200, GET /me, /entries 200, "Bonjour Camille". Back icon [55,33..99] overlaps the 66 px status bar; "Rien recu ? ..." line [2127-2236] reaches into the nav area | N1 |
+| Onboarding 1-8 (new account api36.pass) | name, canton search, 100 %, simplifiee, journees entieres, toute l'annee, Automatiquement, evening reminder Oui | all steps work; PATCH /me 200; "Tout est pret". The step progress bar draws inside the status bar (over the clock/icons); "Continuer" on every step is under the 3-button bar | N1 |
+| Onboarding disclosure -> permissions | Automatiquement -> disclosure -> Autoriser | disclosure shown BEFORE the system dialog (Precise/Approximate, While using / Only this time / Don't allow); then Settings "Allow all the time" for background (API 30+) | the disclosure overlay ignores insets: title under the status bar, "Rester en saisie manuelle" under the nav bar (N1) |
+| ... Approximate | picked Approximate | COARSE granted, FINE not; silently back on step 7 with nothing said | N4 (API 31+, not 36-specific) |
+| ... Don't allow after Approximate | Keep approximate, then Don't allow | the system KILLS the process ("permissions revoked"), task removed with no saved state; relaunch restarts onboarding at step 1 (sign-in kept) | platform behaviour; N4 |
+| ... after a second Don't allow | Autoriser again | USER_FIXED: no system dialog; the app returns to step 7 silently, nothing points to Settings | N4 |
+| Onboarding result | Automatiquement chosen, FINE + BACKGROUND granted | Aujourd'hui says "Saisie manuelle", Parametres switch OFF, no SamplingWorker job, monreleve.detection holds no mode | CONFIRMS PARK-E3 at runtime (open park), not API-36 |
+| Aujourd'hui (manual) | Domicile; Modifier; Mission -> En France; Declarer une absence | POST /api/v1/entries 200 each; "Enregistre"; mission and absence sub-choices shown | none |
+| Calendrier | month prev/next; day sheet; edit day 17 -> Domicile -> Enregistrer | POST /entries 200; cell updated; sheet expands and clears the nav bar | none |
+| Day sheet back | KEYCODE_BACK; nav-bar Back tap; nav-bar Back LONG-PRESS (3-button predictive back, new in 16) | expanded sheet: 1st back -> partial, 2nd -> dismissed; partial: one tap dismisses; long-press dismisses | predictive back on 3-button EXERCISED; the sheet's callback answers it |
+| Gesture back (edge swipe) | `input swipe` and `input motionevent` from x=0..2 | no back delivered (no CoreBackPreview event) on this boot | NOT EXERCISED - the injected swipe never became a system back; this boot's SystemUI had an ANR and later an NPE (below) |
+| Back from a tab root | Calendrier / Releve, back | leaves the app to the launcher (no tab back-stack) | back-to-home predictive animation path; pre-existing design |
+| Prevision / Simulation (BackHandler) | Parametres -> Votre rythme habituel; nav Back | Back returns to Parametres. 3-button: "Voir ma prevision" / "Indiquer mon rythme" under the nav bar - a tap at (800,2170) went to the system Recents button | BackHandler works under API 36 (OnBackInvokedCallback); N1 |
+| Comparaison (BackHandler) | Releve -> Comparer avec mon employeur; nav Back | Back returns to Releve; "Voir mes journees jour par jour" [2135-2183] under the nav bar | N1 |
+| Licences | Parametres -> Licences; nav Back | system Back LEAVES THE APP (to the launcher) instead of returning to Parametres; only the in-screen "Retour" returns | N5 (no BackHandler; :shared) |
+| Releve | scroll; annex expand; Exporter en PDF; Exporter en CSV | PDF: GET /export/pdf 200, chooser "releve-2026.pdf", cache file starts %PDF-1.4 (217 792 B). CSV: GET /export/csv 200, chooser "releve-2026-camille-martin.csv" (16 743 B) | FileProvider share works |
+| Releve: export, FIRST attempt | Exporter en PDF on a cold dev route | server 14 993 ms; app read timeout 15 000 ms -> FATAL SocketTimeoutException on main, app killed | DEFECT D1 (fixed, R1082) |
+| Releve: export OFFLINE | airplane mode on, Exporter en PDF | FATAL java.net.ConnectException: Failed to connect to /10.0.2.2:3961; app killed (reproducible) | D1 |
+| Parametres sheets | Canton, Taux (with IME), Methode, Decompte, Debut d'activite, En savoir plus, Exporter mes donnees (JSON -> chooser mon-releve-donnees.json, GET /account/export 200) | all open and close with nav Back. Taux with keyboard: Enregistrer under the IME until the sheet is dragged to full height; IME Done does nothing | minor; not 36-specific |
+| Detection toggle (Parametres) | switch ON | disclosure first, then FINE dialog, then Settings "Allow all the time"; switch ON; SamplingWorker job registered (WorkManager JobScheduler job, +14 min) | background location on API 30+: EXERCISED |
+| Detection run | `adb emu geo fix` Geneva; forced job run (WorkManager deferred it: "executed before schedule"); then dev.DetectionMockReplayActivity with mock_location allowed (restored to deny after) | all synthetic tracks OK (CH/HOME Propose, strip/no-fix "Pas sur") through the real classify path; no coordinate stored | JobScheduler quota: job registered and deferred normally |
+| Evening notification | debug trigger dev.EveningNotifyActivity on the fresh account (no entry today, weekday, reminder on) | notification posted on channel monreleve.evening.proposal, vis=PRIVATE with a public version, 3 actions; tapping "Domicile" in the shade -> EveningActionReceiver -> POST /api/v1/entries 200 and Aujourd'hui shows "Domicile Enregistre" | POST_NOTIFICATIONS runtime grant EXERCISED; broadcast PendingIntent from the shade EXERCISED |
+| Evening notification (camille) | same trigger with today already recorded | nothing posted - correct (hasEntryToday) | - |
+| Sign-out | Parametres -> Se deconnecter -> confirm | POST /auth/sign-out 200; welcome screen; monreleve.detection emptied; BUT the SamplingWorker job stays scheduled | N3 |
+| Account deletion | throwaway account, typed SUPPRIMER | POST /account/delete 200, "Compte supprime", Terminer -> welcome | - |
+| Rotation | landscape on Aujourd'hui; day sheet open + October in landscape, back to portrait | layout fine, nav bar on the side handled; sheet and month survive rotation | - |
+| 200 % font | Aujourd'hui, Parametres | content scales (nonlinear scaling, API 34+); the bottom bar labels break mid-word ("Aujourd'/hui", "Calendri/er", "Paramet/res") | N6 (not 36-specific) |
+| Process death | HOME, `am kill`, `pidof` empty, return from Recents | new pid; returned to Calendrier on the same month; session kept; GETs re-issued | - |
+| 3-button vs gesture | switched with `cmd overlay enable-exclusive` | 3-button bar is opaque grey (the system contrast scrim); the shell's Scaffold bottom bar clears it; non-Scaffold screens do not (N1) | edge-to-edge EXERCISED in both modes |
+| Legal links (Mentions legales, CGU, Politique, Sources, A propos) | NOT TAPPED | Site.ORIGIN = https://monreleve.ch (app/.../parametres/Site.kt) - production, so not opened | not exercised by design |
+
+ANDROID 16 BEHAVIOUR CHANGES (developer.android.com/about/versions/16/behavior-changes-16 and
+behavior-changes-all, read 2026-11-19) - which apply to this app:
+| Change | Applies? | Exercised? / evidence |
+|---|---|---|
+| Edge-to-edge opt-out removed (targetSdk 36) | YES - the app is edge-to-edge (transparent bars, themes.xml) and never opted out | EXERCISED: Scaffold screens correct; every screen outside the shell's Scaffold ignores insets (N1). Enforced since targetSdk 35 on Android 15, so not new in 36, but 36 removes the escape hatch; the S9 (API 29) never draws behind the bars, which is why no device pass saw it |
+| Predictive back on by default; onBackPressed / KEYCODE_BACK no longer dispatched (targetSdk 36) | YES | no onBackPressed / onKeyDown in src/main (grep); the two Compose BackHandlers and the M3 sheets answered nav-bar Back and 3-button long-press; gesture swipe NOT exercised (injection did not reach SystemUI) |
+| Predictive back on 3-button navigation (all apps) | YES | EXERCISED: long-press Back dismissed the day sheet |
+| elegantTextHeight ignored | no - no TextView / that attribute (Compose only) | n/a |
+| scheduleAtFixedRate catch-up limited | no - grep finds no scheduleAtFixedRate | n/a |
+| Adaptive layouts: orientation/resizability ignored on sw >= 600 dp | YES in principle (no screenOrientation set) | NOT exercised: phone AVD (sw < 600 dp) |
+| Health permissions | no | n/a |
+| Bluetooth bond intents / CDM | no | n/a |
+| MediaStore version lockdown | no - no MediaStore use (grep) | n/a |
+| Safer Intents (opt-in intentMatchingFlags) | not opted in; the only exported components are MainActivity (launcher), CallbackActivity (App Link) and debug-only dev.* | n/a in this pass |
+| Local network permission (opt-in phase, 10/8 is "local") | debug/audit only - they reach the host at 10.0.2.2; release uses https://monreleve.ch | not enabled (opt-in compat flag), not exercised |
+| App-owned photos | no - no photo access | n/a |
+| JobScheduler quota optimizations (all apps) | YES - WorkManager sync + SamplingWorker | job registered; a forced run was deferred by WorkManager; quota behaviour over a day NOT exercised |
+| Abandoned-job stop reason | no - WorkManager manages JobParameters | n/a |
+| Ordered broadcast priority scope | no - one manifest receiver, not ordered | n/a |
+| ART internal changes | indirectly | no ART-related crash in the pass |
+| 16 KB page compatibility mode | checked: the only native lib is libandroidx.graphics.path.so (4 ABIs); PT_LOAD p_align 0x4000 in all four; `zipalign -c -P 16` OK | no compat dialog appeared |
+| Disruptive accessibility announcements deprecated | grep: no announceForAccessibility in src/main | n/a |
+| Intent redirection hardening | no sub-intent forwarding (grep getParcelableExtra: none in src/main) | n/a |
+| Foreground-service types | no foreground service (manifest declares none; grep startForeground: none) | n/a (prompt asked) |
+| Exact alarms | no AlarmManager / setExact (grep) | n/a (prompt asked) |
+| Notification permission (API 33+) | YES | EXERCISED (two runtime dialogs, both via the app's own opt-in path) |
+
+DEFECTS FOUND
+D1 (FIXED in :app, R1082 - see FIX below): UrlConnectionTransport.executeForBytes - the bytes path
+   used by the PDF/CSV exports - had no IOException -> TransportException translation, unlike
+   execute (R386). AuthApi.authenticatedGetBytes catches TransportException only (R387), so any
+   network failure during an export escaped to Dispatchers.Main and killed the app. Reproduced
+   twice on the emulator API 36: a cold server render (14 993 ms > 15 000 ms read timeout ->
+   SocketTimeoutException) and airplane mode (ConnectException). Not API-36-specific: any
+   Android version, any network failure during an export. The iOS twin is NOT affected:
+   NsUrlSessionTransport.executeForBytes goes through the same perform() that wraps every failure
+   in TransportException (read only, shared/src/iosMain/.../NsUrlSessionTransport.kt:78-102).
 
 NOTICED BUT NOT TOUCHING
-PENDING.
+N1 (LAUNCH BLOCKER for Android 15+ phones in 3-button navigation): every screen drawn outside the
+   main shell's Scaffold ignores the system-bar insets. There is no WindowInsets / safeDrawing /
+   systemBarsPadding anywhere in app/src/main or shared/src/commonMain (grep); the only inset
+   handling is Material3 Scaffold's default in MainShell. Measured against statusBars [0,66] and
+   the 3-button navigationBars [2148,2280]:
+     - Welcome "Commencer" ~[2081,2232]: 84 px under the nav bar, label hidden.
+     - Sign-in address: terms line [2144,2236] under the bar; the code screen's back icon [33,99]
+       overlaps the status bar by 33 px; the resend line ends at 2236.
+     - Onboarding: the progress bar draws over the status-bar icons; "Continuer" [2135,2183] (text
+       bounds) under the bar on every step; step 8 "Pas maintenant" [2146,2194].
+     - Detection disclosure (both call sites, MainActivity ~581 and ~1015): title from y=55 under
+       the status bar; at the scroll end "Rester en saisie manuelle" [2123,2173] is half under the
+       bar.
+     - Prevision / Simulation and Comparaison: "Retour" [55,121] overlaps the status bar by 11 px;
+       the bottom primary button text [2135,2183] under the bar - a tap at its right side (800,2170)
+       opened the system Recents screen instead.
+     - Licences: top content from y=162 (clear).
+   In gesture navigation the same screens put content into the 66 px handle area (welcome button,
+   code-screen resend line ending at 2236). The S9 (API 29) never shows this because it does not
+   draw behind the bars. NOT FIXED here: it spans :shared screens and :app call sites, needs a
+   ruling on WHERE the padding belongs, and has no failing-first test in the gate (a source scan
+   would only assert an absence). Evidence: shots 51-welcome-3button, 52-email-3button,
+   31/32-detection-priming*, 46-prevision-bottom, 48-comparison-bottom, 63-step7 (session
+   scratchpad, not committed).
+N2 (with D1): the server's first PDF render took 14 993 ms against the client's 15 000 ms read
+   timeout. After the fix a slow render no longer crashes but is reported as a network failure.
+   Whether the export deserves a longer read timeout is a product question.
+N3 (privacy, not 36-specific): after a USER sign-out the SamplingWorker unique work stays
+   scheduled (dumpsys jobscheduler shows the app's androidx.work job after the POST /auth/sign-out
+   200), while monreleve.detection is emptied (mode no longer AUTO). SamplingWorker.doWork has no
+   mode or session gate (it checks only the check window and today's tally) and
+   DetectionScheduling.stopSampling is called only by ParametresController's switch. So at the
+   next check window the phone would take a background location fix and record a tally for
+   nobody. Seen as a scheduled job and in source; the fix itself was NOT observed firing (the next
+   window is tomorrow 09:30 Paris). Related to PARK-E1/E3/E7; no park names this.
+N4 (API 31+, not 36): the app requests FINE only. Choosing "Approximate" grants COARSE and the
+   onboarding returns silently to step 7; after two denials (USER_FIXED) "Autoriser la
+   localisation" does nothing visible and nothing points to Settings; revoking COARSE kills the
+   process (platform) and onboarding restarts at step 1.
+N5 (:shared): LicencesScreen has no back handling - system Back from Licences exits the app to
+   the launcher (predictive back-to-home on API 36) instead of returning to Parametres.
+N6 (not 36-specific): at 200 % font the bottom bar labels break mid-word. No baseline covers the
+   shell's bottom bar at 200 %.
+N7 (emulator, not the app): SystemUI crashed once (FATAL wmshell.main, NullPointerException in
+   EdgeBackGestureHandler via CrossActivityBackAnimation) when going Back from a dev.* activity
+   to MainActivity after the nav mode had been switched at runtime. Its own process, AOSP code.
+N8: PARK-E3 (onboarding's automatic choice never reaches the phone) is CONFIRMED at runtime on the
+   emulator API 36 - still open.
 
 DEVIATIONS
-PENDING.
+- A `tail` of the dev-server log printed one GET /releve/print URL WITH its short-lived print
+  token and code into this session's transcript (the server's own request log line). It is a
+  render token for the local scratch database, not a sign-in link; from then on every log read
+  printed only method and path with the query cut.
+- `settings put system accelerometer_rotation 0` was set without reading its prior value first;
+  user_rotation was returned to 0 and font_scale to 1.0.
+- The navigation mode was switched from gestural to 3-button for most of the pass (to measure
+  insets and to drive the nav-bar Back); it is restored at the end.
 
 QUESTIONS
 PENDING.
