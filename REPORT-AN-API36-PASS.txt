@@ -1,0 +1,131 @@
+REPORT-AN-API36-PASS - Mon Releve - ORCH-ANDROID step A3
+Pure ASCII. Branch an-api36-pass, cut from origin/main 5c18f513ca39230e01b0504d2e81130008936385.
+Worktree C:/wt/an-api36-pass. Rulings R1080-R1089.
+
+THIS FILE IS WRITTEN IN STAGES. This first commit carries R1081 (the probe) only; the R1080
+walkthrough is NOT YET DRIVEN at this commit. Sections below marked PENDING have not happened.
+
+SUMMARY
+PENDING (R1080 not yet driven at this commit).
+
+STATUS (R391)
+PENDING.
+
+================================================================================================
+R1081 - THE PROBE (read only; nothing in the build changed)
+================================================================================================
+
+Read on 2026-11-19. Sources: Maven Central module metadata (*.module) for every Paparazzi
+release; the Paparazzi CHANGELOG.md on master; cashapp/paparazzi#1877; Google Maven's
+layoutlib-runtime jars (build.prop read out of each jar by HTTP range request - script in the
+session scratchpad, not committed); developer.android.com and the Play Console Help pages named
+below. Versions in this repo: android/gradle/libs.versions.toml at 5c18f513 and
+android/gradle/wrapper/gradle-wrapper.properties.
+
+THE HEADLINE FINDING (measured, not read from a changelog): the platform level a Paparazzi
+release RENDERS is the level of the layoutlib-runtime it pins, read from that jar's build.prop:
+
+  Paparazzi        pins layoutlib   build.prop of layoutlib-runtime           renders
+  1.3.5 (current)  14.0.11          ro.build.id=UDC  ro.build.version.sdk=34  API 34 (Android 14)
+  2.0.0-alpha02    15.2.3           BLR1.250305.034  sdk=35                   API 35 (Android 15)
+  2.0.0-alpha04    16.1.1           BLR3.250612.039  sdk=36  sdk_full=36.0    API 36 (Android 16)
+  2.0.0-alpha05.1  16.2.3           BLR4.251003.038  sdk=36  sdk_full=36.1    API 36.1 (16 QPR2)
+  (alpha01: 15.1.4; alpha03: "Ignore; use 2.0.0-alpha04 instead"; alpha05: 16.2.1 - not probed)
+
+So:
+  - Today's 159 baselines are API-34 renders (layoutlib 14.0.11), not API-35 ones.
+  - 2.0.0-alpha02 is the release that STOPS CRASHING on compileSdk 36 (#1877 milestone; the
+    crash was android.os._Original_Build lacking VERSION_CODES_FULL), but its layoutlib is
+    API 35. "Accepts compileSdk 36" and "ships an API-36 layoutlib" are different releases.
+  - 2.0.0-alpha04 (2026-01-20) is the FIRST release with an API-36 layoutlib.
+  - Every release after 1.3.5 is an ALPHA. There is no stable 2.x (maven-metadata lastUpdated
+    2026-09-28; latest 2.0.0-alpha05.1).
+
+DECLARED FLOORS (from the published Gradle module metadata - what a consumer is forced to take)
+vs BUILT-WITH (from the changelog - what the release was compiled against; not a requirement):
+
+  Release        JVM floor  kotlin-stdlib  coroutines  BUILT WITH (changelog)
+  1.3.5          11         2.0.21         1.9.0       Kotlin 2.0.21, Compose 1.7.5, AGP 8.4.2, Gradle 8.10.2
+  2.0.0-alpha02  17         2.1.21         1.10.2      Kotlin 2.1.21, Compose 1.8.3, AGP 8.10.1, Gradle 8.14.2
+  2.0.0-alpha04  21         2.3.0          1.10.2      Kotlin 2.3.0, Compose 1.10.1, AGP 8.13.2, Gradle 9.2.1;
+                                                        "consumers must build on Java 21+"
+  2.0.0-alpha05.1 21        2.3.0          1.11.0      Compose 1.11.2 (alpha05), AGP 9.0.0, Gradle 9.3.1;
+                                                        "Requires Gradle 9.4+" (for reportType=native)
+
+  - The paparazzi runtime module declares NO Compose dependency in any release. Whether Compose
+    1.7.6 (our BOM 2024.12.01 / CMP 1.7.3) renders correctly on layoutlib 15.x/16.x is UNVERIFIED -
+    not "requires Compose 1.8.3/1.10.1". Note libs.versions.toml already records that Paparazzi
+    1.3.5 cannot render Compose UI 1.10 text (REPORT-IOS-1b-A R601); the reverse pairing (old
+    Compose, new layoutlib) has not been tried here.
+  - The Gradle plugin declares no AGP dependency from 2.0.0-alpha01 on ("Use compileOnly for
+    kotlin/agp plugins") and its PaparazziPlugin.kt at tags 2.0.0-alpha02 and 2.0.0-alpha04
+    contains no Gradle- or AGP-version guard. Whether either runs on OUR Gradle 8.11.1 is
+    UNVERIFIED (each was built with a newer Gradle).
+  - JVM: the Gradle daemon here is Android Studio's JBR 21.0.6 (machine ~/.gradle/gradle.properties,
+    REPORT-KMP-UP2), so a JVM-21 floor is met locally. The PATH java is JDK 26.
+  - kotlin-stdlib 2.3.0 (alpha04+) would be forced onto :app's TEST classpath by conflict
+    resolution while the compiler stays 2.2.21. libs.versions.toml records the next Kotlin move
+    (2.3) as also a KSP-mode decision (KSP1 is incompatible with Kotlin 2.3) - so alpha04+ sits
+    next to that boundary even if the stdlib alone would load. UNVERIFIED by a build.
+  - coroutines 1.10.2 / 1.11.0 would be forced onto the test classpath over the pinned 1.8.1.
+  - An UNVERIFIED third option seen only as a reference on #1877: "Paparazzi 1.3.5 with API 36
+    layoutlib 15.2.3" (a layoutlib override on 1.3.5). Not read, not tried; and 15.2.3 is API 35
+    by its own build.prop, so the label in that reference is itself wrong.
+
+DOES IT TOUCH :shared?
+  - Paparazzi itself: NO. It is applied in :app only (app/build.gradle.kts line 14); :shared has
+    no Paparazzi plugin or test. Footprint: 17 files under app/src/test reference app.cash.paparazzi;
+    159 PNGs under app/src/test/snapshots.
+  - compileSdk: :shared ALSO declares compileSdk = 35 (shared/build.gradle.kts:265). Moving :app
+    alone to compileSdk 36 does not require touching :shared; aligning both would, and an edit to
+    :shared owes the R573 iOS cloud run.
+
+WHAT GOOGLE PLAY REQUIRES OF compileSdk (read 2026-11-19)
+  - developer.android.com/google/play/requirements/target-sdk: "Starting August 31 2026: New apps
+    and app updates must target Android 16 (API level 36) or higher to be submitted to Google
+    Play". Extension to November 1, 2026 on request. The page states requirements on
+    targetSdkVersion only.
+  - support.google.com/googleplay/android-developer/answer/11926878 (Target API level
+    requirements): "When you publish a new app, you must target Android 16 (API level 36) or
+    higher." No mention of compileSdk.
+  - developer.android.com/about/versions/16/setup-sdk: compileSdk 36 "To access Android 16 APIs";
+    targetSdk 36 "Once you're ready to opt in to the new runtime behaviours"; AGP >= 8.9.0-rc01
+    for the Android 16 SDK (ours: 8.10.1). Two independent settings; no stated constraint
+    between them on that page.
+  - So: NO compileSdk REQUIREMENT IS STATED by Play (read 2026-11-19). That is not the same as
+    "compileSdk 35 + targetSdk 36 is accepted at upload": only an upload proves acceptance, and
+    the upload is the operator's (AN14b). The BUILT release APK already declares
+    targetSdkVersion 36 (PARKAN-33, aapt2 badging), which is the field Play reads.
+  - Secondary sources (Flutter's contributor doc, a mailing-list thread, via web search) state
+    compileSdk >= targetSdk as a convention; AN14a measured AGP 8.10.1 building 35/36 with no
+    error and no warning. Not a Play rule.
+
+DECISION TABLE FOR THE ORCHESTRATOR (each row is an option; nothing was chosen or changed here)
+
+| Option | compileSdk | Paparazzi | Renders | Forced moves | :shared | Risk / unknowns | Cost |
+|---|---|---|---|---|---|---|---|
+| A. Stay (today) | 35 | 1.3.5 | API 34 | none | no | Play states no compileSdk rule; acceptance unproven until upload | 0 |
+| B. Stop the crash only | 36 (:app) | 2.0.0-alpha02 | API 35 | test-classpath stdlib 2.1.21 (below ours, no move), coroutines 1.10.2 on tests, JVM 17 | no (unless aligned) | alpha; Gradle 8.11.1 + Compose 1.7.6 unverified; "Fix default layout params for compose snapshots" (alpha01) may move pixels | dependency change (Ask first) + reason-stated regeneration of up to 159 baselines |
+| C. True API-36 renders | 36 (:app) | 2.0.0-alpha04 | API 36 | stdlib 2.3.0 + coroutines 1.10.2 on tests, JVM 21 (met locally) | no (unless aligned) | alpha; built on Kotlin 2.3/Gradle 9.2.1/AGP 8.13.2; sits at the Kotlin-2.3/KSP1 boundary; Gradle 8.11.1 unverified | as B, plus a likely toolchain question |
+| D. Latest | 36 (:app) | 2.0.0-alpha05.1 | API 36.1 | as C, coroutines 1.11.0 | no (unless aligned) | built for AGP 9.0.0 and Gradle 9.3.1+; furthest from this toolchain | as C, likely an AGP/Gradle move |
+
+What would settle B/C before anyone rules: a throwaway-branch build probe (versions bumped in a
+worktree, verifyPaparazziDebug run, diff counted) - which is a version change and therefore
+NOT this task (AN-API36-PASS prompt: "CHANGING ANY VERSION ... IS NOT THIS TASK").
+
+================================================================================================
+R1080 - THE RUNTIME PASS (emulator API 36)
+================================================================================================
+PENDING at this commit.
+
+NOTICED BUT NOT TOUCHING
+PENDING.
+
+DEVIATIONS
+PENDING.
+
+QUESTIONS
+PENDING.
+
+PUSH PROOF
+PENDING.
