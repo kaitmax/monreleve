@@ -3,6 +3,8 @@ package ch.monreleve.app.ui.screens.parametres
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -94,6 +96,10 @@ private fun SignOutClearDialog(actions: SignOutActions) {
  * The dates are formatted here because fr/format lives in :app and the copy in :shared; the JOINING is in
  * ParametresCopy.dateList, not a separator typed in a composable (fence 4) and not joinToString's default
  * (R345: a default is a setting nobody chose).
+ *
+ * AN-SHARED-FIXES (R1090): THE BODY SCROLLS, as DeleteDialog's does. At 200 % font the dates and the loss sentence
+ * were cut below the device-wipe paragraph while « Se déconnecter quand même » was still offered; the sentence that
+ * says which days are lost must be reachable wherever that button is (R225). SignOutPendingLargeFontInstrumentedTest.
  */
 @Composable
 private fun SignOutStillPendingDialog(
@@ -104,7 +110,10 @@ private fun SignOutStillPendingDialog(
         onDismissRequest = actions.onCancel,
         title = { Text(text = ParametresCopy.SIGN_OUT_CONFIRM_TITLE) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.space12)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.space12),
+            ) {
                 Text(text = ParametresCopy.SIGN_OUT_CONFIRM_BODY, style = FrontierType.body)
                 Text(
                     text =
