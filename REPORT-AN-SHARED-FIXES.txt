@@ -1,0 +1,257 @@
+REPORT-AN-SHARED-FIXES - Mon Releve
+Task: AN-SHARED-FIXES (relay/ORCH-ANDROID.txt step A1), prompt C:/wt/web-orch/relay/AN-SHARED-FIXES.txt
+Session: task session in worktree C:/wt/an-shared-fixes, branch an-shared-fixes, cut from
+origin/main e73c846d7a227b07d8d5bef0c92f929f4363794e. Pushed as a branch; NOT merged (pending merge).
+Rulings used: R1090-R1093 (the prompt's). R1094-R1099 unused.
+
+======================================================================================================
+SUMMARY
+======================================================================================================
+- R1090 DONE. The sign-out dialog's body (SignOutStillPendingDialog, :shared) now scrolls the way
+  DeleteDialog's does. Test first: an instrumented test at system font_scale 2.0 was RED on the
+  unfixed dialog for the cut itself and GREEN after; its 100 % control was green on both.
+- R1091 NOT MET - QUESTION Q1. The expected set was exactly one moved baseline
+  (signOutPendingDialogLarge). The produced set is EMPTY: at zero tolerance, with the fix,
+  verifyPaparazziDebug passed all 1416 :app unit/screenshot tests, 0 failures. A scrolling body
+  photographed at scroll offset 0 shows the same pixels as the cut body, so the baseline still ends
+  at "2 journees n'ont pas pu etre envoyees :". Nothing was regenerated.
+- R1092 DONE. filenameOf returns null for a name holding "/", "\", a NUL or other control
+  character, equal to "..", or empty after trimming. Test first in commonTest (5 of 10 RED before
+  the fix). An androidUnitTest derives every name the server sends from web/ and asserts each
+  passes through unchanged. A verified plant showed it can fire.
+- R1093: see iOS RUN.
+
+======================================================================================================
+STATUS (R391)
+======================================================================================================
+Code tip f7d299b3cf89b1d89b63c5dea505001bd48ff00d: FULL :app:gate RAN in this session, under the
+heavy lock with the emulator shut down:
+    BUILD SUCCESSFUL in 12m 23s   GATE_EXIT=0
+:shared:testDebugUnitTest, :app:testDebugUnitTest, :app:verifyPaparazziDebug and
+:shared:compileCommonMainKotlinMetadata were UP-TO-DATE in that run. Each had run green earlier in
+this session on byte-identical inputs: fastCheck, the FilenameOf* runs, and the verifyPaparazziDebug
+run above. :app:compileDebugAndroidTestKotlin was executed.
+iOS R573 run 44552898476 on f7d299b3: success.
+STATUS: R1090 and R1092 GREEN on the code tip. R1091 NOT MET (Q1), so the task is NOT COMPLETE.
+gate:clone: not run, because web/ is unchanged (R199 applies where web/ changed).
+
+======================================================================================================
+R1090 - THE DIALOG, A TEST FIRST
+======================================================================================================
+Test: android/app/src/androidTest/kotlin/ch/monreleve/app/ui/screens/parametres/
+      SignOutPendingLargeFontInstrumentedTest.kt
+- What it hosts: :app's public ParametresScreen with signOutPrompt = the renderer's two pending
+  dates (2026-06-02, 2026-06-03), in a fresh ComponentActivity, inside FrontierTheme.
+- What it asserts about the warning Text. That Text holds the count, the dates and the loss
+  sentence (derived from ParametresCopy.stillPendingWarning and dateList, R181). It is partly
+  visible either way, so assertExists or assertIsDisplayed would pass on the defect.
+  1. Presence: "Se deconnecter quand meme" is displayed, and the warning is displayed.
+  2. Its TextLayoutResult did NOT overflow the height it was given. This is the cut itself.
+  3. Its last line can be brought on screen. If the bottom is clipped, the test scrolls the
+     body holding it to the end; it then checks the first line can be brought back.
+- THE SCALE. The test sets the system scale with `settings put system font_scale`, waits for the
+  process to see it, launches the activity, and always restores the previous value. Read after
+  both runs: 1.0. A LocalDensity override would not reach a Compose Dialog's own window.
+- THE CONTROL. The same assertions at 1.0. They passed on the unfixed dialog, so the RED at 2.0
+  comes from the font scale, not from the harness.
+- WHERE IT RAN: emulator API 36 (AVD MonReleve_API36, 1080x2280, density 440), via
+  `am instrument`. connectedDebugAndroidTest was NOT used, because it uninstalls the app.
+- THE GATE: :app:gate compiles this source set (compileDebugAndroidTestKotlin) but does not run it.
+  That is the gate's stated limit, the same as for LaunchSpeechInstrumentedTest.
+
+RED (unfixed :shared, test only; APKs built with -PfrontalierPort=3900):
+  test=atTwoHundredPercentTheWarningIsWholeAndReachable
+  java.lang.AssertionError: the warning naming the days to be lost was cut: its text overflows the
+  height the dialog gave it
+  test=controlAtOneHundredPercentTheWarningIsWholeAndReachable   (passed)
+  FAILURES!!!  Tests run: 2,  Failures: 1
+GREEN (fix applied, the tree committed as 045970a3):
+  OK (2 tests)
+GREEN again on the CODE TIP f7d299b3, after the emulator was rebooted, with APKs rebuilt at
+-PfrontalierPort=3900:
+  first attempt: "INSTRUMENTATION_RESULT: shortMsg=Process crashed." This is NO RESULT. It came
+    just after a cold boot, and the crash buffer was not captured.
+  repeated: OK (2 tests). font_scale read back as 1.0.
+
+The fix: ParametresAccountSection.kt, SignOutStillPendingDialog's text Column takes
+Modifier.verticalScroll(rememberScrollState()), as in ParametresDeleteSection.kt:46. The three
+stacked actions stay in confirmButton, outside the scroll, so they are always visible.
+
+R267 - every other dialog body in :shared and :app, checked; only this one is fixed (see NOTICED).
+
+======================================================================================================
+R1091 - THE BASELINE, NAMED FIRST
+======================================================================================================
+EXPECTED, written down before any Paparazzi run:
+  ch.monreleve.app.ui.screens.parametres_ParametresScreenScreenshotTest_signOutPendingDialogLarge.png
+PRODUCED: the empty set. With the emulator shut down and under the heavy lock, I ran
+`./gradlew :app:verifyPaparazziDebug` on the fixed tree: BUILD SUCCESSFUL in 6m 33s.
+:app:testDebugUnitTest ran 1416 tests with 0 failures and 0 errors. ParametresScreenScreenshotTest
+ran 12 tests with 0 failures, signOutPendingDialogLarge among them. The tolerance is
+maxPercentDifference = 0.0 (R345).
+CROP, LOOKED AT: the committed signOutPendingDialogLarge.png is still the image the test verified.
+It shows the title, the device-wipe paragraph, then "2 journees n'ont pas pu etre envoyees :" in
+the error colour, then the three buttons. NO DATE AND NO LOSS SENTENCE IS IN IT.
+WHY: the body now scrolls, but Paparazzi photographs it at offset 0, and the top of a scrolling
+body is pixel for pixel the top of the clipped one.
+NO RECORD WAS RUN. No baseline moved, nothing was regenerated, and no file under
+app/src/test/snapshots changed.
+THE CRITERION "every date and the loss sentence present" IS NOT MET -> Q1.
+
+======================================================================================================
+R1092 - THE FILENAME, A TEST FIRST
+======================================================================================================
+The decision as implemented, in AuthApi.kt: filenameOf(...)?.trim()?.takeIf(::isPlainFileName).
+isPlainFileName requires:
+- the name is not empty;
+- the name is not "..";
+- no character is "/", "\", or a control character (Char.isISOControl: C0, DEL and C1, NUL
+  included).
+Once both separators are refused, ".." can only be a path segment by being the whole name.
+"releve..2026.pdf" therefore stays a plain name, and a test pins that it passes.
+A refused name is null, exactly as an absent one, so each controller's existing
+`?: fallbackFilename(kind)` applies (ReleveController.kt:306, ParametresController.kt:418).
+
+commonTest - shared/src/commonTest/kotlin/ch/monreleve/app/data/remote/FilenameOfTest.kt (10 tests;
+runs on the JVM here and on the iOS simulator in the R573 run):
+- Refused: slash shapes ("../../files/evil.pdf", "exports/x", an absolute path); backslash shapes;
+  NUL, U+0001, LF, DEL and U+0085 inside the name; ".." and "  ..  "; blanks; an empty quoted
+  name.
+- Pass-through: no header and no filename stay null; "releve..2026.pdf" and "releve-2026...pdf"
+  pass unchanged; a lower-case header name with blanks passes "releve-2026.pdf".
+- R204, through the real export entry AuthApi.authenticatedGetBytes: a hostile header gives
+  ExportBytes.filename == null, and a plain one passes unchanged.
+RED (unfixed filenameOf), `:shared:testDebugUnitTest --tests '...FilenameOf*'`: 11 tests, 5 failed.
+  aNameWithASlashIsAbsent       expected null, but was:<../../files/evil.pdf>
+  aNameWithABackslashIsAbsent   expected null, but was:<..\..\evil.pdf>
+  aNameWithANulOrOther...       expected null, but was:<releve-2026.pdf?.exe>
+  dotDotAsTheWholeNameIsAbsent  expected null, but was:<..>
+  theExportEntryHandsAHostile.. expected null, but was:<../../shared_prefs/evil.xml>
+GREEN: FilenameOfTest 10/10 and FilenameOfServerNamesTest 1/1; BUILD SUCCESSFUL.
+
+androidUnitTest - shared/src/androidUnitTest/kotlin/ch/monreleve/app/data/remote/
+FilenameOfServerNamesTest.kt. The names come from the server, not from a list (R181):
+- It scans web/app and web/lib for every `content-disposition` header template. There are four
+  today: route.ts "mon-releve-donnees.json" and "${filename}", respond-csv.ts
+  "${csvFilename(...)}", and respond-pdf.ts "releve-${year}.pdf".
+- It resolves each template:
+  - `${year}` becomes the year web/'s csv.test.ts uses (2026);
+  - csvFilename(...) becomes every name csv.test.ts asserts it returns: releve-2026-camille-rey,
+    -benoit-muller-sorensen, releve-2026, -asa-linde and -mega-ipsilon, each .csv;
+  - route.ts's `const filename` gives "mon-releve-donnees.csv" plus the csvFilename names with
+    .replace('releve-', 'donnees-') applied.
+- A template it cannot resolve FAILS, naming itself.
+- Each resolved name goes through the route's own header template, and filenameOf must return it
+  unchanged. A .pdf, a .csv and a .json name must each be among those checked.
+- The names above come from a node replica of the test's regexes. The test does not print its own
+  list.
+- It passed on its first run. That is expected, because it pins the direction the fix must not
+  break.
+- PLANT (R180). I added `!name.contains('-')` to isPlainFileName at an anchor asserted to match
+  once, and confirmed the line landed (AuthApi.kt:493). The test then FAILED:
+  "the server's name from route.ts must pass filenameOf unchanged expected:<mon-releve-donnees.json>
+  but was:<null>". The file was restored from a copy, and the restore was checked: 0 matches of
+  the plant. An earlier plant attempt matched its anchor 0 times and wrote nothing; its run is not
+  counted.
+- R283: shared/build.gradle.kts declares web/app, web/lib and web/tests/unit/export/csv.test.ts as
+  Test inputs.
+
+Both platforms still produce the right file:
+- Android: ReleveControllerTest ("a 200 export emits Ready with the server's filename", and "falls
+  back to a year-named file" for a null name) and ParametresAccountTest run in :app:gate (above).
+- iOS: IosExportFilesIosTest ("exports/releve-2026-camille-rey.pdf", and the Content-Disposition
+  name "releve-2026.pdf") and FilenameOfTest run in the R573 run (below).
+
+======================================================================================================
+BASELINES
+======================================================================================================
+Moved: NONE. Expected: signOutPendingDialogLarge. Regenerated: none. See R1091 and Q1.
+
+======================================================================================================
+iOS RUN (R573 / R1093)
+======================================================================================================
+gh workflow run ios-shared.yml --ref an-shared-fixes  ->  run 44552898476
+headSha f7d299b3cf89b1d89b63c5dea505001bd48ff00d, conclusion SUCCESS.
+Job ios-shared-tests ran from 15:16:23Z to 15:25:08Z, 8 min 45 s of wall time.
+BILLED: 9 macOS minutes, the job's wall time rounded up to the minute (QUEUE-STATE's convention).
+The timing API reads total_ms 0, as it did for earlier runs. Budget was 30; one run was spent.
+"iOS SIMULATOR TESTS EXECUTED: 385" (375 before this branch, plus FilenameOfTest's 10). Results:
+  ch.monreleve.app.data.remote.FilenameOfTest tests=10 failures=0 errors=0
+  ch.monreleve.app.ios.IosExportFilesIosTest tests=4 failures=0 errors=0
+  ch.monreleve.app.pilot.ZParametresScreensIosTest tests=7 failures=0 errors=0
+No class in the run reported a failure.
+
+======================================================================================================
+NOTICED BUT NOT TOUCHING
+======================================================================================================
+N1 (R267). Other dialog bodies with unbounded text and no scroll, none fixed:
+- SignOutClearDialog (ParametresAccountSection.kt) has the same long SIGN_OUT_CONFIRM_BODY with no
+  scroll. At 200 % its buttons stay, but the body's tail may be cut. Same shape as R1090, with no
+  list of days.
+- DeleteOutcomeDialog (ParametresDeleteSection.kt) has an outcome body plus
+  DELETE_ALERT_REMAINS, with no scroll.
+- RateChangeDialog (ParametresRateChange.kt) has its body plus two RateRows, with no scroll.
+- SignOutSendingDialog has one short sentence and no scroll; low risk.
+- Already scrolling: DeleteDialog, BulkConfirmationDialog.
+- The two Material DatePickerDialogs in :app (onboarding and parametres start date) are the
+  library's own.
+N2. filenameOf still passes a bare "." It is not in the ruling's list. File(dir, ".") is the
+    directory itself, so the write would fail rather than escape. -> Q2.
+N3. A percent-encoded separator (filename*=UTF-8''..%2Fx) is never decoded by filenameOf, so it
+    stays a literal "%2F" inside one name and cannot escape. It is noted, not acted on.
+N4. The iOS pilot ZParametresScreensIosTest does not open the sign-out dialog, so the new scroll
+    container cannot collide with its single-scroll matchers.
+
+======================================================================================================
+DEVIATIONS
+======================================================================================================
+D1. The test-first proof for R1090 is an instrumented test (emulator API 36), not a JVM test.
+    :app's JVM tests have no Compose UI-test runtime (no Robolectric), and Paparazzi cannot assert.
+    No dependency was added.
+D2. The emulator's installed app:
+    - Before: the orchestrator's debug APK (port 3900).
+    - During the session: replaced, with its data kept (install -r), by this branch's debug APK,
+      also built with -PfrontalierPort=3900, plus a test APK.
+    - At the end: the orchestrator's own APK was reinstalled with install -r, keeping its data:
+      C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk, whose dex was checked to
+      carry http://10.0.2.2:3900.
+      The test APK ch.monreleve.app.test was uninstalled.
+      The system font_scale is 1.0.
+      The emulator was cold-booted again (-no-snapshot) after the gate and is left RUNNING.
+    The optional manual sign-out walkthrough at 200 % on the emulator was NOT done. The
+    instrumented test drove that dialog on emulator API 36 instead.
+D3. shared/build.gradle.kts gained three Test inputs (R283). This is a build-file change but adds
+    no dependency.
+
+======================================================================================================
+QUESTIONS
+======================================================================================================
+Q1 (R1091). The fix moves no baseline, and the existing 200 % image cannot show the dates. Which
+of these, if any?
+  (a) Accept: no baseline moves. The renderer image stays truthful as "the top of a body that now
+      scrolls", and the instrumented test is the proof of reachability.
+  (b) :app only: ADD a second Paparazzi test at 200 % on a taller DeviceConfig, so the whole body
+      fits and every date and the loss sentence are photographed. This adds one new baseline and
+      moves none. It does not touch :shared, so it owes no iOS run.
+  (c) :shared: a way to render the body scrolled to its end, such as a hoisted or initial scroll
+      state. It would move or add one baseline and owes a second R573 run.
+  (d) Product: put the warning (count, dates, loss) ABOVE the device-wipe paragraph. At 200 % the
+      dates would then sit at the top, and signOutPendingDialogLarge would move as R1091 expects.
+      It is a copy and layout decision and owes a second R573 run.
+  None was built.
+Q2. Should a bare "." be refused like ".." (N2)? It is not in R1092's list, so it was left
+    alone.
+
+======================================================================================================
+PUSH PROOF
+======================================================================================================
+Branch an-shared-fixes, base e73c846d (origin/main, unmoved when re-read before this commit).
+- Code tip f7d299b3 was pushed with "git push -u origin an-shared-fixes", which answered
+  "* [new branch] an-shared-fixes -> an-shared-fixes". The iOS run and the gate are both on that SHA.
+- This report is committed on top of f7d299b3 and changes no file under android/. Its own SHA
+  cannot be written inside it, so the push of this commit is stated in the handback.
+- NOT MERGED; pending merge by the orchestrator.
+- The R1090-R1099 range was re-scanned in this worktree, C:/wt/web-orch/relay and the main
+  checkout's relay/ (untracked files included). R1094-R1099 appear only in the prompt's own
+  "spare" wording; nothing else uses them.
+END OF REPORT-AN-SHARED-FIXES
