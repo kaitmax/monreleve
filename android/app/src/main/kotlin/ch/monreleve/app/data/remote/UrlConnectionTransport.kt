@@ -92,6 +92,12 @@ class UrlConnectionTransport(
                         }
                     }
                 HttpBytesResponse(status = status, bytes = bytes, headers = headers)
+            } catch (e: IOException) {
+                // AN-API36-PASS (R1082): the same seam-owned translation as execute (R386). Without it a refused
+                // connection or a read timeout during an export escaped AuthApi.authenticatedGetBytes - which
+                // catches TransportException and nothing wider (R387) - and killed the app on the main thread
+                // (emulator API 36: offline ConnectException, and a 14 993 ms render against the 15 s read timeout).
+                throw TransportException(e.message ?: "network unreachable", e)
             } finally {
                 connection.disconnect()
             }

@@ -76,4 +76,34 @@ class UrlConnectionTransportWrapTest {
                 chain.any { it is IOException },
             )
         }
+
+    // AN-API36-PASS (R1082): the BYTES path keeps the same contract. executeForBytes (the PDF and CSV exports,
+    // AN11) had no IOException translation, so a refused connection or a read timeout escaped as a raw
+    // IOException past AuthApi.authenticatedGetBytes - which catches TransportException and nothing wider (R387) -
+    // and crashed the app on Dispatchers.Main. Found on the emulator API 36: "Exporter en PDF" offline ->
+    // FATAL java.net.ConnectException, and a 14 993 ms cold render -> FATAL SocketTimeoutException.
+    @Test
+    fun aRefusedConnectionOnTheBytesPathBecomesATransportException() =
+        runTest {
+            val transport = UrlConnectionTransport(connectTimeoutMs = 500, readTimeoutMs = 500)
+
+            var thrown: Throwable? = null
+            try {
+                transport.executeForBytes(unreachable)
+            } catch (e: Throwable) {
+                thrown = e
+            }
+
+            assertNotNull("the bytes transport returned instead of failing", thrown)
+            assertTrue(
+                "expected TransportException, got ${thrown!!::class.simpleName}: ${thrown.message}",
+                thrown is TransportException,
+            )
+            val chain = generateSequence(thrown) { it.cause }.toList()
+            assertTrue(
+                "no IOException anywhere in the cause chain: " +
+                    chain.joinToString(" -> ") { it::class.java.simpleName },
+                chain.any { it is IOException },
+            )
+        }
 }
