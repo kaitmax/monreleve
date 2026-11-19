@@ -35,14 +35,19 @@ sealed interface OnboardingPlan {
     data class Onboard(val prefill: OnboardingSnapshot) : OnboardingPlan
 }
 
-/** The full-flow snapshot with nothing prefilled (a brand-new account, or a /me body that could not be read). */
+/** The full-flow snapshot with nothing prefilled - the wizard's own starting state. */
 fun freshOnboardingSnapshot(): OnboardingSnapshot {
     return OnboardingSnapshot(step = DEFAULT_STEPS.first(), steps = DEFAULT_STEPS)
 }
 
-/** Decide the plan for a /me view (null = malformed/unreachable body: run the full flow, nothing prefilled). */
-fun onboardingPlanFor(view: MeView?): OnboardingPlan {
-    if (view == null) return OnboardingPlan.Onboard(freshOnboardingSnapshot())
+/**
+ * Decide the plan for a /me view. AN-SIGNIN-RESOLVE (R1161): the view is never null. It used to be, and null - a body
+ * that could not be read, or no body at all because the server could not be reached - ran the full flow with nothing
+ * prefilled: the EMPTY onboarding R1160 measured a returning person being sent to, which, finished, overwrites the
+ * settings the server holds. No answer is not an answer that the settings are absent, so it no longer reaches a plan:
+ * the platform's resolve step keeps it as its own outcome and retries (Android: StartupDecider's Unresolved).
+ */
+fun onboardingPlanFor(view: MeView): OnboardingPlan {
     val missing = missingReleveFields(view)
     // No canton means the account was never set up: run the full eight steps (mode + reminder included),
     // prefilled with the server's defaults (which are the onboarding defaults anyway). A partial account runs

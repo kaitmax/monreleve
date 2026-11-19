@@ -18,8 +18,9 @@ interface DetectionModeStore {
 
     /**
      * R289/R295: erase the cached mode on sign-out and deletion, so the next account on a shared device does
-     * NOT inherit the previous person's AUTO_DETECT. Restored from GET /api/v1/me on the next sign-in, like
-     * the six calculation settings (R297).
+     * NOT inherit the previous person's AUTO_DETECT. Android restores it from GET /api/v1/me at the next sign-in's
+     * RESOLVING, as it does the six calculation settings (R297; AN-SIGNIN-RESOLVE R1162 - AUTO_DETECT only with the
+     * consent stamp AND the location permission held, MANUAL otherwise).
      */
     fun clear()
 

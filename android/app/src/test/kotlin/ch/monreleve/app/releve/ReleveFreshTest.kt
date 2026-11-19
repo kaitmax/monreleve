@@ -118,7 +118,7 @@ private class FakeServer(private val dao: LiveDao) : AuthenticatedPoster {
         generation++
         val rows = received.values.filter { it.dayDate.startsWith("$year-") }
         val broken = """{"status":"error","code":"render_failed"}"""
-        return AuthedOutcome.Ok(if (dossierBroken) broken else dossierBody(year, rows, generation))
+        return AuthedOutcome.Ok(200, if (dossierBroken) broken else dossierBody(year, rows, generation))
     }
 
     private fun dossierBody(

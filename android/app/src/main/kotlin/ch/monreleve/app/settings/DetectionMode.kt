@@ -14,7 +14,9 @@ import org.json.JSONObject
 //
 // THE MODE IS CACHED ON THE DEVICE so Aujourd'hui and the sampler decide offline, the way the six manual
 // settings are cached. MANUAL by default (D19 - the safe default). This is the client's local read; the SERVER
-// is the consent authority (detectionConsentAt), re-read on launch.
+// is the consent authority (detectionConsentAt). It is read back from GET /me at RESOLVING after each sign-in
+// (AN-SIGNIN-RESOLVE R1162, through parseLoggingMode below and LoggingModeRestore.kt) and on no other launch;
+// onboarding's accepted automatic choice writes it too. Before R1162 nothing read it back (PARK-E3).
 
 /** R315/FW26: the /api/v1/me PATCH body that turns automatic detection on (with consent) or off (revoking it). */
 fun detectionConsentBody(enable: Boolean): String =

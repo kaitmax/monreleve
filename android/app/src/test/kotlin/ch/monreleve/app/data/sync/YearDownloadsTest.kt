@@ -66,7 +66,7 @@ private class Server(
     suspend fun get(path: String): AuthedOutcome {
         gets += path
         val year = path.substringAfter("?year=").toInt()
-        return answer(year) ?: AuthedOutcome.Ok(yearBody(year, server[year].orEmpty()))
+        return answer(year) ?: AuthedOutcome.Ok(200, yearBody(year, server[year].orEmpty()))
     }
 }
 

@@ -18,7 +18,6 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -27,11 +26,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -83,11 +82,13 @@ import ch.monreleve.app.data.sync.taxYearsToDownload
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.detection.BACKGROUND_LOCATION
+import ch.monreleve.app.detection.DetectionScheduling
 import ch.monreleve.app.detection.EXTRA_OPEN_AUJOURDHUI
 import ch.monreleve.app.detection.EXTRA_OPEN_FORECAST
 import ch.monreleve.app.detection.EveningNotifier
 import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
+import ch.monreleve.app.detection.applyServerLoggingMode
 import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.detection.maybeAlertThreshold
 import ch.monreleve.app.dossier.DossierDocument
@@ -114,13 +115,17 @@ import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.releve.ReleveState
 import ch.monreleve.app.settings.EmployerFigureStore
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.SettingsStore
+import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEmployerFigureStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
 import ch.monreleve.app.startup.StartDecision
+import ch.monreleve.app.startup.UnresolvedCause
 import ch.monreleve.app.startup.decideStartAfterSignIn
 import ch.monreleve.app.startup.meFetchOf
+import ch.monreleve.app.startup.message
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
@@ -148,6 +153,7 @@ import ch.monreleve.app.ui.screens.simulation.SimulationActions
 import ch.monreleve.app.ui.screens.simulation.SimulationScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppTab
+import ch.monreleve.app.ui.shell.ResolvingScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
@@ -294,6 +300,7 @@ class MainActivity : ComponentActivity() {
                                         onboardingSeed = decision.prefill
                                         destination = Destination.ONBOARDING
                                     }
+                                    is StartDecision.Unresolved -> Unit
                                 }
                             }
                         }
@@ -452,20 +459,47 @@ private fun CodeRoute(
 
 // R297: signed in but no local settings. Consult GET /api/v1/me BEFORE the onboarding decision - the settings
 // are held by the server, so a re-sign-in after sign-out's wipe restores them rather than re-onboarding. The
-// decision itself is JVM-tested in StartupDeciderTest over fakes; this route is only the wiring and the loading
-// state (the DoD's loading state for a screen that waits on the network). Runs once (LaunchedEffect(Unit)).
+// decision itself is JVM-tested in StartupDeciderTest over fakes (and ResolveFlowTest through the real session);
+// this route is only the wiring and the loading state (the DoD's loading state for a screen that waits on the network).
+// AN-SIGNIN-RESOLVE (R1161): an Unresolved decision is NOT handed on - it stays here as a retry line, and the retry
+// runs the resolve again (the attempt is the effect's key). R1162: a positive answer restores the server's logging
+// mode on the phone (restoreLoggingMode) before the settings are cached.
 @Composable
 private fun ResolvingRoute(
     session: SessionManager,
     settingsStore: SettingsStore,
     onResolved: (StartDecision) -> Unit,
 ) {
-    LaunchedEffect(Unit) {
-        onResolved(decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, settingsStore))
+    val context = LocalContext.current
+    var attempt by rememberSaveable { mutableIntStateOf(0) }
+    var unresolved by remember { mutableStateOf<UnresolvedCause?>(null) }
+    LaunchedEffect(attempt) {
+        unresolved = null
+        val decision =
+            decideStartAfterSignIn(
+                { meFetchOf(session.authenticatedGet(ME_PATH)) },
+                settingsStore,
+                restoreMode = { serverMode -> restoreLoggingMode(context, serverMode) },
+            )
+        if (decision is StartDecision.Unresolved) unresolved = decision.cause else onResolved(decision)
     }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-    }
+    ResolvingScreen(message = unresolved?.message(), onRetry = { attempt += 1 })
+}
+
+// AN-SIGNIN-RESOLVE (R1162, PARK-E3): the mode the server holds, applied on THIS phone - AUTO_DETECT with the sampler
+// started only where the location permission is held, MANUAL with the sampler stopped otherwise (LoggingModeRestore).
+// The one call both moments use: RESOLVING's restore, and onboarding's accepted automatic choice.
+private fun restoreLoggingMode(
+    context: Context,
+    serverMode: LoggingMode,
+) {
+    applyServerLoggingMode(
+        serverMode,
+        locationFullyGranted(context),
+        SharedPrefsDetectionModeStore(context),
+        startSampling = { DetectionScheduling.startSampling(context) },
+        stopSampling = { DetectionScheduling.stopSampling(context) },
+    )
 }
 
 // AN-ONBOARD: the onboarding WIZARD (steps 1-7) then "Tout est prêt". The composition root owns what ui/
@@ -489,7 +523,17 @@ private fun OnboardingRoute(
     // restores the live edited snapshot (R310). Both arrive through `restored`, so there is one mechanism.
     var saved by rememberSaveable { mutableStateOf(seed) }
     val controller =
-        remember { OnboardingController(SessionSettingsSaver(session), store, taxYear, scope, restored = saved) }
+        remember {
+            OnboardingController(
+                SessionSettingsSaver(session),
+                store,
+                taxYear,
+                scope,
+                restored = saved,
+                // R1162 (PARK-E3): the automatic choice the server accepted reaches this phone.
+                onModeSaved = { serverMode -> restoreLoggingMode(context, serverMode) },
+            )
+        }
     val state by controller.state.collectAsState()
     LaunchedEffect(controller) {
         controller.state.collect {

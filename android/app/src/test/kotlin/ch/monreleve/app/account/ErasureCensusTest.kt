@@ -47,7 +47,9 @@ private val ERASED_STORAGE =
         // AN-FIX F4 / R303: the account scope, cleared by DeviceLocalStore.clearForSignOut (and so deletion).
         "monreleve.account",
         // AN-AUTO increment 2 / R315: the detection logging-mode cache, cleared by DeviceLocalStore via
-        // detectionModeStore.clear() on sign-out (and so deletion); restored from /me on re-sign-in.
+        // detectionModeStore.clear() on sign-out (and so deletion); restored from /me at the next sign-in's
+        // RESOLVING (AN-SIGNIN-RESOLVE R1162 - MANUAL unless the server holds AUTO_DETECT with consent and the
+        // location permission is held).
         "monreleve.detection",
     )
 

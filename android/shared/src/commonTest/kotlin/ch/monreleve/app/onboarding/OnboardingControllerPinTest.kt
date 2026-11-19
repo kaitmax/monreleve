@@ -2,6 +2,7 @@ package ch.monreleve.app.onboarding
 
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.calc.Canton
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.MeView
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
@@ -72,7 +73,9 @@ private fun pinController(
     saver: SettingsSaver,
     store: SettingsStore,
     restored: OnboardingSnapshot? = null,
-): OnboardingController = OnboardingController(saver, store, TAX_YEAR, scope, restored, patchBody = ::pinBody)
+    onModeSaved: (LoggingMode) -> Unit = {},
+): OnboardingController =
+    OnboardingController(saver, store, TAX_YEAR, scope, restored, patchBody = ::pinBody, onModeSaved = onModeSaved)
 
 /** Walk NOM..PERIODE with valid answers; the start date (null = the whole year) is the variable. */
 private fun OnboardingController.answerUpToThePeriod(startDate: String?) {
@@ -409,7 +412,8 @@ class OnboardingControllerPinTest {
 
     @Test
     fun thePlanForAMeViewIsTheFullFlowTheMissingStepsOrNothing() {
-        assertEquals(OnboardingPlan.Onboard(freshOnboardingSnapshot()), onboardingPlanFor(null))
+        // AN-SIGNIN-RESOLVE (R1161): onboardingPlanFor no longer takes null. "No body could be read" is not an answer
+        // that the settings are absent, so it never reaches a plan - StartupDecider makes it Unresolved instead.
         assertEquals(OnboardingSnapshot(step = OnboardingStep.NOM, steps = ALL_STEPS), freshOnboardingSnapshot())
         val complete = MeView("Camille", "GE", 80, "SIMPLIFIED240", null, "DAY", null)
         assertEquals(OnboardingPlan.Complete, onboardingPlanFor(complete))
@@ -456,6 +460,69 @@ class OnboardingControllerPinTest {
             onboardingPlanFor(partial),
         )
     }
+}
+
+// AN-SIGNIN-RESOLVE (R1162, PARK-E3): onboarding's automatic choice reaches the phone - AFTER the server accepted it.
+@OptIn(ExperimentalCoroutinesApi::class)
+class OnboardingModeSavedPinTest {
+    private fun OnboardingController.answerTheModeAndSave(mode: ModeChoice) {
+        answerUpToThePeriod(startDate = null)
+        onModeChange(mode)
+        next()
+        next()
+    }
+
+    @Test
+    fun anAcceptedAutomaticChoiceIsHandedOnOnceAfterThePatchAndBeforeTheSettingsAreCached() =
+        runTest {
+            val writes = mutableListOf<String>()
+            val store =
+                object : SettingsStore {
+                    private var saved: Settings? = null
+
+                    override fun load(): Settings? = saved
+
+                    override fun save(settings: Settings) {
+                        writes += "settings"
+                        saved = settings
+                    }
+
+                    override fun clear() {
+                        saved = null
+                    }
+                }
+            val saver = PinSaver(PostOutcome.Ok(200, "{}"))
+            val c = pinController(this, saver, store, onModeSaved = { writes += "mode:$it" })
+            c.answerTheModeAndSave(ModeChoice.AUTO_DETECT)
+            advanceUntilIdle()
+            assertEquals(OnboardingPhase.READY, c.state.value.phase)
+            assertEquals(1, saver.bodies.size)
+            // The mode first: cached settings are what send the next launch straight to the shell, past RESOLVING.
+            assertEquals(listOf("mode:AUTO_DETECT", "settings"), writes)
+        }
+
+    @Test
+    fun aManualChoiceHandsNothingOnTheServerKeepsItsValueAndResolvingRestoredIt() =
+        runTest {
+            val modes = mutableListOf<LoggingMode>()
+            val c = pinController(this, PinSaver(PostOutcome.Ok(200, "{}")), PinStore(), onModeSaved = { modes += it })
+            c.answerTheModeAndSave(ModeChoice.MANUAL)
+            advanceUntilIdle()
+            assertEquals(OnboardingPhase.READY, c.state.value.phase)
+            assertEquals(emptyList(), modes)
+        }
+
+    @Test
+    fun anAutomaticChoiceTheServerDidNotAcceptHandsNothingOn() =
+        runTest {
+            listOf(PostOutcome.NetworkError, PostOutcome.SessionEnded, PostOutcome.Ok(400, "{}")).forEach { outcome ->
+                val modes = mutableListOf<LoggingMode>()
+                val c = pinController(this, PinSaver(outcome), PinStore(), onModeSaved = { modes += it })
+                c.answerTheModeAndSave(ModeChoice.AUTO_DETECT)
+                advanceUntilIdle()
+                assertEquals(emptyList(), modes, "outcome $outcome")
+            }
+        }
 }
 
 private fun OnboardingController.errorAndStep() = state.value.error to state.value.step

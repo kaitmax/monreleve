@@ -49,7 +49,7 @@ private fun controller(
     scope: CoroutineScope,
     saver: SettingsSaver = FakeSaver(),
     store: SettingsStore = FakeStore(),
-): OnboardingController = OnboardingController(saver, store, TAX_YEAR, scope)
+): OnboardingController = OnboardingController(saver, store, TAX_YEAR, scope, onModeSaved = {})
 
 /** Fill every step with a valid draft (GE, 80 %, simplified, whole year, manual) and trigger the save. */
 private fun OnboardingController.saveValidDraft(
@@ -182,6 +182,7 @@ class OnboardingControllerTest : FunSpec({
                     store,
                     TAX_YEAR,
                     this,
+                    onModeSaved = {},
                     restored =
                         OnboardingSnapshot(
                             step = OnboardingStep.NOM,
@@ -252,6 +253,7 @@ class OnboardingControllerTest : FunSpec({
                     FakeStore(),
                     TAX_YEAR,
                     this,
+                    onModeSaved = {},
                     restored =
                         OnboardingSnapshot(
                             step = OnboardingStep.METHODE,

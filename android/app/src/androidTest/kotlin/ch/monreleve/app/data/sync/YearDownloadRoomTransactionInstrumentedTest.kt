@@ -76,7 +76,7 @@ class YearDownloadRoomTransactionInstrumentedTest {
     private fun downloadOver(dao: EntryDao) =
         EntriesDownload(
             dao = dao,
-            get = { AuthedOutcome.Ok(BODY) },
+            get = { AuthedOutcome.Ok(200, BODY) },
             currentAccount = { ACCOUNT },
             // EXACTLY buildEntriesDownload's seam.
             inTransaction = { block -> db.withTransaction { block() } },
