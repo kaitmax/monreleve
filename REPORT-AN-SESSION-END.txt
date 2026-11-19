@@ -1,0 +1,231 @@
+REPORT-AN-SESSION-END - WHEN THE SESSION ENDS, BACKGROUND LOCATION STOPS (ORCH-ANDROID step A11; A3's N3)
+Worktree C:/wt/an-session-end (lock .session-lock.json, removed last). Branch an-session-end, cut from
+BASE_SHA 6381e070. Rulings R1180-R1184 (used: R1180-R1184; R1185-R1189 unused). Device claims below are
+"emulator API 36" (MonReleve_API36, emulator-5554, debug APK of 88dc2b0a built with -PfrontalierPort=3966).
+Nothing here is an S9 claim. Evidence: C:/wt/queue-evidence/an-session-end/ (not in git).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1180 THE WORKER GUARD. SamplingWorker's wake is now samplingWake (pure, over seams). FIRST, at each wake,
+  it reads whether a session exists (processSession(app).isSignedIn(): a token pair is held) AND the
+  phone's mode is AUTO_DETECT. If either is missing it requests NO fix, offers no notification, and
+  cancels its own unique work through DetectionScheduling.stopSampling. RED first with a counting fake
+  location source.
+- R1181 THE SEAM. android/app/src/main/kotlin/ch/monreleve/app/auth/SessionEndSeam.kt:
+    SessionEndSeam.sessionEnded(SessionEndPath)  - THE "session ended" seam
+    deviceSessionEndSeam(stopSampling)           - its body; A8 (push token) and A7 (fallback reminder)
+                                                    attach their lines HERE (each must be idempotent)
+    SessionEndingStore(DeviceLocalStore, seam)   - the device's LocalStore as the one construction
+                                                    (account/DeviceLocalStores.kt deviceLocalStore) now
+                                                    hands it out: each of DeviceLocalStore's three scopes
+                                                    runs the seam FIRST, its clear in a finally.
+  ANDROID RULING 9 - REUSES. The seam's body calls DetectionScheduling.stopSampling, the same one stop
+  A9's LoggingModeRestore (a MANUAL restore), the Parametres switch and the OS-permission revocation
+  are wired to. No second stop path. Automatic -> manual does NOT pass through the seam (it is not a
+  session ending; A8/A7's attachments must not be dropped by a mode change) - it reaches the same stop
+  directly, from its three existing sites.
+- R1182 BOTH SIDES. Every negative sits beside its positive (signed in + automatic samples and keeps its
+  schedule; a cancelled sign-out, a refused or unanswered deletion, every TRY LATER refresh fault: no stop).
+- R1183 PROOF on emulator API 36, read from WorkManager's OWN database (workspec + workname + SystemIdInfo)
+  and mapped to `dumpsys jobscheduler`: signed in automatic -> SamplingWorker ENQUEUED with a job; user
+  sign-out -> CANCELLED, no job; signed in again -> a new spec ENQUEUED with a job; forced sign-out
+  (revoke-all from another session, then a 401 revoked_session) -> CANCELLED, no job.
+- R1184: :shared NOT changed (and web/ not changed) - no R573 run owed, no gate:clone owed. macOS minutes 0.
+- THE FULL :app:gate WAS NOT RUN (see STATUS): the emulator could not be shut down from this session.
+
+================================================================================
+STATUS (R391)
+================================================================================
+Increments green under fast check. FULL GATE NOT RUN on 88dc2b0a6b333ba4d076c3370ab96d13e9ca9e8f.
+
+Why: the prompt requires the gate with the emulator shut down and the heavy lock held (line 8 000 MB).
+`adb -s emulator-5554 emu kill` was REFUSED THREE TIMES by this session's permission classifier
+("Destructive or Unwanted Actions"); I did not work around it. With my dev server stopped and the
+Gradle daemon stopped (`./gradlew --stop`: "1 Daemon stopped" - the daemon my builds had run in,
+started 22:17, idle), commitFree read 6 743 MB (23:13:57Z) and 6 558 MB (23:19:18Z): under the line,
+and the line was never lowered. No heavy lock was taken; no gate ran under the line. NO RESULT for
+the gate - not a pass, not a fail.
+What DID run on the code tip's tree:
+  - `./gradlew fastCheck` per increment: BUILD SUCCESSFUL (inc 1: 2m 23s; inc 2: 41s)
+    (fastCheck here = :app detekt + ktlint over main/test + :shared testDebugUnitTest; it does NOT run
+    :app's unit tests).
+  - :app unit test classes touched, run directly: SamplingWakeTest 6/6, SessionEndSeamTest 7/7,
+    ForcedSignOutTest 27/27, DetectionSettingsTest 6/6, SessionEndSeamFenceTest 3/3 - all BUILD SUCCESSFUL.
+  - :app:assembleDebug -PfrontalierPort=3966 on 88dc2b0a: BUILD SUCCESSFUL in 49s (the walkthrough APK).
+NOT run: the rest of :app's ~1 450 unit tests, verifyPaparazziDebug, lint/release checks - i.e. the gate.
+To close: run `./gradlew :app:gate` on 88dc2b0a with the emulator down (the orchestrator, or this task
+re-run with permission to stop the emulator). No baseline should move: no composable changed.
+
+================================================================================
+R1180 - THE WORKER GUARD (carries the load)
+================================================================================
+COMMIT 5d50b735. android/app/src/main/kotlin/ch/monreleve/app/detection/SamplingWorker.kt.
+doWork() now calls samplingWake(clock, signedIn, loggingMode, cancelOwnSchedule, offerNotifications,
+tallies, requestFix) and returns success whatever it did (a missed window is MISSED, never retried late).
+requestFix is the only door to the location layer (awaitClassifiedFix in the app).
+ORDER, A DECISION: the guard sits BEFORE maybeAlertThreshold/maybeNotifyEvening as well as before the fix.
+This worker exists for a signed-in person in automatic mode; the evening proposal already self-gates on
+automatic mode, and the threshold alert keeps its foreground run (MainActivity) for manual mode. For a
+signed-in manual person whose sampler was (wrongly) still scheduled, that wake's incidental alert check is
+lost and the schedule cancelled - which is the point.
+SELF-CANCEL: an explicit cancelUniqueWork (DetectionScheduling.stopSampling), not a failed Result.
+RED FIRST (the extraction committed with the seams in the signature but no guard, then the test):
+  SamplingWakeTest 4 of 6 failed, each "expected:<0> but was:<1>" on fixes.requests - one fix requested
+  for nobody: NO SESSION + automatic; signed in + MANUAL; no session + manual; a sign-out between two wakes.
+  (logs: red-R1180.log, red-R1180-SamplingWakeTest.xml)
+GREEN: 6/6. Each condition tested ALONE (a guard reading only the mode would pass a test that removed
+both, since both sign-out scopes clear the mode too). POSITIVES beside them (R1182): signed in + automatic
+inside an empty window -> exactly ONE request, the check written, no cancel; between windows -> no cancel;
+a window already sampled -> no second request, no cancel.
+
+================================================================================
+R1181 - ONE SEAM; THE PATH TABLE
+================================================================================
+COMMIT 88dc2b0a. Enumerated from the code (R267) from where the token pair disappears, not from names:
+DeviceLocalStore.kt:62 (clearForSignOut, deletion inherits it), :102 (clearForSessionEnd),
+SessionManager.end() (reached from three sites: applyRefresh Invalid, onUnauthorized, retryWith), and
+SessionManager.signOut() (one caller), plus KeystoreTokenStore.load dropping an unreadable blob.
+
+THE PATH TABLE (every session-ending path -> the seam -> cancelled; test that asserts the cancel)
+| Path | Entry point | Through the seam? | Sampler cancelled by | Test |
+| User sign-out | Parametres confirmSignOut -> localStore.clearForSignOut (NonCancellable) | YES, SIGNED_OUT | seam -> stopSampling | SessionEndSeamTest "SIGN-OUT"; emulator 03->05 |
+| Account deletion (2xx) | Parametres confirmDelete -> runDelete -> clearForDeletion | YES, DELETED (once, not also SIGNED_OUT) | seam | SessionEndSeamTest "DELETION", "each path names itself" |
+| Forced: revoke-all (401 revoked_session) | SessionManager.onUnauthorized -> end -> onEnded -> onServerEndedSession -> clearForSessionEnd | YES, ENDED_BY_SERVER | seam | ForcedSignOutTest R522 REVOKE-ALL; SESSION OVER row; emulator 06->08 |
+| Forced: refresh refused (expired) | applyRefresh Invalid -> end | YES | seam | ForcedSignOutTest R522 REFRESH REFUSED; SESSION OVER row |
+| Forced: replay (TOKEN_REPLAYED) | applyRefresh Invalid -> end | YES | seam | ForcedSignOutTest SESSION OVER row (replay) |
+| Forced: refresh token the server does not hold | applyRefresh Invalid -> end | YES | seam | SESSION OVER row |
+| Forced: 401 the refresh cannot recover | retryWith 401 -> end | YES | seam | ForcedSignOutTest R522 UNRECOVERABLE 401 |
+| Forced: account deleted elsewhere (401 unknown_token) | onUnauthorized -> end | YES | seam | ForcedSignOutTest R522/R529 ACCOUNT DELETED; SESSION OVER row |
+| Automatic -> manual: the Parametres switch | setAutoDetection(false) -> stopSampling | NO (not an ending) | same one stop | DetectionSettingsTest "turning auto detection OFF" (existing) |
+| Automatic -> manual: OS revokes location | onLocationPermissionRevoked -> stopSampling | NO | same one stop | DetectionSettingsTest R1181 (NEW pin - the stop was asserted nowhere) |
+| Automatic -> manual: A9's MANUAL restore at RESOLVING/onboarding | applyServerLoggingMode -> stopSampling | NO | same one stop | LoggingModeRestoreTest (existing) |
+| Keystore blob unreadable | KeystoreTokenStore.load drops it; no call ends anything | NO SEAM CAN SEE IT | the worker guard (R1180) at the next wake | SamplingWakeTest "NO SESSION" |
+| Debug probe SignInProbeActivity | session.signOut() - tokens only | NO | the worker guard | (debug-only, declared in the debug manifest; does not ship) |
+| SIGNED-OUT rows A7/A8 owe (Android Ruling 8) | - | attach to deviceSessionEndSeam | - | not built here |
+Every forced row goes through ONE handler (onServerEndedSession) and asserts the cancel in the shared
+check assertTookTheForcedPath (samplerStops == 1, with ends == 1); every TRY LATER fault (500/502/503/504/
+429/a 200 that is not the pair/an unparseable 401/timeout/no network) asserts samplerStops == 0 twice.
+RED FIRST (SessionEndingStore delegating without calling the seam):
+  SessionEndSeamTest 5 of 7: expected:<[SIGNED_OUT]> but was:<[]>; expected:<[DELETED]> but was:<[]>;
+  seam-first expected:<1> but was:<0>; "Expected exception IllegalStateException but no exception was
+  thrown" (seam that throws); each-path expected:<[SIGNED_OUT, DELETED, ENDED_BY_SERVER]> but was:<[]>.
+  ForcedSignOutTest 5 of 27: the four R522 causes, expected:<1> but was:<0>, and the R526 SESSION OVER
+  table listing its rows. The positives (cancelled sign-out; refused/unanswered deletion; TRY LATER) passed
+  RED and GREEN alike, as they must. (logs: red-R1181.log + the two XMLs)
+GREEN: 7/7 and 27/27.
+ORDER: the seam runs FIRST (a clear that throws has already cancelled the sampler - tested) and the clear
+runs in a finally (a seam that throws still clears the device - tested).
+FENCE: fences/SessionEndSeamFenceTest - DeviceLocalStore and SessionEndingStore are constructed only in
+DeviceLocalStores.kt across src/main and src/debug (iosMain excluded, said why), with pinned roots (R460).
+Passed first run, so planted (R180): two compiling constructions appended to auth/SessionEnds.kt -> RED
+naming SessionEnds.kt:73 and :75 in both tests; file restored and cmp-identical to the saved copy.
+WHAT THE JVM CANNOT PROVE: that MainActivity hands the screen this store and that stopSampling cancels the
+unique work. The emulator run below closes that.
+
+================================================================================
+R1182 - BOTH SIDES
+================================================================================
+See R1180/R1181: each negative has its positive in the same file, and the emulator's signed-in reads
+(01, 06, 09) are the positive side of its signed-out reads (05, 08, 10).
+
+================================================================================
+R1183 - PROOF / WALKTHROUGH (emulator API 36)
+================================================================================
+Server: this worktree's `pnpm dev` on :3966 (/api/health answered service "monreleve" before any read,
+R169), scratch DB monreleve_an_session_end (migrated, seeded), AUTH_SECRET on the command line only.
+APK: debug of 88dc2b0a, -PfrontalierPort=3966, `adb install -r` over the orchestrator's.
+State source: WorkManager's OWN database (no_backup/androidx.work.workdb + -wal via run-as exec-out, read
+with node:sqlite): the row under unique name monreleve.detection.sampling with its worker_class_name; the
+job mapped through WorkManager's SystemIdInfo table to `dumpsys jobscheduler`'s API-36 header
+"JOB androidx.work.systemjobscheduler:u0a260/<id>: ...@ch.monreleve.app/...SystemJobService". "Gone" means:
+the spec state CANCELLED (5) AND no job of this package in JobScheduler. Every read uses the same query.
+Location + notification permissions granted with `pm grant` (the disclosure flow is not under test); the
+server held loggingMode AUTO_DETECT with a consent stamp for the seeded camille.martin@example.invalid.
+  00 installed, signed out ............ no spec, no job
+  01 signed in (code typed unseen), Aujourd'hui "Detection automatique (beta) - Detection en cours"
+     ................................... d4b4044e SamplingWorker ENQUEUED 900000ms; job 0 -> d4b4044e  YES
+  03 right before sign-out ............ d4b4044e ENQUEUED; job 1 -> d4b4044e  YES
+  05 Parametres > Se deconnecter > confirm (POST /api/v1/auth/sign-out 200), welcome screen
+     ................................... d4b4044e CANCELLED; 0 jobs  NO
+  06 signed in again (server still automatic; A9's restore) ... 672711b3 ENQUEUED; job 3 -> 672711b3  YES
+  07 POST /api/v1/auth/revoke-all 200 from a SECOND session of the account (made through the API) -
+     no app call yet ....................... 672711b3 ENQUEUED (unchanged)
+  08 the app's next call: Releve, year 2025 -> GET /api/v1/dossier?year=2025 401 -> sign-in screen with
+     "Votre session a ete fermee. Reconnectez-vous pour continuer."
+     ................................... 672711b3 CANCELLED; 0 jobs  NO
+  09 signed in again after the forced ending ... 739ff7a9 ENQUEUED; job 4 -> 739ff7a9  YES
+  10 voluntary sign-out (to leave the emulator signed out) ... 739ff7a9 CANCELLED; 0 jobs  NO
+(work-*.txt per step, screenshots 01/04/05/06/08 .png, the driver drive.mjs, all in the evidence dir.)
+Also tried: `cmd jobscheduler run -f -n androidx.work.systemjobscheduler ch.monreleve.app 0` while signed
+in - WorkManager logged "Status ... is ENQUEUED; not doing any work and rescheduling" (a periodic spec is
+not run before its interval), so the guard was NOT observed running on the device; it is JVM-proven only.
+The Wi-Fi teardown did not show: every call in the walkthrough was answered.
+
+================================================================================
+R1184 - iOS
+================================================================================
+:shared unchanged (`git diff 6381e070..HEAD -- android/shared web` is empty). No R573 run; 0 macOS minutes.
+The iOS twin DeviceLocalStore.kt is untouched: the seam sits in :app as a wrapper on purpose (A7/A8 are
+Android's; editing the twin would have pulled in IosLocalStores.kt, its iosTest and an R573 run).
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+N1 The debug-only SignInProbeActivity calls SessionManager.signOut() (tokens only, no wipe, no seam). It
+   does not ship; the worker guard covers it. Listed in the path table.
+N2 docs/play-background-location.md does not describe the stop-on-session-end; A5 (the Play pack) may
+   want one sentence citing R1180/R1181.
+N3 Uppercase autocapitalisation: the sign-in field sent "Camille.martin@example.invalid" once and the
+   server accepted it (it normalises) - cosmetic, pre-existing.
+N4 Other sessions' lock files remain in C:/wt/fw-lighthouse-calc and C:/wt/fw-wt-cleanup (2026-11-17);
+   reported, not touched (R334/R392).
+
+================================================================================
+DEVIATIONS
+================================================================================
+D1 THE FULL GATE DID NOT RUN (STATUS). The emulator kill was refused by the permission classifier three
+   times; I did not route around it. Code tip pushed un-gated; STATUS says so in R391's shape.
+D2 R574 INCIDENT, MINE. During the last sign-in (done only to leave the emulator signed out by the
+   voluntary path) one digit of the code failed to land, and a UI dump I ran printed the FIVE digits that
+   had landed into this session's transcript: my dump masked 6-digit runs but not one digit per field.
+   Not consumed with that code: I requested a fresh one at once from the email screen, which DELETES the
+   previous unused code server-side (lib/auth/magic-link.ts:176-181), and signed in with the new one
+   (typed unseen). Local scratch server, scratch DB, seeded .invalid account, nothing production. The
+   driver now never prints a digit field's text. No code, token or AUTH_SECRET is in any committed file
+   or in the evidence directory (the dev log with the mails is in the session scratchpad only).
+D3 `./gradlew --stop` stopped one daemon that predates this session (started 22:17, A10's gate window)
+   and that every build of mine had then run in; ORCH-ANDROID's memory rule prescribes it before a heavy
+   step. Nothing else was stopped that was not mine.
+D4 Emulator permissions: I `pm grant`ed FINE, COARSE, BACKGROUND location and POST_NOTIFICATIONS for the
+   walkthrough and `pm revoke`d all four afterwards. I did not record their state before granting, so if
+   the orchestrator's install had any of them granted, they are now revoked.
+D5 Restored state: the orchestrator's debug APK reinstalled (`install -r`, sha256 prefix 2e90464a4dd3dc47
+   on disk and on the device), signed out by the voluntary path (welcome screen, no sampler spec
+   enqueued), gestural navigation (navigation_mode 2). The emulator was never shut down. App data from my
+   scratch sign-ins was wiped by that sign-out; the pending sign-in address (camille.martin@example.invalid)
+   is kept by design (R295).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 The gate: will the orchestrator run `:app:gate` on 88dc2b0a (emulator down), or re-run this task with
+   permission to shut the emulator down? Nothing else is owed (no R573, no gate:clone).
+Q2 A9's LoggingModeRestore stops the sampler on a MANUAL restore and R1180's guard also cancels on manual;
+   both reach the one stop, so I kept both (the restore is immediate, the guard is the backstop). Accept?
+Q3 The guard sits before the threshold alert and the evening proposal too (R1180 ORDER). Accept, or should
+   a signed-in manual person's stale schedule still run the alert once before cancelling?
+Q4 SessionEndPath is passed to the seam though today's body ignores it - for A8 (a voluntary sign-out may
+   want to unregister the push token server-side, a forced ending cannot). Keep, or drop until A8?
+
+================================================================================
+PUSH PROOF
+================================================================================
+Code tip: 88dc2b0a6b333ba4d076c3370ab96d13e9ca9e8f on origin/an-session-end (pushed before this report).
+  5d50b735 R1180 the wake guard
+  88dc2b0a R1181/R1182 the seam, the store, the fence, the path tests
+Report: this file, the next commit on the same branch (pending push at the time of writing; the handback
+names its sha). NOT merged - the orchestrator merges.
+Left in place, mine, local: web/.env and web/node_modules in this worktree (gitignored), the scratch DB
+monreleve_an_session_end, the evidence dir. My dev server stopped (port 3966 free), no Gradle daemon of
+mine running. The lock C:/wt/an-session-end/.session-lock.json is removed last.
