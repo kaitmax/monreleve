@@ -2016,3 +2016,40 @@ RUN ORDER (supersedes Android Ruling 7's): A9, A10, A11, A4, A8, A7,
 then A5 and A6 LAST. Sequential: every task shuts down and reboots the
 one emulator, so two sessions would break each other's walkthroughs.
 Ranges: A9 R1160-R1169, A10 R1170-R1179, A11 R1180-R1189.
+
+====================================================================
+ANDROID RULING 9 - A9 MERGED; A9's QUESTIONS; A12 FOR THE STATUS-BLIND CALLERS
+====================================================================
+A9 (AN-SIGNIN-RESOLVE) merged to main as 86186b29 (the merge of 3ff0c4eb;
+main had moved to 270f2686 in relay/ only, so the merged android/ and web/
+trees equal the gated branch's; token hits 0). Gate evidence: :app:gate
+BUILD SUCCESSFUL in 4m 27s, GATE EXIT=0, on the code tip 8e530157
+(REPORT-AN-SIGNIN-RESOLVE.txt line 52-54); R573 ios-shared run 44601892813
+green on a310917e, android/shared unchanged after it (about 9 macOS
+minutes). PARK-E3 is CLOSED by this merge; PARK-E7's first half is done,
+its second half stays open.
+THE CAUSE (R1160): not R8. A transport failure while GET /me was pending
+(on the emulator, its own Wi-Fi teardown) fell through MeFetch.Unreachable
+to an empty onboarding; and any non-401 status was read as settings (a 500
+looked like a new account). Both are closed by R1161's invariant.
+ON A9's QUESTIONS (the orchestrator's):
+Q1 (RESOLVING reuses SignInCopy's NETWORK_ERROR / GENERIC_ERROR / RETRY by
+  reference): ACCEPTED as is - one text, one home (R206); no new copy.
+Q2 (a sign-out exit on RESOLVING during an outage): post-launch; relaunch
+  is the exit today and nothing is written while unresolved.
+Q3 (OnboardingController.save caches the settings and shows READY on any
+  PostOutcome.Ok, 4xx included): PRE-LAUNCH - the person would believe a
+  setting saved that the server refused, and the Releve is built from the
+  server's settings. With A9's NOTICED (DossierApi and EntriesDownload
+  ignore the status they now receive) it is one small task: A12
+  AN-STATUS-HONESTY, R1190-R1199, run after A11.
+Q4 (server automatic, phone without the location permission, shown as
+  manual without a word): post-launch, with N4 (the permission-feedback
+  family, Android Ruling 8).
+NOTICED -> A11: a MANUAL restore now stops the sampler (A9's
+  LoggingModeRestore.kt); A11's 'session ended' seam must reuse or
+  reconcile with it, never add a second stop path.
+NOTICED -> every session: the emulator's Wi-Fi tears itself down, at
+  times every 12-20 s. A walkthrough failure that looks like a network
+  error is first checked against that (ORCH-ANDROID driving notes).
+RUN ORDER: A10, A11, A12, A4, A8, A7, then A5 and A6 LAST.

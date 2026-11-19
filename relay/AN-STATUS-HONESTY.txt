@@ -1,0 +1,38 @@
+AN-STATUS-HONESTY SESSION PROMPT - Mon Releve
+A REFUSED OR FAILED ANSWER IS NEVER SHOWN AS SUCCESS (ORCH-ANDROID step A12; A9's Q3 and NOTICED)
+Written by the orchestrating session on 2026-11-19 (Android Ruling 9). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Ruling 9
+in relay/RULINGS-2026-11-16.txt; REPORT-AN-SIGNIN-RESOLVE.txt whole (A9 made AuthedOutcome.Ok carry
+the status - your starting point); the callers: OnboardingController.save, DossierApi,
+EntriesDownload, and every other consumer of AuthedOutcome.Ok / PostOutcome.Ok you find (census
+them - R267); CLAUDE.md R133, R154, R196, R204, R206, R225, R391, R573, R574.
+Names: worktree C:/wt/an-status-honesty, branch an-status-honesty, report
+REPORT-AN-STATUS-HONESTY.txt. Ruling numbers: R1190-R1199. YOUR OWN advisor may advise you.
+
+THE DEFECT: OnboardingController.save caches the settings and shows READY on any PostOutcome.Ok,
+a 4xx included - the person believes a setting saved that the server refused, and the Releve is
+built from the server's settings. A9 also found DossierApi and EntriesDownload ignoring the status
+they now receive.
+
+R1190. THE CENSUS: every caller of an Ok outcome that carries a status, and what each does with a
+    non-2xx today. One row each in the report. A caller that already distinguishes is left alone
+    and recorded.
+R1191. THE RULE: a non-2xx is never treated as success - nothing cached, nothing shown as saved or
+    exported, and the person sees the existing error copy for that surface (reuse by reference,
+    R206; new French copy only if no existing string fits, listed in QUESTIONS for approval).
+    Test first per caller, RED with the reason, and the 2xx positive case beside each (R196).
+R1192. PROOF on MonReleve_API36 (labelled "emulator API 36"): a local proxy in front of your dev
+    server (the pattern A9 used; its scripts are in C:/wt/queue-evidence/an-signin-resolve/ -
+    read, never modify) answers 422 to the onboarding PATCH and 500 to one export: the person
+    sees an error, not READY or a file, and a retry against the honest server succeeds. Never
+    finish an onboarding over an existing account's settings. Mask sign-in codes (R574). Mind the
+    emulator's self-teardown of Wi-Fi (ORCH-ANDROID driving notes).
+R1193. iOS: if :shared changes, R573 (budget 30 min).
+
+THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
+emulator shut down and the heavy lock held; R573 if :shared changed; push the branch (DO NOT
+MERGE); report; push; lock removed last; emulator booted again with the orchestrator's APK
+reinstalled (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk).
+REPORT: SUMMARY / STATUS (R391) / R1190-R1193 with evidence (the census table) / WALKTHROUGH /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF AN-STATUS-HONESTY PROMPT

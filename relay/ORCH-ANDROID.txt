@@ -32,6 +32,9 @@ HOW EVERY SESSION IN THIS RUN WORKS
   Windows path; the soft keyboard covers bottom buttons (a tap there types a letter) - hide it
   with keyevent 4 BEFORE tapping, but six typed digits auto-submit the code, after which keyevent 4
   leaves the app. A "System UI isn't responding" dialog appeared once while booting (tap Wait).
+  The emulator's Wi-Fi TEARS ITSELF DOWN, at times every 12-20 s (A9): a network-looking
+  failure in a walkthrough is first checked against that (logcat, airplane state) before it is
+  called a defect.
 - THE iOS TWINS (Queue Ruling 11; relay/QUEUE-STATE.md "THE iOS TWINS"): account/DeviceLocalStore.kt,
   detection/EveningNotificationDecision.kt, detection/ThresholdAlertDecision.kt exist byte-identical
   under android/app/src/main/kotlin/ch/monreleve/app/ and android/shared/src/iosMain/kotlin/ch/monreleve/app/;
@@ -57,8 +60,9 @@ THE QUEUE (in order; one at a time - the memory budget allows no parallel Gradle
 | A9 | AN-SIGNIN-RESOLVE | A3's D2 (minified + slow /me -> a returning person sent to an EMPTY onboarding: data loss) and PARK-E3 (loggingMode never restored from /me); onboarding only on a positive "no settings" answer | R1160-R1169 |
 | A10 | AN-EDGE-INSETS | A3's N1: outside the main Scaffold buttons sit under the navigation bar (3-button nav); one root inset wrapper + a census test run by a gate | R1170-R1179 |
 | A11 | AN-SESSION-END | A3's N3: the location sampler survives sign-out; worker guard + one "session ended" seam every ending path goes through (A8/A7 attach to it) | R1180-R1189 |
-DONE: A1 (6f9dbc05), A2 (5c18f513), A3 (99d24cdf).
-RUN ORDER (Android Ruling 8, superseding Ruling 7's): A9, A10, A11, A4, A8, A7, then A5 and A6
+| A12 | AN-STATUS-HONESTY | A9 Q3: onboarding save shows READY on a 4xx; DossierApi and EntriesDownload ignore the status; a refused or failed answer is never shown as success | R1190-R1199 |
+DONE: A1 (6f9dbc05), A2 (5c18f513), A3 (99d24cdf), A9 (86186b29).
+RUN ORDER (Android Ruling 9, superseding Ruling 8's): A10, A11, A12, A4, A8, A7, then A5 and A6
 LAST - the Play pack (data safety: the FCM token is collected data) and the audit describe the
 finished app. A10 lands before A5's demo video, which films the disclosure screen.
 
