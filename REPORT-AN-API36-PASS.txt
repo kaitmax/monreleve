@@ -2,14 +2,36 @@ REPORT-AN-API36-PASS - Mon Releve - ORCH-ANDROID step A3
 Pure ASCII. Branch an-api36-pass, cut from origin/main 5c18f513ca39230e01b0504d2e81130008936385.
 Worktree C:/wt/an-api36-pass. Rulings R1080-R1089.
 
-THIS FILE IS WRITTEN IN STAGES. Stage 2 adds the R1080 debug walkthrough; the D1 fix, the gate
-and the minified audit pass are NOT YET DONE at this commit. Sections marked PENDING have not happened.
+Written in three stages (d3b0f198 the probe, d815a7be the debug walkthrough, the last one the fix,
+the gate and the minified audit pass).
 
 SUMMARY
-PENDING (R1080 not yet driven at this commit).
+- R1081 (probe, nothing changed): the first Paparazzi release with an API-36 layoutlib is
+  2.0.0-alpha04 (layoutlib 16.1.1, build.prop sdk=36), which declares kotlin-stdlib 2.3.0 and a
+  JVM-21 floor. 2.0.0-alpha02 only stops the compileSdk-36 crash; its layoutlib is API 35. Every
+  release after 1.3.5 is an alpha. Paparazzi is :app-only; :shared also pins compileSdk 35. Play's
+  pages (read 2026-11-19) state a targetSdk requirement only - no compileSdk rule. Decision table
+  in the R1081 section.
+- R1080 (emulator API 36, debug then minified audit): every screen and flow driven. One crash
+  found and FIXED test-first in :app (D1, R1082: any network failure during a PDF/CSV export killed
+  the app). The big API-35/36 finding is NOT fixed: every screen outside the main shell's Scaffold
+  ignores the system-bar insets (N1) - on a 3-button-navigation phone the welcome "Commencer", the
+  onboarding "Continuer", the disclosure's "Rester en saisie manuelle" and the Prevision /
+  Comparaison buttons sit under the navigation bar. Also new: the sampler stays scheduled after a
+  sign-out (N3), and Licences' system Back leaves the app (N5).
+- Minified audit build: sign-in, one recorded day and a PDF export work; with the D1 fix an offline
+  export shows the connectivity toast instead of crashing. One unexplained first-sign-in routing to
+  onboarding on that build (N9), not reproduced.
 
 STATUS (R391)
-PENDING.
+COMPLETE. The FULL :app:gate ran in this session on 014e5e7b3d905e72ffc97b02b32d7a129e56dedb (the
+code tip: the R1082 test + fix), with the emulator shut down and the heavy lock held:
+    BUILD SUCCESSFUL in 7m 7s
+    261 actionable tasks: 94 executed, 167 up-to-date
+    gate-exit=0
+fastCheck before it on the same sha: BUILD SUCCESSFUL in 2m 26s, exit 0. The commits after
+014e5e7b change REPORT-AN-API36-PASS.txt only. web/ unchanged (no gate:clone owed); :shared
+unchanged (no R573 run owed; macOS minutes billed by this task: 0).
 
 ================================================================================================
 R1081 - THE PROBE (read only; nothing in the build changed)
@@ -207,6 +229,27 @@ D1 (FIXED in :app, R1082 - see FIX below): UrlConnectionTransport.executeForByte
    NsUrlSessionTransport.executeForBytes goes through the same perform() that wraps every failure
    in TransportException (read only, shared/src/iosMain/.../NsUrlSessionTransport.kt:78-102).
 
+FIX (R1082, commit 014e5e7b, :app only, test first)
+- Test: UrlConnectionTransportWrapTest.aRefusedConnectionOnTheBytesPathBecomesATransportException
+  (executeForBytes against 127.0.0.1:1; asserts TransportException with an IOException in the
+  cause chain - the sibling of R386's execute test).
+- RED (before the fix, :app:testDebugUnitTest --tests ...UrlConnectionTransportWrapTest):
+  "3 tests completed, 1 failed" - java.lang.AssertionError: expected TransportException, got
+  ConnectException: Connection refused: getsockopt. BUILD FAILED.
+- Fix: executeForBytes gains the same `catch (e: IOException) -> throw TransportException(msg, e)`
+  that execute has. GREEN: tests="3" failures="0"; BUILD SUCCESSFUL.
+- Runtime after-proof on the emulator API 36: see the AUDIT PASS section.
+
+AUDIT PASS (minified audit variant built from 014e5e7b with -PfrontalierPort=3961, 2 030 760 B;
+installed after an uninstall; pkgFlags without DEBUGGABLE; emulator API 36, 3-button nav)
+| Step | Result |
+|---|---|
+| Sign-in (alex.dupont, seeded) | POST /auth/magic-link 202, POST /auth/code 200, GET /me /entries /dossier 200 -> "Bonjour Alex" |
+| One recorded day | "En Suisse" -> POST /api/v1/entries 200 -> "Enregistre" |
+| PDF export (route cold after a server restart) | GET /releve/print 200 in 3 735 ms, GET /export/pdf 200 in 9 649 ms -> chooser "releve-2026.pdf"; no crash |
+| PDF export offline (D1 after-proof) | airplane mode -> toast "L'export necessite une connexion. Reconnectez-vous a Internet, puis rees..." (shot 84); same pid 5035 before and after, no FATAL in logcat. Before the fix the same tap killed the app (ConnectException) |
+| First sign-in attempt (camille, seeded, complete settings) | landed in ONBOARDING step 1 with no name prefill - see N9. The same account on the debug APK from the same commit went straight to "Bonjour Camille"; alex on the audit APK went straight to Aujourd'hui |
+
 NOTICED BUT NOT TOUCHING
 N1 (LAUNCH BLOCKER for Android 15+ phones in 3-button navigation): every screen drawn outside the
    main shell's Scaffold ignores the system-bar insets. There is no WindowInsets / safeDrawing /
@@ -256,6 +299,19 @@ N7 (emulator, not the app): SystemUI crashed once (FATAL wmshell.main, NullPoint
    to MainActivity after the nav mode had been switched at runtime. Its own process, AOSP code.
 N8: PARK-E3 (onboarding's automatic choice never reaches the phone) is CONFIRMED at runtime on the
    emulator API 36 - still open.
+N9 (UNEXPLAINED, seen once): the FIRST sign-in on the minified audit build (camille, whose server
+   record is complete: GE, 100, SIMPLIFIED240, DAY, name set) went to onboarding step 1 with an
+   EMPTY name field - the shape of StartupDecider's MeFetch.Unreachable branch (fresh flow, no
+   prefill), although the server logged GET /api/v1/me 200 in 2 915 ms. It was the first request
+   burst after a dev-server restart (routes compiling) and the request order differed from the
+   good runs (me before entries). Not reproduced: alex on the same audit APK, and camille on the
+   debug APK, both resolved correctly. The release build strips logs, so the branch taken is not
+   proven, and R8 is neither proven nor ruled out. Worth one targeted run with a slow /me.
+N10 (API 31+): the offline export toast is cut at two lines on API 36 ("... puis rees..."): text
+   toasts are limited to two lines since Android 12, and the sentence is longer than that.
+N11: gesture-navigation back was NOT exercised: `input swipe` / `input motionevent` from the left
+   edge never produced a system back on either boot (both boots also showed a "System UI isn't
+   responding" dialog). The nav-bar Back tap and the 3-button long-press (predictive) were.
 
 DEVIATIONS
 - A `tail` of the dev-server log printed one GET /releve/print URL WITH its short-lived print
@@ -265,10 +321,32 @@ DEVIATIONS
 - `settings put system accelerometer_rotation 0` was set without reading its prior value first;
   user_rotation was returned to 0 and font_scale to 1.0.
 - The navigation mode was switched from gestural to 3-button for most of the pass (to measure
-  insets and to drive the nav-bar Back); it is restored at the end.
+  insets and to drive the nav-bar Back); restored to gestural at the end.
+- `pm clear-permission-flags ... user-fixed user-set` was used once on FINE/COARSE to undo the
+  "don't ask again" state the denial test had created, so that the grant could be driven through the
+  UI again (no `pm grant` was used anywhere).
+- The orchestrator's install on the emulator was replaced (uninstall wiped its data, as the launch
+  message allowed) and C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk was
+  reinstalled at the end (17:58:04 emulator time); it starts signed out.
+- Ruling number used: R1082 (the bytes-path transport fix). R1083-R1089 unused.
 
 QUESTIONS
-PENDING.
+Q1 (N1, launch blocker for Android 15+ phones in 3-button navigation): where should the inset
+   padding live - at the :app call sites in MainActivity (sign-in flow, onboarding, both disclosure
+   overlays, forecast, comparison), inside the :shared screens (iOS has its own safe areas), or a
+   shell-level wrapper - and what is the failing-first test (an instrumented check on the emulator,
+   or a Compose test)? It needs its own task.
+Q2 (N3): on a user sign-out, should the SamplingWorker be cancelled (stopSampling), or should the
+   worker gate itself on LoggingMode.AUTO_DETECT? Today it keeps its schedule with the mode cleared.
+Q3 (N2): should the export's read timeout stay 15 s now that a timeout reports a message instead
+   of crashing? The first cold render measured 14 993 ms locally.
+Q4 (R1081): which row of the decision table - stay on 1.3.5 / compileSdk 35 until the first upload
+   proves acceptance (operator, AN14b), or a throwaway-branch build probe of 2.0.0-alpha02 /
+   alpha04 on this toolchain first?
+Q5 (N5): Licences needs a back handler in :shared commonMain; Compose Multiplatform 1.7.3 has no
+   common BackHandler - an expect/actual in :shared, or route Licences through :app?
+Q6 (N9): one targeted run of the first sign-in against a slow /me on the minified build before
+   launch - which task owns it?
 
 PUSH PROOF
 PENDING.
