@@ -1,0 +1,225 @@
+REPORT-AN-RELEASE-VCS - Mon Releve
+Task: AN-RELEASE-VCS (relay/ORCH-ANDROID.txt step A2), prompt C:/wt/web-orch/relay/AN-RELEASE-VCS.txt
+Session: task session in worktree C:/wt/an-release-vcs, branch an-release-vcs, cut from
+origin/main 6f9dbc05979ebc7befa1e6ac6f8822116d60d363. Pushed as a branch; NOT merged (pending merge).
+Rulings used: R1100-R1102 (the prompt's). R1103-R1109 unused.
+
+======================================================================================================
+SUMMARY
+======================================================================================================
+- R1100 DONE - THE CAUSE IS NOT THE WORKTREE. AGP 8.10.1's ExtractVersionControlInfoTask (read in
+  its own source) looks for <Gradle rootDir>/.git/HEAD. The Gradle root is android/, and the
+  repository root is ITS PARENT, so android/.git exists in no checkout: the worktree, a
+  `git clone --local` with a real .git directory, and the main checkout all lack it. Measured: the
+  worktree build AND the clone build both carry NO_SUPPORTED_VCS_FOUND; a positive control with
+  android/ as its own git root names the commit. The worktree hypothesis predicted a different
+  string (NO_VALID_GIT_FOUND), and that string was measured too, in a worktree of the control.
+- R1101 DONE - A FIX, NOT A PROCEDURE. No AGP setting can redirect the lookup (both properties are
+  disallowChanges()), and the prompt's fallback ("build from a clone") was measured NOT to work.
+  The fix (android/app/build.gradle.kts): keep AGP's task and its wiring into the APK and the
+  bundle, and replace its output with AGP's own BuildStamp proto carrying `git rev-parse HEAD`
+  (the revision a declared input). The refusal: checkReleaseVcsInfo reads the BUILT release APK
+  and fails unless the textproto names exactly one 40-hex revision equal to `git rev-parse HEAD`;
+  it is in :app:gate. docs/play-release.md was NOT created (no procedure is needed; it is A5's file).
+- R1102 DONE on the APK built by :app:gate on the code tip (see PROOF). The refusal fired twice:
+  on the unfixed build (live, R178) and on a verified plant after the fix (R180).
+- :shared NOT changed (no R573 run owed, 0 macOS minutes). web/ NOT changed (no gate:clone owed).
+
+======================================================================================================
+STATUS (R391)
+======================================================================================================
+Code tip 47f8e6235008505147357f1a3fa6ba558cbea3ca: FULL :app:gate RAN in this session, under the
+heavy lock (commitFree 10015 MB at start) with the emulator shut down and `./gradlew --stop` first:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    BUILD SUCCESSFUL in 4m 50s   261 actionable tasks: 86 executed, 175 up-to-date   GATE_EXIT=0
+Executed in that run: assembleDebug, :app:testDebugUnitTest, verifyPaparazziDebug, lintDebug,
+assembleRelease, checkMinifiedWireContract, checkLicences, compileDebugAndroidTestKotlin,
+checkReleaseVcsInfo (OK, names 47f8e623). UP-TO-DATE in it, each green earlier in this session on
+the same inputs: :app:detekt, :app:ktlintCheck and the four :shared tasks (fastCheck, after the
+build-script change), :app:minifyReleaseWithR8 (run 1/the RED and GREEN runs; no Kotlin changed).
+STATUS: COMPLETE. GREEN on the code tip 47f8e623.
+The report tip moves HEAD past 47f8e623; the gate was not re-run on it (it adds only this file).
+gate:clone: not run, because web/ is unchanged (R199). R573: not owed, :shared unchanged.
+
+======================================================================================================
+R1100 - THE CAUSE, MEASURED
+======================================================================================================
+AGP's source (gradle-8.10.1-sources.jar, com/android/build/gradle/internal/tasks/
+ExtractVersionControlInfoTask.kt), CreationAction.configure:
+    val rootDir = creationConfig.services.projectInfo.rootDir
+    task.gitHeadFile.set(FileUtils.join(rootDir, ".git", "HEAD"))          ... disallowChanges()
+    task.gitRefsDir.set(FileUtils.join(rootDir, ".git", "refs", "heads"))  ... disallowChanges()
+doTaskAction: if <rootDir>/.git does not exist -> NO_SUPPORTED_VCS_FOUND; if .git/HEAD does not
+exist -> NO_VALID_GIT_FOUND; if HEAD is "ref: refs/heads/X" and the LOOSE file refs/heads/X does
+not exist -> NO_VALID_GIT_FOUND (packed-refs is never read); else revision = that sha. With
+vcsInfo.include unset these are written as generate_error_reason; with include = true it throws.
+PackageAndroidArtifact (APK) and PerModuleBundleTask (bundle, root/META-INF/) both consume this
+one artifact (InternalArtifactType.VERSION_CONTROL_INFO_FILE).
+
+The runs (AGP 8.10.1, Gradle 8.11.1, ANDROID_HOME set, emulator down, heavy lock held):
+1. WORKTREE. Path C:/wt/an-release-vcs (.git is a FILE), HEAD 6f9dbc05979ebc7befa1e6ac6f8822116d60d363.
+   `./gradlew :app:assembleRelease` -> BUILD SUCCESSFUL in 4m 50s.
+   unzip -p app/build/outputs/apk/release/app-release-unsigned.apk META-INF/version-control-info.textproto:
+       generate_error_reason: NO_SUPPORTED_VCS_FOUND
+2. CLONE. `git clone --local --no-checkout <main checkout> C:/wt/an-release-vcs-clone`, then
+   `git checkout --detach 6f9dbc05...` (.git is a DIRECTORY at the repository root; .git/HEAD
+   holds the bare sha; android/.git absent). `./gradlew :app:assembleRelease` -> BUILD SUCCESSFUL
+   in 3m 5s. The APK's textproto:
+       generate_error_reason: NO_SUPPORTED_VCS_FOUND
+   The worktree hypothesis is REFUTED: a non-worktree clone fails identically.
+3. POSITIVE CONTROL. `git archive 6f9dbc05 | tar -x -C C:/wt/an-release-vcs-ctl`, then in
+   C:/wt/an-release-vcs-ctl/android: `git init -b ctl`, commit -> 4069b3afb66f0378d9c4b321da91cd649c2b558f
+   (android/ is now itself a git root). `./gradlew :app:extractReleaseVersionControlInfo`, the
+   intermediate app/build/intermediates/version_control_info_file/release/
+   extractReleaseVersionControlInfo/version-control-info.textproto (120 bytes):
+       repositories {
+         system: GIT
+         local_root_path: "$PROJECT_DIR"
+         revision: "4069b3afb66f0378d9c4b321da91cd649c2b558f"
+       }
+   AGP names the commit when the Gradle root IS the git root - the cause is the root-dir lookup.
+4. WORKTREE OF THE CONTROL. `git worktree add C:/wt/an-release-vcs-ctlwt` (from the control repo,
+   so the Gradle root is the worktree root, .git a file). Same task:
+       generate_error_reason: NO_VALID_GIT_FOUND
+   So a worktree WOULD also defeat AGP, but with this string, not the one every APK carried.
+5. PACKED REFS. In the control: `git pack-refs --all` (refs/heads now empty, packed-refs holds
+   ctl), same task:
+       generate_error_reason: NO_VALID_GIT_FOUND
+   Even a plain checkout loses the commit after a gc. Reading .git by hand is the fragile part,
+   which is why the fix asks git (`git rev-parse HEAD`) instead.
+
+======================================================================================================
+R1101 - THE FIX AND THE REFUSAL (test first)
+======================================================================================================
+All in android/app/build.gradle.kts, code commit 47f8e6235008505147357f1a3fa6ba558cbea3ca.
+- THE CHECK FIRST: tasks.register("checkReleaseVcsInfo"), dependsOn assembleRelease (R182). Reads
+  META-INF/version-control-info.textproto out of the built release APK; HEAD from
+  `git rev-parse HEAD` at execution time (R171); fails on a missing entry, any
+  generate_error_reason, a revision count != 1, or a revision != HEAD; a HEAD that is not 40-hex is
+  NO RESULT and fails. RED on the unfixed build (live instance, R178), HEAD 6f9dbc05:
+      > Task :app:checkReleaseVcsInfo FAILED
+      HEAD (git rev-parse HEAD): 6f9dbc05979ebc7befa1e6ac6f8822116d60d363
+      revision(s) in the APK:    []
+      generate_error_reason:     NO_SUPPORTED_VCS_FOUND
+      BUILD FAILED in 11s
+- THE FIX: tasks.named { it.startsWith("extract") && it.endsWith("VersionControlInfo") }
+  .configureEach { inputs.property("gitRevParseHead", <git rev-parse HEAD provider>); doLast {...} }.
+  The doLast asserts exactly one output file (R211) and overwrites it with
+  TextFormat.printer().printToString(BuildStamp(RepositoryInfo(GIT, "$PROJECT_DIR", head))) - AGP's
+  own proto classes and printer, so the format is AGP's by construction (R181). Byte check: the APK
+  entry is 120 bytes and its od -c dump is identical to the control's (run 3) except the sha.
+  Matched by name it covers extractReleaseVersionControlInfo and extractAuditVersionControlInfo
+  (audit is non-debuggable via initWith). If git prints no 40-hex sha, AGP's error output is left
+  and the check refuses. If a future AGP renames the task, nothing matches and the check refuses
+  (the plant below is exactly that case).
+- GREEN, same tree before commit: checkReleaseVcsInfo OK, HEAD 6f9dbc05..., BUILD SUCCESSFUL in 9s.
+- STALENESS: the task's own inputs are paths under android/.git that never exist, so without the
+  declared revision input it would stay UP-TO-DATE after a commit. Proved: after committing
+  47f8e623, `./gradlew :app:checkReleaseVcsInfo` with NO clean re-ran
+  :app:extractReleaseVersionControlInfo and the APK now reads revision: "47f8e6235008505147357f1a3fa6ba558cbea3ca"
+  (BUILD SUCCESSFUL in 3s, 5 executed).
+- WIRED: "checkReleaseVcsInfo" added to :app:gate's dependsOn and to its printed RAN list.
+- fastCheck after the change: BUILD SUCCESSFUL in 2m 2s (108 actionable tasks), including
+  :app:ktlintKotlinScriptCheck over the build script.
+
+======================================================================================================
+R1102 - PROOF ON A BUILT APK
+======================================================================================================
+THE DOCUMENTED PATH is the gate itself (no separate procedure): :app:gate on the code tip built
+app-release-unsigned.apk (unsigned, R250; sha256 31350b17a665ce5757ef7f7b9ec413d8d28df34a0010671c4ed41881a20ad1e1)
+and checkReleaseVcsInfo printed:
+    checkReleaseVcsInfo OK: the built release APK names HEAD 47f8e6235008505147357f1a3fa6ba558cbea3ca
+    in META-INF/version-control-info.textproto
+Read again by hand after the gate, `unzip -p ... META-INF/version-control-info.textproto`:
+    repositories {
+      system: GIT
+      local_root_path: "$PROJECT_DIR"
+      revision: "47f8e6235008505147357f1a3fa6ba558cbea3ca"
+    }
+`git rev-parse HEAD` at that moment: 47f8e6235008505147357f1a3fa6ba558cbea3ca (equal; R171).
+That is the CODE tip. The report commit that follows is a later HEAD that no APK was built from.
+
+THE REFUSAL ON A BUILD THAT LACKS IT, after the fix (plant, R180): one line changed,
+    -tasks.named { it.startsWith("extract") && it.endsWith("VersionControlInfo") }.configureEach {
+    +tasks.named { it.startsWith("extract") && it.endsWith("VersionControlInfoPLANT") }.configureEach {
+verified landed by `git diff` (1 file, 1+/1-, that line). `./gradlew :app:checkReleaseVcsInfo`:
+:app:extractReleaseVersionControlInfo re-ran, the APK's textproto read
+    generate_error_reason: NO_SUPPORTED_VCS_FOUND
+and the check failed (EXIT=1, "checkReleaseVcsInfo FAILED (R1101)", HEAD 47f8e623..., revision(s)
+[]). Reverted; `git diff --quiet` exit 0 (tree equal to 47f8e623) before the gate ran.
+THE MISMATCH BRANCH (second plant): on a scratch branch arv-plant-mismatch, an empty commit
+097c438f45c95d39c48315b18462de58b3b93383 moved HEAD without rebuilding; then
+`./gradlew :app:checkReleaseVcsInfo -x assembleRelease` read the gate's APK:
+    > Task :app:checkReleaseVcsInfo FAILED
+    HEAD (git rev-parse HEAD): 097c438f45c95d39c48315b18462de58b3b93383
+    revision(s) in the APK:    [47f8e6235008505147357f1a3fa6ba558cbea3ca]
+    generate_error_reason:     (none)
+    BUILD FAILED in 2s
+Then `git checkout an-release-vcs` (HEAD back to 47f8e623, porcelain clean but this report) and
+the local scratch branch deleted (never pushed).
+
+======================================================================================================
+NOTICED BUT NOT TOUCHING
+======================================================================================================
+N1. Equality with HEAD says nothing about UNCOMMITTED changes in the tree that was built. The
+    gate's R393 refuses unstaged edits to tracked files, but a plain assembleRelease/bundleRelease
+    outside the gate does not, and untracked files are never refused. AGP's own mechanism has the
+    same blind spot. A release build for distribution should be made from a clean tree; no rule
+    says so yet (see Q2).
+N2. The bundle is NOT proved. The Play upload is an .aab (bundleRelease); AGP feeds the same
+    artifact into PerModuleBundleTask (root/META-INF/), so the fix should reach it, but no bundle
+    was built in this session and checkReleaseVcsInfo reads only the APK.
+N3. vcsInfo { include = true } would make AGP THROW instead of writing the error reason - in this
+    layout it would always throw, so it is not the refusal; checkReleaseVcsInfo is.
+N4. The fix depends on AGP internals: the task-name pattern and com.android.tools.idea.insights.proto
+    classes on the build-script classpath. An AGP change that renames the task is caught by the
+    check (planted above); one that removes the proto classes fails the build script's compilation.
+N5. Every release/audit APK built BEFORE this commit carries NO_SUPPORTED_VCS_FOUND, including the
+    five C4 recorded; nothing here changes them.
+
+======================================================================================================
+DEVIATIONS
+======================================================================================================
+D1. The fix is a build-script override of an AGP task's OUTPUT (a doLast), not an AGP "setting":
+    AGP 8.10.1 has no setting for where it looks. The prompt's procedure branch ("builds from a
+    clone") was measured not to work (run 2), so neither branch fit as written; this is the
+    smallest change that makes a worktree build carry the commit. No dependency and no AGP/Gradle
+    version changed.
+D2. Runs 3-5 read AGP's intermediate output (:app:extractReleaseVersionControlInfo alone), not an
+    APK, to keep the controls cheap. Runs 1, 2 and every proof run read the built APK.
+
+======================================================================================================
+QUESTIONS
+======================================================================================================
+Q1. Does a newer AGP look for .git above the Gradle root (or use git itself)? One web search found
+    nothing; not answered here. If one does, this override could be removed - but that is an AGP
+    version change, the orchestrator's.
+Q2. Should a release built for distribution refuse a DIRTY tree (N1), and should the bundle get its
+    own built-artifact check (N2)? Both are A5/AN15 questions; neither was decided here.
+
+======================================================================================================
+CLEANUP
+======================================================================================================
+- Removed my own scratch directories C:/wt/an-release-vcs-clone, C:/wt/an-release-vcs-ctl and
+  C:/wt/an-release-vcs-ctlwt (each held this session's lock or was this session's worktree of its
+  own control repo; nothing else was in them). The local scratch branch arv-plant-mismatch was
+  deleted (never pushed).
+- `./gradlew --stop`; heavy lock RELEASED (2026-11-19T15:52:52Z).
+- Emulator (emulator API 36, MonReleve_API36) was shut down for the heavy steps and booted again
+  detached with the prompt's command; sys.boot_completed = 1; ch.monreleve.app still installed,
+  versionName 0.1.0, lastUpdateTime 2026-11-19 15:23:08 - unchanged from before the shutdown.
+  Nothing was installed or uninstalled on it.
+- The orchestrator's dev server on 3900 and ports 3000/3100/3200 were not touched.
+- Session lock C:/wt/an-release-vcs/.session-lock.json is removed LAST, after the report push.
+
+======================================================================================================
+PUSH PROOF
+======================================================================================================
+Code: `git push -u origin an-release-vcs` -> "* [new branch] an-release-vcs -> an-release-vcs";
+`git ls-remote origin refs/heads/an-release-vcs` -> 47f8e6235008505147357f1a3fa6ba558cbea3ca.
+Report: this file is committed on top of 47f8e623 and pushed to the same branch after this line is
+written; the resulting remote sha is stated in the session's hand-back, not here (a report states
+only what has happened). NOT merged - pending merge by the orchestrator.
+R-numbers re-scanned before pushing (relay/ and REPORT-*.txt in this worktree, C:/wt/web-orch and
+the main checkout): R1100-R1109 appear only in the prompt and ORCH-ANDROID.txt.
+END OF REPORT-AN-RELEASE-VCS
