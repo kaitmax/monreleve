@@ -246,6 +246,18 @@ tasks.withType<Test>().configureEach {
     inputs.dir(rootProject.layout.projectDirectory.dir("app/src/main/kotlin"))
         .withPropertyName("appMainSourceForTwins")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-SHARED-FIXES R1092 (R283): FilenameOfServerNamesTest derives every export filename the server sends from
+    // web/'s own source - each content-disposition template under web/app and web/lib, and the csvFilename names
+    // web/'s csv.test.ts expects - so a server rename must re-run it rather than leave this task UP-TO-DATE.
+    inputs.dir(rootProject.layout.projectDirectory.dir("../web/app"))
+        .withPropertyName("webRoutesForFilenames")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("../web/lib"))
+        .withPropertyName("webLibForFilenames")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.layout.projectDirectory.file("../web/tests/unit/export/csv.test.ts"))
+        .withPropertyName("webCsvFilenameExpectations")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 android {
