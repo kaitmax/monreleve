@@ -111,7 +111,7 @@ class SessionManagerTest : FunSpec({
         runTest {
             val session =
                 manager(RoutingTransport(onGet = { HttpResponse(200, "settings") }), MutableTokenStore(pair("v1")))
-            session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.Ok("settings")
+            session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.Ok(200, "settings")
         }
     }
 
@@ -129,7 +129,7 @@ class SessionManagerTest : FunSpec({
                     },
                 )
             val session = manager(transport, MutableTokenStore(pair("v1")))
-            session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.Ok("settings")
+            session.authenticatedGet("/api/v1/me") shouldBe AuthedOutcome.Ok(200, "settings")
             transport.refreshCount.get() shouldBe 1
         }
     }

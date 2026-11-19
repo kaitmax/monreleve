@@ -1,5 +1,6 @@
 package ch.monreleve.app.onboarding
 
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.mePatchBody
@@ -14,14 +15,17 @@ import kotlinx.coroutines.CoroutineScope
 // sites unedited and hands in the same org.json Settings.mePatchBody the controller called before - the same function,
 // so the same bytes on the wire (MeWire.kt, PARK-D3). Named for what it holds, not OnboardingController.kt.
 
+// LongParameterList: AN-SIGNIN-RESOLVE (R1162) added onModeSaved, the sixth - the class's own constructor, mirrored.
+
 /** The shared OnboardingController, saving through org.json's PATCH /me body (MeWire.kt). */
-@Suppress("FunctionNaming", "ktlint:standard:function-naming")
+@Suppress("FunctionNaming", "ktlint:standard:function-naming", "LongParameterList")
 fun OnboardingController(
     saver: SettingsSaver,
     store: SettingsStore,
     taxYear: Int,
     scope: CoroutineScope,
     restored: OnboardingSnapshot? = null,
+    onModeSaved: (LoggingMode) -> Unit,
 ): OnboardingController =
     OnboardingController(
         saver = saver,
@@ -30,4 +34,5 @@ fun OnboardingController(
         scope = scope,
         restored = restored,
         patchBody = Settings::mePatchBody,
+        onModeSaved = onModeSaved,
     )

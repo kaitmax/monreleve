@@ -5,6 +5,7 @@ import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
 import ch.monreleve.app.data.remote.TransportException
+import ch.monreleve.app.settings.Settings
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -34,6 +35,29 @@ import java.net.URLDecoder
 // :app's tests have.
 
 internal const val TOKEN_SERVER_BASE = "http://127.0.0.1:3000"
+
+/** A brand-new account's employment rate (schema.prisma: employmentRate Int @default(100)). */
+private const val NEW_ACCOUNT_RATE = 100
+
+/**
+ * R521 / AN-SIGNIN-RESOLVE R1161: GET /api/v1/me's body as serialiseMe writes it (lib/me/read.ts) - every key, null or
+ * not. [settings] null is a BRAND-NEW account: the schema's defaults and no canton, which is the one positive answer
+ * that the settings are absent. Moved here from ForcedSignOutTest (its meOf) so the fake's unscripted /me and the
+ * tests' scripted ones are one function, not two literals.
+ */
+internal fun meBody(settings: Settings?): JSONObject =
+    JSONObject()
+        .put("name", settings?.name ?: JSONObject.NULL)
+        .put("canton", settings?.canton ?: JSONObject.NULL)
+        .put("employmentRate", settings?.employmentRate ?: NEW_ACCOUNT_RATE)
+        .put("denominatorKind", settings?.denominatorKind ?: "SIMPLIFIED240")
+        .put("exactTotalWorkDays", settings?.exactTotalWorkDays ?: JSONObject.NULL)
+        .put("granularity", settings?.granularity ?: "DAY")
+        .put("activityStartDate", settings?.activityStartDate ?: JSONObject.NULL)
+        .put("reminderTime", JSONObject.NULL)
+        .put("reminderEnabled", false)
+        .put("loggingMode", "MANUAL")
+        .put("detectionConsentAt", JSONObject.NULL)
 
 private const val HTTP_OK = 200
 private const val HTTP_UNAUTHORIZED = 401
@@ -125,6 +149,14 @@ internal class TokenServer(
      */
     var refreshFault: RefreshFault? = null
 
+    /**
+     * AN-SIGNIN-RESOLVE (R1161): what GET /api/v1/me meets instead of its answer. [RefreshFault.Unreachable] never
+     * arrives (R1160's measured case: the network changed under the request); [RefreshFault.Answer] is given AFTER the
+     * token checks, so an expired access token still meets its 401 first and the refresh-then-retry path is the one
+     * that receives it. Null: the account's row, or a brand-new account's.
+     */
+    var meFault: RefreshFault? = null
+
     /** Open a session for [account] and issue its first pair - issueTokenPair, and what the code exchange does. */
     fun openSession(account: String): TokenPair {
         val id = sessions.size + 1
@@ -194,6 +226,8 @@ internal class TokenServer(
         // R526: a refresh while the server cannot answer it - nothing arrives, or something else answers.
         val fault = refreshFault.takeIf { path == "/api/v1/auth/refresh" }
         if (fault is RefreshFault.Unreachable) throw TransportException("unreachable (R526)", fault.cause)
+        val meDown = meFault.takeIf { path == "/api/v1/me" }
+        if (meDown is RefreshFault.Unreachable) throw TransportException("unreachable (R1161)", meDown.cause)
         requests += "${request.method} ${path.substringBefore('?')}"
         // Decided NOW, answered after the latency (see the header).
         val response = (fault as? RefreshFault.Answer)?.response ?: decide(request, path)
@@ -306,10 +340,12 @@ internal class TokenServer(
     ): HttpResponse =
         when {
             path.startsWith("/api/v1/entries?year=") -> year(session.account, path.substringAfter("?year=").toInt())
-            // R521: the account's settings, flat as serialiseMe writes them - or, for an account that has none, the
-            // body every earlier test was given (no canton: onboarding).
+            // R521: the account's settings, flat as serialiseMe writes them - or, for an account that has none, what
+            // the server answers a brand-new account (AN-SIGNIN-RESOLVE R1161: a real /me answer with canton null, not
+            // the {"status":"ok"} this used to give, which is no /me answer at all and now reads as Unresolved).
             path == "/api/v1/me" ->
-                HttpResponse(HTTP_OK, meByAccount[session.account]?.toString() ?: """{"status":"ok"}""")
+                (meFault as? RefreshFault.Answer)?.response
+                    ?: HttpResponse(HTTP_OK, (meByAccount[session.account] ?: meBody(null)).toString())
             path.startsWith("/api/v1/dossier?year=") ->
                 dossiersByAccount[session.account]?.get(path.substringAfter("?year=").toInt())
                     ?.let { HttpResponse(HTTP_OK, it) }

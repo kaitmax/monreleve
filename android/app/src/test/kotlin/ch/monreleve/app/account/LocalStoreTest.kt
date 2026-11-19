@@ -147,7 +147,7 @@ class LocalStoreTest : FunSpec({
             // decision. The pending sign-in is not R297's subject and is kept.
             f.settings.load() shouldBe null
             f.pending.pending().shouldNotBeNull()
-            // R315: the detection mode cache is cleared too (restored from /me on re-sign-in).
+            // R315: the detection mode cache is cleared too (restored from /me at the next sign-in's RESOLVING, R1162).
             f.detectionMode.load() shouldBe LoggingMode.MANUAL
         }
     }

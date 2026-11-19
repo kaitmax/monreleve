@@ -7,6 +7,7 @@ import ch.monreleve.app.calc.Canton
 import ch.monreleve.app.calc.ValidationError
 import ch.monreleve.app.calc.calculateTelework
 import ch.monreleve.app.dossier.toTeleworkInput
+import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.toAggregatableUser
@@ -136,12 +137,17 @@ interface SettingsSaver {
 
 private const val ME_PATH = "/api/v1/me"
 
+/** The statuses that mean the server took the PATCH. */
+private val HTTP_SUCCESS = 200..299
+
 class SessionSettingsSaver(private val session: SessionManager) : SettingsSaver {
     override suspend fun saveSettings(body: String): PostOutcome = session.authenticatedPatch(ME_PATH, body)
 }
 
 // One setter per field plus the wizard navigation and the save - a cohesive state holder for one flow.
-@Suppress("TooManyFunctions")
+// LongParameterList: AN-SIGNIN-RESOLVE (R1162) added onModeSaved, the eighth. Each is a seam the host fills (the
+// saver, the store, the codec, the mode hand-off); bundling them into a holder would only rename the list.
+@Suppress("TooManyFunctions", "LongParameterList")
 class OnboardingController(
     private val saver: SettingsSaver,
     private val store: SettingsStore,
@@ -151,6 +157,9 @@ class OnboardingController(
     // IOS-2b R778: the PATCH /me body is made by a function handed in, so the controller holds no codec. No default:
     // a call that does not name one is :app's factory, which hands in org.json's mePatchBody.
     private val patchBody: (Settings) -> String,
+    // AN-SIGNIN-RESOLVE (R1162): told the mode the server now holds after it ACCEPTED an automatic choice. No default,
+    // for patchBody's reason: a construction that forgets it is a phone that never learns its own mode (PARK-E3).
+    private val onModeSaved: (LoggingMode) -> Unit,
 ) {
     private val mutableState =
         MutableStateFlow(
@@ -255,8 +264,16 @@ class OnboardingController(
         val settings = buildSettings(current) ?: return
         mutableState.update { it.copy(phase = OnboardingPhase.SUBMITTING, error = null) }
         scope.launch {
-            when (saver.saveSettings(patchBody(settings))) {
+            when (val outcome = saver.saveSettings(patchBody(settings))) {
                 is PostOutcome.Ok -> {
+                    // AN-SIGNIN-RESOLVE (R1162, PARK-E3): the automatic choice the server has just ACCEPTED reaches the
+                    // phone - the host saves the mode and starts the sampler where the permission is held. Before the
+                    // settings are cached: cached settings send the next launch past RESOLVING, which would otherwise
+                    // be the only other place the mode is restored. A manual choice sends no mode, so the server's
+                    // value - restored at RESOLVING - stands and nothing is handed on.
+                    if (outcome.status in HTTP_SUCCESS && settings.loggingMode == LoggingMode.AUTO_DETECT.name) {
+                        onModeSaved(LoggingMode.AUTO_DETECT)
+                    }
                     store.save(settings)
                     mutableState.update { it.copy(phase = OnboardingPhase.READY) }
                 }

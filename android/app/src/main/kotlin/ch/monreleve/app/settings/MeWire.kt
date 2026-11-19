@@ -62,11 +62,12 @@ fun Settings.mePatchBody(): String =
 
 /**
  * R297. Parse a GET /api/v1/me body into the six manual Settings, or null when the account has no settings on
- * the server yet (which sends the person to onboarding). Presence keys on `canton`: it is the one field with
+ * the server yet. Presence keys on `canton`: it is the one field with
  * no sensible server default, so a body without it is a not-yet-onboarded account. Reads ONLY the six manual
- * fields (R282): reminderTime, reminderEnabled, loggingMode and detectionConsentAt are ignored. Null follows
- * DossierPayload's convention (isNull, never optString, which coerces a JSON null to the string "null"). A
- * malformed body yields null - the safe direction is onboarding, never a crash. This is the READ counterpart
+ * fields (R282): reminderTime, reminderEnabled, loggingMode and detectionConsentAt are ignored (the mode has its own
+ * reader, parseLoggingMode). Null follows DossierPayload's convention (isNull, never optString, which coerces a JSON
+ * null to the string "null"). A malformed body yields null, never a crash - and AN-SIGNIN-RESOLVE (R1161) made null
+ * mean "no answer" to StartupDecider (Unresolved, a retry), no longer onboarding. This is the READ counterpart
  * of mePatchBody above; both live here so the /api/v1/me vocabulary has one home (R206).
  */
 fun parseMeSettings(body: String): Settings? =
@@ -85,7 +86,7 @@ fun parseMeSettings(body: String): Settings? =
         )
     }.getOrNull()
 
-/** Parse a /me body into a MeView, tolerating any absent field; a malformed body yields null (safe: onboarding). */
+/** Parse a /me body into a MeView, tolerating any absent field; a malformed body yields null (R1161: Unresolved). */
 fun parseMeView(body: String): MeView? =
     runCatching {
         val json = JSONObject(body)
@@ -99,6 +100,16 @@ fun parseMeView(body: String): MeView? =
             activityStartDate = json.stringOrNull("activityStartDate"),
         )
     }.getOrNull()
+
+/**
+ * AN-SIGNIN-RESOLVE (R1161). Whether [body] is recognisably a GET /api/v1/me ANSWER - a JSON object carrying the keys
+ * serialiseMe writes on every answer, null or not (lib/me/read.ts). Two are asked for: "canton", because its JSON
+ * null is the one positive answer that the settings are absent (an account that never onboarded), and "loggingMode",
+ * which RESOLVING restores (R1162). An error body ({"status":"error",...}), {} or anything not JSON is not an
+ * answer, so it can never read as a brand-new account and send a returning person to an empty onboarding.
+ */
+fun isMeAnswer(body: String): Boolean =
+    runCatching { JSONObject(body).let { it.has("canton") && it.has("loggingMode") } }.getOrDefault(false)
 
 /** DossierPayload's convention: a JSON null (or an absent key) reads as null, never the literal string "null". */
 internal fun JSONObject.stringOrNull(key: String): String? = if (!has(key) || isNull(key)) null else getString(key)

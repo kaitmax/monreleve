@@ -60,7 +60,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.json.JSONObject
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.time.Clock
@@ -89,21 +88,6 @@ private val CLOCK: Clock = Clock.fixed(Instant.parse("2026-10-22T10:00:00Z"), Zo
 
 // R521: A's settings are COMPLETE (a name included), as an onboarded account's are - so a launch on them is MAIN.
 private val SETTINGS = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null, name = "Camille Rey")
-
-/** R521: the six manual settings and the name, as GET /api/v1/me serialises a complete row (lib/me/read.ts). */
-private fun meOf(settings: Settings): JSONObject =
-    JSONObject()
-        .put("name", settings.name)
-        .put("canton", settings.canton)
-        .put("employmentRate", settings.employmentRate)
-        .put("denominatorKind", settings.denominatorKind)
-        .put("exactTotalWorkDays", settings.exactTotalWorkDays ?: JSONObject.NULL)
-        .put("granularity", settings.granularity)
-        .put("activityStartDate", settings.activityStartDate ?: JSONObject.NULL)
-        .put("reminderTime", JSONObject.NULL)
-        .put("reminderEnabled", false)
-        .put("loggingMode", "MANUAL")
-        .put("detectionConsentAt", JSONObject.NULL)
 
 /** R521: a dossier body the app parses - DossierApiTest's, with the titulaire and year this test names. */
 private fun dossierBody(
@@ -844,7 +828,7 @@ class ForcedSignOutTest : FunSpec({
     test("R521 - the SAME account signs back in: its settings come back from /me, its releve from the server") {
         runTest {
             val device = Device(this)
-            device.server.holdSettings(EMAIL_A, meOf(SETTINGS))
+            device.server.holdSettings(EMAIL_A, meBody(SETTINGS))
             device.server.holdDossier(EMAIL_A, TAX_YEAR, dossierBody("Camille Rey"))
             device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
             val held = device.heldMutation()
@@ -856,7 +840,11 @@ class ForcedSignOutTest : FunSpec({
             advanceUntilIdle()
             // RESOLVING, as MainActivity runs it after a code sign-in, then the Releve's first load.
             val decision =
-                decideStartAfterSignIn({ meFetchOf(device.session.authenticatedGet(ME_PATH)) }, device.settings)
+                decideStartAfterSignIn(
+                    { meFetchOf(device.session.authenticatedGet(ME_PATH)) },
+                    device.settings,
+                    device.detectionMode::save,
+                )
             val releve = DossierApi(device.session::authenticatedGet, device.cache).fetch(TAX_YEAR)
 
             signIn.state.value.phase shouldBe CodePhase.SIGNED
@@ -873,7 +861,7 @@ class ForcedSignOutTest : FunSpec({
         runTest {
             val device = Device(this)
             val settingsB = Settings("VD", 80, "SIMPLIFIED240", null, "HALF_DAY", null, name = "Dominique Bovet")
-            device.server.holdSettings(EMAIL_B, meOf(settingsB))
+            device.server.holdSettings(EMAIL_B, meBody(settingsB))
             device.server.holdDossier(EMAIL_B, TAX_YEAR, dossierBody("Dominique Bovet"))
             device.repository.record(RecordCommand(dayDate = DAY, kind = EntryKind.HOME))
             device.anotherHolderRotatesFirst()
@@ -884,7 +872,11 @@ class ForcedSignOutTest : FunSpec({
             // OFFLINE before B's releve arrives: no copy at all - A's was cleared, so none is offered as B's (R288).
             DossierApi({ AuthedOutcome.NetworkError }, device.cache).fetch(TAX_YEAR) shouldBe DossierResult.NetworkError
             val decision =
-                decideStartAfterSignIn({ meFetchOf(device.session.authenticatedGet(ME_PATH)) }, device.settings)
+                decideStartAfterSignIn(
+                    { meFetchOf(device.session.authenticatedGet(ME_PATH)) },
+                    device.settings,
+                    device.detectionMode::save,
+                )
             val releve = DossierApi(device.session::authenticatedGet, device.cache).fetch(TAX_YEAR)
 
             decision shouldBe StartDecision.Main
@@ -904,7 +896,11 @@ class ForcedSignOutTest : FunSpec({
             device.signInByCode(EMAIL_B, this)
             advanceUntilIdle()
             val decision =
-                decideStartAfterSignIn({ meFetchOf(device.session.authenticatedGet(ME_PATH)) }, device.settings)
+                decideStartAfterSignIn(
+                    { meFetchOf(device.session.authenticatedGet(ME_PATH)) },
+                    device.settings,
+                    device.detectionMode::save,
+                )
 
             decision.shouldBeInstanceOf<StartDecision.Onboard>()
             device.settings.load() shouldBe null

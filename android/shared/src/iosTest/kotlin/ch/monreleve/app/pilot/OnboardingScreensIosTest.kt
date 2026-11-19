@@ -104,7 +104,10 @@ private fun OnboardingHost(
     onDone: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val controller = remember { OnboardingController(saver, store, TAX_YEAR, scope, patchBody = ::fakeBody) }
+    val controller =
+        remember {
+            OnboardingController(saver, store, TAX_YEAR, scope, patchBody = ::fakeBody, onModeSaved = {})
+        }
     val state by controller.state.collectAsState()
     FrontierTheme {
         if (state.phase == OnboardingPhase.READY) {

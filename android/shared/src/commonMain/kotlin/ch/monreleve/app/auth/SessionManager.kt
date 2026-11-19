@@ -42,7 +42,11 @@ sealed interface RefreshOutcome {
 }
 
 sealed interface AuthedOutcome {
-    data class Ok(val body: String) : AuthedOutcome
+    /**
+     * Any answer but a 401. AN-SIGNIN-RESOLVE (R1161): it carries the STATUS, as PostOutcome.Ok does - before, a 500's
+     * error body reached GET /me's reader as if it were the account's settings, and read as a brand-new account.
+     */
+    data class Ok(val status: Int, val body: String) : AuthedOutcome
 
     /** Access expired and the refresh failed: an ordinary lapse - "session expirée". */
     data object SessionExpired : AuthedOutcome
@@ -185,7 +189,7 @@ class SessionManager(
      */
     suspend fun authenticatedGet(path: String): AuthedOutcome =
         when (val attempt = attempt { token -> api.authenticatedGet(path, token) }) {
-            is Attempt.Ok -> AuthedOutcome.Ok(attempt.value)
+            is Attempt.Ok -> AuthedOutcome.Ok(attempt.status, attempt.value)
             Attempt.SessionExpired -> AuthedOutcome.SessionExpired
             Attempt.SessionEnded -> AuthedOutcome.SessionEnded
             Attempt.NoSession -> AuthedOutcome.NoSession

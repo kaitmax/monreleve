@@ -69,7 +69,7 @@ class DossierApiTest : FunSpec({
     test("a 200 body is parsed, returned, and cached (R288)") {
         runTest {
             val cache = FakeCache()
-            val api = DossierApi(get = { AuthedOutcome.Ok(VALID_BODY) }, cache = cache)
+            val api = DossierApi(get = { AuthedOutcome.Ok(200, VALID_BODY) }, cache = cache)
 
             val result = api.fetch(YEAR).shouldBeInstanceOf<DossierResult.Loaded>()
             result.document.titulaire shouldBe "Camille Rey"
@@ -98,7 +98,7 @@ class DossierApiTest : FunSpec({
     test("an unparseable 200 is Unreadable and is NOT cached") {
         runTest {
             val cache = FakeCache()
-            val api = DossierApi(get = { AuthedOutcome.Ok("this is not json") }, cache = cache)
+            val api = DossierApi(get = { AuthedOutcome.Ok(200, "this is not json") }, cache = cache)
 
             api.fetch(YEAR) shouldBe DossierResult.Unreadable
             cache.store.containsKey(YEAR) shouldBe false
@@ -154,9 +154,9 @@ class DossierApiTest : FunSpec({
             cache.markStale(YEAR)
             DossierApi(get = { AuthedOutcome.NetworkError }, cache = cache).fetch(YEAR)
             cache.isStale(YEAR) shouldBe true
-            DossierApi(get = { AuthedOutcome.Ok("this is not json") }, cache = cache).fetch(YEAR)
+            DossierApi(get = { AuthedOutcome.Ok(200, "this is not json") }, cache = cache).fetch(YEAR)
             cache.isStale(YEAR) shouldBe true
-            DossierApi(get = { AuthedOutcome.Ok(VALID_BODY) }, cache = cache).fetch(YEAR)
+            DossierApi(get = { AuthedOutcome.Ok(200, VALID_BODY) }, cache = cache).fetch(YEAR)
             cache.isStale(YEAR) shouldBe false
         }
     }

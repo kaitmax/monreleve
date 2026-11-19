@@ -64,7 +64,9 @@ class DeviceLocalStore(
         clearExports()
         // R297: the settings go too. Restored from GET /api/v1/me on the next sign-in (StartupDecider).
         settingsStore.clear()
-        // R315: the detection mode cache goes too, restored from /me on the next sign-in. No account on a
+        // R315: the detection mode cache goes too. Android restores it from /me at the next sign-in's RESOLVING
+        // (AN-SIGNIN-RESOLVE R1162: AUTO_DETECT only with the consent stamp AND the location permission held, MANUAL
+        // otherwise); until then - and on a platform that does not restore it - it reads MANUAL. No account on a
         // shared device inherits the previous person's AUTO_DETECT.
         detectionModeStore.clear()
         // AN-FIX F4 / R303: the account tag goes too, so no stale scope outlives the record it scoped.
