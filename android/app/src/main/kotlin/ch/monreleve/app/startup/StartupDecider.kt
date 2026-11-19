@@ -6,6 +6,7 @@ import ch.monreleve.app.onboarding.OnboardingPlan
 import ch.monreleve.app.onboarding.OnboardingSnapshot
 import ch.monreleve.app.onboarding.onboardingPlanFor
 import ch.monreleve.app.settings.LoggingMode
+import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.isMeAnswer
 import ch.monreleve.app.settings.parseLoggingMode
@@ -82,50 +83,59 @@ sealed interface MeFetch {
 private const val HTTP_OK = 200
 
 /**
+ * R1161: what RESOLVING concluded from ONE /me outcome - where the person goes, and what the phone writes: the
+ * server's logging mode (R1162) and the settings. Null means "write nothing". A value, so every branch is asserted on
+ * what it decides (ResolveStartTest) and the writes happen in one place, in one order (decideStartAfterSignIn).
+ */
+data class Resolution(
+    val decision: StartDecision,
+    val mode: LoggingMode? = null,
+    val settings: Settings? = null,
+)
+
+/**
+ * R1161: THE DECISION, PURE. Anything that is not a 200 /me answer (isMeAnswer) that both readers can read is
+ * Unresolved and writes nothing; a complete account is Main with its mode and its settings; an incomplete one is
+ * Onboard over the steps it is missing (R335) with the server's mode and NO settings; a gone session is SignIn.
+ */
+fun resolveStart(outcome: MeFetch): Resolution =
+    when (outcome) {
+        is MeFetch.Ok -> resolveAnswer(outcome)
+        MeFetch.SessionGone -> Resolution(StartDecision.SignIn)
+        MeFetch.Unreachable -> Resolution(StartDecision.Unresolved(UnresolvedCause.UNREACHABLE))
+    }
+
+private fun resolveAnswer(outcome: MeFetch.Ok): Resolution {
+    val unreadable = Resolution(StartDecision.Unresolved(UnresolvedCause.UNREADABLE))
+    val view = parseMeView(outcome.body)
+    if (outcome.status != HTTP_OK || !isMeAnswer(outcome.body) || view == null) return unreadable
+    val mode = parseLoggingMode(outcome.body)
+    return when (val plan = onboardingPlanFor(view)) {
+        // Complete means every field is present; the strict reader still has the last word, so a body it refuses
+        // leaves the phone exactly as it was. Restored, Aujourd'hui computes offline and nobody re-onboards.
+        OnboardingPlan.Complete ->
+            parseMeSettings(outcome.body)?.let { Resolution(StartDecision.Main, mode, it) } ?: unreadable
+        // A partial account's onboarding never asks the mode (Completeness.kt), so the server's stands - restored here;
+        // a brand-new account's is the server's MANUAL default.
+        is OnboardingPlan.Onboard -> Resolution(StartDecision.Onboard(plan.prefill), mode)
+    }
+}
+
+/**
  * Reached only when the device is signed in but holds no COMPLETE local settings (a fresh account, a re-sign-in
- * after R297's sign-out wipe, or a partial account missing a releve field). Fetches /me; a COMPLETE account is
- * restored and goes to the main shell; an incomplete one goes to onboarding carrying the prefill of just the
- * steps it is missing (R335). A gone session goes to sign-in rather than onboarding, so a revoked or expired
- * token is never shown an onboarding form it would only PATCH into a 401. R1161: anything that is not a 200 /me
- * answer is [StartDecision.Unresolved], with nothing written. R1162: a positive answer hands the server's mode to
- * [restoreMode] first.
+ * after R297's sign-out wipe, or a partial account missing a releve field). Fetches /me, decides (resolveStart), and
+ * applies the writes: the MODE first, then the settings - cached settings send the next launch past RESOLVING, so a
+ * process death between the two re-runs the resolve rather than opening the shell with the mode never restored.
  */
 suspend fun decideStartAfterSignIn(
     fetchMe: suspend () -> MeFetch,
     store: SettingsStore,
     restoreMode: (LoggingMode) -> Unit,
-): StartDecision =
-    when (val outcome = fetchMe()) {
-        is MeFetch.Ok -> decideOn(outcome, store, restoreMode)
-        MeFetch.SessionGone -> StartDecision.SignIn
-        MeFetch.Unreachable -> StartDecision.Unresolved(UnresolvedCause.UNREACHABLE)
-    }
-
-private fun decideOn(
-    outcome: MeFetch.Ok,
-    store: SettingsStore,
-    restoreMode: (LoggingMode) -> Unit,
 ): StartDecision {
-    val unreadable = StartDecision.Unresolved(UnresolvedCause.UNREADABLE)
-    val view = parseMeView(outcome.body)
-    if (outcome.status != HTTP_OK || !isMeAnswer(outcome.body) || view == null) return unreadable
-    return when (val plan = onboardingPlanFor(view)) {
-        // Complete means every field is present; the strict reader still has the last word. Read BEFORE anything is
-        // written, so a body it refuses leaves the phone exactly as it was.
-        OnboardingPlan.Complete ->
-            parseMeSettings(outcome.body)?.let { settings ->
-                restoreMode(parseLoggingMode(outcome.body))
-                // Restore, so Aujourd'hui computes offline and the person does not re-onboard.
-                store.save(settings)
-                StartDecision.Main
-            } ?: unreadable
-        is OnboardingPlan.Onboard -> {
-            // A partial account's onboarding never asks the mode (Completeness.kt), so the server's stands - restored
-            // here; a brand-new account's is the server's MANUAL default.
-            restoreMode(parseLoggingMode(outcome.body))
-            StartDecision.Onboard(plan.prefill)
-        }
-    }
+    val resolution = resolveStart(fetchMe())
+    resolution.mode?.let(restoreMode)
+    resolution.settings?.let(store::save)
+    return resolution.decision
 }
 
 /**
