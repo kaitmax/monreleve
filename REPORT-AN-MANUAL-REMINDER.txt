@@ -1,0 +1,337 @@
+REPORT-AN-MANUAL-REMINDER - Mon Releve - ORCH-ANDROID step A7 (PARKAN-45)
+THE 19:00 FALLBACK REMINDER ON PHONES WITHOUT PUSH (Android Rulings 3, 7, 8, 11-14; R1140-R1147)
+Session: AN-MANUAL-REMINDER, 2026-11-20. Worktree C:/wt/an-manual-reminder (lock .session-lock.json, removed
+last), branch an-manual-reminder, cut from BASE_SHA f6c51121 (origin/main). Prompt: C:/wt/web-orch/relay/
+AN-MANUAL-REMINDER.txt (the newest copy, R1140-R1147). Evidence: C:/wt/queue-evidence/an-manual-reminder/ (not
+in the repository). Every device claim below is "emulator API 36" (AVD MonReleve_API36, Google Play image,
+emulator-5554). Nothing here is an S9 claim.
+
+====================================================================
+SUMMARY
+====================================================================
+- R1140 THE SCHEDULER. android/app/.../reminder/: a WorkManager ONE-TIME CHAIN, unique name
+  "monreleve.fallback.reminder", each link delayed to the next 19:00 DEVICE-LOCAL (nextFallbackAt) and
+  planning the next link when it runs. Not a 24 h PeriodicWorkRequest (drifts by every late run, keeps the
+  old UTC offset across DST), not an alarm (wiped by reboot and app update, needs re-arming by hand).
+  No exact-alarm permission, no permission at all: RECEIVE_BOOT_COMPLETED was already in the APK (WorkManager).
+  Re-planned (REPLACE) on TIMEZONE_CHANGED / TIME_SET and on BOOT_COMPLETED (from the zone in force, catching up an
+  evening missed while off), ensured (KEEP) at every launch of the signed-in shell - FallbackReminderReplanReceiver,
+  exported="false". MEASURED DRIFT (emulator API 36, screen on, bucket ACTIVE, not dozing): target 19:00:00.25,
+  wake 19:01:02.7 local = +62 s.
+- R1141 EXACTLY ONE. fallbackReminderDecision: signed in, !PushAvailability.isPushAvailable, manual mode,
+  notifications permitted - then R339's own eveningDecision (opted in, working day, no entry today, not already
+  shown) with "at or after 19:00 local" as R339's "day concluded" - all through push/PushReceipt.kt's ONE
+  showOncePerDay (no second gate), posting through the existing postEveningFor (R339's notice, id 1001).
+  Signed out: the session-end seam's new third line cancels the chain on all three paths, and a wake that
+  finds nobody signed in cancels itself and plans nothing (A11's pattern). The path table is extended below;
+  every pair is a test, RED first.
+- R1142: the same opt-in (EveningNotificationStore) and the same POST_NOTIFICATIONS gate
+  (areNotificationsEnabled) R339's notifier applies - checked BEFORE the day is taken. No permission asked.
+- R1143: proven on the emulator (below): manual + push unavailable + the real clock past 19:00 -> one; the day
+  recorded from the notification -> a second wake shows nothing; push available -> nothing, and the control
+  (same account, same state, push unavailable again) -> one. Plus the zone re-plan, the signed-out cancel and a
+  reboot.
+- R1145: onboarding's "Oui, me le rappeler" no longer writes the opt-in. The answer TRAVELS in the save
+  (reminderEnabled in the same PATCH, only when the RAPPEL step was asked) and reaches the phone through a new
+  required seam OnboardingController.onReminderSaved - called only on a 2xx (:shared).
+- R1146: ParametresController.setEveningNotification PATCHes {"reminderEnabled":bool} (the encoder A8's
+  registration pass already uses) and moves the opt-in and the switch only on a 2xx; refusal -> SAVE_REFUSED,
+  no answer -> NETWORK_ERROR / SESSION_ENDED, nothing moved. The switch is shown in BOTH modes. NO NEW COPY:
+  automatic mode keeps ParametresCopy.EVENING_DESCRIPTION; manual mode references OnboardingCopy.REMINDER_SUBTITLE.
+- R1147: RESOLVING reads reminderEnabled back from /me (parseReminderEnabled: only a JSON true is on) for every
+  positive answer and writes it after the mode, before the settings; MainActivity applies it as
+  restoredEveningOptIn(serverOn, notificationsPermitted) - A9's LoggingModeRestore precedent.
+- R1144: :shared changed (OnboardingController, ParametresController, ParametresWire, ParametresSections and their
+  commonTest/iosTest) -> R573 run below. web/ NOT changed: no gate:changed / gate:clone owed.
+
+====================================================================
+STATUS (R391)
+====================================================================
+Increments green under fast check. FULL GATE NOT RUN on 6fb607f8ca1bd1bc48183d7afc4f19c0f220581e.
+R573: NO RESULT (run 44793106343 refused for billing, zero steps) - a MERGE BLOCKER, Q7.
+
+WHAT RAN, ON WHICH COMMIT:
+  FULL :app:gate on 0b985b3eafba8c8a4ad4f347dd6042795175dcde (increment 1 + its 13 baselines), emulator shut down
+  (Android Ruling 11), heavy lock held (acquired 18:11:43Z at commitFree 8406, line 8000; released 18:28:13Z):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1542 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 8m 53s
+    262 actionable tasks: 127 executed, 135 up-to-date
+    GATE EXIT=0
+  (log: C:/wt/queue-evidence/an-manual-reminder/gate-1.log; gate-1.sha = 0b985b3e.)
+  On the final tip 6fb607f8 (after 034a885b the boot re-plan and 6fb607f8 the wake-failure fix, both :app code +
+  tests, plus one iosTest file): fastCheck BUILD SUCCESSFUL in 34s (fastcheck-5.log: :shared tests, ktlint,
+  detekt for both modules, :app compile), and :app:testDebugUnitTest BUILD SUCCESSFUL in 3m 18s, 1543 tests, 0
+  failures, 0 errors (unit-6fb607f8.log).
+  NOT RUN on 6fb607f8, therefore NOT CLAIMED: verifyPaparazziDebug, lintDebug, the release-variant checks
+  (checkLicences, checkReleasePushManifest, checkReleaseLocationPermissions, ...) - i.e. the rest of the gate. No
+  composable, manifest or dependency changed after 0b985b3e except the manifest's COMMENT on the receiver (034a885b);
+  no baseline should move.
+WHY: after the boot fix the heavy lock's 8 000 MB line was never reached - commitFree read 5 786-6 730 MB from
+  19:11Z to 19:54Z with the emulator down and my daemons stopped (the rest is WSL's VM ~6.7 GB, editors and the
+  orchestrator's processes - none mine). The line was never lowered; my waiter was stopped at 19:54Z (lock FREE).
+  NO RESULT for the gate on 6fb607f8 - not a pass, not a fail. To close: `./gradlew :app:gate` on 6fb607f8 with the
+  emulator down (the orchestrator, Android Ruling 11 Q1's shape).
+web/ unchanged: no gate:changed, no gate:clone owed.
+
+====================================================================
+R1140 - THE SCHEDULER, ITS MECHANISM AND ITS DRIFT
+====================================================================
+Files: android/app/src/main/kotlin/ch/monreleve/app/reminder/FallbackReminder.kt (pure: FALLBACK_REMINDER_TIME 19:00,
+nextFallbackAt, bootFallbackAt, reachedFallbackTime, fallbackReminderDecision, fallbackWake, restoredEveningOptIn) and
+FallbackReminderRuntime.kt (FallbackReminderScheduling ensure / replan / afterReboot / planNextAfterWake / cancel,
+FallbackReminderWorker, maybeRemindAtFallback, FallbackReminderReplanReceiver); the manifest receiver; MainActivity
+LaunchedEffect(Unit) ensure in the signed-in shell.
+WHY THIS MECHANISM (R1140's three discriminators; none needs SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM):
+  reboot - WorkManager keeps the request in its own database and re-registers it itself (seen below after an app
+  update: the link came back under a new JobScheduler id); an alarm is wiped by a reboot AND by an app update.
+  Doze - a JobScheduler job waits for a maintenance window or the screen coming on, i.e. until the reminder can be
+  read; an inexact alarm is deferred the same way unless allow-while-idle, which wakes a phone nobody looks at.
+  drift - each link is computed from the wall clock and the zone in force, so lateness never accumulates and 19:00
+  stays 19:00 local across DST (tests at 2026-03-29 and 2026-10-25, Europe/Paris). Same library as
+  SamplingWorker; no new dependency.
+THE TIME GATE is "at or after 19:00 on the local day", never equality: a late wake still reminds; a wake pushed past
+local midnight reads before 19:00 and shows nothing.
+DRIFT:
+  MEASURED (emulator API 36, Europe/Paris, screen on, standby bucket ACTIVE, deviceidle ACTIVE): planned at 18:41:22
+  local with delay 1117 s -> target 19:00:00.251; the worker logged its decision at 19:01:02.711 = +62.5 s. The job's
+  JobScheduler record carries a FLEXIBILITY constraint (API 34+ flexible scheduling), the likely source.
+  READ, NOT MEASURED: in Doze the job waits for the next maintenance window (light doze: minutes; deep doze: windows
+  spaced up to hours) or for the screen to come on, when pending jobs run; standby buckets (an app opened rarely:
+  RARE / RESTRICTED) can defer further. 19:00 is a target; the copy names no time. The S9 measurement stays
+  PARKAN-46/47's.
+RE-PLAN EVIDENCE (emulator API 36; log-09/10, work-09/10): zone Paris -> Europe/London at 18:02:51Z: the receiver ->
+  "fallback planned: policy=REPLACE delaySeconds=3415", target 2026-11-20T19:00:00.105Z (19:00 London, still ahead
+  today); back to Europe/Paris: REPLACE, target 2026-11-21T18:00:00.015Z (19:00 Paris had passed). The broadcast
+  reached the receiver ~13 s after the change. Signed out, two zone changes scheduled NOTHING (work-12: 0 jobs).
+REBOOT EVIDENCE: three boots of the AVD (emulator API 36).
+  (a) First cold boot, APK of c502d9b3: the emulator came back in GMT (it imposes the host zone at every boot - a
+      warm "adb reboot" too). WorkManager's own RescheduleReceiver re-registered the pending link (job 9) and my
+      receiver logged "policy=KEEP" ~70 s after boot (work-19): the link SURVIVED the reboot, but KEEP left it aimed
+      at 19:00 PARIS while the phone now lived in GMT - a DEFECT, found by this proof (R178).
+  (b) FIX 034a885b, test-first (red-2.log: 1 of 23 RED, then 23 of 23): BOOT_COMPLETED -> afterReboot = REPLACE with
+      bootFallbackAt (the next 19:00 in the zone in force, or NOW when 19:00 has already come on the local day). On
+      that tree's debug APK, zone set to Paris, graceful "adb reboot" (19:06Z): "fallback planned: policy=REPLACE
+      delaySeconds=0" (catch-up: past 19:00 GMT), the wake "shown=false ... alreadyShown=true" (Sam's day already
+      taken), NOTHING_SHOWN, next link 2026-11-21T19:00:00.098Z = 19:00 GMT, the zone in force (log-24, work-24).
+  (c) An emulator artefact on the way: after a HARD kill ~2.5 min after "install -r", the device lost the package's
+      entry ("run-as: unknown package"), the next boot delivered BOOT_COMPLETED to neither WorkManager's receiver nor
+      mine, and JobScheduler held no job (work-22). Reinstalling the same APK restored it. Cause not proven (an
+      unflushed package list is the likely one). NOTICED N11.
+
+====================================================================
+R1141 / R1142 - THE RULES, TEST-FIRST
+====================================================================
+RED (stubs first, then the tests; evidence red-1.log, red-1-summary.txt): 36 failed by assertion, none by exception:
+  :shared 6 of 28 (OnboardingReminderOptInTest 3, ParametresControllerPinTest 3); :app 30 of 108 (FallbackReminderTest
+  15, ForcedSignOutTest 5, SessionEndSeamTest 3, ResolveStartTest 3, StartupDeciderTest 3, OnboardingControllerTest 1,
+  ParametresWirePinTest 1). Then GREEN: fastCheck BUILD SUCCESSFUL and :app testDebugUnitTest 1542 test cases, 0
+  failures (green-2.log), before the full gate.
+New/extended tests: app/src/test/.../reminder/FallbackReminderTest.kt (every refusal beside its positive, every pair,
+the time maths incl. DST and zone, the wake's cancel/plan order, a throwing reminder still plans the next, R1147's
+restore rule); SessionEndSeamTest (the fallback line on SIGNED_OUT / DELETED / every path, never throws through);
+ForcedSignOutTest (cancelled on every server-ended cause, not on TRY LATER); ResolveStartTest / StartupDeciderTest
+(R1147); OnboardingControllerTest (the org.json body carries reminderEnabled yes/no; a partial onboarding omits it);
+:shared commonTest OnboardingReminderOptInTest (R1145: a 2xx hands on before the settings, every refusal hands
+nothing on, a partial onboarding sends null); ParametresControllerPinTest (R1146 both ways, five refusing statuses,
+no answer); ParametresWirePinTest (the two bytes-exact bodies).
+
+====================================================================
+THE PATH TABLE (A8's, extended - REPORT-AN-FCM-CLIENT.txt)
+====================================================================
+| path | trigger | gates (all must hold) | posts | takes the day | signed out |
+|------|---------|------------------------|-------|---------------|------------|
+| P1 PUSH (A8) | FCM data-only at reminderTime (server) | daily_reminder for today (Paris); signed in; opted in; working day; no entry today; day not taken | R339 notice by the phone's mode | yes, showOncePerDay | shows nothing |
+| P2 AUTO EVENING (SamplingWorker) | wake after the last check window, auto mode | opted in; working day; no entry; day concluded; day not taken | R339 notice | yes, showOncePerDay | worker guard returns first; the seam cancels the worker |
+| P3 THRESHOLD ALERT (AN-ALERT) | a new crossing | its opt-in; a NEW crossing | the alert alone, or merged into the evening notice | only when merged | as P2 |
+| P4 19:00 FALLBACK (A7, THIS TASK) | WorkManager one-time chain at the next 19:00 device-local; re-planned on a zone/clock change and on boot, ensured at shell launch | signed in; !PushAvailability.isPushAvailable; manual mode; notifications permitted; at/after 19:00 local; opted in; working day; no entry today; day not taken | R339 EveningNotice.Manual via postEveningFor (id 1001; merges with P3 as P1 does) | yes, the SAME showOncePerDay; a refusal takes nothing | nothing shown (refused in the decision) AND nothing scheduled: the seam line endFallbackReminder on SIGNED_OUT / DELETED / ENDED_BY_SERVER, the wake self-cancels, the receiver plans nothing |
+| SIGNED OUT | any path while nobody is signed in | - | nothing | - | push record forgotten + token invalidated (A8); fallback chain cancelled (A7) |
+PAIRS PROVEN (FallbackReminderTest, against the decision functions the glues call, one store): P4->P4 one; P1->P4 one;
+P4->P1 one; P2->P4 one; P4->P2 one; a P4 that showed nothing (push available) does not take the day (P1 then shows);
+yesterday's mark does not block today; and every single refusal (push available, auto, signed out, today confirmed,
+before 19:00, opted out, no permission, weekend). P1<->P2 stay PushReceiptTest's. P3 unchanged.
+
+====================================================================
+R1143 - PROOF ON MonReleve_API36 (all: "emulator API 36"; never the S9)
+====================================================================
+Rig: my worktree's `pnpm dev` on :3990, scratch DB monreleve_an_manual_reminder (migrated, seeded); the debug APK of
+c502d9b3 built with -PfrontalierPort=3990 and NO Firebase values (push unavailable: NOT_CONFIGURED). Fresh install.
+Zone set to Europe/Paris (auto_time_zone 0) for realism. THE CLOCK WAS NOT MOVED: the REAL clock reached 19:00
+Paris. Second wakes were forced with `cmd jobscheduler run -f` (said where used). Driver
+C:/wt/queue-evidence/an-manual-reminder/drive.mjs (A8's, adapted). R574: the code was read from the dev log and typed
+by the driver, never printed; dumps print digit fields as labels only; no capture on the code screen; the dev log was
+reduced to its request lines (dev-requests.txt, 0 six-digit runs) and deleted.
+1. Alex (server: MANUAL, reminderEnabled true, no entry today) signed in by code. R1147 FAIL-CLOSED: server on,
+   POST_NOTIFICATIONS not granted on a fresh install -> evening.enabled=false (prefs-01). Shell launch -> "fallback
+   planned: policy=KEEP delaySeconds=1117", the WorkManager spec ENQUEUED with target 2026-11-20T18:00:00.251Z (19:00
+   Paris), its JobScheduler job present (work-01).
+2. R1146: Parametres in manual mode now shows "Me prevenir le soir" with the reminder description (02 png). Switch on
+   -> the system permission prompt -> Allow -> PATCH /api/v1/me 200 -> evening.enabled=true (03 png, prefs-03). Off ->
+   DB reminderEnabled false, phone false; on -> DB true, phone true (prefs-04/05; DB read back).
+3. App in the background. At 19:01:02.7 local: "fallback decision: shown=true pushAvailable=false autoMode=false
+   permitted=true reached=true optedIn=true workingDay=true entryToday=false alreadyShown=false", "fallback wake:
+   SHOWN", the next link APPEND_OR_REPLACE -> target 2026-11-21T18:00:00.047Z (log-06, work-06). dumpsys notification:
+   EXACTLY ONE record of ch.monreleve.app - id=1001, channel monreleve.evening.proposal, vis=PRIVATE with a PUBLIC
+   publicVersion, 3 actions [En Suisse | Domicile | Autre...], the R339 question as title (notif-06,
+   06-notification-shade.png).
+4. RECORD THE DAY: "Domicile" tapped on the notification -> POST /api/v1/entries 401, refresh 200, 200; DB: one entry
+   for 2026-11-20 (07 png). A second wake the same evening (forced: cmd jobscheduler run -f) -> "shown=false ...
+   entryToday=true alreadyShown=true", NOTHING_SHOWN, 0 notifications posted by the app (log-08, notif-08).
+5. The zone re-plan (R1140 above), then SIGN-OUT through Parametres -> the chain CANCELLED, 0 jobs of the app
+   (work-11); two zone changes while signed out -> still nothing scheduled (work-12).
+6. Sam (server: MANUAL, reminderEnabled true, no entry today) signed in; the permission now held -> R1147 restores
+   evening.enabled=true (prefs-13); the chain ENQUEUED for tomorrow 19:00.
+7. PUSH AVAILABLE -> NONE: the debug APK of the same commit built with the four FCM_ANDROID_* set to the placeholder
+   "probe" (app-debug-probeconfig-c502d9b3.apk), installed over it (-r, session kept); MainActivity NOT opened, so
+   nothing called Firebase; A8's debug PushProbeActivity ran the real PushSync with a FAKE token: POST
+   /api/v1/devices 200, PATCH /api/v1/me 200, "PUSH PROBE pass=AVAILABLE pushAvailable=true" (the real
+   PushAvailability.isPushAvailable), record registered=true serverReminderEnabled=true (prefs-15). Forced wake ->
+   "shown=false pushAvailable=true autoMode=false permitted=true reached=true optedIn=true workingDay=true
+   entryToday=false alreadyShown=false", 0 notifications (log-16, notif-16). No FirebaseApp line from the app's
+   processes (the two in logcat are pid 6004, another app's).
+8. CONTROL: the unconfigured APK installed over again (push unavailable, everything else unchanged). WorkManager had
+   re-registered the link as job 8 after the update (job 7 never ran); forced -> "shown=true pushAvailable=false ...
+   entryToday=false alreadyShown=false", SHOWN, exactly one notification (log-18, notif-18). Push availability was
+   the only fact that changed between 7 and 8.
+The forced runs prove the decision on a real wake; they are not drift measurements (only step 3 is).
+PROVENANCE: steps 1-8 and reboot (a) ran the debug APKs of c502d9b3 (unconfigured, and probe-config for step 7);
+reboot (b) ran the debug APK of the tree committed as 034a885b. 6fb607f8 (the wake-failure fix below) changes only
+the failure branch of fallbackWake and an iosTest, and was not driven on the device. All DEBUG builds - nothing was
+driven on a minified build; the gate's release checks read the release APK statically (permissions identical to A8's
+release APK; the receiver present, exported=false).
+R1145 ON THE DEVICE: NOT DRIVEN. The onboarding route's wiring (onReminderSaved -> the phone's opt-in) is proven on the
+JVM only (OnboardingReminderOptInTest, OnboardingControllerTest); no fresh-address onboarding was run on the emulator.
+
+====================================================================
+R1144 - iOS
+====================================================================
+:shared CHANGED (commonMain OnboardingController, ParametresController, ParametresWire, ParametresSections; commonTest
+OnboardingReminderOptInTest, ParametresControllerPinTest, ParametresStartDatePinTest, OnboardingControllerPinTest,
+OnboardingSaveStatusTest; iosTest OnboardingScreensIosTest, ZParametresScreensIosTest), so R573 is owed.
+DISPATCHED: gh workflow run ios-shared.yml --ref an-manual-reminder -> run 44793106343, headSha 0b985b3e (main
+unmoved at f6c51121, so the branch tip was the merge result), job ios-shared-tests: conclusion failure, ZERO steps,
+started 18:28:37Z, completed 18:28:39Z. Annotation: "The job was not started because recent account payments have
+failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings".
+R573 = NO RESULT (not a test failure: nothing ran). Billed macOS minutes: 0. Not retried (a second dispatch would
+meet the same refusal; my standing note says zero steps = stop and tell). The two later commits (034a885b, 6fb607f8)
+touch :shared only in iosTest (ZParametresScreensIosTest), so a run on the final tip covers everything. This run's
+macOS total stays ~43 (A1 9 + A9 ~9 + A12 8 + A4 ~8 + A8 ~9 + A7 0). MERGE BLOCKER: Q7.
+No iOS code for the fallback: there is no iOS app host (the scheduler is Android glue in :app).
+
+====================================================================
+R1145 / R1146 / R1147 - DETAILS
+====================================================================
+R1145: OnboardingController(patchBody: (Settings, Boolean?) -> String, ..., onReminderSaved: (Boolean) -> Unit), both
+REQUIRED (A9's reason). The opt-in sent is state.reminder only when OnboardingStep.RAPPEL is in the flow's steps,
+else null (omitted: a partial onboarding never overwrites the server). On a 2xx: onModeSaved (automatic only), then
+onReminderSaved, then the settings cache. :app MeWire Settings.mePatchBody(reminderEnabled: Boolean? = null) adds the
+key only when non-null (Parametres settings saves unchanged; the byte pins are green). MainActivity's onboarding route
+no longer writes evening.enabled on "Oui" / "Pas maintenant"; onReminderSaved writes it.
+R1146: ParametresWire gained reminderBody(enable) - an iOS host's wire must implement it (the iosTest fakes are
+updated); :app's implementation is push/PushRegistration.kt reminderOptInBody (R206: one encoder for both writers).
+ParametresSections shows the switch in both modes. The shell's permission-first onToggleEvening is unchanged.
+R1147: Resolution.reminderEnabled (null = write nothing: gone, unreachable, unreadable); decideStartAfterSignIn gained
+restoreReminder (required), written after the mode and before the settings.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1. P1/P2 take the day even when EveningNotifier.post returns early because notifications are disabled (showOncePerDay
+    marks after post). P4 checks the permission in its decision, so it never takes a day it could not draw. Aligning
+    P1/P2 is a one-line change in their decide; not this task's.
+N2. evening.lastNotifiedDay lives in monreleve.detection, cleared at sign-out: the SAME account signing out and back in
+    the same evening can be reminded again that day (a different account rightly is). Q4.
+N3. The "today" of the store, the entries and the working day is Europe/Paris (the app's convention); the trigger and
+    the time gate are device-local 19:00. They agree for a phone in the Paris zone. Q1.
+N4. After a switch change, the push sync (keyed on the opt-in) may PATCH reminderEnabled again with the same value -
+    idempotent, one extra request on push phones.
+N5. ParametresR282Test still forbids "rappel"/"notification" in ParametresCopy (A8's N4, stale since R339); the manual
+    description is OnboardingCopy's, so the test did not have to change.
+N6. After `adb install -r` WorkManager re-registered the pending link under a new JobScheduler id (7 -> 8): the update
+    path needs no code of ours.
+N7. The job carried a FLEXIBILITY constraint (API 34+); the +62 s fits it.
+N8. Driver: the first `adb input text` of the address produced "exalex@exampl" (a 202, no mail sent); cleared and
+    retyped, it worked (A8's N10 shape).
+N9. A "Digital Wellbeing isn't responding" system dialog appeared once on the emulator (tapped Wait).
+N10. Sam's GET /api/v1/dossier?year=2025 answered 400 (an account starting in 2026, presumably) - pre-existing.
+N11. Emulator: a hard kill (emu kill) soon after `adb install -r` left the package unknown to run-as and absent from
+    the next boot's BOOT_COMPLETED; reinstalling fixed it. Later sessions: `adb shell sync` before an emu kill.
+N12. The emulator re-imposes the host zone (GMT) at every boot, cold or warm: a walkthrough that sets a zone loses
+    it on reboot.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. WIRE: onboarding's PATCH /api/v1/me now carries reminderEnabled when the reminder step was asked. Not in R1145's
+    text; without it a no-push manual person's "Oui" never reaches the server, and R1147 would switch it off at the
+    next sign-in (server default false). The server schema already accepts the key; web/ unchanged.
+D2. R1147 restores the opt-in only where POST_NOTIFICATIONS is held (A9's precedent): on a fresh phone the server can
+    say true while the phone says false, until the person turns the switch on (which asks the permission and
+    PATCHes). Q2.
+D3. The schedule is SELF-GATING: it exists whenever somebody is signed in, whatever the mode or the opt-in; each wake
+    decides. One no-op wake a day on phones that show nothing (automatic mode, opted out, push available). Q3.
+D4. Proof method: the real clock for the first wake; `cmd jobscheduler run -f` for the second wakes; a placeholder-
+    config debug APK + A8's debug PushProbeActivity (fake token) for "push available". Nothing called Firebase.
+D5. The baseline expectation was 3 and the run produced 13 (R207): the 10 extra were investigated before any
+    regeneration (the Pixel 5 dialogs show the Saisie section behind the scrim; the only delta is the new row), then
+    exactly the 13 failing files were recorded. Commit 0b985b3e names them.
+D6. Scratch helpers in my evidence folder only (drive.mjs, q-today.mjs - a read-only pg query, reflow.mjs,
+    assemble.mjs).
+D7. Two defects found AFTER increment 1, both fixed test-first in this branch: (a) the boot KEEP aimed at the old
+    zone's 19:00 (found on the emulator, 034a885b); (b) a reminder that threw made the wake rethrow, so the worker
+    would be FAILED and WorkManager would fail the link just APPENDed - the chain ended; the first test had hidden it
+    behind runCatching (found in review by my advisor, 6fb607f8).
+D8. R573 could not run: GitHub refused to start the job for billing (see R1144). The iosTest edits are compiled by
+    nobody yet; they were reviewed by eye (ZParametresScreensIosTest now expects three switches in manual mode).
+
+====================================================================
+NEW COPY
+====================================================================
+NONE. The manual-mode switch description is OnboardingCopy.REMINDER_SUBTITLE, by key (the accented original is in
+android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/OnboardingCopy.kt); the label ParametresCopy.EVENING_LABEL and
+the automatic-mode ParametresCopy.EVENING_DESCRIPTION are unchanged. R165 was weighed: the sentence is true on both
+surfaces (it names no time and no mode).
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. Which day wins when the device zone is not Paris: the reminder fires at 19:00 device-local, but "today" (entries,
+    the one-a-day store, the working day) is Europe/Paris throughout the app. Keep Paris for the day?
+Q2. Accept R1147's permission condition (server on + permission held -> on; otherwise off, nothing sent)?
+Q3. Accept the self-gating schedule (a daily no-op wake on phones that show nothing) over conditional scheduling?
+Q4. The same account signing out and in on one evening can be reminded twice (N2): accept, or keep the last-shown
+    day outside the file sign-out clears?
+Q5. Doze / standby-bucket drift is read, not measured (the emulator showed +62 s with the screen on): an S9
+    measurement beside PARKAN-46/47 (the operator's)?
+Q7. MERGE BLOCKER: R573 is NO RESULT (run 44793106343, zero steps, "recent account payments have failed or your
+    spending limit needs to be increased", 0 billed minutes). :shared changed, so the branch owes the iOS cloud run
+    before it merges. The operator's billing; then one dispatch on the branch (or the merge result).
+Q6. Reusing OnboardingCopy.REMINDER_SUBTITLE as the manual-mode switch description: accept (no new copy), or does the
+    operator want Parametres-specific wording?
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code tip: 6fb607f8ca1bd1bc48183d7afc4f19c0f220581e, pushed to origin/an-manual-reminder before this report
+(git ls-remote origin an-manual-reminder -> 6fb607f8...). NOT MERGED - the orchestrator merges. Gated tip (full
+:app:gate): 0b985b3e. Branch commits on top of f6c51121 (main unmoved at f6c51121 when last fetched):
+  c502d9b3 increment 1 (R1140-R1147, test-first)
+  0b985b3e the 13 Parametres baselines (R207)            <- FULL :app:gate GREEN
+  034a885b the boot re-plan (found on the emulator)
+  6fb607f8 the wake never rethrows; the iOS Parametres test   <- fastCheck + :app unit tests green; gate NOT RUN
+Report tip: the commit adding this file, pushed after it (its sha is in the handback).
+Lock: C:/wt/an-manual-reminder/.session-lock.json is HELD at the time of writing; removed last, after the report
+push. Heavy lock: released 18:28:13Z; my second waiter stopped at 19:54Z (status FREE). My dev server (3990) was
+stopped and the port read free; my Gradle/Kotlin daemons stopped. Scratch DB monreleve_an_manual_reminder left in
+place (my worktree's .env names only it).
+Emulator: restored as described in RESTORE below.
+Evidence: C:/wt/queue-evidence/an-manual-reminder/ only (Android Ruling 13). The dev-server log that held local
+sign-in codes was reduced to its request lines and deleted.
+R-numbers: R1140-R1147 used (R1148-R1149 unused); re-scanned relay/ in this worktree, C:/wt/web-orch and the main
+checkout - only AN-MANUAL-REMINDER.txt, ORCH-ANDROID.txt and RULINGS-2026-11-16.txt name the range.
+RESTORE (emulator API 36, MonReleve_API36): booted detached at 20:00:30Z (Start-Process, pid 28608, outlives this
+session); my build uninstalled; the orchestrator's APK (C:/wt/web-orch/android/app/build/outputs/apk/debug/
+app-debug.apk, built 2026-11-19 13:35) installed fresh and NOT launched (signed out, stopped/notLaunched as a fresh
+install); auto_time_zone 1 and auto_time 1 (as found), zone GMT (as found), navigation_mode 2 (gestural, as found);
+`sync` run; run-as knows the package; 0 jobs of ch.monreleve.app. Not hard-killed afterwards.
+
