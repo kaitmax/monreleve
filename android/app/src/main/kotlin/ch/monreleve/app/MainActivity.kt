@@ -150,13 +150,17 @@ import ch.monreleve.app.ui.screens.signin.SignInActions
 import ch.monreleve.app.ui.screens.signin.WelcomeScreen
 import ch.monreleve.app.ui.screens.simulation.SimulationActions
 import ch.monreleve.app.ui.screens.simulation.SimulationScreen
+import ch.monreleve.app.ui.screens.update.UpdateRequiredScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppRoot
 import ch.monreleve.app.ui.shell.AppTab
 import ch.monreleve.app.ui.shell.ResolvingScreen
+import ch.monreleve.app.update.openPlayListingFrom
+import ch.monreleve.app.update.processUpdateGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.Year
@@ -245,101 +249,119 @@ class MainActivity : ComponentActivity() {
 
         val start = startDestination(signedIn = session.isSignedIn(), onboarded = settingsStore.isOnboarded())
 
+        // AN-FORCE-UPDATE (R1111): ask the minimum supported version on launch AND on every return to the foreground
+        // (ON_START), beside the first paint, never before it - the gate starts open and a slow or failed answer
+        // changes nothing (fail open).
+        lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_START) lifecycleScope.launch { processUpdateGate.check() }
+            },
+        )
+
         setContent {
             // AN-EDGE-INSETS (R1170): AppRoot is the theme, the canvas and the system-bar insets for every destination
             // below, consumed once - so the Scaffold in MainShell pads nothing more (fences/EdgeToEdgeCensusTest).
             AppRoot {
-                // AN-STATE (R310): the destination survives a rebuild, reconciled against the session (see
-                // sessionReconciled). `start`, recomputed in onCreate from the session, is the authority.
-                // AN-FORCED-SIGNOUT (R521): reconciled AS IT IS RESTORED (destinationSaver), so a restored MAIN
-                // with no session never composes - the LaunchedEffect below is then a no-op kept for its R310 role.
-                var destination by rememberSaveable(stateSaver = destinationSaver(start)) { mutableStateOf(start) }
-                // R335: the onboarding prefill (the steps owed + their /me values) the RESOLVING step computes,
-                // carried into OnboardingRoute. Saveable so a rebuild during onboarding keeps the same subset.
-                var onboardingSeed by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
-                LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
-                // AN-FORCED-SIGNOUT (R520): a session the SERVER ends - met by a screen or by the worker, in this
-                // process (R507) - takes the person to sign-in from whatever screen is open (PARK-T1).
-                LaunchedEffect(Unit) {
-                    processSessionEnds.ends.collect {
-                        destination = destinationAfterSessionEnd(destination, session.isSignedIn())
-                    }
-                }
-                when (destination) {
-                    Destination.SIGN_IN -> {
-                        // R520: arrived here because the server ended the session? Read when sign-in opens, from
-                        // the stores (SessionEnds.kt) - and then the days still waiting, counted from the record
-                        // as the screen renders (R181), the current account's own (R303).
-                        val closed =
-                            remember { sessionClosedByServer(session.isSignedIn(), accountStore.current()) }
-                        val pendingRows by
-                            remember { if (closed) repository.observePending() else flowOf(null) }
-                                .collectAsState(initial = null)
-                        SignInRoute(
-                            api,
-                            tokenStore,
-                            pending,
-                            accountStore,
-                            lifecycleScope,
-                            sessionClosed = closed,
-                            sessionClosedHeldDays = pendingRows?.let(::heldDays),
-                            onSignedIn = { destination = Destination.RESOLVING },
-                        )
-                    }
-                    Destination.RESOLVING -> {
-                        // R481: every route here follows a sign-in (the code path's onSignedIn, or the link's
-                        // relaunch with its settings cleared), so this is where BOTH years come down. It does
-                        // not block the /me decision below; the shell shows its outcome (R484).
-                        LaunchedEffect(Unit) {
-                            processYearDownloads.afterSignIn(entriesDownload, taxYearsToDownload(clock))
+                // AN-FORCE-UPDATE (R1111): the process's gate (update/PlayListing.kt), asked on every start below. It
+                // starts open, so the app below shows at once; only a usable answer naming a minimum above this build
+                // replaces everything with the update screen, from which nothing else is reachable.
+                val updateRequired by processUpdateGate.required.collectAsState()
+                if (updateRequired) {
+                    val activity = LocalContext.current
+                    UpdateRequiredScreen(onUpdate = { openPlayListingFrom(activity) })
+                } else {
+                    // AN-STATE (R310): the destination survives a rebuild, reconciled against the session (see
+                    // sessionReconciled). `start`, recomputed in onCreate from the session, is the authority.
+                    // AN-FORCED-SIGNOUT (R521): reconciled AS IT IS RESTORED (destinationSaver), so a restored MAIN
+                    // with no session never composes - the LaunchedEffect below is then a no-op kept for its R310 role.
+                    var destination by rememberSaveable(stateSaver = destinationSaver(start)) { mutableStateOf(start) }
+                    // R335: the onboarding prefill (the steps owed + their /me values) the RESOLVING step computes,
+                    // carried into OnboardingRoute. Saveable so a rebuild during onboarding keeps the same subset.
+                    var onboardingSeed by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
+                    LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
+                    // AN-FORCED-SIGNOUT (R520): a session the SERVER ends - met by a screen or by the worker, in this
+                    // process (R507) - takes the person to sign-in from whatever screen is open (PARK-T1).
+                    LaunchedEffect(Unit) {
+                        processSessionEnds.ends.collect {
+                            destination = destinationAfterSessionEnd(destination, session.isSignedIn())
                         }
-                        ResolvingRoute(session, settingsStore) { decision ->
-                            when (decision) {
-                                StartDecision.Main -> destination = Destination.MAIN
-                                StartDecision.SignIn -> destination = Destination.SIGN_IN
-                                is StartDecision.Onboard -> {
-                                    onboardingSeed = decision.prefill
-                                    destination = Destination.ONBOARDING
+                    }
+                    when (destination) {
+                        Destination.SIGN_IN -> {
+                            // R520: arrived here because the server ended the session? Read when sign-in opens, from
+                            // the stores (SessionEnds.kt) - and then the days still waiting, counted from the record
+                            // as the screen renders (R181), the current account's own (R303).
+                            val closed =
+                                remember { sessionClosedByServer(session.isSignedIn(), accountStore.current()) }
+                            val pendingRows by
+                                remember { if (closed) repository.observePending() else flowOf(null) }
+                                    .collectAsState(initial = null)
+                            SignInRoute(
+                                api,
+                                tokenStore,
+                                pending,
+                                accountStore,
+                                lifecycleScope,
+                                sessionClosed = closed,
+                                sessionClosedHeldDays = pendingRows?.let(::heldDays),
+                                onSignedIn = { destination = Destination.RESOLVING },
+                            )
+                        }
+                        Destination.RESOLVING -> {
+                            // R481: every route here follows a sign-in (the code path's onSignedIn, or the link's
+                            // relaunch with its settings cleared), so this is where BOTH years come down. It does
+                            // not block the /me decision below; the shell shows its outcome (R484).
+                            LaunchedEffect(Unit) {
+                                processYearDownloads.afterSignIn(entriesDownload, taxYearsToDownload(clock))
+                            }
+                            ResolvingRoute(session, settingsStore) { decision ->
+                                when (decision) {
+                                    StartDecision.Main -> destination = Destination.MAIN
+                                    StartDecision.SignIn -> destination = Destination.SIGN_IN
+                                    is StartDecision.Onboard -> {
+                                        onboardingSeed = decision.prefill
+                                        destination = Destination.ONBOARDING
+                                    }
+                                    is StartDecision.Unresolved -> Unit
                                 }
-                                is StartDecision.Unresolved -> Unit
                             }
                         }
+                        Destination.ONBOARDING ->
+                            OnboardingRoute(session, settingsStore, taxYear, lifecycleScope, seed = onboardingSeed) {
+                                destination = Destination.MAIN
+                            }
+                        Destination.MAIN ->
+                            MainShell(
+                                repository,
+                                rhythmRepository,
+                                settingsStore,
+                                taxYear,
+                                clock,
+                                lifecycleScope,
+                                requestSync = {
+                                    // SPEC 13.2: recording enqueues the drain; WorkManager replays on connectivity.
+                                    SyncScheduler.requestSync(context)
+                                },
+                                dossierFetch = dossierApi::fetch,
+                                // AN-RELEVE-FRESH (R560): the same cache the sync worker marks stale (R559).
+                                dossierStaleCopy = dossierApi::staleCopy,
+                                exportBytes = session::authenticatedGetBytes,
+                                settingsSaver = SessionSettingsSaver(session),
+                                revokeServer = session::revokeServerSession,
+                                // AN-POLISH (R440): sign-out sends what it can first. The SAME engine the
+                                // SyncWorker builds (R206 - one construction site), run inline and bounded
+                                // by the controller, because WorkManager is asynchronous by design and
+                                // sign-out needs an answer before it discards anything.
+                                syncNow = { buildSyncEngine(context).sync() },
+                                localStore = localStore,
+                                authenticatedPost = session::authenticatedPost,
+                                employerStore = employerStore,
+                                yearDownload = yearDownload,
+                                // R295/R289: sign-out or deletion has wiped the local store; return to first-run.
+                                // A re-auth restarts this activity, and `start` recomputes the destination.
+                                onSignedOut = { destination = Destination.SIGN_IN },
+                            )
                     }
-                    Destination.ONBOARDING ->
-                        OnboardingRoute(session, settingsStore, taxYear, lifecycleScope, seed = onboardingSeed) {
-                            destination = Destination.MAIN
-                        }
-                    Destination.MAIN ->
-                        MainShell(
-                            repository,
-                            rhythmRepository,
-                            settingsStore,
-                            taxYear,
-                            clock,
-                            lifecycleScope,
-                            requestSync = {
-                                // SPEC 13.2: recording enqueues the drain; WorkManager replays on connectivity.
-                                SyncScheduler.requestSync(context)
-                            },
-                            dossierFetch = dossierApi::fetch,
-                            // AN-RELEVE-FRESH (R560): the same cache the sync worker marks stale (R559).
-                            dossierStaleCopy = dossierApi::staleCopy,
-                            exportBytes = session::authenticatedGetBytes,
-                            settingsSaver = SessionSettingsSaver(session),
-                            revokeServer = session::revokeServerSession,
-                            // AN-POLISH (R440): sign-out sends what it can first. The SAME engine the
-                            // SyncWorker builds (R206 - one construction site), run inline and bounded
-                            // by the controller, because WorkManager is asynchronous by design and
-                            // sign-out needs an answer before it discards anything.
-                            syncNow = { buildSyncEngine(context).sync() },
-                            localStore = localStore,
-                            authenticatedPost = session::authenticatedPost,
-                            employerStore = employerStore,
-                            yearDownload = yearDownload,
-                            // R295/R289: sign-out or deletion has wiped the local store; return to first-run.
-                            // A re-auth restarts this activity, and `start` recomputes the destination.
-                            onSignedOut = { destination = Destination.SIGN_IN },
-                        )
                 }
             }
         }
