@@ -125,6 +125,8 @@ private class PzWire : ParametresWire {
         return "consent:$enable"
     }
 
+    override fun reminderBody(enable: Boolean): String = "reminder:$enable"
+
     override fun deleteBody(): String = "delete"
 
     override fun parseReceipt(body: String): DeleteOutcome.Done = DeleteOutcome.Done(0, false)
@@ -426,8 +428,11 @@ class ZParametresScreensIosTest {
                 val controller = showParametres(PzWire(), PzSaver(), held)
                 assertTrue(shows(OnboardingCopy.RATE_LABEL), "the rate row")
                 assertTrue(shows(ParametresCopy.START_DATE_EMPTY), "the start date row: the whole year")
-                assertEquals(2, switches().size, "two switches: detection and the alert (the evening one hidden)")
-                assertEquals(listOf(ToggleableState.Off, ToggleableState.Off), listOf(switchState(0), switchState(1)))
+                // AN-MANUAL-REMINDER (R1146): the evening switch is offered in manual mode too, with its sentence.
+                assertEquals(3, switches().size, "three switches: detection, the evening reminder and the alert")
+                assertTrue(shows(OnboardingCopy.REMINDER_SUBTITLE), "the evening switch's manual-mode description")
+                val off = List(3) { ToggleableState.Off }
+                assertEquals(off, listOf(switchState(0), switchState(1), switchState(2)))
                 assertEquals(ParametresPhase.EDITING, controller.state.value.phase)
             }
         }
@@ -440,20 +445,22 @@ class ZParametresScreensIosTest {
                 val saver = PzSaver()
                 val held = PzHeld()
                 val controller = showParametres(wire, saver, held)
-                tapInsideTheWindow("the alert Switch", isSwitch(), index = 1)
+                // AN-MANUAL-REMINDER (R1146): three switches in both modes - detection 0, evening 1, alert 2.
+                tapInsideTheWindow("the alert Switch", isSwitch(), index = 2)
                 waitMarked("the alert on: the action fired and the state changed") {
-                    controller.state.value.thresholdAlertEnabled && switchState(1) == ToggleableState.On
+                    controller.state.value.thresholdAlertEnabled && switchState(2) == ToggleableState.On
                 }
                 tapInsideTheWindow("the detection Switch", isSwitch(), index = 0)
-                waitMarked("detection on through the wire's consent body; the evening Switch offered") {
+                waitMarked("detection on through the wire's consent body") {
                     controller.state.value.autoDetectionEnabled && switches().size == 3
                 }
                 assertEquals(listOf(true), wire.consents, "one consent, enabling")
                 assertEquals(listOf("consent:true"), saver.bodies, "one PATCH, the wire's body")
                 tapInsideTheWindow("the evening Switch", isSwitch(), index = 1)
-                waitMarked("the evening reminder on") {
+                waitMarked("the evening reminder on, after its PATCH was taken") {
                     controller.state.value.eveningNotificationEnabled && switchState(1) == ToggleableState.On
                 }
+                assertEquals(listOf("consent:true", "reminder:true"), saver.bodies, "the evening switch PATCHes")
                 assertEquals(ToggleableState.On, switchState(2), "the alert still on")
             }
         }

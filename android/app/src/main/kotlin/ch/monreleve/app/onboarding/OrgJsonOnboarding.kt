@@ -1,7 +1,6 @@
 package ch.monreleve.app.onboarding
 
 import ch.monreleve.app.settings.LoggingMode
-import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.mePatchBody
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 // sites unedited and hands in the same org.json Settings.mePatchBody the controller called before - the same function,
 // so the same bytes on the wire (MeWire.kt, PARK-D3). Named for what it holds, not OnboardingController.kt.
 
-// LongParameterList: AN-SIGNIN-RESOLVE (R1162) added onModeSaved, the sixth - the class's own constructor, mirrored.
+// LongParameterList: AN-SIGNIN-RESOLVE (R1162) added onModeSaved, the sixth - the class's own constructor, mirrored;
+// AN-MANUAL-REMINDER (R1145) onReminderSaved, the seventh, likewise.
 
 /** The shared OnboardingController, saving through org.json's PATCH /me body (MeWire.kt). */
 @Suppress("FunctionNaming", "ktlint:standard:function-naming", "LongParameterList")
@@ -26,6 +26,7 @@ fun OnboardingController(
     scope: CoroutineScope,
     restored: OnboardingSnapshot? = null,
     onModeSaved: (LoggingMode) -> Unit,
+    onReminderSaved: (Boolean) -> Unit,
 ): OnboardingController =
     OnboardingController(
         saver = saver,
@@ -33,6 +34,7 @@ fun OnboardingController(
         taxYear = taxYear,
         scope = scope,
         restored = restored,
-        patchBody = Settings::mePatchBody,
+        patchBody = { settings, reminderEnabled -> settings.mePatchBody(reminderEnabled) },
         onModeSaved = onModeSaved,
+        onReminderSaved = onReminderSaved,
     )

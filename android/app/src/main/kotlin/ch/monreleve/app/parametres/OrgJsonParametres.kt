@@ -5,6 +5,7 @@ import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.push.reminderOptInBody
 import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
@@ -28,11 +29,16 @@ import org.json.JSONObject
 // and the delete body and receipt parse moved here from the controller unchanged, line for line. The same code, so the
 // same bytes (ParametresWirePinTest pins them, on the JVM org.json library - not Android's - before and after).
 
-/** The four wire sites in org.json: Android's implementation (PARK-D3 - the /me codec stays in :app). */
+/**
+ * The wire sites in org.json: Android's implementation (PARK-D3 - the /me codec stays in :app). AN-MANUAL-REMINDER
+ * (R1146) added the fifth, the evening switch's body - the encoder A8's registration pass already sends (R206).
+ */
 private object OrgJsonParametresWire : ParametresWire {
     override fun patchBody(settings: Settings): String = settings.mePatchBody()
 
     override fun consentBody(enable: Boolean): String = detectionConsentBody(enable)
+
+    override fun reminderBody(enable: Boolean): String = reminderOptInBody(enable)
 
     override fun deleteBody(): String = JSONObject().put("confirm", DELETE_CONFIRMATION).toString()
 

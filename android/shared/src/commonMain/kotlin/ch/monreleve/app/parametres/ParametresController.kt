@@ -290,9 +290,9 @@ class ParametresController(
     private val modeStore: DetectionModeStore = InMemoryDetectionModeStore(),
     private val startSampling: () -> Unit = {},
     private val stopSampling: () -> Unit = {},
-    // R323 / PARKAN-36 (AN-NEXT): the evening proposal notification's opt-in store (off by default, separate from
-    // the detection toggle). Defaulted in-memory so the existing tests build; the app injects the SharedPreferences
-    // store (ShellState). Purely local - there is no /api/v1/me consent to reconcile, unlike the detection mode.
+    // R323 / PARKAN-36 (AN-NEXT): the evening reminder's opt-in store (off by default, separate from the detection
+    // toggle). Defaulted in-memory so the existing tests build; the app injects the SharedPreferences store
+    // (ShellState). AN-MANUAL-REMINDER (R1146): written only after the server took reminderEnabled.
     private val eveningNotificationStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
     // AN-ALERT: the threshold-alert opt-in store (off by default, separate from detection and the evening
     // reminder). Purely LOCAL - there is no /api/v1/me consent to reconcile, as it is a device notification.
@@ -702,16 +702,33 @@ class ParametresController(
     }
 
     /**
-     * R323 / PARKAN-36: opt into or out of the evening proposal notification (separate from automatic detection,
-     * OFF by default). Purely LOCAL - no /api/v1/me PATCH and no consent, because it is a device notification, not
-     * a server feature. The OS POST_NOTIFICATIONS prompt that must precede an ENABLE on Android 13+ is the
-     * screen's concern (MainActivity, the same disclosure-first discipline as detection); this persists the
-     * choice and reflects it. The decision to actually fire is the worker's (eveningDecision), which also requires
-     * automatic detection to be on - so enabling this while manual changes nothing until detection is on too.
+     * R323 / PARKAN-36: opt into or out of the evening reminder (separate from automatic detection, OFF by default).
+     * The OS POST_NOTIFICATIONS prompt that must precede an ENABLE on Android 13+ is the screen's concern
+     * (MainActivity, the same disclosure-first discipline as detection).
+     *
+     * AN-MANUAL-REMINDER (R1146, Android Ruling 14): ONE SWITCH, BOTH MODES, AND THE SERVER FIRST. It used to be
+     * purely local; since A8 the server's reminderEnabled decides whether a push is sent (SPEC 13.3), and R1147 reads
+     * it back at the next sign-in - so the switch PATCHes it, and the phone's opt-in and the switch move only once the
+     * server TOOK it (R1145's rule, setAutoDetection's shape): a refusal leaves both where they were and says so.
+     * What fires then is mode-dependent - SamplingWorker's evening notice in automatic mode, the push or the 19:00
+     * fallback in manual mode - and every one of them reads this opt-in.
      */
     fun setEveningNotification(enable: Boolean) {
-        eveningNotificationStore.setEnabled(enable)
-        mutableState.update { it.copy(eveningNotificationEnabled = enable) }
+        scope.launch {
+            when (val outcome = saver.saveSettings(wire.reminderBody(enable))) {
+                is PostOutcome.Ok ->
+                    if (outcome.status in HTTP_OK..HTTP_OK_MAX) {
+                        eveningNotificationStore.setEnabled(enable)
+                        mutableState.update { it.copy(eveningNotificationEnabled = enable, error = null) }
+                    } else {
+                        mutableState.update { it.copy(error = SettingsError.SAVE_REFUSED) }
+                    }
+                PostOutcome.SessionEnded, PostOutcome.NoSession ->
+                    mutableState.update { it.copy(phase = ParametresPhase.SESSION_ENDED) }
+                PostOutcome.SessionExpired, PostOutcome.NetworkError ->
+                    mutableState.update { it.copy(phase = ParametresPhase.NETWORK_ERROR) }
+            }
+        }
     }
 
     /**

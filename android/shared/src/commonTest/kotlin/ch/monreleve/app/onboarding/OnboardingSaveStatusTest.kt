@@ -73,8 +73,9 @@ private fun statusController(
         store,
         TAX_YEAR,
         scope,
-        patchBody = { settings -> "patch:$settings" },
+        patchBody = { settings, _ -> "patch:$settings" },
         onModeSaved = { modes += it },
+        onReminderSaved = {},
     )
 
 /** Walk the eight steps with valid answers and AUTOMATIC at the Mode step; the last next() is the save. */

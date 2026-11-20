@@ -92,18 +92,19 @@ internal fun SaisieSection(
         )
         RowDivider()
         ActionRow(ParametresCopy.LEARN_MORE, onClick = onLearnMore)
-        // R323 / PARKAN-36: the evening proposal appears only when detection is on - without it there is nothing
-        // to propose, so offering the switch would be one that can never fire.
-        if (state.autoDetectionEnabled) {
-            RowDivider()
-            SwitchRow(
-                ParametresCopy.EVENING_LABEL,
-                ParametresCopy.EVENING_DESCRIPTION,
-                state.eveningNotificationEnabled,
-                actions.onToggleEveningNotification,
-                enabled,
-            )
-        }
+        // AN-MANUAL-REMINDER (R1146, Android Ruling 14): the evening reminder is offered in BOTH modes - in manual mode
+        // it is the push or the 19:00 fallback, so a switch that appeared only with detection on left a manual person
+        // unable to turn it on or off after onboarding. Each mode says what it does, by key (R206): automatic mode
+        // keeps its proposal sentence; manual mode takes onboarding's own description of the same reminder, which
+        // names no time (19:00 is a target, not a promise - R1140).
+        RowDivider()
+        SwitchRow(
+            ParametresCopy.EVENING_LABEL,
+            if (state.autoDetectionEnabled) ParametresCopy.EVENING_DESCRIPTION else OnboardingCopy.REMINDER_SUBTITLE,
+            state.eveningNotificationEnabled,
+            actions.onToggleEveningNotification,
+            enabled,
+        )
         // AN-ALERT: the threshold alert is NOT gated on detection - it reads the forecast, not the position - so
         // its switch is always offered here (its own switch, the Prevision screen offers the same opt-in once).
         RowDivider()

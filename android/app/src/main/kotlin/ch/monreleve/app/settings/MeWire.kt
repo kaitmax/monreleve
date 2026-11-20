@@ -41,7 +41,7 @@ import org.json.JSONObject
  * how the simplified basis and the whole-year case are stated (never omitted, which .strict() on
  * the server would still accept but would leave a stale value standing).
  */
-fun Settings.mePatchBody(): String =
+fun Settings.mePatchBody(reminderEnabled: Boolean? = null): String =
     JSONObject()
         .put("canton", canton)
         .put("employmentRate", employmentRate)
@@ -58,6 +58,9 @@ fun Settings.mePatchBody(): String =
         // AUTO_DETECT requires consent, so they always travel together.
         .apply { if (loggingMode != null) put("loggingMode", loggingMode) }
         .apply { if (detectionConsent != null) put("detectionConsent", detectionConsent) }
+        // AN-MANUAL-REMINDER (R1145): onboarding's evening answer, sent only when the flow asked it; omitted otherwise
+        // (every Parametres settings save, a partial onboarding), so the server's value stands.
+        .apply { if (reminderEnabled != null) put("reminderEnabled", reminderEnabled) }
         .toString()
 
 /**
@@ -110,6 +113,14 @@ fun parseMeView(body: String): MeView? =
  */
 fun isMeAnswer(body: String): Boolean =
     runCatching { JSONObject(body).let { it.has("canton") && it.has("loggingMode") } }.getOrDefault(false)
+
+/**
+ * AN-MANUAL-REMINDER (R1147). The evening opt-in a GET /api/v1/me answer holds, read FAIL-CLOSED: on only for a JSON
+ * true - absent, null, a string "true", a number or a body that is not JSON all read off, so no malformed answer can
+ * turn a reminder on that the person did not choose.
+ */
+fun parseReminderEnabled(body: String): Boolean =
+    runCatching { JSONObject(body).opt("reminderEnabled") == true }.getOrDefault(false)
 
 /** DossierPayload's convention: a JSON null (or an absent key) reads as null, never the literal string "null". */
 internal fun JSONObject.stringOrNull(key: String): String? = if (!has(key) || isNull(key)) null else getString(key)

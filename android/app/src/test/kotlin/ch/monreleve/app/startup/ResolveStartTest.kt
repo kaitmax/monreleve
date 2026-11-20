@@ -34,7 +34,7 @@ private val UNREADABLE = Resolution(StartDecision.Unresolved(UnresolvedCause.UNR
 class ResolveStartTest : FunSpec({
     test("R1161: a complete account -> Main, writing the server's mode and the settings") {
         resolveStart(MeFetch.Ok(HTTP_OK, me())) shouldBe
-            Resolution(StartDecision.Main, mode = LoggingMode.MANUAL, settings = CAMILLE)
+            Resolution(StartDecision.Main, mode = LoggingMode.MANUAL, settings = CAMILLE, reminderEnabled = false)
     }
 
     test("R1162: a complete AUTOMATIC account with its consent stamp -> mode AUTO_DETECT; without the stamp MANUAL") {
@@ -79,5 +79,36 @@ class ResolveStartTest : FunSpec({
     test("R1161: each cause says its own line (swapping them must fail here)") {
         UnresolvedCause.UNREACHABLE.message() shouldBe SignInCopy.NETWORK_ERROR
         UnresolvedCause.UNREADABLE.message() shouldBe SignInCopy.GENERIC_ERROR
+    }
+
+    // AN-MANUAL-REMINDER (R1147, A8 Q6). THE OPT-IN SURVIVES A SIGN-IN: every POSITIVE /me answer hands the server's
+    // reminderEnabled back, read fail-closed (only a JSON true is on); no answer writes nothing.
+    test("R1147: a /me answer hands its reminderEnabled back - true is on, false is off") {
+        val on = me().replace("\"reminderEnabled\":false", "\"reminderEnabled\":true")
+        resolveStart(MeFetch.Ok(HTTP_OK, on)).reminderEnabled shouldBe true
+        resolveStart(MeFetch.Ok(HTTP_OK, me())).reminderEnabled shouldBe false
+        // A partial or brand-new account's answer carries it too: RESOLVING writes it before onboarding.
+        resolveStart(MeFetch.Ok(HTTP_OK, on.replace("\"name\":\"Camille Martin\"", "\"name\":null")))
+            .reminderEnabled shouldBe true
+    }
+
+    test("R1147: fail-closed - a reminderEnabled absent, null or not a boolean reads OFF") {
+        listOf(
+            me().replace("\"reminderEnabled\":false,", ""),
+            me().replace("\"reminderEnabled\":false", "\"reminderEnabled\":null"),
+            me().replace("\"reminderEnabled\":false", "\"reminderEnabled\":\"true\""),
+            me().replace("\"reminderEnabled\":false", "\"reminderEnabled\":1"),
+        ).forEach { body ->
+            val r = resolveStart(MeFetch.Ok(HTTP_OK, body))
+            r.decision shouldBe StartDecision.Main
+            r.reminderEnabled shouldBe false
+        }
+    }
+
+    test("R1147: no answer writes no opt-in - gone, unreachable and unreadable leave it null") {
+        resolveStart(MeFetch.SessionGone).reminderEnabled shouldBe null
+        resolveStart(MeFetch.Unreachable).reminderEnabled shouldBe null
+        resolveStart(MeFetch.Ok(HTTP_SERVER_ERROR, me())).reminderEnabled shouldBe null
+        resolveStart(MeFetch.Ok(HTTP_OK, "{}")).reminderEnabled shouldBe null
     }
 })

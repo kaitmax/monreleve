@@ -12,6 +12,7 @@ import ch.monreleve.app.settings.isMeAnswer
 import ch.monreleve.app.settings.parseLoggingMode
 import ch.monreleve.app.settings.parseMeSettings
 import ch.monreleve.app.settings.parseMeView
+import ch.monreleve.app.settings.parseReminderEnabled
 
 // R297 / R335. After sign-in, decide onboarding vs the main shell by consulting the SERVER's settings (GET
 // /api/v1/me) BEFORE the decision. Sign-out now clears the device's settings (R297 reverses PARKAN-28), so a
@@ -91,6 +92,8 @@ data class Resolution(
     val decision: StartDecision,
     val mode: LoggingMode? = null,
     val settings: Settings? = null,
+    // AN-MANUAL-REMINDER (R1147): the server's reminderEnabled, read fail-closed - null means "write nothing".
+    val reminderEnabled: Boolean? = null,
 )
 
 /**
@@ -110,30 +113,35 @@ private fun resolveAnswer(outcome: MeFetch.Ok): Resolution {
     val view = parseMeView(outcome.body)
     if (outcome.status != HTTP_OK || !isMeAnswer(outcome.body) || view == null) return unreadable
     val mode = parseLoggingMode(outcome.body)
+    // AN-MANUAL-REMINDER (R1147): every positive answer hands back the evening opt-in the server holds, fail-closed.
+    val reminder = parseReminderEnabled(outcome.body)
     return when (val plan = onboardingPlanFor(view)) {
         // Complete means every field is present; the strict reader still has the last word, so a body it refuses
         // leaves the phone exactly as it was. Restored, Aujourd'hui computes offline and nobody re-onboards.
         OnboardingPlan.Complete ->
-            parseMeSettings(outcome.body)?.let { Resolution(StartDecision.Main, mode, it) } ?: unreadable
+            parseMeSettings(outcome.body)?.let { Resolution(StartDecision.Main, mode, it, reminder) } ?: unreadable
         // A partial account's onboarding never asks the mode (Completeness.kt), so the server's stands - restored here;
         // a brand-new account's is the server's MANUAL default.
-        is OnboardingPlan.Onboard -> Resolution(StartDecision.Onboard(plan.prefill), mode)
+        is OnboardingPlan.Onboard -> Resolution(StartDecision.Onboard(plan.prefill), mode, reminderEnabled = reminder)
     }
 }
 
 /**
  * Reached only when the device is signed in but holds no COMPLETE local settings (a fresh account, a re-sign-in
  * after R297's sign-out wipe, or a partial account missing a releve field). Fetches /me, decides (resolveStart), and
- * applies the writes: the MODE first, then the settings - cached settings send the next launch past RESOLVING, so a
- * process death between the two re-runs the resolve rather than opening the shell with the mode never restored.
+ * applies the writes: the MODE first, then the evening opt-in (R1147), then the settings - cached settings send the
+ * next launch past RESOLVING, so a process death between the writes re-runs the resolve rather than opening the
+ * shell with the mode or the opt-in never restored.
  */
 suspend fun decideStartAfterSignIn(
     fetchMe: suspend () -> MeFetch,
     store: SettingsStore,
     restoreMode: (LoggingMode) -> Unit,
+    restoreReminder: (Boolean) -> Unit,
 ): StartDecision {
     val resolution = resolveStart(fetchMe())
     resolution.mode?.let(restoreMode)
+    resolution.reminderEnabled?.let(restoreReminder)
     resolution.settings?.let(store::save)
     return resolution.decision
 }

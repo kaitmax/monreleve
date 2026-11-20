@@ -66,7 +66,13 @@ private class PinStore : SettingsStore {
     }
 }
 
-private fun pinBody(settings: Settings): String = "patch:$settings"
+// AN-MANUAL-REMINDER (R1145): the body now also takes the opt-in; this pin keeps its settings-only bytes - the opt-in
+// it carries is OnboardingReminderOptInTest's to assert.
+@Suppress("UnusedParameter")
+private fun pinBody(
+    settings: Settings,
+    reminderEnabled: Boolean? = null,
+): String = "patch:$settings"
 
 private fun pinController(
     scope: CoroutineScope,
@@ -75,7 +81,16 @@ private fun pinController(
     restored: OnboardingSnapshot? = null,
     onModeSaved: (LoggingMode) -> Unit = {},
 ): OnboardingController =
-    OnboardingController(saver, store, TAX_YEAR, scope, restored, patchBody = ::pinBody, onModeSaved = onModeSaved)
+    OnboardingController(
+        saver,
+        store,
+        TAX_YEAR,
+        scope,
+        restored,
+        patchBody = ::pinBody,
+        onModeSaved = onModeSaved,
+        onReminderSaved = {},
+    )
 
 /** Walk NOM..PERIODE with valid answers; the start date (null = the whole year) is the variable. */
 private fun OnboardingController.answerUpToThePeriod(startDate: String?) {

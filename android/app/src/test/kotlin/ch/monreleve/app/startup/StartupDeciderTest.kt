@@ -87,7 +87,16 @@ private class Recorder {
         modes += mode
     }
 
-    suspend fun decide(fetch: MeFetch): StartDecision = decideStartAfterSignIn({ fetch }, store, ::restoreMode)
+    /** AN-MANUAL-REMINDER (R1147): the evening opt-in handed back from /me, in the same write order. */
+    val reminders = mutableListOf<Boolean>()
+
+    fun restoreReminder(on: Boolean) {
+        writes += "reminder"
+        reminders += on
+    }
+
+    suspend fun decide(fetch: MeFetch): StartDecision =
+        decideStartAfterSignIn({ fetch }, store, ::restoreMode, ::restoreReminder)
 }
 
 class StartupDeciderTest : FunSpec({
@@ -196,7 +205,8 @@ class StartupDeciderTest : FunSpec({
             val r = Recorder()
             r.decide(MeFetch.Ok(HTTP_OK, ME_COMPLETE_AUTO)) shouldBe StartDecision.Main
             r.modes shouldBe listOf(LoggingMode.AUTO_DETECT)
-            r.writes shouldBe listOf("mode", "settings")
+            // AN-MANUAL-REMINDER (R1147): the opt-in is written with the mode, both BEFORE the settings.
+            r.writes shouldBe listOf("mode", "reminder", "settings")
         }
     }
 
@@ -217,7 +227,7 @@ class StartupDeciderTest : FunSpec({
         runTest {
             val partial = Recorder()
             partial.decide(MeFetch.Ok(HTTP_OK, ME_NO_NAME)).shouldBeInstanceOf<StartDecision.Onboard>()
-            partial.writes shouldBe listOf("mode")
+            partial.writes shouldBe listOf("mode", "reminder")
             val brandNew = Recorder()
             brandNew.decide(MeFetch.Ok(HTTP_OK, ME_BRAND_NEW)).shouldBeInstanceOf<StartDecision.Onboard>()
             brandNew.modes shouldBe listOf(LoggingMode.MANUAL)
@@ -228,5 +238,20 @@ class StartupDeciderTest : FunSpec({
         meFetchOf(AuthedOutcome.Ok(HTTP_SERVER_ERROR, ERROR_BODY)) shouldBe MeFetch.Ok(HTTP_SERVER_ERROR, ERROR_BODY)
         meFetchOf(AuthedOutcome.NetworkError) shouldBe MeFetch.Unreachable
         meFetchOf(AuthedOutcome.SessionExpired) shouldBe MeFetch.SessionGone
+    }
+
+    // AN-MANUAL-REMINDER (R1147): the opt-in the server holds reaches the phone at RESOLVING; no answer, nothing.
+    test("R1147: a positive answer restores the server's reminderEnabled; an unresolved one restores nothing") {
+        runTest {
+            val on = Recorder()
+            on.decide(MeFetch.Ok(HTTP_OK, ME_COMPLETE.replace("\"reminderEnabled\":false", "\"reminderEnabled\":true")))
+            on.reminders shouldBe listOf(true)
+            val off = Recorder()
+            off.decide(MeFetch.Ok(HTTP_OK, ME_COMPLETE))
+            off.reminders shouldBe listOf(false)
+            val unreachable = Recorder()
+            unreachable.decide(MeFetch.Unreachable)
+            unreachable.reminders shouldBe emptyList()
+        }
     }
 })
