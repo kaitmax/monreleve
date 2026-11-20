@@ -29,6 +29,19 @@ R1143. PROOF on MonReleve_API36 (labelled "emulator API 36"): manual mode, push 
     one notification; record the day -> no second one; push available -> none. Mask sign-in codes
     (R574). The real S9 check stays PARKAN-46/47's (not this session's).
 R1144. iOS: if :shared changes, R573 (budget 30 min).
+R1145. THE OPT-IN IS WRITTEN ONLY AFTER A 2xx (Android Ruling 12, A12 Q3): onboarding's "Oui, me le
+    rappeler" turns the device-local evening reminder on BEFORE the settings save today, so it stays
+    on after a refused save. Write it only once the save is accepted (A12's SAVE_REFUSED path leaves
+    it unchanged). Test first, with the 2xx positive beside the refusal (R196).
+R1146. A PARAMETRES SWITCH FOR THE EVENING REMINDER, BOTH MODES (Android Ruling 14, A8 Q2): today
+    the reminder is turned on only at onboarding and can never be turned off in the app. One switch
+    writes the device-local opt-in AND PATCHes reminderEnabled, the local value changing only after a
+    2xx (R1145's rule); it reuses existing copy where one fits, and any NEW French string is listed in
+    QUESTIONS for the operator's approval (it ships as written unless refused).
+R1147. THE OPT-IN SURVIVES A SIGN-IN (A8 Q6): at RESOLVING, through A9's resolveStart, the phone reads
+    reminderEnabled back from /me, fail-closed, so phone and server agree after a re-sign-in.
+NOTE FOR P4 (A8's path table, REPORT-AN-FCM-CLIENT.txt): the fallback checks !isPushAvailable and goes
+    through the one showOncePerDay - never a second gate.
 
 THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
 emulator shut down and the heavy lock held; R573 if :shared changed; push the branch (DO NOT

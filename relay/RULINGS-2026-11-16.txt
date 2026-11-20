@@ -2131,3 +2131,148 @@ A11 MERGED to main as e6cfdda7 (the merge of 22e9a710; main unmoved at
 6381e070; token hits 0) on the orchestrator's gate: :app:gate BUILD
 SUCCESSFUL in 11m 27s, GATE EXIT=0, test floor 1463, on 88dc2b0a (log kept at
 C:/wt/queue-evidence/an-session-end/orchestrator-gate-88dc2b0a.log).
+
+====================================================================
+ANDROID RULING 12 - A12 MERGED; A12's QUESTIONS
+====================================================================
+A12 (AN-STATUS-HONESTY) merged to main as 21a2dfa2 (the merge of fd94436f;
+main had moved to 0a48f188 in relay/ only; token hits 0). Gate evidence:
+:app:gate BUILD SUCCESSFUL in 10m, GATE EXIT=0, test floor 1465, on the code
+tip 2056adda (REPORT-AN-STATUS-HONESTY.txt line 37-39); R573 ios-shared run
+44711085123 success on 2056adda (gh run view, read by the orchestrator),
+8 macOS minutes. iOS phase not started; this run's macOS total so far:
+A1 9 + A9 ~9 + A12 8 = about 26.
+ON A12's QUESTIONS (the orchestrator's):
+Q1 (a 5xx on the onboarding save shows ERROR_SAVE_REFUSED, "... Verifiez
+  vos saisies", as Parametres does for any non-2xx): post-launch - a 5xx
+  on that PATCH is rare and the sentence already ships on Parametres; a
+  5xx sentence for both surfaces is copy for the operator to approve then.
+Q2 (the "accepted" 2xx test in five files under two spellings): post-launch.
+Q3 (onboarding's "Oui, me le rappeler" turns the device-local evening
+  reminder on BEFORE the save, so it stays on after a refused save):
+  INTO A7 - the reminder opt-in is A7's surface; it is written only after
+  a 2xx save (R1145 in AN-MANUAL-REMINDER.txt).
+N2 (a cold PDF render reported as a connection problem): still decided by
+  A4's R1115 measurement against a built server.
+
+====================================================================
+ANDROID RULING 13 - A4 MERGED; T1-T3 AND A4's QUESTIONS; N2 CLOSED
+====================================================================
+A4 (AN-FORCE-UPDATE) merged to main as 12d9c192 (the merge of 75de812a;
+main unmoved at 21a2dfa2; token hits 0). On the code tip cf043d93:
+:app:gate BUILD SUCCESSFUL in 7m 6s, GATE EXIT=0, test floor 1475 (two NEW
+baselines, none moved); gate:changed GATE PASSED (test 4269, e2e 402, visual
+176, late 10); gate:clone GATE:CLONE PASSED; R573 run 44750696919 success
+(read by the orchestrator), ~8 macOS minutes (run total ~34). The route is
+GET /api/v1/android/minimum-version; the setting
+ANDROID_MINIMUM_VERSION_CODE ships UNSET (inert) - turning it on in
+Coolify is the operator's, and only once a release exists to require.
+T1-T3 (UpdateCopy.TITLE / BODY / BUTTON, android/shared/.../fr/UpdateCopy.kt):
+  ship AS WRITTEN unless the operator refuses them (R1112).
+QD1 (an unusable answer KEEPS an update screen already showing; from the
+  normal state it never shows it): KEEP - fail open means a broken check
+  never locks anyone out; it does not mean an outage releases a phone a
+  valid answer already called too old.
+Q2 (the frozen route name and shape): ACCEPTED.
+Q3 (CallbackActivity gated too): ACCEPTED - R267, every entry point.
+Q4 (the app is usable until the answer arrives and while offline;
+  background work continues under the screen): ACCEPTED - the mechanism
+  is a nudge to update, not a lock; SPEC 18.1 asks no more.
+Q5 (after a RELEASE within one activity instance the shell restarts from
+  onCreate's start): post-launch - a release happens only when the
+  operator LOWERS the minimum, and nothing is lost.
+N2 CLOSED (Android Ruling 8 Q3): R1115 against a BUILT server, Camille's
+  fullest year (258 entries): server 2499 / 1920 / 1696 ms, app tap-to-
+  share 2841 / 2460 / 2517 ms - well under the 15 s read timeout. The
+  timeout STAYS; a slow export blamed on the connection is post-launch.
+A4's INCIDENT D3 (R334): it wrote at the top level of the orchestrator's
+  scratchpad, overwriting a drive.mjs of unknown origin (not the
+  orchestrator's live driver; earlier drivers survive under
+  C:/wt/queue-evidence/*/) and appending to another session's proxy.log
+  (restored to 606 lines). Not a security incident. RULE FROM NOW
+  (ORCH-ANDROID): a session's scratch files live ONLY in its own
+  worktree or C:/wt/queue-evidence/<task>/, never at the top level of
+  any scratchpad.
+
+====================================================================
+ANDROID RULING 14 - A8 MERGED; A8's QUESTIONS
+====================================================================
+A8 (AN-FCM-CLIENT) merged to main as f6c51121 (the merge of 5f830eb0;
+main unmoved at 12d9c192; token hits 0; no Firebase API key or private key
+in the pushed diff, scanned). On the code tip 68eecc91: :app:gate BUILD
+SUCCESSFUL in 13m 35s, GATE EXIT=0, test floor 1513; gate:changed EXIT=0
+(test 4270); gate:clone GATE:CLONE PASSED; R573 run 44775158097 success
+(read by the orchestrator), ~9 macOS minutes (run total ~43). Dependency:
+com.google.firebase:firebase-messaging:26.0.2, :app only; release APK
++414 KiB (2.32 MiB of the 12 MB budget). PUSH AVAILABLE is
+ch.monreleve.app.push.PushAvailability.isPushAvailable(context).
+F1 (the server's message carried a notification block the tray draws
+itself, bypassing every rule on the phone) and F2 (nothing wrote
+reminderEnabled, so the daily job would never have sent a push) are FIXED
+on main. Production is unaffected until the operator promotes
+'production' and supplies the Firebase values and the rotated key.
+ON A8's QUESTIONS (the orchestrator's):
+Q1 (data-only envelope): ACCEPTED - it is the only envelope under which
+  Android Ruling 7's exactly-one rule can hold. Its risks (a force-stopped
+  or battery-restricted app receives nothing while push reads available;
+  high priority with nothing shown may be deprioritised; android.priority
+  untested against the real API) become an S9 / first-real-push check,
+  listed by A6 as a launch blocker owned by the operator.
+Q2 (the app writes reminderEnabled): ACCEPTED (SPEC 8 / 13.3). A
+  Parametres switch for the evening reminder in BOTH modes goes INTO A7
+  (R1146): today the reminder can be turned on only at onboarding and
+  never turned off in the app.
+Q3 (POST /api/v1/devices refuses its documented 'platform' key because the
+  coordinate guard matches 'lat' inside it): post-launch, by name - fix
+  the guard to match key NAMES rather than substrings, with tests both
+  ways (R196), and keep the key; until then the app omits it and a test
+  pins the refusal. The privacy guard is not loosened before launch.
+Q4 (new licences copy: Firebase, Okio, javax.inject, Error Prone, Google
+  Play services; one baseline moved, ParametresScreenScreenshotTest_licences):
+  ships AS WRITTEN unless the operator refuses it.
+Q5 (every session-end path deletes the token): ACCEPTED.
+Q6 (the opt-in does not survive a sign-out; nothing reads reminderEnabled
+  back from /me): INTO A7 (R1147) - read back at RESOLVING through A9's
+  resolveStart, fail-closed, so the phone and the server agree.
+Q7 (the four FCM values in the release-build procedure): YES - INTO A5
+  (AN-PLAY-PACK R1120): passed on the release build command only, never
+  machine-wide (A8: PushConfigTest would turn every gate on that machine red).
+
+====================================================================
+ANDROID RULING 15 - A7 BUILT; ITS MERGE WAITS ON THE iOS RUN (BILLING)
+====================================================================
+A7 (AN-MANUAL-REMINDER): branch an-manual-reminder, code tip 6fb607f8,
+report tip 484aa6fc, base f6c51121. Its own :app:gate passed on 0b985b3e
+(8m 53s, test floor 1542) but NOT on the code tip (memory: WSL's VM ~6.7 GB
+is the operator's). The orchestrator runs :app:gate on 6fb607f8 in its own
+worktree C:/wt/gate-a7, the emulator shut down under Android Ruling 11.
+R573 IS NO RESULT: ios-shared run 44793106343 (on 0b985b3e) ended
+'failure' with ZERO STEPS, created 2026-11-20T18:28:35Z - read by the
+orchestrator with gh run view; A7 quotes GitHub's annotation: "recent
+account payments have failed or your spending limit needs to be
+increased". The two runs before it (44775158097, 44750696919) succeeded.
+Not retried (the funding is the operator's). :shared changed, so A7 does
+NOT merge until a green ios-shared run exists on its tip or its merge
+result. This also blocks the iOS phase (iOS Ruling 1), which runs on the
+same runner. TOLD TO THE OPERATOR 2026-11-20.
+ON A7's QUESTIONS (the orchestrator's):
+Q1 (which day wins off the Paris zone): KEEP - the reminder fires at 19:00
+  device-local and asks about Paris 'today', as the whole app does; for
+  this product's people (France/Switzerland, one zone) they agree.
+  Post-launch if travel ever makes it matter.
+Q2 (R1147: server on AND permission held means on): ACCEPTED.
+Q3 (a schedule whenever someone is signed in; one no-op wake a day where
+  nothing shows): ACCEPTED.
+Q4 (sign out and back in on one evening can remind twice): ACCEPTED, rare.
+Q5 (S9 measurement of Doze / standby-bucket drift): YES - it joins
+  PARKAN-46/47, the operator's S9 checks; A6 lists it.
+Q6 (OnboardingCopy.REMINDER_SUBTITLE reused in Parametres manual mode):
+  ACCEPTED (R206).
+DEVIATION ACCEPTED: onboarding's PATCH carries reminderEnabled when the
+  reminder step was asked - without it R1147 would switch off a no-push
+  person's reminder at their next sign-in.
+A7's GATE ON ITS CODE TIP, RUN BY THE ORCHESTRATOR: :app:gate on 6fb607f8 -
+BUILD SUCCESSFUL in 11m 3s, GATE EXIT=0, test floor 1543 (lock acquired at
+commitFree 8347 with the emulator shut down and the orchestrator's :3900 dev
+server stopped; log at C:/wt/queue-evidence/an-manual-reminder/
+orchestrator-gate-6fb607f8.log). Only R573 stands between A7 and main.

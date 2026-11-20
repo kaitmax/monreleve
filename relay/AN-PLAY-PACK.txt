@@ -21,6 +21,9 @@ R1120. docs/play-release.md - THE RELEASE-BUILD PROCEDURE the operator follows, 
     version-control-info names HEAD (R171, derived from `git rev-parse HEAD`) and its manifest
     declares exactly the permission set checkReleaseLocationPermissions asserts for the APK.
     Verify each plant landed before reading its result (R180).
+    THE FCM VALUES (Android Ruling 14, A8 Q7): the procedure names the four build properties A8 defined
+    (REPORT-AN-FCM-CLIENT.txt WHAT THE OPERATOR MUST SUPPLY), passed on the release build command ONLY,
+    never machine-wide, and a release built WITHOUT them is still valid (push unavailable) - say so.
 R1121. DATA SAFETY, TRACED TO CODE (AN14's AC2): every answer on Play's Data safety form, each with
     the file/test that ENFORCES it - not the intention. Location: on-device only, Case 1 local-only
     while D18 holds (name the code that discards the fix and the API guard that rejects a
