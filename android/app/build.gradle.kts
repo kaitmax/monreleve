@@ -60,6 +60,15 @@ fun locationPermissionProblem(
         else -> null
     }
 
+// R1124: THE OVERLAY, merged into EVERY variant when -PmanualOnly=true and into none otherwise (AGP's variant API adds
+// it last, so it overrides src/main's two <uses-permission>). Every variant, not only release, so the debug and audit
+// builds of the fallback show on a phone exactly what the release would.
+androidComponents {
+    onVariants { variant ->
+        if (manualOnly) variant.sources.manifests.addStaticManifestFile("src/manualOnly/AndroidManifest.xml")
+    }
+}
+
 // AN5 increment 1 / KMP-2b (R396). exportSchema = true writes the room schema JSON, and R187 makes
 // it a contract with every device that installs a release, so it is committed and
 // RoomSchemaContractTest reads it back in the JVM gate.
@@ -430,8 +439,9 @@ tasks.withType<Test> {
         layout.projectDirectory.file("src/manualOnly/AndroidManifest.xml"),
     ).withPropertyName("sourceManifests")
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    // AN-PLAY-PACK (R1123/R283): PlayListingTest reads the store listing's French texts from the document the operator
-    // pastes into Play, so an edit to that document re-runs the binding rules instead of leaving this task UP-TO-DATE.
+    // AN-PLAY-PACK (R1123/R283): StoreListingCopyTest reads the store listing's French texts from the document
+    // the operator pastes into Play, so an edit to that document re-runs the binding rules instead of leaving
+    // this task UP-TO-DATE.
     inputs.file(rootProject.layout.projectDirectory.file("../docs/play-store-listing.md"))
         .withPropertyName("playStoreListing")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -1374,6 +1384,7 @@ tasks.register("playRelease") {
 gradle.taskGraph.whenReady {
     if (allTasks.none { it.path == ":app:playRelease" }) return@whenReady
     val repoRoot = rootDir.parentFile
+
     fun gitLines(vararg args: String): List<String> {
         val run =
             providers.exec {
@@ -1389,8 +1400,13 @@ gradle.taskGraph.whenReady {
     val dirty = gitLines("status", "--porcelain=v1", "--untracked-files=all")
     val ignoredInSources =
         gitLines(
-            "status", "--porcelain=v1", "--ignored=matching", "--untracked-files=all", "--",
-            "android/app/src", "android/shared/src",
+            "status",
+            "--porcelain=v1",
+            "--ignored=matching",
+            "--untracked-files=all",
+            "--",
+            "android/app/src",
+            "android/shared/src",
         ).filter { it.startsWith("!! ") }
     if (dirty.isNotEmpty() || ignoredInSources.isNotEmpty()) {
         throw GradleException(
@@ -1403,7 +1419,9 @@ gradle.taskGraph.whenReady {
                     dirty.forEach { appendLine("    $it") }
                 }
                 if (ignoredInSources.isNotEmpty()) {
-                    appendLine("${ignoredInSources.size} IGNORED file(s) inside a source set (compiled, never committed):")
+                    appendLine(
+                        "${ignoredInSources.size} IGNORED file(s) inside a source set (compiled, never committed):",
+                    )
                     ignoredInSources.forEach { appendLine("    $it") }
                 }
                 appendLine("Build from a fresh worktree of the commit (docs/play-release.md, step 1).")

@@ -42,7 +42,10 @@ class ManualOnlyOverlayTest {
                 .filter { it.matches(Regex("""android\.permission\.ACCESS_[A-Z_]*LOCATION""")) }
                 .toSortedSet()
         // R133: the scan must find the two it exists to find, or it proves nothing about an empty match.
-        assertTrue("no location permission found in src/main - the scan is pointed at nothing: $declared", declared.size >= 2)
+        assertTrue(
+            "no location permission found in src/main - the scan is pointed at nothing: $declared",
+            declared.size >= 2,
+        )
 
         val overlayText = withoutComments(overlay.readText())
         val overlayElements = usesPermission.findAll(overlayText).map { it.value }.toList()

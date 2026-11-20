@@ -24,7 +24,7 @@ import java.io.File
  *   - location or detection named OUTSIDE that paragraph, so the manual-only listing (R1124) is the same text with
  *     the paragraph removed, and says nothing about a feature that build does not have.
  */
-class PlayListingTest {
+class StoreListingCopyTest {
     private val listing = File(repoRoot(), "docs/play-store-listing.md")
 
     private fun section(name: String): String {
@@ -41,7 +41,9 @@ class PlayListingTest {
     private val privacy by lazy { section("privacy") }
 
     /** Every text a reader sees, the full description with its detection paragraph markers stripped. */
-    private val everything by lazy { listOf(title, short, full.replace(Regex("""<!-- /?listing:detection -->"""), ""), privacy) }
+    private val everything by lazy {
+        listOf(title, short, full.replace(Regex("""<!-- /?listing:detection -->"""), ""), privacy)
+    }
 
     private fun length(text: String) = text.codePointCount(0, text.length)
 
@@ -56,7 +58,11 @@ class PlayListingTest {
     fun noTextClaimsMoreThanTheRecordSupports() {
         val forbidden = Regex("""(?i)certifi|attest|conform""")
         everything.forEach { text ->
-            assertEquals("forbidden word in: $text", emptyList<String>(), forbidden.findAll(text).map { it.value }.toList())
+            assertEquals(
+                "forbidden word in: $text",
+                emptyList<String>(),
+                forbidden.findAll(text).map { it.value }.toList(),
+            )
         }
     }
 
@@ -84,17 +90,31 @@ class PlayListingTest {
     @Test
     fun theDetectionParagraphStatesWhatItNeedsAndThatItIsABeta() {
         listOf("position exacte", "« Toujours autoriser »", "arrière-plan", "approximative", "bêta", "confirmation")
-            .forEach { phrase -> assertTrue("the detection paragraph must say « $phrase »", detection.contains(phrase)) }
+            .forEach {
+                    phrase ->
+                assertTrue("the detection paragraph must say « $phrase »", detection.contains(phrase))
+            }
     }
 
     @Test
     fun nothingOutsideTheDetectionParagraphNamesLocationOrDetection() {
-        val outside = listOf(title, short, full.replace(Regex("""(?s)<!-- listing:detection -->.*?<!-- /listing:detection -->"""), ""))
+        val outside =
+            listOf(
+                title,
+                short,
+                full.replace(Regex("""(?s)<!-- listing:detection -->.*?<!-- /listing:detection -->"""), ""),
+            )
         // R133: the paragraph exists and does say these words, so their absence outside it means something.
         assertTrue(detection.contains("localisation") && detection.contains("position"))
         val named = Regex("""(?i)localisation|position|détect|arrière-plan|gps""")
         outside.forEach { text ->
-            assertEquals("named outside the detection paragraph: $text", emptyList<String>(), named.findAll(text).map { it.value }.toList())
+            assertEquals(
+                "named outside the detection paragraph: $text",
+                emptyList<String>(),
+                named.findAll(text).map {
+                    it.value
+                }.toList(),
+            )
         }
     }
 }

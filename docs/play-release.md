@@ -1,10 +1,10 @@
 # Play release - the procedure, the declarations, the operator's steps (AN14, AN-PLAY-PACK)
 
-Written by AN-PLAY-PACK (relay/AN-PLAY-PACK.txt, R1120-R1126) on 2026-11-20, against main at f6c51121. Everything
+Written by AN-PLAY-PACK (relay/AN-PLAY-PACK.txt, R1120-R1126) on 2026-11-20, against main at 34db1eee (A7 merged). Everything
 here that needs the Play Console account, the release (upload) key or the Firebase console is **the operator's**
 (Android Ruling 2) and is marked **[OPERATOR]**. No session creates a signing key (R250).
 
-Companion files: `docs/play-store-listing.md` (the French listing texts, R1123, read by `PlayListingTest`);
+Companion files: `docs/play-store-listing.md` (the French listing texts, R1123, read by `StoreListingCopyTest`);
 `docs/play-background-location.md` (the verdict on background location - LIKELY REFUSED, a risk the operator took
 knowingly, REPORT-AN-AUTO.txt R273 - and the honest framing this file builds on).
 
@@ -98,7 +98,7 @@ never a guess.
 | **Device or other IDs** | Collected, OPTIONAL, not shared. Purpose: App functionality (the daily reminder) | The FCM registration token (`Device.fcmToken`, with `platform` and `appVersion`), sent only for a signed-in person who turned the reminder on and granted notifications, in a build carrying the Firebase values. Firebase Installations sends Google a per-installation id (FID) to obtain it - Firebase's own disclosure: "Generates and collects a per-installation identifier (FID)"; Play names "Firebase installation ID" as an example of this type | `android/app/src/main/kotlin/ch/monreleve/app/push/PushRegistration.kt` (the conditions), `push/PushRuntime.kt` (no Firebase without the four values), `PushConfigTest`, `checkReleasePushManifest` (auto-init off: no token until asked); server `web/app/api/v1/devices/route.ts`, `web/tests/db/devices-route.test.ts`, `web/tests/db/privacy-claims.test.ts` "CLAIM: a notification token" |
 | App info and performance (crash logs, diagnostics) | NOT collected | No crash, analytics or measurement SDK is in the release | `checkReleasePushManifest` (fails on any analytics/measurement/crash component in the BUILT APK); `checkLicences` (every runtime dependency is named); SPEC D32 |
 | Files and docs | NOT collected | The PDF/CSV/JSON exports are produced by the server from the data above and handed to the person's own share sheet (a user-initiated action); the phone writes them to its private cache only | `AndroidManifest.xml` FileProvider (`exports/` only); `web/app/api/v1/export/*` |
-| All other types (financial, health, messages, photos, audio, calendar, contacts, web browsing, installed apps, search) | NOT collected | The app has no permission or API for any of them | `checkReleaseLocationPermissions` / the release manifest: INTERNET, the two location permissions, POST_NOTIFICATIONS only |
+| All other types (financial, health, messages, photos, audio, calendar, contacts, web browsing, installed apps, search) | NOT collected | The app declares no permission that reaches any of them and calls no API for them | The BUILT release APK's full permission set, read with `aapt2 dump permissions` on this branch: INTERNET, ACCESS_FINE_LOCATION, ACCESS_BACKGROUND_LOCATION, POST_NOTIFICATIONS, and from libraries WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED, FOREGROUND_SERVICE (WorkManager), com.google.android.c2dm.permission.RECEIVE (FCM), plus the app's own DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION (AndroidX). No check asserts this whole set; `checkReleaseLocationPermissions` asserts its location half |
 
 **Is all user data encrypted in transit? YES.** The release reaches `https://monreleve.ch` only
 (`API_BASE_URL` in the release build type) and permits cleartext nowhere (`src/release/res/xml/network_security_config.xml`,
@@ -208,12 +208,13 @@ shows no detection entry point:
   no fix without the permission (`LiveLocation.kt`).
 - **The checks, each variant's exact set:** `checkReleaseLocationPermissions` (APK) and `checkReleaseBundle` (.aab)
   assert `{}` with the property and `{FINE, BACKGROUND}` without it.
-- **The listing:** `docs/play-store-listing.md` minus its detection paragraph (`PlayListingTest` asserts nothing
+- **The listing:** `docs/play-store-listing.md` minus its detection paragraph (`StoreListingCopyTest` asserts nothing
   outside that paragraph names location or detection); leave out any screenshot showing detection.
 - **The declaration:** none (no restricted permission is declared). Data safety: the precise-location row stays
   "not collected"; Q-DS1 becomes moot for new days (no day is `DETECTED_*`).
-- **Pending A7** (AN-MANUAL-REMINDER, not merged at the time of writing): it adds the Paramètres reminder switch in
-  both modes and the 19:00 fallback reminder; neither collects new data, and neither is a detection entry point.
+- **What stays in Paramètres:** the evening reminder switch (both modes since A7, AN-MANUAL-REMINDER, 34db1eee: the
+  push reminder, or the 19:00 local fallback on a phone without push) and the threshold alert. Neither reads the
+  position, neither is a detection entry point, and neither collects data beyond `reminderEnabled` (section 2).
 
 ---
 

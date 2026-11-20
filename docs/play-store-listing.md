@@ -1,7 +1,7 @@
 # Play store listing - the draft (AN-PLAY-PACK, R1123)
 
 The French texts Play shows, written for the operator's approval. They ship as written unless refused
-(relay/AN-PLAY-PACK.txt R1123). Each text sits between its two markers; `PlayListingTest` (android/app) reads them
+(relay/AN-PLAY-PACK.txt R1123). Each text sits between its two markers; `StoreListingCopyTest` (android/app) reads them
 from this file and fails on: a length over Play's limit (title 30, short description 80, full description 4 000
 characters - Play Console Help answer/9859152, read 2026-11-20); the words *certifié*, *atteste*, *conforme* in any
 form; a typed threshold value (a digit followed by %, R153 - the texts name *le seuil fiscal* and *le seuil de

@@ -43,8 +43,13 @@ data class ParametresActions(
     val onAcknowledgeDelete: () -> Unit,
     /** AN12 increment 4: open a legal page in the browser from the configured site URL. */
     val onOpenLegal: (LegalPage) -> Unit,
-    /** R315: turn automatic detection (beta) on or off. Off stops sampling at once; neither way is a dialog. */
-    val onToggleAutoDetection: (Boolean) -> Unit,
+    /**
+     * R315: turn automatic detection (beta) on or off. Off stops sampling at once; neither way is a dialog.
+     * AN-PLAY-PACK (R1124): NULL in a build without detection (the manual-only fallback, whose manifest declares no
+     * location permission) - the screen then shows no detection entry point: no switch, no « En savoir plus ». No
+     * handler, no entry point: one fact, never a second flag beside it.
+     */
+    val onToggleAutoDetection: ((Boolean) -> Unit)?,
     /** R323: turn the evening proposal notification on or off. ON asks the notification permission (Android 13+). */
     val onToggleEveningNotification: (Boolean) -> Unit,
     /** AN-ALERT: turn the threshold alert on or off. ON asks the notification permission (Android 13+). */

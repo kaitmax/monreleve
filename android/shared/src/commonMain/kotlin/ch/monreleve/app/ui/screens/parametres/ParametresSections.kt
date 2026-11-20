@@ -81,23 +81,28 @@ internal fun SaisieSection(
     onLearnMore: () -> Unit,
 ) {
     val enabled = state.phase != ParametresPhase.SAVING
+    val onToggleAuto = actions.onToggleAutoDetection
     SectionHeading(ParametresCopy.AUTO_HEADING)
     ParametresCard {
-        SwitchRow(
-            ParametresCopy.AUTO_LABEL,
-            ParametresCopy.AUTO_SUMMARY,
-            state.autoDetectionEnabled,
-            actions.onToggleAutoDetection,
-            enabled,
-        )
-        RowDivider()
-        ActionRow(ParametresCopy.LEARN_MORE, onClick = onLearnMore)
+        // AN-PLAY-PACK (R1124): a build without detection (no handler) draws neither the detection switch nor
+        // « En savoir plus », which explains only detection. The reminder and the threshold alert below stay.
+        if (onToggleAuto != null) {
+            SwitchRow(
+                ParametresCopy.AUTO_LABEL,
+                ParametresCopy.AUTO_SUMMARY,
+                state.autoDetectionEnabled,
+                onToggleAuto,
+                enabled,
+            )
+            RowDivider()
+            ActionRow(ParametresCopy.LEARN_MORE, onClick = onLearnMore)
+            RowDivider()
+        }
         // AN-MANUAL-REMINDER (R1146, Android Ruling 14): the evening reminder is offered in BOTH modes - in manual mode
         // it is the push or the 19:00 fallback, so a switch that appeared only with detection on left a manual person
         // unable to turn it on or off after onboarding. Each mode says what it does, by key (R206): automatic mode
         // keeps its proposal sentence; manual mode takes onboarding's own description of the same reminder, which
         // names no time (19:00 is a target, not a promise - R1140).
-        RowDivider()
         SwitchRow(
             ParametresCopy.EVENING_LABEL,
             if (state.autoDetectionEnabled) ParametresCopy.EVENING_DESCRIPTION else OnboardingCopy.REMINDER_SUBTITLE,
