@@ -97,10 +97,12 @@ fun parseEntriesResponse(body: String): EntriesResponse? = runCatching { decodeE
 // from the same code, so a client needs one parser rather than two". So the download maps a row exactly the way
 // the drain's reconcile does (EntriesMapping.toSyncedEntity), and nothing about a row is parsed twice.
 //
-// THE ENVELOPE IS CHECKED, NOT ASSUMED. SessionManager.authenticatedGet hands its caller the BODY and not the HTTP
-// status (DossierApi reads it the same way). The route sends "status":"ok" with a 200 and nothing else; every
-// refusal - read_failed, invalid_year, unknown_parameter - is {"status":"error","code":...}. So a body is the year
-// only if it says "ok" AND names the year that was asked for; anything else is not a year, whatever it parses as.
+// THE ENVELOPE IS CHECKED, NOT ASSUMED. This was written when SessionManager.authenticatedGet handed its caller the
+// BODY and not the HTTP status; AN-SIGNIN-RESOLVE (R1161) made AuthedOutcome.Ok carry the status, and
+// AN-STATUS-HONESTY (R1191) made EntriesDownload refuse a non-2xx BEFORE this parser sees the body. The envelope check
+// stays behind that: the route sends "status":"ok" with a 200 and nothing else; every refusal - read_failed,
+// invalid_year, unknown_parameter - is {"status":"error","code":...}. So a 2xx body is the year only if it says "ok"
+// AND names the year that was asked for; anything else is not a year, whatever it parses as.
 // ---------------------------------------------------------------------------------------------------------------
 
 /** The only success marker the entries routes send (6.2). */

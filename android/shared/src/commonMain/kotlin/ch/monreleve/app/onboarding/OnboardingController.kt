@@ -265,18 +265,25 @@ class OnboardingController(
         mutableState.update { it.copy(phase = OnboardingPhase.SUBMITTING, error = null) }
         scope.launch {
             when (val outcome = saver.saveSettings(patchBody(settings))) {
-                is PostOutcome.Ok -> {
-                    // AN-SIGNIN-RESOLVE (R1162, PARK-E3): the automatic choice the server has just ACCEPTED reaches the
-                    // phone - the host saves the mode and starts the sampler where the permission is held. Before the
-                    // settings are cached: cached settings send the next launch past RESOLVING, which would otherwise
-                    // be the only other place the mode is restored. A manual choice sends no mode, so the server's
-                    // value - restored at RESOLVING - stands and nothing is handed on.
-                    if (outcome.status in HTTP_SUCCESS && settings.loggingMode == LoggingMode.AUTO_DETECT.name) {
-                        onModeSaved(LoggingMode.AUTO_DETECT)
+                is PostOutcome.Ok ->
+                    if (outcome.status in HTTP_SUCCESS) {
+                        // AN-SIGNIN-RESOLVE (R1162, PARK-E3): the automatic choice the server has just ACCEPTED reaches
+                        // the phone - the host saves the mode and starts the sampler where the permission is held.
+                        // Before the settings are cached: cached settings send the next launch past RESOLVING, which
+                        // would otherwise be the only other place the mode is restored. A manual choice sends no mode,
+                        // so the server's value - restored at RESOLVING - stands and nothing is handed on.
+                        if (settings.loggingMode == LoggingMode.AUTO_DETECT.name) onModeSaved(LoggingMode.AUTO_DETECT)
+                        store.save(settings)
+                        mutableState.update { it.copy(phase = OnboardingPhase.READY) }
+                    } else {
+                        // AN-STATUS-HONESTY (R1191): the server refused or failed the PATCH - nothing is cached and
+                        // nothing handed on, so no "Tout est prêt" for settings the server does not hold (the Relevé is
+                        // built from the SERVER's). The person stays on the step with SAVE_REFUSED and the same button
+                        // retries - ParametresController.persist's treatment of the same PATCH, the same copy.
+                        mutableState.update {
+                            it.copy(phase = OnboardingPhase.EDITING, error = OnboardingError.SAVE_REFUSED)
+                        }
                     }
-                    store.save(settings)
-                    mutableState.update { it.copy(phase = OnboardingPhase.READY) }
-                }
                 PostOutcome.SessionEnded, PostOutcome.NoSession ->
                     mutableState.update { it.copy(phase = OnboardingPhase.SESSION_ENDED) }
                 PostOutcome.SessionExpired, PostOutcome.NetworkError ->

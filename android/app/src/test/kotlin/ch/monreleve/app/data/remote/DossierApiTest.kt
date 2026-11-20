@@ -148,6 +148,47 @@ class DossierApiTest : FunSpec({
         gets shouldBe 0
     }
 
+    // AN-STATUS-HONESTY (R1191): the STATUS decides, not the body's shape. A9 made AuthedOutcome.Ok carry the status;
+    // this read ignored it, so a refusal was safe only while its envelope failed to parse. The body here is a VALID
+    // dossier on purpose: it is the case where the old read returned Loaded and cached the refusal as the year.
+    test("R1191: a non-2xx is never a document, whatever its body - not returned, not cached, the stale flag kept") {
+        runTest {
+            val previous = VALID_BODY.replace("Camille Rey", "Copie precedente")
+            listOf(400, 403, 404, 409, 422, 500, 502, 503).forEach { status ->
+                val cache = FakeCache(mapOf(YEAR to previous))
+                cache.markStale(YEAR)
+                var asked = 0
+                val api =
+                    DossierApi(
+                        get = {
+                            asked += 1
+                            AuthedOutcome.Ok(status, VALID_BODY)
+                        },
+                        cache = cache,
+                    )
+
+                api.fetch(YEAR) shouldBe DossierResult.Unreadable
+                asked shouldBe 1
+                cache.store[YEAR] shouldBe previous
+                cache.isStale(YEAR) shouldBe true
+            }
+        }
+    }
+
+    test("R1191 beside it: every 2xx with a dossier body is Loaded, cached, and clears the stale flag") {
+        runTest {
+            listOf(200, 203).forEach { status ->
+                val cache = FakeCache()
+                cache.markStale(YEAR)
+                val api = DossierApi(get = { AuthedOutcome.Ok(status, VALID_BODY) }, cache = cache)
+
+                api.fetch(YEAR).shouldBeInstanceOf<DossierResult.Loaded>().document.titulaire shouldBe "Camille Rey"
+                cache.store[YEAR] shouldBe VALID_BODY
+                cache.isStale(YEAR) shouldBe false
+            }
+        }
+    }
+
     test("R559: a fetched body clears the year's stale flag; a refused or failed fetch leaves it") {
         runTest {
             val cache = FakeCache(mapOf(YEAR to VALID_BODY))
