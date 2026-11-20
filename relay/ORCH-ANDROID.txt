@@ -16,7 +16,8 @@ HOW EVERY SESSION IN THIS RUN WORKS
 - MEMORY: heavy Gradle steps need >= 8 000 MB commit-free after `./gradlew --stop`; web heavy
   steps >= 5 000 MB. Take C:/wt/.run-tools/heavy-lock.mjs (`acquire <task> --min-free <MB>`,
   `release <task>`). The emulator costs ~3.6 GB: SHUT IT DOWN (`adb -s emulator-5554 emu kill`)
-  before a heavy step and boot it again after.
+  before a heavy step and boot it again after. THE OPERATOR AUTHORISED THIS (Android Ruling 11, 2026-11-20:
+  "Shut it down"), for MonReleve_API36 only.
 - THE EMULATOR: AVD `MonReleve_API36` (API 36, x86_64, Google Play image). Boot:
   `$ANDROID_HOME/emulator/emulator.exe -avd MonReleve_API36 -no-snapshot -no-audio -no-boot-anim
   -memory 2048`, wait for `getprop sys.boot_completed` = 1. Debug/audit builds reach the host at
@@ -61,7 +62,7 @@ THE QUEUE (in order; one at a time - the memory budget allows no parallel Gradle
 | A10 | AN-EDGE-INSETS | A3's N1: outside the main Scaffold buttons sit under the navigation bar (3-button nav); one root inset wrapper + a census test run by a gate | R1170-R1179 |
 | A11 | AN-SESSION-END | A3's N3: the location sampler survives sign-out; worker guard + one "session ended" seam every ending path goes through (A8/A7 attach to it) | R1180-R1189 |
 | A12 | AN-STATUS-HONESTY | A9 Q3: onboarding save shows READY on a 4xx; DossierApi and EntriesDownload ignore the status; a refused or failed answer is never shown as success | R1190-R1199 |
-DONE: A1 (6f9dbc05), A2 (5c18f513), A3 (99d24cdf), A9 (86186b29).
+DONE: A1 (6f9dbc05), A2 (5c18f513), A3 (99d24cdf), A9 (86186b29), A10 (6381e070), A11 (e6cfdda7).
 RUN ORDER (Android Ruling 9, superseding Ruling 8's): A10, A11, A12, A4, A8, A7, then A5 and A6
 LAST - the Play pack (data safety: the FCM token is collected data) and the audit describe the
 finished app. A10 lands before A5's demo video, which films the disclosure screen.

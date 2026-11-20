@@ -2053,3 +2053,81 @@ NOTICED -> every session: the emulator's Wi-Fi tears itself down, at
   times every 12-20 s. A walkthrough failure that looks like a network
   error is first checked against that (ORCH-ANDROID driving notes).
 RUN ORDER: A10, A11, A12, A4, A8, A7, then A5 and A6 LAST.
+
+====================================================================
+ANDROID RULING 10 - A10 MERGED; A10's QUESTIONS
+====================================================================
+A10 (AN-EDGE-INSETS) merged to main as 6381e070 (the merge of 743775e1;
+main had moved to 7020fe7e in relay/ only; merged android/ and web/ trees
+equal the gated branch's; token hits 0). Gate evidence: :app:gate BUILD
+SUCCESSFUL in 11m 21s, GATE EXIT=0, on the code tip df2c25f6
+(REPORT-AN-EDGE-INSETS.txt line 44-46); verifyPaparazziDebug over all 160
+baselines, exactly one new (AppRootScreenshotTest_appRootPadsTheInsetsOnce),
+none moved. No :shared or web/ change: no R573, no gate:clone, 0 macOS
+minutes. The root is android/app/.../ui/shell/AppRoot.kt, hosting both
+shipped activities; EdgeToEdgeCensusTest holds it (first RED: 17 of 17).
+PARKAN-33's "edge-to-edge handled" note is now TRUE on main (Android
+Ruling 8 recorded it as contradicted before this merge).
+ON A10's QUESTIONS (the orchestrator's):
+Q1 (gestural navigation: canvas grey under the gesture handle below a
+  white bottom bar): ACCEPTED as is; cosmetic, post-launch if ever.
+Q2 (the keyboard inset in AppRoot): post-launch, its own task. Read
+  before ruling: the sign-in fields submit from the keyboard
+  (RequestLinkScreen ImeAction.Done; CodeScreen Done on the last digit),
+  so no sign-in step needs a button under the keyboard.
+Q3 (debug-only activities under AppRoot): NO - they do not ship; the
+  census's asserted exclusion stands.
+
+====================================================================
+ANDROID RULING 11 - THE EMULATOR MAY BE SHUT DOWN FOR A GATE (THE OPERATOR); A11's QUESTIONS
+====================================================================
+THE OPERATOR, 2026-11-20, asked how the full :app:gate should get its
+memory after A11's session was refused 'adb emu kill' three times by its
+permission classifier (it did not route around the refusal; its gate was
+NO RESULT), chose: "Shut it down (Recommended)" - the orchestrator and
+every following session MAY shut down the emulator MonReleve_API36 (the
+AVD the orchestrator created) before each full gate and boot it again
+after, as A3, A9 and A10 did. It covers that one AVD only; nothing else
+on the machine.
+A11 (AN-SESSION-END): code tip 88dc2b0a, report tip 22e9a710. Its gate is
+run by the orchestrator in its own worktree C:/wt/gate-a11 (detached at
+88dc2b0a); the merge waits on that result.
+A11's INCIDENT D2 (R574: a UI dump printed 5 of 6 digits of a LOCAL
+sign-in code into its transcript): ASSESSED, NOT A SECURITY INCIDENT -
+local scratch server, seeded .invalid account, contained at once (a fresh
+code requested, which deletes the old; 0 VerificationToken rows after);
+nothing in any commit or evidence file. Reported to the operator.
+ON A11's QUESTIONS (the orchestrator's):
+Q1 (who runs the gate): the orchestrator, under this ruling.
+Q2 (A9's MANUAL-restore stop and the worker guard's cancel both use the
+  one stop): ACCEPTED - the restore acts at once, the guard is the
+  backstop; one stop function, two callers.
+Q3 (the guard runs before the threshold alert and the evening notice):
+  ACCEPTED - signed out or manual, SamplingWorker has nothing to say;
+  manual mode's evening reminder is A7's fallback, not SamplingWorker's.
+Q4 (keep SessionEndPath on the seam): KEEP - A8 needs to tell a voluntary
+  sign-out from a server-ended session and a deletion.
+
+====================================================================
+iOS RULING 1 - iOS FOLLOWS ANDROID DIRECTLY, ON THE CLOUD SIMULATOR
+====================================================================
+THE OPERATOR, 2026-11-19: "when you finish the android go directly to
+finish ios, use ios emultor of claude (plugin or vs code ..."
+FACT RECORDED: no Claude plugin or VS Code extension runs an iOS
+Simulator on Windows; Apple ships it only inside Xcode on macOS.
+DECISION (the orchestrator's): after A6 merges, the iOS phase runs on
+the GitHub-hosted macOS runner already used by ios-shared.yml (Xcode and
+the iOS Simulators are on it): build the app host, boot a simulator,
+drive it with XCUITest, and bring back screenshots, a recording and the
+.xcresult as artifacts. Every claim is labelled "iOS simulator", never
+"device". Scope, in order: the iOS app host (none exists) and the iosMain
+platform pieces it needs; a simulator walkthrough of every screen; push
+(needs the operator's Firebase config and an APNs key); an iOS release
+audit. BUDGET: 200 macOS minutes for the iOS phase (the last queue's cap),
+each report stating its billed minutes; the orchestrator stops and asks
+before exceeding it. THE OPERATOR'S: an Apple Developer account (no
+device, TestFlight or App Store without it).
+A11 MERGED to main as e6cfdda7 (the merge of 22e9a710; main unmoved at
+6381e070; token hits 0) on the orchestrator's gate: :app:gate BUILD
+SUCCESSFUL in 11m 27s, GATE EXIT=0, test floor 1463, on 88dc2b0a (log kept at
+C:/wt/queue-evidence/an-session-end/orchestrator-gate-88dc2b0a.log).
