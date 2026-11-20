@@ -91,9 +91,9 @@ never a guess.
 |---|---|---|---|
 | **Location - Precise location** | NOT collected, not shared | The fix is classified on the phone against the bundled border polygon and discarded; no coordinate is stored, logged or sent (D18). Holds ONLY while D18 holds | `android/app/src/main/kotlin/ch/monreleve/app/detection/LiveLocation.kt` (the coordinate's two reads go straight to `classify`); `CoordinateConfinementTest` (the type leaving classification holds no coordinate); `fences/FencesTest.kt` (no coordinate name escapes `detection/`); `RoomSchemaContractTest` (no coordinate column); server: `web/lib/entries/no-coordinates.ts` `findLocationKeys`, refused as `coordinates_refused` by every `/api/v1` write route (`entries`, `me`, `devices`, ...), `web/tests/unit/entries/no-coordinates.test.ts`, `web/tests/db/privacy-claims.test.ts` "CLAIM (R325)" |
 | **Location - Approximate location** | **QUESTION Q-DS1** (section 2.2) | A confirmed day's `kind` (`CH` / `HOME`, ...) with `provenance` `DETECTED_CONFIRMED` and `detectedKind`/`detectedAt` - a per-day, country-level conclusion | `docs/api-v1.md` fields:write; `web/prisma/schema.prisma` `Entry` |
-| **Personal info - Email address** | Collected, required, not shared. Purposes: Account management, App functionality (the sign-in code) | `User.email` | `web/prisma/schema.prisma` `User.email`; the sign-in routes under `web/app/api/v1/auth/`; mail sent by the service provider named on `/confidentialite` |
+| **Personal info - Email address** | Collected, required, not shared. Purposes: Account management, App functionality (the sign-in code) | `User.email` | `web/prisma/schema.prisma` `User.email`; the sign-in routes under `web/app/api/v1/auth/`; mail sent through Resend, the provider `/confidentialite` names (`web/lib/fr/confidentialite.ts` hosting) |
 | **Personal info - Name** | Collected, required, not shared. Purpose: App functionality (the holder printed on the relevé) | `User.name`, asked at onboarding (step NOM) | `web/prisma/schema.prisma` `User.name`; `android/shared/.../settings/ReleveCompleteness.kt` (NAME is a releve field) |
-| **Personal info - Other info** | Collected, required, not shared. Purpose: App functionality | The canton, the employment rate, the day-count method, the granularity, the activity start date; the reminder time and opt-in; the logging mode and the date detection consent was given | `web/prisma/schema.prisma` `User` (canton, employmentRate, denominatorKind, exactTotalWorkDays, granularity, activityStartDate, reminderTime, reminderEnabled, loggingMode, detectionConsentAt); the `fields` table of `PATCH /api/v1/me` in `docs/api-v1.md` |
+| **Personal info - Other info** | Collected, required, not shared. Purpose: App functionality | The canton, the employment rate, the day-count method, the granularity, the activity start date; the reminder opt-in (`reminderEnabled`, written by the app since A8/A7) and the reminder time (`reminderTime`, a server default the app does not edit); the logging mode and the date detection consent was given | `web/prisma/schema.prisma` `User` (canton, employmentRate, denominatorKind, exactTotalWorkDays, granularity, activityStartDate, reminderTime, reminderEnabled, loggingMode, detectionConsentAt); the `fields` table of `PATCH /api/v1/me` in `docs/api-v1.md` |
 | **App activity - Other user-generated content** | Collected, required, not shared. Purpose: App functionality | The recorded days: date, portion, kind, absence reason, the free-text note (500 characters at most), provenance, what detection proposed and when, the client's claimed time; the server's receipt timestamps; the append-only history of every change | `docs/api-v1.md` fields:write; `web/prisma/schema.prisma` `Entry`, `EntryEvent` (append-only, guarded by a trigger) |
 | **Device or other IDs** | Collected, OPTIONAL, not shared. Purpose: App functionality (the daily reminder) | The FCM registration token (`Device.fcmToken`, with `platform` and `appVersion`), sent only for a signed-in person who turned the reminder on and granted notifications, in a build carrying the Firebase values. Firebase Installations sends Google a per-installation id (FID) to obtain it - Firebase's own disclosure: "Generates and collects a per-installation identifier (FID)"; Play names "Firebase installation ID" as an example of this type | `android/app/src/main/kotlin/ch/monreleve/app/push/PushRegistration.kt` (the conditions), `push/PushRuntime.kt` (no Firebase without the four values), `PushConfigTest`, `checkReleasePushManifest` (auto-init off: no token until asked); server `web/app/api/v1/devices/route.ts`, `web/tests/db/devices-route.test.ts`, `web/tests/db/privacy-claims.test.ts` "CLAIM: a notification token" |
 | App info and performance (crash logs, diagnostics) | NOT collected | No crash, analytics or measurement SDK is in the release | `checkReleasePushManifest` (fails on any analytics/measurement/crash component in the BUILT APK); `checkLicences` (every runtime dependency is named); SPEC D32 |
@@ -226,7 +226,10 @@ shows no detection entry point:
 
 ## 5. AN14b - the operator's Play Console steps (R1125)
 
-Every step is **[OPERATOR]** unless marked otherwise; none can be done by a session (Android Ruling 2).
+Every step is **[OPERATOR]** unless marked otherwise; none can be done by a session (Android Ruling 2). **The Console's
+menu paths, the internal-testing review behaviour and the new-account closed-test requirement below are written from
+recall, NOT from a page read for this task: read each in the Console at the time.** What WAS read on 2026-11-20 is
+marked with its answer number.
 
 1. **Create the developer account** (Google Play Console), complete identity verification, pay the registration fee.
 2. **Create the app:** All apps -> Create app; name « Mon Relevé » (docs/play-store-listing.md), default language
@@ -241,8 +244,9 @@ Every step is **[OPERATOR]** unless marked otherwise; none can be done by a sess
 5. **Build the release:** section 1, steps 1-4. Record the printed sha256 and HEAD.
 6. **Set up the app's content (App content page)** before the first review:
    - Privacy policy: `https://monreleve.ch/confidentialite`.
-   - App access: sign-in by e-mail code - give the reviewers a way in (a test address whose code they can receive,
-     or instructions); decide how (QUESTION in the report).
+   - App access: sign-in by e-mail code. The app creates the account at the first code exchange for ANY valid
+     address (`/api/v1/auth/magic-link` -> `requestMagicLink`; `/api/v1/auth/code` upserts the user), so a reviewer
+     can sign in with an address they control; how the reviewers are told is the operator's (QUESTION in the report).
    - Ads: the release contains no ad SDK (`checkLicences` names every runtime dependency;
      `checkReleasePushManifest` refuses analytics/measurement components). The content-rating questionnaire, the
      target audience and the remaining declarations are the operator's answers; nothing in the code decides them.
