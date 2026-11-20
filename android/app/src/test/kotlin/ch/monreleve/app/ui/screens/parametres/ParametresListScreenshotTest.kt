@@ -32,14 +32,15 @@ class ParametresListScreenshotTest {
             useDeviceResolution = true,
         )
 
-    // Detection off: no evening row. « Toute l'année », « 100 % », the 240-day method, whole days.
+    // Detection off - and since AN-MANUAL-REMINDER (R1146) the evening row is there in manual mode too, with the manual
+    // description (OnboardingCopy.REMINDER_SUBTITLE). « Toute l'année », « 100 % », the 240-day method, whole days.
     @Test
     fun parametresList() {
         paparazzi.snapshot { ParametresHost(defaultParametresState) }
     }
 
-    // Every list branch flipped: detection on (so the evening row exists), all three switches on, the real-days
-    // method, half days, a start date (dd.MM.yyyy) and a rate other than 100.
+    // Every list branch flipped: detection on (the evening row with the automatic description), all three switches
+    // on, the real-days method, half days, a start date (dd.MM.yyyy) and a rate other than 100.
     @Test
     fun parametresListFilled() {
         paparazzi.snapshot {
@@ -66,7 +67,8 @@ class ParametresListScreenshotTest {
         }
     }
 
-    // A save in flight: the three switches are disabled (SaisieSection's `enabled`). Detection on, so all three show.
+    // A save in flight: the three switches are disabled (SaisieSection's `enabled`). Detection on (all three show in
+    // either mode since R1146; the automatic description is the one this baseline holds).
     @Test
     fun parametresListSaving() {
         paparazzi.snapshot {
