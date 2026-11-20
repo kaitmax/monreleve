@@ -88,6 +88,7 @@ import ch.monreleve.app.detection.EveningNotifier
 import ch.monreleve.app.detection.FINE_LOCATION
 import ch.monreleve.app.detection.POST_NOTIFICATIONS_PERMISSION
 import ch.monreleve.app.detection.applyServerLoggingMode
+import ch.monreleve.app.detection.detectionAvailable
 import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.detection.maybeAlertThreshold
 import ch.monreleve.app.dossier.DossierDocument
@@ -104,6 +105,7 @@ import ch.monreleve.app.onboarding.OnboardingPhase
 import ch.monreleve.app.onboarding.OnboardingSnapshot
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.onboarding.onboardingSeedFor
 import ch.monreleve.app.parametres.AccountExportKind
 import ch.monreleve.app.parametres.LegalPage
 import ch.monreleve.app.parametres.ParametresController
@@ -552,7 +554,8 @@ private fun OnboardingRoute(
     val eveningStore = remember { SharedPrefsEveningNotificationStore(context) }
     // R335: the controller starts from the RESOLVING step's prefill (steps owed + /me values); a rebuild then
     // restores the live edited snapshot (R310). Both arrive through `restored`, so there is one mechanism.
-    var saved by rememberSaveable { mutableStateOf(seed) }
+    // AN-PLAY-PACK (R1124): a build without detection (the manual-only fallback) does not ask the mode step.
+    var saved by rememberSaveable { mutableStateOf(onboardingSeedFor(seed, detectionAvailable(context))) }
     val controller =
         remember {
             OnboardingController(
@@ -746,6 +749,9 @@ internal fun MainShell(
     // the shell level (not inside a tab) so a switch of tab after the tap does not cancel the hand-off. Both
     // the Releve exports and the Parametres account export share the one hand-off (R206).
     val context = LocalContext.current
+    // AN-PLAY-PACK (R1124): whether this build declares detection's permissions - read from the installed package,
+    // so the manual-only fallback (no location permission) shows no detection entry point.
+    val hasDetection = remember(context) { detectionAvailable(context) }
 
     // AN-AUTO increment 3b (R316). Turning auto detection ON goes through the prominent disclosure (D5/SPEC 11.1)
     // and then the OS permission prompt - never straight to setAutoDetection. The disclosure is an overlay held
@@ -974,9 +980,21 @@ internal fun MainShell(
                         controller = controllers.parametres,
                         // R316: ON launches the disclosure (then the OS prompt); OFF stops at once, no dialog
                         // (SPEC 13), straight through the controller.
-                        onToggleAuto = { enable ->
-                            if (enable) showDisclosure = true else controllers.parametres.setAutoDetection(false)
-                        },
+                        // AN-PLAY-PACK (R1124): no handler in a build without detection, so no detection entry point.
+                        onToggleAuto =
+                            if (hasDetection) {
+                                { enable ->
+                                    if (enable) {
+                                        showDisclosure = true
+                                    } else {
+                                        controllers.parametres.setAutoDetection(
+                                            false,
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                         onToggleEvening = onToggleEvening,
                         // AN-ALERT: ON asks POST_NOTIFICATIONS (API 33+) then enables; OFF is immediate.
                         onToggleThresholdAlert = onToggleThresholdAlert,
@@ -1124,7 +1142,7 @@ internal fun MainShell(
 private fun ParametresTab(
     state: ParametresState,
     controller: ParametresController,
-    onToggleAuto: (Boolean) -> Unit,
+    onToggleAuto: ((Boolean) -> Unit)?,
     onToggleEvening: (Boolean) -> Unit,
     onToggleThresholdAlert: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
@@ -1200,7 +1218,7 @@ private fun openMail(context: Context) {
 @Suppress("LongParameterList")
 private fun parametresActions(
     controller: ParametresController,
-    onToggleAuto: (Boolean) -> Unit,
+    onToggleAuto: ((Boolean) -> Unit)?,
     onToggleEvening: (Boolean) -> Unit,
     onToggleThresholdAlert: (Boolean) -> Unit,
     onOpenLegal: (LegalPage) -> Unit,

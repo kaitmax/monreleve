@@ -56,11 +56,16 @@ internal val noopParametresActions =
 /** A fixed version, so the « Version » row never moves with the build. */
 private const val APP_VERSION = "1.0.0"
 
+// AN-PLAY-PACK (R1124): `actions` defaults to the no-op set; the manual-only baseline passes a set with no detection
+// handler, which is how a build without detection reaches the screen.
 @Composable
-internal fun ParametresHost(state: ParametresState) {
+internal fun ParametresHost(
+    state: ParametresState,
+    actions: ParametresActions = noopParametresActions,
+) {
     FrontierTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            ParametresScreen(state = state, actions = noopParametresActions, appVersion = APP_VERSION)
+            ParametresScreen(state = state, actions = actions, appVersion = APP_VERSION)
         }
     }
 }

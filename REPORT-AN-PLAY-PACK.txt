@@ -1,0 +1,348 @@
+REPORT-AN-PLAY-PACK - Mon Releve - ORCH-ANDROID step A5
+EVERYTHING PLAY NEEDS, READY FOR THE DAY THE ACCOUNT EXISTS (R1120-R1126; Android Rulings 1, 2, 6, 8, 11, 13-16)
+Session: AN-PLAY-PACK, 2026-11-20/21. Worktree C:/wt/an-play-pack (lock .session-lock.json), branch an-play-pack,
+cut from BASE_SHA f6c51121 and REBASED onto 34db1eee (A7 merged; D1). Pure ASCII: the French listing texts live
+accented in docs/play-store-listing.md and are pointed to here by marker, never retyped (R155/R168).
+Evidence (not in the repository): C:/wt/queue-evidence/an-play-pack/. Assets: C:/wt/play-assets/.
+Rulings used R1120-R1126; R1127-R1129 unused.
+
+====================================================================
+SUMMARY
+====================================================================
+- R1120 DONE. `./gradlew :app:playRelease` is the procedure's one command: it refuses to START on a tree that is
+  not exactly HEAD (staged / unstaged / untracked anywhere in the repository, or an ignored file inside a source
+  set), naming every path; then builds the .aab and runs every built-artifact check, including the NEW
+  checkReleaseBundle (the BUILT .aab: version-control-info names HEAD, protobuf manifest declares INTERNET + exactly
+  the variant's location set, R8 mapping inside). checkReleaseBundle is also in :app:gate; the dirty-tree refusal is
+  playRelease's only (the gate runs from working trees by design - proven to still start with an untracked file).
+  docs/play-release.md section 1 is the procedure, with the four FCM values on the release command ONLY and "a
+  release without them is valid, push unavailable" (Android Ruling 14).
+- R1121 DONE with three QUESTIONS (Q-DS1..3). docs/play-release.md section 2: every Data safety answer with the
+  file/test that enforces it. Precise location NOT collected (traced: LiveLocation.kt, CoordinateConfinementTest,
+  FencesTest, RoomSchemaContractTest, web no-coordinates.ts + tests). The FCM token = "Device or other IDs",
+  collected, optional, not shared, deleted with the account (and invalidated on the phone at every session end).
+- R1122 DONE. Declaration text in English (docs/play-release.md section 3), on docs/play-background-location.md's
+  honest framing, not strengthened. Demo video 29.02 s on the emulator, from 9c194aeb, disclosure before the system
+  prompt VERIFIED FRAME BY FRAME (below). A10's inset fix is on main (6381e070), the precondition held.
+- R1123 DONE. docs/play-store-listing.md (title, short, full, privacy URL, detection paragraph) held by the new
+  StoreListingCopyTest; six phone screenshots (emulator API 36). Texts are in QUESTIONS Q1 for approval.
+- R1124 DONE, within the bound: a manifest overlay + one build property; the entry points are DERIVED from the
+  manifest the app was built with. It needed TWO files of android/shared (the Parametres switch is drawn by :shared,
+  unconditionally): R573 was owed and is MET - ios-shared run 44834975248 success on 9c194aeb.
+- R1125 DONE. docs/play-release.md section 5, 14 numbered steps, each marked [OPERATOR].
+- R1126 DONE (emulator, labelled). Release APK 2 446 547 bytes (2.33 MiB of 12 MB), universal + unsigned, which is
+  NOT Play's download size. Cold start median 1 699.5 ms (8 runs, minified audit build, emulator) - above 1.2 s; the
+  criterion is the S9's (human gate), not closed here in either direction.
+- web/ NOT changed (no gate:changed / gate:clone owed). android/shared CHANGED (R573 run above).
+
+====================================================================
+STATUS (R391)
+====================================================================
+CODE TIP 9c194aebd2bb99a06dd57da00b45a1f1527ab7c7: FULL :app:gate RAN in this session, emulator shut down, heavy
+lock held (ACQUIRED 2026-11-20T22:44:33Z at commitFree 8800 MB; my own read just before the gate started: 7406 MB),
+`./gradlew --stop` first:
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    checkReleaseBundle OK (manualOnly=false): the built .aab names HEAD 9c194aeb..., declares exactly
+      [ACCESS_BACKGROUND_LOCATION, ACCESS_FINE_LOCATION] ... and INTERNET, and carries its R8 mapping
+    test floor OK: 1561 unit tests observed (>= 10)      (A7's floor was 1543; +18 = this task's 17 tests + 1 baseline)
+    BUILD SUCCESSFUL in 3m 51s   270 actionable tasks: 75 executed, 195 up-to-date   GATE_EXIT=0
+EXECUTED in it: :app:testDebugUnitTest, verifyPaparazziDebug, lintDebug, compileDebugAndroidTestKotlin, the release
+checks. UP-TO-DATE in it, each green earlier in this session on the same inputs: :app/:shared ktlintCheck and detekt,
+:shared:testDebugUnitTest and compileCommonMainKotlinMetadata (fastCheck on the same tree, EXIT=0), assembleRelease
+and bundleRelease (the playRelease run on 9c194aeb, below).
+STATUS: COMPLETE. GREEN on the code tip 9c194aeb.
+R573: ios-shared.yml run 44834975248 on 9c194aeb (dispatched after the code tip was pushed, as the orchestrator
+directed once the repository went public): conclusion SUCCESS, 1 job ios-shared-tests, 20 steps, run duration 909 s;
+billable MACOS 0 ms (public repository). macOS minutes billed by this task: 0.
+The commits after 9c194aeb are docs/play-release.md (246cc476, 3a6298ab; no test reads it) and this report. The
+listing StoreListingCopyTest reads (docs/play-store-listing.md) is unchanged since 9c194aeb.
+AFTER the gate, on 246cc476: `./gradlew -PmanualOnly=true :app:playRelease` from a clean tree -> BUILD SUCCESSFUL in
+2m 54s, every check OK (below); lock re-acquired at commitFree 9711 MB with the emulator shut down, released after.
+
+====================================================================
+R1120 - THE RELEASE-BUILD PROCEDURE AND ITS TWO REFUSALS (test first)
+====================================================================
+Files: android/app/build.gradle.kts (playRelease, the whenReady dirty-tree guard, checkReleaseBundle, vcsInfoProblem
+shared with checkReleaseVcsInfo, releaseLocationPermissions + locationPermissionProblem shared by both
+location-set checks), docs/play-release.md section 1.
+THE .aab IS READ WITH AGP'S OWN aapt2 PROTO CLASSES (com.android.aapt.Resources.XmlNode, already on the build-script
+classpath through AGP 8.10.1's aapt2-proto) - no bundletool, no new dependency. Entries MEASURED in the built bundle,
+not assumed: base/root/META-INF/version-control-info.textproto (120 B), base/manifest/AndroidManifest.xml (protobuf),
+BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map (42 925 556 B uncompressed). A missing entry fails.
+RED (test first), HEAD 73dc8fc6 = the checks committed WITHOUT the R1124 overlay:
+  `./gradlew --continue -PmanualOnly=true :app:checkReleaseLocationPermissions :app:checkReleaseBundle` -> BUILD
+  FAILED in 3m 31s, both checks naming the live extra permissions:
+    checkReleaseLocationPermissions FAILED (R316/R1124) ... location permissions are [ACCESS_BACKGROUND_LOCATION,
+      ACCESS_FINE_LOCATION], expected exactly [] (manualOnly=true); missing [], extra [both]
+    checkReleaseBundle FAILED (R1120) - base/manifest/AndroidManifest.xml: (the same)
+  The bundle's VCS and mapping parts PASSED in that run (the only problem listed was the location set).
+GREEN: the same command after the overlay -> both OK, the .aab naming HEAD 73dc8fc6 (uncommitted tree; see D5), then
+  `:app:playRelease` (default) on the CLEAN tree 9c194aeb -> BUILD SUCCESSFUL in 2m 36s:
+    [play-release] OK: the tree is exactly HEAD (nothing staged, unstaged or untracked) (R1120)
+    checkLicences / Cleartext / NoDebugInjection / MinifiedWireContract (28 tokens) / LocationPermissions
+    (manualOnly=false) / NoDevComponent / PushManifest / VcsInfo (names 9c194aeb) / Bundle (names 9c194aeb) - all OK
+    bundle app-release.aab 5 288 332 bytes, sha256 ab812e53e5538de85f0631ca31f66f6c95bdbe237231542ed5bb25e932ccc9dd
+    push: NOT configured - push unavailable in this release (valid; the 19:00 fallback stands in)
+    signed: NO - Play refuses an unsigned bundle (R250: no key exists here)
+  and `-PmanualOnly=true :app:playRelease` on 246cc476 -> BUILD SUCCESSFUL in 2m 54s, every check OK, LocationPermissions
+  and Bundle "(manualOnly=true) exactly []", both naming 246cc476; .aab 5 288 299 bytes, sha256
+  abc892ca82d5e837c5a0e8efeb83a7da5070313e1aa88c3f6b91666be024d227.
+THE DIRTY-TREE REFUSAL, both ways (R196), each plant verified landed before its result was read (R180):
+  LIVE (R178): playRelease on the uncommitted implementation -> "PLAY RELEASE REFUSED TO START (R1120)", 12 paths
+    named ( M, RM, ??), BUILD FAILED in 4s - before any task ran.
+  P1 untracked file at the repository root (landed: "?? plant-untracked.txt") -> refused, that path named, 4s.
+  P2 staged-only change (landed: "M  docs/play-release.md") -> refused, named, 3s.
+  P3 a Kotlin file the .gitignore swallows inside a source set (android/app/src/main/kotlin/ch/monreleve/app/build/
+    Plant.kt; porcelain EMPTY, `--ignored=matching` "!! .../app/build/") -> refused: "1 IGNORED file(s) inside a
+    source set (compiled, never committed)", 4s. It names the DIRECTORY (git's matching mode), not the file (D3).
+  CLEAN -> accepted (the GREEN runs above). Each plant removed; porcelain empty after.
+  THE GATE IS NOT CAUGHT BY IT: `:app:gate --dry-run` with an untracked file present -> "[clean-worktree] OK",
+    ":app:checkReleaseBundle SKIPPED" (dry run), BUILD SUCCESSFUL in 3s.
+THE BUNDLE HEAD CHECK, the mismatch branch: scratch branch apk-plant-mismatch, empty commit 3331c332 (HEAD moves, no
+  rebuild), `:app:checkReleaseBundle -x bundleRelease` -> FAILED: "base/root/META-INF/version-control-info.textproto
+  does not name HEAD: HEAD 3331c332..., revision(s) found [9c194aeb...]". Scratch branch deleted (never pushed).
+
+====================================================================
+R1121 - DATA SAFETY, TRACED TO CODE  (the full table with every path: docs/play-release.md section 2)
+====================================================================
+Definitions read 2026-11-20 (Play Console Help answer/10787469): "'Collect' means transmitting data from your app off
+a user's device" (SDKs included); service providers are not "sharing". Firebase's own page: FCM/Installations
+"Generates and collects a per-installation identifier (FID)"; "Firebase encrypts the data in transit using HTTPS".
+
+THE DATA SAFETY TABLE
+| Play type                      | Answer                                   | Enforced by (file / test)                         |
+| Location - Precise             | NOT collected, not shared                | android detection/LiveLocation.kt; CoordinateConfinementTest; FencesTest (fence 2b); RoomSchemaContractTest; web lib/entries/no-coordinates.ts findLocationKeys -> coordinates_refused in every /api/v1 write route; web tests/unit/entries/no-coordinates.test.ts; web tests/db/privacy-claims.test.ts "CLAIM (R325)" |
+| Location - Approximate         | QUESTION Q-DS1                           | docs/api-v1.md fields:write (kind, provenance DETECTED_*, detectedKind, detectedAt) |
+| Personal info - Email address  | collected, required, not shared; Account mgmt + App functionality | web prisma User.email; web app/api/v1/auth/*; Resend (named on /confidentialite) |
+| Personal info - Name           | collected, required, not shared; App functionality (holder on the releve) | web prisma User.name; shared settings/ReleveCompleteness.kt |
+| Personal info - Other info     | collected, required, not shared; App functionality | web prisma User (canton, employmentRate, denominatorKind, exactTotalWorkDays, granularity, activityStartDate, reminderEnabled, reminderTime, loggingMode, detectionConsentAt) |
+| App activity - Other UGC       | collected, required, not shared; App functionality | the recorded days + note + provenance + server stamps; prisma Entry, EntryEvent (append-only trigger) |
+| Device or other IDs            | collected, OPTIONAL, not shared; App functionality | FCM token (Device.fcmToken, appVersion) + Firebase FID: push/PushRegistration.kt, push/PushRuntime.kt, PushConfigTest, checkReleasePushManifest; web app/api/v1/devices/route.ts, tests/db/devices-route.test.ts, privacy-claims "CLAIM: a notification token" |
+| App info and performance       | NOT collected                            | checkReleasePushManifest (no analytics/measurement/crash component in the BUILT APK); checkLicences |
+| Files and docs                 | NOT collected (exports are user-initiated shares of server-rendered data) | FileProvider exports/ only; web app/api/v1/export/* |
+| Every other type               | NOT collected                            | the BUILT APK's full permission set, read with aapt2 on this branch (listed in the doc; no check asserts the whole set - NOTICED N4) |
+| Encrypted in transit           | YES                                      | release API_BASE_URL https://monreleve.ch; src/release network_security_config; checkReleaseCleartext; FCM over HTTPS (Firebase) |
+| Deletion                       | YES in the app; web link = Q-DS2         | Parametres -> Supprimer mon compte -> POST /api/v1/account/delete; web lib/account/delete.ts; tests/db/account-delete.test.ts; privacy-claims CLAIM 9; phone: auth/SessionEndSeam.kt, SessionEndSeamTest, ErasureCensusTest |
+Every cited file and test name was checked to exist on this branch (a one-off scan of the doc's backticked paths and
+*Test / check* names: 0 missing). A7 (main 34db1eee) adds no collected data: the reminder switch writes the
+existing reminderEnabled; the 19:00 fallback is local (REPORT-AN-MANUAL-REMINDER.txt).
+
+====================================================================
+R1122 - THE DECLARATION AND THE DEMO VIDEO
+====================================================================
+Declaration: docs/play-release.md section 3 - main purpose, the ONE feature (automatic day detection, beta, opt-in),
+why it cannot work without background access - built on docs/play-background-location.md "the honest framing", not
+strengthened (it keeps "nothing is recorded until the person confirms" and that manual entry gives the same
+statement). Written in ENGLISH (D6). Form fields read 2026-11-20 (answer/9799150): one feature only; a video link
+(YouTube preferred, Drive MP4 accepted) showing "the feature being activated", "the prominent in-app disclosure",
+"runtime prompt"; recommended <= 30 s.
+VIDEO: C:/wt/play-assets/demo-background-location-emulator-api36-9c194aeb.mp4
+  sha256 8b0fd7580415a764fb7ed912e1d78fc2bc63e4b3d33d45ce0d722af9e54bef98, 3 113 330 bytes, 29.02 s (mvhd),
+  1080 x 2280; emulator API 36 (MonReleve_API36), gestural navigation, system language English; debug build of
+  9c194aeb (-PfrontalierPort=3972) against my local server on 3972 (scratch DB monreleve_an_play_pack).
+  R574: recording started AFTER sign-in, on onboarding step 7; no code is on screen at any frame.
+  Timeline (take-4, the kept take; driver C:/wt/queue-evidence/an-play-pack/take2.mjs):
+    1.3 s start on the mode step | 2.7 tap Automatiquement | 2.7-7.8 the disclosure on screen |
+    7.8 tap Autoriser la localisation | 9.4 system prompt has focus (GrantPermissionsActivity) | 11.8 While using
+    the app | 14.3 background page (ManagePermissionsActivity) | 16.0 Allow all the time | 17.4 back | 19.4 the app |
+    20.7 Continuer | 22.3 Pas maintenant | 24.2 Continuer (Tout est pret) | ~25-29 Aujourd'hui.
+  VERIFIED BY FRAMES, not by the timeline alone: the mp4 decoded in a browser (chrome-devtools), frames at 1, 3.5,
+  6, 8.5, 10.5, 11.5, 12.5, 14, 15.5, 17, 19, 21.5, 23.5, 25.5, 28.5 s: 1 s mode step; 3.5-8.5 s the disclosure,
+  full text; 10.5 s dimming; 11.5 s Android's "Allow Mon Releve to access this device's location?" (Precise /
+  Approximate; While using the app / Only this time / Don't allow) over the disclosure; 12.5-14 s the disclosure again
+  between the two system screens; 15.5-17 s "Location permission" page (Allow all the time); 19 s the mode step with
+  Automatiquement selected; 21.5 s Un rappel le soir ?; 23.5 s Tout est pret; 25.5-28.5 s Aujourd'hui reading
+  "Detection automatique (beta)" and "Detection en cours. Votre journee vous sera proposee ce soir." After the take
+  both permissions read granted=true in dumpsys package.
+  WHAT IT CANNOT SHOW: a detected day (four checks across a working day) - it shows the feature switched on and
+  waiting. Play asks for "the feature being activated from the background"; whether this suffices is Q3.
+  The account in the video (demo.play@example.invalid, "Claire Morel") is a row I INSERTED by SQL into my scratch DB
+  before I found the app's door creates accounts itself (D7); it carries no real person's data.
+
+====================================================================
+R1123 - THE STORE LISTING  (texts in QUESTIONS Q1; accented originals in docs/play-store-listing.md)
+====================================================================
+Privacy-policy URL derived, not typed: Site.url(LegalPage.PRIVACY) = https://monreleve.ch/confidentialite;
+Parametres links to it (shared ui/screens/parametres/ParametresSections.kt -> LegalPage.PRIVACY -> MainActivity
+openLegal -> Site.url); AppSiteLinksTest proves /confidentialite is a web page (R246). StoreListingCopyTest asserts
+the listing's URL equals Site.url(LegalPage.PRIVACY).
+StoreListingCopyTest (android/app/src/test/.../release/StoreListingCopyTest.kt, 7 tests), docs/play-store-listing.md a
+declared test input (R283). Plants (R180), landed per `git diff` (3 lines), one run: title + " certifie", short +
+" 40 %", "localisation" outside the detection paragraph -> 4 FAILED: noTextClaimsMoreThanTheRecordSupports,
+noThresholdIsTypedAsAValue, nothingOutsideTheDetectionParagraphNamesLocationOrDetection, and eachTextFitsPlaysLimit
+(INCIDENTAL: the planted short description reached 84 characters). Reverted.
+N4 binding (Android Ruling 8): the detection paragraph is asserted to STATE "position exacte", the "Toujours
+autoriser" grant, "arriere-plan", "approximative" (it does not work with it) and "beta".
+SCREENSHOTS (emulator API 36, 1080 x 2280, re-encoded to 24-bit PNG without alpha, pixels unchanged - D8), in
+C:/wt/play-assets/:
+  01-aujourdhui-emulator-api36.png                              sha256 7b38f79d8047ab6266b88ca147a9922a0c35b8e376482a2a7d2f869d9e854d7c
+  02-calendrier-emulator-api36.png                              sha256 bafa5b2582c1f7927dc8b2656921caf21932c3930f1068ee01a9df21db84f9bc
+  03-releve-emulator-api36.png                                  sha256 9252ac3cf3a679b866aa4d876de7332680c69a2b268cd2b448926e1474f57944
+  04-disclosure-before-the-system-prompt-emulator-api36.png     sha256 7bdb1f1180707fb0a48476f6afe64e3f70a59c5d4ef2778bc089dd7d3934e6d3  DETECTION-ONLY
+  05-aujourdhui-detection-emulator-api36.png                    sha256 2f70c9ad3fab9bff04adb7af9d8fb741ee3320c5dc412978cdad8c4e8513357d  DETECTION-ONLY
+  06-parametres-emulator-api36.png                              sha256 d6ba5e1d3b2d3b04426e22a4e26b2d002b6ca28eb6a6f0c560fbcf02f6739395  (shows the detection switch: retake for manual-only)
+  01-03, 06: seeded account Camille Martin (example.invalid); 04-05: the demo account. Debug build of 9c194aeb.
+  Play spec (answer/9866151, read 2026-11-20): 2-8 phone screenshots, PNG/JPEG, "24-bit PNG (no alpha)", sides
+  320-3840 px, long side <= 2.3x short: met (2280/1080 = 2.11). NOT 9:16 (D8, Q4).
+
+====================================================================
+R1124 - THE MANUAL-ONLY FALLBACK, ONE PROPERTY AWAY
+====================================================================
+`-PmanualOnly=true` (a project property on the command line; absent/false = detection; anything else refused):
+  - android/app/src/manualOnly/AndroidManifest.xml: tools:node="remove" for ACCESS_FINE_LOCATION and
+    ACCESS_BACKGROUND_LOCATION, nothing else; merged into EVERY variant by androidComponents.onVariants
+    (sources.manifests.addStaticManifestFile) only when the property is set.
+  - THE ONE FACT: detection/DetectionAvailability.kt reads the permissions the installed package REQUESTS
+    (PackageManager GET_PERMISSIONS) - no BuildConfig flag that could disagree with the manifest (R181).
+  - Onboarding: onboarding/ManualOnlyOnboarding.kt onboardingSeedFor drops the MODE step (mode MANUAL), applied in
+    MainActivity's OnboardingRoute - :app only.
+  - Parametres: ParametresActions.onToggleAutoDetection is NULLABLE; null -> SaisieSection draws neither the
+    detection switch nor En savoir plus (shared: 2 files, the only :shared change). MainActivity passes null when
+    the build has no detection.
+  - Each variant's exact set asserted on the BUILT APK and .aab, both directions (R1120 section), plus
+    ManualOnlyOverlayTest in the gate (the overlay removes exactly src/main's ACCESS_*LOCATION set and adds nothing).
+    Plant (R180): ACCESS_COARSE_LOCATION added to src/main (landed per git diff) -> ManualOnlyOverlayTest FAILED.
+SIZE MEASURED against the STOP clause: overlay (1 file) + one property + the derivation (1 file) gating two entry
+points (1 :app file + 2 :shared files) + MainActivity wiring (24 changed lines) - within "a manifest overlay plus one build
+flag gating the detection entry points"; not returned as a question.
+TESTS (all RED first - compile: "Unresolved reference 'detectionDeclared' / 'onboardingSeedFor'"; then GREEN):
+  DetectionAvailabilityTest 4, ManualOnlyOnboardingTest 5, ManualOnlyOverlayTest 1, LoggingModeRestoreTest 4 (existing,
+  re-run: a server AUTO_DETECT with no grant is restored as MANUAL).
+NEW BASELINE (R135/R207: expected exactly one new file, none moved; produced exactly that):
+  ParametresListScreenshotTest_parametresListManualOnly.png - the Enregistrement card holds only Me prevenir le soir
+  and M'avertir si j'approche d'un seuil; looked at, as intended. The detection build's pixels are unchanged
+  (verifyPaparazziDebug over all baselines green in the gate).
+EMULATOR WALKTHROUGH (emulator API 36, debug -PmanualOnly=true of 9c194aeb, aapt2: no location permission in it):
+  server row set to loggingMode AUTO_DETECT + consent on purpose; sign-in -> onboarding "Etape 1 sur 7" ... "Etape 7
+  sur 7" = Un rappel le soir ? (no mode step); finished -> Aujourd'hui "Saisie manuelle" (the server's AUTO_DETECT
+  was NOT applied, and the onboarding PATCH left it untouched: still AUTO_DETECT in the DB after); Parametres ->
+  Enregistrement: Me prevenir le soir, M'avertir si j'approche d'un seuil - no detection switch, no En savoir plus.
+  jobscheduler: the one pending job is FallbackReminderWorker (A7); the only SamplingWorker entry is under "Recently
+  completed jobs", 7m55s earlier - the DETECTION build's run before the reinstall, not this build's.
+
+====================================================================
+R1125 - THE AN14b OPERATOR STEPS
+====================================================================
+docs/play-release.md section 5: 14 steps, every one [OPERATOR] - account, app creation, the upload key (keytool, on
+the operator's machine, never in the repository; R250), the Firebase values, the build (section 1), App content
+(privacy policy, App access, Data safety, the location declaration), Play App Signing and the assetlinks SIGNING
+fingerprint (PARK4-2), internal then closed testing (AN14 AC3), the listing, the mapping (inside the bundle), the
+refusal path (rebuild -PmanualOnly=true, versionCode + 1, no declaration, listing minus its detection paragraph),
+production, and A4's ANDROID_MINIMUM_VERSION_CODE / A8's key rotation after release. The Console's menu paths, the
+internal-testing review behaviour and the new-account closed-test requirement are labelled UNVERIFIED (recall, not a
+page read for this task).
+
+====================================================================
+R1126 - THE MEASURABLE AC1 PARTS (emulator / build machine; the S9 figure is a human gate)
+====================================================================
+SIZE: app-release-unsigned.apk of 9c194aeb = 2 446 547 bytes (2.33 MiB; sha256
+0f01e4739a95296709c0b494d599cb3e83abaeb63b0120d909f737afe836f016), minified (R8 + resource shrinking), UNIVERSAL (lib/
+for arm64-v8a, armeabi-v7a, x86, x86_64; every density) and unsigned. Against the 12 MB budget: 19 %. NOT Play's
+download size: Play serves split APKs built from the .aab (5 288 332 bytes, which also carries the R8 mapping that is
+never downloaded) - one ABI, one density, compressed for transfer - so the download is SMALLER; the exact number is the
+Console's after upload, or `bundletool get-size total` (bundletool not on this machine; not added - a dependency).
+Manual-only APK: 2 446 487 bytes.
+COLD START: emulator API 36, MINIFIED audit build of 9c194aeb (release config, debug-signed), signed out (welcome),
+`am start -W -S`, 8 runs: TotalTime 1606 / 1998 / 1751 / 1930 / 1535 / 1662 / 1485 / 1737 ms; median 1699.5, min 1485,
+max 1998. Above the 1.2 s target on THIS emulator, on a shared PC with ~5-9 GB commit free; "within 1.2 s on a
+mid-range device" is the S9's to measure (Q5).
+
+====================================================================
+NOT EXERCISED (named, so absence is not read as a pass)
+====================================================================
+- A SIGNED build (no key exists, R250) and an FCM-CONFIGURED build (no values exist) - the procedure's step 3 with
+  real values has never run. playRelease reads "signed" from the release signingConfig and counts the FCM values; it
+  never prints one.
+- The MINIFIED manual-only build on a device (the manual-only walkthrough used the DEBUG manual-only APK; the
+  minified manual-only release was built and checked, not installed).
+- An UPGRADE from a detection build to the manual-only build on one phone (expected: the OS reports the permission
+  denied, MainActivity's resume check falls back to manual with DisclosureCopy.PERMISSION_REVOKED; not driven).
+- A real detected day in the video (above). The S9 (cold start, a real day).
+- A signed-in cold start.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1. web/lib/fr/confidentialite.ts rights[]: "Dans l'application mobile, lorsqu'elle sera disponible, ... Supprimer mon
+    compte" - PRODUCT_STATE.appExists is false. At launch the privacy page (which the listing links and Play reads)
+    must flip; that is a web task (and bears on Q-DS2).
+N2. todo.md AN14 says location is "collected but not stored or shared"; docs/android-skills.md 7.2 / PARKAN-32 say
+    "not collected". Recorded as Q-DS1 rather than edited.
+N3. A4 owns ch.monreleve.app.update.PlayListingTest (the Play URL); my listing test was renamed StoreListingCopyTest
+    to avoid two classes of one name (D4).
+N4. No check asserts the release's WHOLE permission set (only the location half). The current set includes
+    WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED, FOREGROUND_SERVICE (WorkManager) and c2dm RECEIVE (FCM).
+N5. In-app disclosure: NEVER_SHARED says "Rien n'est transmis" beside NETWORK_LOCATION's "Android peut utiliser les
+    reseaux Wi-Fi et cellulaires" - consistent for the APP, but a reviewer may read the two together; not changed.
+N6. On a fresh sign-in against `pnpm dev`, RESOLVING once answered "Connexion impossible" (Retry worked) - A8's N9
+    again; and the API-36 permission prompt ignored one injected tap that came 1.8 s after it took focus (D9).
+N7. The welcome copy "Aucune position n'est conservee" sits on a screen every build shows; true in both variants.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. REBASED onto 34db1eee (the launch message's BASE_SHA was f6c51121): A7 had changed ParametresSections.kt, the same
+    block R1124 gates. The conflict was resolved so the detection build draws exactly what main draws (no baseline
+    moved). The orchestrator's later note said a rebase was not needed; it was done before that note to keep the
+    merge clean.
+D2. A bare `bundleRelease` / `assembleRelease` is NOT refused on a dirty tree - only `:app:playRelease` (the
+    procedure's command) is, so the gate, which builds the release from working trees, keeps working.
+D3. The ignored-file refusal names the DIRECTORY when git's matching mode reports a directory ("!! .../app/build/").
+D4. Test renamed PlayListingTest -> StoreListingCopyTest after the RED run (N3); the RED/GREEN evidence names both.
+D5. The first GREEN of the per-variant checks ran on the uncommitted implementation over HEAD 73dc8fc6 (so that .aab
+    named 73dc8fc6); every later run is on a committed, clean tree.
+D6. The declaration is in English (the prompt named no language; Play's reviewers read English).
+D7. The video's account was inserted by SQL into my scratch DB (I first misread a truncated typed address as the app
+    refusing unknown addresses). The app's door does create accounts: /api/v1/auth/magic-link -> requestMagicLink
+    (any valid address) and /api/v1/auth/code upserts the user.
+D8. Screenshots are the emulator's 1080 x 2280 (not 9:16) and were re-encoded from screencap's RGBA PNG to 24-bit
+    RGB PNG (no crop, no scaling) to meet "24-bit PNG (no alpha)".
+D9. Two takes were discarded: a fixed-timing take whose runtime-prompt tap missed (no permission granted) and a
+    dump-paced take that overran 30 s; the kept take awaits each system screen by window focus and retries the one tap.
+D10. The scratch DB monreleve_an_play_pack keeps the demo row (left at AUTO_DETECT for the manual-only check) and the
+    seed; nothing else of anyone's was touched.
+
+====================================================================
+QUESTIONS (the listing texts first)
+====================================================================
+Q1. THE LISTING TEXTS (ship as written unless refused): docs/play-store-listing.md, sections listing:title,
+    listing:short, listing:full (with its listing:detection paragraph), listing:privacy - verbatim, accented, in the
+    hand-back message. Also: is "Mon Releve" (accented) the Play name, or a longer one with a keyword?
+Q-DS1. Approximate location: declare a confirmed CH/HOME day (with DETECTED_* provenance) as "Approximate location,
+    collected" (the safer reading), or only as user-generated content? Precise location is "not collected" either way.
+Q-DS2. The account-deletion WEB link Play requires (answer/13327111): a web route, or /confidentialite's rights
+    section once it no longer says "lorsqu'elle sera disponible" (N1)?
+Q-DS3. Do the hosting proxy or the server logs keep client IP addresses (Play counts IP-inferred location)? Not
+    traceable in this repository.
+Q3. Is the video's "detection switched on and waiting" enough for "the feature being activated from the background",
+    or should a real working day be recorded on the S9?
+Q4. Screenshots: keep the emulator's native 1080 x 2280 (within Play's ratio rule), or produce 9:16 (1080 x 1920)
+    captures - a different emulator skin, not a crop? Retake 06 (Parametres) under the manual-only build if that
+    fallback is used.
+Q5. Cold start 1.7 s on the emulator: run the S9 measurement (human gate) before the first upload?
+Q6. App access for Play's reviewers: which address do they use (any address they control works - D7)?
+
+====================================================================
+CLEANUP AND THE EMULATOR
+====================================================================
+- Emulator MonReleve_API36: shut down for the gate and for the manual-only playRelease (Android Ruling 11), booted
+  again detached; RESTORED: the orchestrator's APK C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk
+  installed, `pm clear` (signed out; no shared_prefs), navigation_mode 2 (gestural), /sdcard/demo.mp4 and ui.xml
+  removed. sys.boot_completed = 1.
+- My dev server on 3972 stopped (taskkill /T of its own tree); port 3972 free. 3900/3000/3100/3200 untouched; no
+  other project's process or container touched.
+- Heavy lock: acquired 22:44:33Z (8800 MB), released 23:15:35Z; re-acquired 23:51:04Z (9711 MB), released 23:54:18Z.
+  `./gradlew --stop` (my daemons) after each.
+- Session lock C:/wt/an-play-pack/.session-lock.json removed LAST, after the report push.
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code: `git push -u origin an-play-pack` -> "* [new branch] an-play-pack -> an-play-pack"; `git ls-remote origin
+refs/heads/an-play-pack` -> 9c194aebd2bb99a06dd57da00b45a1f1527ab7c7 (the gated code tip). The doc commits and this
+report are pushed to the same branch after this line is written; the resulting remote sha is in the hand-back, not
+here. NOT merged - pending merge by the orchestrator. origin/main read 34db1eee at the time of writing (unmoved).
+R-numbers re-scanned (relay/ and REPORT-*.txt in this worktree, C:/wt/web-orch and the main checkout): R1120-R1129
+appear only in AN-PLAY-PACK.txt, ORCH-ANDROID.txt and references to this task (AN15-AUDIT.txt line 30,
+RULINGS-2026-11-16.txt line 2238); none reused.
+END OF REPORT-AN-PLAY-PACK
