@@ -1,0 +1,336 @@
+REPORT-AN-FCM-CLIENT - Mon Releve - ORCH-ANDROID step A8
+THE APP RECEIVES THE DAILY PUSH REMINDER (Android Rulings 4, 7, 8, 11, 13; R1150-R1155)
+Session: AN-FCM-CLIENT, 2026-11-20. Worktree C:/wt/an-fcm-client, branch an-fcm-client, cut from
+BASE_SHA 12d9c192 (origin/main). Evidence: C:/wt/queue-evidence/an-fcm-client/ (not in the repository).
+
+====================================================================
+SUMMARY
+====================================================================
+- :app now carries the Firebase Cloud Messaging client, com.google.firebase:firebase-messaging:26.0.2,
+  and nothing else Firebase. No google-services plugin, no google-services.json: FirebaseApp is built
+  from FirebaseOptions whose four values come from build properties FCM_ANDROID_PROJECT_ID,
+  FCM_ANDROID_APPLICATION_ID, FCM_ANDROID_API_KEY, FCM_ANDROID_SENDER_ID. None is set anywhere;
+  unset = push UNAVAILABLE and the app runs as before (proven on the emulator below).
+- Registration (push/PushRegistration.kt): signed in + notification permission + Play services +
+  configured -> POST /api/v1/devices with the token, on every launch of the signed-in shell, on an
+  opt-in change and on a token refresh; then PATCH /api/v1/me reminderEnabled.
+- TWO FINDINGS THAT MADE THE PUSH PATH DEAD BEFORE THIS TASK, both closed:
+  F1. The server's FCM message carried a `notification` block. Android draws such a message itself
+      when the app is in the background, so no rule on the phone could apply (today confirmed,
+      already shown today, signed out, R339's channel/buttons/lock-screen version). web/lib/push/fcm.ts
+      now sends DATA-ONLY with android priority high (test-first). [web/ changed]
+  F2. The daily job selects User.reminderEnabled = true and nothing in the app ever wrote it: a
+      registered token would never have been sent anything. The app now writes it (SPEC 8: "true only
+      after push permission granted"; SPEC 13.3: opt-in) from the one opt-in it has (the evening
+      reminder, R323/R339). This is a reading, put to the orchestrator as Q2.
+- Receipt (push/PushReceipt.kt, push/MonRelevePushService.kt): a data-only daily reminder posts the
+  EXISTING R339 evening notification (same channel, buttons, public version, same id) or nothing.
+  showOncePerDay is now the one rule both the push and SamplingWorker's evening notice go through.
+- "PUSH AVAILABLE" (R1153) is ONE named state: ch.monreleve.app.push.PushAvailability.isPushAvailable
+  (android/app/src/main/kotlin/ch/monreleve/app/push/PushRuntime.kt), over the pure
+  pushAvailable(...) in PushRegistration.kt. A7 reads it.
+- Session end: push's line is on A11's seam (auth/SessionEndSeam.kt deviceSessionEndSeam, new
+  required parameter endPush): every path forgets the record and invalidates the install's token.
+- R204: fixtures/push-client-cases.json is read by both sides; web/tests/db/push-client-join.test.ts
+  drives the real devices route, the real PATCH /me and the real runDailyReminders to a FakePushSender
+  that must receive the app-fake's token with exactly the data the app reads.
+- A third finding, NOT fixed: the devices route refuses its own documented `platform` field (the
+  coordinate refusal matches `lat` inside "platform"). The app omits the key (it defaults to android).
+
+====================================================================
+STATUS (R391)
+====================================================================
+STATUS: COMPLETE. The full :app:gate, gate:changed and gate:clone ran on the reported code tip 68eecc91
+in this session, all GREEN; the R573 iOS run is green on the same commit.
+  :app:gate on 68eecc91 (heavy lock held, emulator shut down, Android Ruling 11):
+    "test floor OK: 1513 unit tests observed (>= 10)"
+    "BUILD SUCCESSFUL in 13m 35s" / GATE EXIT=0     (log: C:/wt/queue-evidence/an-fcm-client/gate-2.log)
+  The first :app:gate, on b195dde1, was RED (BUILD FAILED, GATE EXIT=1) on two existing fences - see D6.
+  gate:changed (FRONTALIER_PORT=3980) on 68eecc91: selection "no path matched the selector - base chain
+    only"; typecheck exit 0, lint exit 0, test 4270 passed, build exit 0; GATE:CHANGED EXIT=0.
+  gate:clone on 68eecc91: "GATE:CLONE PASSED ... commit 68eecc9199ef11925c04368409cd3de046d707a6 ...
+    test (4270 of 4270 tests passed, 251 files), build, size (24 routes measured), db:deploy, test:db
+    (889 of 917 tests passed, 28 skipped, 64 files), test:container:write (10 checks passed)";
+    GATE:CLONE EXIT=0. test:db includes web/tests/db/push-client-join.test.ts.
+  R573: ios-shared.yml run 44775158097 on 68eecc91, conclusion success (main unmoved at 12d9c192,
+    so the branch tip IS the merge result).
+  Commits after 68eecc91 change REPORT-AN-FCM-CLIENT.txt only.
+
+====================================================================
+R1150 - THE DEPENDENCY
+====================================================================
+Coordinates: com.google.firebase:firebase-messaging:26.0.2 (android/gradle/libs.versions.toml
+`firebaseMessaging`, :app `implementation(libs.firebase.messaging)` only; :shared untouched by it).
+Why this version: newest stable on Google Maven, read 2026-11-20 (maven-metadata lists ... 26.0.0,
+26.0.1, 26.0.2; 26.0.2's AAR Last-Modified 2026-11-11). Its AARs (and firebase-common 23.0.0,
+play-services-basement 18.9.0) declare minCompileSdk=1 and minSdk 24 - inside compileSdk 35 / minSdk 26.
+Kotlin stdlib 2.1.21 (POM) <= the project's 2.2.21. No BoM (one Firebase artefact needs no alignment).
+It brings, transitively (release runtime classpath, read with :app:dependencies): com.google.firebase
+(common, components, datatransport, encoders x3, iid-interop, installations, installations-interop,
+measurement-connector, annotations), com.google.android.gms (play-services-base, -basement,
+-cloud-messaging, -stats, -tasks), com.google.android.datatransport (transport-api, -backend-cct,
+-runtime), com.squareup.okio (via androidx.datastore), javax.inject, com.google.errorprone. NO analytics,
+NO crashlytics, NO measurement artefact.
+SECOND DEPENDENCY: none added. play-services-base's GoogleApiAvailability is not on the compile
+classpath, so the Play-services check uses GoogleApiAvailabilityLight from play-services-basement,
+which is (no new declaration).
+Manifest (src/main): FirebaseInitProvider removed (tools:node="remove"); meta-data
+firebase_messaging_auto_init_enabled=false, firebase_analytics_collection_enabled=false,
+firebase_analytics_collection_deactivated=true, delivery_metrics_exported_to_big_query_enabled=false;
+the app's service .push.MonRelevePushService (exported=false, MESSAGING_EVENT).
+NEW GATE CHECK checkReleasePushManifest (in :app:gate): reads the BUILT release APK with aapt2 and
+fails unless FirebaseInitProvider is absent, the four flags hold, MonRelevePushService is declared and
+no measurement/analytics/crashlytics component exists. On 68eecc91: "checkReleasePushManifest OK: no
+FirebaseInitProvider, auto-init and analytics off (17 meta-data read), MonRelevePushService declared,
+no analytics/crash component".
+Licences (R298): checkLicences failed on the new groups by design; LicencesCopy.OSS_BODY (:shared)
+now names Firebase Cloud Messaging, Okio, javax.inject, Error Prone (Apache 2.0) and says the Google
+Play services libraries are NOT free software and come under the Android Software Development Kit
+License (their POMs say so). On 68eecc91: "checkLicences OK: 179 release runtime modules, each
+attributed on the licences screen". The French sentence is new copy: Q4.
+Baseline moved (R207, named before the run): exactly
+android/app/src/test/snapshots/images/ch.monreleve.app.ui.screens.parametres_ParametresScreenScreenshotTest_licences.png
+(expected {licences.png} = produced {licences.png}; the image was opened and read).
+Placeholders: none. Build defaults are EMPTY strings; a value with a quote, backslash or control
+character fails the build. PushConfigTest asserts the unit-test build (like gate:clone's) carries none.
+APK SIZE DELTA (minified RELEASE build, unsigned, same R8 config as audit):
+  base  cf043d93 (android/ tree identical to 12d9c192, A4's gated release APK): 2 005 772 bytes
+  this  68eecc91:                                                              2 430 083 bytes
+  delta +424 311 bytes (+414 KiB); 2.32 MiB total against AN14a's 12 MB budget.
+Release APK permission diff (aapt2 dump permissions, base vs branch): exactly ONE added,
+  com.google.android.c2dm.permission.RECEIVE. (WAKE_LOCK, ACCESS_NETWORK_STATE and POST_NOTIFICATIONS
+  were already declared.) Components added: ch.monreleve.app.push.MonRelevePushService,
+  com.google.firebase.messaging.FirebaseMessagingService, com.google.firebase.iid.FirebaseInstanceIdReceiver
+  (guarded by c2dm SEND), com.google.firebase.components.ComponentDiscoveryService,
+  com.google.android.datatransport.runtime ... TransportBackendDiscovery, JobInfoSchedulerService,
+  AlarmManagerSchedulerBroadcastReceiver. A5 needs this list for the data-safety answers.
+  checkReleaseLocationPermissions still OK (location set unchanged).
+
+====================================================================
+R1151 - REGISTRATION
+====================================================================
+Contract read from docs/api-v1.md section 10 and web/app/api/v1/devices/route.ts (not retyped):
+POST { fcmToken, platform?, appVersion? }, idempotent per token, reassigned to the caller, "made after
+sign-in and on every launch afterwards"; no DELETE ("signing out revokes the session; the token is
+pruned when the service reports it dead").
+The pass (PushSync.sync, PushRegistration.kt):
+  signed out -> SIGNED_OUT, nothing sent;
+  not configured -> NOT_CONFIGURED, nothing sent, Play services never consulted, no token asked;
+  no Play services -> NO_PLAY_SERVICES; no permission -> NO_PERMISSION;
+  no token -> NO_TOKEN; non-2xx or unreachable -> REGISTRATION_REFUSED (R1191: an Ok is not acceptance);
+  2xx -> registered; then reminderEnabled is written TRUE when opted in and the server does not
+  already hold it from this phone, FALSE only when this phone turned it on and the person opted out
+  or push became impossible here; a transient failure leaves the server's value alone.
+Triggers: MainActivity's signed-in shell LaunchedEffect (keys: the evening opt-in and the alert
+opt-in, so a fresh POST_NOTIFICATIONS grant registers at once), and MonRelevePushService.onNewToken.
+Body: { fcmToken, appVersion } - NO `platform`: the route answers 400 coordinates_refused to it
+(web/lib/entries/no-coordinates.ts substring-matches `lat`). Pinned in push-client-join.test.ts.
+Sign-out: route/SPEC have no unregister; the client invalidates its own token
+(FirebaseMessaging.deleteToken, fire-and-forget) so the server's next send answers 404 and prunes the
+row (api-v1 10.4's own mechanism). NOTICED: no server-side unregister exists.
+TEST-FIRST: stubs first, then app/src/test/kotlin/ch/monreleve/app/push/{PushSyncTest (16),
+PushClientFixtureTest (4), PushConfigTest (4), PushReceiptTest (12)} and SessionEndSeamTest (+2, 3
+assertions added): RED 25 of 72 by assertion (evidence red-1-push-and-seam.log), then GREEN.
+PushSyncTest runs the pass over the REAL SessionManager and AuthApi with only the HTTP transport faked.
+R204: web/tests/db/push-client-join.test.ts, against the scratch DB, 4 passed: the fixture's token
+posted to the REAL POST route (200, token not echoed), the fixture's opt-in to the REAL PATCH /me,
+runDailyReminders at the fixture's 17:31 Paris -> FakePushSender delivered exactly that token with
+exactly the fixture's data; and the other direction: registered but never opted in -> sent 0.
+Its first run was RED with 400 on registration - the `platform` finding.
+
+====================================================================
+R1152 - RECEIPT
+====================================================================
+Payload read from web/lib/push/message.ts: data { kind: "daily_reminder", day: <ISO>, mode }.
+The phone shows R339's EXISTING notification (EveningNotifier.postDaily, channel
+monreleve.evening.proposal, VISIBILITY_PRIVATE + public version, record buttons, id 1001). No new copy.
+Rules: kind must be daily_reminder and day an ISO day; day must be TODAY in Paris; signed in; then
+R339's own gates (opted in on this phone, working day, no entry today, not already shown today) with
+R339's "day concluded / reminder time" answered by the push itself (the server sends at reminderTime,
+17:30 default). The words and the mode are the phone's; the payload's `mode` is not read.
+EXACTLY ONE A DAY: push/PushReceipt.kt showOncePerDay; maybeNotifyEvening (SamplingWorker) was
+refactored onto it with no behaviour change; the store is the one EveningNotificationStore day.
+
+THE PATH TABLE (A7 extends it)
+| path | trigger | gates (all must hold) | posts | takes the day | signed out |
+|------|---------|------------------------|-------|---------------|------------|
+| P1 PUSH (A8) | FCM data-only at the person's reminderTime (server, only if today unconfirmed on the server) -> MonRelevePushService.onMessageReceived -> maybeRemindFromPush | kind=daily_reminder; day = today (Paris); signed in; opted in; working day; no entry today on the phone; day not taken | R339 evening notice (Manual / Proposed / NotSure by the phone's mode) | yes, showOncePerDay | shows nothing (refused before the DB opens) |
+| P2 AUTO EVENING (SamplingWorker) | background wake after the last check window, auto mode | opted in; working day; no entry; day concluded; day not taken | R339 evening notice | yes, showOncePerDay | the worker guard (A11 R1180) returns before it; the seam cancels the worker |
+| P3 THRESHOLD ALERT (existing, AN-ALERT) | a new crossing | its opt-in; a NEW crossing | the alert alone, or MERGED with the evening notice when that applies today | marks the day only when merged | the worker guard as P2; in-app trigger needs the shell |
+| P4 19:00 FALLBACK (A7, not built here) | local schedule | must require !PushAvailability.isPushAvailable and go through showOncePerDay | R339 Manual | must | A7: nothing shown, nothing scheduled, cancel on the seam |
+| SIGNED OUT | any of the above while nobody is signed in | - | nothing | - | push record forgotten and token invalidated at the seam (all three SessionEndPaths) |
+PAIRS PROVEN (PushReceiptTest, against the real decision functions both glues call): push->push one;
+push->auto evening one; auto evening->push one; a push that showed nothing does not take the day;
+yesterday's mark does not block today; signed out; late day; today confirmed; opted out; weekend.
+P3 note: the merge posts on the SAME id 1001 (replaces, never stacks) and ignores "already shown" by
+design (AN-ALERT) - one notification at a time, but it can re-alert once on a crossing day. NOTICED.
+SESSION END (A11's seam, Android Ruling 11 Q4 kept): deviceSessionEndSeam(stopSampling, endPush);
+the push line runs after the sampler, in its own runCatching, for SIGNED_OUT, DELETED and
+ENDED_BY_SERVER alike (none needs another answer: sign-out and server-ended both leave the Device row,
+deletion already removed it). SessionEndSeamTest asserts it on every path and that it cannot stop the
+sampler or the clear. monreleve.push is in ErasureCensusTest's ERASED_STORAGE through this path.
+
+====================================================================
+R1153 - "PUSH AVAILABLE"
+====================================================================
+Name and location: ch.monreleve.app.push.PushAvailability.isPushAvailable(context: Context): Boolean
+in android/app/src/main/kotlin/ch/monreleve/app/push/PushRuntime.kt; the rule is the pure
+pushAvailable(record, account, signedIn, configured, playServices, permission) in PushRegistration.kt.
+True only when: configured; signed in; Play services present (GoogleApiAvailabilityLight SUCCESS);
+notifications permitted (NotificationManagerCompat.areNotificationsEnabled - covers POST_NOTIFICATIONS
+and a user switching the app's notifications off); and for the account signed in NOW the record shows
+a 2xx registration AND reminderEnabled=true accepted from this phone. Every fact read when asked.
+The record: SharedPreferences monreleve.push (account tag, registered, serverReminderEnabled; never
+the token), excluded from cloud backup and device transfer (with com.google.android.gms.appid.xml,
+FCM's own token store) so a restore cannot silence A7 on a new phone.
+NOT built here: A7's fallback.
+
+====================================================================
+R1154 - PROOF ON THE EMULATOR (all: emulator API 36, MonReleve_API36, Google Play image; never the S9)
+====================================================================
+Local server: my worktree's `pnpm dev` on :3980, scratch DB monreleve_an_fcm_client, seeded.
+Debug APK built with -PfrontalierPort=3980 and NO FCM_ANDROID_* values.
+1. WITHOUT FIREBASE VALUES THE APP RUNS AS TODAY (evidence 01-signed-in-unconfigured.png,
+   02-unconfigured-facts.txt): sign-in recipe -> "Bonjour Camille", /me and /entries 200; app log
+   "MonRelevePush: push pass: NOT_CONFIGURED"; 0 logcat lines from the app process mention Firebase;
+   server log: 0 POST /api/v1/devices, 0 PATCH /api/v1/me; no Firebase files (files/ holds only
+   profileInstalled; no com.google.android.gms.appid.xml); 0 FATAL EXCEPTION.
+2. RECEIPT through the app's REAL FirebaseMessagingService entry point - instrumented test
+   app/src/androidTest/.../push/PushReceiptInstrumentedTest.kt, run with
+   connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=... : 4 tests, 0
+   failures (instrumented-2-results.xml). Delivery is FCM's own FcmBroadcastProcessor.process(c2dm
+   RECEIVE intent) - what FirebaseInstanceIdReceiver calls after Play services delivers a message -
+   so the path is the SDK's queue -> handleIntent -> onMessageReceived -> maybeRemindFromPush.
+   Asserted: R339's channel, the public version, 3 actions, the day taken, exactly one notification;
+   a second delivery the same day shows nothing; signed out shows nothing; yesterday's day shows
+   nothing. `adb shell am broadcast` cannot be used: the receiver requires c2dm SEND (Play services
+   only). The first run (direct startService with the extras) posted nothing - the SDK reads its
+   intent from its own queue, not the start intent - a harness defect, recorded, then fixed.
+   Receipt works with NO FirebaseApp (unconfigured build); FirebaseMessaging logged only "FirebaseApp
+   has not being initialized ... Skip exporting delivery metrics to Big Query".
+3. REGISTRATION through my local server's REAL route with a FAKE token: debug-only
+   ch.monreleve.app.debug.PushProbeActivity (src/debug, not in release) runs the app's real PushSync
+   over the process's real session and the real record, with only the token source fake and a config
+   that says "probe" (Firebase never built from it).
+   a) permission granted (pm grant), not opted in: "PUSH PROBE pass=REGISTERED_NOT_OPTED_IN"; server
+      "POST /api/v1/devices 200"; DB: Camille's Device row, appVersion 0.1.0, platform android, the
+      probe's fake token, 1 linked DeviceSession (04-device-row-after-probe.txt); record
+      push.registered=true (05-...).
+   b) the evening opt-in set as onboarding persists it (evening.enabled=true written into
+      monreleve.detection.xml with run-as - manual mode has no Parametres switch, see Q2) and the
+      server's reminderEnabled reset to false: "pass=AVAILABLE"; server "POST /api/v1/devices 200",
+      "PATCH /api/v1/me 200"; DB reminderEnabled f -> t (07-...); record serverReminderEnabled=true
+      (08-...). The real PushAvailability read false beside it, correctly: this build is unconfigured.
+   c) sign-out through Parametres -> welcome screen; monreleve.push.xml read back as <map />
+      (09-after-sign-out.txt); 0 FATAL. (deleteToken is skipped in an unconfigured build - no token
+      can exist.)
+   R574: the code was read from the dev log by the driver and typed with adb; never printed; dumps
+   print digit fields as labels only. Screenshots taken only outside the code screen.
+A REAL DELIVERY needs the operator's Firebase config and the rotated server key: NOT AVAILABLE, not
+attempted, not claimed.
+
+====================================================================
+R1155 - iOS
+====================================================================
+:shared changed (LicencesCopy.kt, FixtureGeneratorTest.kt), so R573 was owed and is met:
+gh workflow run ios-shared.yml --ref an-fcm-client -> run 44775158097, headSha 68eecc91, job
+ios-shared-tests success, 16:37:06Z-16:45:17Z (8 min 11 s; about 9 billed macOS minutes, rounded up -
+the timing API answered 0 ms when read). This run's macOS total: A1 9 + A9 ~9 + A12 8 + A4 ~8 + A8 ~9
+= about 43.
+No iOS push client was built (no app host).
+
+====================================================================
+WHAT THE OPERATOR MUST SUPPLY
+====================================================================
+1. Firebase console -> the project FCM_PROJECT_ID names (the server's) -> Project settings -> General
+   -> Your apps -> Add app -> Android; package name ch.monreleve.app (no SHA needed for FCM).
+   Do NOT commit google-services.json. From it (or from the console page) take:
+     project_info.project_id                -> FCM_ANDROID_PROJECT_ID
+     client[0].client_info.mobilesdk_app_id -> FCM_ANDROID_APPLICATION_ID  (shape 1:<number>:android:<hex>)
+     client[0].api_key[0].current_key       -> FCM_ANDROID_API_KEY
+     project_info.project_number            -> FCM_ANDROID_SENDER_ID
+   Supply all four on the RELEASE build machine as Gradle properties (~/.gradle/gradle.properties, or
+   -P...) or environment variables of the same names. Three of four = NOT configured, by design.
+2. Recommended: Google Cloud console -> APIs & Services -> Credentials -> that API key -> restrict to
+   Android apps (package ch.monreleve.app + the release signing SHA-1) and to the Firebase
+   Installations and FCM registration APIs.
+3. The server side already waits on the FCM_PRIVATE_KEY rotation (FCM_PROJECT_ID / FCM_CLIENT_EMAIL /
+   FCM_PRIVATE_KEY); this branch changes the server's message to data-only, which must ship before
+   (or with) that rotation, or the first real pushes bypass the phone's rules.
+4. A5 (data safety): the FCM registration token is collected and stored (Device.fcmToken); Firebase
+   Installations sends an installation id to Google on the first token request.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1. POST /api/v1/devices refuses its documented `platform` key (coordinates_refused, `lat` in
+    "platform") - pinned in push-client-join.test.ts; the server fix is the orchestrator's (Q3).
+N2. No server-side unregister (no DELETE /api/v1/devices); a signed-out phone's row lives until the
+    next send answers 404 after deleteToken. In an unconfigured build nothing deletes it.
+N3. Manual mode has NO Parametres switch for the evening reminder (ParametresSections.kt shows it only
+    with detection on); a manual person sets it only at onboarding. A7's surface.
+N4. ParametresR282Test still forbids "rappel"/"notification" in ParametresCopy/LicencesCopy on the
+    ground that the reminder is out of scope - stale since R339/A8.
+N5. web/lib/push/message.ts's header ("as it will appear on a lock screen") and NOTIFICATION_COPY
+    .reminder are no longer on the wire (console sender only); the app's R339 copy is what shows.
+N6. The dev seed sets reminderEnabled=true for seeded users.
+N7. Two phones, one account: a phone that never wrote reminderEnabled does not switch it off; a phone
+    that did can switch it off for both. Rare; not designed further.
+N8. P3 (threshold alert merge) can re-post the same-day notification once (same id, replaces).
+N9. On first sign-in against `pnpm dev` the RESOLVING screen once answered "Connexion impossible"
+    and the year-download banner showed once; both cleared on "Reessayer". Dev compile latency and the
+    emulator's Wi-Fi teardown (A9) - pre-existing, not this task's.
+N10. Driver note: `adb input text` dropped "@example.invalid" when typed with the local part; typed
+    in two steps it works.
+N11. The push record file is written even in an unconfigured build (registered=false). Harmless.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1. web/ changed (lib/push/fcm.ts data-only + android priority high; its test) - required by R1152,
+    not named in the prompt. gate:changed and gate:clone below. [F1]
+D2. The app writes reminderEnabled (PATCH /me) - not in R1151's text; without it no push is ever
+    sent (F2). Put as Q2.
+D3. A debug-only PushProbeActivity (src/debug) for R1154's registration proof.
+D4. Receipt proven via FCM's FcmBroadcastProcessor in an instrumented test, not `am broadcast`.
+D5. The emulator opt-in was written into the app's prefs with run-as (no manual-mode switch) and
+    reminderEnabled reset in the scratch DB to show the PATCH happen.
+D6. First :app:gate (on b195dde1) was RED on two existing fences - AccountCaptureFenceTest (an account
+    read as a call argument) and ErasureCensusTest (monreleve.push unlisted). Their first runs were the
+    evidence (R178); fixed in 68eecc91, gate re-run GREEN.
+D7. maybeNotifyEvening refactored onto showOncePerDay (no behaviour change; pair tests drive both).
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1. Accept the data-only server message (F1)? It is the production push envelope once FCM_PRIVATE_KEY
+    is rotated; iOS (APNs) would later need its own `apns` block.
+Q2. Accept the app writing reminderEnabled from the evening opt-in (F2)? And should manual mode get a
+    Parametres switch for it (N3) - A7's surface?
+Q3. Fix the devices route's `platform` refusal (N1) - exempt exact documented keys from the substring
+    match - or drop `platform` from the docs?
+Q4. The licences copy (OSS_BODY's two new sentences, French) - approve or reword.
+Q5. Session end invalidates the token on all three paths (Android Ruling 11 Q4 kept the path; none
+    needed another answer) - accepted?
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code tip (gated): 68eecc9199ef11925c04368409cd3de046d707a6, pushed to origin/an-fcm-client before this
+report (git ls-remote origin an-fcm-client -> 68eecc91...). NOT MERGED - the orchestrator merges.
+Report tip: the commit adding this file, pushed after it (its sha is in the handback; a report cannot
+name the commit that contains it). Branch commits on top of 12d9c192:
+  485f62e6 increment 1 (client, registration, receipt, seam, web data-only, fixture, R204 test)
+  82e358f7 the receipt instrumented test through FcmBroadcastProcessor
+  b195dde1 the licences baseline (R207)
+  68eecc91 the two fence findings (D6)  <- gated
+Lock: C:/wt/an-fcm-client/.session-lock.json is HELD at the time of writing; it is removed last,
+after the report push. Heavy lock released at 16:36:45Z. My dev server (port 3980) and Gradle daemons
+were stopped; port 3980 read free afterwards.
+Emulator: shut down for the gates (Android Ruling 11), booted again, the orchestrator's APK
+(C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk) installed fresh - signed out,
+navigation_mode 2 (gestural). connectedDebugAndroidTest had uninstalled the app earlier, as expected.
+Scratch files: only in C:/wt/queue-evidence/an-fcm-client/ (Android Ruling 13); the dev-server log
+that held local sign-in codes was deleted after the walkthrough.
+R-numbers: R1150-R1155 used; re-scanned relay/ in this worktree, C:/wt/web-orch and the main checkout -
+only AN-FCM-CLIENT.txt and ORCH-ANDROID.txt name the range.
