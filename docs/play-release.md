@@ -174,10 +174,16 @@ strengthened.
 > and would propose the wrong country. Detection is optional: people who do not grant background location record
 > their days manually, which produces the same statement.
 
-**Video:** recorded on the emulator (labelled "emulator API 36"), `adb shell screenrecord`, from the commit named in
-REPORT-AN-PLAY-PACK.txt; path, sha256 and duration there; NOT committed (C:/wt/play-assets/). **[OPERATOR]** uploads
-it (YouTube unlisted or Google Drive) and pastes the link into the form. What it shows, in order, and what it cannot:
-see the report's R1122 section.
+**Video:** `C:/wt/play-assets/demo-background-location-emulator-api36-9c194aeb.mp4` - recorded on the emulator
+(emulator API 36, MonReleve_API36, 1080 x 2280, gestural navigation, system language English), `adb shell
+screenrecord`, debug build of 9c194aeb against a local server, 29.02 s; NOT committed. It starts AFTER sign-in, on
+onboarding's mode step (normal usage, no menu), and shows in order: « Automatiquement » chosen -> the in-app
+disclosure, held about 5 s -> Android's runtime prompt (« While using the app ») -> the background page (« Allow all
+the time ») -> back in the app, onboarding finished -> Aujourd'hui reading « Détection automatique (bêta) » and
+« Détection en cours. Votre journée vous sera proposée ce soir. ». **What it cannot show:** a day actually detected -
+the four checks happen across a working day, so a 30-second take shows the feature switched on and waiting, not a
+proposal. A real-day recording is the S9's (question in the report). **[OPERATOR]** uploads it (YouTube unlisted or
+Google Drive) and pastes the link into the form; the sha256 is in REPORT-AN-PLAY-PACK.txt.
 
 **Prominent disclosure** (Play: "must appear before your app's location runtime permission", must name "location"
 and "background" / "when the app is closed", and must be "within the app itself as well as in the app description
@@ -271,6 +277,16 @@ Every step is **[OPERATOR]** unless marked otherwise; none can be done by a sess
 
 ## 6. Measured on this branch (R1126)
 
-The release APK size against the 12 MB budget, and cold start on the emulator: the values, how they were measured
-and how they differ from Play's download size are in REPORT-AN-PLAY-PACK.txt, R1126. The "mid-range device"
-criterion is the S9's (a human gate; an emulator figure never closes it).
+**Size (AN14 AC1, budget 12 MB).** The minified release APK built by `:app:playRelease` at 9c194aeb,
+`app-release-unsigned.apk`: **2 446 547 bytes (2.33 MiB)** - a UNIVERSAL APK (all four ABIs' native libraries, every
+density), unsigned (signing adds a few KB). That is NOT Play's download size: Play serves split APKs generated from the
+`.aab` (5 288 332 bytes, which also carries the 42.9 MB-uncompressed R8 mapping that is never downloaded), one ABI and
+one density per phone, compressed for transfer - so a phone downloads LESS than the universal APK. The exact figure
+is Play Console's (App bundle explorer) after the first upload, or `bundletool get-size total` on the bundle (not run
+here: bundletool is not on this machine's PATH, and adding it is a dependency question).
+
+**Cold start.** Emulator API 36 (MonReleve_API36, x86_64, 2 GB), the MINIFIED audit build of 9c194aeb (release
+configuration, R8 on, debug-signed), signed out (the welcome screen), `adb shell am start -W -S`, 8 runs:
+TotalTime 1 606 / 1 998 / 1 751 / 1 930 / 1 535 / 1 662 / 1 485 / 1 737 ms - **median 1 699.5 ms**, above the 1.2 s
+target. An emulator on a shared, memory-tight PC is not a mid-range phone; the criterion names "a mid-range device",
+which is the S9's to measure (a human gate - this figure does not close it, in either direction).
