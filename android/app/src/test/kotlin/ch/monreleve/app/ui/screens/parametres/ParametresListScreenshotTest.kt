@@ -76,6 +76,15 @@ class ParametresListScreenshotTest {
         }
     }
 
+    // AN-PLAY-PACK (R1124): the manual-only fallback build - no detection handler, so neither the detection switch
+    // nor « En savoir plus » is drawn; the « Enregistrement » card keeps the threshold alert alone. A NEW baseline.
+    @Test
+    fun parametresListManualOnly() {
+        paparazzi.snapshot {
+            ParametresHost(defaultParametresState, noopParametresActions.copy(onToggleAutoDetection = null))
+        }
+    }
+
     @Test
     fun parametresListLarge() {
         paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(screenHeight = TALLER, fontScale = 2f))

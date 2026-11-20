@@ -1,8 +1,10 @@
+import com.android.aapt.Resources.XmlNode
 import com.android.tools.idea.insights.proto.BuildStamp
 import com.android.tools.idea.insights.proto.RepositoryInfo
 import com.android.tools.idea.insights.proto.VersionControlSystem
 import com.google.protobuf.TextFormat
 import java.io.ByteArrayOutputStream
+import java.security.MessageDigest
 import java.util.zip.ZipFile
 
 plugins {
@@ -13,6 +15,50 @@ plugins {
     alias(libs.plugins.detekt)
     alias(libs.plugins.paparazzi)
 }
+
+// AN-PLAY-PACK (R1124). THE MANUAL-ONLY FALLBACK IS ONE BUILD PROPERTY AWAY. docs/play-background-location.md names
+// "manual mode only" as the designed answer if Play refuses ACCESS_BACKGROUND_LOCATION; -PmanualOnly=true produces it:
+// every variant merges src/manualOnly/AndroidManifest.xml (which only REMOVES the location permissions, kept in step
+// with src/main by ManualOnlyOverlayTest), and the app reads "detection available" from the permissions its own
+// package requests (detection/DetectionAvailability.kt) - so the manifest and the entry points cannot disagree.
+// A PROJECT property on the command line only, never an environment variable: a machine-wide setting would make every
+// gate on that machine build the fallback. Anything but absent / true / false is refused: a typo that silently built
+// the detection release would be the one mistake this property exists to make impossible.
+val manualOnly: Boolean =
+    when (val raw = (findProperty("manualOnly") as String?)?.trim()) {
+        null, "false" -> false
+        "true" -> true
+        else -> throw GradleException("manualOnly must be true or false, not \"$raw\" (R1124)")
+    }
+
+// R1124 / R206: THE ONE DEFINITION of the location permissions a release declares, read by both built-artifact
+// checks - checkReleaseLocationPermissions (the APK) and checkReleaseBundle (the .aab Play takes). Detection ships
+// (R316): exactly FINE + BACKGROUND. The manual-only fallback: none. Each check asserts its variant's set EXACTLY, both
+// directions (R196), and requires android.permission.INTERNET in the same read first, because an empty set is also
+// what a failed or empty dump would produce (R133).
+val releaseLocationPermissions: Set<String> =
+    if (manualOnly) {
+        sortedSetOf()
+    } else {
+        sortedSetOf("android.permission.ACCESS_BACKGROUND_LOCATION", "android.permission.ACCESS_FINE_LOCATION")
+    }
+val locationPermissionPattern = Regex("""android\.permission\.ACCESS_[A-Z_]*LOCATION""")
+
+/** The R1124 comparison both checks share; null when [declared] is exactly the variant's set. */
+fun locationPermissionProblem(
+    declared: Set<String>,
+    allDeclared: Set<String>,
+): String? =
+    when {
+        "android.permission.INTERNET" !in allDeclared ->
+            "NO RESULT - the permission read found no android.permission.INTERNET, so it read nothing usable " +
+                "(found: $allDeclared)"
+        declared != releaseLocationPermissions ->
+            "location permissions are $declared, expected exactly $releaseLocationPermissions " +
+                "(manualOnly=$manualOnly); missing ${releaseLocationPermissions - declared}, " +
+                "extra ${declared - releaseLocationPermissions}"
+        else -> null
+    }
 
 // AN5 increment 1 / KMP-2b (R396). exportSchema = true writes the room schema JSON, and R187 makes
 // it a contract with every device that installs a release, so it is committed and
@@ -380,7 +426,14 @@ tasks.withType<Test> {
     inputs.files(
         layout.projectDirectory.file("src/main/AndroidManifest.xml"),
         layout.projectDirectory.file("src/debug/AndroidManifest.xml"),
+        // AN-PLAY-PACK (R1124): ManualOnlyOverlayTest reads the overlay beside src/main.
+        layout.projectDirectory.file("src/manualOnly/AndroidManifest.xml"),
     ).withPropertyName("sourceManifests")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-PLAY-PACK (R1123/R283): PlayListingTest reads the store listing's French texts from the document the operator
+    // pastes into Play, so an edit to that document re-runs the binding rules instead of leaving this task UP-TO-DATE.
+    inputs.file(rootProject.layout.projectDirectory.file("../docs/play-store-listing.md"))
+        .withPropertyName("playStoreListing")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("$projectDir/src/debug/kotlin")
         .withPropertyName("scannedDebugSource")
@@ -777,29 +830,21 @@ tasks.register("checkReleaseLocationPermissions") {
             standardOutput = stdout
         }
         val permissions = stdout.toString("UTF-8")
-        val declaredLocation =
-            Regex("""android\.permission\.ACCESS_[A-Z_]*LOCATION""")
-                .findAll(permissions)
-                .map { it.value }
-                .toSortedSet()
-        val expected =
-            sortedSetOf(
-                "android.permission.ACCESS_FINE_LOCATION",
-                "android.permission.ACCESS_BACKGROUND_LOCATION",
-            )
-        if (declaredLocation != expected) {
-            val missing = expected - declaredLocation
-            val extra = declaredLocation - expected
+        // AN-PLAY-PACK (R1124): the expected set is the VARIANT's - {FINE, BACKGROUND} for the detection release,
+        // none for -PmanualOnly=true - from the one definition at the top of this file, shared with checkReleaseBundle.
+        val allDeclared = Regex("""android\.permission\.[A-Z_]+""").findAll(permissions).map { it.value }.toSortedSet()
+        val declaredLocation = allDeclared.filter { locationPermissionPattern.matches(it) }.toSortedSet()
+        locationPermissionProblem(declaredLocation, allDeclared)?.let { problem ->
             throw GradleException(
-                "checkReleaseLocationPermissions FAILED (R316) - the BUILT release APK must declare EXACTLY " +
-                    "the location permissions coordinate-free background detection needs.\n" +
-                    "  expected: $expected\n  found:    $declaredLocation\n" +
-                    "  missing:  $missing (a feature that cannot work)\n" +
-                    "  extra:    $extra (scope the product does not need)\nAPK: $apk",
+                "checkReleaseLocationPermissions FAILED (R316/R1124) - the BUILT release APK must declare EXACTLY " +
+                    "the location permissions its variant needs: $problem.\n" +
+                    "  A missing one is a feature that cannot work; an extra one is scope the build does not need.\n" +
+                    "APK: $apk",
             )
         }
         println(
-            "checkReleaseLocationPermissions OK: the built release APK declares exactly $expected ($apk)",
+            "checkReleaseLocationPermissions OK (manualOnly=$manualOnly): the built release APK declares exactly " +
+                "$releaseLocationPermissions of the location permissions, and INTERNET ($apk)",
         )
     }
 }
@@ -1139,26 +1184,233 @@ tasks.register("checkReleaseVcsInfo") {
                     "(got \"$head\"), so there is nothing to compare the APK against (R391).",
             )
         }
-        val revisions =
-            Regex("""(?m)^\s*revision:\s*"([0-9a-f]{40})"\s*$""")
-                .findAll(textproto)
-                .map { it.groupValues[1] }
-                .toList()
-        val error = Regex("""generate_error_reason:\s*(\S+)""").find(textproto)?.groupValues?.get(1)
-        if (error != null || revisions.size != 1 || revisions.single() != head) {
+        vcsInfoProblem(textproto, head)?.let { problem ->
             throw GradleException(
                 "checkReleaseVcsInfo FAILED (R1101) - the BUILT release APK does not name the commit it " +
-                    "was built from.\n" +
-                    "  HEAD (git rev-parse HEAD): $head\n" +
-                    "  revision(s) in the APK:    $revisions\n" +
-                    "  generate_error_reason:     ${error ?: "(none)"}\n" +
-                    "  $entryName:\n" +
+                    "was built from.\n$problem\n  $entryName:\n" +
                     textproto.lines().joinToString("\n") { "    $it" } +
                     "\nAPK: $apk",
             )
         }
         println("checkReleaseVcsInfo OK: the built release APK names HEAD $head in $entryName ($apk)")
     }
+}
+
+// AN-PLAY-PACK (R1120, R206): the ONE reading of a version-control-info textproto, shared by checkReleaseVcsInfo (the
+// APK) and checkReleaseBundle (the .aab). Null when it names exactly one 40-hex revision equal to [head] and carries no
+// generate_error_reason; otherwise the lines that say why not.
+fun vcsInfoProblem(
+    textproto: String,
+    head: String,
+): String? {
+    val revisions =
+        Regex("""(?m)^\s*revision:\s*"([0-9a-f]{40})"\s*$""")
+            .findAll(textproto)
+            .map { it.groupValues[1] }
+            .toList()
+    val error = Regex("""generate_error_reason:\s*(\S+)""").find(textproto)?.groupValues?.get(1)
+    return if (error != null || revisions.size != 1 || revisions.single() != head) {
+        "  HEAD (git rev-parse HEAD): $head\n" +
+            "  revision(s) found:         $revisions\n" +
+            "  generate_error_reason:     ${error ?: "(none)"}"
+    } else {
+        null
+    }
+}
+
+/** `git rev-parse HEAD` read when a check RUNS (R171); a non-40-hex answer is NO RESULT and fails (R391). */
+fun headRevisionOrFail(check: String): String {
+    val head =
+        providers.exec {
+            commandLine("git", "rev-parse", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.get().trim()
+    if (!head.matches(Regex("[0-9a-f]{40}"))) {
+        throw GradleException("$check: NO RESULT - `git rev-parse HEAD` printed \"$head\", not a 40-hex commit (R391)")
+    }
+    return head
+}
+
+fun sha256Of(file: File): String =
+    MessageDigest.getInstance("SHA-256").let { digest ->
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1 shl 16)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+/** Every permission a proto-format manifest (the .aab's base/manifest/AndroidManifest.xml) declares. */
+fun protoManifestPermissions(manifest: XmlNode): Set<String> =
+    manifest.element.childList
+        .filter { it.hasElement() && it.element.name in setOf("uses-permission", "uses-permission-sdk-23") }
+        .mapNotNull { child -> child.element.attributeList.firstOrNull { it.name == "name" }?.value }
+        .toSortedSet()
+
+// AN-PLAY-PACK (R1120; A2's Q3, Android Ruling 6). THE BUNDLE PLAY TAKES IS CHECKED, NOT ONLY THE APK. Play is
+// uploaded an .aab (bundleRelease), and every other release check reads the APK - two artifacts AGP packages from the
+// same inputs but by different tasks. This reads the BUILT .aab and fails unless:
+//   - exactly one entry ending META-INF/version-control-info.textproto exists and names HEAD (R171: derived from
+//     `git rev-parse HEAD` when this runs; the same reading as checkReleaseVcsInfo, vcsInfoProblem above);
+//   - its base/manifest/AndroidManifest.xml (protobuf, which aapt2 dump does not read inside a bundle; parsed with
+//     AGP's own aapt2 proto classes, as checkReleaseVcsInfo uses AGP's BuildStamp) declares INTERNET and EXACTLY the
+//     location permissions releaseLocationPermissions names for this variant (R1124, both directions);
+//   - the R8 mapping is inside it (BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map, non-empty) -
+//     which is how Play deobfuscates a crash in a minified release with no separate mapping upload.
+// A missing entry fails (R133): an absent textproto, manifest or mapping is never read as a pass. R182: it dependsOn
+// bundleRelease, the task that PRODUCES its subject.
+tasks.register("checkReleaseBundle") {
+    dependsOn("bundleRelease")
+    doLast {
+        val bundleDir = layout.buildDirectory.dir("outputs/bundle/release").get().asFile
+        val bundles = bundleDir.walkTopDown().filter { it.isFile && it.extension == "aab" }.toList()
+        if (bundles.size != 1) {
+            throw GradleException("checkReleaseBundle: expected exactly one .aab under $bundleDir, found $bundles")
+        }
+        val aab = bundles.single()
+        val head = headRevisionOrFail("checkReleaseBundle")
+        val problems = mutableListOf<String>()
+        ZipFile(aab).use { zip ->
+            val names = zip.entries().asSequence().map { it.name }.toList()
+            val read = { name: String -> zip.getInputStream(zip.getEntry(name)).use { it.readBytes() } }
+
+            val vcsEntries = names.filter { it.endsWith("META-INF/version-control-info.textproto") }
+            if (vcsEntries.size != 1) {
+                problems += "expected exactly one */META-INF/version-control-info.textproto, found $vcsEntries"
+            } else {
+                vcsInfoProblem(read(vcsEntries.single()).toString(Charsets.UTF_8), head)?.let {
+                    problems += "${vcsEntries.single()} does not name HEAD:\n$it"
+                }
+            }
+
+            val manifestEntry = "base/manifest/AndroidManifest.xml"
+            if (manifestEntry !in names) {
+                problems += "no $manifestEntry in the bundle"
+            } else {
+                val all = protoManifestPermissions(XmlNode.parseFrom(read(manifestEntry)))
+                val location = all.filter { locationPermissionPattern.matches(it) }.toSortedSet()
+                locationPermissionProblem(location, all)?.let { problems += "$manifestEntry: $it" }
+            }
+
+            val mappingEntry = "BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map"
+            val mappingSize = zip.getEntry(mappingEntry)?.size ?: -1L
+            if (mappingSize <= 0L) problems += "no non-empty R8 mapping at $mappingEntry (size $mappingSize)"
+        }
+        if (problems.isNotEmpty()) {
+            throw GradleException(
+                "checkReleaseBundle FAILED (R1120) - the BUILT .aab:\n" +
+                    problems.joinToString("\n") { "  - $it" } + "\nAAB: $aab",
+            )
+        }
+        println(
+            "checkReleaseBundle OK (manualOnly=$manualOnly): the built .aab names HEAD $head, declares exactly " +
+                "$releaseLocationPermissions of the location permissions and INTERNET, and carries its R8 mapping " +
+                "($aab)",
+        )
+    }
+}
+
+// AN-PLAY-PACK (R1120). THE RELEASE-BUILD PROCEDURE'S ONE COMMAND (docs/play-release.md): every built-artifact check
+// on the APK and on the .aab, from a tree that IS the commit. The dirty-tree refusal is not a dependency but a
+// whenReady guard below (it must refuse before anything is built, the R393 shape). It is NOT in :app:gate, which runs
+// from working trees by design (staged and untracked files allowed); the bundle CHECK is in the gate, the refusal is
+// this command's. It prints what to sign and upload, and never prints a Firebase or signing value.
+tasks.register("playRelease") {
+    group = "release"
+    description = "R1120: the release bundle Play takes, every built-artifact check, from a clean tree."
+    dependsOn(
+        "checkReleaseBundle",
+        "checkReleaseVcsInfo",
+        "checkReleaseLocationPermissions",
+        "checkReleaseNoDevComponent",
+        "checkReleasePushManifest",
+        "checkReleaseCleartext",
+        "checkReleaseNoDebugInjection",
+        "checkMinifiedWireContract",
+        "checkLicences",
+    )
+    doLast {
+        val aab =
+            layout.buildDirectory.dir("outputs/bundle/release").get().asFile
+                .walkTopDown().single { it.isFile && it.extension == "aab" }
+        val fcmSupplied =
+            listOf("PROJECT_ID", "APPLICATION_ID", "API_KEY", "SENDER_ID").count { suffix ->
+                val name = "FCM_ANDROID_$suffix"
+                ((findProperty(name) as String?) ?: System.getenv(name) ?: "").isNotBlank()
+            }
+        val signed = android.buildTypes.getByName("release").signingConfig != null
+        println(
+            """
+            |
+            |PLAY RELEASE (R1120) - built from HEAD ${headRevisionOrFail("playRelease")}, a clean tree
+            |  bundle:  $aab
+            |  size:    ${aab.length()} bytes
+            |  sha256:  ${sha256Of(aab)}
+            |  variant: ${if (manualOnly) "MANUAL-ONLY fallback (no location permission, no detection)" else "detection beta (FINE + BACKGROUND)"}
+            |  push:    ${if (fcmSupplied == 4) "configured (4 of 4 FCM_ANDROID_* values supplied)" else "NOT configured - push unavailable in this release (valid; the 19:00 fallback stands in)"}
+            |  signed:  ${if (signed) "yes, with the RELEASE_* upload key supplied" else "NO - Play refuses an unsigned bundle; supply the RELEASE_* values to upload this"}
+            |  mapping: inside the bundle (BUNDLE-METADATA/.../proguard.map); also build/outputs/mapping/release/mapping.txt
+            """.trimMargin(),
+        )
+    }
+}
+
+// AN-PLAY-PACK (R1120; A2's Q2, Android Ruling 6). A RELEASE FOR DISTRIBUTION IS BUILT FROM A TREE THAT IS EXACTLY
+// ITS COMMIT, or it does not start. checkReleaseVcsInfo/checkReleaseBundle prove the artifact NAMES HEAD; they cannot
+// see an uncommitted change that went into it (A2's N1). So when :app:playRelease is in the graph, before any task
+// runs (whenReady, R393's shape - "refuses to start", not "fails eventually"):
+//   - `git status --porcelain --untracked-files=all` at the repository root must print nothing: no staged, unstaged
+//     or untracked change ANYWHERE in the repository (web/ and docs/ included - the API contract the minified-wire
+//     check reads lives in docs/);
+//   - no IGNORED file may sit inside a source set (android/app/src, android/shared/src): .gitignore patterns are
+//     unanchored and have swallowed new Kotlin files here before - a file that compiles into the release but can
+//     never be committed.
+// It names every dirty path. Ignored files elsewhere (build outputs, local.properties, a session lock) are not the
+// release's sources and are not refused - the stated limit. A git that cannot answer is NO RESULT and refuses too.
+gradle.taskGraph.whenReady {
+    if (allTasks.none { it.path == ":app:playRelease" }) return@whenReady
+    val repoRoot = rootDir.parentFile
+    fun gitLines(vararg args: String): List<String> {
+        val run =
+            providers.exec {
+                workingDir = repoRoot
+                commandLine("git", *args)
+                isIgnoreExitValue = true
+            }
+        if (run.result.get().exitValue != 0) {
+            throw GradleException("PLAY RELEASE REFUSED TO START: NO RESULT - `git ${args.joinToString(" ")}` failed")
+        }
+        return run.standardOutput.asText.get().lines().filter { it.isNotBlank() }
+    }
+    val dirty = gitLines("status", "--porcelain=v1", "--untracked-files=all")
+    val ignoredInSources =
+        gitLines(
+            "status", "--porcelain=v1", "--ignored=matching", "--untracked-files=all", "--",
+            "android/app/src", "android/shared/src",
+        ).filter { it.startsWith("!! ") }
+    if (dirty.isNotEmpty() || ignoredInSources.isNotEmpty()) {
+        throw GradleException(
+            buildString {
+                appendLine("")
+                appendLine("PLAY RELEASE REFUSED TO START (R1120): the tree is not exactly its commit.")
+                appendLine("A release names HEAD; built from this tree it would also carry what HEAD does not.")
+                if (dirty.isNotEmpty()) {
+                    appendLine("${dirty.size} path(s) differ from HEAD (git status --porcelain):")
+                    dirty.forEach { appendLine("    $it") }
+                }
+                if (ignoredInSources.isNotEmpty()) {
+                    appendLine("${ignoredInSources.size} IGNORED file(s) inside a source set (compiled, never committed):")
+                    ignoredInSources.forEach { appendLine("    $it") }
+                }
+                appendLine("Build from a fresh worktree of the commit (docs/play-release.md, step 1).")
+            },
+        )
+    }
+    logger.lifecycle("[play-release] OK: the tree is exactly HEAD (nothing staged, unstaged or untracked) (R1120)")
 }
 
 tasks.register("gate") {
@@ -1177,6 +1429,9 @@ tasks.register("gate") {
         "checkMinifiedWireContract",
         // AN-RELEASE-VCS (R1101): the BUILT release APK names HEAD in version-control-info.textproto.
         "checkReleaseVcsInfo",
+        // AN-PLAY-PACK (R1120): the BUILT .aab (what Play takes) names HEAD, declares the variant's exact location
+        // set and carries its R8 mapping. The dirty-tree refusal is :app:playRelease's, never the gate's.
+        "checkReleaseBundle",
         "checkLicences",
         // R308 (AN-STATE): Android Lint's NewApi check, scoped to NewApi only (lint{} above). The
         // comprehensive partner of ApiLevelFenceTest - it catches every platform member used above minSdk 26,
@@ -1240,6 +1495,10 @@ tasks.register("gate") {
             |     META-INF/version-control-info.textproto names exactly one 40-hex
             |     revision equal to `git rev-parse HEAD` - never AGP's
             |     NO_SUPPORTED_VCS_FOUND),
+            |     checkReleaseBundle (AN-PLAY-PACK R1120: the BUILT .aab Play takes
+            |     names HEAD, declares INTERNET and exactly the variant's location
+            |     permissions - protobuf manifest read with AGP's aapt2 classes -
+            |     and carries its R8 mapping),
             |     checkLicences (R298: every release runtime dependency is
             |     attributed on the licences screen, derived from the build),
             |     lintDebug (R308: Android Lint's NewApi check, scoped to NewApi,
