@@ -146,6 +146,40 @@ class DetectionSettingsTest : FunSpec({
         }
     }
 
+    // AN-SESSION-END (R1181). AUTOMATIC -> MANUAL IS NOT A SESSION ENDING; IT STOPS THE SAMPLER THROUGH THE SAME ONE
+    // STOP. Three sites move the phone to manual, each with its own test of the stop: the switch (above), A9's MANUAL
+    // restore (LoggingModeRestoreTest), and the OS revocation of the location permission (here - until this task the
+    // stop on that path was asserted nowhere: ParametresControllerPinTest checks the mode and the PATCH, not the stop).
+    test("R1181: the OS revokes the location permission -> MANUAL, the sampler stopped at once, nothing sent") {
+        runTest {
+            val repo = LocalEntryRepository(FakeEntryDao(), AUTO_CLOCK)
+            val saver = AutoRecordingSaver()
+            val modeStore = ModeStoreFake(LoggingMode.AUTO_DETECT)
+            var sampleStops = 0
+            var sampleStarts = 0
+            val controller =
+                ParametresController(
+                    saver = saver,
+                    store = AutoSettingsStoreFake(autoSettings()),
+                    repository = repo,
+                    taxYear = AUTO_TAX_YEAR,
+                    scope = this,
+                    modeStore = modeStore,
+                    startSampling = { sampleStarts++ },
+                    stopSampling = { sampleStops++ },
+                )
+            advanceUntilIdle()
+
+            controller.onLocationPermissionRevoked()
+            advanceUntilIdle()
+
+            modeStore.mode shouldBe LoggingMode.MANUAL
+            sampleStops shouldBe 1
+            sampleStarts shouldBe 0
+            saver.bodies shouldBe emptyList() // R316: not a withdrawal of consent
+        }
+    }
+
     test("R315: the controller opens reflecting the stored mode (manual by default)") {
         runTest {
             val repo = LocalEntryRepository(FakeEntryDao(), AUTO_CLOCK)

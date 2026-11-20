@@ -1,6 +1,5 @@
 package ch.monreleve.app.auth
 
-import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.data.local.EntryEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,10 +42,12 @@ internal val processSessionEnds = SessionEnds()
 /**
  * WHAT THE PROCESS DOES WHEN THE SERVER ENDS ITS SESSION - SessionManager's onEnded, for the process's session
  * (SessionHolder.kt) and for every test device built the way the app is. R521's clear FIRST, so a shell that the
- * signal moves to sign-in finds the settings and the cached releve already gone; then the signal (R520).
+ * signal moves to sign-in finds the settings and the cached releve already gone; then the signal (R520). AN-SESSION-END
+ * (R1181): the clear goes through the "session ended" seam (SessionEndSeam.kt, path ENDED_BY_SERVER), which cancels the
+ * sampler before it clears.
  */
 internal suspend fun onServerEndedSession(
-    store: DeviceLocalStore,
+    store: SessionEndingStore,
     ends: SessionEnds,
 ) {
     store.clearForSessionEnd()
