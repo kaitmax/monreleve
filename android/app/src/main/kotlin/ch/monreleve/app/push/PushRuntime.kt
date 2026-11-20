@@ -173,11 +173,13 @@ internal object PushAvailability {
     fun isPushAvailable(context: Context): Boolean {
         val app = context.applicationContext
         val configured = buildPushConfig() is PushConfig.Configured
+        // Read when asked, a local (R423): the account signed in NOW.
+        val account = SharedPrefsAccountStore(app).current()
         // Short-circuit: an unconfigured build never consults Play services.
         return configured &&
             pushAvailable(
                 record = SharedPrefsPushRecordStore(app).load(),
-                account = SharedPrefsAccountStore(app).current(),
+                account = account,
                 signedIn = processSession(app).isSignedIn(),
                 configured = true,
                 playServices = playServicesPresent(app),
