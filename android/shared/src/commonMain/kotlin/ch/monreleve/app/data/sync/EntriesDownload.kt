@@ -49,6 +49,9 @@ import kotlinx.coroutines.flow.first
 // rows would otherwise land under the wrong tag, or under one that has just been cleared (R303). That ends quietly,
 // as Unauthenticated - the person did nothing wrong and there is nothing to retry.
 
+/** The statuses that mean the server served the year. */
+private val HTTP_SUCCESS = 200..299
+
 /** The outcome of bringing one tax year down from the server. */
 sealed interface YearDownload {
     val year: Int
@@ -131,7 +134,14 @@ class EntriesDownload(
         account: String,
     ): Fetched =
         when (val outcome = get(entriesYearPath(year))) {
-            is AuthedOutcome.Ok -> wholeYearOf(outcome.body, year, account)?.let(Fetched::Rows) ?: Fetched.NotTheYear
+            // AN-STATUS-HONESTY (R1191): the STATUS decides first - a non-2xx is not the year, whatever its body. The
+            // envelope check (EntriesWire: "status":"ok" and the year asked for) stays behind it for the 2xx.
+            is AuthedOutcome.Ok ->
+                if (outcome.status in HTTP_SUCCESS) {
+                    wholeYearOf(outcome.body, year, account)?.let(Fetched::Rows) ?: Fetched.NotTheYear
+                } else {
+                    Fetched.NotTheYear
+                }
             AuthedOutcome.NetworkError -> Fetched.NotTheYear
             AuthedOutcome.SessionExpired,
             AuthedOutcome.SessionEnded,

@@ -27,6 +27,9 @@ import ch.monreleve.app.dossier.parseDossier
 // stale document behind a dead session would mislead. A body that will not parse is neither returned nor
 // cached (a half-parsed document is never shown).
 
+/** The statuses that mean the server served the document. */
+private val HTTP_SUCCESS = 200..299
+
 /** The outcome of asking the server for a year's dossier. */
 sealed interface DossierResult {
     data class Loaded(val document: DossierDocument) : DossierResult
@@ -62,10 +65,16 @@ class DossierApi(
      * Fetch and parse one year's dossier. A 2xx body is parsed and cached; a parse failure becomes
      * [DossierResult.Unreadable] (and is not cached). A network failure falls back to the last cached copy
      * as [DossierResult.Cached], or [DossierResult.NetworkError] when there is none.
+     *
+     * AN-STATUS-HONESTY (R1191): a non-2xx is [DossierResult.Unreadable] WITHOUT reading its body - the status
+     * decides, not the body's shape. It used to be parsed like a 200, so a refusal was kept out only by failing to
+     * parse; one whose body happened to read as a dossier would have been shown and cached as the year. Not a
+     * cache fallback either: the server answered, and a refusal is not an outage.
      */
     suspend fun fetch(year: Int): DossierResult =
         when (val outcome = get("/api/v1/dossier?year=$year")) {
-            is AuthedOutcome.Ok -> parseAndCache(year, outcome.body)
+            is AuthedOutcome.Ok ->
+                if (outcome.status in HTTP_SUCCESS) parseAndCache(year, outcome.body) else DossierResult.Unreadable
             AuthedOutcome.NetworkError -> fromCache(year)
             AuthedOutcome.SessionExpired -> DossierResult.SessionExpired
             AuthedOutcome.SessionEnded -> DossierResult.SessionEnded

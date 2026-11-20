@@ -1,0 +1,244 @@
+REPORT-AN-STATUS-HONESTY - Mon Releve - ORCH-ANDROID step A12
+Pure ASCII. Branch an-status-honesty, cut from origin/main e6cfdda74afbe4bdd852b535dfd21e7c2277b1d3.
+Worktree C:/wt/an-status-honesty (lock .session-lock.json, removed last). Rulings R1190-R1199 (used:
+R1190-R1193, the prompt's own numbers; none added). Prompt: relay/AN-STATUS-HONESTY.txt (Android Ruling 9).
+Every device claim below is "emulator API 36" (AVD MonReleve_API36, x86_64). Nothing here is an S9 claim.
+Evidence: C:/wt/queue-evidence/an-status-honesty/ (not in git; SHA256SUMS beside it).
+
+SUMMARY
+- R1190 THE CENSUS: 12 rows (table below). Three callers ignored a status they receive: OnboardingController
+  .save (the defect: any PostOutcome.Ok cached the settings and showed READY), DossierApi.fetch and
+  EntriesDownload.fetch (a refusal was kept out only because its body failed to parse / failed the
+  envelope). Seven callers already distinguished and are left alone and recorded; two ignore the status by
+  design (the best-effort revoke; a debug-only probe).
+- R1191 THE RULE, shipped in :shared (one commit, 2056adda): a non-2xx is never success.
+  Onboarding: nothing cached, no mode handed on, EDITING + OnboardingError.SAVE_REFUSED on the same step
+  (OnboardingCopy.ERROR_SAVE_REFUSED, by reference - ParametresController.persist's treatment of the same
+  PATCH); the same button retries. DossierApi: Unreadable without reading the body (ReleveCopy.ERROR_SERVER
+  + the retry button). EntriesDownload: NotTheYear -> YearDownload.Failed (nothing written). NO new copy.
+  Tests first: RED with the reason, each refusal beside its 2xx positive (R196), one case through the real
+  SessionSettingsSaver -> SessionManager -> AuthApi (R204).
+- R1192 PROOF (emulator API 36, debug builds, -PfrontalierPort=3967 = a status-injecting proxy in front of
+  this worktree's dev server on :3966): CONTROL - the PRE-FIX build (e6cfdda7) under a 422 on PATCH /me showed
+  "Tout est pret" (the defect, reproduced). FIX (2056adda) under the same 422: the refusal line on step 8 of
+  8, no settings file on the phone; the retry against the honest server -> PATCH 200 -> "Tout est pret" ->
+  "Bonjour Nouveau". Export: 500 on GET /export/pdf -> the toast "Le document n'a pas pu etre produit..."
+  and no share sheet; the retry -> 200, the share sheet with releve-2026.pdf. Dossier: 500 -> ERROR_SERVER +
+  Reessayer; the retry -> the Releve. Only brand-new accounts were onboarded.
+- R1193 iOS: :shared changed, so R573 ran: ios-shared.yml run 44711085123 on 2056adda, success.
+
+STATUS (R391)
+COMPLETE. The FULL :app:gate ran in this session on the CODE TIP
+2056adda7997a212aec03afc913673589099c7b3 (every later commit changes this report only), emulator shut
+down (adb emu kill, Android Ruling 11), heavy lock held (acquired 10:08:18Z at commitFree 13 317 MB; 13 522 MB
+free after `./gradlew --stop`, just before the gate):
+    [clean-worktree] OK: no unstaged changes to tracked files (R393)
+    test floor OK: 1465 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 10m
+    261 actionable tasks: 126 executed, 135 up-to-date
+    GATE EXIT=0
+(log: C:/wt/queue-evidence/an-status-honesty/gate-2056adda.log, first line "HEAD 2056adda..."; it includes
+:app:verifyPaparazziDebug, passed - no baseline moved, none regenerated.) fastCheck on the same tree before
+the commit: BUILD SUCCESSFUL in 4m 9s, exit 0 (green2.log). web/ unchanged: no gate:clone owed. :shared
+changed: R573 run 44711085123, success (R1193).
+
+================================================================================================
+R1190 - THE CENSUS (every caller of an Ok outcome that carries a status)
+================================================================================================
+Found by grep over android/app/src/main and android/shared/src/{commonMain,iosMain} for AuthedOutcome,
+PostOutcome, BytesOutcome, AuthedResult and every authenticated(Get|Post|Patch|GetBytes) / signOut call site
+(iosMain has no consumer: only NsUrlSessionTransport, which builds HttpResponse). "Before" is e6cfdda7.
+| # | caller (file) | call | non-2xx BEFORE | what the person saw | AFTER |
+| 1 | OnboardingController.save (:shared onboarding/) | PATCH /api/v1/me via SettingsSaver | settings CACHED, phase READY ("Tout est pret"); only onModeSaved was gated on 2xx | a setting "saved" that the server refused | FIXED: nothing cached, no mode, EDITING + SAVE_REFUSED -> OnboardingCopy.ERROR_SAVE_REFUSED; retry by the same button |
+| 2 | DossierApi.fetch (:shared data/remote/) | GET /api/v1/dossier | body parsed as if 200: an error envelope failed to parse -> Unreadable (safe BY ACCIDENT); a dossier-shaped body -> Loaded AND cached | (error envelope) ReleveCopy.ERROR_SERVER | FIXED: non-2xx -> Unreadable before the body is read; cache and stale flag untouched |
+| 3 | EntriesDownload.fetch (:shared data/sync/) | GET /api/v1/entries?year= | body parsed: the envelope check ("status":"ok" + the year) kept refusals out (safe BY ACCIDENT); a year-shaped body under a 4xx/5xx -> APPLIED to the store | (envelope) YearDownload.Failed -> YearDownloadStatus.Failed -> YearDownloadNotice on Aujourd'hui: AujourdhuiCopy.YEAR_DOWNLOAD_FAILED | FIXED: non-2xx -> NotTheYear -> Failed, nothing written; the envelope check stays behind it |
+| 4 | StartupDecider.resolveStart / meFetchOf (:app startup/) | GET /api/v1/me | distinguishes (A9, R1161): only a 200 + /me answer resolves; else Unresolved | ResolvingScreen retry line | LEFT ALONE |
+| 5 | SyncEngine.handleOk (:shared data/sync/) | POST /api/v1/entries | distinguishes: 200 written; 400 isolate/FAILED; 409/413 FAILED; else Retryable | pending/failed rows | LEFT ALONE |
+| 6 | ParametresController.persist (:shared parametres/) | PATCH /api/v1/me | distinguishes: non-2xx -> EDITING + SAVE_REFUSED, nothing cached | OnboardingCopy.ERROR_SAVE_REFUSED | LEFT ALONE (the treatment row 1 now copies) |
+| 7 | ParametresController.setAutoDetection | PATCH /api/v1/me (consent) | distinguishes: non-2xx -> SAVE_REFUSED, mode not changed | the refusal line | LEFT ALONE |
+| 8 | ParametresController.runDelete | POST account delete | distinguishes: non-2xx -> DeleteOutcome.Refused, nothing erased | the refusal outcome | LEFT ALONE |
+| 9 | ParametresController.toExportEvent | GET account export (JSON/CSV) bytes | distinguishes: non-2xx -> ExportEvent.Failed | ReleveCopy.EXPORT_FAILED toast | LEFT ALONE |
+| 10 | ReleveController.toExportEvent | GET /api/v1/export/pdf, /csv bytes | distinguishes: non-2xx -> ExportEvent.Failed | ReleveCopy.EXPORT_FAILED toast (seen on the emulator, R1192) | LEFT ALONE |
+| 11 | SessionManager.revokeServerSession (:shared auth/) | POST /api/v1/auth/sign-out via attempt | status ignored BY DESIGN: best-effort revoke, the device is wiped whatever the server says (R705/R706); nothing is shown as success | (sign-out) | LEFT ALONE - out of class |
+| 12 | dev.SignInProbeActivity.authedLabel (:app dev/) | GET /api/v1/me | labels any Ok "OK" | a debug-only probe (app/src/debug manifest; does not ship, Android Ruling 10 Q3) | LEFT ALONE - not shipped; NOTICED N5 |
+Not callers: SessionManager.authenticatedGet/Post/Patch/GetBytes and attempt() pass the status through; AuthApi's
+unauthenticated calls (magic link, callback, code, refresh) each branch on response.status themselves;
+:app's YearDownloads/buildEntriesDownload only builds EntriesDownload with the session's GET and maps its
+YearDownload results. Cross-check by call rather than by type: `saveSettings(` has exactly three callers
+(rows 1, 6, 7).
+
+================================================================================================
+R1191 - THE RULE
+================================================================================================
+WHAT CHANGED (code tip 2056adda; :shared only, no :app main source, no copy):
+- onboarding/OnboardingController.kt: PostOutcome.Ok splits on HTTP_SUCCESS (its existing 200..299): 2xx ->
+  onModeSaved (automatic only), store.save, READY - unchanged; else -> EDITING + SAVE_REFUSED, nothing else.
+- data/remote/DossierApi.kt: Ok with a non-2xx -> DossierResult.Unreadable (its KDoc already said 4xx/5xx
+  collapse there); a file-private HTTP_SUCCESS = 200..299; fetch's KDoc says why it is not a cache fallback.
+- data/sync/EntriesDownload.kt: Ok with a non-2xx -> Fetched.NotTheYear; a file-private HTTP_SUCCESS.
+- Comments made false by A9, corrected (R267): auth/SessionManager.kt PostOutcome's KDoc ("Unlike the GET's,
+  Ok carries the HTTP STATUS"), data/sync/EntriesWire.kt's envelope note ("authenticatedGet hands its caller
+  the BODY and not the HTTP status").
+COPY: none new (R206). Onboarding reuses OnboardingCopy.ERROR_SAVE_REFUSED (as Parametres does for the same
+PATCH), the Releve reuses ReleveCopy.ERROR_SERVER, the download its existing Failed state. See Q1.
+TESTS (written first, RED run on the untouched production tree e6cfdda7 - red.log, red-TEST-*.xml):
+- shared commonTest onboarding/OnboardingSaveStatusTest.kt (new, 4; iOS inherits it):
+  a refused or failed save (400 403 404 409 422 500 502 503) caches nothing, hands nothing on, is never READY,
+  stays on RAPPEL, with the PATCH asserted sent (positive control); every 2xx (200 201 204) caches and is
+  READY; the retry after a 422 sends the identical body and lands (one store write, one mode hand-off);
+  R204 - through the real SessionSettingsSaver/SessionManager/AuthApi over a recording transport: PATCH
+  /api/v1/me 422 -> refused, then 200 -> READY.
+  RED: "status 400 expected:<EDITING> but was:<READY>" (the defect itself), "expected:<EDITING> but
+  was:<READY>" (real session), "expected:<SAVE_REFUSED> but was:<null>" (retry). The 2xx test passed on its
+  first run, as the positive side must.
+- shared commonTest data/sync/EntriesDownloadTest.kt (+2): a WHOLE VALID year under 400..503 is Failed, one
+  GET, nothing written, no transaction; the same body under 200/203 is Applied(inserted=3).
+  RED: "status 400 expected:<Failed(year=2026)> but was:<Applied(year=2026, inserted=2, replaced=1, ...)>" -
+  a refusal applied as the year, a SYNCED row overwritten.
+- app test data/remote/DossierApiTest.kt (+2): a VALID dossier body under 400..503 is Unreadable, asked once,
+  the previous cached copy and the stale flag untouched; under 200/203 Loaded, cached, stale cleared.
+  RED: "expected:<Unreadable> but was:<Loaded(document=DossierDocument(taxYear=2026, ...".
+  Why valid bodies: an error-envelope body ends Unreadable/Failed before the fix too, so it would pass first
+  run and prove nothing.
+GREEN: fastCheck BUILD SUCCESSFUL in 4m 9s, exit 0, with :app:testDebugUnitTest for DossierApiTest and the
+onboarding/sync packages (green2.log): :shared 263 tests 0 failures (OnboardingSaveStatusTest 4/4,
+EntriesDownloadTest 21/21), DossierApiTest 10/10. The first green attempt (green1.log) failed detekt only:
+three test lines over 120 columns, rewrapped.
+No existing test changed: no pin asserted READY or a cache on a non-2xx (OnboardingControllerPinTest's
+outcome table had no non-2xx row; OnboardingModeSavedPinTest's 400 row asserts only the mode, still green).
+
+================================================================================================
+R1192 - PROOF (emulator API 36)
+================================================================================================
+RIG: this worktree's `pnpm dev` on :3966 (scratch DB monreleve_an_status_honesty, migrated and seeded;
+/api/health answered service "monreleve" directly and through the proxy, R169; AUTH_SECRET on the command
+line only). status-proxy.mjs on :3967 (new file, A9's delay-proxy.mjs pattern, read only): rules re-read per
+request; an injected status is answered BY THE PROXY - the request is never forwarded - as a plain JSON
+envelope with its own content-length and no content-encoding (A9's D4); logs id/method/path/status/bytes/
+DELIVERED, never a header or a body. Two debug APKs built with -PfrontalierPort=3967: PRE-FIX e6cfdda7
+(sha256 071918e2...d36838) and FIX 2056adda (sha256 08316ec6...3631a7). drive.mjs: fresh install, sign-in by
+code (R574 below), the eight onboarding steps (Manuellement), screen classification by exact lib-fr strings.
+| run | build | account (brand-new) | fault | screen | proxy |
+| CONTROL | PRE-FIX | controle.statut@example.invalid | 422 on PATCH /me | "Tout est pret" (READY) - the defect | #7 PATCH 422 DELIVERED INJECTED |
+| F1 | FIX | correctif.statut@example.invalid | 422 on PATCH /me | step 8 of 8, "Ces parametres n'ont pas pu etre enregistres. Verifiez vos saisies."; shared_prefs has no monreleve.settings.xml | #13 PATCH 422 DELIVERED INJECTED |
+| F2 | FIX | same, rules cleared | none (retry: the same "Pas maintenant") | "Tout est pret" -> Continuer -> "Bonjour Nouveau"; monreleve.settings.xml now present | #14 PATCH 200 DELIVERED (forwarded) |
+| F3 | FIX | same | 500 on GET /export/pdf | toast "Le document n'a pas pu etre produit. Reessayez dans un instant." (screenshot at 1.2 s), no share sheet | #17 PDF 500 DELIVERED INJECTED |
+| F4 | FIX | same, rules cleared | none (retry) | first retry: the local renderer took 31.7 s (cold), the client closed at 15 s, its read timeout; no share sheet appeared (the toast was not captured - D2); second retry: the share sheet "Sharing 1 file - releve-2026.pdf" | #18 CLIENT-CLOSED at 15010 ms; #19 PDF 200 DELIVERED 190143 B in 6.5 s |
+| F5 | FIX | same | 500 on GET /dossier (relaunch, Releve tab) | "Le releve n'a pas pu etre charge pour le moment. Reessayez dans un instant." + Reessayer | #20/#21 dossier 500 DELIVERED INJECTED |
+| F6 | FIX | same, rules cleared | none (Reessayer) | the Releve: "Releve annuel de teletravail", "Releve provisoire", Nom "Nouveau Statut" | #24 dossier 200 DELIVERED |
+Each refusal is read against the proxy line that shows it was DELIVERED, so none of them is the emulator's
+Wi-Fi teardown passing for a refusal; and the onboarding refusal shows SAVE_REFUSED, not ERROR_NETWORK.
+F5 PROVES THE SURFACE, NOT THE FIX: the injected body is an error envelope, which the pre-fix build would also
+show as ERROR_SERVER (it fails to parse). The fix for DossierApi and EntriesDownload is proven by the unit
+tests' valid-body-under-non-2xx cases; EntriesDownload was not driven on the emulator.
+Screenshots: CONTROL-prefix-422-after-save.png, FIXED-422-after-save.png, FIXED-retry-honest-ready.png,
+FIXED-export-pdf-500-toast.png, FIXED-export-pdf-honest-chooser.png, FIXED-dossier-500.png. Timeline:
+results.log; proxy: proxy.log.
+NEVER OVER AN EXISTING ACCOUNT: only the two new .invalid addresses above were onboarded; no seeded account was
+signed in.
+R574: the code is read from the dev log (scratchpad, never copied) and typed as key events, never printed; a
+dump of the code screen is dropped unread from the first moment it appears (only the empty field's bounds are
+read, before any digit is typed); every other dump has EVERY digit of every text and content-desc replaced by
+'#' before it is parsed or printed; a screenshot is refused while the code screen is up. THAT IS THE DRIVER.
+Outside it I ran, by hand, three raw `uiautomator dump` commands (one printing only the first bytes, two
+printing only the name field's text/focus/bounds on onboarding step 1) and one raw `screencap` (the F3 toast on
+the Releve); none on the code screen, none on a screen holding a code. SCANNED after the
+runs: no six-digit number in results.log or proxy.log; "saisissez ce code", accessToken, refreshToken, Bearer
+and AUTH_SECRET= appear in the evidence dir only in drive.mjs's own source (marker names, no values).
+
+================================================================================================
+R1193 - iOS (R573)
+================================================================================================
+gh workflow run ios-shared.yml --ref an-status-honesty -> run 44711085123, head 2056adda, job ios-shared-tests
+09:29:02Z-09:37:02Z, conclusion success. No new run is owed for the report commits: they change no file under android/. macOS: 8 min job -> 8 billed minutes (per-job rounding).
+Within the 30-minute allotment. origin/main moved during the task (e6cfdda7 -> 0a48f188) in relay/ only
+(ORCH-ANDROID.txt, RULINGS-2026-11-16.txt), so the android tree of a merge equals the tested one.
+
+================================================================================================
+WALKTHROUGH (R176) - emulator API 36, debug builds of e6cfdda7 (control) and 2056adda
+================================================================================================
+Driven: welcome -> address -> code -> RESOLVING -> onboarding's eight steps for two brand-new accounts; the
+refused save on step 8, the retry, "Tout est pret", Aujourd'hui; Releve tab -> scroll -> Exporter en PDF under a
+500 and twice under the honest server; relaunch -> Releve under a dossier 500 -> Reessayer.
+What it showed that the tests do not: the refusal line sits on the RAPPEL step under the lock-screen note, with
+both buttons live, and "Pas maintenant" is the retry; the PDF share sheet on API 36 shows "Sharing 1 file" and
+the file name, not ReleveCopy.EXPORT_CHOOSER_TITLE (N4); a cold local PDF render outlasts the client's timeout
+and is then reported as a connectivity problem (N3).
+NOT EXERCISED: the "Oui, me le rappeler" path under a refusal (N2); a 5xx on the onboarding PATCH on the
+device (unit-tested); EntriesDownload on the device; TalkBack; the S9.
+
+================================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================================
+N1 The 2xx test now lives in five files under two spellings (HTTP_SUCCESS = 200..299 in OnboardingController,
+   DossierApi, EntriesDownload; HTTP_OK..HTTP_OK_MAX in ParametresController and ReleveController). One home
+   (e.g. an `accepted` property on the Ok outcomes) would be a refactor of callers this task leaves alone. Q2.
+N2 Onboarding's "Oui, me le rappeler" writes the DEVICE-LOCAL evening opt-in (eveningStore.setEnabled(true))
+   BEFORE the save; after a refused save the opt-in stays on while the settings are not cached. It is a device
+   setting, not a server one, and nothing is shown as saved - but it is written ahead of an answer. Q3.
+N3 The local PDF render took 31.7 s cold (dev server, machine under load), past UrlConnectionTransport's 15 s
+   read timeout. By the code path (a read timeout -> NetworkError -> ExportEvent.RequiresConnectivity) the
+   person is told to check the connection (ReleveCopy.EXPORT_REQUIRES_CONNECTIVITY) - INFERRED: the toast was
+   not captured; observed only that no share sheet appeared and the proxy logged CLIENT-CLOSED at 15010 ms.
+   This is A3's N2 (a slow export blamed on the connection), which Android Ruling 8 Q3 ties to a measurement on
+   a BUILT server; a dev-server figure is not that measurement.
+N4 On API 36 the share sheet did not display the chooser title ReleveCopy.EXPORT_CHOOSER_TITLE ("Partager le
+   releve"); it read "Sharing 1 file". Observed, not traced to a platform rule.
+N5 dev.SignInProbeActivity labels any AuthedOutcome.Ok as OK (census row 12). Debug-only, does not ship.
+N6 The server's own PATCH /me refusals are 400 (malformed_body, invalid_body, consent_required,
+   employment_rate_out_of_range, exact_total_required) and 500 (read_failed); the 422 here is injected as the
+   prompt asks. The client now treats every non-2xx alike.
+N7 Emulator: right after the boot, load average 46 and a "Process system isn't responding" dialog (Wait
+   tapped); Gboard's "Try out your stylus" handwriting tutorial caught `input text` on onboarding step 1 until
+   it was cancelled; the status bar showed cellular instead of Wi-Fi once (the Wi-Fi teardown A9 recorded).
+   None of them changed a result; each is visible in results.log or a screenshot.
+
+================================================================================================
+DEVIATIONS
+================================================================================================
+D1 R1192's proof adds a PRE-FIX control (R180) and a dossier row (F5/F6); F5 proves the surface only (above).
+D2 F4's first retry met the cold renderer (N3): request #18 in at 10:03:21Z, client closed 10:03:36Z, no share
+   sheet (the toast not captured; INFERRED as the connectivity one). The second retry, request #19 in at
+   10:04:27Z (51 s after that close), produced the file. Recorded as run, not dropped.
+D3 The driver's address read-back is masked like every dump, so addresses carry no digit
+   (controle.statut, correctif.statut); the first attempt with a digit could not read its own address back and
+   the driver gave up after four retypes, before submitting. The onboarding fields also gained a read-back
+   and retype (typeInto) after the stylus tutorial (N7) swallowed the first name.
+D4 Scratch database monreleve_an_status_honesty and its two new accounts are left in place, mine, local;
+   web/.env (gitignored) names only that database (Web Ruling 39). controle.statut holds NO settings on the
+   server (its only PATCH was refused by the proxy); the pre-fix phone that cached them was uninstalled by the
+   next fresh install.
+D5 The prompt's export "500 to one export": the PDF was chosen (the product's document); a cold local render
+   made its honest retry slower than the CSV's would have been.
+
+================================================================================================
+QUESTIONS
+================================================================================================
+Q1 COPY (the operator's): a 5xx on the onboarding save now shows OnboardingCopy.ERROR_SAVE_REFUSED, "Ces
+   parametres n'ont pas pu etre enregistres. Verifiez vos saisies." - as Parametres already does for every
+   non-2xx. "Verifiez vos saisies" is wrong for a server failure. Keep one sentence, or add a server-failure
+   sentence for 5xx (both surfaces)? No copy was written.
+Q2 One home for "the server took it" (N1): a post-launch refactor, or leave the five constants?
+Q3 N2 - should the evening opt-in be written only after a 2xx save (onboarding), or is a device-local opt-in
+   ahead of the answer acceptable?
+
+================================================================================================
+PUSH PROOF
+================================================================================================
+Branch an-status-honesty on origin, NOT merged (the orchestrator merges):
+  2056adda AN-STATUS-HONESTY: a refused or failed answer is never shown as success (R1191) - THE CODE TIP,
+           pushed before the gate (git ls-remote showed 2056adda on refs/heads/an-status-honesty)
+  (+ this report, its own commit, pushed after it is written - named in the handback)
+Emulator: MonReleve_API36 booted again after the gate and left booted (emulator-5554),
+ch.monreleve.app = the orchestrator's C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk,
+fresh install (uninstall + install), never launched, so signed out with no shared_prefs; installed base.apk
+sha256 2e90464a...e65443 equals that file's; settings secure navigation_mode = 2 (gestural).
+My processes stopped: the :3966 dev server tree (taskkill /T from its sh.exe root, PID 18192) and the :3967
+proxy (PID 8624), both confirmed mine by command line first; afterwards :3966 refuses (curl 000) while the
+orchestrator's :3900 still answers 200. No Gradle daemon of mine left running (`./gradlew --stop` after each
+heavy step, inside the lock). Heavy lock released (status FREE at 10:18:51Z).
+R-number re-scan before push (this worktree, C:/wt/web-orch and the main checkout, untracked included):
+R1190-R1199 appear only in AN-STATUS-HONESTY.txt, ORCH-ANDROID.txt and RULINGS-2026-11-16.txt (the allocation).
+Evidence: C:/wt/queue-evidence/an-status-honesty/ with an-status-honesty.SHA256SUMS (38 files; emulator-final.log excluded - the running emulator still writes it). The dev log
+(it holds codes) is in the session scratchpad only, copied nowhere.
+END OF REPORT-AN-STATUS-HONESTY

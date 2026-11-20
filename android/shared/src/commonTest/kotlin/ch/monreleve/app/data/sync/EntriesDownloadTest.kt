@@ -292,6 +292,48 @@ class EntriesDownloadTest {
             }
         }
 
+    // ----- AN-STATUS-HONESTY (R1191): the STATUS decides, not the body's shape ------------------------------------
+
+    @Test
+    fun aNonSuccessStatusIsNeverTheYearWhateverItsBody() =
+        runTest {
+            // The body is a WHOLE, valid year on purpose: the read ignored the status A9 now hands it, so a refusal
+            // was kept out only by its envelope ("status":"error"). A non-2xx carrying a year-shaped body was applied.
+            // 401 is not here: it is the session's (refresh-once-and-replay), never handed to this read.
+            for (status in listOf(400, 403, 404, 409, 422, 500, 502, 503)) {
+                val rig = DownloadRig(respond = { HttpResponse(status, yearBody(2026, YEAR_2026)) })
+                val synced = syncedFrom(APRIL_7_OLDER_WRITE)
+                rig.dao.seed(synced)
+
+                val outcome = rig.download.download(2026)
+
+                assertEquals(YearDownload.Failed(2026), outcome, "status $status")
+                assertEquals(listOf("GET /api/v1/entries?year=2026"), rig.requestLines(), "status $status: asked once")
+                assertEquals(mapOf(keyOf(synced) to synced), rig.dao.rows.toMap(), "status $status: nothing changed")
+                assertEquals(0, rig.dao.upserts, "status $status: nothing written")
+                assertEquals(0, rig.dao.transactions, "status $status: no transaction opened")
+            }
+        }
+
+    @Test
+    fun everySuccessStatusWithTheWholeYearIsApplied() =
+        runTest {
+            // Beside the refusals (R196): the same body under a 2xx lands, so the test above is not a read that
+            // refuses everything.
+            for (status in listOf(200, 203)) {
+                val rig = DownloadRig(respond = { HttpResponse(status, yearBody(2026, YEAR_2026)) })
+
+                val outcome = rig.download.download(2026)
+
+                assertEquals(applied(2026, inserted = 3), outcome, "status $status")
+                assertEquals(
+                    setOf(syncedFrom(APRIL_7), syncedFrom(APRIL_8_AM), syncedFrom(APRIL_8_PM)),
+                    rig.dao.rows.values.toSet(),
+                    "status $status",
+                )
+            }
+        }
+
     @Test
     fun anUnreachableServerChangesNothing() =
         runTest {

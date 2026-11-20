@@ -60,11 +60,12 @@ sealed interface AuthedOutcome {
 }
 
 /**
- * The outcome of an authenticated POST. Unlike the GET's, Ok carries the HTTP
- * STATUS as well as the body: the entries sync (AN5) branches on 200 vs 400/409/413
- * to tell a client-built defect (loud, never retried - R198) from a written batch.
- * The 401 path is identical to the GET's, so a replay ends the session the same way
- * (R210).
+ * The outcome of an authenticated POST (and PATCH). Ok carries the HTTP STATUS as well as
+ * the body - as the GET's has since AN-SIGNIN-RESOLVE (R1161): the entries sync (AN5)
+ * branches on 200 vs 400/409/413 to tell a client-built defect (loud, never retried -
+ * R198) from a written batch. An Ok is an ANSWER, not a success: AN-STATUS-HONESTY
+ * (R1191) - every caller treats a non-2xx as refused, never as saved. The 401 path is
+ * identical to the GET's, so a replay ends the session the same way (R210).
  */
 sealed interface PostOutcome {
     data class Ok(val status: Int, val body: String) : PostOutcome
