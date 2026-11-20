@@ -201,7 +201,9 @@ by the driver and typed, never printed.
 5. Back from Play -> the update screen again (re-asked, 200). Back on the update screen -> the
    launcher (topResumedActivity NexusLauncherActivity): nothing in the app is reachable.
 6. COLD START with the setting on (force-stop, am start -W: TotalTime 2895 ms) -> the update
-   screen. The request was answered in 6 ms; nothing waited on it.
+   screen in the dump taken about 4 s after launch. The request was answered in 6 ms; nothing
+   waited on it. The FIRST frame was not captured: the two dossier GETs logged right after the
+   answer most likely mean the shell composed first and was then replaced (QUESTION Q4).
 7. SERVER DOWN while the screen shows (proxy -> ECONNREFUSED -> 502): foreground -> the screen
    STAYS (QD1's behaviour, as designed and tested).
 8. SETTING REMOVED (restarted unset): foreground -> "Bonjour Camille", the app is back.
@@ -211,9 +213,20 @@ covered by the census (wrapped root, screen hosted) and by the same gate object.
 ================================================================================================
 NOTICED BUT NOT TOUCHING
 ================================================================================================
-N1 Under the update screen the app's background work continues (WorkManager sync, the sampler,
-   year downloads; on the step-6 cold start two dossier GETs followed the minimum-version answer).
-   R1111 asks for the screen to replace the app; stopping background work is a different decision.
+N1 THE SCREEN IS NOT A STARTUP BARRIER, BY R1111's DESIGN ("must not block startup"): on every
+   cold start a refused app shows itself, and is usable, until the answer arrives (normally well
+   under a second; step 6 suggests the shell composed first), and indefinitely while the server
+   cannot be reached (fail open). Background work (WorkManager sync, the sampler, year downloads)
+   also continues under the screen. Recorded, not changed - QUESTION Q4.
+N7 A STALE DESTINATION AFTER A RELEASE: the shell's `destination` and `onboardingSeed`
+   rememberSaveable states now sit inside the gate's else-branch, so when the screen is RELEASED
+   in the same activity instance they restart from onCreate's `start`. Someone who opened the
+   app signed out, signed in, and was then shown and released from the update screen without the
+   activity being recreated would land on sign-in although signed in; someone mid-onboarding
+   would restart onboarding. Narrow (a minimum raised then lowered within one activity's life),
+   no data loss (sign-in again; R1161 keeps onboarding behind /me). The fix is to hoist those two
+   states and their two LaunchedEffects above the if; NOT done here so the gated tip stays the
+   gated tip - QUESTION Q5. (Walkthrough step 8's release had start = MAIN, so it did not show.)
 N2 Cache-Control max-age=300 has no client effect today: HttpURLConnection installs no response
    cache, so the app asks on every ON_START (one small GET). It matters for proxies only.
 N3 gate:changed's first run FAILED 3 account e2e specs ("etat=indisponible": AUTH_SECRET unset in
@@ -249,6 +262,15 @@ D3 INCIDENT - THE SCRATCHPAD (R334). This session's scratchpad path is the ORCHE
 D4 Test order: the :app tests were written after their code; proven by plants (above) instead of
    a RED run. The web and :shared tests had true RED runs.
 D5 web/.env rebuilt mid-session (N3).
+D6 PUSH ORDER: cf043d93 was pushed BEFORE gate:clone and before :app:gate ran, to dispatch the R573
+   run on it (workflow_dispatch needs the ref on origin). R199 says gate:clone precedes every
+   push. Both gates then passed on that same sha, so nothing was published that the gates refuse,
+   but the order was not R199's.
+D7 QD1 IS A DEVIATION, not only a question: walkthrough step 7 (server down, the screen STAYS) is
+   the opposite of R1111's literal "unreachable -> no screen", for a screen already up. Chosen on
+   my advisor's suggestion. The other ruling costs one line - updateRequired's Unusable branch
+   returns false instead of showingNow - and two test expectations
+   (UpdateDecisionTest.anUnusableAnswerFailsOpenAndNeverChangesWhatIsShowing, UpdateGateTest).
 
 ================================================================================================
 QUESTIONS
@@ -266,7 +288,9 @@ QD1 An UNUSABLE answer (unreachable, non-200, foreign, malformed) while the scre
 Q2 The route name and shape freeze once an app ships calling them (SPEC 18.1):
    /api/v1/android/minimum-version, {service, minimumVersionCode}. Accept?
 Q3 CallbackActivity is gated too (R267). Accept, or should the link's window never be replaced?
-Q4 Background work under the update screen (N1): leave running, or stop it (a separate task)?
+Q4 N1: a refused app is shown until the answer arrives, and while offline; background work runs
+   under the screen. Accept as R1111's fail-open design, or a follow-up task?
+Q5 N7 (the stale destination after a release): fix now as a one-commit follow-up, or post-launch?
 
 ================================================================================================
 PUSH PROOF
@@ -281,7 +305,7 @@ Emulator: MonReleve_API36 shut down for the gates (Android Ruling 11) and booted
   app-debug.apk, fresh install (uninstall + install), never launched - signed out, no shared_prefs;
   installed base.apk sha256 2e90464a4dd3dc47795e... equals that file's (the same APK found at the
   start); settings secure navigation_mode = 2 (gestural).
-My processes: the dev server, three built servers and the proxy on 3970/3971 stopped (each tree
+My processes: the dev server, four built servers and the proxy on 3970/3971 stopped (each tree
   checked by command line, then taskkill /T); 3970-3979 free; the orchestrator's :3900 still
   answers 200. ./gradlew --stop after every Gradle step. Heavy lock released (status FREE).
 Scratch data: database monreleve_an_force_update DROPPED (pg_database count for it: 0) and
@@ -292,4 +316,7 @@ Scratch data: database monreleve_an_force_update DROPPED (pg_database count for 
 R-number re-scan before push (this worktree, C:/wt/web-orch and the main checkout, untracked
   included): R1110-R1119 appear only in AN-FORCE-UPDATE.txt, ORCH-ANDROID.txt and
   RULINGS-2026-11-16.txt's references to this task; this report defines no new number.
-Lock: C:/wt/an-force-update/.session-lock.json removed last, after the report's push.
+origin/main re-read before this report's last push: still 21a2dfa2, so the merge tree equals the
+  branch's and R573's run on cf043d93 stands for it.
+Lock: C:/wt/an-force-update/.session-lock.json is HELD at the time of writing; it is removed last,
+  after this report's push, and its removal is confirmed in the handback, not here.
