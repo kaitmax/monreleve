@@ -69,8 +69,11 @@ private class SeamPhone(
 
     /** The one stop, spied: what DetectionScheduling.stopSampling is in the app. */
     var samplerStops = 0
+
+    /** AN-FCM-CLIENT (R1152): push's line on the seam, spied - what endPushOnThisPhone is in the app. */
+    val pushEnds = mutableListOf<SessionEndPath>()
     val paths = mutableListOf<SessionEndPath>()
-    private val appSeam = deviceSessionEndSeam(stopSampling = { samplerStops += 1 })
+    private val appSeam = deviceSessionEndSeam(stopSampling = { samplerStops += 1 }, endPush = { pushEnds += it })
     val store =
         SessionEndingStore(
             DeviceLocalStore(
@@ -117,6 +120,7 @@ class SessionEndSeamTest : FunSpec({
 
             phone.paths shouldBe listOf(SessionEndPath.SIGNED_OUT)
             phone.samplerStops shouldBe 1
+            phone.pushEnds shouldBe listOf(SessionEndPath.SIGNED_OUT)
             // The clear still ran, whole: the seam is in front of R295's wipe, never instead of it.
             phone.tokens.load() shouldBe null
             phone.recordCleared shouldBe true
@@ -136,6 +140,7 @@ class SessionEndSeamTest : FunSpec({
 
             phone.paths shouldBe emptyList()
             phone.samplerStops shouldBe 0
+            phone.pushEnds shouldBe emptyList()
             phone.tokens.load() shouldBe TokenPair("access", "refresh", "0", "0")
             phone.mode.load() shouldBe LoggingMode.AUTO_DETECT
         }
@@ -152,6 +157,7 @@ class SessionEndSeamTest : FunSpec({
 
             phone.paths shouldBe listOf(SessionEndPath.DELETED)
             phone.samplerStops shouldBe 1
+            phone.pushEnds shouldBe listOf(SessionEndPath.DELETED)
             phone.tokens.load() shouldBe null
             phone.recordCleared shouldBe true
         }
@@ -191,7 +197,7 @@ class SessionEndSeamTest : FunSpec({
                     cancelSync = {},
                     clearExports = {},
                 )
-            val store = SessionEndingStore(failing, deviceSessionEndSeam(stopSampling = { stops += 1 }))
+            val store = SessionEndingStore(failing, deviceSessionEndSeam(stopSampling = { stops += 1 }, endPush = {}))
 
             shouldThrow<IllegalStateException> { store.clearForSignOut() }
 
@@ -250,6 +256,52 @@ class SessionEndSeamTest : FunSpec({
             store().clearForSessionEnd()
 
             told shouldBe listOf(SessionEndPath.SIGNED_OUT, SessionEndPath.DELETED, SessionEndPath.ENDED_BY_SERVER)
+        }
+    }
+
+    test("AN-FCM-CLIENT R1152: every path ends push on this phone, after the sampler - the server-ended one too") {
+        runTest {
+            val order = mutableListOf<String>()
+            val seam =
+                deviceSessionEndSeam(
+                    stopSampling = { order += "sampler" },
+                    endPush = { order += "push:" + it.name },
+                )
+            SessionEndPath.entries.forEach { seam.sessionEnded(it) }
+
+            order shouldBe
+                listOf(
+                    "sampler", "push:SIGNED_OUT",
+                    "sampler", "push:DELETED",
+                    "sampler", "push:ENDED_BY_SERVER",
+                )
+        }
+    }
+
+    test("AN-FCM-CLIENT R1152: push's line never throws through the seam - the sampler stops, the clear runs") {
+        runTest {
+            var stops = 0
+            val tokens = OneTokenStore(TokenPair("access", "refresh", "0", "0"))
+            val store =
+                SessionEndingStore(
+                    DeviceLocalStore(
+                        tokenStore = tokens,
+                        settingsStore = InMemorySettingsStore(SETTINGS),
+                        dossierCache = MemoryDossierCache(),
+                        pendingSignIn = SeamNoPendingSignIn(),
+                        accountStore = MemoryAccountStore("acct-tag"),
+                        detectionModeStore = InMemoryDetectionModeStore(LoggingMode.AUTO_DETECT),
+                        clearRecord = {},
+                        cancelSync = {},
+                        clearExports = {},
+                    ),
+                    deviceSessionEndSeam(stopSampling = { stops += 1 }, endPush = { error("firebase is not there") }),
+                )
+
+            store.clearForSessionEnd()
+
+            stops shouldBe 1
+            tokens.load() shouldBe null
         }
     }
 })

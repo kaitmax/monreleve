@@ -38,6 +38,11 @@
             android:name=".debug.DebugSeederActivity"
             android:exported="true"
             android:theme="@style/Theme.MonReleve" />
+        <!-- AN-FCM-CLIENT (R1154): one push registration pass with a FAKE token against this build's server. -->
+        <activity
+            android:name=".debug.PushProbeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MonReleve" />
 
         <!--
           AN14a F1. The four dev.* activities MOVED here from src/main/AndroidManifest.xml. The AN-AUDIT

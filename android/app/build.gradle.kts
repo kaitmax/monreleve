@@ -59,6 +59,24 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // AN-FCM-CLIENT (R1150). THE FIREBASE APP CONFIG, FROM BUILD PROPERTIES - NEVER FROM A COMMITTED FILE.
+        // No google-services plugin and no google-services.json: FirebaseApp is built at run time from
+        // FirebaseOptions (push/PushRuntime.kt) whose four values are these fields. Each is a Gradle property OR
+        // an environment variable of the same name (RELEASE_STORE_FILE's pattern above), supplied by the operator
+        // from the Firebase console (REPORT-AN-FCM-CLIENT.txt, WHAT THE OPERATOR MUST SUPPLY). UNSET IS THE
+        // DEFAULT AND IS INERT: an empty field reads as "push not configured" (push/PushConfig.kt), the app
+        // builds and runs as it did before this task, and push is UNAVAILABLE - fail closed for push, open for
+        // the app. There is deliberately NO placeholder default: a value that looks like a key is worse than
+        // none (R205). A clean checkout and gate:clone carry none, by construction.
+        val fcmValues = listOf("PROJECT_ID", "APPLICATION_ID", "API_KEY", "SENDER_ID").map { "FCM_ANDROID_$it" }
+        fcmValues.forEach { name ->
+            val value = ((findProperty(name) as String?) ?: System.getenv(name) ?: "").trim()
+            if (value.any { it == '"' || it == '\\' || it.isISOControl() }) {
+                throw GradleException("$name carries a quote, a backslash or a control character: not a Firebase value")
+            }
+            buildConfigField("String", name, "\"$value\"")
+        }
     }
 
     // AN14a increment 5 (R250 - NO KEY IS CREATED HERE). The release signing config reads the keystore from
@@ -465,6 +483,12 @@ dependencies {
     // with the brand colour in the toolbar; a device with no Custom Tabs provider falls back to its browser
     // (a Custom Tab is an ACTION_VIEW intent), and with no browser at all openLegalLink shows the address (R299).
     implementation(libs.androidx.browser)
+    // AN-FCM-CLIENT (R1150, Android Ruling 4 - the SPEC section 20 "Ask first" item, answered by the operator):
+    // the Firebase Cloud Messaging client, the one artefact that receives a push and yields a registration
+    // token. :app ONLY, never :shared. Its auto-init and every analytics/metrics collection are turned OFF in
+    // src/main/AndroidManifest.xml, and FirebaseInitProvider is removed there: FirebaseApp exists only when the
+    // four FCM_ANDROID_* values above are supplied (push/PushRuntime.kt).
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     // TEST-ONLY, justified by name (AN1 out-of-scope note): ThemeCensusTest.kt
     // reflects over androidx Typography/ColorScheme, library data classes with
@@ -680,6 +704,15 @@ tasks.register("checkLicences") {
                 "org.jetbrains.kotlin" to "Kotlin",
                 "org.jetbrains" to "JetBrains",
                 "org.jspecify" to "JSpecify",
+                // AN-FCM-CLIENT (R1150): Firebase Cloud Messaging (Apache 2.0) and what it brings - its DataTransport
+                // libraries, Okio (through androidx.datastore), javax.inject, Error Prone's annotations (Apache 2.0)
+                // and Google Play services (the Android SDK licence, which LicencesCopy names as such).
+                "com.google.firebase" to "Firebase Cloud Messaging",
+                "com.google.android.datatransport" to "Firebase Cloud Messaging",
+                "com.google.android.gms" to "Google Play",
+                "com.google.errorprone" to "Error Prone",
+                "com.squareup.okio" to "Okio",
+                "javax.inject" to "javax.inject",
             )
         val copyText = licencesCopy.readText()
 
@@ -820,6 +853,91 @@ tasks.register("checkReleaseNoDevComponent") {
             )
         }
         println("checkReleaseNoDevComponent OK: the built release APK declares no dev.* component ($apk)")
+    }
+}
+
+// AN-FCM-CLIENT (R1150, R249). FIREBASE CLOUD MESSAGING SHIPS AS A CLIENT AND NOTHING MORE - read from the BUILT
+// release APK's manifest with aapt2 (the same tool and discovery as checkReleaseNoDevComponent), because a claim about
+// what ships is checked against what ships. It fails unless, in the APK:
+//   - FirebaseInitProvider is ABSENT (tools:node="remove" in src/main: no Firebase code at process start, and no
+//     FirebaseApp at all without the four FCM_ANDROID_* values);
+//   - firebase_messaging_auto_init_enabled is false (no token until the app asks), and the analytics and
+//     delivery-metrics flags are off;
+//   - the app's own ch.monreleve.app.push.MonRelevePushService is declared (a receipt path that does not exist in
+//     the APK is not a receipt path - R154's positive half);
+//   - no analytics, measurement or crash-reporting component is declared (SPEC D32: FCM is the only third-party SDK).
+// R182: it dependsOn assembleRelease, the task that PRODUCES its subject.
+tasks.register("checkReleasePushManifest") {
+    dependsOn("assembleRelease")
+    doLast {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val apk =
+            apkDir.walkTopDown().firstOrNull { it.isFile && it.extension == "apk" }
+                ?: throw GradleException(
+                    "checkReleasePushManifest: no release APK under $apkDir - assembleRelease produced none",
+                )
+        val buildToolsDir = File(android.sdkDirectory, "build-tools")
+        val aapt2 =
+            buildToolsDir.listFiles()
+                ?.sortedByDescending { it.name }
+                ?.firstNotNullOfOrNull { dir ->
+                    sequenceOf("aapt2", "aapt2.exe").map { File(dir, it) }.firstOrNull { it.exists() }
+                }
+                ?: throw GradleException("checkReleasePushManifest: no aapt2 under $buildToolsDir")
+        val stdout = ByteArrayOutputStream()
+        project.exec {
+            commandLine(aapt2.path, "dump", "xmltree", "--file", "AndroidManifest.xml", apk.path)
+            standardOutput = stdout
+        }
+        val manifest = stdout.toString("UTF-8")
+        if (!manifest.contains("ch.monreleve.app")) {
+            throw GradleException("checkReleasePushManifest: the manifest dump names no app component (R133)")
+        }
+        // Each <meta-data> element's block of the dump: its android:name and its android:value.
+        val metaValue =
+            manifest.split(Regex("""\n\s*E: """))
+                .filter { it.startsWith("meta-data") }
+                .mapNotNull { block ->
+                    val name = Regex(""":name\(0x01010003\)="([^"]+)"""").find(block)?.groupValues?.get(1)
+                    val value = Regex(""":value\(0x01010024\)=(\S+)""").find(block)?.groupValues?.get(1)
+                    if (name == null || value == null) null else name to value.trim('"')
+                }.toMap()
+        val expectedFlags =
+            mapOf(
+                "firebase_messaging_auto_init_enabled" to "false",
+                "firebase_analytics_collection_enabled" to "false",
+                "firebase_analytics_collection_deactivated" to "true",
+                "delivery_metrics_exported_to_big_query_enabled" to "false",
+            )
+        val problems = mutableListOf<String>()
+        expectedFlags.forEach { (name, expected) ->
+            val found = metaValue[name]
+            if (found == null || !found.startsWith(expected, ignoreCase = true)) {
+                problems += "meta-data $name is ${found ?: "ABSENT"}, expected $expected"
+            }
+        }
+        if (manifest.contains("com.google.firebase.provider.FirebaseInitProvider")) {
+            problems += "FirebaseInitProvider is declared - Firebase would start at every launch"
+        }
+        if (!manifest.contains("ch.monreleve.app.push.MonRelevePushService")) {
+            problems += "ch.monreleve.app.push.MonRelevePushService is not declared - no push could be received"
+        }
+        val forbidden =
+            Regex("""com\.google\.(android\.gms\.measurement|firebase\.(analytics|crashlytics))[\w.]*""")
+                .findAll(manifest)
+                .map { it.value }
+                .toSortedSet()
+        if (forbidden.isNotEmpty()) problems += "analytics/crash components declared: $forbidden"
+        if (problems.isNotEmpty()) {
+            throw GradleException(
+                "checkReleasePushManifest FAILED (R1150) - the BUILT release APK:\n" +
+                    problems.joinToString("\n") { "  - $it" } + "\nAPK: $apk",
+            )
+        }
+        println(
+            "checkReleasePushManifest OK: no FirebaseInitProvider, auto-init and analytics off (${metaValue.size} " +
+                "meta-data read), MonRelevePushService declared, no analytics/crash component ($apk)",
+        )
     }
 }
 
@@ -1055,6 +1173,7 @@ tasks.register("gate") {
         "checkReleaseNoDebugInjection",
         "checkReleaseLocationPermissions",
         "checkReleaseNoDevComponent",
+        "checkReleasePushManifest",
         "checkMinifiedWireContract",
         // AN-RELEASE-VCS (R1101): the BUILT release APK names HEAD in version-control-info.textproto.
         "checkReleaseVcsInfo",
@@ -1111,6 +1230,9 @@ tasks.register("gate") {
             |     checkReleaseNoDevComponent (AN14a F1: the BUILT release APK
             |     declares no ch.monreleve.app.dev.* component, read with aapt2 -
             |     AC2/R249), the built-APK partner of checkReleaseNoDebugInjection,
+            |     checkReleasePushManifest (AN-FCM-CLIENT R1150: the BUILT release APK
+            |     has no FirebaseInitProvider, FCM auto-init and analytics flags off,
+            |     MonRelevePushService declared, no analytics/crash component - aapt2),
             |     checkMinifiedWireContract (AN14a R307 static half: every /v1 field
             |     key and enum value, derived from docs/api-v1.md, survives in the
             |     MINIFIED release dex - the wire R8 could have renamed on the server),

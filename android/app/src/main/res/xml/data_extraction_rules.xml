@@ -12,10 +12,18 @@
         <exclude domain="sharedpref" path="monreleve.pending.xml" />
         <!-- AN-FIX F4 / R303: the account scope, excluded from both channels like the token. -->
         <exclude domain="sharedpref" path="monreleve.account.xml" />
+        <!-- AN-FCM-CLIENT (R1153): a restored "push available" record would silence the 19:00 fallback on a new
+             phone that never registered; FCM's own token store belongs to the old install. -->
+        <exclude domain="sharedpref" path="monreleve.push.xml" />
+        <exclude domain="sharedpref" path="com.google.android.gms.appid.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="monreleve.auth.xml" />
         <exclude domain="sharedpref" path="monreleve.pending.xml" />
         <exclude domain="sharedpref" path="monreleve.account.xml" />
+        <!-- AN-FCM-CLIENT (R1153): a restored "push available" record would silence the 19:00 fallback on a new
+             phone that never registered; FCM's own token store belongs to the old install. -->
+        <exclude domain="sharedpref" path="monreleve.push.xml" />
+        <exclude domain="sharedpref" path="com.google.android.gms.appid.xml" />
     </device-transfer>
 </data-extraction-rules>

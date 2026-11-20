@@ -22,6 +22,8 @@ class FixtureGeneratorTest {
                 "forecast-cases.json",
                 "geneva-cases.json",
                 "late-threshold-cases.json",
+                // AN-FCM-CLIENT (R1151): the push join; its Kotlin consumer is :app's PushClientFixtureTest.
+                "push-client-cases.json",
                 "rate-cases.json",
             )
         assertEquals(expected, FixtureJson.ALL.keys, "the generator must emit one constant per fixtures/*.json")

@@ -228,10 +228,35 @@ describe('a send makes the two requests Google documents', () => {
     expect(JSON.parse(String(message?.init?.body))).toEqual({
       message: {
         token: 'device-token-1',
-        notification: { title: NOTIFICATION.title, body: NOTIFICATION.body },
         data: NOTIFICATION.data,
+        android: { priority: 'high' },
       },
     });
+  });
+
+  // AN-FCM-CLIENT (R1152). A DATA-ONLY MESSAGE, AND THIS IS WHY. A message
+  // carrying a `notification` block is DRAWN BY THE SYSTEM TRAY whenever the
+  // app is in the background or not running - the phone's own code is never
+  // called. Every rule the app holds about the one daily reminder would then be
+  // skipped: today already confirmed on the phone, a reminder already shown
+  // today, nobody signed in, the R339 channel, its buttons and its lock-screen
+  // version. Data-only hands every delivery to the app's
+  // FirebaseMessagingService, which decides. `high` because the reminder is
+  // time-bound and a user-visible notification follows (FCM's own rule for
+  // when high priority is due).
+  it('sends a data-only message, so the phone decides whether anything is shown', async () => {
+    const { sender: push, calls } = sender([tokenResponse(), new Response('{}', { status: 200 })]);
+
+    await push.send('device-token-1', NOTIFICATION);
+
+    const envelope = JSON.parse(String(calls[1]?.init?.body)) as { message: Record<string, unknown> };
+
+    expect(Object.keys(envelope.message).sort()).toEqual(['android', 'data', 'token']);
+    expect(envelope.message).not.toHaveProperty('notification');
+    // The sentence the server would have written is NOT on the wire: the app
+    // writes its own (R339), and nothing a lock screen could show leaves here.
+    expect(JSON.stringify(envelope)).not.toContain(NOTIFICATION.title);
+    expect(JSON.stringify(envelope)).not.toContain(NOTIFICATION.body);
   });
 
   it('reuses the access token rather than minting one per device', async () => {

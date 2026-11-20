@@ -51,6 +51,12 @@ private val ERASED_STORAGE =
         // RESOLVING (AN-SIGNIN-RESOLVE R1162 - MANUAL unless the server holds AUTO_DETECT with consent and the
         // location permission is held).
         "monreleve.detection",
+        // AN-FCM-CLIENT (R1152/R1153): the push record (push/PushRuntime.kt SharedPrefsPushRecordStore). Erased NOT
+        // by DeviceLocalStore (a file with an iOS twin) but by the "session ended" seam's push line, which every
+        // ending passes - deletion included (SessionEndingStore.clearForDeletion -> sessionEnded(DELETED) ->
+        // endPushOnThisPhone -> pushSessionEnded -> clear). SessionEndSeamTest asserts the line runs on DELETED;
+        // the emulator walkthrough read the file empty after a sign-out (REPORT-AN-FCM-CLIENT.txt).
+        "monreleve.push",
     )
 
 // « monreleve.<x> » literals that are NOT device storage, each with the reason it needs no erasure. Asserted

@@ -218,7 +218,8 @@ private class Device(
     // AN-SESSION-END (R1181): the store the app's one construction hands out - DeviceLocalStore inside the
     // SessionEndingStore - with the seam built as the app builds it (deviceSessionEndSeam) over a spy of the one stop.
     var samplerStops = 0
-    val sessionStore = SessionEndingStore(deviceStore, deviceSessionEndSeam(stopSampling = { samplerStops += 1 }))
+    val sessionStore =
+        SessionEndingStore(deviceStore, deviceSessionEndSeam(stopSampling = { samplerStops += 1 }, endPush = {}))
 
     // R520/R521: the process's session-end record, and the session told of each ending - processSession's wiring,
     // through the same handler the app runs (onServerEndedSession: the clear, then the signal).
