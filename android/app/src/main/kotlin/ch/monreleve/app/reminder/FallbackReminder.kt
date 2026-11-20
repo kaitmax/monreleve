@@ -7,6 +7,7 @@ import ch.monreleve.app.detection.eveningDecision
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlin.coroutines.cancellation.CancellationException
 
 // AN-MANUAL-REMINDER (R1140-R1142, Android Rulings 3, 7 and 8; PARKAN-45). THE 19:00 FALLBACK, PURE.
 //
@@ -87,12 +88,20 @@ internal enum class FallbackWake {
 
     /** A rule said no; the next 19:00 is planned. */
     NOTHING_SHOWN,
+
+    /** The reminder failed (a database that would not open); nothing was shown, and the next 19:00 is planned. */
+    REMIND_FAILED,
 }
+
+// TooGenericExceptionCaught / SwallowedException: deliberate - whatever the evening's failure, the wake must return
+// so the chain survives; the outcome REMIND_FAILED is what the worker logs.
 
 /**
  * R1141: ONE WAKE, over seams (the JVM test drives it as the worker does). Signed out: cancel the schedule and plan
- * nothing. Otherwise remind (the decision and showOncePerDay) and plan the next 19:00 whatever the reminder did.
+ * nothing. Otherwise remind (the decision and showOncePerDay) and plan the next 19:00 whatever the reminder did -
+ * and RETURN, never rethrow (REMIND_FAILED), so WorkManager never fails the next link with this one.
  */
+@Suppress("TooGenericExceptionCaught", "SwallowedException")
 internal suspend fun fallbackWake(
     signedIn: () -> Boolean,
     cancelOwnSchedule: () -> Unit,
@@ -103,14 +112,19 @@ internal suspend fun fallbackWake(
         cancelOwnSchedule()
         return FallbackWake.SIGNED_OUT_CANCELLED
     }
-    // The next 19:00 is planned whatever this evening did - a reminder that threw must not end the schedule.
-    val shown =
+    // The next 19:00 is planned whatever this evening did, and the wake RETURNS: a worker that throws is FAILED, and
+    // WorkManager fails the link just APPENDed with it - one bad evening must not end the schedule. Cancellation is
+    // the one exception let through (the coroutine is being stopped, not failing).
+    val outcome =
         try {
-            remind()
-        } finally {
-            planNext()
+            if (remind() != null) FallbackWake.SHOWN else FallbackWake.NOTHING_SHOWN
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            FallbackWake.REMIND_FAILED
         }
-    return if (shown != null) FallbackWake.SHOWN else FallbackWake.NOTHING_SHOWN
+    planNext()
+    return outcome
 }
 
 /**

@@ -303,15 +303,17 @@ class FallbackReminderTest {
     }
 
     @Test
-    fun aWakeWhoseReminderThrowsStillPlansTheNext() {
+    fun aWakeWhoseReminderThrowsStillPlansTheNextAndReturnsNormally() {
+        // The wake must RETURN, not rethrow: a worker that throws is FAILED, and WorkManager fails the link the wake
+        // has just APPENDed with it - one bad evening would end the schedule until the next shell launch.
         val calls = mutableListOf<String>()
-        runCatching {
+        val wake =
             runBlocking {
                 fallbackWake({ true }, { calls += "cancel" }, { error("the database could not be opened") }) {
                     calls += "plan"
                 }
             }
-        }
+        assertEquals(FallbackWake.REMIND_FAILED, wake)
         assertEquals("one failed evening must not end the schedule", listOf("plan"), calls)
     }
 
