@@ -62,8 +62,9 @@ R1150 - THE DEPENDENCY
 Coordinates: com.google.firebase:firebase-messaging:26.0.2 (android/gradle/libs.versions.toml
 `firebaseMessaging`, :app `implementation(libs.firebase.messaging)` only; :shared untouched by it).
 Why this version: newest stable on Google Maven, read 2026-11-20 (maven-metadata lists ... 26.0.0,
-26.0.1, 26.0.2; 26.0.2's AAR Last-Modified 2026-11-11). Its AARs (and firebase-common 23.0.0,
-play-services-basement 18.9.0) declare minCompileSdk=1 and minSdk 24 - inside compileSdk 35 / minSdk 26.
+26.0.1, 26.0.2; 26.0.2's AAR Last-Modified 2026-11-11). The 26.0.2 messaging AAR (read 2026-11-20), firebase-common
+23.0.0 and play-services-basement 18.9.0 declare minCompileSdk=1; messaging's manifest minSdkVersion 24 -
+inside compileSdk 35 / minSdk 26. (The resolved build compiled and passed the gate on it.)
 Kotlin stdlib 2.1.21 (POM) <= the project's 2.2.21. No BoM (one Firebase artefact needs no alignment).
 It brings, transitively (release runtime classpath, read with :app:dependencies): com.google.firebase
 (common, components, datatransport, encoders x3, iid-interop, installations, installations-interop,
@@ -82,7 +83,8 @@ NEW GATE CHECK checkReleasePushManifest (in :app:gate): reads the BUILT release 
 fails unless FirebaseInitProvider is absent, the four flags hold, MonRelevePushService is declared and
 no measurement/analytics/crashlytics component exists. On 68eecc91: "checkReleasePushManifest OK: no
 FirebaseInitProvider, auto-init and analytics off (17 meta-data read), MonRelevePushService declared,
-no analytics/crash component".
+no analytics/crash component". It passed on its first run; no plant was made to prove it can fire
+(its refusals are plain string/meta-data tests over the aapt2 dump) - recorded, not claimed.
 Licences (R298): checkLicences failed on the new groups by design; LicencesCopy.OSS_BODY (:shared)
 now names Firebase Cloud Messaging, Okio, javax.inject, Error Prone (Apache 2.0) and says the Google
 Play services libraries are NOT free software and come under the Android Software Development Kit
@@ -99,7 +101,7 @@ APK SIZE DELTA (minified RELEASE build, unsigned, same R8 config as audit):
   delta +424 311 bytes (+414 KiB); 2.32 MiB total against AN14a's 12 MB budget.
 Release APK permission diff (aapt2 dump permissions, base vs branch): exactly ONE added,
   com.google.android.c2dm.permission.RECEIVE. (WAKE_LOCK, ACCESS_NETWORK_STATE and POST_NOTIFICATIONS
-  were already declared.) Components added: ch.monreleve.app.push.MonRelevePushService,
+  are in perms-base.txt: already declared before this task.) Components added: ch.monreleve.app.push.MonRelevePushService,
   com.google.firebase.messaging.FirebaseMessagingService, com.google.firebase.iid.FirebaseInstanceIdReceiver
   (guarded by c2dm SEND), com.google.firebase.components.ComponentDiscoveryService,
   com.google.android.datatransport.runtime ... TransportBackendDiscovery, JobInfoSchedulerService,
@@ -206,6 +208,8 @@ Debug APK built with -PfrontalierPort=3980 and NO FCM_ANDROID_* values.
    nothing. `adb shell am broadcast` cannot be used: the receiver requires c2dm SEND (Play services
    only). The first run (direct startService with the extras) posted nothing - the SDK reads its
    intent from its own queue, not the start intent - a harness defect, recorded, then fixed.
+   PushReceiptInstrumentedTest is COMPILED by :app:gate (compileDebugAndroidTestKotlin) and RUN by none;
+   it was run here by hand on the emulator.
    Receipt works with NO FirebaseApp (unconfigured build); FirebaseMessaging logged only "FirebaseApp
    has not being initialized ... Skip exporting delivery metrics to Big Query".
 3. REGISTRATION through my local server's REAL route with a FAKE token: debug-only
@@ -226,6 +230,9 @@ Debug APK built with -PfrontalierPort=3980 and NO FCM_ANDROID_* values.
       can exist.)
    R574: the code was read from the dev log by the driver and typed with adb; never printed; dumps
    print digit fields as labels only. Screenshots taken only outside the code screen.
+Push was driven on the DEBUG build only, never on the minified audit/release build (the gate's
+checkReleasePushManifest and checkMinifiedWireContract read the release APK statically; a minified
+run is not claimed).
 A REAL DELIVERY needs the operator's Firebase config and the rotated server key: NOT AVAILABLE, not
 attempted, not claimed.
 
@@ -249,8 +256,11 @@ WHAT THE OPERATOR MUST SUPPLY
      client[0].client_info.mobilesdk_app_id -> FCM_ANDROID_APPLICATION_ID  (shape 1:<number>:android:<hex>)
      client[0].api_key[0].current_key       -> FCM_ANDROID_API_KEY
      project_info.project_number            -> FCM_ANDROID_SENDER_ID
-   Supply all four on the RELEASE build machine as Gradle properties (~/.gradle/gradle.properties, or
-   -P...) or environment variables of the same names. Three of four = NOT configured, by design.
+   Supply all four ON THE RELEASE BUILD COMMAND ONLY: -PFCM_ANDROID_PROJECT_ID=... (x4), or environment
+   variables of the same names set for that one command. NOT in ~/.gradle/gradle.properties and NOT in a
+   persistent environment: PushConfigTest asserts the gate's build carries no Firebase value, so a
+   machine-wide setting turns every :app:gate on that machine red, and every debug build there would
+   contact Firebase. Three of four = NOT configured, by design. (See Q7.)
 2. Recommended: Google Cloud console -> APIs & Services -> Credentials -> that API key -> restrict to
    Android apps (package ch.monreleve.app + the release signing SHA-1) and to the Firebase
    Installations and FCM registration APIs.
@@ -283,6 +293,9 @@ N9. On first sign-in against `pnpm dev` the RESOLVING screen once answered "Conn
 N10. Driver note: `adb input text` dropped "@example.invalid" when typed with the local part; typed
     in two steps it works.
 N11. The push record file is written even in an unconfigured build (registered=false). Harmless.
+N12. A sign-out landing DURING a registration pass can let the pass re-save the record after the seam
+    cleared it (the pass reads the account at its start). The next pass corrects it, and pushAvailable
+    also requires signed-in, so it reads false meanwhile. Not fixed.
 
 ====================================================================
 DEVIATIONS
@@ -304,12 +317,26 @@ D7. maybeNotifyEvening refactored onto showOncePerDay (no behaviour change; pair
 QUESTIONS
 ====================================================================
 Q1. Accept the data-only server message (F1)? It is the production push envelope once FCM_PRIVATE_KEY
-    is rotated; iOS (APNs) would later need its own `apns` block.
+    is rotated; iOS (APNs) would later need its own `apns` block. NAMED LAUNCH RISKS, not closable on
+    the emulator: (a) a force-stopped app, or one an OEM battery manager restricts, receives no FCM
+    message at all - true of both message types - while "push available" stays true and A7's
+    fallback stays silent; (b) Android may deprioritise high-priority messages that do not end in a
+    visible notification (ours shows nothing when today is already confirmed on the phone); (c) the
+    android { priority: "high" } envelope is checked against Google's published shape in a unit test,
+    never against the real API. An S9 check with the real config is owed (the operator's, beside
+    PARKAN-46/47).
 Q2. Accept the app writing reminderEnabled from the evening opt-in (F2)? And should manual mode get a
     Parametres switch for it (N3) - A7's surface?
 Q3. Fix the devices route's `platform` refusal (N1) - exempt exact documented keys from the substring
     match - or drop `platform` from the docs?
 Q4. The licences copy (OSS_BODY's two new sentences, French) - approve or reword.
+Q6. The opt-in does not survive a sign-out: sign-out clears monreleve.detection (which holds
+    evening.enabled) and nothing reads reminderEnabled back from /me. After signing in again, or on a
+    new phone, the server holds true and the phone false: receipt refuses (opted out on the phone),
+    "push available" is false, and with N3 a manual person has no switch to turn it back on. Read it
+    back from /me at RESOLVING (A9's seam), or give manual mode the switch (A7)? Not built here.
+Q7. Where the four FCM_ANDROID_* values live on the release machine (operator step 1): a command-line
+    -P is proposed; A5's release-build procedure is the natural home.
 Q5. Session end invalidates the token on all three paths (Android Ruling 11 Q4 kept the path; none
     needed another answer) - accepted?
 
