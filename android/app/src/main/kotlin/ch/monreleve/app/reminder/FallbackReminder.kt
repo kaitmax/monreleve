@@ -41,6 +41,17 @@ internal fun nextFallbackAt(
     return if (today.isAfter(now)) today else day.plusDays(1).atTime(FALLBACK_REMINDER_TIME).atZone(zone).toInstant()
 }
 
+/**
+ * R1140: the link to plan AFTER A REBOOT. A reboot can change the zone before any app hears TIMEZONE_CHANGED (the
+ * emulator came back from a cold boot in another zone, still aiming at the old 19:00), and a phone switched off at
+ * 19:00 has missed that evening. So a boot re-plans from the zone in force, and if 19:00 has already come on this
+ * local day it plans NOW - the wake then decides, under the one-a-day rule, and plans tomorrow.
+ */
+internal fun bootFallbackAt(
+    now: Instant,
+    zone: ZoneId,
+): Instant = if (reachedFallbackTime(now, zone)) now else nextFallbackAt(now, zone)
+
 /** R1140: whether [now] is at or after 19:00 on its local day in [zone] (a late wake counts; midnight resets). */
 internal fun reachedFallbackTime(
     now: Instant,

@@ -22,6 +22,7 @@ import ch.monreleve.app.push.showOncePerDay
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
 
 // AN-MANUAL-REMINDER (R1140, R1141). THE 19:00 FALLBACK'S ANDROID GLUE: the schedule, the wake, the re-plan.
@@ -41,8 +42,9 @@ import java.time.ZoneId
 // The same library as the sampler (DetectionScheduling) - no new dependency.
 //
 // RE-PLANNED (R1140): on a time-zone change and a clock change (FallbackReminderReplanReceiver: the delay is a
-// duration, so the 19:00 it aimed at moves with the zone only if re-planned), and ENSURED - never moved - on reboot
-// and at every launch of the signed-in shell (MainActivity), so a pending link survives and an overdue one runs.
+// duration, so the 19:00 it aimed at moves with the zone only if re-planned) and after a reboot (from the zone in
+// force, catching up an evening whose 19:00 passed while the phone was off); ENSURED - never moved - at every launch
+// of the signed-in shell (MainActivity), so a pending link survives.
 //
 // SCHEDULED ONLY WHILE SOMEBODY IS SIGNED IN (Android Ruling 8): the "session ended" seam cancels it on every ending
 // path (auth/SessionEndSeam.kt), and a wake that finds nobody signed in cancels itself and plans nothing - the backstop
@@ -56,8 +58,15 @@ private const val TAG = "MonReleveReminder"
 internal object FallbackReminderScheduling {
     const val WORK = "monreleve.fallback.reminder"
 
-    /** At a signed-in shell's launch and after a reboot: plan the next 19:00 only if no link is pending (KEEP). */
+    /** At a signed-in shell's launch: plan the next 19:00 only if no link is pending (KEEP). */
     fun ensure(context: Context) = enqueue(context, ExistingWorkPolicy.KEEP)
+
+    /**
+     * After a reboot: re-planned from the zone in force (the zone may have changed while the phone was off or booting,
+     * with no TIMEZONE_CHANGED for any app), and an evening whose 19:00 has passed is decided at once (bootFallbackAt).
+     * Measured on the emulator: KEEP here left the link aimed at the pre-boot zone's 19:00.
+     */
+    fun afterReboot(context: Context) = enqueue(context, ExistingWorkPolicy.REPLACE, ::bootFallbackAt)
 
     /** After a time-zone or clock change: the pending link aimed at the old 19:00, so it is replaced. */
     fun replan(context: Context) = enqueue(context, ExistingWorkPolicy.REPLACE)
@@ -73,10 +82,10 @@ internal object FallbackReminderScheduling {
     private fun enqueue(
         context: Context,
         policy: ExistingWorkPolicy,
+        target: (Instant, ZoneId) -> Instant = ::nextFallbackAt,
     ) {
-        val clock = Clock.systemDefaultZone()
-        val now = clock.instant()
-        val delay = Duration.between(now, nextFallbackAt(now, ZoneId.systemDefault()))
+        val now = Clock.systemDefaultZone().instant()
+        val delay = Duration.between(now, target(now, ZoneId.systemDefault()))
         val request =
             OneTimeWorkRequestBuilder<FallbackReminderWorker>()
                 .setInitialDelay(delay)
@@ -155,7 +164,7 @@ class FallbackReminderReplanReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         if (!processSession(app).isSignedIn()) return
         when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED -> FallbackReminderScheduling.ensure(app)
+            Intent.ACTION_BOOT_COMPLETED -> FallbackReminderScheduling.afterReboot(app)
             Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED -> FallbackReminderScheduling.replan(app)
         }
     }

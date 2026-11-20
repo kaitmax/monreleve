@@ -253,6 +253,17 @@ class FallbackReminderTest {
         assertFalse("past local midnight the day is over", reached("2026-11-20T23:30:00Z"))
     }
 
+    @Test
+    fun aRebootReplansFromTheZoneInForceAndCatchesUpAMissedEvening() {
+        // Booted at 17:00 Paris: today's 19:00 Paris, from the zone the phone has NOW (not the one it had before).
+        assertEquals(at("2026-11-20T18:00:00Z"), bootFallbackAt(at("2026-11-20T16:00:00Z"), PARIS))
+        assertEquals(at("2026-11-20T19:00:00Z"), bootFallbackAt(at("2026-11-20T16:00:00Z"), LONDON))
+        // Off at 19:00, booted at 21:30 Paris: the evening is decided now, not skipped to tomorrow.
+        assertEquals(at("2026-11-20T20:30:00Z"), bootFallbackAt(at("2026-11-20T20:30:00Z"), PARIS))
+        // Booted after local midnight: that day's evening is still ahead.
+        assertEquals(at("2026-11-21T18:00:00Z"), bootFallbackAt(at("2026-11-20T23:30:00Z"), PARIS))
+    }
+
     // ---- ONE WAKE (R1141): signed out cancels and plans nothing; signed in reminds and plans the next ----
 
     @Test
