@@ -208,6 +208,24 @@ class ParametresWirePinTest {
             r.scope.cancel()
         }
 
+    // AN-MANUAL-REMINDER (R1146): the evening switch's PATCH - reminderEnabled alone, both ways, the same encoder A8's
+    // registration pass sends (push/PushRegistration.kt reminderOptInBody), so the two writers of the field agree.
+    @Test
+    fun theEveningReminderBodiesAreByteExactBothWays() =
+        runTest {
+            val r = rig()
+            r.controller.setEveningNotification(true)
+            runCurrent()
+            r.controller.setEveningNotification(false)
+            runCurrent()
+            assertEquals(
+                listOf("{\"reminderEnabled\":true}", "{\"reminderEnabled\":false}"),
+                r.saver.bodies,
+                "reminderBody: the two PATCH bodies, in order",
+            )
+            r.scope.cancel()
+        }
+
     @Test
     fun theDeleteBodyIsByteExactOnItsPath() =
         runTest {

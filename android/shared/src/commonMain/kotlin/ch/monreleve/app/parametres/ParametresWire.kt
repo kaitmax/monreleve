@@ -2,7 +2,8 @@ package ch.monreleve.app.parametres
 
 import ch.monreleve.app.settings.Settings
 
-// IOS-2e R826. THE FOUR /api/v1 WIRE SITES ParametresController REACHES, HANDED IN AS ONE PARAMETER - IOS-2b R778's
+// IOS-2e R826. THE /api/v1 WIRE SITES ParametresController REACHES (four; AN-MANUAL-REMINDER R1146 added reminderBody),
+// HANDED IN AS ONE PARAMETER - IOS-2b R778's
 // codec-as-parameter shape, as one small interface rather than four lambdas because the constructor already lists
 // sixteen seams. The controller builds and reads no JSON itself: Android hands in its org.json implementation (:app's
 // OrgJsonParametres.kt, through the factory named like the controller - PARK-D3, the /me codec stays in :app), and an
@@ -15,6 +16,12 @@ interface ParametresWire {
 
     /** The PATCH /api/v1/me body turning automatic detection on, with consent, or off (DetectionMode.kt). */
     fun consentBody(enable: Boolean): String
+
+    /**
+     * AN-MANUAL-REMINDER (R1146): the PATCH /api/v1/me body turning the evening reminder on or off - reminderEnabled
+     * alone (Android: push/PushRegistration.kt reminderOptInBody, the one encoder A8's registration pass uses too).
+     */
+    fun reminderBody(enable: Boolean): String
 
     /** The POST /api/v1/account/delete body: DELETE_CONFIRMATION sent as `confirm` (SPEC 14). */
     fun deleteBody(): String

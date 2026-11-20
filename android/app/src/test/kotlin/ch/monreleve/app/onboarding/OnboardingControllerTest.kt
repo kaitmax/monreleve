@@ -49,7 +49,7 @@ private fun controller(
     scope: CoroutineScope,
     saver: SettingsSaver = FakeSaver(),
     store: SettingsStore = FakeStore(),
-): OnboardingController = OnboardingController(saver, store, TAX_YEAR, scope, onModeSaved = {})
+): OnboardingController = OnboardingController(saver, store, TAX_YEAR, scope, onModeSaved = {}, onReminderSaved = {})
 
 /** Fill every step with a valid draft (GE, 80 %, simplified, whole year, manual) and trigger the save. */
 private fun OnboardingController.saveValidDraft(
@@ -146,6 +146,22 @@ class OnboardingControllerTest : FunSpec({
         }
     }
 
+    // AN-MANUAL-REMINDER (R1145, R1147): the full flow ASKS the evening reminder, so its answer travels in the same
+    // PATCH as reminderEnabled - the server then holds what the person chose, and RESOLVING reads it back next time.
+    test("R1145: the full onboarding's PATCH carries the evening answer as reminderEnabled, yes and no") {
+        runTest {
+            listOf(true, false).forEach { answer ->
+                val saver = FakeSaver()
+                controller(this, saver).saveValidDraft(reminder = answer)
+                advanceUntilIdle()
+                JSONObject(saver.lastBody.shouldNotBeNull()).let {
+                    it.has("reminderEnabled") shouldBe true
+                    it.getBoolean("reminderEnabled") shouldBe answer
+                }
+            }
+        }
+    }
+
     test("R336: choosing demi-journée at the granularity step sends granularity HALF_DAY") {
         runTest {
             val saver = FakeSaver()
@@ -183,6 +199,7 @@ class OnboardingControllerTest : FunSpec({
                     TAX_YEAR,
                     this,
                     onModeSaved = {},
+                    onReminderSaved = {},
                     restored =
                         OnboardingSnapshot(
                             step = OnboardingStep.NOM,
@@ -206,6 +223,8 @@ class OnboardingControllerTest : FunSpec({
             // A partial onboarding leaves the server's detection mode untouched.
             body.has("loggingMode") shouldBe false
             body.has("detectionConsent") shouldBe false
+            // AN-MANUAL-REMINDER (R1145): ...and its reminderEnabled - the question was never asked.
+            body.has("reminderEnabled") shouldBe false
         }
     }
 
@@ -254,6 +273,7 @@ class OnboardingControllerTest : FunSpec({
                     TAX_YEAR,
                     this,
                     onModeSaved = {},
+                    onReminderSaved = {},
                     restored =
                         OnboardingSnapshot(
                             step = OnboardingStep.METHODE,

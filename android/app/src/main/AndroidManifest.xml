@@ -104,6 +104,23 @@
             android:exported="false" />
 
         <!--
+          AN-MANUAL-REMINDER (R1140). The 19:00 fallback reminder's RE-PLAN receiver: a time-zone or clock change
+          re-aims the pending WorkManager request at the new 19:00 local; a reboot only ensures one is pending.
+          System broadcasts only, exempt from Android 8's implicit-broadcast limits. exported="false" - the system
+          delivers its own broadcasts to it (as to WorkManager's RescheduleReceiver); no other app can reach it.
+          RECEIVE_BOOT_COMPLETED is already declared by WorkManager's manifest: no permission is added.
+        -->
+        <receiver
+            android:name=".reminder.FallbackReminderReplanReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
+        <!--
           AN11: the FileProvider for exporting the Releve (AC2 / R136). The PDF/CSV is written to the private
           cache and shared as a content URI with a per-share read grant - no storage permission, nothing but
           the exports/ subfolder exposed (res/xml/file_paths.xml). Authority is ${applicationId}.fileprovider,

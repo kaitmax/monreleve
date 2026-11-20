@@ -91,6 +91,8 @@ class ParametresControllerPinTest {
 
         override fun consentBody(enable: Boolean): String = "consent:$enable"
 
+        override fun reminderBody(enable: Boolean): String = "reminder:$enable"
+
         override fun deleteBody(): String = "delete-body"
 
         override fun parseReceipt(body: String): DeleteOutcome.Done {
@@ -421,7 +423,11 @@ class ParametresControllerPinTest {
             runCurrent()
             val refused = r.controller.state.value.error to r.modes.load()
             assertEquals(SettingsError.SAVE_REFUSED to LoggingMode.MANUAL, refused)
+            // AN-MANUAL-REMINDER (R1146): the evening switch now PATCHes too, so it is driven on a taken answer here;
+            // its refusals are theEveningSwitchPatchesAndMovesOnlyOnA2xx's.
+            r.saver.answer = PostOutcome.Ok(200, "{}")
             r.controller.setEveningNotification(true)
+            runCurrent()
             r.controller.setThresholdAlert(true)
             assertEquals(true to true, r.evening.isEnabled() to r.alert.isEnabled())
             val s = r.controller.state.value
@@ -429,8 +435,57 @@ class ParametresControllerPinTest {
             r.modes.save(LoggingMode.AUTO_DETECT)
             r.controller.onLocationPermissionRevoked()
             assertEquals(LoggingMode.MANUAL to false, r.modes.load() to r.controller.state.value.autoDetectionEnabled)
-            val consents = listOf("consent:true", "consent:false", "consent:true")
-            assertEquals(consents, r.saver.bodies, "no PATCH on a revoke")
+            val consents = listOf("consent:true", "consent:false", "consent:true", "reminder:true")
+            assertEquals(consents, r.saver.bodies, "no PATCH on a revoke, none for the alert")
+        }
+
+    // AN-MANUAL-REMINDER (R1146, Android Ruling 14 / A8 Q2): ONE SWITCH, BOTH MODES, THE SERVER FIRST. It PATCHes
+    // reminderEnabled and the phone's opt-in moves only once the server took it (R1145's rule) - every refusal beside
+    // the 2xx it differs from (R196), and both directions, since a switch that can only turn on is half a switch.
+    @Test
+    fun theEveningSwitchPatchesAndMovesOnlyOnA2xx() =
+        runTest {
+            val r = rig()
+            r.controller.setEveningNotification(true)
+            runCurrent()
+            assertEquals(listOf("reminder:true"), r.saver.bodies)
+            assertEquals(true to true, r.evening.isEnabled() to r.controller.state.value.eveningNotificationEnabled)
+            assertEquals(null, r.controller.state.value.error)
+
+            r.controller.setEveningNotification(false)
+            runCurrent()
+            assertEquals(listOf("reminder:true", "reminder:false"), r.saver.bodies)
+            assertEquals(false to false, r.evening.isEnabled() to r.controller.state.value.eveningNotificationEnabled)
+
+            for (status in listOf(400, 403, 422, 500, 503)) {
+                r.saver.answer = PostOutcome.Ok(status, "{}")
+                r.controller.setEveningNotification(true)
+                runCurrent()
+                val state = r.controller.state.value
+                val after = Triple(r.evening.isEnabled(), state.eveningNotificationEnabled, state.error)
+                assertEquals(Triple(false, false, SettingsError.SAVE_REFUSED), after, "status $status: nothing moves")
+            }
+        }
+
+    @Test
+    fun theEveningSwitchOnNoAnswerOrAnEndedSessionMovesNothing() =
+        runTest {
+            val cases =
+                listOf(
+                    PostOutcome.NetworkError to ParametresPhase.NETWORK_ERROR,
+                    PostOutcome.SessionExpired to ParametresPhase.NETWORK_ERROR,
+                    PostOutcome.SessionEnded to ParametresPhase.SESSION_ENDED,
+                )
+            for ((answer, phase) in cases) {
+                val r = rig()
+                r.saver.answer = answer
+                r.controller.setEveningNotification(true)
+                runCurrent()
+                assertEquals(listOf("reminder:true"), r.saver.bodies, "$answer: the PATCH was sent")
+                val state = r.controller.state.value
+                assertEquals(false to false, r.evening.isEnabled() to state.eveningNotificationEnabled, "$answer")
+                assertEquals(phase, state.phase, "$answer")
+            }
         }
 
     @Test

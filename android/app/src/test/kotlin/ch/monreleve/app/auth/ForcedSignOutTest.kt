@@ -218,8 +218,11 @@ private class Device(
     // AN-SESSION-END (R1181): the store the app's one construction hands out - DeviceLocalStore inside the
     // SessionEndingStore - with the seam built as the app builds it (deviceSessionEndSeam) over a spy of the one stop.
     var samplerStops = 0
+
+    // AN-MANUAL-REMINDER (R1141): the 19:00 fallback's line on the seam, spied - FallbackReminderScheduling.cancel.
+    var fallbackCancels = 0
     val sessionStore =
-        SessionEndingStore(deviceStore, deviceSessionEndSeam(stopSampling = { samplerStops += 1 }, endPush = {}))
+        SessionEndingStore(deviceStore, deviceSessionEndSeam({ samplerStops += 1 }, {}, { fallbackCancels += 1 }))
 
     // R520/R521: the process's session-end record, and the session told of each ending - processSession's wiring,
     // through the same handler the app runs (onServerEndedSession: the clear, then the signal).
@@ -359,6 +362,8 @@ private suspend fun assertTookTheForcedPath(
     device.ends.ends.value shouldBe 1
     // AN-SESSION-END (R1181): the ending passed the seam - once, with the one ending - and the sampler was cancelled.
     device.samplerStops shouldBe 1
+    // AN-MANUAL-REMINDER (R1141, Android Ruling 8): and the 19:00 fallback unscheduled - signed out, nothing scheduled.
+    device.fallbackCancels shouldBe 1
     device.tokens.load() shouldBe null
     device.settings.load() shouldBe null
     device.cache.load(TAX_YEAR) shouldBe null
@@ -466,6 +471,7 @@ private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
         device.ends.ends.value shouldBe 0
         // R1182: TRY LATER is not an ending - the sampler keeps running for the person still signed in.
         device.samplerStops shouldBe 0
+        device.fallbackCancels shouldBe 0
         shell.destination shouldBe Destination.MAIN
         sessionClosedByServer(device.session.isSignedIn(), device.accounts.current()) shouldBe false
         device.settings.load() shouldBe SETTINGS
@@ -481,6 +487,7 @@ private suspend fun TestScope.assertTriesLater(fault: RefreshFault) {
         device.server.mutationsOf(EMAIL_A) shouldBe listOf(held)
         device.ends.ends.value shouldBe 0
         device.samplerStops shouldBe 0
+        device.fallbackCancels shouldBe 0
     } finally {
         shell.close()
     }
@@ -855,6 +862,7 @@ class ForcedSignOutTest : FunSpec({
                     { meFetchOf(device.session.authenticatedGet(ME_PATH)) },
                     device.settings,
                     device.detectionMode::save,
+                    restoreReminder = {},
                 )
             val releve = DossierApi(device.session::authenticatedGet, device.cache).fetch(TAX_YEAR)
 
@@ -887,6 +895,7 @@ class ForcedSignOutTest : FunSpec({
                     { meFetchOf(device.session.authenticatedGet(ME_PATH)) },
                     device.settings,
                     device.detectionMode::save,
+                    restoreReminder = {},
                 )
             val releve = DossierApi(device.session::authenticatedGet, device.cache).fetch(TAX_YEAR)
 
@@ -911,6 +920,7 @@ class ForcedSignOutTest : FunSpec({
                     { meFetchOf(device.session.authenticatedGet(ME_PATH)) },
                     device.settings,
                     device.detectionMode::save,
+                    restoreReminder = {},
                 )
 
             decision.shouldBeInstanceOf<StartDecision.Onboard>()

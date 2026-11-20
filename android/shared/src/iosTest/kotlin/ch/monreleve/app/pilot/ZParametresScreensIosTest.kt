@@ -125,6 +125,8 @@ private class PzWire : ParametresWire {
         return "consent:$enable"
     }
 
+    override fun reminderBody(enable: Boolean): String = "reminder:$enable"
+
     override fun deleteBody(): String = "delete"
 
     override fun parseReceipt(body: String): DeleteOutcome.Done = DeleteOutcome.Done(0, false)

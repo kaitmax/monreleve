@@ -59,6 +59,8 @@ class ParametresStartDatePinTest {
 
         override fun consentBody(enable: Boolean): String = "consent"
 
+        override fun reminderBody(enable: Boolean): String = "reminder"
+
         override fun deleteBody(): String = "delete"
 
         override fun parseReceipt(body: String): DeleteOutcome.Done = DeleteOutcome.Done(0, false)

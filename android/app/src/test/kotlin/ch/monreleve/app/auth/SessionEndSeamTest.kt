@@ -72,8 +72,16 @@ private class SeamPhone(
 
     /** AN-FCM-CLIENT (R1152): push's line on the seam, spied - what endPushOnThisPhone is in the app. */
     val pushEnds = mutableListOf<SessionEndPath>()
+
+    /** AN-MANUAL-REMINDER (R1141): the 19:00 fallback's line, spied - what FallbackReminderScheduling.cancel is. */
+    var fallbackCancels = 0
     val paths = mutableListOf<SessionEndPath>()
-    private val appSeam = deviceSessionEndSeam(stopSampling = { samplerStops += 1 }, endPush = { pushEnds += it })
+    private val appSeam =
+        deviceSessionEndSeam(
+            stopSampling = { samplerStops += 1 },
+            endPush = { pushEnds += it },
+            endFallbackReminder = { fallbackCancels += 1 },
+        )
     val store =
         SessionEndingStore(
             DeviceLocalStore(
@@ -121,6 +129,7 @@ class SessionEndSeamTest : FunSpec({
             phone.paths shouldBe listOf(SessionEndPath.SIGNED_OUT)
             phone.samplerStops shouldBe 1
             phone.pushEnds shouldBe listOf(SessionEndPath.SIGNED_OUT)
+            phone.fallbackCancels shouldBe 1
             // The clear still ran, whole: the seam is in front of R295's wipe, never instead of it.
             phone.tokens.load() shouldBe null
             phone.recordCleared shouldBe true
@@ -141,6 +150,7 @@ class SessionEndSeamTest : FunSpec({
             phone.paths shouldBe emptyList()
             phone.samplerStops shouldBe 0
             phone.pushEnds shouldBe emptyList()
+            phone.fallbackCancels shouldBe 0
             phone.tokens.load() shouldBe TokenPair("access", "refresh", "0", "0")
             phone.mode.load() shouldBe LoggingMode.AUTO_DETECT
         }
@@ -158,6 +168,7 @@ class SessionEndSeamTest : FunSpec({
             phone.paths shouldBe listOf(SessionEndPath.DELETED)
             phone.samplerStops shouldBe 1
             phone.pushEnds shouldBe listOf(SessionEndPath.DELETED)
+            phone.fallbackCancels shouldBe 1
             phone.tokens.load() shouldBe null
             phone.recordCleared shouldBe true
         }
@@ -177,6 +188,7 @@ class SessionEndSeamTest : FunSpec({
                     if (answer is PostOutcome.Ok) DeleteOutcome.Refused else DeleteOutcome.Unknown
                 phone.paths shouldBe emptyList()
                 phone.samplerStops shouldBe 0
+                phone.fallbackCancels shouldBe 0
                 phone.tokens.load() shouldBe TokenPair("access", "refresh", "0", "0")
             }
         }
@@ -197,7 +209,7 @@ class SessionEndSeamTest : FunSpec({
                     cancelSync = {},
                     clearExports = {},
                 )
-            val store = SessionEndingStore(failing, deviceSessionEndSeam(stopSampling = { stops += 1 }, endPush = {}))
+            val store = SessionEndingStore(failing, deviceSessionEndSeam({ stops += 1 }, {}, {}))
 
             shouldThrow<IllegalStateException> { store.clearForSignOut() }
 
@@ -266,15 +278,32 @@ class SessionEndSeamTest : FunSpec({
                 deviceSessionEndSeam(
                     stopSampling = { order += "sampler" },
                     endPush = { order += "push:" + it.name },
+                    endFallbackReminder = { order += "fallback" },
                 )
             SessionEndPath.entries.forEach { seam.sessionEnded(it) }
 
+            // AN-MANUAL-REMINDER (R1141): the 19:00 fallback is unscheduled on every path too, after push.
             order shouldBe
                 listOf(
-                    "sampler", "push:SIGNED_OUT",
-                    "sampler", "push:DELETED",
-                    "sampler", "push:ENDED_BY_SERVER",
+                    "sampler", "push:SIGNED_OUT", "fallback",
+                    "sampler", "push:DELETED", "fallback",
+                    "sampler", "push:ENDED_BY_SERVER", "fallback",
                 )
+        }
+    }
+
+    test("AN-MANUAL-REMINDER R1141: the fallback's line never throws through the seam - push still ends") {
+        runTest {
+            val order = mutableListOf<String>()
+            val seam =
+                deviceSessionEndSeam(
+                    stopSampling = { order += "sampler" },
+                    endPush = { order += "push" },
+                    endFallbackReminder = { error("WorkManager is not initialised") },
+                )
+            seam.sessionEnded(SessionEndPath.SIGNED_OUT)
+
+            order shouldBe listOf("sampler", "push")
         }
     }
 
@@ -295,7 +324,7 @@ class SessionEndSeamTest : FunSpec({
                         cancelSync = {},
                         clearExports = {},
                     ),
-                    deviceSessionEndSeam(stopSampling = { stops += 1 }, endPush = { error("firebase is not there") }),
+                    deviceSessionEndSeam({ stops += 1 }, { error("firebase is not there") }, {}),
                 )
 
             store.clearForSessionEnd()

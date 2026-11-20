@@ -110,10 +110,13 @@ import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresState
 import ch.monreleve.app.parametres.Site
 import ch.monreleve.app.parametres.openLegalLink
+import ch.monreleve.app.push.notificationsPermitted
 import ch.monreleve.app.push.syncPush
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.releve.ReleveState
+import ch.monreleve.app.reminder.FallbackReminderScheduling
+import ch.monreleve.app.reminder.restoredEveningOptIn
 import ch.monreleve.app.settings.EmployerFigureStore
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.SettingsStore
@@ -503,6 +506,11 @@ private fun ResolvingRoute(
                 { meFetchOf(session.authenticatedGet(ME_PATH)) },
                 settingsStore,
                 restoreMode = { serverMode -> restoreLoggingMode(context, serverMode) },
+                // AN-MANUAL-REMINDER (R1147): the evening opt-in the server holds, applied where this phone may notify.
+                restoreReminder = { serverOn ->
+                    SharedPrefsEveningNotificationStore(context)
+                        .setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted(context)))
+                },
             )
         if (decision is StartDecision.Unresolved) unresolved = decision.cause else onResolved(decision)
     }
@@ -555,6 +563,9 @@ private fun OnboardingRoute(
                 restored = saved,
                 // R1162 (PARK-E3): the automatic choice the server accepted reaches this phone.
                 onModeSaved = { serverMode -> restoreLoggingMode(context, serverMode) },
+                // AN-MANUAL-REMINDER (R1145): the evening answer reaches this phone only once the server TOOK the save
+                // that carried it - a refused save leaves the opt-in as it was.
+                onReminderSaved = { on -> eveningStore.setEnabled(on) },
             )
         }
     val state by controller.state.collectAsState()
@@ -593,10 +604,11 @@ private fun OnboardingRoute(
         }
 
     // Evening reminder (step 7): "Oui" asks POST_NOTIFICATIONS on API 33+ (the S9 is 29, so it enables straight
-    // away), then enables the local R323 notification and saves; a deny saves with the reminder off.
+    // away), then saves with the reminder on; a deny saves with the reminder off. AN-MANUAL-REMINDER (R1145): nothing
+    // here writes the phone's opt-in - the save carries the answer, and onReminderSaved writes it once the server
+    // took it.
     val notificationLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) eveningStore.setEnabled(true)
             controller.onReminderChange(granted)
             controller.next()
         }
@@ -604,13 +616,11 @@ private fun OnboardingRoute(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationLauncher.launch(POST_NOTIFICATIONS_PERMISSION)
         } else {
-            eveningStore.setEnabled(true)
             controller.onReminderChange(true)
             controller.next()
         }
     }
     val onReminderNo: () -> Unit = {
-        eveningStore.setEnabled(false)
         controller.onReminderChange(false)
         controller.next()
     }
@@ -812,6 +822,11 @@ internal fun MainShell(
     LaunchedEffect(parametresState.eveningNotificationEnabled, parametresState.thresholdAlertEnabled) {
         withContext(Dispatchers.IO) { syncPush(context) }
     }
+
+    // AN-MANUAL-REMINDER (R1140). The 19:00 fallback is planned whenever a signed-in shell opens - after a sign-in (by
+    // code or by link), after onboarding, at every launch - and KEPT if a link is already pending, so this never moves
+    // it. Each wake reads the mode, the opt-in and push for itself (reminder/FallbackReminderRuntime.kt).
+    LaunchedEffect(Unit) { FallbackReminderScheduling.ensure(context) }
 
     // R323 / D16: a notification tap opens Aujourd'hui (and records nothing). The launch intent carries
     // EXTRA_OPEN_AUJOURDHUI; consume it once on composition, select the tab and refresh today's surface.

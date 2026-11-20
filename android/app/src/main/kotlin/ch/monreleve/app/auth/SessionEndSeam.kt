@@ -5,6 +5,7 @@ import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.detection.DetectionScheduling
 import ch.monreleve.app.push.endPushOnThisPhone
+import ch.monreleve.app.reminder.FallbackReminderScheduling
 
 // AN-SESSION-END (R1181). THE "SESSION ENDED" SEAM: ONE POINT EVERY ENDING PASSES, WHERE THE PHONE STOPS WORKING FOR
 // THE PERSON WHOSE SESSION IT WAS.
@@ -54,11 +55,12 @@ internal fun interface SessionEndSeam {
 
 /**
  * R1181: what THIS phone stops when a session ends - the seam's body, built once for the app ([processSessionEndSeam])
- * and the same way by the tests: the background sampler, then push (AN-FCM-CLIENT). A7 attaches its line here.
+ * and the same way by the tests: the background sampler, then push (AN-FCM-CLIENT), then the 19:00 fallback (A7).
  */
 internal fun deviceSessionEndSeam(
     stopSampling: () -> Unit,
     endPush: (SessionEndPath) -> Unit,
+    endFallbackReminder: () -> Unit,
 ): SessionEndSeam =
     SessionEndSeam {
         // The one stop (DetectionScheduling.stopSampling in the app). Idempotent: cancelling cancelled work is nothing.
@@ -72,6 +74,11 @@ internal fun deviceSessionEndSeam(
         // to forget), and AFTER the sampler, inside its own runCatching, so it can neither skip the stop nor throw
         // into the clear.
         runCatching { endPush(it) }
+        // AN-MANUAL-REMINDER (R1141, Android Ruling 8's SIGNED-OUT row): the 19:00 fallback is unscheduled -
+        // signed out, nothing is scheduled (reminder/FallbackReminderRuntime.kt FallbackReminderScheduling.cancel).
+        // The same for every path, idempotent (cancelling cancelled work is nothing), last and in its own runCatching
+        // for push's reason. Its wake checks the session too: the backstop for an ending no seam sees.
+        runCatching { endFallbackReminder() }
     }
 
 /** The app's seam: the sampler stopped through DetectionScheduling's one stop, on the application context. */
@@ -80,6 +87,7 @@ internal fun processSessionEndSeam(context: Context): SessionEndSeam {
     return deviceSessionEndSeam(
         stopSampling = { DetectionScheduling.stopSampling(app) },
         endPush = { endPushOnThisPhone(app) },
+        endFallbackReminder = { FallbackReminderScheduling.cancel(app) },
     )
 }
 

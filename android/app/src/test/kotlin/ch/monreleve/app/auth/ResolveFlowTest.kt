@@ -50,7 +50,7 @@ private class ResolvingPhone {
 
     /** RESOLVING, exactly as ResolvingRoute runs it. */
     suspend fun resolve(): StartDecision =
-        decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, settings, modes::add)
+        decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, settings, modes::add, {})
 }
 
 class ResolveFlowTest : FunSpec({
@@ -112,7 +112,7 @@ class ResolveFlowTest : FunSpec({
 
                     override fun clear() = Unit
                 }
-            decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, store, modes::add)
+            decideStartAfterSignIn({ meFetchOf(session.authenticatedGet(ME_PATH)) }, store, modes::add, {})
                 .shouldBeInstanceOf<StartDecision.Onboard>()
             modes shouldBe listOf(LoggingMode.MANUAL)
         }

@@ -147,6 +147,7 @@ class SessionSettingsSaver(private val session: SessionManager) : SettingsSaver 
 // One setter per field plus the wizard navigation and the save - a cohesive state holder for one flow.
 // LongParameterList: AN-SIGNIN-RESOLVE (R1162) added onModeSaved, the eighth. Each is a seam the host fills (the
 // saver, the store, the codec, the mode hand-off); bundling them into a holder would only rename the list.
+// AN-MANUAL-REMINDER (R1145) added onReminderSaved, the ninth, for the same reason.
 @Suppress("TooManyFunctions", "LongParameterList")
 class OnboardingController(
     private val saver: SettingsSaver,
@@ -156,10 +157,16 @@ class OnboardingController(
     restored: OnboardingSnapshot? = null,
     // IOS-2b R778: the PATCH /me body is made by a function handed in, so the controller holds no codec. No default:
     // a call that does not name one is :app's factory, which hands in org.json's mePatchBody.
-    private val patchBody: (Settings) -> String,
+    // AN-MANUAL-REMINDER (R1145): with the evening opt-in to carry as reminderEnabled - null (omitted) unless the
+    // flow ASKED it (the RAPPEL step), so a partial onboarding never overwrites the server's value.
+    private val patchBody: (Settings, Boolean?) -> String,
     // AN-SIGNIN-RESOLVE (R1162): told the mode the server now holds after it ACCEPTED an automatic choice. No default,
     // for patchBody's reason: a construction that forgets it is a phone that never learns its own mode (PARK-E3).
     private val onModeSaved: (LoggingMode) -> Unit,
+    // AN-MANUAL-REMINDER (R1145, Android Ruling 12): told the evening opt-in the server now holds, after it ACCEPTED
+    // the save that carried it - never before, so a refused save leaves the phone's opt-in as it was. No default, for
+    // onModeSaved's reason: a construction that forgets it is a phone whose reminder the person chose and never gets.
+    private val onReminderSaved: (Boolean) -> Unit,
 ) {
     private val mutableState =
         MutableStateFlow(
@@ -263,8 +270,10 @@ class OnboardingController(
     private fun save(current: OnboardingState) {
         val settings = buildSettings(current) ?: return
         mutableState.update { it.copy(phase = OnboardingPhase.SUBMITTING, error = null) }
+        // AN-MANUAL-REMINDER (R1145): the evening answer travels in this save only when the flow ASKED it.
+        val reminder = current.reminder.takeIf { OnboardingStep.RAPPEL in current.steps }
         scope.launch {
-            when (val outcome = saver.saveSettings(patchBody(settings))) {
+            when (val outcome = saver.saveSettings(patchBody(settings, reminder))) {
                 is PostOutcome.Ok ->
                     if (outcome.status in HTTP_SUCCESS) {
                         // AN-SIGNIN-RESOLVE (R1162, PARK-E3): the automatic choice the server has just ACCEPTED reaches
@@ -273,6 +282,9 @@ class OnboardingController(
                         // would otherwise be the only other place the mode is restored. A manual choice sends no mode,
                         // so the server's value - restored at RESOLVING - stands and nothing is handed on.
                         if (settings.loggingMode == LoggingMode.AUTO_DETECT.name) onModeSaved(LoggingMode.AUTO_DETECT)
+                        // AN-MANUAL-REMINDER (R1145): the opt-in the server has just taken reaches the phone - only
+                        // now, and before the settings for onModeSaved's reason. A refused save never gets here.
+                        reminder?.let(onReminderSaved)
                         store.save(settings)
                         mutableState.update { it.copy(phase = OnboardingPhase.READY) }
                     } else {
