@@ -110,6 +110,7 @@ import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresState
 import ch.monreleve.app.parametres.Site
 import ch.monreleve.app.parametres.openLegalLink
+import ch.monreleve.app.push.syncPush
 import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.releve.ReleveState
@@ -801,6 +802,15 @@ internal fun MainShell(
         if (parametresState.thresholdAlertEnabled) {
             withContext(Dispatchers.IO) { maybeAlertThreshold(context, clock) }
         }
+    }
+
+    // AN-FCM-CLIENT (R1151). One push registration pass on every launch of the signed-in shell (docs/api-v1.md
+    // section 10: "made after sign-in and on every launch afterwards"), and again whenever the evening opt-in or the
+    // alert opt-in changes - turning either on may just have granted POST_NOTIFICATIONS, and the evening opt-in is
+    // what the server's reminderEnabled follows. An unconfigured build returns NOT_CONFIGURED at once and sends
+    // nothing (push/PushRegistration.kt).
+    LaunchedEffect(parametresState.eveningNotificationEnabled, parametresState.thresholdAlertEnabled) {
+        withContext(Dispatchers.IO) { syncPush(context) }
     }
 
     // R323 / D16: a notification tap opens Aujourd'hui (and records nothing). The launch intent carries

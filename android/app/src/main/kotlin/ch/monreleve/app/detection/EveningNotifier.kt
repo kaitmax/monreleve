@@ -24,6 +24,7 @@ import ch.monreleve.app.fr.NotificationLines
 import ch.monreleve.app.fr.text.formatDayLong
 import ch.monreleve.app.notification.EveningTap
 import ch.monreleve.app.notification.eveningRecordIntent
+import ch.monreleve.app.push.showOncePerDay
 import ch.monreleve.app.settings.AlertThreshold
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
@@ -105,19 +106,34 @@ suspend fun maybeNotifyEvening(
 
     val today = todayInParis(clock)
     val db = MonReleveDatabase.get(context)
-    val (conditions, outcome) =
-        gatherEveningConditions(context, clock, today, db, alreadyNotified = eveningStore.lastNotifiedDay() == today)
-    val notice = eveningDecision(conditions, outcome) ?: return
+    // AN-FCM-CLIENT (Android Ruling 7): at most one per day ACROSS PATHS - showOncePerDay is the one rule the pushed
+    // reminder (push/PushRuntime.kt maybeRemindFromPush) goes through too, against this same store's day.
+    showOncePerDay(
+        today,
+        eveningStore,
+        decide = { alreadyNotified ->
+            val (conditions, outcome) = gatherEveningConditions(context, clock, today, db, alreadyNotified)
+            eveningDecision(conditions, outcome)
+        },
+        post = { notice -> postEveningFor(context, notice, today) },
+    )
+}
 
-    // R303: the notification is shown FOR the account signed in now; the buttons carry it, and the receiver
-    // refuses the write if a different account is signed in when a button is tapped.
+/**
+ * Post [notice] as today's one evening notification. R303: shown FOR the account signed in now; the buttons carry
+ * it, and the receiver refuses the write if a different account is signed in when a button is tapped. AN-ALERT
+ * (never two Mon Releve notifications a day): if a threshold alert already fired today, its sentence JOINS this one
+ * notification (composeDaily -> Merged) and the record buttons stay; otherwise the reminder posts alone, unchanged.
+ * AN-FCM-CLIENT: shared by SamplingWorker's evening notice and the pushed reminder, so both post the same thing.
+ */
+internal fun postEveningFor(
+    context: Context,
+    notice: EveningNotice,
+    today: String,
+) {
     val account = SharedPrefsAccountStore(context).current()
-    // AN-ALERT (never two Mon Releve notifications a day): if a threshold alert already fired today, its
-    // sentence JOINS this one notification (composeDaily -> Merged) and the record buttons stay; otherwise the
-    // reminder posts alone, unchanged.
     val composition = composeDaily(notice, SharedPrefsThresholdAlertStore(context).activeThresholdToday(today))
     EveningNotifier.postDaily(context, composition, today, account)
-    eveningStore.markNotified(today) // at most one per working day
 }
 
 /**
@@ -161,7 +177,7 @@ suspend fun maybeAlertThreshold(
 // AN-NOTIF / AN-ALERT. Gather the evening reminder's six conditions and today's detection outcome in one place
 // (R206), so maybeNotifyEvening and the alert's same-day merge read them identically - the only difference is
 // [alreadyNotified], which the merge sets false (it wants "does the reminder apply", not "has it fired yet").
-private suspend fun gatherEveningConditions(
+internal suspend fun gatherEveningConditions(
     context: Context,
     clock: Clock,
     today: String,

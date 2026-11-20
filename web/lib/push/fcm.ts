@@ -337,11 +337,21 @@ class FcmSender implements PushSender {
           authorization: `Bearer ${bearer}`,
           'content-type': 'application/json',
         },
+        // AN-FCM-CLIENT (R1152): DATA-ONLY. A `notification` block is drawn by
+        // the Android system tray whenever the app is backgrounded or not
+        // running, and the app's code is never called - so the phone could not
+        // apply its own rules for the one daily reminder (today confirmed on
+        // the phone, a reminder already shown, nobody signed in) nor post it on
+        // the R339 channel with its buttons and lock-screen version. The data
+        // payload alone reaches FirebaseMessagingService, which decides and
+        // writes its own sentence; `title` and `body` stay on PushNotification
+        // for the console sender and are never sent. `high` because the
+        // reminder is time-bound and a user-visible notification follows.
         body: JSON.stringify({
           message: {
             token,
-            notification: { title: notification.title, body: notification.body },
             data: notification.data,
+            android: { priority: 'high' },
           },
         }),
       });

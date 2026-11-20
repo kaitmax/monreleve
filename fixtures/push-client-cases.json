@@ -1,0 +1,20 @@
+{
+  "$comment": "AN-FCM-CLIENT (R1151, R1152, R204). The ONE home for the three things the Android push client and the server must agree on, read by BOTH sides of the join. web/tests/db/push-client-join.test.ts drives the REAL routes and the REAL reminder job with it: `registration.body` posted to POST /api/v1/devices, `optIn.body` to PATCH /api/v1/me, then runDailyReminders at `reminder.now` must hand a FakePushSender exactly `registration.fakeToken` with exactly `reminder.data`. android/app/src/test/kotlin/ch/monreleve/app/push/PushClientFixtureTest.kt requires the app's REAL request builders to produce `registration.body` (for `registration.fakeToken` and `registration.appVersion`) and `optIn.body`, and the app's REAL payload reader to read `reminder.data` as the reminder for `reminder.day`. `fakeToken` is what the app's FakePushTokens hands out - never a real registration token, and visibly not one. THE BODY CARRIES NO `platform`, deliberately: docs/api-v1.md section 10 makes it optional with default android, and the route REFUSES it - web/lib/entries/no-coordinates.ts matches banned keys as substrings and `platform` contains `lat`, so a body naming it answers 400 coordinates_refused (push-client-join.test.ts pins that, and REPORT-AN-FCM-CLIENT.txt records it as NOTICED).",
+  "registration": {
+    "fakeToken": "fake-fcm-token-from-the-test-transport-not-a-registration",
+    "appVersion": "0.1.0",
+    "body": {
+      "fcmToken": "fake-fcm-token-from-the-test-transport-not-a-registration",
+      "appVersion": "0.1.0"
+    }
+  },
+  "optIn": {
+    "body": { "reminderEnabled": true }
+  },
+  "reminder": {
+    "now": "2026-07-07T15:31:00.000Z",
+    "day": "2026-07-07",
+    "mode": "MANUAL",
+    "data": { "kind": "daily_reminder", "day": "2026-07-07", "mode": "MANUAL" }
+  }
+}

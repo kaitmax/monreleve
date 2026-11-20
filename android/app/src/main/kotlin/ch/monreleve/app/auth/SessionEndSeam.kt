@@ -4,6 +4,7 @@ import android.content.Context
 import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.detection.DetectionScheduling
+import ch.monreleve.app.push.endPushOnThisPhone
 
 // AN-SESSION-END (R1181). THE "SESSION ENDED" SEAM: ONE POINT EVERY ENDING PASSES, WHERE THE PHONE STOPS WORKING FOR
 // THE PERSON WHOSE SESSION IT WAS.
@@ -53,18 +54,33 @@ internal fun interface SessionEndSeam {
 
 /**
  * R1181: what THIS phone stops when a session ends - the seam's body, built once for the app ([processSessionEndSeam])
- * and the same way by the tests. Today, the background sampler. A8 and A7 attach their lines here.
+ * and the same way by the tests: the background sampler, then push (AN-FCM-CLIENT). A7 attaches its line here.
  */
-internal fun deviceSessionEndSeam(stopSampling: () -> Unit): SessionEndSeam =
+internal fun deviceSessionEndSeam(
+    stopSampling: () -> Unit,
+    endPush: (SessionEndPath) -> Unit,
+): SessionEndSeam =
     SessionEndSeam {
         // The one stop (DetectionScheduling.stopSampling in the app). Idempotent: cancelling cancelled work is nothing.
         stopSampling()
+        // AN-FCM-CLIENT (R1152, Android Ruling 8's SIGNED-OUT row): push on this phone ends with the session - the
+        // "push available" record forgotten, the install's token invalidated (push/PushRuntime.kt endPushOnThisPhone).
+        // THE SAME FOR EVERY PATH - the path is passed (Android Ruling 11 Q4) and none needs another answer: a
+        // voluntary sign-out and a server-ended session both leave the server's Device row alive (no DELETE route,
+        // api-v1 10.4), and the invalidated token is what gets it pruned on the next send; a deletion already
+        // removed the row (D11) and invalidating the token costs nothing. Idempotent (a second ending finds nothing
+        // to forget), and AFTER the sampler, inside its own runCatching, so it can neither skip the stop nor throw
+        // into the clear.
+        runCatching { endPush(it) }
     }
 
 /** The app's seam: the sampler stopped through DetectionScheduling's one stop, on the application context. */
 internal fun processSessionEndSeam(context: Context): SessionEndSeam {
     val app = context.applicationContext
-    return deviceSessionEndSeam(stopSampling = { DetectionScheduling.stopSampling(app) })
+    return deviceSessionEndSeam(
+        stopSampling = { DetectionScheduling.stopSampling(app) },
+        endPush = { endPushOnThisPhone(app) },
+    )
 }
 
 /**
