@@ -2023,3 +2023,47 @@ one that cannot be recovered by a later release.
   confirmation to say so before the call is made. No route in this API can
   rebuild it: the entries, the trail and the timestamps that the *Relevé annuel*
   rests on are gone in the same statement.
+
+---
+
+## 15. `GET /api/v1/android/minimum-version` — may this app still run
+
+**Added by AN-FORCE-UPDATE (R1110), SPEC §18.1's last bullet:** *the API can
+flag a minimum supported version, and the app shows a plain update screen
+rather than failing silently.* Handler: `web/app/api/v1/android/minimum-version/route.ts`.
+
+**Public and unauthenticated, by construction.** The handler takes no request,
+so it cannot read a bearer token or a cookie: an app too old to be let in must
+still be able to ask, signed in or not. No database is read.
+
+### 15.1 The answer
+
+Always `200`, always JSON, `Cache-Control: public, max-age=300`:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `service` | string | The product's name, the same value `/api/health` carries (R169). A client compares it before believing anything else in the body. |
+| `minimumVersionCode` | integer or `null` | The lowest Android `versionCode` still supported. `null` means **there is no minimum** — said explicitly, never a default number. |
+
+The source is **one server setting, `ANDROID_MINIMUM_VERSION_CODE`**, read on
+every request (`web/lib/android/minimum-version.ts`). Unset, empty, blank or
+malformed — a sign, a decimal point, an exponent, a leading zero, trailing text,
+zero, or above Play's ceiling of 2 100 000 000 — all answer `null`. The setting
+**ships unset**, so the mechanism is inert until the operator sets a value
+(`docs/deploy.md` section 2). Every reading of the setting is a case in
+`fixtures/android-minimum-version-cases.json`, which the route's test and the
+app's client test both read, so neither side can change a field or a reading
+without the other failing (R204).
+
+### 15.2 What a client must do
+
+- **Fail open.** An unreachable server, any status other than `200`, a body that
+  is not JSON, a `service` that is not this product's, or a `minimumVersionCode`
+  that is not a positive integer: carry on exactly as if the answer were `null`.
+  The update screen appears **only** when this product says, with a valid
+  integer, that the running `versionCode` is below it.
+- **Never block on it.** The question is asked beside the app's first screen, not
+  before it.
+- **Ignore unknown keys** (§6.5). An iOS minimum, when there is an iOS host, is
+  an additive change on its own path beside this one; this path and these two
+  fields are frozen once an app has shipped calling them (SPEC §18.1).

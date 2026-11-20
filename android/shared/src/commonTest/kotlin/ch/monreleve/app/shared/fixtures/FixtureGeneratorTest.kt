@@ -15,6 +15,8 @@ class FixtureGeneratorTest {
     fun generatorEmitsEveryRepoRootFixture() {
         val expected =
             setOf(
+                // AN-FORCE-UPDATE (R1113): the route/app join; its Kotlin consumer is :app's MinimumVersionFixtureTest.
+                "android-minimum-version-cases.json",
                 "aggregation-cases.json",
                 "denominator-cases.json",
                 "forecast-cases.json",

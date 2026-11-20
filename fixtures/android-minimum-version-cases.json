@@ -1,0 +1,101 @@
+{
+  "$comment": "AN-FORCE-UPDATE (R1110, R1113). The ONE home for what GET /api/v1/android/minimum-version answers for each value of its one server setting, ANDROID_MINIMUM_VERSION_CODE. Read by BOTH sides of R204's join: web/tests/unit/api/android-minimum-version.test.ts drives the REAL route handler with each `setting` and requires its response to equal `body` exactly; android/app/src/test/kotlin/ch/monreleve/app/update/MinimumVersionFixtureTest.kt hands each `body` to the app's REAL client parsing and requires `minimum`. So a renamed field, a changed `service` or a different reading of a setting fails both builds. `setting` null means the variable is UNSET. Unset, empty, blank or malformed all answer `minimumVersionCode: null` - NO minimum, said explicitly, never a guessed number - so the mechanism ships inert.",
+  "cases": [
+    {
+      "name": "unset",
+      "setting": null,
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "empty",
+      "setting": "",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "blank",
+      "setting": "   ",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "not a number",
+      "setting": "abc",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "zero is not a versionCode",
+      "setting": "0",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "negative",
+      "setting": "-3",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "plus sign",
+      "setting": "+5",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "decimal",
+      "setting": "2.0",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "exponent (Number() reads 1000)",
+      "setting": "1e3",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "trailing garbage (parseInt reads 12)",
+      "setting": "12abc",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "leading zero",
+      "setting": "007",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "hexadecimal (Number() reads 16)",
+      "setting": "0x10",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "above Play's versionCode ceiling",
+      "setting": "2100000001",
+      "minimum": null,
+      "body": { "service": "monreleve", "minimumVersionCode": null }
+    },
+    {
+      "name": "valid",
+      "setting": "2",
+      "minimum": 2,
+      "body": { "service": "monreleve", "minimumVersionCode": 2 }
+    },
+    {
+      "name": "valid, surrounded by whitespace",
+      "setting": " 7\n",
+      "minimum": 7,
+      "body": { "service": "monreleve", "minimumVersionCode": 7 }
+    },
+    {
+      "name": "valid, exactly Play's ceiling",
+      "setting": "2100000000",
+      "minimum": 2100000000,
+      "body": { "service": "monreleve", "minimumVersionCode": 2100000000 }
+    }
+  ]
+}

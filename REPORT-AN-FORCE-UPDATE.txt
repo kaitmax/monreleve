@@ -1,0 +1,322 @@
+REPORT-AN-FORCE-UPDATE - ORCH-ANDROID step A4 (Android Rulings 1-2, 8-12)
+THE API FLAGS A MINIMUM SUPPORTED VERSION; THE APP SHOWS A PLAIN UPDATE SCREEN
+Session: AN-FORCE-UPDATE, worktree C:/wt/an-force-update, branch an-force-update, cut from
+origin/main 21a2dfa2. Ruling range R1110-R1119 (used: R1110-R1115 as the prompt numbers them;
+no new ruling number defined). Report: pure ASCII; the French copy is given by KEY and file, its
+transliteration labelled as such (the accented originals are in the file, R168/R155).
+
+================================================================================================
+SUMMARY
+================================================================================================
+- WEB: GET /api/v1/android/minimum-version (public, unauthenticated by construction - the
+  handler takes no request; Cache-Control: public, max-age=300; JSON {service, minimumVersionCode}).
+  One setting, ANDROID_MINIMUM_VERSION_CODE, read per request; unset, empty, blank or malformed
+  -> minimumVersionCode: null, said explicitly. No table, no schema change. SHIPS UNSET.
+- APP: :shared update/MinimumVersion.kt holds the strict parse, the PURE decision updateRequired,
+  the client (plain GET, never through the session) and UpdateGate (starts open, never blocks).
+  MainActivity AND CallbackActivity (R267, the second shipped root) ask on every ON_START and host
+  UpdateRequiredScreen inside AppRoot; its one button opens market://details?id=ch.monreleve.app,
+  then the https Play listing, then shows the address. Fail open on every unusable answer.
+- R204: fixtures/android-minimum-version-cases.json (16 cases) is driven through the REAL route
+  handler (web) and through the app's REAL parse + decision (:app MinimumVersionFixtureTest).
+- Emulator (MonReleve_API36): unset -> app normal; setting 2 (versionCode 1) -> update screen on
+  return to foreground AND on a cold start; Play button -> VIEW market://details intent to
+  com.android.vending; setting removed -> app back on the next foreground.
+- R1115: three 2025 PDF exports against a BUILT server: 2499 / 1920 / 1696 ms server,
+  2841 / 2460 / 2517 ms app wall clock (tap -> share sheet), against the 15 s read timeout.
+- INCIDENT (DEVIATIONS D3): I wrote into the orchestrator conversation's scratchpad top level and
+  overwrote a pre-existing scratchpad/drive.mjs I had not read. Reported, not repaired by guess.
+
+================================================================================================
+STATUS (R391)
+================================================================================================
+STATUS: COMPLETE. All gates ran in this session on the code tip cf043d93 (the commits after it
+change this report only):
+  :app:gate (FULL, emulator shut down, heavy lock held at commitFree >= 8000 MB):
+    BUILD SUCCESSFUL in 7m 6s
+    GATE EXIT=0
+    test floor OK: 1475 unit tests observed (>= 10)   (A12 recorded 1465: +10 = 4 + 4 + 2 new)
+    verifyPaparazziDebug over every baseline: green with the two new ones; none moved.
+    connectedDebugAndroidTest SKIPPED-with-reason by the gate itself, as always.
+  gate:changed (FRONTALIER_PORT=3970), on the tree that became cf043d93: GATE PASSED for the paths
+    changed. Selection: 1 path matched, web/app/api/v1/android/minimum-version/route.ts -> app/**;
+    suites typecheck, lint, test, build, test:e2e, test:visual, test:late;
+    test 4269 passed, test:e2e 402 passed, test:visual 176 passed, test:late 10 passed.
+    (Its FIRST run failed 3 account e2e specs on my web/.env lacking AUTH_SECRET - N3; rerun green.)
+  gate:clone on cf043d93: GATE:CLONE PASSED, exit 0. "ran register-coverage, fixture-coverage,
+    install, typecheck, lint, test (4269 of 4269 tests passed, 251 files), build, size (24 routes
+    measured), db:deploy, test:db (885 of 913 tests passed, 28 skipped, 63 files),
+    test:container:write (10 checks passed)"; CI readiness quiet (private, CI_FULL unset).
+  R573: ios-shared run 44750696919 on cf043d93 (workflow_dispatch --ref an-force-update):
+    completed success, job ios-shared-tests 14:09:09Z-14:16:50Z (about 8 macOS minutes; the
+    timing API reports 0 ms billable, so the job's wall time is the figure). This run's macOS
+    total so far: about 26 + 8 = 34.
+
+================================================================================================
+R1110 - THE FLAG (web)
+================================================================================================
+Route: web/app/api/v1/android/minimum-version/route.ts -> GET /api/v1/android/minimum-version
+  (house shape: kebab-case segment under /api/v1, like auth/magic-link; "android" because a
+  versionCode is Android's; an iOS minimum is an additive sibling path later). force-dynamic.
+Setting: ANDROID_MINIMUM_VERSION_CODE, named once in web/lib/android/minimum-version.ts
+  (ANDROID_MINIMUM_VERSION_ENV). Valid = trimmed /^[1-9][0-9]*$/ and <= 2 100 000 000 (Play's
+  ceiling, build.gradle.kts AN14a inc. 5). Everything else is null: '', '   ', 'abc', '0', '-3',
+  '+5', '2.0', '1e3' (Number() reads 1000), '12abc' (parseInt reads 12), '007', '0x10',
+  '2100000001', 'Infinity', 'NaN', '1 2', 20 digits. NOT in DEPLOYMENT_VARIABLES (unset is the
+  designed default, so /api/ready and the entrypoint say nothing about it).
+Answer: always 200, {"service":"monreleve","minimumVersionCode":<int|null>} - service is
+  SERVICE_NAME, the /api/health value (R169).
+Tests first: web/tests/unit/api/android-minimum-version.test.ts.
+  RED: "Failed to resolve import @/app/api/v1/android/minimum-version/route" (0 tests ran; the
+  module did not exist). GREEN: 42 passed. Covers: every fixture case through the real handler,
+  the body compared whole; request-time read (null -> 3 -> null across three requests in one
+  process); service = SERVICE_NAME; "never needs a session" structurally (GET.length === 0) and
+  behaviourally (200 with no credentials, no Set-Cookie); Cache-Control; the parse table above.
+Built-unset, started-set proof (R154): `pnpm build` ran with the variable unset; the same .next
+  started with ANDROID_MINIMUM_VERSION_CODE=2 answered (curl through :3971)
+    HTTP/1.1 200 OK / cache-control: public, max-age=300 /
+    {"service":"monreleve","minimumVersionCode":2}
+  and started unset answered {"service":"monreleve","minimumVersionCode":null}.
+Docs: docs/api-v1.md section 15 (the contract test api-contract.test.ts requires every v1 route
+  described); docs/deploy.md section 2 "Optional, ships unset: the operator's switch" (runtime
+  only; set it only once the build that meets it is live on Play; delete or empty to turn off).
+
+================================================================================================
+R1111 - THE APP
+================================================================================================
+:shared commonMain update/MinimumVersion.kt:
+  parseMinimumVersion(status, body) -> Minimum(n) | NoMinimum | Unusable(reason), reasons
+  UNREACHABLE / STATUS / NOT_JSON / FOREIGN / MALFORMED. Strict: a non-200; a body that is not
+  JSON; not an object; service missing, null, non-string or not exactly "monreleve"; the field
+  ABSENT (absent is not null); a quoted "5", 5.0, 5.5, 0, -1, 1e3, true, an object, above the
+  ceiling - all Unusable. Unknown keys ignored (contract 6.5).
+  updateRequired(appVersionCode, answer, showingNow): Minimum -> appVersionCode < minimum
+  (equal is supported); NoMinimum -> false; Unusable -> showingNow (fail open from the normal
+  state; a screen put up by a usable answer is not taken down by an answer that says nothing -
+  QUESTION QD1).
+  MinimumVersionClient: GET baseUrl + /api/v1/android/minimum-version, no headers, no body,
+  catches TransportException only (R387) -> UNREACHABLE.
+  UpdateGate: required StateFlow starts FALSE; check() applies one answer.
+:app: update/PlayListing.kt - PlayListing.MARKET_URL / WEB_URL, openPlayListing (market, then
+  https, then showAddress; only ActivityNotFoundException caught, no resolveActivity which needs
+  <queries> on API 30+), openPlayListingFrom(context) (toast with ParametresCopy.legalNoHandler,
+  R206), processUpdateGate (one per process, BuildConfig.VERSION_CODE + API_BASE_URL, a plain
+  UrlConnectionTransport - never the SessionManager, so a 401 is just a status).
+  MainActivity: a LifecycleEventObserver (the existing pattern, no new dependency) launches
+  processUpdateGate.check() on every ON_START; setContent { AppRoot { if (required)
+  UpdateRequiredScreen else <the app as before> } }. CallbackActivity: the same (R267).
+  NOT blocking: nothing awaits the check before the first paint.
+:shared ui/screens/update/UpdateRequiredScreen.kt: logo, title, one sentence, one button; no back
+  arrow, menu or link. Back on it leaves the app (emulator: launcher resumed).
+Tests (RED first where the code did not yet exist):
+  :shared commonTest update/MinimumVersionTest.kt - 15 tests (parse 7, decision 4, client 3,
+  gate 1). RED: compile, "Unresolved reference 'MinimumVersionAnswer'" (main code set aside).
+  First green run then FAILED one assertion of mine: a bare token `minimumVersionCode=9` is read
+  by kotlinx as a JSON primitive, so it is MALFORMED (not an object), not NOT_JSON - the
+  expectation moved, the code did not; still Unusable. Then 15/15.
+  :app update/MinimumVersionFixtureTest.kt (4), update/PlayListingTest.kt (4) - passed on their
+  first run, so each was PROVEN BY A PLANT (R180, verified landed: both runs failed exactly the
+  planted test, files restored byte-identical by cmp):
+    plant A, openPlayListing's fallback replaced by showAddress -> "no Play Store: the https
+      listing opens instead" FAILED;
+    plant B, an explicit null parsed as malformed -> "R204: the app reads every route answer as
+      the fixture means it" FAILED.
+  fences/EdgeToEdgeCensusTest: "18 screens, 18 hosted by AppRoot" (was 17); both roots wrapped.
+  FixtureGeneratorTest's expected set gained the new fixture name (its own census).
+  Paparazzi: TWO NEW baselines named before recording (R207) -
+    ch.monreleve.app.ui.screens.update_UpdateRequiredScreenScreenshotTest_updateRequiredDefault.png
+    ch.monreleve.app.ui.screens.update_UpdateRequiredScreenScreenshotTest_updateRequiredLarge.png
+  recordPaparazziDebug was filtered to that class; the snapshot directory went 158 -> 160 files,
+  the diff of the listing is exactly those two; no existing baseline touched. Both cropped and
+  read: title, sentence, button; at 200 % the title wraps to two lines and nothing is cut.
+
+================================================================================================
+R1112 - THE COPY (T1-T3 in QUESTIONS)
+================================================================================================
+android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/UpdateCopy.kt, keys TITLE, BODY, BUTTON.
+Fully accented, typographic apostrophe U+2019, the product name by reference (Fr.APP_NAME), no
+version number (R153). Reached from UpdateRequiredScreen (CopyReachabilityTest green).
+
+================================================================================================
+R1113 - THE END-TO-END PROOF
+================================================================================================
+Fixture join: fixtures/android-minimum-version-cases.json, section "cases" (16). Web: the real
+  handler per case, body deep-equal (42 tests file). Kotlin: :app MinimumVersionFixtureTest -
+  every body's service == SERVICE_NAME; parseMinimumVersion(200, body) == the case's meaning;
+  updateRequired(BuildConfig.VERSION_CODE, ...) == (minimum != null && code < minimum), with a
+  positive control (the ceiling case locks every build) and unset never locking.
+  fixture-coverage.mjs (R348) sees both engines read "cases" (FixtureCoverageTest green).
+Emulator: see WALKTHROUGH (emulator API 36 throughout; nothing here is S9 evidence).
+
+================================================================================================
+R1114 - iOS
+================================================================================================
+The decision, the client and the gate are :shared commonMain and compile for iOS: R573
+ios-shared run 44750696919 on cf043d93: success (about 8 macOS minutes). No iOS UI for the screen is built (no iOS app host exists);
+UpdateRequiredScreen is in commonMain but hosted only by Android, and UpdateCopy.BODY names Google
+Play, so an iOS host will need its own sentence for its own store.
+
+================================================================================================
+R1115 - THE EXPORT MEASUREMENT (Android Ruling 8 Q3) - MEASURED, NOTHING CHANGED
+================================================================================================
+Server: `pnpm build` then `next start -p 3970` (BUILT, not dev), local scratch DB
+monreleve_an_force_update, seeded; account camille.martin@example.invalid, year 2025 (her
+fullest: 258 entries; 2026 has 228). App: debug APK built -PfrontalierPort=3971 (versionCode 1).
+`next start` prints no per-request line, so the server time is the elapsed time measured by a
+logging reverse proxy on :3971 in front of :3970 (loopback, request in -> last byte out; it logs
+method, path, year, status, ms, bytes - never a header or token). App wall clock: host tap ->
+the share-sheet CHOOSER START line in logcat (device epoch corrected for the measured -828 ms
+device/host skew), and independently the host's own poll.
+  Server freshly restarted; RUN 1 is the first export after the start (cold renderer):
+    RUN 1  server 2499 ms  app 2841 ms (host poll 2996 ms)  217 377 B  200
+    RUN 2  server 1920 ms  app 2460 ms (host poll 2464 ms)  217 377 B  200
+    RUN 3  server 1696 ms  app 2517 ms (host poll 2551 ms)  217 377 B  200
+  Against the app's 15 s read timeout: the slowest app wall clock is 19 % of it.
+  Also recorded, not one of the three: before the restart, the first export after the server's
+  FIRST start went out for 2026 (I had tapped the wrong year chip): server 3202 ms, app 3905 ms,
+  216 774 B, 200. It is the coldest export measured (first PDF of that process).
+  For comparison only: A3's 14 993 ms was on `pnpm dev` (compile on demand).
+
+================================================================================================
+WALKTHROUGH (R176) - emulator MonReleve_API36 (API 36, x86_64, Google Play image), gestural nav
+================================================================================================
+APK: this branch's debug build, sha256 463547fa024cf131..., fresh install (uninstall + install).
+Every UI dump printed with every digit masked (R574); the sign-in code was read from the dev log
+by the driver and typed, never printed.
+1. SETTING UNSET (dev server, then built): cold launch -> the welcome screen (Commencer...);
+   proxy: GET /api/v1/android/minimum-version -> 200 {null}. Signed in as Camille by code ->
+   "Bonjour Camille", Aujourd'hui normal. (Sign-in used `pnpm dev` because the production mailer
+   prints no code; the session row is in the shared scratch DB, so the app stayed signed in
+   when the built server replaced it on the same port.)
+2. R1115 exports (above), app fully usable, setting unset.
+3. SETTING = 2 (same build, restarted with ANDROID_MINIMUM_VERSION_CODE=2): HOME, then the app
+   brought back to the foreground -> proxy GET minimum-version 200 (46 B) -> the update screen:
+   "Logo Mon Releve" / TITLE / BODY / BUTTON and nothing else (shot 20-update-screen-foreground).
+4. Tap "Mettre a jour" (transliterated) -> logcat:
+     START u0 {act=android.intent.action.VIEW dat=market://details/... cmp=com.android.vending/
+     com.google.android.finsky.activities.MarketDeepLinkHandlerActivity} ... from uid 10264
+   (uid 10264 = ch.monreleve.app, pm list packages -U). Play then opened its own UI on
+   "Sign in to find the latest Android apps..." - the emulator has no Google account, and the
+   app is unpublished, so no listing could be shown either way (said, not hidden).
+5. Back from Play -> the update screen again (re-asked, 200). Back on the update screen -> the
+   launcher (topResumedActivity NexusLauncherActivity): nothing in the app is reachable.
+6. COLD START with the setting on (force-stop, am start -W: TotalTime 2895 ms) -> the update
+   screen in the dump taken about 4 s after launch. The request was answered in 6 ms; nothing
+   waited on it. The FIRST frame was not captured: the two dossier GETs logged right after the
+   answer most likely mean the shell composed first and was then replaced (QUESTION Q4).
+7. SERVER DOWN while the screen shows (proxy -> ECONNREFUSED -> 502): foreground -> the screen
+   STAYS (QD1's behaviour, as designed and tested).
+8. SETTING REMOVED (restarted unset): foreground -> "Bonjour Camille", the app is back.
+Not driven: CallbackActivity's gate on the emulator (an App Link from a mail client); it is
+covered by the census (wrapped root, screen hosted) and by the same gate object.
+
+================================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================================
+N1 THE SCREEN IS NOT A STARTUP BARRIER, BY R1111's DESIGN ("must not block startup"): on every
+   cold start a refused app shows itself, and is usable, until the answer arrives (normally well
+   under a second; step 6 suggests the shell composed first), and indefinitely while the server
+   cannot be reached (fail open). Background work (WorkManager sync, the sampler, year downloads)
+   also continues under the screen. Recorded, not changed - QUESTION Q4.
+N7 A STALE DESTINATION AFTER A RELEASE: the shell's `destination` and `onboardingSeed`
+   rememberSaveable states now sit inside the gate's else-branch, so when the screen is RELEASED
+   in the same activity instance they restart from onCreate's `start`. Someone who opened the
+   app signed out, signed in, and was then shown and released from the update screen without the
+   activity being recreated would land on sign-in although signed in; someone mid-onboarding
+   would restart onboarding. Narrow (a minimum raised then lowered within one activity's life),
+   no data loss (sign-in again; R1161 keeps onboarding behind /me). The fix is to hoist those two
+   states and their two LaunchedEffects above the if; NOT done here so the gated tip stays the
+   gated tip - QUESTION Q5. (Walkthrough step 8's release had start = MAIN, so it did not show.)
+N2 Cache-Control max-age=300 has no client effect today: HttpURLConnection installs no response
+   cache, so the app asks on every ON_START (one small GET). It matters for proxies only.
+N3 gate:changed's first run FAILED 3 account e2e specs ("etat=indisponible": AUTH_SECRET unset in
+   my web/.env). Environment, not code: web/.env rebuilt by QUEUE-STATE's recipe (.env.example,
+   my DB, a generated throwaway AUTH_SECRET) and the rerun PASSED. Recorded so it is not re-found.
+N4 `next start` prints no request lines and, being production, no sign-in mail - which is why a
+   proxy timed R1115 and why sign-in went through `pnpm dev` first.
+N5 On the Releve screen the left year chip is the CURRENT year (2026), the right one 2025.
+N6 The Play button's real target cannot be shown on this emulator (no Google account) nor on Play
+   at all until the listing exists (AN14b, the operator's).
+
+================================================================================================
+DEVIATIONS
+================================================================================================
+D1 R1113's "one test drives the route handler and the client parsing together" is TWO tests over
+   ONE fixture (TypeScript and Kotlin cannot share a test), plus the emulator run. The fixture
+   carries the exact bodies, so a change on either side fails a build.
+D2 R1115's "server's own log timing" is a logging proxy's (next start logs no request); one extra
+   export (2026) is recorded beside the three.
+D3 INCIDENT - THE SCRATCHPAD (R334). This session's scratchpad path is the ORCHESTRATOR
+   conversation's (...\7e10453a-...\scratchpad), shared with earlier sessions. Before I noticed,
+   I wrote at its top level:
+     - scratchpad/drive.mjs: a file of that name EXISTED and my Write REPLACED it without my having
+       read it. Its origin and content are unknown to me; earlier sessions' drivers survive in
+       C:/wt/queue-evidence/{an-session-end,an-signin-resolve,an-status-honesty,...}/drive.mjs.
+       Not restored by guess; the file there is now mine (sha256 62369c4d382bdd40...).
+     - scratchpad/proxy.log (another session's delay-proxy log, 606 lines): my proxy APPENDED 3
+       lines; I cut them back out (file again 606 lines, its own last line restored).
+     - devserver.log and emulator.log at the top level: written with `>`; I do not know whether
+       files of those names existed before (they may have been overwritten). devserver.log holds
+       my local sign-in mail (scratch DB, .invalid account).
+   Everything else moved to scratchpad/an-force-update/ and all later output went there.
+D4 Test order: the :app tests were written after their code; proven by plants (above) instead of
+   a RED run. The web and :shared tests had true RED runs.
+D5 web/.env rebuilt mid-session (N3).
+D6 PUSH ORDER: cf043d93 was pushed BEFORE gate:clone and before :app:gate ran, to dispatch the R573
+   run on it (workflow_dispatch needs the ref on origin). R199 says gate:clone precedes every
+   push. Both gates then passed on that same sha, so nothing was published that the gates refuse,
+   but the order was not R199's.
+D7 QD1 IS A DEVIATION, not only a question: walkthrough step 7 (server down, the screen STAYS) is
+   the opposite of R1111's literal "unreachable -> no screen", for a screen already up. Chosen on
+   my advisor's suggestion. The other ruling costs one line - updateRequired's Unusable branch
+   returns false instead of showingNow - and two test expectations
+   (UpdateDecisionTest.anUnusableAnswerFailsOpenAndNeverChangesWhatIsShowing, UpdateGateTest).
+
+================================================================================================
+QUESTIONS
+================================================================================================
+T1 UpdateCopy.TITLE (android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/UpdateCopy.kt).
+   ASCII transliteration: "Mise a jour necessaire"
+T2 UpdateCopy.BODY. ASCII transliteration: "Cette version de Mon Releve n'est plus prise en
+   charge. Installez la derniere version depuis Google Play pour continuer."
+   (Mon Releve is Fr.APP_NAME by reference.)
+T3 UpdateCopy.BUTTON. ASCII transliteration: "Mettre a jour"
+QD1 An UNUSABLE answer (unreachable, non-200, foreign, malformed) while the screen is showing
+   KEEPS it (from the normal state it never shows it). Chosen so a flapping network does not
+   flicker a refused app in and out; the literal reading of R1111 ("unreachable -> the app works
+   as today") would instead release it on any failed re-check. Keep, or release?
+Q2 The route name and shape freeze once an app ships calling them (SPEC 18.1):
+   /api/v1/android/minimum-version, {service, minimumVersionCode}. Accept?
+Q3 CallbackActivity is gated too (R267). Accept, or should the link's window never be replaced?
+Q4 N1: a refused app is shown until the answer arrives, and while offline; background work runs
+   under the screen. Accept as R1111's fail-open design, or a follow-up task?
+Q5 N7 (the stale destination after a release): fix now as a one-commit follow-up, or post-launch?
+
+================================================================================================
+PUSH PROOF
+================================================================================================
+Branch an-force-update on origin, NOT merged (the orchestrator merges):
+  cf043d93 AN-FORCE-UPDATE: the API flags a minimum supported Android version; the app shows a
+           plain update screen (R1110-R1114) - THE CODE TIP, every gate above ran on it; pushed
+           before the gates (git ls-remote showed cf043d93 on refs/heads/an-force-update).
+  (+ this report, its own commit, pushed after it is written - its sha is in the handback.)
+Emulator: MonReleve_API36 shut down for the gates (Android Ruling 11) and booted again; left booted
+  (emulator-5554) with ch.monreleve.app = C:/wt/web-orch/android/app/build/outputs/apk/debug/
+  app-debug.apk, fresh install (uninstall + install), never launched - signed out, no shared_prefs;
+  installed base.apk sha256 2e90464a4dd3dc47795e... equals that file's (the same APK found at the
+  start); settings secure navigation_mode = 2 (gestural).
+My processes: the dev server, four built servers and the proxy on 3970/3971 stopped (each tree
+  checked by command line, then taskkill /T); 3970-3979 free; the orchestrator's :3900 still
+  answers 200. ./gradlew --stop after every Gradle step. Heavy lock released (status FREE).
+Scratch data: database monreleve_an_force_update DROPPED (pg_database count for it: 0) and
+  web/.env removed. Evidence (logs, screenshots, drive.mjs, time-export.mjs, timing-proxy.mjs,
+  r1115.txt, proxy.log) in the orchestrator-conversation scratchpad's an-force-update/ subfolder;
+  the local sign-in mail is in devserver.log at that scratchpad's top level (D3), never copied
+  into the repository.
+R-number re-scan before push (this worktree, C:/wt/web-orch and the main checkout, untracked
+  included): R1110-R1119 appear only in AN-FORCE-UPDATE.txt, ORCH-ANDROID.txt and
+  RULINGS-2026-11-16.txt's references to this task; this report defines no new number.
+origin/main re-read before this report's last push: still 21a2dfa2, so the merge tree equals the
+  branch's and R573's run on cf043d93 stands for it.
+Lock: C:/wt/an-force-update/.session-lock.json is HELD at the time of writing; it is removed last,
+  after this report's push, and its removal is confirmed in the handback, not here.

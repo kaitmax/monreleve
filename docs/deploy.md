@@ -153,6 +153,28 @@ that is running perfectly and logging nothing.
 |---|---|
 | `FRONTALIER_SCHEDULER=1` | Enables the scheduler against a non-local database. **The image does not set it**, so `docker run monreleve` by hand cannot start notifying people. This process sends reminders without being asked, and a run against a real database is a notification in somebody's hand with no undo (R243). |
 
+### Optional, ships unset: the operator's switch
+
+| Variable | Unset means | Set means |
+|---|---|---|
+| `ANDROID_MINIMUM_VERSION_CODE` | no minimum: `GET /api/v1/android/minimum-version` answers `minimumVersionCode: null` and every installed app runs as before | an Android app whose `versionCode` is **below** the value shows the update screen in place of the app (AN-FORCE-UPDATE, R1110/R1111; `docs/api-v1.md` section 15) |
+
+**Runtime only — *Not available during build*.** It is not a secret, and the
+route reads it on each request, never at build time; a changed value takes
+effect at the container's restart, and reaches phones within the route's five
+minutes of caching. A value that is not a plain positive integer (a sign, a
+decimal point, an exponent, a leading zero, trailing text, or above Play's
+2 100 000 000) is read as **no minimum**, never as a guess.
+
+**Before setting it**, confirm the build that meets the new minimum is already
+**live on Play** for everyone it applies to: the screen's only button opens the
+Play listing, and a person sent there with nothing newer to install is locked
+out. To turn it off again, delete the variable (or empty it) and restart.
+
+It is deliberately **not** in `DEPLOYMENT_VARIABLES`: unset is the designed
+default, not a degraded state, so `/api/ready` and the entrypoint say nothing
+about it.
+
 ### Build time or runtime: the Coolify setting for each variable (R858, R860)
 
 **A variable available during the build is published with the image.**
