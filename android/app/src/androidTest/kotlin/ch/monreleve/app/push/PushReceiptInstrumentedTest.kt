@@ -1,7 +1,6 @@
 package ch.monreleve.app.push
 
 import android.app.NotificationManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -11,6 +10,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.messaging.FcmBroadcastProcessor
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -21,13 +22,15 @@ import org.junit.runner.RunWith
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.concurrent.TimeUnit
 
 // AN-FCM-CLIENT (R1154). A PUSH DELIVERED TO THE APP'S REAL FirebaseMessagingService ENTRY POINT, on a device.
 //
-// No Firebase project exists, so no real message can be sent. What FCM's own receiver does on a real delivery is start
-// the app's MESSAGING_EVENT service with the c2dm RECEIVE intent and the message's data as extras; this test does
-// exactly that, to MonRelevePushService, so the path under test is the SDK's handleIntent -> onMessageReceived ->
-// maybeRemindFromPush -> the R339 evening notification, with nothing replaced but the clock (a fixed Friday, 17:31 in
+// No Firebase project exists, so no real message can be sent. On a real delivery FCM's own receiver hands the c2dm
+// RECEIVE intent (the message's data as extras) to the SDK's FcmBroadcastProcessor, which starts the app's
+// MESSAGING_EVENT service. This test calls that processor, so the path under test is the SDK's queue -> handleIntent ->
+// MonRelevePushService.onMessageReceived -> maybeRemindFromPush -> the R339 evening notification, with nothing
+// replaced but the clock (a fixed Friday, 17:31 in
 // Paris, so the working-day gate is deterministic). The data is the server's: fixtures/push-client-cases.json's shape,
 // web/lib/push/message.ts's keys.
 //
@@ -72,16 +75,21 @@ class PushReceiptInstrumentedTest {
         MonRelevePushService.clock = Clock.systemUTC()
     }
 
-    /** What FCM's receiver hands the app's service for a data-only message. */
+    /**
+     * What FCM's own receiver does with a data-only message once Play services has delivered the c2dm broadcast:
+     * FirebaseInstanceIdReceiver hands the intent to the SDK's FcmBroadcastProcessor, which queues it and starts (or
+     * binds) the app's MESSAGING_EVENT service - MonRelevePushService, by its intent filter. Only the broadcast's
+     * permission check (c2dm SEND, which only Play services holds) is not crossed.
+     */
     private fun deliver(data: Map<String, String>) {
         messages += 1
         val intent =
             Intent("com.google.android.c2dm.intent.RECEIVE")
-                .setComponent(ComponentName(context, MonRelevePushService::class.java))
+                .setPackage(context.packageName)
                 .putExtra("google.message_id", "instrumented-$messages-${SystemClock.elapsedRealtime()}")
                 .putExtra("from", "instrumented")
         data.forEach { (key, value) -> intent.putExtra(key, value) }
-        context.startService(intent)
+        Tasks.await(FcmBroadcastProcessor(context).process(intent), WAIT_MS, TimeUnit.MILLISECONDS)
     }
 
     private fun reminder(day: String = TODAY) = mapOf("kind" to "daily_reminder", "day" to day, "mode" to "MANUAL")
