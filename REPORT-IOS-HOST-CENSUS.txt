@@ -1,0 +1,671 @@
+REPORT-IOS-HOST-CENSUS - WHAT AN iOS APP HOST NEEDS THAT ONLY :app HAS TODAY (iOS phase step I0; READ-ONLY)
+TASK     C:/wt/web-orch/relay/IOS-HOST-CENSUS.txt (iOS Rulings 1-2, relay/RULINGS-2026-11-16.txt). Rulings R1200-R1209;
+         R1200-R1203 used, R1204-R1209 unused. Before this commit `grep -rlE '\bR120[0-9]\b' relay/ REPORT-*.txt
+         CLAUDE.md docs` at 99665be7 returned nothing.
+BASE     origin/main 99665be7ab1b1e49986e23cb3dea26f82d2e6178.
+BRANCH   i0-host-census. DEVIATION 1: the prompt names the branch ios-host-census, and that name MATCHES
+         ios-shared.yml's push filter ('ios-*'). The launch message says "Do NOT name the branch ios-*". Nothing had
+         been pushed, so the branch was renamed before any push. The only thing that would otherwise have stopped a
+         run is paths-ignore (REPORT-*.txt), and its behaviour on a new branch's first push was not relied on.
+WORKTREE C:/wt/ios-host-census, lock .session-lock.json (gitignored, R349), removed last.
+CHANGES  This report only. No code changed, no workflow dispatched, no Gradle task run, no emulator, no server, no port.
+         Evidence (scripts and their outputs, not committed): C:/wt/queue-evidence/ios-host-census/
+           walk.mjs + walk-out.txt     reachability over :app main from the entry points, to a fixpoint (R1200)
+           impl.mjs + impl-out.txt     implementers of every store/transport interface, all source sets (by role)
+           resolve.sh + shell-imports.txt, level2-imports.txt   the first import pass (superseded by walk.mjs: it
+                                       missed `suspend fun` and misread extension functions as their receiver)
+           cmp-src/                    CMP 1.7.3 sources unzipped from the Gradle cache (foundation-layout, ui)
+           research/                   copies of the primary sources read for R1203
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- The shell is reached from 7 entry points: the two activities, the two manifest receivers, the FCM service and two
+  WorkManager workers. It reaches 73 of :app's 86 main files (dev/ excluded: 10; not reached: DetectionPlaceholder,
+  FieldExport, MockProviderReplay).
+- For iOS v1 (MANUAL-ONLY, no push):
+  - ALREADY SHARED: every screen, every controller, SessionManager, AuthApi, the sync and download engines, the
+    update-gate logic.
+  - iOS HAS ITS OWN: every store the sign-in and the record need, and the transport (Keychain x3, UserDefaults,
+    FileDossierCache, Room, NsUrlSession), plus the drain and the erasure.
+- What is MISSING is the shell itself and seven things under it:
+  1. The composition root and routes: MainActivity, about 1 000 lines of wiring.
+  2. The destination logic, MainGraph, AppRoot, AppBottomBar, ResolvingScreen. All are platform-free or one step
+     from it.
+  3. The /me JSON codec. It is org.json, and it blocks StartupDecider, OnboardingController's patchBody and
+     ParametresWire.
+  4. Three persistent stores: the evening opt-in, the detection mode, the employer figure. EmployerFigureStore's
+     interface itself is in :app.
+  5. The year-download coordinator.
+  6. The session-end seam on iOS.
+  7. The 19:00 local reminder.
+- Not needed in v1: detection (12 files), push (5 files).
+- Open question: the update gate. Its route and target are Android's own.
+- FINDING 1: IosNotificationPlan plans the evening reminder for TODAY at 17:00 Paris (DAY_CONCLUSION_MINUTE = 1020).
+  iOS Ruling 2 asks for 19:00 device-local, every working day, up to 7 days ahead. :app's FallbackReminder.kt (A7)
+  is the logic that matches, and it is java.time.
+- FINDING 2: iosDeviceLocalStore has no session-end seam. Nothing on iOS would cancel reminders already scheduled
+  ahead at sign-out, deletion or a server-ended session. Android Ruling 8's SIGNED-OUT row ("nothing shown, nothing
+  scheduled") would not hold.
+- R1201: three options, costed below. None avoids :app:gate or the R573 run: IOS-2f changed 0 :app files and still
+  needed both.
+- R1203:
+  - Generate the Xcode project with XcodeGen on the runner (brew install; it is not preinstalled).
+  - Link a STATIC framework through embedAndSignAppleFrameworkForXcode. That task is also what copies the Compose
+    resources into the .app; without it every glyph lookup throws.
+  - Info.plist needs CADisableMinimumFrameDurationOnPhone=true, or CMP 1.7.3 errors at start.
+  - Sign ad-hoc with identity "-" and an entitlements file. Signing must stay ALLOWED, or the Keychain fails with
+    -34018.
+  - The framework declaration does not enter :app:gate's or fastCheck's task graph. On Windows its link tasks are
+    registered but disabled, and the Xcode tasks are not registered at all.
+
+================================================================================
+STATUS (R391)
+================================================================================
+READ-ONLY TASK: no code, so no :app:gate, no fastCheck, no gate:clone, no iOS run. There is no build claim of any kind.
+gate:clone was NOT run, and that is a decision rather than an omission (R133). The branch adds one ASCII file,
+REPORT-IOS-HOST-CENSUS.txt, to 99665be7, the main the orchestrator has already pushed. Nothing under web/ or android/
+changed. The launch message also says "you need no emulator, no server, no port", and gate:clone creates a scratch
+database. This is the precedent of the earlier report-only branches (REPORT-AN-AUDIT.txt and others: "gate:clone was
+NOT run, and that is a decision rather than an omission").
+macOS minutes: 0 (no dispatch). `gh run list --workflow ios-shared.yml --branch i0-host-census` is in PUSH PROOF.
+
+================================================================================
+R1200 - THE CENSUS, DERIVED NOT RECALLED
+================================================================================
+HOW IT WAS DERIVED.
+- (1) ENTRY POINTS. These are read from android/app/src/main/AndroidManifest.xml: MainActivity (LAUNCHER),
+  CallbackActivity (VIEW, autoVerify, https monreleve.ch /api/v1/auth/callback), notification.EveningActionReceiver,
+  reminder.FallbackReminderReplanReceiver (BOOT_COMPLETED / TIMEZONE_CHANGED / TIME_SET), push.MonRelevePushService
+  (MESSAGING_EVENT) and the FileProvider. To these, walk.mjs adds the WorkManager workers that are instantiated by
+  reflection: SyncWorker, SamplingWorker, and FallbackReminderWorker, which lives in FallbackReminderRuntime.kt. R246:
+  an import walk from MainActivity cannot see a manifest or a reflective entry point.
+- (2) REACHABILITY TO A FIXPOINT (walk.mjs). Every top-level declaration in :app main is indexed: class, object,
+  interface, fun including `suspend fun`, extension functions under the function's name, val/var and typealias.
+  - A file reaches another when any identifier in its comment-stripped body names a declaration there. This also
+    follows same-package references, which an import scan cannot see.
+  - It over-approximates, which is the safe direction for a census.
+  - The first pass (resolve.sh) missed `suspend fun` and named extension receivers; it is kept but superseded.
+  - Result: "REACHED 73 of 86 :app main files (dev/ excluded: 10)". Each row's "via" is the first file and identifier
+    that reached it (walk-out.txt).
+- (3) BLOCKER per file: the non-ch.monreleve imports, plus BuildConfig/R by body scan. NONE means platform-free
+  imports. JVM means java.time, java.net, java.io or org.json, which iOS cannot compile. ANDROID means an android.*,
+  WorkManager, ActivityResult or Firebase API.
+  - Caveat: NONE describes the file's own imports, not what it calls. StartupDecider imports nothing platform-bound,
+    yet it calls MeWire (org.json); such rows say so.
+- (4) COUNTERPART BY ROLE, not only by name (R133).
+  - impl.mjs lists every class or object whose supertype list names each store or transport interface, across :app,
+    commonMain, iosMain and androidMain (impl-out.txt). The regex truncated two names, read off by hand:
+    NoOpLocalStore and OrgJsonParametresWire.
+  - For roles with no interface, iosMain and commonMain were grepped for the platform API by name:
+    UNUserNotificationCenter, UIActivityViewController and BGTaskScheduler appear in iosMain COMMENTS only (in
+    IosNotificationPlan.kt, IosExportFiles.kt, IosSyncComposition.kt and IosSyncTrigger.kt). ComposeUIViewController
+    appears only in pilot/AujourdhuiPilotViewController.kt. UIApplication, openURL, NSNotificationCenter, NSBundle,
+    SFSafariViewController, UIDatePicker and NSURLComponents: 0 files in iosMain or commonMain.
+  - A MISSING verdict below is a finding only on that double search.
+
+VERDICTS: ALREADY SHARED (commonMain, both platforms call it) / iOS HAS ITS OWN (an iosMain implementation of the same
+role exists) / MISSING ON iOS / NOT IN iOS v1. Line counts are walk.mjs's.
+
+A. THE SHELL AND ITS ENTRY POINTS
+:app file (lines; blocker)                what it does                                  counterpart                     verdict
+MainActivity.kt (1292; ANDROID, java.time, BuildConfig)
+                                          composition root: builds the stores, the      iosMain: only                   MISSING ON iOS
+                                          session, the repositories; decides the start  aujourdhuiPilotViewController
+                                          destination; SignInRoute, CodeRoute,          (one screen over an in-memory
+                                          ResolvingRoute, OnboardingRoute, MainShell,   fixture)
+                                          ParametresTab; export hand-off, legal links,
+                                          the mail app, permission launchers
+  Its platform calls (each needs an iOS answer): Toast x5 (export failure, export needs connectivity, legal no-handler,
+  location revoked, no mail app); CustomTabsIntent (legal pages); Intent CATEGORY_APP_EMAIL (openMail); FileProvider +
+  ACTION_SEND chooser (shareFile); rememberLauncherForActivityResult (FINE/BACKGROUND location, POST_NOTIFICATIONS);
+  Build.VERSION; BuildConfig.API_BASE_URL / VERSION_NAME / VERSION_CODE; BackHandler x2; LocalLifecycleOwner ON_RESUME
+  (F8 midnight refresh, the revocation check); activity lifecycle ON_START (the update check); activity.intent extras
+  EXTRA_OPEN_AUJOURDHUI / EXTRA_OPEN_FORECAST (notification taps).
+  NB: SignInRoute's and CodeRoute's `pending` parameter is typed SharedPrefsPendingSignInStore, the concrete Android
+  class, rather than PendingSignInStore. A move must widen it.
+CallbackActivity.kt (95; ANDROID, BuildConfig)
+                                          the App Link callback window: CallbackController commonMain        MISSING ON iOS
+                                          .handle(link), CallbackScreen, the update     (CallbackController,           (the receipt; see
+                                          gate                                          CallbackScreen); no host       R1202 for v1)
+ShellState.kt (231; LocalContext, java.time)
+                                          (i) PURE: sessionReconciled,                  none                            MISSING ON iOS;
+                                          destinationSaver (Compose Saver: runtime-                                    (i) platform-free
+                                          saveable is CMP common), startDestination,
+                                          destinationAfterSessionEnd, rememberShellTab;
+                                          (ii) rememberMainControllers: SharedPrefs
+                                          stores, MonReleveDatabase.get(context),
+                                          DetectionScheduling, java.time.Clock
+MainGraph.kt (193; java.time)             the ONE controller construction site (R291)   the six controllers are         MISSING ON iOS;
+                                                                                        commonMain; no iOS graph        one step from
+                                                                                                                        platform-free (*)
+  (*) Its only blocker is java.time.Clock. It reaches the commonMain constructors through :app's JavaTime* factories
+  (JavaTimeAujourdhui/Calendar/Forecast.kt). Those constructors take kotlin.time.Clock + a TimeZone.
+ui/shell/AppRoot.kt (52; NONE)            theme + canvas + system-bar insets, consumed  none                            MISSING (in :app);
+                                          once (R1170)                                                                  platform-free (**)
+  (**) MEASURED, not assumed: foundation-layout-1.7.3-sources.jar declares `expect val WindowInsets.Companion.systemBars`
+  and `.displayCutout` in commonMain (WindowInsets.kt:712, :685), with `actual` in uikitMain
+  (WindowInsets.uikit.kt:110, :65).
+ui/shell/AppBottomBar.kt (82; R.drawable) the four tabs                                 glyphPainter(Glyph) is commonMain MISSING; platform-
+                                                                                        expect/actual                   free once R -> Glyph
+  The Glyph enum has FILE_TEXT but no SUN, CALENDAR or SETTINGS. Moving the bar needs three entries in :shared. The
+  drawables already reach iOS: generateGlyphResources syncs every ic_*.xml except the launcher icons.
+  Glyph.android.kt draws by the same drawable id (painterResource(getIdentifier(fileName))).
+ui/shell/AppTab.kt (9; NONE)              enum of four tabs                             none                            MISSING; platform-free
+ui/shell/ResolvingScreen.kt (49; NONE)    RESOLVING's loading/retry screen              none                            MISSING; platform-free
+
+B. SESSION, SIGN-IN, SESSION END
+auth/SessionHolder.kt (67; Context, BuildConfig)
+                                          processSession: ONE SessionManager per        SessionManager commonMain;      MISSING (the holder
+                                          process (R507) over UrlConnectionTransport +  NsUrlSessionTransport,          and the base URL);
+                                          Keystore + API_BASE_URL; onEnded -> the       KeychainTokenStore              pieces iOS HAS ITS OWN
+                                          server-ended clear
+auth/SessionEnds.kt (72; NONE)            the process's session-end signal (R520),      none                            MISSING; platform-free
+                                          sessionClosedByServer, heldDays,
+                                          onServerEndedSession
+auth/SessionEndSeam.kt (124; Context)     SessionEndPath / SessionEndSeam /             iosDeviceLocalStore returns a   MISSING ON iOS
+                                          deviceSessionEndSeam / SessionEndingStore     BARE DeviceLocalStore: no seam  (FINDING 2)
+                                          are pure; processSessionEndSeam wires
+                                          stopSampling, endPush, the fallback cancel
+                                          (A11)
+auth/CallbackLink.kt (51; java.net)       parses and validates the https callback link  SignInLink + CallbackController MISSING ON iOS
+auth/CallbackLinkReceipt.kt (15; NONE)    CallbackController.handle(uriString)          .handleLink are commonMain
+auth/KeystoreTokenStore.kt (117)          the token pair                                iosMain KeychainTokenStore      iOS HAS ITS OWN
+auth/SharedPrefsPendingSignInStore.kt     the pending address                           iosMain KeychainPendingSignIn-  iOS HAS ITS OWN
+                                                                                        Store
+account/SharedPrefsAccountStore.kt        the account tag                               iosMain KeychainAccountStore    iOS HAS ITS OWN
+  (the three Keychain stores, and their survival across a reinstall, are why iOS Ruling 2's first-launch clear exists;
+  R1202)
+
+C. STARTUP / RESOLVING / ONBOARDING
+startup/StartupDecider.kt (161; NONE, but calls org.json)
+                                          resolveStart / decideStartAfterSignIn /       onboardingPlanFor, MeView are   MISSING ON iOS
+                                          meFetchOf (R1161 invariant)                   commonMain; parse is MeWire's   (blocked by MeWire)
+settings/MeWire.kt (130; org.json)        the /api/v1/me codec: parseMeView,            none (commonMain Settings.kt    MISSING ON iOS (R894)
+                                          parseMeSettings, isMeAnswer,                  says mePatchBody/parseMe-
+                                          parseReminderEnabled, mePatchBody             Settings "are org.json")
+settings/DetectionMode.kt (78; SharedPrefs, org.json)
+                                          SharedPrefsDetectionModeStore,                InMemoryDetectionModeStore      MISSING (persistent
+                                          parseLoggingMode, detectionConsentBody        (commonMain) only               store, the parse)
+detection/LoggingModeRestore.kt (37; NONE)
+                                          phoneLoggingMode / applyServerLoggingMode     none                            MISSING; platform-
+                                          (R1162)                                                                       free; on iOS v1 it
+                                                                                                                        always yields MANUAL
+onboarding/ManualOnlyOnboarding.kt (27; NONE)
+                                          onboardingSeedFor(seed, detectionAvailable)   none                            MISSING; platform-
+                                          (R1124)                                                                       free (***)
+onboarding/OrgJsonOnboarding.kt (41)      OnboardingController factory with             OnboardingController commonMain MISSING ON iOS
+                                          patchBody = mePatchBody (org.json via MeWire)                                 (patchBody)
+parametres/OrgJsonParametres.kt (100; org.json)
+                                          ParametresWire impl + ParametresController    ParametresWire interface        MISSING ON iOS (R894)
+                                          factory                                       commonMain; no iOS impl
+detection/DetectionAvailability.kt (34; PackageManager)
+                                          does this build declare detection's           none                            NOT IN iOS v1 (the
+                                          permissions                                                                   host passes false)
+  (***) A5's MANUAL-ONLY FALLBACK IS THE iOS v1 SHAPE, read in MainActivity. It is onboardingSeedFor(seed,
+  detectionAvailable = false), which drops the MODE step and keeps MANUAL, plus ParametresTab(onToggleAuto = null),
+  which shows no detection entry point. Everything else is the same. On iOS, restoreLoggingMode collapses to
+  applyServerLoggingMode(serverMode, false, store, {}, {}), which saves MANUAL.
+
+D. STORES AND DATA
+data/local/MonReleveDatabaseBuilder.kt    MonReleveDatabase.get(context)                iosMain buildIosDatabase        iOS HAS ITS OWN
+data/local/SharedPrefsDossierCache.kt     the releve cache (R288/R559)                  iosMain FileDossierCache        iOS HAS ITS OWN
+settings/SharedPrefsSettingsStore.kt      the six settings                              iosMain UserDefaultsSettings-   iOS HAS ITS OWN
+                                                                                        Store
+data/remote/UrlConnectionTransport.kt     HttpTransport                                 iosMain NsUrlSessionTransport   iOS HAS ITS OWN
+data/repo/AndroidRecordSeams.kt (Log, java.time, UUID, BuildConfig)
+                                          LocalEntryRepository factory                  commonMain constructor +        iOS HAS ITS OWN pieces
+                                                                                        IosUnownedReporter +            (composition missing)
+                                                                                        newIosMutationId
+aujourdhui|calendar|forecast/JavaTime*.kt, data/local/JavaTimeCalendarDay.kt (java.time)
+                                          java.time adapters onto commonMain            the commonMain constructors     ALREADY SHARED
+                                          constructors and functions                    themselves
+settings/SharedPrefsEveningNotificationStore.kt
+                                          the evening opt-in (R323/R1147)               InMemoryEveningNotification-    MISSING (R894)
+                                                                                        Store only
+settings/SharedPrefsThresholdAlertStore.kt
+                                          the alert opt-in + crossing state             InMemoryThresholdAlertStore     MISSING (if the alert
+                                                                                        only                            is in v1: QUESTION)
+settings/EmployerFigure.kt (SharedPrefs)  EmployerFigureStore INTERFACE + SharedPrefs   none - the interface itself     MISSING (interface and
+                                          + InMemory (R342)                             is in :app; ComparisonScreen    store)
+                                                                                        is commonMain
+detection/SharedPrefsNearBorderNoticeStore.kt
+                                          the near-border "told once" flag              InMemoryNearBorderNoticeStore   NOT IN iOS v1
+account/DeviceLocalStore.kt (NONE)        the three erasure scopes                      iosMain byte twin (PARK-IF4)    iOS HAS ITS OWN
+account/DeviceLocalStores.kt (Context, java.io)
+                                          deviceLocalStore(context) + the seam wrap +   iosMain iosDeviceLocalStore     iOS HAS ITS OWN, minus
+                                          the year-download stop                        (no seam, no download stop)     the seam (FINDING 2)
+
+E. SYNC AND YEAR DOWNLOADS
+data/sync/SyncWorker.kt (WorkManager)     buildSyncEngine + the worker's follow-up      iosMain iosSyncDrain +          iOS HAS ITS OWN
+                                                                                        syncFollowUp
+data/sync/SyncScheduler.kt (WorkManager)  requestSync / cancel                          iosMain IosSyncTrigger          iOS HAS ITS OWN in-
+                                                                                        (afterWrite, requestDrain,      process; the scheduler
+                                                                                        cancel)                         is PARK-IF1
+data/sync/YearDownloads.kt (android SQLException, Log, androidx.room.withTransaction, java.time)
+                                          the process's year-download coordinator       EntriesDownload commonMain; no  MISSING ON iOS (R894)
+                                          (R481-R485), ShellYearDownload,               coordinator, no inTransaction
+                                          taxYearsToDownload                            for iOS
+
+F. UPDATE GATE (A4)
+update/PlayListing.kt (Intent, Toast, BuildConfig)
+                                          processUpdateGate (UpdateGate + Minimum-      UpdateGate, MinimumVersion-     QUESTION (Q3): route
+                                          VersionClient, commonMain) and the Play       Client commonMain; route is     and target are
+                                          listing                                       MINIMUM_VERSION_PATH =          Android's
+                                                                                        "/api/v1/android/minimum-
+                                                                                        version" (MinimumVersion.kt:31)
+
+G. PUSH (A8) - NOT IN iOS v1 (iOS Ruling 2: no push in v1; push needs the account, Firebase and an APNs key)
+push/PushRuntime.kt, PushRegistration.kt (org.json), PushConfig.kt (BuildConfig), PushReceipt.kt, MonRelevePushService.kt
+                                                                                                                        NOT IN iOS v1
+  Two calls from the shell still need an iOS stand-in:
+  - notificationsPermitted(context), used by ResolvingRoute's restoreReminder (R1147). On iOS it becomes the
+    UNUserNotificationCenter authorization status.
+  - syncPush. On iOS it is a no-op.
+  The fallback runtime also reads PushReceipt.showOncePerDay. On iOS, iOS Ruling 2 says "already notified" is read
+  from the delivered-notifications list.
+
+H. THE EVENING REMINDER (A7) AND NOTIFICATIONS
+reminder/FallbackReminder.kt (java.time)  19:00 device-local (FALLBACK_REMINDER_TIME),  iosMain IosNotificationPlan     MISSING ON iOS
+                                          nextFallbackAt, fallbackReminderDecision,     plans TODAY at ParisWallClock   (FINDING 1)
+                                          restoredEveningOptIn (pure)                   (day, 1020) = 17:00 Paris
+reminder/FallbackReminderRuntime.kt (WorkManager, BroadcastReceiver)
+                                          the wake, the re-plan on boot/time change     none                            MISSING ON iOS
+detection/EveningNotifier.kt (528; NotificationManager, PendingIntent, R)
+                                          posting, channels, cancel on record,          decisions twinned; posting is   MISSING ON iOS
+                                          maybeAlertThreshold, the tap extras           PARK-IF3 (comments only)        (posting, tap routing)
+detection/EveningNotificationDecision.kt, ThresholdAlertDecision.kt (NONE)
+                                          the decisions                                 iosMain byte twins              iOS HAS ITS OWN (twins)
+notification/EveningAction.kt, EveningActionReceiver.kt (Intent, BroadcastReceiver), EveningTap.kt (NONE)
+                                          the notification's record buttons             none                            QUESTION (Q4)
+fr/NotificationCopy.kt (104; NONE)        the notification copy                         none (in :app)                  MISSING; platform-free
+
+I. DETECTION - NOT IN iOS v1 (iOS Ruling 2: manual-only; no iOS detection code exists)
+detection/DetectionScheduling, SamplingWorker, LiveLocation, LocationPermission, BorderAssets, BorderPolygon (org.json),
+DetectionSampler, DetectionSession, ClassifiedFix, FixProvider, JavaTimeCheckWindows, SyntheticTracks  -  NOT IN iOS v1.
+  The shell touches them in four places. On iOS each becomes a constant or a no-op:
+  - restoreLoggingMode (locationFullyGranted -> false; start/stopSampling -> {})
+  - the ON_RESUME revocation check (never true without detection)
+  - the disclosure overlays (never shown when onToggleAuto = null)
+  - the threshold alert's maybeAlertThreshold (Q4)
+
+J. LINKS, LEGAL, DATE PICKERS
+parametres/Site.kt (25; NONE)             ORIGIN = "https://" + CallbackLink.HOST       none                            MISSING; platform-free
+                                                                                                                        once HOST leaves the
+                                                                                                                        java.net file
+parametres/LegalLink.kt (ActivityNotFoundException)
+                                          openLegalLink with R299's fallback            none (no openURL in iosMain)    MISSING ON iOS
+ui/screens/onboarding/OnboardingStartDatePicker.kt, ui/screens/parametres/ParametresStartDatePicker.kt
+                                          Material3 DatePickerDialog into the shared    none; libs.versions.toml: M3    MISSING ON iOS (R894
+                                          screens' startDatePicker slot                 1.7.3's calendar model is       "a native iOS date
+                                                                                        UNLINKED on iOS (fenced)        picker")
+
+PLATFORM FACILITIES THE SHELL USES, ON iOS (MEASURED from the CMP 1.7.3 sources in the Gradle cache, cmp-src/):
+  - LocalLifecycleOwner WORKS on iOS. ComposeHostingViewController.uikit.kt:415 provides it, and
+    ViewControllerBasedLifecycleOwner moves to RESUMED when the view has appeared and the app is foreground and active
+    (NSNotificationCenter listeners). MainShell's ON_RESUME refresh (F8) can stay common, and so can an ON_START update
+    check moved into the composition.
+  - BackHandler has NO public common API in 1.7.3. Across the 21 common source jars of org.jetbrains.compose.* 1.7.3 in
+    the cache, the only hit is material3's `internal` BackHandler.kt. The shell's two BackHandler calls stay
+    platform-side; on iOS the overlays close by their on-screen back buttons, which every overlay screen has.
+  - rememberSaveable: PlatformSerializable is an empty marker on iOS (R894). A ComposeUIViewController is not
+    recreated on rotation, so the R310 rebuild case does not arise. Process-death restore does not exist on iOS.
+
+================================================================================
+R1201 - THE SPLIT DECISION, AS OPTIONS WITH COSTS (the orchestrator rules; this report does not choose)
+================================================================================
+COMMON TO ALL THREE. Each touches android/shared (at least the framework declaration, R1203), so each costs:
+  - the R573 iOS run on the merge result;
+  - :app:gate, because :shared:testDebugUnitTest and IosAndroidTwinsTest are in its graph. IOS-2f changed 0 :app files
+    and still ran :app:gate and two iOS runs (REPORT-IOS-2f.txt STATUS).
+  None avoids those two. The options differ in :app edits, baselines, fences, and how much code exists twice.
+
+(a) MOVE THE SHELL'S PLATFORM-FREE PART TO commonMain, routes included, behind one platform seam
+  FILES (git mv, :app -> :shared commonMain):
+    - ShellState.kt's pure half
+    - MainGraph.kt, taking kotlin.time.Clock + TimeZone; the JavaTime* factories stay at Android's call site
+    - AppRoot, AppTab, ResolvingScreen
+    - AppBottomBar, with R.drawable -> Glyph (+3 entries: SUN, CALENDAR, SETTINGS)
+    - SessionEnds, SessionEndSeam's pure half
+    - LoggingModeRestore, ManualOnlyOnboarding, StartupDecider
+    - Site, with CallbackLink.HOST split from the java.net parser
+    - NotificationCopy, the EmployerFigureStore interface
+    - the routes (SignInRoute, CodeRoute, ResolvingRoute, OnboardingRoute, MainShell, ParametresTab) as common
+      composables taking ONE platform interface: show a message, open a URL, open mail, share a file, ask notification
+      permission, ask location permission (Android only), back. MainActivity keeps the stores, the session and that
+      interface's Android implementation.
+    - PARK-IF4's three twins move with it, and the twins set empties.
+  PREREQUISITE: a common /me codec. MeWire's org.json moves to kotlinx.serialization (already a commonMain dependency),
+    or behind an interface. That changes the Android wire code. ParametresWirePinTest, MeSettingsTest and the wire
+    fixtures are the pins.
+  TESTS THAT PIN IT: SessionReconciledTest, MainGraphWiringTest (166 lines), SessionEndSeamTest, LoggingModeRestoreTest,
+    ManualOnlyOnboardingTest, ResolveStartTest, StartupDeciderTest, AppSiteLinksTest, YearDownloadsTest. They are
+    git-mv'd to commonTest unedited (R457 authorises kotlin-test in :app's test scope for exactly this) and then run on
+    the JVM AND the simulator. ResolveFlowTest, ForcedSignOutTest, ErasureCensusTest and
+    StatePreservationInstrumentedTest (androidTest) stay as Android's integration pins.
+  FENCES TO EDIT:
+    - EdgeToEdgeCensusTest: WRAPPER_FILE is the hard-coded :app path ui/shell/AppRoot.kt, its roots pin MainActivity.kt,
+      and it reasons "Nothing outside :app enters commonMain".
+    - SessionEndSeamFenceTest: its root pins MainActivity.kt.
+    - FencesTest: the no-literal/@Suppress rules for ui/. The routes carry @Suppress(LongMethod, ...), which the
+      comments say is permitted only in the composition root.
+    - The ExperimentalTime allowlist: MainGraph adopts kotlin.time.Clock.
+  BASELINES: AppRootScreenshotTest_appRootPadsTheInsetsOnce and AppBottomBarScreenshotTest_appBottomBarCalendrierActive
+    are at risk. The bar's icon source changes, though Glyph.android.kt resolves the same drawable id, so equal pixels
+    is ARGUED, to be proven at zero tolerance (R345). No screen baseline should move; every screen is already common.
+  RISK: the largest Android diff of the three, landing after A5/A6 on the release candidate. One shell, so drift is
+    impossible by construction (R206). It is the only option where the AN10 class of bug (wiring no test reaches, R291)
+    is closed on BOTH platforms by the same tests.
+
+(b) A SECOND COMPOSITION IN iosMain, :app untouched
+  FILES (iosMain, new):
+    - an iOS root: a ComposeUIViewController factory and the destination state;
+    - iOS routes re-implementing SignIn/Code/Resolving/Onboarding/MainShell;
+    - an iOS process-session holder;
+    - an iOS MainGraph (the commonMain constructors directly);
+    - the iOS /me codec;
+    - the iOS stores R1200 marks MISSING;
+    - the local reminder, the share presenter, openURL, the first-launch clear;
+    - an iOS session-end seam.
+  WHAT KEEPS THEM IN STEP, and its limit:
+    - IosAndroidTwinsTest holds an iosMain file byte-identical to the :app file at the same relative path, and asserts
+      the EXACT set (three today). Only whole files that already compile on iOS can be twins: AppRoot.kt, AppTab.kt,
+      ResolvingScreen.kt, SessionEnds.kt, LoggingModeRestore.kt, ManualOnlyOnboarding.kt, EveningTap.kt,
+      NotificationCopy.kt.
+    - StartupDecider.kt could also be a twin IF iosMain declared MeWire's five functions under the same names in
+      another file.
+    - The twins set would grow from 3 to about 9-10, each one argued (R206's corollary).
+    - NOTHING mechanical holds the rest in step: ShellState (Android imports), MainGraph (java.time), SessionEndSeam
+      (Context), and above all the ~1 000 lines of routes and MainShell, rewritten. That is the AN10/R291 class twice
+      over: two wirings, each tested only where it lives.
+  TESTS THAT PIN IT: the twins guard for the copies; new iosTest for the iOS routes (runComposeUiTest runs on iOS,
+    IOS-1b-A R606); nothing shared across the two wirings.
+  COST: :app:gate (twins guard) + R573; no :app edit, no fence edit, no baseline at risk.
+  RISK: lowest Android risk now, highest drift risk later. Every later Android shell change (a new tab, a seam, an
+    R-number fix) has to be re-made by hand in iOS with no failing test to say so. PARK-IF4's "three copies" becomes
+    about ten.
+
+(c) A MIX - move the pure core, keep each platform's route layer
+  TO commonMain (each a small, already-pinned move):
+    - ShellState's pure destination functions
+    - MainGraph (kotlin.time signature)
+    - AppRoot, AppTab, ResolvingScreen, AppBottomBar via Glyph
+    - SessionEnds, SessionEndSeam's pure half (SessionEndPath / SessionEndSeam / deviceSessionEndSeam /
+      SessionEndingStore)
+    - LoggingModeRestore, ManualOnlyOnboarding
+    - the /me codec + StartupDecider
+    - Site (+HOST), NotificationCopy, the EmployerFigureStore interface
+    - FallbackReminder.kt's pure decision in kotlinx-datetime (it answers FINDING 1)
+    - PARK-IF4's three twins
+  STAYS PER PLATFORM: the routes and MainShell (Android in MainActivity; iOS in a new iosMain root), the stores, the
+    session holder, the permission/share/toast/openURL/back calls.
+  WHAT KEEPS THEM IN STEP: MainGraphWiringTest and SessionReconciledTest in commonTest run against the ONE graph and the
+    ONE destination logic on both platforms; EdgeToEdgeCensusTest extended with an iosMain root so the iOS root also
+    hosts every screen in AppRoot. Drift remains possible only in the route layer, which is mostly calls into common
+    code plus the platform facilities.
+  COSTS: :app:gate + R573; the fence edits of (a) except the @Suppress/ui question (routes stay in the root); the same
+    two baselines at risk; the /me codec change of (a).
+  RISK: medium. It splits (a)'s Android diff in half and leaves the route layer duplicated (~1 000 lines on Android, a
+    leaner iOS equivalent with no detection or push branches).
+
+EVIDENCE-BASED OBSERVATIONS (not a choice):
+  - Seven of the shell files have platform-free imports today: AppRoot, AppTab, ResolvingScreen, SessionEnds,
+    LoggingModeRestore, ManualOnlyOnboarding, NotificationCopy. Two more are one change from it: MainGraph (java.time)
+    and AppBottomBar (R).
+  - The /me codec (org.json) is on the path of all three options. Without a common codec, even (b) re-implements it.
+  - The one hard blocker of a shared route layer is that CMP 1.7.3 has no common BackHandler. Lifecycle is available.
+
+================================================================================
+R1202 - THE iOS-ONLY GAPS THE HOST ITSELF MUST FILL (Swift or iosMain)
+================================================================================
+G1 THE WINDOW SCENE. A SwiftUI App (or UIKit scene delegate) hosting a ComposeUIViewController through
+   UIViewControllerRepresentable, with .ignoresSafeArea() so AppRoot owns the insets as on Android (R1170).
+   - Info.plist keys: CADisableMinimumFrameDurationOnPhone = true (R1203), UIApplicationSceneManifest, UILaunchScreen.
+   - Also: the API base URL (Android: BuildConfig.API_BASE_URL) and the version line (CFBundleShortVersionString /
+     CFBundleVersion for ParametresCopy.version, R894).
+   - Needs no account (iOS Ruling 2).
+G2 THE SIGN-IN LINK.
+   - Android's CallbackActivity is a verified https App Link (assetlinks.json).
+   - The iOS equivalent is a universal link. It needs an apple-app-site-association file naming "<TeamID>.<bundle id>"
+     and the com.apple.developer.associated-domains entitlement. Apple's capability table lists Associated Domains for
+     the paid programmes only, not the free tier, and ?mode=developer needs a development profile.
+   - So a universal link is NOT available to an ad-hoc simulator build. That it is actually refused there is ARGUED
+     from those two facts, not tested.
+   - WHAT THE SIMULATOR CAN DO INSTEAD:
+     (i) sign in by the six-digit CODE. CodeController and CodeScreen are commonMain, and the code path is a full
+         second way in (AN-ONBOARD). It needs no link and no entitlement.
+     (ii) a custom URL scheme (CFBundleURLTypes, no entitlement) delivered by `xcrun simctl openurl <udid> <url>`.
+         That is a TEST hook only, because the server's e-mail carries the https link and no mail client on the
+         runner would open it.
+   - The host's v1 sign-in on the simulator is (i). Whether iOS v1 ships the universal link at all is the account's
+     (Q2).
+G3 THE FIRST-LAUNCH KEYCHAIN CLEAR (iOS Ruling 2).
+   - A UserDefaults marker; a reinstall wipes it. When it is absent: clear KeychainTokenStore, KeychainPendingSignInStore
+     and KeychainAccountStore, then set the marker.
+   - It must run BEFORE the session is built or startDestination reads isSignedIn().
+   - The pieces exist (each store has clear()); the ordering is the host's.
+G4 THE LOCAL EVENING REMINDER (iOS Ruling 2).
+   - UNUserNotificationCenter: authorization at the toggle and at onboarding's "Oui" (R323 / R1145).
+   - One UNCalendarNotificationTrigger request per next working day at 19:00 device-local, at most 7 days ahead.
+   - Re-planned on every foreground and on every day recorded on the phone; recording today removes today's request.
+   - "Already notified" is read from getDeliveredNotifications. The copy is NotificationCopy, today in :app.
+   - Gaps against it:
+     - FINDING 1: IosNotificationPlan plans today only, at 17:00 Paris. FallbackReminder.kt's pure decision is the one
+       that matches, but it is java.time.
+     - FINDING 2: there is no iOS session-end seam to remove pending requests at sign-out, deletion or a server-ended
+       session. Android's A11 seam calls FallbackReminderScheduling.cancel for exactly this.
+     - The tap must route to Aujourd'hui, the EXTRA_OPEN_AUJOURDHUI equivalent, through a
+       UNUserNotificationCenterDelegate.
+   - Simulator: local notifications need no entitlement (aps-environment is push only). Delivery on the simulator for
+     an ad-hoc app is not stated by Apple. It is I1's probe, as iOS Ruling 2 already says.
+G5 THE SHARE SHEET (PARK-IF2). A UIActivityViewController presented from the scene's root view controller with the file
+   URL IosExportFiles.write returns. The two export failures need a non-Toast presentation; the same need covers the
+   other Toast sites (R1200 A).
+G6 FOREGROUND SYNC.
+   - IosSyncTrigger.afterWrite / requestDrain exist (in-process).
+   - The host calls requestDrain on every foreground. That is available in common code via LocalLifecycleOwner
+     (MEASURED, R1200), or from Swift via scenePhase.
+   - BGTaskScheduler is NOT available on the simulator: Apple, BGTaskScheduler.Error.Code.unavailable is raised when
+     "The app runs on Simulator which doesn't support background processing", and the _simulateLaunch debug commands
+     "work only on devices".
+   - PARK-IF1's proof therefore stays device-only, as iOS Ruling 2 foresaw.
+G7 ALSO HOST-SIDE, found by the census:
+   - legal links: UIApplication.open or SFSafariViewController, with R299's no-handler fallback;
+   - "Ouvrir ma messagerie": no general iOS "open the mail app" intent exists. The equivalent and its fallback are a
+     copy/behaviour question (Q5);
+   - a native date picker in the two startDatePicker slots: M3's is unlinked on iOS;
+   - the Keychain entitlement (R1203 item 5).
+
+================================================================================
+R1203 - THE BUILD SHAPE (read-only research; all pages read 2026-11-21)
+================================================================================
+1. THE FRAMEWORK DECLARATION (android/shared/build.gradle.kts). The file today has no `binaries.framework` (read above).
+   What it would add:
+       listOf(iosArm64(), iosSimulatorArm64()).forEach { it.binaries.framework { baseName = "Shared"; isStatic = true } }
+   - The default is DYNAMIC: KGP 2.2.21 NativeBinaries.kt, `var isStatic = false`.
+   - JetBrains' templates use isStatic = true (KMP-App-Template; compose-multiplatform-ios-android-template). No
+     official page states that CMP REQUIRES static; that is UNCONFIRMED.
+   - KGP source on static vs dynamic: for a static framework, embedAndSign's copy/codesign into the app's Frameworks
+     folder is skipped (AppleXcodeTasks.kt:154, `onlyIf { ... !isStatic.get() }`), and the framework links into the
+     app binary.
+   - baseName: any. The Swift import name follows it.
+   Sources:
+     https://kotlinlang.org/docs/multiplatform/multiplatform-build-native-binaries.html (page dated 13 May 2026)
+     https://kotlinlang.org/docs/multiplatform/multiplatform-direct-integration.html (01 Oct 2026)
+     github.com/JetBrains/kotlin @ v2.2.21 (copies in research/)
+     github.com/Kotlin/KMP-App-Template shared/build.gradle.kts
+2. DOES IT TOUCH THE ANDROID BUILD? Not the gate's task graph. MEASURED in this repository, then ARGUED from KGP source:
+   - Repository: :app:gate depends on assembleDebug, testDebugUnitTest, ktlint, detekt, verifyPaparazziDebug, lint,
+     release checks and compileDebugAndroidTestKotlin. fastCheck depends on :shared:compileCommonMainKotlinMetadata,
+     :shared:testDebugUnitTest, ktlint/detekt and :app:compileDebugKotlin (app/build.gradle.kts:1434, :1680). Neither
+     names :shared:assemble, `build` or any link task.
+   - KGP 2.2.21 source:
+     - every native link task gets `task.enabled = enabledOnCurrentHostForBinariesCompilation`
+       (KotilnNativeConfigureBinariesSideEffect.kt:121-122), so on Windows the Apple link tasks are registered but
+       DISABLED;
+     - registerAssembleAppleFrameworkTask returns null when the target is not enabled on the host
+       (AppleXcodeTasks.kt:52), so the Xcode tasks are NOT registered there.
+     - Docs (native-target-support): "Building final binaries for Apple targets on Linux and Windows is also not
+       possible."
+     - gradle.properties' enableKlibsCrossCompilation=false concerns klibs, not final binaries.
+   - It is still a change under android/shared, so it is :shared's change for R573 and runs under :app:gate
+     regardless (R1201).
+3. THE iOS ENTRY POINT AND Info.plist.
+   - Kotlin: fun MainViewController(): UIViewController = ComposeUIViewController { ... }.
+   - Swift: UIViewControllerRepresentable.
+   - MEASURED in the cached CMP 1.7.3 ui sources: PlistSanityCheck.uikit.kt:39-45 reads
+     CADisableMinimumFrameDurationOnPhone and raises "Error: `Info.plist` doesn't have a valid
+     `CADisableMinimumFrameDurationOnPhone` entry", unless ComposeUIViewControllerConfiguration
+     .enforceStrictPlistSanityCheck (default true, :64) is turned off. The host's Info.plist sets the key true.
+   Source: https://kotlinlang.org/docs/multiplatform/compose-swiftui-integration.html (10 Nov 2026)
+4. COMPOSE RESOURCES REACH THE .app ONLY THROUGH THE XCODE INTEGRATION.
+   - CMP 1.7.3's Gradle plugin registers sync<Classifier>ComposeResourcesForIos as a dependency of
+     embedAndSign<Classifier>AppleFrameworkForXcode (IosResources.kt:60). It writes
+     $BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/compose-resources (:22, :128).
+   - It fails outside Xcode with "Could not infer iOS target ... Make sure to build via XCode" (IosResourcesTasks.kt:27)
+     unless compose.ios.resources.platform / .archs are given.
+   - At runtime ResourceReader.ios.kt reads NSBundle.mainBundle.resourcePath + "/compose-resources/".
+   - Consequence for this app: Glyph.ios.kt draws EVERY icon from Compose resources. A host that links the framework
+     without embedAndSign (or the sync task) builds and starts, then throws MissingResourceException at the first icon.
+     That is the first thing I1's screenshot would show.
+   - The CMP resources docs (02 Sep / 10 Oct 2026) say nothing about iOS packaging; the plugin source is the authority.
+   Sources: github.com/JetBrains/compose-multiplatform @ v1.7.3 gradle-plugins/compose/.../resources/IosResources.kt,
+   IosResourcesTasks.kt; components/resources/library/src/iosMain/.../ResourceReader.ios.kt (copies in research/).
+5. AD-HOC SIGNING, NO ACCOUNT, AND THE KEYCHAIN.
+   - Build: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,...' with CODE_SIGN_IDENTITY="-",
+     DEVELOPMENT_TEAM="" and CODE_SIGN_STYLE=Manual (suggested; Automatic with no team may ask for a team, UNCONFIRMED).
+   - Simulator entitlements are SIMULATED: Apple DTS, forum thread 733449: "Entitlements on the simulator are weird ...
+     we simulate the entitlements". They are embedded in the binary's __TEXT,__entitlements section. Without them the
+     Keychain returns -34018, the same code IOS-1a R565 met for the test binary.
+   - CODE_SIGNING_ALLOWED=NO is reported to strip them: Bitrise thread 17257, "Client has neither
+     application-identifier nor keychain-access-groups entitlements" (not Apple-confirmed).
+   - SO: keep signing ALLOWED with identity "-" plus CODE_SIGN_ENTITLEMENTS (application-identifier +
+     keychain-access-groups, as android/shared/ios-test.entitlements does for the test binary). I1 proves it with
+     `otool -s __TEXT __entitlements -V` and a Keychain round-trip (iOS Ruling 2's probe).
+   - Gradle side: KGP's embedAndSign reads SDK_NAME, ARCHS, CONFIGURATION, BUILT_PRODUCTS_DIR, TARGET_BUILD_DIR,
+     FRAMEWORKS_FOLDER_PATH and EXPANDED_CODE_SIGN_IDENTITY from Xcode (XcodeEnvironment.kt). Both KGP and CMP refuse
+     when ENABLE_USER_SCRIPT_SANDBOXING=YES, so the project sets it NO.
+   Sources:
+     https://developer.apple.com/forums/thread/733449 (Jul 2023)
+     https://discuss.bitrise.io/t/simulator-builds-cannot-access-keychain/17257 (2021)
+     https://developer.apple.com/documentation/xcode/build-settings-reference
+     https://developer.apple.com/help/account/reference/supported-capabilities-ios/
+6. GENERATING THE PROJECT INSTEAD OF COMMITTING ONE.
+   - XcodeGen (project.yml; release 2.48.0 of 2026-11-19, `brew install xcodegen`):
+     - `type: application`, `platform: iOS`;
+     - `preBuildScripts` running `./gradlew :shared:embedAndSignAppleFrameworkForXcode` with
+       basedOnDependencyAnalysis: false;
+     - `info:` generates Info.plist; `entitlements:` generates the file and sets CODE_SIGN_ENTITLEMENTS;
+     - `settings:` for CODE_SIGN_IDENTITY, DEVELOPMENT_TEAM, ENABLE_USER_SCRIPT_SANDBOXING, FRAMEWORK_SEARCH_PATHS;
+     - a `bundle.ui-testing` target for I2's XCUITest.
+     The output is a normal .xcodeproj, which is exactly what the KMP direct-integration recipe assumes. Source:
+     github.com/yonaskolb/XcodeGen Docs/ProjectSpec.md, README.md.
+   - Tuist (Project.swift; mise or Homebrew): more capable, heavier toolchain. Its install page does not say whether
+     `tuist generate` needs an account (UNCONFIRMED). Source: https://tuist.dev/en/docs/guides/quick-start/install-tuist
+   - SwiftPM + xcodebuild alone: NOT viable. PackageDescription's public products are library / executable / plugin;
+     Product.iOSApplication exists only behind ENABLE_APPLE_PRODUCT_TYPES / @_spi (the App Playgrounds path). Source:
+     github.com/swiftlang/swift-package-manager Sources/Runtimes/PackageDescription/Product.swift,
+     Sources/AppleProductTypes/Product.swift.
+7. WHAT THE macos-15 RUNNER HAS.
+   - github.com/actions/runner-images images/macos/macos-15-arm64-Readme.md (Image Version 20261118.0550.1, macOS 15.8.2):
+     - Homebrew 7.0.14;
+     - Xcode 26.0.1 (17A400) at /Applications/Xcode_26.0.1.app, which ios-shared.yml already selects through
+       DEVELOPER_DIR. The default is 16.4;
+     - SDK "Simulator - iOS 26.0 | iphonesimulator26.0 | 26.0.1";
+     - simulators for iOS 18.5, 18.6, 26.0 (iPhone 16 ... iPhone 17 Pro), 26.1 and 26.2.
+   - xcodegen, tuist and mint: NOT listed, so I1 installs xcodegen with brew in the job.
+   - The README's label table maps `macos-15` to the arm64 image.
+8. XCUITest AND ARTIFACTS (for I2).
+   - `xcodebuild test` writes an .xcresult. XCTAttachment.lifetime must be .keepAlways for passing tests' screenshots
+     to persist.
+   - `xcrun xcresulttool export attachments` extracts them (flags seen only in a man-page mirror and forum 769177).
+   - `xcrun simctl io <udid> screenshot | recordVideo` work outside XCTest.
+   - That a UI-test runner works ad-hoc-signed with no team is not stated by Apple (UNCONFIRMED); I2 proves it.
+   - Forum 806687 reports random Apple ID prompts on iOS 26.1 simulators during XCUITest; the 26.0.1 runtime is not
+     reported.
+   Sources:
+     https://developer.apple.com/documentation/xcode/running-tests-and-interpreting-results
+     https://developer.apple.com/documentation/xctest/xctattachment/lifetime-swift.property
+     https://developer.apple.com/forums/thread/769177
+     https://developer.apple.com/forums/thread/806687
+9. Sources for R1202 G2/G4/G6:
+     https://developer.apple.com/documentation/xcode/supporting-associated-domains
+     https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.associated-domains
+     https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app
+     https://developer.apple.com/forums/thread/812475 (simctl openurl)
+     https://developer.apple.com/forums/thread/66734 (local notifications, no entitlement; device)
+     https://developer.apple.com/documentation/backgroundtasks/bgtaskscheduler/error/code/unavailable
+     https://developer.apple.com/documentation/backgroundtasks/starting-and-terminating-tasks-during-development
+UNCONFIRMED (stated as such above):
+  1. Why the templates choose static.
+  2. Tuist with no account.
+  3. CODE_SIGNING_ALLOWED=NO stripping entitlements (Bitrise, Buck reports only).
+  4. Automatic signing with an empty team.
+  5. Universal-link refusal on an ad-hoc simulator build.
+  6. UI-test runner ad-hoc.
+  7. The xcresulttool flags on an Apple page.
+  8. Local-notification delivery on the simulator.
+  9. XcodeGen's default for ENABLE_USER_SCRIPT_SANDBOXING: set it explicitly.
+The research was done by a sub-agent that read the pages. Two of its load-bearing claims were re-read here from the
+saved primary sources: the resource sync's dependency on embedAndSign, and the link task's enabledOnCurrentHost.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+N1 FINDING 1, restated for its owner. IosNotificationPlan.kt (IOS-2f R892) plans the evening reminder at
+   ParisWallClock(today, DAY_CONCLUSION_MINUTE) = 17:00 Paris, today only. CHECK_WINDOWS.last() is 16:30 +/- 30, so its
+   end is 17:00.
+   - That WHEN comes from detection's day conclusion. It predates Android Rulings 3 and 7 (19:00 fallback) and iOS
+     Ruling 2 (19:00 device-local, working days, at most 7 ahead).
+   - For a manual-only iOS v1 its planEveningReminder is not the reminder iOS Ruling 2 describes.
+   - A second site (R267): the same file's planThresholdAlert merges with "the reminder as it stands now", so it
+     inherits the same time.
+N2 FINDING 2: iosDeviceLocalStore (IosLocalStores.kt) returns DeviceLocalStore with no SessionEndSeam. Android wraps
+   it in SessionEndingStore(store, processSessionEndSeam(app)) (DeviceLocalStores.kt). Today iOS schedules nothing, so
+   nothing is wrong yet. It becomes wrong the moment G4 schedules ahead.
+N3 SignInRoute/CodeRoute take the concrete SharedPrefsPendingSignInStore, not the commonMain PendingSignInStore
+   interface (MainActivity.kt). This is harmless on Android, and it is a widening any move must make.
+N4 EmployerFigureStore's INTERFACE lives in :app (settings/EmployerFigure.kt) while its consumer, the comparison, is
+   commonMain. It is the one store contract iOS cannot implement without an :app change.
+N5 The Glyph enum lacks SUN, CALENDAR and SETTINGS, the bottom bar's three icons. The drawables already reach iOS's
+   Compose resources through generateGlyphResources.
+N6 CLAUDE.md R248 says the repository is private; Android Ruling 17 already records it public. Not edited (the
+   operator's).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 R1201: which split - (a), (b) or (c)? The census's observations are under R1201. The /me codec move is common to
+   all three unless (b) re-implements it in iosMain.
+Q2 The sign-in link on iOS. Simulator v1 signs in by the six-digit CODE (R1202 G2). Does iOS v1 (the release) wait for
+   the account's universal link? Or does it ship code-only, with the e-mail's https link opening the website on an
+   iPhone?
+Q3 The update gate (A4) on iOS. Its route is /api/v1/android/minimum-version and its target is the Play listing.
+   Options: out of iOS v1; an iOS route + the App Store listing (needs the account and a server change); or
+   reuse with an iOS setting. Not decided here.
+Q4 Two notification features iOS Ruling 2 does not settle for a manual-only v1:
+   - the THRESHOLD ALERT (AN-ALERT). Its Parametres toggle and Prevision offer are in the shared screens; it needs no
+     detection; on Android it posts from the app and from SamplingWorker;
+   - the notification's RECORD BUTTONS (EveningActionReceiver; PARK-IF3 lists them).
+   In iOS v1, or hidden (as onToggleAuto = null hides detection)?
+Q5 "Ouvrir ma messagerie" (CodeScreen). iOS has no general "open the mail app" intent. Is the iOS answer the button
+   hidden, a mailto: compose, or the message:// scheme with the R299 fallback? This is copy and behaviour, the
+   operator's.
+Q6 FINDING 1: does the iOS reminder take :app's FallbackReminder decision (moved to common, kotlinx-datetime) and
+   retire IosNotificationPlan's evening half, or does IosNotificationPlan change its WHEN? Either touches :shared.
+
+================================================================================
+PUSH PROOF
+================================================================================
+PENDING at the time of writing. The hand-back states the push, `git ls-remote origin refs/heads/i0-host-census`, and
+`gh run list --workflow ios-shared.yml --branch i0-host-census` (expected: no run, since the branch name does not
+match 'ios-*'). Not pushed, not touched: main, production. No merge.
+
+================================================================================
+CLEANUP - PENDING at the time of writing
+================================================================================
+The lock C:/wt/ios-host-census/.session-lock.json is removed LAST. The worktree stays (R392). Evidence stays in
+C:/wt/queue-evidence/ios-host-census/. No Gradle daemon, emulator, server, container or database was started.
+
+END OF REPORT-IOS-HOST-CENSUS
