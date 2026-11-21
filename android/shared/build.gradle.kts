@@ -250,13 +250,14 @@ tasks.withType<Test>().configureEach {
     inputs.dir(layout.projectDirectory.dir("src/commonMain/kotlin"))
         .withPropertyName("commonMainSourceForFence")
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    // IOS-2f R889/R892: IosAndroidTwinsTest compares iosMain's copies of :app files with the files themselves, byte for
-    // byte, so an edit on EITHER side must re-run it - the same R283 discipline, for both trees it reads.
+    // IOS-2f R889/R892, IOS-MOVE-TWINS R1242: MovedTwinsFenceTest (which replaced IosAndroidTwinsTest when the three
+    // twins moved to commonMain) reads iosMain and every :app source set for a copy that came back, so an edit in
+    // either tree must re-run it - the same R283 discipline, for both trees it reads.
     inputs.dir(layout.projectDirectory.dir("src/iosMain/kotlin"))
         .withPropertyName("iosMainSourceForTwins")
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.dir(rootProject.layout.projectDirectory.dir("app/src/main/kotlin"))
-        .withPropertyName("appMainSourceForTwins")
+    inputs.dir(rootProject.layout.projectDirectory.dir("app/src"))
+        .withPropertyName("appSourceForTwins")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     // AN-SHARED-FIXES R1092 (R283): FilenameOfServerNamesTest derives every export filename the server sends from
     // web/'s own source - each content-disposition template under web/app and web/lib, and the csvFilename names

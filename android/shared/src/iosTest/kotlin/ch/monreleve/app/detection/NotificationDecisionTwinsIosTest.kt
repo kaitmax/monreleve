@@ -8,12 +8,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-// IOS-2f R892. ANDROID'S OWN CASES, RUN ON THE SIMULATOR AGAINST THE iOS COPIES of :app's
-// detection/EveningNotificationDecision.kt and ThresholdAlertDecision.kt (byte-identical; IosAndroidTwinsTest holds
-// them equal on the JVM). Every case of :app's EveningNotificationDecisionTest and ThresholdAlertDecisionTest,
-// transcribed from Kotest / JUnit into kotlin.test - the values and the expectations unchanged, one test per Android
-// test - so the same code is shown to decide the same way when compiled for iOS. A transcription, not a home: the
-// code's one home is the :app file (the copy is the debt, PARKED for the move to commonMain).
+// IOS-2f R892. ANDROID'S OWN CASES, RUN ON THE SIMULATOR AGAINST detection/EveningNotificationDecision.kt and
+// ThresholdAlertDecision.kt - written against iOS copies of :app's files, which IOS-MOVE-TWINS R1240 replaced with ONE
+// home in :shared commonMain (PARK-IF4). Every case of :app's EveningNotificationDecisionTest and
+// ThresholdAlertDecisionTest, transcribed from Kotest / JUnit into kotlin.test - the values and the expectations
+// unchanged, one test per Android test - so the same code is shown to decide the same way when compiled for iOS. A
+// transcription, not a home: the code's one home is commonMain, and :app's tests stay its JVM pins.
 
 private val r892ProposedCh = DetectionOutcome.Proposed(Proposal(Tier.HIGH, EntryKind.CH, Portion.FULL))
 private val r892ProposedHome = DetectionOutcome.Proposed(Proposal(Tier.HIGH, EntryKind.HOME, Portion.FULL))

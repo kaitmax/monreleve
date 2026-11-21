@@ -15,8 +15,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 
 // IOS-2f R892. WHAT iOS SCHEDULES, AND WHEN - the evening reminder and the threshold alert, decided by ANDROID'S OWN
-// FUNCTIONS. eveningDecision, isWorkingDay, decideThresholdAlert and composeDaily are the byte-identical iosMain copies
-// of :app's detection/EveningNotificationDecision.kt and ThresholdAlertDecision.kt (held equal by IosAndroidTwinsTest),
+// FUNCTIONS. eveningDecision, isWorkingDay, decideThresholdAlert and composeDaily live ONCE, in :shared commonMain's
+// detection/EveningNotificationDecision.kt and ThresholdAlertDecision.kt (IOS-MOVE-TWINS R1240, closing PARK-IF4),
 // so WHAT is said is decided by the same lines of code on both platforms. This file adds only the WHEN, because the two
 // platforms deliver differently:
 //

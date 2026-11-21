@@ -16,10 +16,9 @@ import ch.monreleve.app.settings.SettingsStore
 
 // IOS-2f R889. THE iOS COMPOSITION OF THE DEVICE'S LocalStore - Android's deviceLocalStore(context), with iOS's stores.
 //
-// THE CLASS IS ANDROID'S OWN. account/DeviceLocalStore.kt in iosMain is a BYTE-IDENTICAL copy of :app's file at the
-// same package and name (0 files under android/app may change, so it cannot move to commonMain here). The JVM guard
-// IosAndroidTwinsTest (androidUnitTest) fails the moment the two differ, and a later move of :app's file to
-// commonMain fails iOS compilation with a redeclaration until this copy is deleted (PARKED, R893). So the three
+// THE CLASS IS ANDROID'S OWN. account/DeviceLocalStore.kt lives ONCE, in :shared commonMain at the same package
+// (IOS-MOVE-TWINS R1240, closing PARK-IF4 - until then this was a byte-identical iosMain copy of :app's file).
+// MovedTwinsFenceTest (androidUnitTest) fails if a copy reappears in :app or iosMain. So the three
 // scopes - sign-out (R295/R297/R303), deletion (R289) and the server-ended session (R521/R527) - clear on iOS exactly
 // the stores they clear on Android, by the same lines of code; only the seams below are iOS's.
 //
