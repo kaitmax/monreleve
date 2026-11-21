@@ -34,10 +34,11 @@ import kotlinx.coroutines.launch
 // field the static mockup omits, because the engine requires one for the real-days method.
 //
 // IOS-2b R778: moved to :shared commonMain (package unchanged), pinned first by OnboardingControllerPinTest. What
-// needed the platform went behind a seam: the PATCH /me body is made by `patchBody`, handed in - org.json's
-// Settings.mePatchBody stays in :app (MeWire.kt, PARK-D3), supplied by :app's factory of the same name
-// (OrgJsonOnboarding.kt), so every Android call site is unedited; iOS hands in its own (IOS-1b-B). The restore seed's
-// supertype is PlatformSerializable: java.io.Serializable on Android, the same serialVersionUID, the same Bundle bytes.
+// needed the platform went behind a seam: the PATCH /me body is made by `patchBody`, handed in - :app's factory
+// of the same name (OrgJsonOnboarding.kt) supplies Settings.mePatchBody, so every Android call site is unedited.
+// IOS-MOVE-ME (R1270): that encoder is common now (settings/MeWire.kt), so an iOS host can hand in the same one.
+// The restore seed's supertype is PlatformSerializable: java.io.Serializable on Android, the same
+// serialVersionUID, the same Bundle bytes.
 
 enum class ModeChoice { MANUAL, AUTO_DETECT }
 
@@ -156,7 +157,7 @@ class OnboardingController(
     private val scope: CoroutineScope,
     restored: OnboardingSnapshot? = null,
     // IOS-2b R778: the PATCH /me body is made by a function handed in, so the controller holds no codec. No default:
-    // a call that does not name one is :app's factory, which hands in org.json's mePatchBody.
+    // a call that does not name one is :app's factory, which hands in mePatchBody (common since IOS-MOVE-ME).
     // AN-MANUAL-REMINDER (R1145): with the evening opt-in to carry as reminderEnabled - null (omitted) unless the
     // flow ASKED it (the RAPPEL step), so a partial onboarding never overwrites the server's value.
     private val patchBody: (Settings, Boolean?) -> String,

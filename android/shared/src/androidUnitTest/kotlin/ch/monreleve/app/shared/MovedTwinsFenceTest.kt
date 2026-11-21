@@ -7,22 +7,28 @@ import java.io.File
 
 /**
  * IOS-MOVE-TWINS R1242 (PARK-IF4 closed). THE THREE TWINS HAVE ONE HOME, IN commonMain, AND NO COPY COMES BACK.
+ * IOS-MOVE-ME R1273 added the /me codec (settings/MeWire.kt), moved from :app the same way; iOS Ruling 7 Q3: every
+ * later (c) move adds its files to [moved].
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
  * held equal by IosAndroidTwinsTest. They moved ONCE to commonMain under the same packages and both copies went. This
  * fence replaces IosAndroidTwinsTest, because the danger has changed shape: the copies no longer need to be EQUAL, they
- * must not EXIST - and the two places a copy could come back are the two the Windows gate's compiler does not catch:
+ * must not EXIST, in either of the two places a copy could come back:
  *
- *   - :app (any source set). :app is another module, so a class at the same package and name there is not a
- *     redeclaration error: it SHADOWS the commonMain one for :app's code and tests, which then exercise the copy.
+ *   - :app (any source set). :app is another module, so a declaration at the same package and name there is a
+ *     SECOND HOME for it, compiled against :shared's. What the compiler then does with it is not what this fence
+ *     relies on: it finds the copy by name and refuses it, whatever the compiler would have made of it. (M1 wrote
+ *     "it SHADOWS the commonMain one", which was argued, never measured - iOS Ruling 7; REPORT-IOS-MOVE-ME records
+ *     what one planted :app copy actually did to the :app compilation.)
  *   - iosMain. There a copy IS a redeclaration error - but only in the iOS compilation, which runs on macOS (R573),
  *     never in :app:gate (kotlin.native.enableKlibsCrossCompilation=false).
  *
- * DISCOVERY IS BY NAME, NOT BY A TYPED PATH LIST (R246). The names guarded are DERIVED from the three commonMain files'
- * own top-level declarations (so a declaration added to one of them is guarded the day it is written), and every
- * Kotlin file under both roots is read - a copy cannot escape by sitting at another path or under another file name.
- * A file of one of the three NAMES anywhere under either root also fails, whatever it declares.
+ * DISCOVERY IS BY NAME, NOT BY A TYPED PATH LIST (R246). The names guarded are DERIVED from the moved commonMain files'
+ * own top-level declarations (so a declaration added to one of them is guarded the day it is written; an extension is
+ * guarded by its own name, not its receiver's), and every Kotlin file under both roots is read - a copy cannot escape
+ * by sitting at another path or under another file name. A file of one of the moved NAMES anywhere under either root
+ * also fails, whatever it declares.
  *
  * And the general form of IosAndroidTwinsTest is kept, asserted EMPTY: no iosMain file shares its path relative to the
  * kotlin root with a :app main file, so a fourth twin of any other file is refused here too (R206: one text, one home).
@@ -37,12 +43,14 @@ class MovedTwinsFenceTest {
     private val appSrc = File("../app/src")
     private val appMain = File("../app/src/main/kotlin")
 
-    // The subject: the three files that moved (R1240). Asserted present, so a later move fails here by name.
+    // The subject: the files that moved - the three twins (R1240) and the /me codec (IOS-MOVE-ME R1270, iOS Ruling 7
+    // Q3: every later (c) move adds its files here). Asserted present, so a later move fails here by name.
     private val moved =
         listOf(
             "ch/monreleve/app/account/DeviceLocalStore.kt",
             "ch/monreleve/app/detection/EveningNotificationDecision.kt",
             "ch/monreleve/app/detection/ThresholdAlertDecision.kt",
+            "ch/monreleve/app/settings/MeWire.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -80,7 +88,11 @@ class MovedTwinsFenceTest {
             )
         }
         // Proof the derivation reaches the classes the files are named after.
-        assertTrue(guardedNames().containsAll(setOf("DeviceLocalStore", "ThresholdAlertDecision", "eveningDecision")))
+        assertTrue(
+            guardedNames().containsAll(
+                setOf("DeviceLocalStore", "ThresholdAlertDecision", "eveningDecision", "mePatchBody", "isMeAnswer"),
+            ),
+        )
     }
 
     @Test
@@ -101,9 +113,17 @@ class MovedTwinsFenceTest {
             |internal val topVal = 1
             |private val hidden = 1
             |val alsoADeclaration = Plain()
+            |fun Settings.extensionFun(a: Int): String = ""
+            |fun <T> List<T>.genericExtension() = Unit
+            |val Plain.extensionVal: Int get() = 1
             """.trimMargin()
         assertEquals(
-            setOf("Plain", "Sealed", "Data", "topFun", "topSuspend", "topVal", "alsoADeclaration"),
+            setOf(
+                "Plain", "Sealed", "Data", "topFun", "topSuspend", "topVal", "alsoADeclaration",
+                // IOS-MOVE-ME R1273: an extension is guarded by ITS name, never its receiver's (mePatchBody,
+                // not Settings).
+                "extensionFun", "genericExtension", "extensionVal",
+            ),
             declaredNames(text, publicOnly = true),
         )
         assertTrue("hidden" in declaredNames(text, publicOnly = false))
@@ -113,8 +133,8 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInApp() {
         val found = copiesUnder(appSrc)
         assertTrue(
-            "R1242: a moved twin reappeared in :app - it would SHADOW the commonMain declaration there. " +
-                "Delete it; the one home is :shared commonMain.\n${found.joinToString("\n")}",
+            "R1242/R1273: :app declares a name (or holds a file name) of a file moved to :shared commonMain - a " +
+                "second home for it. Delete it; the one home is :shared commonMain.\n${found.joinToString("\n")}",
             found.isEmpty(),
         )
     }
@@ -123,8 +143,9 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInIosMain() {
         val found = copiesUnder(iosMain)
         assertTrue(
-            "R1242: a moved twin reappeared in iosMain - a redeclaration only the macOS compilation sees. Delete it; " +
-                "the one home is :shared commonMain.\n${found.joinToString("\n")}",
+            "R1242/R1273: iosMain declares a name (or holds a file name) of a file moved to :shared commonMain - a " +
+                "redeclaration only the macOS compilation sees. Delete it; the one home is :shared commonMain.\n" +
+                found.joinToString("\n"),
             found.isEmpty(),
         )
     }
@@ -152,7 +173,9 @@ class MovedTwinsFenceTest {
             Regex(
                 """^((?:(?:public|internal|private|sealed|data|enum|abstract|open|inline|value|annotation|suspend|""" +
                     """const|fun)\s+)*)(?:class|interface|object|fun|val|var|typealias)\s+(?:<[^>]*>\s*)?""" +
-                    """([A-Za-z_]\w*)""",
+                    // IOS-MOVE-ME R1273: an extension's receiver (`Settings.`, `List<T>.`) is skipped, so the name
+                    // captured is the declaration's own - before, `fun Settings.mePatchBody` yielded "Settings".
+                    """(?:[A-Za-z_][\w<>?, ]*\.)?([A-Za-z_]\w*)""",
             )
 
         private fun stripComments(text: String): String =

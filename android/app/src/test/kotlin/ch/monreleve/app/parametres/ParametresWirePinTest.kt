@@ -50,11 +50,17 @@ import kotlin.test.assertTrue
 private const val TAX_YEAR = 2026
 private val STORED = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null)
 
-/** The PATCH /me body in the JVM org.json's key order, every value written as org.json writes it. */
+/**
+ * The PATCH /me body, every value written as org.json wrote it. IOS-MOVE-ME (R1270, DEVIATION from R1271's "unedited",
+ * put to the orchestrator): the KEY ORDER is now the order mePatchBody puts the keys in - what Android's org.json
+ * (insertion-ordered) sent from a phone, and what the common codec writes. Until then it was the JVM org.json's HashMap
+ * order, which this file's header already said was not the bytes a phone sends; the keys and values are unchanged.
+ */
 private fun patchBody(s: Settings): String =
-    "{\"activityStartDate\":${s.activityStartDate?.let { "\"$it\"" } ?: "null"}," +
+    "{\"canton\":\"${s.canton}\",\"employmentRate\":${s.employmentRate}," +
         "\"denominatorKind\":\"${s.denominatorKind}\",\"exactTotalWorkDays\":${s.exactTotalWorkDays ?: "null"}," +
-        "\"granularity\":\"${s.granularity}\",\"canton\":\"${s.canton}\",\"employmentRate\":${s.employmentRate}}"
+        "\"granularity\":\"${s.granularity}\"," +
+        "\"activityStartDate\":${s.activityStartDate?.let { "\"$it\"" } ?: "null"}}"
 
 private fun assertNone(
     what: String,

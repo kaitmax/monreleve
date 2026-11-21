@@ -1,0 +1,340 @@
+REPORT-IOS-MOVE-ME - THE /me CODEC BECOMES COMMON (iOS phase, (c) move 2)
+TASK     C:/wt/web-orch/relay/IOS-MOVE-ME.txt (iOS Rulings 3, 4, 7 in relay/RULINGS-2026-11-16.txt). Rulings R1270-R1279;
+         R1270-R1275 used, R1276-R1279 unused. Before the first push, `grep -rlE '\bR127[0-9]\b'` over relay/,
+         REPORT-*.txt, CLAUDE.md, docs and parking.md (the orchestrator's worktree, the main checkout and this
+         worktree) returned only relay/IOS-MOVE-ME.txt and relay/RULINGS-2026-11-16.txt (the allocation).
+BASE     origin/main 7df4d9fa (M1 merged). origin/main was still 7df4d9fa after the gate (git fetch, 16:26Z).
+BRANCH   m2-me (does not match ios-*). PUSHED, NOT MERGED; the merge is the orchestrator's.
+         Code tip 6c9286f3 (one commit on the base). The report tip is the commit carrying this file only.
+WORKTREE C:/wt/m2-me, lock .session-lock.json (gitignored, R349), removed last. A second worktree of mine,
+         C:/wt/m2-base (detached at 7df4d9fa, own lock), held the base measurement and the capture harness; it was
+         removed clean after use (status 0 lines, my harness file and lock deleted first).
+EVIDENCE C:/wt/queue-evidence/m2-me/ (not committed): tools/make-inputs.mjs + me-inputs.json (the inputs);
+         tools/MeCodecCaptureTest.kt + me-captured.json (the OLD codec's outputs); divergences.json;
+         tools/build-fixture.mjs; base-run.sh + base-pins.log + base-lock.log + base-xml-{app,shared}/;
+         run1.sh + run{1,2}.log + run{1,2}-xml-{app,shared}/; web-join-plant.log; gate-changed.sh + gate-changed.log;
+         gate-clone.sh + gate-clone.log; plants-and-gate.sh + plant.log + plant-xml/ + gate.log + gate-xml-{app,shared}/;
+         ios-shared-44922646032/ (the run's own JUnit XML). Scripted edits went through tools/edit1.mjs, which
+         asserts exactly one match before writing (R211).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- The /api/v1/me codec now lives ONCE, in android/shared/src/commonMain/kotlin/ch/monreleve/app/settings/MeWire.kt,
+  in the package it always had, on kotlinx.serialization's JSON tree (already a commonMain dependency; no new
+  dependency). It holds mePatchBody, parseMeSettings, parseMeView, isMeAnswer, parseReminderEnabled and
+  parseLoggingMode (moved from :app's DetectionMode.kt). :app's org.json MeWire.kt is deleted.
+- A capture harness ran the OLD codec over 58 /me bodies and 7 PATCH cases at 7df4d9fa, before any edit. Its
+  outputs are fixtures/me-cases.json. MeCodecGoldenTest (commonTest; JVM and iOS) requires the new codec to return
+  the same. 53 of the 58 bodies read identically. 5 do not; each is declared in the fixture with its new result and
+  reason, and the golden asserts that set by name. All 5 are syntax the route never writes. All 7 PATCH bodies equal
+  the old ones as JSON values.
+- R204: web/tests/db/me-cases-join.test.ts drives the REAL GET and PATCH handlers. The 4 route rows answer their
+  fixture body byte for byte, and all 7 PATCH bodies are accepted and read back. :app's MeRouteJoinTest hands every
+  body to resolveStart and gets the decision the old codec led to, and requires the app's PATCH bytes exactly.
+- The pins: the 16 :app classes that reach the codec keep their counts, 154 before and 154 after, 0 failures.
+  DEVIATION 1: ParametresWirePinTest's expected PATCH key order had to change. It failed unedited, 211 of 211
+  bodies, on key order only (the measured conflict between R1270 and R1271).
+- MovedTwinsFenceTest guards MeWire.kt's names. Its extractor now takes an extension's own name, not its receiver's.
+  A planted :app copy was refused by name. The "shadows" wording is gone. With the copy in place, an incremental
+  :app compile did not fail; nothing more about the compiler was measured.
+- STATUS: :app:gate on 6c9286f3 BUILD SUCCESSFUL in 6m 47s, GATE_EXIT=0, test floor 1573 (base 1570, +3 =
+  MeRouteJoinTest). gate:changed GATE PASSED. gate:clone GATE:CLONE PASSED. ios-shared run 44922646032 success,
+  422 tests (M1's 418 + MeCodecGoldenTest's 4).
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 6c9286f3 in this session, on a clean tree
+(`git status --porcelain --untracked-files=all` = 0 lines after the plant was removed, before the gate started):
+    GATE HEAD=6c9286f3228b745b0dbc4f3445f8a29328bb8169 start=2026-11-21T16:18:52Z
+    test floor OK: 1573 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 6m 47s
+    GATE_EXIT=0
+It ran under the heavy lock as holder m2-me-gate (line 8 000 MB, not lowered), released at 16:25:47Z. The gate log
+shows :app:testDebugUnitTest, :app:verifyPaparazziDebug, :app:lintDebug and :shared:testDebugUnitTest executed.
+Web changed (one test file and one repo-root fixture), so both web gates ran on the same code tip:
+    gate:changed (working tree = 6c9286f3's content, before the commit; under lock m2-me-web):
+      suites: typecheck, lint, test, build, test:db - typecheck exit 0, lint exit 0, test 4290 passed, build exit 0,
+      test:db 908 passed (28 skipped: the three render suites that need a live server, R133 lines printed);
+      "GATE PASSED for the paths changed."  GATE_CHANGED_EXIT=0
+    gate:clone (HEAD 6c9286f3, dirty=0; under lock m2-me-clone): "GATE:CLONE PASSED"; ran register-coverage,
+      fixture-coverage, install, typecheck, lint, test (4290 of 4290), build, size (24 routes), db:deploy, test:db
+      (908 of 936, 28 skipped), test:container:write (10 checks). GATE_CLONE_EXIT=0. Not run there, as it names:
+      test:e2e, test:visual, test:runtime, lighthouse, parity:check, test:container (no app/** or lib/ui path
+      changed, so gate:changed did not select e2e or visual either).
+The report tip changes only REPORT-IOS-MOVE-ME.txt, so its android/ and web/ trees are 6c9286f3's.
+
+================================================================================
+R1270 - THE MOVE
+================================================================================
+WHERE: android/shared/src/commonMain/kotlin/ch/monreleve/app/settings/MeWire.kt, package ch.monreleve.app.settings
+(unchanged, so every :app caller - StartupDecider, OrgJsonOnboarding, OrgJsonParametres - and every pin compiles
+with no import edited). `git ls-tree 6c9286f3` holds no android/app/.../settings/MeWire.kt. parseLoggingMode was
+deleted from :app's settings/DetectionMode.kt, and a comment there says where it went. detectionConsentBody stays
+in DetectionMode.kt (see QUESTIONS Q2). Nothing in commonMain imports org.json (git grep finds it in comments only).
+HOW: the JSON TREE (buildJsonObject / parseToJsonElement through data/remote/WireJson.kt's wireJson), not a
+@Serializable DTO. PARK-D3's reason holds for a DTO: the PATCH body needs explicit JSON nulls for
+exactTotalWorkDays and activityStartDate and OMISSION for name, loggingMode, detectionConsent and reminderEnabled.
+The tree writes each key as the org.json code did. Each private helper names the org.json call it reproduces:
+  isNull(key)  -> absent or JsonNull
+  getString    -> a JSON string only; any other value throws (the JVM library's rule)
+  getInt       -> a number: Number.intValue() (fraction truncated, a too-large integer wrapped as Long.intValue);
+                  a string: Integer.parseInt
+  opt(k)==true -> a JSON boolean true only. kotlinx's booleanOrNull is not used, because it reads the STRING
+                  "true" as true.
+  optString    -> only a JSON string can be the text AUTO_DETECT
+FAIL-CLOSED READS, SAME AS BEFORE (measured by the golden, not argued):
+  - A9's "a body that is not a /me answer is UNREADABLE": isMeAnswer is false for an error body, {}, "", text,
+    an array, null, a string and a truncated body. resolveStart gives Unresolved:UNREADABLE on each, as before.
+  - parseLoggingMode: AUTO_DETECT only with a non-null stamp. A stamp-less AUTO_DETECT, a null mode, a number,
+    lower case or an unknown value all read MANUAL.
+  - A7's reminderEnabled: only a JSON true reads on. The string "true", 1, null, absent and a non-answer all read
+    off, except a bare {"reminderEnabled":true}, which the old codec also read as on.
+THE SAME PATCH BYTES: the keys and values of all 7 cases equal the old codec's as JSON values (the golden). The key
+ORDER is mePatchBody's put() order, which is what Android's org.json (a LinkedHashMap) sent from a phone. That is
+ARGUED from Android's source, not measured: android.jar's org.json is stubbed under JVM tests, so no phone byte was
+captured. The JVM org.json in :app's tests wrote a HashMap order, which ParametresWirePinTest pinned (DEVIATION 1).
+One byte difference against Android's org.json is known and not measured: Android's JSONStringer escapes "/" as
+"\/", and kotlinx writes "/". Of the PATCH fields only `name` can hold a "/". The two forms are the same JSON
+string, and the route accepted the kotlinx form (patch case "a name with a slash, a quote, a backslash and accents").
+
+================================================================================
+R1271 - THE PINS STAY AND PROVE SAMENESS
+================================================================================
+PINS, BEFORE (base-run.sh at 7df4d9fa, C:/wt/m2-base) AND AFTER (the full gate on 6c9286f3), from each run's own
+JUnit XML. These are the 16 :app test classes that reach the codec: directly, or through resolveStart,
+decideStartAfterSignIn, or the OnboardingController/ParametresController factories.
+    class                                          before     after
+    auth.ForcedSignOutTest                          27         27
+    auth.ResolveFlowTest                             5          5
+    auth.SessionEndSeamTest                         10         10
+    auth.SignOutRefreshTest                          7          7
+    detection.LoggingModeRestoreTest                 4          4
+    onboarding.OnboardingControllerTest             12         12
+    parametres.DetectionSettingsTest                 6          6
+    parametres.ParametresAccountTest                11         11
+    parametres.ParametresControllerTest             13         13
+    parametres.ParametresKeepsTheNameTest            1          1
+    parametres.ParametresWirePinTest (DEVIATION 1)   5          5
+    parametres.SignOutSyncFirstTest                  7          7
+    settings.MeSettingsTest                          8          8
+    settings.ReleveCompletenessTest                 11         11
+    startup.ResolveStartTest                        12         12
+    startup.StartupDeciderTest                      15         15
+    total                                          154 / 0 fail   154 / 0 fail
+15 of the 16 are unedited. ParametresWirePinTest failed unedited against the moved codec (run 1:
+theMePatchBodyIsByteExactForEveryCantonMethodGranularityAndStart, "mePatchBody: 211 mismatch(es)" - every body,
+key order only, e.g. sent {"canton":"AG","employmentRate":100,...} not {"activityStartDate":null,...}). Only its
+expected-string helper `patchBody` changed: the order and a KDoc. The keys, the values and the other four tests
+are untouched. :shared's JVM tests: 286 at base and 290 at 6c9286f3 (+4, MeCodecGoldenTest).
+THE GOLDEN: android/shared/src/commonTest/kotlin/ch/monreleve/app/settings/MeCodecGoldenTest.kt, 4 tests, over
+fixtures/me-cases.json (reaching commonTest as FixtureJson.ME_CASES_JSON through the existing generator; the
+FixtureGeneratorTest list gained the name).
+  - HOW THE EXPECTED VALUES WERE MADE. tools/MeCodecCaptureTest.kt (not committed) ran at 7df4d9fa in :app's JVM
+    tests. It fed every input through the OLD isMeAnswer, parseMeSettings, parseMeView, parseLoggingMode,
+    parseReminderEnabled, resolveStart and mePatchBody, and wrote what each returned. build-fixture.mjs copied those
+    outputs into the fixture field by field. It refuses unless each captured body equals its input (none is typed).
+  - THE CASES. 58 answers: the 4 bodies the real route writes; 11 non-answers (error body, {}, "", text, array,
+    null, a JSON string, truncated, and each of the two answer keys missing); the logging mode (8); reminderEnabled
+    (5); every manual field wrong-typed, null or absent (21, including "80", 80.0, 80.7, 8e1, "80.5", true and
+    3000000000); names with a slash, quote, backslash, accents and a tab; an unknown extra key; and 6 syntax cases.
+    7 patches: the manual six, the exact basis with a start date, onboarding with mode, consent and reminder on,
+    onboarding manual with reminder off, rates at their bounds, consent false, and a name needing escapes.
+  - BOTH DIRECTIONS (R196). theFixtureWasReadAndCarriesBothDirectionsOfEveryReader requires true AND false for
+    meAnswer and reminderEnabled, MANUAL AND AUTO_DETECT, a refusal AND an acceptance for settings and view, at
+    least 4 route cases and at least 5 patches.
+  - THE REFUSAL CASES ARE ASSERTED, not only the acceptances. Every reader on every case is compared, so each null,
+    MANUAL or false the old codec returned is required of the new one.
+  - TEST-FIRST, RED SEEN. Run 1 (before the divergences were written): everyReaderReturnsWhatTheOldCodecReturned
+    "14 mismatch(es)", all in the five syntax cases; theDivergencesAreExactlyTheDeclaredOnes... expected the five
+    names but was []; MeRouteJoinTest "a duplicate key: expected Unresolved:UNREADABLE but was Onboard". Run 2,
+    after divergences.json was folded in: green.
+  - THE DIVERGENCES, measured in run 1 and declared case by case in the fixture (`divergence`: the new values and
+    why). DECLARED_DIVERGENCES asserts the set by name, and none may carry a route `row`:
+      a duplicate key                 old: refused (the JVM library throws "Duplicate key"); new: last value wins
+                                      -> an answer, canton VD, start Onboard. The ONE case the new codec reads
+                                      MORE permissively. The route cannot write it.
+      trailing text after the object  old: read the first object (Main); new: refused -> Unresolved:UNREADABLE
+      a second object after the first old: as above (Main); new: refused
+      unquoted keys and single quotes old: lenient read (Onboard); new: refused (wireJson isLenient=false)
+      a trailing comma                old: accepted (Onboard); new: refused
+    The four refusals are in the fail-closed direction: not an answer means Unresolved and a retry, never an account.
+    Android's own org.json was not run on any of them.
+THE R204 JOIN (fixtures/me-cases.json read by both engines; fixture-coverage.mjs: "OK - 10 section(s) across 9
+file(s)"):
+  - web/tests/db/me-cases-join.test.ts (12 tests). It seeds each `row`, and the REAL GET handler answered all 4 route
+    bodies BYTE FOR BYTE. It PATCHes all 7 bodies to the REAL PATCH handler: 200 each, and the next GET held every
+    value (detectionConsent checked as detectionConsentAt set or cleared). It was run alone on my scratch database
+    monreleve_m2_me, then inside gate:changed and gate:clone.
+    PLANT (R180, verified by grep = 2 before the run): one route body's reminderTime changed to 17:31, and a key
+    futureKey added to the first patch body. The run gave 2 failed | 10 passed, naming exactly those two tests. The
+    fixture was restored by copying back the saved file, and cmp confirmed it identical.
+  - android/app/src/test/kotlin/ch/monreleve/app/startup/MeRouteJoinTest.kt (3 tests, :app, which is where
+    fixture-coverage.mjs counts Kotlin consumers). Every body goes to resolveStart (RESOLVING's entry point), and
+    the decision must equal `old.start` (Main / Onboard / Unresolved:UNREADABLE as the old codec decided), or the
+    divergence's `start`. Every patch's settings go to mePatchBody, which must equal the patch `body` - the bytes
+    the route accepted. Those bodies are built by build-fixture.mjs from the old code's put() order, not from the
+    new codec, so the pin is not circular.
+
+================================================================================
+R1272 - iOS
+================================================================================
+commonTest gained MeCodecGoldenTest (4 tests). It is the case set iOS needs: the codec's every reader and PATCH body
+on the simulator, against the same captured outputs.
+ONE ios-shared.yml dispatch on the pushed code tip: run 44922646032, `--ref m2-me`, workflow_dispatch, headSha
+6c9286f3228b745b0dbc4f3445f8a29328bb8169, conclusion success, 20 steps. Its artifact was downloaded into its own
+new directory: 79 JUnit XML files, tests=422 failures=0 errors=0. Against M1's 418 that is +4, and the 4 are
+MeCodecGoldenTest's (its XML is in the artifact: 4 tests, 0 failures). FixtureGeneratorTest 2/0 there too.
+ios-app.yml on the same tip: run 44922650138, workflow_dispatch, headSha 6c9286f3, conclusion success. The host
+still builds.
+R573: met by 44922646032 for the code tip. main has NOT moved since the base (origin/main = 7df4d9fa at 16:26Z),
+so the merge of m2-me is a fast-forward of android/ and the run covers it, unless main moves before the merge.
+
+================================================================================
+R1273 - THE FENCE
+================================================================================
+android/shared/src/androidUnitTest/kotlin/ch/monreleve/app/shared/MovedTwinsFenceTest.kt:
+  - `moved` gained "ch/monreleve/app/settings/MeWire.kt" (asserted present in commonMain, iOS Ruling 7 Q3). The
+    guarded names are still DERIVED from the moved files' own top-level non-private declarations (R246).
+  - THE EXTRACTOR HAD A HOLE THIS MOVE WOULD HAVE FALLEN THROUGH: for `fun Settings.mePatchBody(` it captured the
+    RECEIVER, "Settings", so it would have guarded Settings and missed mePatchBody. Read from the regex, not run
+    against the old version. The pattern now skips an optional receiver (`Settings.`, `List<T>.`).
+    theExtractorMatchesDeclarationsAndNothingElse gained three known lines: `fun Settings.extensionFun`,
+    `fun <T> List<T>.genericExtension` and `val Plain.extensionVal`, which must yield their own names.
+    theRootsAndTheSubjectAreTheRealOnes now also requires mePatchBody and isMeAnswer in the derived set.
+  - THE WORDING (iOS Ruling 7 NOTICED). The KDoc and the :app message no longer say a copy "SHADOWS" the
+    commonMain one. They say what the fence measures: :app declares a name, or holds a file name, of a moved file.
+    That is a second home, refused by name, "whatever the compiler would have made of it". The sentence "the two
+    the Windows gate's compiler does not catch" was removed too: it is a claim about the compiler.
+PLANT (R180), against the committed 6c9286f3 (dirty=0 before), under the heavy lock:
+    android/app/src/main/kotlin/ch/monreleve/app/settings/R1273PlantMeCodec.kt =
+      fun isMeAnswer(body: String): Boolean = body.isEmpty()
+      fun Settings.mePatchBody(reminderEnabled: Boolean? = null): String = "{}"
+    verified landed: grep -c = 1 and 1; git status showed the one untracked file.
+  `:shared:testDebugUnitTest --tests MovedTwinsFenceTest :app:compileDebugKotlin --continue` -> PLANT_STEP_EXIT=1:
+    noCopyOfAMovedFileIsInApp FAILED (5 tests, 1 failed):
+      "R1242/R1273: :app declares a name (or holds a file name) of a file moved to :shared commonMain - a second
+       home for it. ... main/kotlin/ch/monreleve/app/settings/R1273PlantMeCodec.kt: declares isMeAnswer
+       | ...: declares mePatchBody"
+    The EXTENSION copy was caught by its own name, which proves the receiver fix.
+  WHAT THE COMPILER DID WITH THE :app COPY: :app:compileDebugKotlin EXECUTED in the same invocation (an incremental
+    compile; it was not forced with --rerun-tasks) and did NOT fail, with no "e:" line and no warning naming the
+    plant. StartupDecider, OrgJsonOnboarding and OrgJsonParametres call those two names, but the log does not show
+    that those files were recompiled against the plant. So what is measured is only this: adding a :app copy did not
+    fail the :app compile. Whether a full recompile would fail, and which declaration a call binds to, was NOT
+    measured. Either way, the fence refuses the copy by name.
+  Restored: the plant file removed (mine), dirty=0, and the gate ran on that clean tree with MovedTwinsFenceTest
+  5/0.
+
+================================================================================
+R1274 - ANDROID UNCHANGED
+================================================================================
+- Full :app:gate on 6c9286f3: BUILD SUCCESSFUL in 6m 47s, GATE_EXIT=0, test floor 1573. The base floor is 1570, the
+  orchestrator's gate on 7df4d9fa (Ruling 7: "test floor 1570"). 1573 = 1570 + 3, and the 3 are MeRouteJoinTest. No
+  :app test was removed, and the 16 pins kept their counts.
+- NO BASELINE MOVED: `git diff --name-only 7df4d9fa 6c9286f3` lists 17 paths, and 0 match snapshot|png|baseline.
+  verifyPaparazziDebug executed in the gate and passed.
+- fastCheck (run 2, on the working tree before the commit; a line wrap of ParametresWirePinTest's helper, no
+  value changed, landed seconds after it took the lock): BUILD SUCCESSFUL in 2m 48s. Run 1 had failed :app:detekt
+  and :shared:detekt on three overlong comment lines of mine and on MeWire.kt's function count (12 > 11). The lines
+  were rewrapped, and MeWire.kt carries @file:Suppress("TooManyFunctions") with DossierPayload.kt's stated reason.
+- Behaviour: the golden and the join above. On every body the route writes, the readers return what they returned,
+  RESOLVING decides what it decided, and the PATCH keys and values are the same.
+
+================================================================================
+R1275 - EntryEntity.detectedAt
+================================================================================
+android/shared/src/commonMain/kotlin/ch/monreleve/app/data/local/EntryEntity.kt, the detectedAt KDoc (was l.63,
+"When the proposal was produced on-device"). It now says what the code stores: the phone's clock at the tap that
+validated a proposed day, the confirmation or correction, not when detection produced the proposal. It is set from
+claimNow by AujourdhuiController.recordDetected and EveningTap, is null on a manual entry, and, like
+clientClaimedAt, is never trusted as evidence. Checked against the code (AujourdhuiController.kt:665
+`detectedAt = claimNow()`, EveningTap.kt:99) and docs/api-v1.md l.335. Comment only; Room's schema does not read
+KDoc. schema.prisma l.334 (the web half of Q8) is not touched: it is the next schema task's.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- The other four ParametresWire sites are still org.json in :app (OrgJsonParametres.kt): consentBody
+  (detectionConsentBody, a PATCH /me body), reminderBody (push/PushRegistration.kt reminderOptInBody, a PATCH /me
+  body), deleteBody and parseReceipt. iOS has no production implementation of any of them yet (only iosTest fakes).
+  Their pins assert the JVM HashMap order too, e.g. {"detectionConsent":true,"loggingMode":"AUTO_DETECT"}, while
+  the code puts loggingMode first. Moving them will meet DEVIATION 1's conflict again. See Q2.
+- gradle/libs.versions.toml l.92-96 still says "org.json STAYS in :app for the files that stay (BorderPolygon,
+  Settings, detection assets - R379)". "Settings" there meant this codec. Left as it is: a catalogue edit reads like a
+  dependency change in review.
+- The :app factories keep their org.json names (OrgJsonOnboarding.kt, OrgJsonParametres.kt). The onboarding one no
+  longer holds any org.json code. Renaming would touch every call site's file history for no behaviour; the comments
+  now say so.
+- OnboardingController still takes patchBody with no default. Now that mePatchBody is common, a default would save
+  iOS one argument. That is an API change to a commonMain class, left to the shell move (move 5).
+- ParametresWirePinTest's file header still says the key order of its expected bodies is the JVM library's. That
+  is no longer true of patchBody (its own KDoc says so). The header was left as it is so the gated tip does not move.
+- fixture-coverage.mjs counts Kotlin consumers under android/app/src/test/kotlin only. A commonTest consumer such as
+  MeCodecGoldenTest or GenevaConformanceTest is invisible to it, which is why the join's Kotlin half had to live
+  in :app.
+- test:db reported 28 skipped (the export-pdf, web-round-trip and verification-qr render suites, which need a live
+  server and print R133 lines). That is the same in gate:changed and gate:clone and is not caused by this change.
+- Another session (AN-ANNEX-TRUTH) held the heavy lock between my runs, and two idle Gradle/Kotlin JVMs that are not
+  mine (PIDs 9984, 18796) were resident. Nothing of theirs was touched; my runs waited for the line.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R1271 says the pins pass "unedited". ParametresWirePinTest could not, and that was measured before it was
+   edited. Its byte-exact PATCH helper encoded the JVM org.json library's HashMap key order, and its own header
+   already says that is "NOT the bytes a phone sends". R1270 requires "the same PATCH bytes" on Android, which is the
+   insertion order the old code put. Both cannot hold at once. I kept the device's order (R1270) and changed only the
+   helper's order and its KDoc. Run 1 shows the unedited pin failing 211 of 211 on key order alone; run 2 and the
+   gate show it 5/5. Put to the orchestrator as Q1.
+2. The base measurement ran in a second worktree of mine, C:/wt/m2-base, as M1 did, so edits could go on while the
+   base waited for the memory line. It was removed clean.
+3. gate:changed ran on the working tree BEFORE the commit, as R132 orders. Its content is byte-identical to
+   6c9286f3: the commit added exactly the paths it listed, and status was 0 lines after. gate:clone then ran on the
+   committed 6c9286f3.
+4. `gradlew --stop` was not used: it would stop other sessions' daemons. Every Gradle run here used --no-daemon
+   ("Daemon will be stopped at the end of the build"), so no daemon of mine outlives the session.
+5. I left in C:/wt/m2-me/web, both gitignored and mine: node_modules (pnpm install --frozen-lockfile, needed for the
+   web gates) and .env (copied from .env.example, with a freshly generated AUTH_SECRET that was never printed). I
+   created the scratch database monreleve_m2_me (README's R877 recipe) and DROPPED it at the end (CLEANUP).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. DEVIATION 1. Is the edited ParametresWirePinTest helper accepted, with the phone's insertion order as the
+    PATCH byte order? The alternative was to make the common codec write the JVM library's HashMap order. That would
+    keep the pin unedited and change the bytes a phone sends.
+Q2. The two other PATCH /me bodies, detectionConsentBody and reminderOptInBody, and the account-delete pair are still
+    org.json in :app. iOS will need all four for Parametres. Should they move as their own small move, before the
+    shell (move 5)? Their pins hit the same key-order conflict, and DEVIATION 1's ruling would decide both.
+Q3. The duplicate-key case is the one place the new codec reads MORE permissively: the last value wins, where the
+    JVM library refused. The route cannot produce it. Accept as declared, or should commonMain refuse a duplicate key
+    (a pre-scan, since kotlinx 1.7.3 has no option for it)?
+Q4. PARK-D3 ("the /me codec stays in :app") is closed in substance by this move. Sessions do not write parking.md,
+    so the closure is the orchestrator's to record.
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code tip 6c9286f3228b745b0dbc4f3445f8a29328bb8169: pushed as the new branch m2-me (`* [new branch] m2-me ->
+  m2-me`). `git ls-remote origin m2-me` then read 6c9286f3. Both iOS runs were dispatched on that SHA (headSha
+  checked with gh run view).
+- This report: one commit on 6c9286f3 touching only REPORT-IOS-MOVE-ME.txt. Its ls-remote tip is in the handback.
+- NOT MERGED. The branch, its remote ref and C:/wt/m2-me stay for the orchestrator.
+- origin/main re-fetched before this push: still 7df4d9fa.
+
+================================================================================
+CLEANUP
+================================================================================
+- C:/wt/m2-base: removed (mine, clean, detached at 7df4d9fa; my capture harness and lock deleted first).
+- Scratch database monreleve_m2_me: `DROP DATABASE monreleve_m2_me WITH (FORCE)` -> DROP DATABASE; a pg_database
+  query for monreleve_m2% then returned no rows. Only that database was touched in frontalier-postgres.
+- Heavy lock: holders m2-me-base, m2-me, m2-me-web, m2-me-clone and m2-me-gate were each RELEASED by their scripts
+  (the lock logs' RELEASED lines).
+- Gradle: every run used --no-daemon. After the last run, Win32_Process listed NO java.exe at all, mine or anyone
+  else's.
+- Plant files: removed; the tree was clean before the gate. The web plant was restored by copying back the saved
+  fixture, and cmp confirmed it identical.
+- C:/wt/m2-me/.session-lock.json: removed last, after the final push.

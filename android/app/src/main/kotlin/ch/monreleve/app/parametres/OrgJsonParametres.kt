@@ -24,14 +24,16 @@ import org.json.JSONObject
 //
 // The controller takes its four wire sites as `wire` (ParametresWire) so that it can live where org.json cannot follow
 // it. The composition root (MainGraph) and every JVM test still construct it with the parameters they always passed, so
-// this factory, named like the class, keeps every one of those call sites unedited and hands in the same org.json code
-// the controller ran before: MeWire.kt's Settings.mePatchBody and DetectionMode.kt's detectionConsentBody by reference,
-// and the delete body and receipt parse moved here from the controller unchanged, line for line. The same code, so the
-// same bytes (ParametresWirePinTest pins them, on the JVM org.json library - not Android's - before and after).
+// this factory, named like the class, keeps every one of those call sites unedited and hands in the code the controller
+// ran before: Settings.mePatchBody and DetectionMode.kt's detectionConsentBody by reference, and the delete body and
+// receipt parse moved here from the controller unchanged, line for line (ParametresWirePinTest pins them, on the JVM
+// org.json library - not Android's). IOS-MOVE-ME (R1270): mePatchBody is no longer org.json - it moved to :shared
+// commonMain (settings/MeWire.kt, kotlinx.serialization); the other four sites here still are.
 
 /**
- * The wire sites in org.json: Android's implementation (PARK-D3 - the /me codec stays in :app). AN-MANUAL-REMINDER
- * (R1146) added the fifth, the evening switch's body - the encoder A8's registration pass already sends (R206).
+ * The wire sites, Android's implementation: four in org.json, and patchBody through the common mePatchBody
+ * (IOS-MOVE-ME, R1270). AN-MANUAL-REMINDER (R1146) added the fifth, the evening switch's body - the encoder A8's
+ * registration pass already sends (R206).
  */
 private object OrgJsonParametresWire : ParametresWire {
     override fun patchBody(settings: Settings): String = settings.mePatchBody()
