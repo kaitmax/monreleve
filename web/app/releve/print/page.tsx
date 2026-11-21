@@ -524,7 +524,7 @@ export default async function PrintPage({
           </tbody>
         </table>
         <p className={styles.note}>{COPY.annex.lateNote}</p>
-        <p className={styles.note}>{COPY.annex.offlineNote}</p>
+        <p className={styles.note}>{COPY.annex.deviceTimeNote}</p>
       </section>
 
       {/* FW-VERIFY (R332): the verification block, present only when the
