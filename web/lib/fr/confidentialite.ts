@@ -142,9 +142,14 @@ export const DISCLOSED_RECORDS = {
     'pour chaque journée déclarée, la date, sa nature (Suisse, domicile, ' +
     'mission, absence), la portion (journée entière ou demi-journée) et le ' +
     'motif s’il s’agit d’une absence ;',
+  // AN-COPY-TRUTH (R1222): « de la détection automatique » names where a
+  // proposal comes from, so the record NEVER_STATEMENTS.automaticMode points
+  // at says that a validated day was derived from detection - what the Data
+  // safety form declares as Approximate location (Android Ruling 18 Q-DS1).
   provenance:
     'l’origine de chaque journée, à savoir une saisie à la main, une ' +
-    'proposition acceptée ou une proposition corrigée, ainsi que ce qui ' +
+    'proposition de la détection automatique acceptée ou une proposition ' +
+    'corrigée, ainsi que ce qui ' +
     'avait été proposé lorsque vous l’avez corrigée ;',
   timestamps:
     'les horodatages, c’est-à-dire la date et l’heure auxquelles le serveur ' +
@@ -282,6 +287,56 @@ export const WEB_STATEMENTS = {
     'permettra pas de vous reconnaître, et aucune donnée ne partira ' +
     'vers un tiers.',
 } as const;
+
+/**
+ * The never-recorded statements other files point at, keyed for the reason
+ * WEB_STATEMENTS is: a test reaches them by name, never by position (R171).
+ */
+export const NEVER_STATEMENTS = {
+  // R325 (AN-NEXT-2): the position’s DETERMINATION, said plainly. With the
+  // network fallback the app added for indoor days, Android may work the
+  // position out from nearby Wi-Fi and cell networks (the system’s location
+  // service), so « sur votre appareil uniquement » would claim more than is
+  // true. The app still keeps and sends nothing; the phone does consult that
+  // service, and the reader controls it through the phone’s own settings.
+  // Future tense for the determination clause (R138, the app is unreleased).
+  //
+  // PARKAN-37 (R320): detection is FOUR CHECKS A DAY, not a minutes tally.
+  // The old sentence ended "Seul un cumul de minutes par journee est
+  // conserve" - a description of the continuous-sampling model R320 removed
+  // (detection/Tally.kt and the minutes-and-hysteresis tally are gone). The
+  // daily record now keeps, per check, only a conclusion (INSIDE/OUTSIDE/
+  // BUFFER = en Suisse / domicile / proche frontiere), never minutes and
+  // never a position. The Android strings are noted, not changed here.
+  //
+  // AN-COPY-TRUTH (R1222, A6 F5b). THE HALF IT DID NOT SAY. The Data safety
+  // form declares Approximate location COLLECTED (Android Ruling 18 Q-DS1,
+  // docs/play-release.md section 2): a day the person validates from a
+  // proposal is sent, with what detection had proposed (detectedKind is the
+  // CH/HOME side even when the person corrected it to a mission or an
+  // absence), and stored. Said here because a reader meets « never sends your
+  // position » under a "never recorded" heading and must not conclude that
+  // nothing of automatic mode leaves the phone. « De tout cela » bounds the
+  // « ne... que » to what detection produces - the account's other records
+  // are the list above. The record is NOT described again (R181, R206): the
+  // sentence points at it, « plus haut », and the page test asserts that the
+  // provenance record really renders above this one.
+  automaticMode:
+    'Si vous choisissez le mode automatique, votre position est analysée sur ' +
+    'votre appareil. Pour la déterminer, Android pourra utiliser les réseaux ' +
+    'Wi-Fi et cellulaires à proximité, selon les réglages de localisation de ' +
+    'votre téléphone. L’application, elle, ne conservera ni n’enverra jamais ' +
+    'votre position. Chaque relevé de position est comparé à un polygone des ' +
+    "frontières suisses embarqué dans l’application, puis abandonné " +
+    'immédiatement. Pour décider d’une journée, l’application vérifiera ' +
+    'votre position à quatre moments fixes de la journée. Pour chacun, elle ' +
+    'ne conservera que la conclusion, en Suisse, à domicile ou près de la ' +
+    'frontière, jamais une position. De tout cela, elle n’enverra que la ' +
+    'journée que vous aurez validée, avec ce que la détection vous avait ' +
+    'proposé, en Suisse ou à domicile. Cette journée sera enregistrée avec ' +
+    'son origine, comme indiqué plus haut.',
+} as const;
+
 export const CONFIDENTIALITE_COPY = {
   title: 'Politique de confidentialité',
 
@@ -427,31 +482,9 @@ export const CONFIDENTIALITE_COPY = {
     'Aucune coordonnée géographique. Ni latitude, ni longitude, ni altitude, ' +
       'ni vitesse : jamais enregistrée, jamais transmise, jamais ' +
       'journalisée.',
-    // R325 (AN-NEXT-2): the position’s DETERMINATION, said plainly. With the
-    // network fallback the app added for indoor days, Android may work the
-    // position out from nearby Wi-Fi and cell networks (the system’s location
-    // service), so « sur votre appareil uniquement » would claim more than is
-    // true. The app still keeps and sends nothing; the phone does consult that
-    // service, and the reader controls it through the phone’s own settings.
-    // Future tense for the determination clause (R138, the app is unreleased).
-    //
-    // PARKAN-37 (R320): detection is FOUR CHECKS A DAY, not a minutes tally.
-    // The old sentence ended "Seul un cumul de minutes par journee est
-    // conserve" - a description of the continuous-sampling model R320 removed
-    // (detection/Tally.kt and the minutes-and-hysteresis tally are gone). The
-    // daily record now keeps, per check, only a conclusion (INSIDE/OUTSIDE/
-    // BUFFER = en Suisse / domicile / proche frontiere), never minutes and
-    // never a position. The Android strings are noted, not changed here.
-    'Si vous choisissez le mode automatique, votre position est analysée sur ' +
-      'votre appareil. Pour la déterminer, Android pourra utiliser les réseaux ' +
-      'Wi-Fi et cellulaires à proximité, selon les réglages de localisation de ' +
-      'votre téléphone. L’application, elle, ne conservera ni n’enverra jamais ' +
-      'votre position. Chaque relevé de position est comparé à un polygone des ' +
-      "frontières suisses embarqué dans l’application, puis abandonné " +
-      'immédiatement. Pour décider d’une journée, l’application vérifiera ' +
-      'votre position à quatre moments fixes de la journée. Pour chacun, elle ' +
-      'ne conservera que la conclusion, en Suisse, à domicile ou près de la ' +
-      'frontière, jamais une position.',
+    // AN-COPY-TRUTH (R1222): keyed, so the test that holds it to the Data
+    // safety form reads it by name (R206). Its history is on the key.
+    NEVER_STATEMENTS.automaticMode,
     'Aucun historique de déplacement, aucun nom de lieu, aucune adresse ' +
       "d’employeur, aucune carte et aucune chronologie de vos trajets. Il n’y " +
       'a rien de tel à produire si cela vous était demandé un jour.',
