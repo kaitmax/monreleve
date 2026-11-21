@@ -22,7 +22,15 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/db/client';
 import { issueTokenPair } from '@/lib/auth/tokens';
 import { GET } from '@/app/api/v1/account/export/route';
-import { EXCLUDED, EXPORTED } from '@/lib/account/export';
+import { POST as POST_ENTRIES } from '@/app/api/v1/entries/route';
+import {
+  COLUMNS_NOT_EXPORTED,
+  DERIVED_FIELDS,
+  EXCLUDED,
+  EXPORTED,
+} from '@/lib/account/export';
+import { PERSONAL_DATA } from '@/lib/content/personal-data';
+import { CONFIDENTIALITE_COPY, DISCLOSED_RECORDS } from '@/lib/fr/confidentialite';
 import { DOSSIER_COPY as COPY } from '@/lib/fr/dossier';
 
 const ORIGIN = 'https://monreleve.ch';
@@ -404,5 +412,217 @@ describe('the export is readable by the person it belongs to', () => {
     const words = payload.entries.map((entry) => entry.kindLabel);
 
     expect(words).toContain(COPY.annex.kindHome);
+  });
+});
+
+describe('R1251 (A14 Q5): the export carries every stored field the page names, and nothing else', () => {
+  // THE PAGE AND THE FILE ARE TWO DESCRIPTIONS OF ONE FACT (R206). The page
+  // names what is stored through lib/content/personal-data.ts, column by
+  // column; the export is "everything this product holds". So the field list
+  // the file must carry is DERIVED from that map - every column of an exported
+  // table whose record the page renders - minus the identifiers and credentials
+  // COLUMNS_NOT_EXPORTED argues out, plus the words DERIVED_FIELDS names. Both
+  // directions are asserted on the PRODUCED file, through the route (R204): a
+  // named field missing fails, and a field the page does not name fails (R196).
+  const MODEL_OF = Object.fromEntries(
+    Object.entries(EXPORTED).map(([model, key]) => [key, model]),
+  ) as Record<string, string>;
+
+  const columnsOf = (model: string): string[] =>
+    Object.keys(PERSONAL_DATA).filter((column) => column.startsWith(`${model}.`));
+
+  const fieldOf = (column: string): string => column.slice(column.indexOf('.') + 1);
+
+  function expectedFields(key: string): string[] {
+    const model = MODEL_OF[key] ?? '';
+    const columns = columnsOf(model)
+      .filter((column) => !(column in COLUMNS_NOT_EXPORTED))
+      .map(fieldOf);
+    const words = Object.keys(DERIVED_FIELDS)
+      .filter((field) => field.startsWith(`${key}.`))
+      .map(fieldOf);
+
+    return [...columns, ...words].sort();
+  }
+
+  function producedFields(payload: Record<string, unknown>, key: string): string[] {
+    const section = payload[key];
+    const rows = Array.isArray(section)
+      ? (section as Record<string, unknown>[])
+      : [section as Record<string, unknown>];
+
+    return [...new Set(rows.flatMap((row) => Object.keys(row)))].sort();
+  }
+
+  // The instants the phone sends, as the app sends them: detectedAt is the
+  // phone's clock at the validating tap, clientClaimedAt its clock at the write.
+  const DETECTED_AT = '2026-03-02T17:02:11.000Z';
+  const CLAIMED_AT = '2026-03-02T17:02:12.000Z';
+
+  async function produce(): Promise<Record<string, unknown>> {
+    return (await (await GET(get())).json()) as Record<string, unknown>;
+  }
+
+  beforeEach(async () => {
+    // ONE ROW IN EVERY EXPORTED TABLE, so every section has keys to read: an
+    // empty array has no fields, and "nothing missing" would hold of it (R169).
+    // The detected day goes through the ENTRIES ROUTE, as the app sends it, so
+    // the file is checked against what the write path stores (R204).
+    const posted = await POST_ENTRIES(
+      new Request(`${ORIGIN}/api/v1/entries`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          entries: [
+            {
+              clientMutationId: mutation(),
+              dayDate: '2026-03-02',
+              portion: 'FULL',
+              kind: 'CH',
+              provenance: 'DETECTED_CONFIRMED',
+              detectedKind: 'CH',
+              detectedAt: DETECTED_AT,
+              clientClaimedAt: CLAIMED_AT,
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(posted.status).toBe(200);
+
+    const device = await prisma.device.create({
+      data: { userId, fcmToken: 'export-fields-fcm-token', appVersion: '1.0.0' },
+    });
+
+    await issueTokenPair(userId, device.id);
+    await prisma.reminderSent.create({
+      data: { userId, sentOn: new Date('2026-03-02T00:00:00.000Z') },
+    });
+    await prisma.issuanceRecord.create({
+      data: {
+        code: 'export-fields-code',
+        userId,
+        taxYear: 2026,
+        version: 1,
+        name: 'Camille Rey',
+        declarableRate: 39.16,
+        teleworkDays: 94,
+        missionDaysFrance: 6,
+        missionDaysThirdState: 2,
+        periodFraction: 1,
+        sha256: 'b'.repeat(64),
+        generatedAt: new Date('2026-04-01T09:00:00.000Z'),
+      },
+    });
+    await prisma.nameChange.create({ data: { userId } });
+    await prisma.webSession.create({
+      data: {
+        userId,
+        tokenHash: 'c'.repeat(64),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+  });
+
+  it('reads a non-vacuous map: every exported table has columns, each disclosed by a RENDERED record', () => {
+    const models = Object.keys(EXPORTED);
+
+    expect(models.length).toBeGreaterThan(5);
+
+    for (const model of models) {
+      expect(columnsOf(model).length, `${model} has no column in PERSONAL_DATA`).toBeGreaterThan(0);
+
+      for (const column of columnsOf(model)) {
+        const record = DISCLOSED_RECORDS[PERSONAL_DATA[column] as keyof typeof DISCLOSED_RECORDS];
+
+        expect(CONFIDENTIALITE_COPY.app, `the record of ${column} is not rendered`).toContain(record);
+      }
+    }
+  });
+
+  it('names the columns A14 Q5 names - detectedAt and clientClaimedAt - among the fields owed', () => {
+    expect(expectedFields(EXPORTED.Entry)).toContain('detectedAt');
+    expect(expectedFields(EXPORTED.Entry)).toContain('clientClaimedAt');
+    expect(expectedFields(EXPORTED.EntryEvent)).toContain('clientClaimedAt');
+  });
+
+  it('leaves out only identifiers and credentials of exported tables, each with a reason', () => {
+    // THE ESCAPE HATCH HAS A SHAPE. A column of data the page names in words
+    // cannot be added here without failing on its name.
+    for (const [column, reason] of Object.entries(COLUMNS_NOT_EXPORTED)) {
+      expect(PERSONAL_DATA[column], `${column} is not a disclosed column`).toBeDefined();
+      expect(Object.keys(EXPORTED), `${column} is not of an exported table`).toContain(
+        column.slice(0, column.indexOf('.')),
+      );
+      expect(fieldOf(column), `${column} is neither an identifier nor a credential`).toMatch(
+        /^(?:id|[a-z]\w*Id|tokenHash|fcmToken)$/u,
+      );
+      expect(reason.length, `${column} has no stated reason`).toBeGreaterThan(60);
+    }
+  });
+
+  it('derives each word from a column the file carries', () => {
+    for (const [field, column] of Object.entries(DERIVED_FIELDS)) {
+      const key = field.slice(0, field.indexOf('.'));
+
+      expect(MODEL_OF[key], `${field} is not under an exported key`).toBe(
+        column.slice(0, column.indexOf('.')),
+      );
+      expect(expectedFields(key), `${field} is the word for a field the file does not carry`).toContain(
+        fieldOf(column),
+      );
+    }
+  });
+
+  it('carries every field the page names: a named field missing from the file fails', async () => {
+    const payload = await produce();
+    const missing: string[] = [];
+
+    for (const key of Object.values(EXPORTED)) {
+      const produced = new Set(producedFields(payload, key));
+
+      // PRESENCE FIRST (R169): a section with no row has no fields to compare.
+      expect(produced.size, `${key} produced no row to read`).toBeGreaterThan(0);
+
+      for (const field of expectedFields(key)) {
+        if (!produced.has(field)) missing.push(`${key}.${field}`);
+      }
+    }
+
+    expect(missing, `named by /confidentialite and absent from the export: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('carries nothing the page does not name: an unnamed field in the file fails', async () => {
+    const payload = await produce();
+    const unnamed: string[] = [];
+
+    expect(Object.keys(payload).sort()).toEqual(['exportedAt', ...Object.values(EXPORTED)].sort());
+
+    for (const key of Object.values(EXPORTED)) {
+      const owed = new Set(expectedFields(key));
+
+      for (const field of producedFields(payload, key)) {
+        if (!owed.has(field)) unnamed.push(`${key}.${field}`);
+      }
+    }
+
+    expect(unnamed, `exported and not a column the page names: ${unnamed.join(', ')}`).toEqual([]);
+  });
+
+  it('delivers the phone-supplied instants as stored (R154): detectedAt and clientClaimedAt', async () => {
+    const payload = (await produce()) as {
+      entries: Record<string, unknown>[];
+      trail: Record<string, unknown>[];
+    };
+    const day = payload.entries.find((entry) => entry.dayDate === '2026-03-02');
+    const event = payload.trail.find((row) => row.dayDate === '2026-03-02');
+
+    // PRESENCE FIRST: the posted day and its event are in the file.
+    expect(day).toBeDefined();
+    expect(event).toBeDefined();
+    expect(day?.detectedAt).toBe(DETECTED_AT);
+    expect(day?.clientClaimedAt).toBe(CLAIMED_AT);
+    expect(event?.clientClaimedAt).toBe(CLAIMED_AT);
   });
 });

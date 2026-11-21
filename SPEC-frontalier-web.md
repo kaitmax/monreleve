@@ -584,7 +584,7 @@ model Entry {
   note             String?
   provenance       Provenance @default(MANUAL)     // MANUAL | DETECTED_CONFIRMED | DETECTED_CORRECTED (D17)
   detectedKind     EntryKind?                      // what detection proposed; set whenever a proposal existed
-  detectedAt       DateTime?                       // when the proposal was produced on-device
+  detectedAt       DateTime?                       // the phone's clock at the tap that validated a proposed day
   clientClaimedAt  DateTime?                       // what the offline client asserted
   firstRecordedAt  DateTime   @default(now())      // server clock at first receipt — IMMUTABLE
   updatedAt        DateTime   @updatedAt
@@ -835,7 +835,7 @@ Three linear screens, back arrow only, no bottom bar (design prompt D5):
 
 1. **Choix du mode** — two visually identical cards, *Saisie manuelle* pre-selected as the safe default (D19). Neither carries a "recommandé" tag, a highlight, or a lock icon. Copy states plainly that both modes produce the same annual statement.
 2. **Avant l'autorisation** — shown only if auto is chosen, before the system dialog. Three plain statements: what the app does, what it records (*une conclusion par jour ; ni trajet, ni adresse, ni historique*), what it never does (*aucun partage avec votre employeur ni avec une administration*). It warns in advance that Android will ask twice — in-use, then background — because an unexplained second dialog is the main reason background grants get revoked. Actions: `Autoriser la localisation` and, equally weighted, `Rester en saisie manuelle`.
-3. **Autorisation refusée** — neutral grey, no warning icon, no error colour. States that manual mode produces exactly the same annual statement, offers one link to Android settings, and **never asks again**. No banner afterwards, no periodic prompt, no red dot.
+3. **Autorisation refusée** — neutral grey, no warning icon, no error colour. States that manual mode produces the same annual statement, identical apart from each day's stated origin — what A6's `ModeParityTest` (`android/app/src/test/kotlin/ch/monreleve/app/aujourdhui/ModeParityTest.kt`, with its server half `web/tests/unit/dossier/mode-parity.test.tsx`) proves — offers one link to Android settings, and **never asks again**. No banner afterwards, no periodic prompt, no red dot.
 
 Consent is recorded as `User.detectionConsentAt` and is revocable at any time from Paramètres; revoking stops sampling immediately and deletes local tallies.
 
