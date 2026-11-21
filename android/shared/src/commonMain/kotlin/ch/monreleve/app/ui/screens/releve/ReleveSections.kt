@@ -293,7 +293,7 @@ internal fun AnnexSection(document: DossierDocument) {
                 modifier = Modifier.padding(top = Spacing.space8),
             )
             Text(
-                text = ReleveCopy.ANNEX_OFFLINE_NOTE,
+                text = ReleveCopy.ANNEX_DEVICE_TIME_NOTE,
                 style = FrontierType.caption,
                 color = LightColors.textTertiary,
                 modifier = Modifier.padding(top = Spacing.space4),

@@ -147,7 +147,7 @@ describe('the annex says what its own marks mean', () => {
   it('says which timestamp is the server one', () => {
     // The whole evidential claim. A reader seeing two dates must know which is
     // attributed by the server and which the device asserted.
-    expect(DOSSIER_COPY.annex.offlineNote.toLowerCase()).toContain('serveur');
+    expect(DOSSIER_COPY.annex.deviceTimeNote.toLowerCase()).toContain('serveur');
     expect(DOSSIER_COPY.annex.lateNote.toLowerCase()).toContain('serveur');
   });
 

@@ -127,7 +127,9 @@ export const CGU_COPY = {
     "technique. Les journées que vous déclarez hors connexion sont " +
     "conservées sur votre téléphone et transmises dès que la connexion " +
     "revient ; l’horodatage retenu est alors celui de la réception par le " +
-    'serveur, et le relevé indique les deux dates.',
+    'serveur. Pour chaque journée saisie dans l’application, avec ou sans ' +
+    'connexion, le relevé indique aussi, à titre indicatif, l’heure annoncée ' +
+    'par votre téléphone.',
 
   lawHeading: 'Droit applicable et juridiction',
   lawLead:

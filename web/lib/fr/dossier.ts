@@ -351,7 +351,11 @@ export const DOSSIER_COPY = {
     // Paris time; the label on each would double a 261-row table's width.
     firstRecordedAt: inParisTime('Enregistré le'),
     lastModifiedAt: inParisTime('Modifié le'),
-    clientClaimedAt: inParisTime('Saisi hors ligne le'),
+    // AN-ANNEX-TRUTH (R1261): the DEVICE's clock at the tap, which the app sends
+    // on every write (R275), online or not - so the heading names whose time it
+    // is, never the connectivity of the moment. It used to read « Saisi hors
+    // ligne le », and printed every day recorded in the app as entered offline.
+    clientClaimedAt: inParisTime(`Selon l${APOS}appareil, saisi le`),
     provenance: 'Origine',
 
     /** Portions, in words. */
@@ -398,11 +402,17 @@ export const DOSSIER_COPY = {
       `après la date concernée. L${APOS}horodatage retenu est celui de la réception ` +
       `par le serveur.`,
 
-    /** Why two timestamps can appear on one row. */
-    offlineNote:
-      `Lorsque la saisie a eu lieu hors ligne, la date annoncée par l${APOS}appareil ` +
-      `figure à côté de celle de la réception. Seule la seconde est attribuée par ` +
-      `le serveur.`,
+    /**
+     * Why two timestamps can appear on one row: the device's announced time
+     * beside the server's receipt, and which of the two the server attributes.
+     * Conditional on the device having sent one, never on being offline
+     * (R1261): a day entered on the web leaves the cell blank, and a day
+     * recorded in the app online fills it.
+     */
+    deviceTimeNote:
+      `L${APOS}heure annoncée par l${APOS}appareil lors de la saisie, quand il l${APOS}a ` +
+      `transmise, figure à côté de celle de la réception. Seule la seconde est ` +
+      `attribuée par le serveur.`,
   },
 
   // --------------------------------------------------------------------
