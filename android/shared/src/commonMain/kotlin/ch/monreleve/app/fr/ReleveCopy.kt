@@ -315,7 +315,12 @@ object ReleveCopy {
 
     private const val ANNEX_FIRST_RECORDED = "Enregistré le"
     private const val ANNEX_MODIFIED = "Modifié le"
-    private const val ANNEX_CLIENT_CLAIMED = "Saisi hors ligne le"
+
+    // AN-ANNEX-TRUTH (R1261): the DEVICE's clock at the tap, which the app sends on every write (R275), online or
+    // not - so the label names whose time it is, never the connectivity of the moment. It read "Saisi hors ligne
+    // le" and so labelled every day recorded in the app as entered offline. The PDF's column heading says the same
+    // in a heading's register (web/lib/fr/dossier.ts annex.clientClaimedAt, R165).
+    private const val ANNEX_CLIENT_CLAIMED = "Selon l’appareil, saisi le"
 
     /** U+00B7 middot, spaced, between the parts of an annex row's second line. */
     private const val SEP = " · "
@@ -347,9 +352,10 @@ object ReleveCopy {
         "«" + NB + ANNEX_LATE + NB + "» signale une journée enregistrée plus d’une semaine après la " +
             "date concernée. L’horodatage retenu est celui de la réception par le serveur."
 
-    const val ANNEX_OFFLINE_NOTE =
-        "Lorsque la saisie a eu lieu hors ligne, la date annoncée par l’appareil figure à côté de " +
-            "celle de la réception. Seule la seconde est attribuée par le serveur."
+    // R1261: conditional on the device having sent its time, never on being offline (the PDF's deviceTimeNote).
+    const val ANNEX_DEVICE_TIME_NOTE =
+        "L’heure annoncée par l’appareil lors de la saisie, quand il l’a transmise, figure à côté de celle de " +
+            "la réception. Seule la seconde est attribuée par le serveur."
 
     // ------------------------------------------------------------------
     // Export (AC2, FD7 section 8) - the buttons and the outcomes the composition root reports
