@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 
 /** Any wording that says a day was entered without a connection; judged on the words, not on one string. */
 private val OFFLINE_CLAIM =
-    Regex("hors[\\s  -]+(ligne|connexion)|offline|sans\\s+(r[eé]seau|connexion)", RegexOption.IGNORE_CASE)
+    Regex("hors[\\s\\x{A0}\\x{202F}-]+(ligne|connexion)|offline|sans\\s+(r[eé]seau|connexion)", RegexOption.IGNORE_CASE)
 
 class AnnexDeviceTimeWordsTest {
     @Test

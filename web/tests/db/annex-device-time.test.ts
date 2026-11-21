@@ -48,9 +48,10 @@ const ORIGIN = 'https://monreleve.ch';
 /**
  * Any wording that says a day was entered without a connection. The claim is
  * judged on the words, not on one string: a reworded "offline" heading is the
- * same defect.
+ * same defect. JavaScript's \s already matches the no-break spaces
+ * French typography puts between words (U+00A0, U+202F).
  */
-const OFFLINE_CLAIM = /hors[\s  -]+(?:ligne|connexion)|offline|sans\s+(?:r[eé]seau|connexion)/iu;
+const OFFLINE_CLAIM = /hors[\s-]+(?:ligne|connexion)|offline|sans\s+(?:r[eé]seau|connexion)/iu;
 
 /** The inner markup of every `<tag ...>...</tag>` in `html`, in order. */
 function inner(html: string, tag: string): string[] {
