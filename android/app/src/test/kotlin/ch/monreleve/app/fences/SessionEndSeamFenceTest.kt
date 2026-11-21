@@ -14,14 +14,21 @@ import java.io.File
  * can see. So the fence is on the shape: every construction in the sources the Android process runs must be in that
  * one file. A list that comes back EMPTY means the construction moved out of sight (R452), not a pass.
  *
- * iosMain is not scanned: the iOS twin builds its own DeviceLocalStore (ios/IosLocalStores.kt) on a platform with no
- * sampler, and A8/A7's attachments are Android's. Test sources are not scanned: a test builds stores over fakes.
+ * iosMain is not scanned: the iOS composition builds its own DeviceLocalStore (ios/IosLocalStores.kt) on a
+ * platform with no sampler, and A8/A7's attachments are Android's. Test sources are not scanned: a test builds
+ * stores over fakes.
+ *
+ * IOS-MOVE-TWINS R1242: DeviceLocalStore moved to :shared commonMain (PARK-IF4), which makes it constructible from
+ * :shared's commonMain and androidMain - both compiled into the Android process. Before the move neither could see the
+ * class, so neither needed scanning; now both are roots, each pinned (R460), so the gate moves with the code (R401).
  */
 class SessionEndSeamFenceTest {
     private val roots =
         listOf(
             FenceRoot(File("src/main/kotlin"), pin = "MainActivity.kt"),
             FenceRoot(File("src/debug/kotlin"), pin = "SessionInjectionActivity.kt"),
+            FenceRoot(File("../shared/src/commonMain/kotlin"), pin = "SharedModule.kt"),
+            FenceRoot(File("../shared/src/androidMain/kotlin"), pin = "AccountTag.android.kt"),
         )
 
     @Test
