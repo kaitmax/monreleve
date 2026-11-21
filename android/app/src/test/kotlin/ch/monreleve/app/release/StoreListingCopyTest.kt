@@ -96,6 +96,21 @@ class StoreListingCopyTest {
             }
     }
 
+    /**
+     * AN-COPY-TRUTH R1223 (A6 F5c). A6 proved the two modes' releves identical APART FROM the provenance strings
+     * (docs/release-audit-android.md section 3), so « exactement le même relevé » said more than was proven. The
+     * mode-parity sentence now names the one difference: the origin shown for each day. Asserted as concepts, never
+     * by quoting the sentence (R181): the origin is named, the releve is still the same one, no « exactement ».
+     */
+    @Test
+    fun theModeParityClaimNamesTheOriginAsTheOneDifference() {
+        val parity = detection.split(Regex("""(?<=\.)\s+""")).single { it.contains("saisie manuelle") }
+        assertTrue("R1223: the parity sentence names the origin as what differs: $parity", parity.contains("origine"))
+        assertTrue("R1223: and still says the releve is the same: $parity", parity.contains("même relevé"))
+        val overclaim = Regex("""(?i)exactement""").find(detection)?.value
+        assertEquals("R1223: « exactement » claims more than A6 proved", null, overclaim)
+    }
+
     @Test
     fun nothingOutsideTheDetectionParagraphNamesLocationOrDetection() {
         val outside =

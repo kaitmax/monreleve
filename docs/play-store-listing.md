@@ -45,7 +45,7 @@ CE QUE FAIT L’APPLICATION
 <!-- listing:detection -->
 DÉTECTION AUTOMATIQUE (BÊTA, EN OPTION)
 Si vous l’activez, l’application utilise la localisation de votre téléphone en arrière-plan, pendant vos heures de travail, même lorsque l’application est fermée, pour vous proposer chaque soir « en Suisse » ou « à domicile ». Elle vérifie votre position quatre fois par journée de travail. Votre position est comparée sur le téléphone à la frontière suisse, puis effacée : l’application ne conserve ni n’envoie jamais votre position, seulement la journée que vous confirmez. Pour déterminer la position, Android peut utiliser les réseaux Wi-Fi et cellulaires à proximité, selon les réglages de votre téléphone.
-La détection demande l’accès à la position exacte et l’autorisation « Toujours autoriser ». Avec une position approximative, ou sans l’accès en arrière-plan, elle ne fonctionne pas : vos journées restent à saisir à la main. Elle ne fait que proposer : rien n’est enregistré sans votre confirmation. Fonction en bêta, dont la fiabilité est en cours de mesure. La saisie manuelle produit exactement le même relevé.
+La détection demande l’accès à la position exacte et l’autorisation « Toujours autoriser ». Avec une position approximative, ou sans l’accès en arrière-plan, elle ne fonctionne pas : vos journées restent à saisir à la main. Elle ne fait que proposer : rien n’est enregistré sans votre confirmation. Fonction en bêta, dont la fiabilité est en cours de mesure. La saisie manuelle produit le même relevé, avec les mêmes chiffres : seule l’origine indiquée pour chaque journée diffère.
 <!-- /listing:detection -->
 
 VOS DONNÉES
