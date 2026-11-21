@@ -1,0 +1,41 @@
+AN-COPY-TRUTH SESSION PROMPT - Mon Releve
+THE PUBLIC WORDS SAY NO MORE THAN THE APP DOES (ORCH-ANDROID step A13; A6's F1 and F5)
+Written by the orchestrating session on 2026-11-21 (Android Ruling 19). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Rulings
+18 and 19 in relay/RULINGS-2026-11-16.txt; REPORT-AN15-AUDIT.txt whole (F1, F5a-F5c) and
+docs/release-audit-android.md; docs/play-release.md section 2 and 2.3 (Approximate location is now
+COLLECTED: a confirmed day is a country-level location); docs/play-store-listing.md;
+REPORT-AN-FORCED-SIGNOUT.txt (R521, the set-aside days) and R303 (sign-out wipes the phone);
+CLAUDE.md "Never claim more than the record supports", R153, R155, R165, R172, R181, R206, R225.
+Names: worktree C:/wt/an-copy-truth, branch an-copy-truth, report REPORT-AN-COPY-TRUTH.txt.
+Ruling numbers: R1220-R1229. YOUR OWN advisor may advise you.
+
+BASE: cut the branch from origin/release/android-v1 (Android v1 ships from it, iOS Ruling 3). The
+orchestrator merges it into release/android-v1 AND forward into main.
+
+THE FOUR STATEMENTS (behaviour does NOT change - only what the words claim):
+R1220. F5a: DisclosureCopy.NEVER_SHARED opens "Rien n'est transmis" - false since a confirmed day is
+    transmitted. Rewrite it to what is true (no position is ever transmitted or stored; only the day
+    you confirm - en Suisse / a domicile - is sent), in the disclosure's own register.
+R1221. F1: the forced-sign-out notice tells the person their set-aside day will wait; R303 wipes it
+    if ANOTHER account signs out on this phone afterwards. Rewrite the notice to what is true
+    (it waits for the next sign-in of the SAME account on this phone), without alarming wording.
+R1222. F5b: /confidentialite (web, never[1] and its neighbours): make it agree with the Data safety
+    form (a confirmed day derived from detection is stored; a position never is). Copy lives in
+    web/lib/fr only (R155); derive, do not transcribe (R181).
+R1223. F5c: docs/play-store-listing.md "exactement le meme releve" -> what A6 proved (identical
+    apart from the provenance strings), in plain French.
+EVERY NEW STRING is listed VERBATIM BY KEY in QUESTIONS for the operator's approval; they ship as
+written unless refused. A test asserts each corrected surface renders the new string (R225), and
+the forbidden-forms / typography / apostrophe guards stay green. Baselines that move are stated
+BEFORE regeneration (R207) and cropped (R135).
+
+THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
+emulator shut down (Android Ruling 11) and the heavy lock held; gate:changed (FRONTALIER_PORT=your
+port) and gate:clone before the push (web/ changes); R573 if android/shared changes (dispatch ONE
+ios-shared.yml run on your code tip; the repository is public); the emulator proof of the two Android
+surfaces (labelled "emulator API 36"; R574); push the branch (DO NOT MERGE); report; push; lock
+removed last; emulator booted again with the orchestrator's APK, signed out, gestural navigation.
+REPORT: SUMMARY / STATUS (R391) / R1220-R1223 with evidence / BASELINES / WALKTHROUGH / NOTICED BUT
+NOT TOUCHING / DEVIATIONS / QUESTIONS (the new strings first, verbatim by key) / PUSH PROOF
+END OF AN-COPY-TRUTH PROMPT

@@ -1,0 +1,49 @@
+IOS-HOST-CENSUS SESSION PROMPT - Mon Releve
+WHAT AN iOS APP HOST NEEDS THAT ONLY :app HAS TODAY (iOS phase step I0; READ-ONLY)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 1-2). Read first:
+relay/RULINGS-2026-11-16.txt iOS Rulings 1 and 2 whole, and Android Rulings 8-18 for what this run
+put in :app; relay/QUEUE-STATE.md "WAITS ON THE APPLE ACCOUNT (IOS-1b-B)"; REPORT-IOS-2f.txt
+(R889-R894, the stale R894 list) and REPORT-IOS-1b-A.txt; parking.md PARK-IF1..IF4; the shell:
+android/app/src/main/kotlin/ch/monreleve/app/MainActivity.kt, CallbackActivity.kt, ShellState.kt,
+ui/shell/AppRoot.kt; android/shared/src/iosMain (what iOS already has: Keychain stores,
+NsUrlSessionTransport, IosDatabase, IosSyncComposition, IosNotificationPlan, IosExportFiles,
+pilot/AujourdhuiPilotViewController.kt); CLAUDE.md R133, R181, R206, R246, R267.
+Names: worktree C:/wt/ios-host-census, branch ios-host-census (NOT ios-*: that prefix fires
+ios-shared.yml), report REPORT-IOS-HOST-CENSUS.txt. Ruling numbers: R1200-R1209.
+YOUR OWN advisor may advise you. THIS TASK CHANGES NO CODE AND DISPATCHES NO RUN.
+
+THE QUESTION: iOS v1 is MANUAL-ONLY (iOS Ruling 2). To launch the real app shell on an iPhone
+simulator, what does the iOS side need that exists today only in :app (android/app/src/main)?
+
+R1200. THE CENSUS, DERIVED NOT RECALLED: start from MainActivity's and CallbackActivity's setContent
+    and onCreate, and walk every :app type the shell constructs or calls (composition root, AppRoot,
+    ShellState, the session/sign-in wiring, SessionEndSeam, LoggingModeRestore, the update gate
+    (A4), the push runtime (A8, NOT needed on iOS v1 - say so), the fallback reminder (A7), the
+    stores, the transport, the deep-link callback). One row each: the :app file, what it does, its
+    commonMain/iosMain counterpart if any, and the verdict - ALREADY SHARED / iOS HAS ITS OWN /
+    MISSING ON iOS / NOT IN iOS v1 (detection, push, Android-only APIs). Show the command or
+    reading that produced each row (R133: an absent counterpart is a FINDING only once you have
+    searched both source sets by type name and by role).
+R1201. THE SPLIT DECISION, AS OPTIONS WITH COSTS (the orchestrator rules; you do not choose):
+    (a) move the shell's platform-free part to commonMain (cost: an :app:gate, baselines that may
+    move, R573), (b) a second composition in iosMain (cost: drift between two shells - name what
+    keeps them in step), (c) a mix - which pieces each way. For each: files touched, the tests that
+    would pin it, and the risk.
+R1202. THE iOS-ONLY GAPS the host itself must fill (Swift or iosMain): the window scene, the
+    deep-link/universal-link callback (NB: assetlinks is Android; iOS needs apple-app-site-association
+    and an Associated Domains entitlement - which DOES need the account; say what a simulator can do
+    instead, e.g. a custom URL scheme or code entry only), the first-launch Keychain clear (iOS
+    Ruling 2), the local evening reminder (iOS Ruling 2), the share sheet, foreground sync.
+R1203. THE BUILD SHAPE (read-only research, cite sources with dates): how a Compose Multiplatform
+    app host for the simulator is built WITHOUT committing an .xcodeproj by hand on Windows -
+    XcodeGen (project.yml), Tuist, or a Swift package plus xcodebuild - and which the GitHub
+    macos-15 runner can run with no Apple account (ad-hoc signing, identity "-"). What
+    android/shared/build.gradle.kts must add (binaries.framework, its baseName, static or dynamic)
+    and whether that touches the Android build at all.
+
+THE WORK: worktree + lock (R349) for reading at a fixed commit; no Gradle heavy steps needed (if
+you want a compile check, it is fastCheck only, under the heavy lock); push the branch with the
+report only (DO NOT MERGE); lock removed last. Do not touch the emulator. Ports: none.
+REPORT: SUMMARY / R1200 (the census table) / R1201 (options with costs) / R1202 / R1203 (sources,
+dates) / NOTICED BUT NOT TOUCHING / QUESTIONS / PUSH PROOF
+END OF IOS-HOST-CENSUS PROMPT

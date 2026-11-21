@@ -1,0 +1,41 @@
+AN-COPY-TRUTH-2 SESSION PROMPT - Mon Releve
+THE REST OF THE WORDS, AND THE PLAY ASSETS RETAKEN ON THE TRUE DISCLOSURE (ORCH-ANDROID step A14)
+Written by the orchestrating session on 2026-11-21 (Android Ruling 20). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Rulings
+18-20 in relay/RULINGS-2026-11-16.txt; REPORT-AN-COPY-TRUTH.txt whole (A13 - its strings, tests and
+the shape of its proofs: follow them); REPORT-AN-PLAY-PACK.txt (R1122 - the demo video recipe and the
+assets in C:/wt/play-assets/); docs/release-audit-android.md (F1, F5); CLAUDE.md "Never claim more
+than the record supports", R135, R155, R181, R206, R207, R225, R574.
+Names: worktree C:/wt/an-copy-truth-2, branch an-copy-truth-2, report REPORT-AN-COPY-TRUTH-2.txt.
+Ruling numbers: R1230-R1239. YOUR OWN advisor may advise you.
+BASE: origin/release/android-v1 (= cca11959). The orchestrator merges into release/android-v1 and
+forward into main.
+
+R1230. "EXACTEMENT LE MEME" EVERYWHERE ELSE (A13 Q3): OnboardingCopy.MODE_INFO, web/lib/fr/
+    application.ts (~l.120-122), docs/play-release.md section 3 - say what A6 proved (the same
+    figures; only each day's stated origin differs), in each surface's own register (R165: written
+    per surface, not lifted). A census first: grep the whole repository for the claim's variants
+    (exactement, identique, le meme releve) in lib/fr, web/lib/fr, content/, docs/ - fix each true
+    hit, list each false one.
+R1231. detectedAt ON /confidentialite (A13 Q4): the provenance record names the time of the
+    validating tap, derived from DISCLOSED_RECORDS (R206), with A13's "plus haut" order test kept.
+R1232. THE AUDIT DOC: docs/release-audit-android.md marks F1 and F5a-F5c closed by cca11959 (A13)
+    and F5c's siblings by this task, each with its evidence line.
+R1233. THE PLAY ASSETS RETAKEN (A13 Q2): after R1230 is committed, on MonReleve_API36 (labelled), a
+    debug build of YOUR code tip: the <= 30 s demo video (the disclosure, now true, unmistakably
+    BEFORE the system dialog, then the feature in use) and screenshot 04 - by A5's recipe, recording
+    started after sign-in (R574). Save to C:/wt/play-assets/ under NEW names carrying your code tip
+    (never overwrite A5's files), and record path, sha256, duration and commit. Check the video
+    frame by frame for the order, as A5 did.
+EVERY NEW STRING verbatim by key in QUESTIONS for the operator; they ship as written unless refused.
+Baselines that move are stated BEFORE regeneration (R207) and cropped (R135).
+
+THE WORK: worktree + lock; test-first; fastCheck per increment; the FULL :app:gate (R391) with the
+emulator shut down (Android Ruling 11) and the heavy lock held; gate:changed (FRONTALIER_PORT=your
+port) and gate:clone before the push (web/ changes); R573 if android/shared changes (ONE
+ios-shared.yml run on your pushed code tip); push the branch (DO NOT MERGE); report; push; lock
+removed last; emulator booted again with the orchestrator's APK, signed out, gestural navigation.
+REPORT: SUMMARY / STATUS (R391) / R1230-R1233 with evidence (the census table; the assets with
+sha256) / BASELINES / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS (new strings first,
+verbatim by key) / PUSH PROOF
+END OF AN-COPY-TRUTH-2 PROMPT

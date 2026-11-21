@@ -2448,3 +2448,120 @@ file is on main (so I1 lands its workflow file through a merge first);
 files the runner executes need LF endings and the executable bit; the
 repository is PUBLIC, so no sign-in mail, code or token may reach a job log
 or an artifact, and recordings start after sign-in (R574).
+
+====================================================================
+iOS RULING 3 - THE SPLIT IS (c), STAGED; ANDROID FROZEN UNTIL A6; I0's QUESTIONS
+====================================================================
+I0 (IOS-HOST-CENSUS) merged to main as d63e882c (report only; R1200-R1203).
+THE SPLIT (the orchestrator, reviewed by its advisor): OPTION (c), STAGED.
+- (b) is refused: SessionEnds cannot be a twin, so nothing would pin session
+  end on iOS - exactly where I0's Finding 2 sits (reminders left scheduled
+  after a sign-out).
+- (a) is not available as written: no common BackHandler exists for the
+  route layer, and it puts the largest diff on the Android release
+  candidate. (c) does not close (a) later.
+- (c) runs ONE MOVE PER TASK, Android behaviour unchanged, each with
+  :app:gate and an iOS run: PARK-IF4's twins to commonMain; the /me codec
+  (first find what commonMain already parses JSON with - a new library is a
+  dependency decision that comes back to the orchestrator); the
+  session-end seam's pure part; the reminder decision. :app's pinning tests
+  STAY where they are (packages unchanged, they compile against the moved
+  types); commonTest gains cases only for iOS. After every fence edit, a
+  violation is PLANTED and seen to fail (a fence with a hard-coded path that
+  now points at nothing passes vacuously).
+ORDER:
+1. ANDROID IS FROZEN: nothing under android/ merges until A6 (AN15-AUDIT)
+   merges. Then a RELEASE BRANCH is cut at A6's merge commit
+   (release/android-v1); Android v1 ships from it, and fixes from the S9
+   checks or Play review land there - not on main, which carries the iOS
+   refactor. Told to the operator.
+2. I1 IOS-HOST (the probe) BEFORE any shell move: host the pilot view
+   controller already in iosMain (no shell work), on a branch whose name
+   does NOT match ios-* (I1: i1-host) and a workflow with NO pull_request
+   trigger (public repository). It may run now; its merge waits for A6.
+3. Then (c)'s moves, then I2 (the walkthrough), then I3 (the audit).
+ON I0's QUESTIONS:
+Q1: (c), above.
+Q2 (code-only sign-in, or wait for the universal link): CODE-ONLY on the
+  simulator and for now; the universal link (Associated Domains + a
+  Team-ID file) arrives with the Apple account. I2's walkthrough taps the
+  sign-in mail's link on the iPhone with no universal link and checks the
+  six-digit code still works afterwards (whether the web callback consumes
+  the token first).
+Q3 (the update gate on iOS): OUT of iOS v1, by name, WITH A TEST: shared
+  wiring must not call /api/v1/android/minimum-version on iOS, or iOS
+  would lock itself out the day the operator sets the Android minimum. An
+  iOS route and the App Store listing come with the account.
+Q4 (threshold alert and notification record buttons on iOS v1): HIDDEN in
+  iOS v1, by name - the evening reminder's tap opens Aujourd'hui; actions
+  and the threshold alert come later.
+Q5 ("Ouvrir ma messagerie" on iOS): the message:// scheme with R299's
+  fallback (hidden when it cannot open).
+Q6 / I0 Finding 1: iOS Ruling 2 SUPERSEDES IosNotificationPlan's plan (today
+  only, 17:00 Paris, DAY_CONCLUSION_MINUTE): iOS takes the fallback
+  reminder's decision once it is common (after PARK-IF4) and schedules up
+  to 7 working days ahead at 19:00 device-local. R892's tests change
+  RED-first in that task.
+I0 Finding 2 (iosDeviceLocalStore has no session-end seam): fixed by the
+  seam's move in (c) - every iOS ending path cancels pending reminders.
+
+====================================================================
+ANDROID RULING 19 - A6 MERGED; THE ANDROID v1 RELEASE BRANCH; A6's FINDINGS
+====================================================================
+A6 (AN15-AUDIT) merged to main as 93e39a41 (the merge of 443008d4; main had
+moved to d63e882c in relay/ and REPORT-IOS-HOST-CENSUS.txt only; token
+hits 0). On the code tip f1dfac15: :app:gate BUILD SUCCESSFUL in 7m 13s,
+GATE_EXIT=0, test floor 1562; gate:changed GATE PASSED (test 4274);
+gate:clone GATE:CLONE PASSED; R573 not owed (android/shared unchanged).
+THE AUDIT'S VERDICT: "Yes for closed testing, no for production." 22
+criteria: 11 closed, 4 open-human, 4 evidence gaps (no product defect), 3
+not re-run. Launch blockers B1-B14 with owners are in
+docs/release-audit-android.md and REPORT-AN15-AUDIT.txt.
+THE RELEASE BRANCH (iOS Ruling 3): release/android-v1 created at 93e39a41
+and pushed. Android v1 is built from it (./gradlew :app:playRelease, A5);
+fixes from the S9 checks, Play review and A13 land there and are merged
+forward into main. main carries the iOS refactor from here.
+ON A6's FINDINGS (the orchestrator's):
+F1 (a forced-sign-out notice promises the set-aside day will wait; R303
+  wipes it when another account signs out) and F5a-F5c (the disclosure's
+  "Rien n'est transmis", /confidentialite's never-sends sentence, the
+  listing's "exactement le meme releve"): the WORDS move to the truth,
+  behaviour unchanged - A13 AN-COPY-TRUTH (R1220-R1229), on
+  release/android-v1, new strings for the operator's approval. Before the
+  Play submission: the disclosure is what the reviewers judge.
+F6 ("Methode de calcul" breaks mid-word at 200 % font): post-launch, with
+  A1's and N6's large-font items.
+F7 (TalkBack speech not capturable on this AVD): the spoken pass is a human
+  gate (the operator, on the S9), listed by A6.
+F8 (CLAUDE.md R248 stale: the repository is public): recorded (Ruling 17);
+  the file is the operator's to edit.
+F9 (parts of docs/audit-android.md read as current but are superseded):
+  post-launch tidy.
+The four evidence gaps (rail parity geometric; ValidationError copy not
+  traced; no simulated month for coordinates; offline cycle replay only)
+  and the three not re-run: post-launch evidence work, by name; none is a
+  product defect.
+
+====================================================================
+ANDROID RULING 20 - A13 MERGED TO release/android-v1 AND main; A13's QUESTIONS; A14
+====================================================================
+A13 (AN-COPY-TRUTH) merged as cca11959, pushed to BOTH release/android-v1 and
+main (both were 93e39a41; token hits 0). On the code tip 6a83392c: :app:gate
+BUILD SUCCESSFUL in 6m 7s, GATE_EXIT=0, test floor 1564; gate:changed GATE
+PASSED (test 4277, visual 176, e2e 402, db 889, late 10); gate:clone
+GATE:CLONE PASSED; R573 run 44856944136 success.
+ON A13's QUESTIONS (the orchestrator's; public texts stay the operator's):
+Q1 (the new strings, REPORT-AN-COPY-TRUTH.txt): SHIP AS WRITTEN unless the
+  operator refuses - put to the operator with A5's listing texts.
+Q2 (A5's screenshot 04 and the demo video film the OLD disclosure): RETAKE
+  both before submission - the disclosure is what the reviewers judge (A14).
+Q3 ("exactement le meme" also in OnboardingCopy.MODE_INFO, web/lib/fr/
+  application.ts ~l.120-122, docs/play-release.md section 3): YES, the same
+  correction, on release/android-v1 (A14).
+Q4 (name detectedAt on /confidentialite's provenance record): YES - it is
+  stored and declared on the form, so the page names it (A14).
+Q5 (the page says what is sent without naming Play's category): ENOUGH.
+Q6 (the web sentence's tenses): KEEP as written; the operator may refuse.
+docs/release-audit-android.md still shows F1 and F5a-c open: A14 marks them
+  closed by cca11959 (with evidence), as the audit's own maintenance.
+A14 AN-COPY-TRUTH-2 (R1230-R1239): Q2-Q4 above, on release/android-v1.
