@@ -53,26 +53,26 @@ instrumentation). A row that is the web's is not repeated.
 | 2 | Zero raw hex, radius or spacing literal outside the tokens in Android `ui/`; lint-enforced | **CLOSED** | `FencesTest` 11/11 (each fence asserts a non-empty scan, F7's vacuity guard), ktlint + detekt in the gate | unit test |
 | 3 | Rail parity: the Compose rail and the web SVG rail match **pixel-for-pixel** at the same width in screenshot tests | **OPEN-DEFECT (evidence gap)** | What exists is GEOMETRY parity: `RailGeometryTest` 28/28 ports the web's `rail-geometry.test.ts` literals case for case, and `ThresholdRailScreenshotTest` holds the Compose rail's own baselines. No test renders both rails and compares pixels. Finding F2 | unit test + renderer |
 | 4 | Every `ValidationError` and `Status` has French copy, exhaustiveness-tested (Android half) | **OPEN-DEFECT (evidence gap)** | `Status`: `StatusesTest` 12/12 (four statuses, codepoint-exact, census non-vacuous). `ValidationError`: the Kotlin engine defines it (`calc/Types.kt`), and no Android French copy map for it exists; whether any Android surface can display one was NOT traced in this session. Finding F3 | unit test |
-| 5 | Offline log queued and synced with both timestamps (Android half; `EntryEvent` append-only is the web's, FW29) | **CLOSED** (queue on device, sync on JVM) | On the MINIFIED audit build (emulator API 36), airplane mode on: a day saved from Calendrier showed "en attente de synchronisation" and the server held nothing for it (oracle: `on 2026-11-14: []`). Its drain was NOT observed on device this session: the F4 drive ended that session server-side on purpose (section 4). The pulled database (debug build) carries both `clientClaimedAt` and the server's `firstRecordedAt` on every synced row; the drain is the gate's `SyncEngine`/`EntriesWire` tests. POINTER for an on-device drain: docs/audit-android.md RESILIENCE | emulator API 36 + unit test |
+| 5 | Offline log queued and synced with both timestamps (Android half; `EntryEvent` append-only is the web's, FW29) | **NOT RE-RUN** (the on-device drain; the queue CLOSED on device, the drain CLOSED on JVM only) | On the MINIFIED audit build (emulator API 36), airplane mode on: a day saved from Calendrier showed "en attente de synchronisation" and the server held nothing for it (oracle: `on 2026-11-14: []`). Its drain was NOT observed on device this session: the F4 drive ended that session server-side on purpose (section 4). The pulled database (debug build) carries both `clientClaimedAt` and the server's `firstRecordedAt` on every synced row; the drain is the gate's `SyncEngineTest` 14/14 ("aDrainMarksRowsSyncedFromTheServerRow", "aServerErrorIsNotIsolatedButRetried", ...), `EntriesWireTest` 4/4, `OrderingEvidenceTest` 2/2, `SyncWorkerResultMappingTest` 3/3. SPEC asks "proven in E2E": the on-device drain was not. POINTER for an on-device drain: docs/audit-android.md RESILIENCE | emulator API 36 + unit test |
 | 6 | PDF renders A4 with the same rail and formatters (the app delivers the server's PDF) | **CLOSED** (the Android half) | Emulator API 36, audit build: Releve -> Exporter en PDF -> share sheet "releve-2026.pdf" for Camille (3 598 ms warm) and for Alex; the server's `IssuanceRecord` counts one PDF per export, per user. The PDF's A4/rail itself is the web's (FW29 criterion 12). First export on `pnpm dev` timed out at 15 017 ms (cold compile; Android Ruling 13 measured a BUILT server at 2.5-2.8 s) | emulator API 36 |
 | 7 | Account export and deletion work end to end (from the app) | **NOT RE-RUN** | Not driven this session (deleting a seeded account mid-audit would have removed the F4 oracle). POINTERS: `SessionEndSeamTest`, `ErasureCensusTest` (in the gate, green), web `account-delete` / `account-export` (FW29), REPORT-AN-SESSION-END.txt | unit test (pointer for the drive) |
 | 8 | Expert reviewer signed off on the reviewer cases (residence-1983 canton, part-time mid-year start) | **OPEN-HUMAN** | Nobody has reviewed anything; the app and the site say "Relecture experte : en attente". Launch blocker B9 | person |
 | 9 | Both engines pass `fixtures/geneva-cases.json` identically; a one-digit divergence fails both | **CLOSED** | Section 1: both green on the fixture; both RED on the one-digit plant; restored. "Fails CI" here means fails the gates that stand in for CI while `CI_FULL` is unset (`:app:gate` runs the Kotlin suite, `gate:changed`/`gate:clone` the TS one) | unit test |
 | 10 | No coordinate anywhere outside `detection/` - lint rule, API rejection test, full-database inspection after a simulated month of auto-mode use | **OPEN-DEFECT (the simulated month)**; the three legs otherwise CLOSED | LINT: `FencesTest` (2b) 11/11, `CoordinateConfinementTest` 2/2, `RoomSchemaContractTest` 6/6. API: `tests/unit/entries/no-coordinates.test.ts` green, isolated. DATABASE (emulator API 36, DEBUG build of f1dfac15 - the audit build is not debuggable, `run-as` refuses it): signed in as Camille, year synced, the mock-provider replay run with airplane mode ON; the pulled `monreleve.db` + `-wal`: 5 tables, `entry` 488 rows (437 MANUAL, 49 DETECTED_CONFIRMED, 2 DETECTED_CORRECTED), 4 576 non-null cells scanned, **zero** coordinate-shaped column, **zero** of the replay's coordinate values in any cell; logcat during the replay (67 784 bytes): **zero** coordinate values, **zero** coordinate tokens. NOT A SIMULATED MONTH: the replay computes its proposals in memory and writes no `daily_tally` row (0 rows read), and no harness produces a month of auto-mode use. Finding F4 | unit test + emulator API 36 |
 | 11 | Detection battery cost <= 3 % per working day, measured on a real device | **OPEN-HUMAN** | Not measured. The S9's. Launch blocker B7 | S9 |
-| 12 | Sampling-to-proposal cycle completes with the network unavailable | **CLOSED** (replay path) | Emulator API 36, debug build, airplane mode ON (`airplane_mode_on` = 1): `dev.DetectionMockReplayActivity` fed the synthetic tracks through the OS test provider and the real classify/vote path and showed per track "Propose CH" (commute), "Propose HOME" (telework), "Pas sur" (strip-home, border crossing, split day, no-fix day) - `d18-replay-screen-2.txt`, `d18-replay-offline-2.png`. CAVEAT: the replay is not the scheduled `SamplingWorker` writing `daily_tally`; that half is `DetectionSamplerTest` / `AujourdhuiAutoControllerTest` (gate). The first replay attempt was VACUOUS (mock provider denied, every track "Pas sur") and is not counted | emulator API 36 + unit test |
+| 12 | Sampling-to-proposal cycle completes with the network unavailable | **OPEN-DEFECT (evidence gap)** - the replay half CLOSED offline on the emulator | Emulator API 36, debug build, airplane mode ON (`airplane_mode_on` = 1): `dev.DetectionMockReplayActivity` fed the synthetic tracks through the OS test provider and the real classify/vote path and showed per track « Proposé CH » (commute), « Proposé HOME » (telework), « Pas sûr » (strip-home, border crossing, split day, no-fix day) - `d18-replay-screen-2.txt`, `d18-replay-offline-2.png`. CAVEAT: the replay is not the scheduled `SamplingWorker` writing `daily_tally`; that half is `DetectionSamplerTest` / `AujourdhuiAutoControllerTest` (gate). The first replay attempt was VACUOUS (mock provider denied, every track « Pas sûr ») and is not counted | emulator API 36 + unit test |
 | 13 | Manual mode reaches an identical dossier to auto mode from the same days - asserted by a test running both paths | **CLOSED** | Section 3 | unit test |
 | 14 | Play data safety form matches section 13 line by line; background-location justification ACCEPTED | **OPEN-HUMAN** (acceptance) | The form's answers are traced to code (`docs/play-release.md` section 2, with R1135's change, section 5 here). Acceptance is Play's; the background-location verdict stands at LIKELY REFUSED (`docs/play-background-location.md`), with the manual-only fallback one property away (`-PmanualOnly=true`). Launch blockers B2, B3 | person (Play) |
-| 15 | Geneva fixtures unchanged after the `RuleSet` refactor, byte for byte | **CLOSED** | The fixture is restored byte for byte after this session's plant (copy, `git status` clean) and both engines reproduce it on the tip | unit test |
+| 15 | Geneva fixtures unchanged after the `RuleSet` refactor, byte for byte | **CLOSED** | `git log -- fixtures/geneva-cases.json`: last change 952c2904 (2026-09-09, "Checkpoint A recorded"), none since; the tip's blob 7546b918... equals main 60d82632's (`git rev-parse 60d82632:fixtures/geneva-cases.json`), so this session's plant left nothing; both engines reproduce it on the tip | unit test + git |
 | 16 | Engine output identical with and without absence rows; a replayed `clientMutationId` produces no new event | **CLOSED** (Android half) | `AggregationConformanceTest` 9/9 ("absences change no engine figure (D28): dropping them leaves the input identical") in the gate; the replay half is server-side (FW29 criterion 22) | unit test |
 | 17 | Hysteresis and buffer tests pass; the proposal card shows the tier in words and never auto-confirms | **CLOSED** | `VoteTest` 19/19, `NearBorderTest` 7/7, `ClassificationTest` 5/5, `DetectionOutcomeTest` 5/5, `AujourdhuiAutoControllerTest` 16/16 (only HIGH proposes; confirm/correct record provenance; nothing is recorded before the tap); `AujourdhuiScreenScreenshotTest` baselines hold the card's words | unit test + renderer |
-| 18 | (AN15) 200 % text scale on the main screens | **CLOSED** with findings | Emulator API 36, audit build, `font_scale` 2.0: Aujourd'hui, Calendrier (switches to its list form), Releve and Parametres reflow, nothing clipped in the content (`montage-font200.png`). Two cosmetic breaks: the bottom-bar labels break mid-word (A3's N6, already post-launch) and, NEW, the Releve identity row "Methode de calcul" breaks mid-word. Finding F6 | emulator API 36 |
+| 18 | (AN15) 200 % text scale on the main screens | **CLOSED** with findings | Emulator API 36, audit build, `font_scale` 2.0: Aujourd'hui, Calendrier (switches to its list form), Releve and Parametres reflow, nothing clipped in the content (`montage-font200.png`). Two cosmetic breaks: the bottom-bar labels break mid-word (A3's N6, already post-launch) and, NEW, the Releve identity row « Méthode de calcul » breaks mid-word. Finding F6 | emulator API 36 |
 | 19 | (AN15) TalkBack pass over sign-in, Aujourd'hui and the export | **OPEN-HUMAN** (the spoken pass) | Emulator API 36, audit build, Google TalkBack 16.0 ON: initial focus lands on the "Bonjour Camille" heading; the export works with TalkBack on (share sheet reached); the accessibility tree read UNDER TalkBack has **0 unlabelled actionable nodes** on six screens - welcome (1 action), sign-in address (3), sign-in code (10; the six digit fields are labelled per field, values never read, R574), Aujourd'hui (4), Releve export area (7), sign-out dialog (2) (`a11y-*.txt`). NOT DONE: what TalkBack SPEAKS. Injected navigation never reached TalkBack on this AVD by four mechanisms (`input keycombination` Alt+Right, `input swipe`, a uhid virtual keyboard as AN-TALKBACK used on the S9, the emulator console's keyboard), and Google TalkBack logs no utterance text by default. AN-TALKBACK captured Aujourd'hui's speech on the S9 (POINTER). Finding F7 | emulator API 36 (tree); person/S9 (speech) |
 | 20 | (AN15) Screenshot baselines | **CLOSED** | Section 1: 163 baselines, zero tolerance, none regenerated | renderer |
 | 21 | (AN15) Full Gradle suite and `bundleRelease` | **CLOSED** | Section 1 (`:app:gate` builds and checks the .aab) | unit test + build |
 | 22 | (AN15) Instrumentation runs (`connectedDebugAndroidTest`) | **NOT RE-RUN** | Compiled by the gate (`compileDebugAndroidTestKotlin`); not run: it uninstalls the app and its data, and the emulator had to come back to the orchestrator's state. Android Ruling 5 already records that `SignOutPendingLargeFontInstrumentedTest` is run by no gate (post-launch) | - |
 
-**Count: 22 criteria - 13 CLOSED, 4 OPEN-HUMAN, 3 OPEN-DEFECT (evidence gaps, none a product defect), 2 NOT RE-RUN.**
+**Count: 22 criteria - 11 CLOSED, 4 OPEN-HUMAN, 4 OPEN-DEFECT (evidence gaps - none is a product defect), 3 NOT RE-RUN.** One standard throughout: a row whose SPEC wording names an end-to-end or scheduled path is not CLOSED on its unit tests plus a partial drive (rows 5 and 12).
 
 ### Product gates
 
@@ -137,12 +137,12 @@ fields are reported as "[digit field, not shown]" (R574). The Postgres oracle `q
 | Step | What was seen | Oracle |
 |---|---|---|
 | A = Camille signs in | "Bonjour Camille" | - |
-| A records today (Domicile) | "Enregistre"; Calendrier "Aujourd'hui, Jour 21, Domicile ... saisie manuelle" | Camille 487 -> 488 entries; 2026-11-21 owned by camille only |
+| A records today (Domicile) | « Enregistré »; Calendrier « Aujourd’hui, Jour 21, Domicile, enregistré à temps, saisie manuelle » | Camille 487 -> 488 entries; 2026-11-21 owned by camille only |
 | A exports the PDF | share sheet, releve-2026.pdf | IssuanceRecord: camille 2 |
 | A records 14 Nov OFFLINE | Calendrier "Jour 14, Suisse, en attente de synchronisation" | server: nothing on 2026-11-14 |
-| A's session ended SERVER-SIDE (DeviceSession revoked in the scratch DB), network back | the app ends the session itself: sign-in screen, "Votre session a ete fermee. 1 journee ... attend d'etre envoyee : reconnectez-vous avec la meme adresse" (SET ASIDE, not drained) | camille: 0 live sessions |
-| B = Alex signs in on the same phone | "Bonjour Alex"; today "Ou travaillez-vous aujourd'hui ?" (A's Domicile NOT shown) | - |
-| B's Calendrier | Jour 14 and Jour 21 "Non renseigne" - neither of A's days | after the sync window: Alex still 489 entries; nothing of A's under Alex |
+| A's session ended SERVER-SIDE (DeviceSession revoked in the scratch DB), network back | the app ends the session itself: sign-in screen, « Votre session a été fermée. 1 journée … attend d’être envoyée : reconnectez-vous avec la même adresse » (SET ASIDE, not drained) | camille: 0 live sessions |
+| B = Alex signs in on the same phone | "Bonjour Alex"; today « Où travaillez-vous aujourd’hui ? » (A's Domicile NOT shown) | - |
+| B's Calendrier | Jour 14 and Jour 21 « Non renseigné » - neither of A's days | after the sync window: Alex still 489 entries; nothing of A's under Alex |
 | B's Releve | Nom "Alex Dupont" | - |
 | B exports the PDF | share sheet, releve-2026.pdf | IssuanceRecord: alex 1 (the PDF was issued for Alex's account) |
 | B's Parametres | Alex's settings (start date 08.01.2024; Camille's is 02.09.2024) | - |
@@ -154,8 +154,8 @@ Releve, Parametres or in the exported PDF, and the first account's queued day di
 
 **The other half (SET_ASIDE_RELEASED) did NOT hold, and that is ruled behaviour, not a regression:** when B signed
 OUT, the phone was wiped, A's set-aside day included (R303: "R295's sign-out still clears everything - set-aside rows
-included", `account/DeviceLocalStore.kt`). When A signed back in, 14 Nov was gone (server: nothing on 2026-11-14;
-Calendrier "Non renseigne"). The message A was given ("reconnectez-vous avec la meme adresse pour l'envoyer") is
+included", `account/DeviceLocalStore.kt`). WHICH STEP erased it was attributed by reading the code, not isolated on the device (A never returned without B in between): a server-ended session KEEPS the record and its tag (R521, `DeviceLocalStore.clearForSessionEnd`, and the notice counted the day after it), a sign-in sets a different account's rows aside without clearing them (R303), and a voluntary sign-out runs `clearForSignOut`, the whole-record wipe. When A signed back in, 14 Nov was gone (server: nothing on 2026-11-14;
+Calendrier « Non renseigné »). The message A was given (« reconnectez-vous avec la même adresse pour l’envoyer ») is
 then untrue, and B's sign-out dialog did not mention a stranger's unsent day. Finding F1.
 
 ### 200 % text, TalkBack, one recorded day and a PDF
@@ -192,14 +192,14 @@ manual-only fallback) says when the row would read "not collected".
 
 | Surface | Sentence (by key / line) | Verdict |
 |---|---|---|
-| In-app disclosure | `android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/DisclosureCopy.kt` `NEVER_SHARED` (line 51-52), opening "Rien n'est transmis" | **CONTRADICTS** "Approximate location: collected". The confirmed day (Suisse / domicile) IS transmitted to our server. The rest of the sentence (never shared with the employer or the administration) is true. Finding F5a |
-| In-app disclosure | `DisclosureCopy.NETWORK_LOCATION` ("ne conserve ni n'envoie jamais votre position"), `ON_DEVICE`, `WHAT_IS_KEPT` | consistent if "position" means the coordinate; `WHAT_IS_KEPT` says one conclusion a day is kept but not that it is sent once confirmed |
-| Welcome screen | the "Confidentialite" line, "Aucune position n'est conservee" (seen on the emulator) | consistent read as "coordinate"; tension, not a contradiction |
-| /confidentialite | `web/lib/fr/confidentialite.ts` `never[1]` ("L'application, elle, ne conservera ni n'enverra jamais votre position") under the heading "Ce qui n'est jamais enregistre"; the collected list (`day`, `provenance`) does name each day's nature and its detected origin | **TENSION**: the page lists what is collected without calling the confirmed day a location, and a reviewer comparing it with "Approximate location: collected" meets "never sends your position". Finding F5b |
-| /confidentialite | `appThirdParty` ("L'application Android n'existe pas encore") and the rights section's "lorsqu'elle sera disponible" | stale at launch; launch blocker B12 (Q-DS2) |
-| Store listing | `docs/play-store-listing.md` `listing:detection` ("... ne conserve ni n'envoie jamais votre position, seulement la journee que vous confirmez") | **AGREES** - it says the confirmed day is sent |
-| Store listing | `listing:full`, VOS DONNEES ("Aucune coordonnee geographique n'est enregistree ni transmise") | **TRUE** (no coordinate; a confirmed CH/HOME day is not a coordinate) |
-| Store listing | `listing:detection`, last sentence ("La saisie manuelle produit exactement le meme releve") | true of every figure (section 3) but not of the provenance column the releve prints; "exactement" is stronger than section 3's "identical apart from provenance". Finding F5c |
+| In-app disclosure | `android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/DisclosureCopy.kt` `NEVER_SHARED` (line 51-52), opening « Rien n’est transmis » | **CONTRADICTS** "Approximate location: collected". The confirmed day (Suisse / domicile) IS transmitted to our server. The rest of the sentence (never shared with the employer or the administration) is true. Finding F5a |
+| In-app disclosure | `DisclosureCopy.NETWORK_LOCATION` (« ne conserve ni n’envoie jamais votre position »), `ON_DEVICE`, `WHAT_IS_KEPT` | consistent if "position" means the coordinate; `WHAT_IS_KEPT` says one conclusion a day is kept but not that it is sent once confirmed |
+| Welcome screen | the « Confidentialité » line, « Aucune position n’est conservée » (seen on the emulator) | consistent read as "coordinate"; tension, not a contradiction |
+| /confidentialite | `web/lib/fr/confidentialite.ts` `never[1]` (« L’application, elle, ne conservera ni n’enverra jamais votre position ») under the heading « Ce qui n’est jamais enregistré »; the collected list (`day`, `provenance`) does name each day's nature and its detected origin | **TENSION**: the page lists what is collected without calling the confirmed day a location, and a reviewer comparing it with "Approximate location: collected" meets "never sends your position". Finding F5b |
+| /confidentialite | `appThirdParty` (« L’application Android n’existe pas encore ») and the rights section’s « lorsqu’elle sera disponible » | stale at launch; launch blocker B12 (Q-DS2) |
+| Store listing | `docs/play-store-listing.md` `listing:detection` (« … ne conserve ni n’envoie jamais votre position, seulement la journée que vous confirmez ») | **AGREES** - it says the confirmed day is sent |
+| Store listing | `listing:full`, VOS DONNEES (« Aucune coordonnée géographique n’est enregistrée ni transmise ») | **TRUE** (no coordinate; a confirmed CH/HOME day is not a coordinate) |
+| Store listing | `listing:detection`, last sentence (« La saisie manuelle produit exactement le même relevé ») | true of every figure (section 3) but not of the provenance column the releve prints; « exactement » is stronger than section 3's "identical apart from provenance". Finding F5c |
 
 The operator approves the form and the listing together; the copy calls are theirs.
 
@@ -278,8 +278,8 @@ audit claims nothing about iOS beyond that.
 ## 9. Findings
 
 **F1 - a forced sign-out promises a set-aside day that another account's sign-out then erases (LOW-MEDIUM, data
-loss, ruled design).** Seen on the minified build (section 4). The forced-sign-out notice tells A the day "attend
-d'etre envoyee : reconnectez-vous avec la meme adresse", but R303 makes every sign-out clear the whole device,
+loss, ruled design).** Seen on the minified build (section 4). The forced-sign-out notice tells A the day « attend
+d’être envoyée : reconnectez-vous avec la même adresse », but R303 makes every sign-out clear the whole device,
 set-aside rows included, so B's sign-out erases A's day without B being told it exists. Not a privacy leak (nothing of
 A reached B). Options for the operator: keep R303 and soften A's notice; or warn in B's sign-out dialog; or keep
 set-aside rows across a foreign sign-out. Not fixed (product rule + copy).
@@ -295,12 +295,12 @@ surface, R206's corollary); if one can, it needs copy.
 **F4 - no simulated-month harness.** The coordinate criterion's database leg was re-run on a populated database (488
 entries, 51 detected) but the replay writes no `daily_tally`; a month of automatic use was never simulated.
 
-**F5 - public copy vs "Approximate location: collected" (section 5).** F5a `DisclosureCopy.NEVER_SHARED` "Rien n'est
-transmis" contradicts the form; F5b /confidentialite's "never" list says the position is never sent without calling
-the confirmed day a location; F5c the listing's "exactement le meme releve" is stronger than "identical apart from
+**F5 - public copy vs "Approximate location: collected" (section 5).** F5a `DisclosureCopy.NEVER_SHARED` « Rien n’est
+transmis » contradicts the form; F5b /confidentialite's "never" list says the position is never sent without calling
+the confirmed day a location; F5c the listing’s « exactement le même relevé » is stronger than "identical apart from
 provenance". The operator's copy (approved with the form and the listing).
 
-**F6 - Releve's identity row "Methode de calcul" breaks mid-word at 200 %** (emulator API 36), the same family as the
+**F6 - Releve's identity row « Méthode de calcul » breaks mid-word at 200 %** (emulator API 36), the same family as the
 bottom-bar labels (Ruling 8 N6).
 
 **F7 - TalkBack speech cannot be captured on this AVD.** Four injection mechanisms never reached TalkBack; Google
@@ -321,7 +321,7 @@ minified build, blocked by PARKAN-34" is closed by section 4 here; PARKAN-34 its
 ## 10. Would you sign it?
 
 **Yes - for the CLOSED TESTING track, not for production.** Every criterion this code can own is either closed on
-this tip or an evidence gap that is not a product defect (F2-F4), and the one HIGH-severity defect the earlier audit
+this tip, an evidence gap that is not a product defect (F2-F4, rows 5 and 12), or not re-run with its unit evidence green, and the one HIGH-severity defect the earlier audit
 found (F4, one account's days reaching another) is now shown closed on the minified build. Production waits on the
 human list in section 6 - the key, Play's verdict on background location, the S9 measurements, the real push and the
 expert reviewer - and on the operator's answers to F1 and F5.

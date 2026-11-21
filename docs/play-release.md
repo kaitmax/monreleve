@@ -108,9 +108,12 @@ TLS termination is the hosting's, not this repository's (the operator's Coolify 
 **Can users request deletion? YES, in the app**: Paramètres -> Supprimer mon compte -> `POST /api/v1/account/delete`
 (`web/lib/account/delete.ts`, `web/tests/db/account-delete.test.ts`, `web/tests/db/privacy-claims.test.ts` "CLAIM 9":
 the account, the days, their history and the devices are erased; the FCM token row goes with the account by cascade).
-On the phone, every session ending (sign-out, server-ended, deletion) invalidates the token and wipes the local store
-(`auth/SessionEndSeam.kt`, `SessionEndSeamTest`, `ErasureCensusTest`). The **web link** Play also requires is
-**QUESTION Q-DS2**.
+On the phone, every session ending (sign-out, server-ended, deletion) invalidates the token (`auth/SessionEndSeam.kt`,
+`SessionEndSeamTest`, `ErasureCensusTest`); a sign-out and a deletion wipe the local store (R295), while a session the
+SERVER ended keeps the unsent days under their account tag for the same person's return and clears the rest (R521,
+`account/DeviceLocalStore.kt` `clearForSessionEnd`) - corrected by AN15-AUDIT, which saw it on the emulator
+(`docs/release-audit-android.md` section 4). The **web link** Play also requires is **QUESTION Q-DS2** (answered:
+Android Ruling 18 - a launch-day web task).
 
 ### 2.1 What the form is answered from
 
