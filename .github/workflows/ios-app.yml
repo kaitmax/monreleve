@@ -1,0 +1,275 @@
+name: ios-app
+
+# ===========================================================================
+# IOS-HOST (R1213). THE iOS APP: BUILT, INSTALLED ON AN iPHONE SIMULATOR,
+# LAUNCHED, PHOTOGRAPHED, AND PROBED FROM INSIDE ITS OWN BUNDLE.
+# ===========================================================================
+#
+# WHAT IT PROVES, IN ORDER:
+#   1. :shared links as a STATIC framework for BOTH iOS targets - the simulator
+#      (which the app uses) and the device (linked, not run: no account).
+#   2. xcodegen turns ios/project.yml into an Xcode project (nothing hand-written).
+#   3. xcodebuild builds the app AD-HOC SIGNED (identity "-", no team, signing
+#      allowed) with the Kotlin framework and Compose's resources inside it.
+#   4. The .app carries compose-resources/ic_*.xml - refused if it does not, since
+#      every icon the shared screens draw is read from there (R1203 item 4).
+#   5. A NORMAL launch (twice: the pilot's default state, then a state that draws
+#      icons) is photographed, and leaves NO probe file behind.
+#   6. A -probe launch writes its result file; the step reads it back with simctl
+#      and refuses a file without this run's nonce or without its last line.
+#
+# WHAT A GREEN RUN DOES NOT MEAN. Green says the app built, launched, and the
+# probe produced a COMPLETE result for THIS launch. Each probe line is a
+# measurement, judged against the expectation written before the run
+# (REPORT-IOS-HOST.txt) - a probe that reports FAIL is a finding, not a red job.
+#
+# NO SECRETS, NO SIGN-IN, NOTHING PUBLISHED. The repository is PUBLIC: this job
+# reads no secret, signs nobody in, and the pilot makes no network request. The
+# probe's Keychain check stores a FAKE pair and writes only whether it came back
+# equal. The xcodebuild log is uploaded with Xcode's "export" lines removed, and
+# the project's script phase does not print its environment (showEnvVars: false).
+#
+# TRIGGERS. workflow_dispatch (GitHub dispatches only a workflow whose file is on
+# the DEFAULT branch, so it works once the file is merged) and a push to the
+# branch i1-host ONLY. NO pull_request: on a public repository that would run
+# this job for anyone's fork. A push that changes only a report or the park
+# register starts nothing (paths-ignore); a newer push cancels the run it
+# supersedes (concurrency); a hung simulator stops at the job's timeout.
+#
+# ios-shared.yml and ci.yml ARE NOT TOUCHED by this file.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'i1-host'
+    paths-ignore:
+      - 'REPORT-*.txt'
+      - 'parking.md'
+
+concurrency:
+  group: ios-app-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ios-app:
+    name: ios-app
+    # THE RUNNER - ios-shared.yml's, for ios-shared.yml's reasons (read there):
+    # arm64 because the Kotlin plugin builds iosSimulatorArm64 binaries only on
+    # an arm64 Mac; macos-15 pinned rather than a moving label; a STANDARD runner.
+    runs-on: macos-15
+    # A cold run provisions Kotlin/Native and links two frameworks before Xcode
+    # starts; this bounds a hang, not a normal run.
+    timeout-minutes: 60
+    env:
+      # THE XCODE - ios-shared.yml's (KMP-UP2 R547): Kotlin 2.2.21's documented
+      # Xcode is 26.0, and macos-15's default is still 16.4. Job level, so xcrun,
+      # simctl, xcodebuild and the Kotlin plugin all see the same one.
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+
+    steps:
+      # Every action is pinned to the full commit SHA of a release, as in ios-shared.yml.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+          cache-read-only: false
+
+      # ~/.konan, keyed as ios-shared.yml keys it, so the two workflows share one toolchain cache.
+      - name: Restore the Kotlin/Native toolchain
+        id: konan
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/gradle/libs.versions.toml') }}
+
+      - name: Environment (diagnostic)
+        run: |
+          set +e
+          # Everything the run uploads goes under OUT (the runner context is not available in a job-level env).
+          echo "OUT=$RUNNER_TEMP/ios-app" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/ios-app"
+          uname -m
+          sw_vers
+          xcode-select -p
+          xcodebuild -version
+          java -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+          exit 0
+
+      # The one tool this workflow installs. Not preinstalled on macos-15 (the image readme, REPORT-IOS-HOST-CENSUS
+      # R1203 item 7); its version is printed so a run says which one generated the project.
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          echo "XCODEGEN: $(xcodegen --version)"
+
+      # R532 cause 1, as in ios-shared.yml: KSP's native task does not provision the toolchain; the commonizer does.
+      - name: Provision the Kotlin/Native toolchain
+        working-directory: android
+        run: |
+          ./gradlew :shared:commonize --stacktrace
+          if ! ls "$HOME"/.konan/kotlin-native-prebuilt-macos-*/tools/env_blacklist >/dev/null 2>&1; then
+            echo "NO RESULT: the Kotlin/Native toolchain is still absent from ~/.konan after :shared:commonize."
+            exit 1
+          fi
+
+      # R1210. BOTH frameworks, so the device one is BUILT and not only declared. The simulator one is what Xcode's
+      # pre-build script finds up to date and links.
+      - name: Link the Shared framework (simulator and device)
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64 --stacktrace 2>&1 | tee "$OUT/gradle-framework.log"
+          for d in shared/build/bin/iosSimulatorArm64/debugFramework/Shared.framework shared/build/bin/iosArm64/debugFramework/Shared.framework; do
+            if [ ! -d "$d" ]; then echo "NO RESULT: $d was not produced"; exit 1; fi
+            echo "FRAMEWORK: $d"
+            lipo -info "$d/Shared"
+            file "$d/Shared"
+          done
+
+      - name: Save the Kotlin/Native toolchain
+        if: always() && steps.konan.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/gradle/libs.versions.toml') }}
+
+      - name: Generate the Xcode project (xcodegen)
+        working-directory: ios
+        run: |
+          xcodegen generate --spec project.yml
+          echo "--- generated Info.plist:"; plutil -p MonReleve/Info.plist
+          echo "--- generated entitlements:"; plutil -p MonReleve/MonReleve.entitlements
+
+      # The same device rule as ios-shared.yml's (the first device under the LAST iOS runtime), so both workflows
+      # name the same simulator. The app is built for the generic simulator platform and installed with simctl.
+      - name: Boot the iPhone simulator
+        run: |
+          udid=$(xcrun simctl list devices available | awk '/^-- iOS/{h=1; first=""; next} /^-- /{h=0} h && first=="" {match($0,/[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}/); if (RSTART>0) {first=substr($0,RSTART,RLENGTH); last=first}} END{print last}')
+          if [ -z "$udid" ]; then echo "NO RESULT: no iOS simulator device found"; exit 1; fi
+          echo "$udid" > "$RUNNER_TEMP/sim.udid"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          {
+            echo "DEVICE: $(xcrun simctl list devices | grep "$udid" | sed 's/^ *//')"
+            echo "RUNTIME: $(xcrun simctl list devices | awk -v u="$udid" '/^-- /{h=$0} index($0,u){print h; exit}')"
+          } | tee "$OUT/simulator.txt"
+
+      - name: Build the app (xcodebuild, ad-hoc signed)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ios/MonReleve.xcodeproj -scheme MonReleve -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" -resultBundlePath "$OUT/build.xcresult" \
+            ARCHS=arm64 JAVA_HOME="$JAVA_HOME" 2>&1 | tee "$RUNNER_TEMP/xcodebuild-raw.log"
+
+      - name: What the .app carries (resources, plist, signature, entitlements)
+        run: |
+          app="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/MonReleve.app"
+          if [ ! -d "$app" ]; then echo "NO RESULT: $app was not produced"; exit 1; fi
+          echo "$app" > "$RUNNER_TEMP/app.path"
+          glyphs=$(find "$app/compose-resources" -name 'ic_*.xml' 2>/dev/null | wc -l | tr -d ' ')
+          echo "COMPOSE RESOURCES: $glyphs ic_*.xml under MonReleve.app/compose-resources"
+          find "$app/compose-resources" -type f 2>/dev/null | sed "s|$app/||" | sort | head -40
+          if [ "$glyphs" -eq 0 ]; then echo "REFUSED: no glyph file reached the app - every icon would throw"; exit 1; fi
+          echo "--- Info.plist:"; plutil -p "$app/Info.plist"
+          echo "--- signature:"; codesign -dvvv "$app" 2>&1 | grep -E 'Identifier|Signature|TeamIdentifier|Format'
+          echo "--- entitlements in the signature:"; codesign -d --entitlements - "$app" 2>&1 || true
+          echo "--- simulated entitlements Xcode processed:"
+          find "$RUNNER_TEMP/dd" -name '*-Simulated.xcent' -exec sh -c 'echo "$1"; plutil -p "$1"' _ {} \;
+          echo "--- the binary's __TEXT,__entitlements section carries the keychain group: $(grep -a -c keychain-access-groups "$app/MonReleve" || true) match(es)"
+          echo "--- linked against (Shared is static, so it is NOT listed here):"; otool -L "$app/MonReleve" | head -30
+
+      - name: Install
+        run: |
+          udid=$(cat "$RUNNER_TEMP/sim.udid")
+          xcrun simctl uninstall "$udid" ch.monreleve.app || true
+          xcrun simctl install "$udid" "$(cat "$RUNNER_TEMP/app.path")"
+
+      # R1211/R1214. TWO NORMAL LAUNCHES. The pilot's default state (today unanswered) draws no icon, so the second
+      # launch opens today ANSWERED_WHOLE, whose answer and status lines are glyphs - the screenshot that shows an
+      # icon rendered from compose-resources. Each must still be running when photographed, and neither may leave a
+      # probe file: absence is meaningful only beside the presence the probe launch shows next (R169's corollary).
+      - name: Normal launches (screenshots; no probe file)
+        run: |
+          udid=$(cat "$RUNNER_TEMP/sim.udid")
+          data=$(xcrun simctl get_app_container "$udid" ch.monreleve.app data)
+          rm -f "$data/Documents/ios-host-probe.txt"
+          for scenario in DEFAULT ANSWERED_WHOLE; do
+            if [ "$scenario" = DEFAULT ]; then
+              out=$(xcrun simctl launch "$udid" ch.monreleve.app)
+            else
+              out=$(xcrun simctl launch "$udid" ch.monreleve.app -pilotScenario "$scenario")
+            fi
+            echo "LAUNCH $scenario: $out"
+            pid=$(echo "$out" | awk -F': ' '{print $2}')
+            sleep 15
+            if kill -0 "$pid" 2>/dev/null; then echo "ALIVE after 15 s: pid $pid"; else echo "NOT RUNNING after 15 s: pid $pid"; exit 1; fi
+            xcrun simctl io "$udid" screenshot "$OUT/launch-$scenario.png"
+            if [ -e "$data/Documents/ios-host-probe.txt" ]; then echo "REFUSED: a normal launch wrote the probe file"; exit 1; fi
+            echo "NO PROBE FILE after the $scenario launch (expected)"
+            xcrun simctl terminate "$udid" ch.monreleve.app || true
+            sleep 2
+          done
+
+      # R1212. THE PROBE LAUNCH. The nonce is this run's id and attempt: a file without it is not this launch's.
+      - name: Probe launch (results read back with simctl)
+        run: |
+          udid=$(cat "$RUNNER_TEMP/sim.udid")
+          data=$(xcrun simctl get_app_container "$udid" ch.monreleve.app data)
+          file="$data/Documents/ios-host-probe.txt"
+          nonce="run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          xcrun simctl launch "$udid" ch.monreleve.app -probe YES -probeNonce "$nonce" -pilotScenario ANSWERED_WHOLE
+          for i in $(seq 1 90); do
+            if grep -q '^probe.done=true$' "$file" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          sleep 3
+          xcrun simctl io "$udid" screenshot "$OUT/probe-share-sheet.png"
+          if [ ! -e "$file" ]; then echo "NO RESULT: the probe launch wrote no file"; exit 1; fi
+          cp "$file" "$OUT/ios-host-probe.txt"
+          echo "--- the probe file:"; cat "$file"
+          if ! grep -qx "probe.nonce=$nonce" "$file"; then echo "NO RESULT: the file does not carry this launch's nonce"; exit 1; fi
+          if ! grep -qx 'probe.done=true' "$file"; then echo "NO RESULT: the probe did not finish (the last line written is the last check that returned)"; exit 1; fi
+          echo "--- the four results:"; grep -E '^(keychain|notification|share|bgtask)\.(result|submit)=' "$file"
+          xcrun simctl terminate "$udid" ch.monreleve.app || true
+
+      - name: Logs (app, crashes, the build log without its environment)
+        if: always()
+        run: |
+          set +e
+          udid=$(cat "$RUNNER_TEMP/sim.udid" 2>/dev/null)
+          if [ -n "$udid" ]; then
+            xcrun simctl spawn "$udid" log show --last 20m --style compact --predicate 'process == "MonReleve"' > "$OUT/app-system.log" 2>&1
+            echo "app system log: $(wc -l < "$OUT/app-system.log") lines"
+          fi
+          mkdir -p "$OUT/crashes"
+          find "$HOME/Library/Logs/DiagnosticReports" -name 'MonReleve*' -exec cp {} "$OUT/crashes/" \; 2>/dev/null
+          echo "crash reports: $(ls "$OUT/crashes" | wc -l)"
+          if [ -f "$RUNNER_TEMP/xcodebuild-raw.log" ]; then
+            grep -v -E '^[[:space:]]*export ' "$RUNNER_TEMP/xcodebuild-raw.log" > "$OUT/xcodebuild.log"
+            echo "--- xcodebuild, last lines:"; tail -40 "$OUT/xcodebuild.log"
+          fi
+          exit 0
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ios-app
+          path: ${{ runner.temp }}/ios-app/
+          retention-days: 14
+          if-no-files-found: warn
