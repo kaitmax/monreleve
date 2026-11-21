@@ -5783,4 +5783,10 @@ WHAT:       account/DeviceLocalStore.kt, detection/EveningNotificationDecision.k
 GUARDS UNTIL THEN: IosAndroidTwinsTest fails on any byte of drift and on any
             fourth copy; a move that forgets the copy fails iOS compilation
             with a redeclaration.
-STATE:      OPEN.
+STATE:      CLOSED on branch m1-twins by IOS-MOVE-TWINS (R1240-R1242; code
+            e69cafbc), pending merge. The three files were git mv'd to :shared
+            commonMain under the same packages (blobs unchanged), the iosMain
+            copies git rm'd, and IosAndroidTwinsTest replaced by
+            MovedTwinsFenceTest (fails if any of the three files' top-level
+            declarations, or a file of their names, reappears anywhere under
+            :app/src or iosMain). REPORT-IOS-MOVE-TWINS.txt.

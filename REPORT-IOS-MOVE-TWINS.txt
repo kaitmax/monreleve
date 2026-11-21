@@ -1,0 +1,249 @@
+REPORT-IOS-MOVE-TWINS - THE THREE TWINS BECOME ONE FILE EACH, IN commonMain (iOS phase, (c) move 1; PARK-IF4)
+TASK     C:/wt/web-orch/relay/IOS-MOVE-TWINS.txt (iOS Rulings 3-4, relay/RULINGS-2026-11-16.txt). Rulings R1240-R1249;
+         R1240-R1244 used, R1245-R1249 unused. Before the first push `grep -rlE '\bR124[0-9]\b'` over relay/,
+         REPORT-*.txt, CLAUDE.md, docs and parking.md (the orchestrator's worktree, the main checkout and this worktree)
+         returned only the prompt and RULINGS-2026-11-16.txt (the allocation).
+BASE     origin/main 2824e82d (I1 merged).
+BRANCH   m1-twins (does not match ios-*). PUSHED, NOT MERGED; the merge is the orchestrator's.
+         Code tip e69cafbc (one commit on the base). The report tip is the commit carrying this file and parking.md; it
+         touches nothing under android/.
+WORKTREE C:/wt/m1-twins, lock .session-lock.json (gitignored, R349), removed last. A second worktree of mine,
+         C:/wt/m1-base (detached at 2824e82d, for the base measurement only, own lock), was removed clean after use.
+EVIDENCE C:/wt/queue-evidence/m1-twins/ (not committed): base-pins.sh + base-pins.log + base-lock.log + base-xml-{app,
+         shared}/; fastcheck-{1,2}.log; plant-fence*.log + plant-fence.xml; plants-and-gate.sh + plant-app.log +
+         plant-app-xml/ + gate.log + gate-lock.log + gate-xml-{app,shared}/; ios-shared-44904890784/ (the run's own
+         JUnit XML); drafts/ and tools/replace1.mjs (every scripted edit asserted exactly one match before writing,
+         R211).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and detection/ThresholdAlertDecision.kt now
+  live ONCE, in android/shared/src/commonMain/kotlin/ch/monreleve/app/, under their same packages. The :app copies
+  were git mv'd there and the iosMain copies git rm'd. The moved blobs are unchanged (6c51f1a4, b29ec2f0, bd51bf83).
+  All three compiled in commonMain as they were, so no file was blocked.
+- IosAndroidTwinsTest is gone. MovedTwinsFenceTest replaces it and fails if a moved declaration or file name
+  reappears anywhere under :app/src or iosMain. It also keeps "no iosMain file shares a path with :app main",
+  asserted empty. Four planted violations made it fail, each named, and it went green again after they were removed.
+- Two other fences had to change: ThresholdAlertR340Test (its path follows the file) and SessionEndSeamFenceTest
+  (commonMain and androidMain become roots). Each was planted, seen to fail naming the plant, and restored.
+- :app:gate on e69cafbc: BUILD SUCCESSFUL in 7m 37s, GATE_EXIT=0, test floor 1564, equal to the base's 1564. No
+  baseline moved.
+- iOS: ios-shared run 44904890784 on e69cafbc passed, 418 tests, 0 failures, equal to I1's 418. ios-app run
+  44904893506 on e69cafbc also passed.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip e69cafbc in this session, on a clean tree
+(`git status --porcelain --untracked-files=all` = 0 lines before it started):
+    GATE HEAD=e69cafbcb87cc412b0f8e600afb137d638b19b8a start=2026-11-21T14:07:34Z
+    test floor OK: 1564 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 7m 37s
+    GATE_EXIT=0
+It ran under the heavy lock as holder m1-twins-gate: ACQUIRED at 14:04:00Z with commitFree=8119 (line 8000), and
+RELEASED at 14:15:19Z. gate:clone is not owed because no web/ path changed. The report tip changes only
+REPORT-IOS-MOVE-TWINS.txt and parking.md, both in ios-shared.yml's paths-ignore, so the android/ tree at the report
+tip is e69cafbc's.
+
+================================================================================
+R1240 - THE MOVE
+================================================================================
+`git mv` (:app -> commonMain) and then `git rm` (iosMain), per file, with no edit to the moved files.
+    file                                       base :app blob   HEAD commonMain blob  in :app at HEAD  in iosMain at HEAD
+    account/DeviceLocalStore.kt                6c51f1a4         6c51f1a4               no               no
+    detection/EveningNotificationDecision.kt   b29ec2f0         b29ec2f0               no               no
+    detection/ThresholdAlertDecision.kt        bd51bf83         bd51bf83               no               no
+The base blobs are `git rev-parse 2824e82d:<app path>`. At base the iosMain copies had the same three blobs. The HEAD
+blobs are `git rev-parse HEAD:<commonMain path>`, read AFTER the commit, which is the committed blob and not the
+index (memory: git mv on an edited file stages the pre-edit blob). The index and `git hash-object` of the working
+file read the same before the commit.
+Compiled in commonMain AS-IS: every dependency (TokenStore, SettingsStore, DossierCache, PendingSignInStore,
+AccountStore, DetectionModeStore, LocalStore, EntryKind, DetectionOutcome, AlertThreshold, ThresholdCrossing) was
+already declared in commonMain, and none of the three imports java.* or android.*. fastcheck-1 ran
+:shared:compileCommonMainKotlinMetadata (compiling commonMain as common code) and :app:compileDebugKotlin, and
+neither failed. Blocked files: NONE. No behaviour was rewritten.
+
+================================================================================
+R1241 - THE PINS STAY
+================================================================================
+:app's tests that exercise the moved types compile UNEDITED against them (same packages). The one exception is
+ThresholdAlertR340Test: it is a source fence, not a type pin, and only its path list changed (R1242). Counts come from
+each run's own JUnit XML. BEFORE = base-pins.sh at 2824e82d with `--tests` on these 12 classes. AFTER = the full gate
+on e69cafbc.
+    class                                                      before        after
+    account.ErasureCensusTest                                  3             3
+    account.LocalStoreTest                                     5             5
+    auth.ForcedSignOutTest                                     27            27
+    auth.SessionEndSeamTest                                    10            10
+    detection.EveningNotificationDecisionTest                  9             9
+    detection.ThresholdAlertDecisionTest                       11            11
+    detection.ThresholdAlertR340Test (edited, R1242)           2             2
+    fences.SessionEndSeamFenceTest (edited, R1242)             3             3
+    parametres.ParametresAccountTest                           11            11
+    push.PushReceiptTest                                       12            12
+    reminder.FallbackReminderTest                              23            23
+    settings.EmployerFigureStoreTest                           3             3
+    total                                                      119 / 0 fail  119 / 0 fail
+commonTest gained NO case. iOS needs none: iosTest already runs every case of EveningNotificationDecisionTest and
+ThresholdAlertDecisionTest on the simulator (NotificationDecisionTwinsIosTest.kt, written in IOS-2f), and those
+classes now compile against the commonMain declarations. iosTest's IosLocalStoreIosTest and IosNotificationPlanIosTest
+are unchanged and pass (see R1244). Adding the same cases to commonTest would have created a third copy of one set of
+assertions (R268).
+:shared's JVM unit tests: 284 at base (IosAndroidTwinsTest 3) and 286 at e69cafbc (MovedTwinsFenceTest 5).
+284 - 3 + 5 = 286.
+
+================================================================================
+R1242 - THE FENCE, AND EVERY OTHER FENCE EDITED
+================================================================================
+NEW: android/shared/src/androidUnitTest/kotlin/ch/monreleve/app/shared/MovedTwinsFenceTest.kt. It replaces
+IosAndroidTwinsTest (git rm'd) in the same task and package, and has 5 tests:
+  - theRootsAndTheSubjectAreTheRealOnes: iosMain is pinned by ios/IosSyncTrigger.kt and :app/src by
+    main/kotlin/.../MainActivity.kt (R460). The three moved files must be present in commonMain, so a later move
+    fails here by name. Each file must yield at least one declaration, and the derived set must include
+    DeviceLocalStore, ThresholdAlertDecision and eveningDecision.
+  - theExtractorMatchesDeclarationsAndNothingElse: the declaration extractor runs on a known text and must return
+    exactly the expected set: comments ignored, nested declarations ignored, private kept apart.
+  - noCopyOfAMovedFileIsInApp / noCopyOfAMovedFileIsInIosMain: DISCOVERY BY NAME (R246). The guarded names are
+    DERIVED from the three commonMain files' own top-level non-private declarations (today DeviceLocalStore,
+    EveningNotice, EveningConditions, eveningDecision, isWorkingDay, ThresholdAlertDecision, decideThresholdAlert,
+    DailyNotification, composeDaily), so nothing is typed. EVERY .kt file under android/app/src (all source sets) and
+    under iosMain is read. A file fails if it declares any guarded name at top level (private included) or carries
+    one of the three FILE names, whatever its path.
+  - noIosMainFileSharesAPathWithAnAppFile: IosAndroidTwinsTest's general derived twin check, kept and asserted EMPTY,
+    so a fourth copy of ANY :app file in iosMain is refused (R206).
+  Why both roots: a copy in :app is another module's declaration, which SHADOWS the commonMain class for :app's code
+  and tests without a compile error. A copy in iosMain is a redeclaration that only the macOS compilation sees
+  (R573); :app:gate does not compile iOS.
+  shared/build.gradle.kts: the test task's input "appMainSourceForTwins" (app/src/main/kotlin) became
+  "appSourceForTwins" (app/src), because the fence reads every :app source set (R283). iosMain stays an input. Only
+  the comment and this one input changed.
+PLANT (R178/R180), against the committed e69cafbc tree. Each plant was checked to have landed BEFORE the run:
+    A  iosMain/.../ios/R1242PlantCopy.kt = a full copy of DeviceLocalStore.kt, at another path and file name
+       (grep "^class DeviceLocalStore(" = 1)
+    B  app/src/debug/kotlin/.../detection/R1242PlantShadow.kt declaring `fun composeDaily()` (grep = 1)
+    C  app/src/test/kotlin/.../detection/ThresholdAlertDecision.kt, a moved file's NAME, declaring nothing (ls)
+    D  iosMain/.../detection/EveningNotifier.kt, at the path of a :app main file (ls)
+  The R180 check CAUGHT A PLANT THAT DID NOT LAND: the first write of D failed ("No such file or directory"), because
+  iosMain's detection/ directory went with the move. It was re-planted after mkdir and confirmed by ls before the run.
+  `:shared:testDebugUnitTest --tests MovedTwinsFenceTest` -> tests="5" failures="3", BUILD FAILED:
+    noCopyOfAMovedFileIsInIosMain      "ch/monreleve/app/ios/R1242PlantCopy.kt: declares DeviceLocalStore"
+    noCopyOfAMovedFileIsInApp          "debug/kotlin/ch/monreleve/app/detection/R1242PlantShadow.kt: declares
+                                        composeDaily | test/kotlin/ch/monreleve/app/detection/ThresholdAlertDecision.kt:
+                                        a file named ThresholdAlertDecision.kt"
+    noIosMainFileSharesAPathWithAnAppFile  expected:<[]> but was:<[ch/monreleve/app/detection/EveningNotifier.kt]>
+  The plants were removed (all four were mine), `git status --porcelain --untracked-files=all` read 0 lines, and the
+  re-run gave tests="5" failures="0", BUILD SUCCESSFUL.
+OTHER FENCES EDITED (each planted):
+  1. app/src/test/.../detection/ThresholdAlertR340Test.kt - its ALERT_FILES list named
+     src/main/kotlin/.../detection/ThresholdAlertDecision.kt. Unedited, it would have failed (its own vacuity guard);
+     the path now follows the file to ../shared/src/commonMain/... The scan itself is unchanged.
+     PLANT: `internal val r1242Plant = ".record("` appended to the commonMain ThresholdAlertDecision.kt (grep = 1).
+     noAlertFileWritesAnEntryOrRecord FAILED: "ThresholdAlertDecision.kt: entry-write \.record\( - the alert must
+     never record (R340)".
+  2. app/src/test/.../fences/SessionEndSeamFenceTest.kt - it passes unedited, but the move makes DeviceLocalStore
+     constructible from :shared commonMain and androidMain, which are both compiled into the Android process and
+     which it did not scan; before the move neither could see the class. Both were added as roots, pinned
+     SharedModule.kt and AccountTag.android.kt (R460, R401). iosMain stays out (its KDoc reason is unchanged, with
+     "twin" reworded).
+     PLANT: `internal val ... = "DeviceLocalStore("` in commonMain account/R1242SeamPlant.kt and androidMain
+     account/R1242SeamPlantAndroid.kt (grep = 1 each).
+     theDeviceStoreIsBuiltOnlyInsideTheOneConstruction FAILED: expected:<[DeviceLocalStores.kt]> but
+     was:<[DeviceLocalStores.kt, R1242SeamPlant.kt, R1242SeamPlantAndroid.kt]>.
+  Both were run in one invocation, `:app:testDebugUnitTest --tests` for the two classes (PLANT_STEP_EXIT=1, the two
+  failures above, nothing else failed). Restored by `git checkout --` of my own committed file and rm of the two plant
+  files: dirty=0, ThresholdAlertDecision.kt blob back to bd51bf83. The gate then ran on that clean tree with both
+  classes green (2 and 3 tests).
+  Not edited, and checked to need no edit: FencesTest's detection/ fences already read both :app detection/ and
+  commonMain detection/ (R602); ErasureCensusTest already reads :app main and commonMain; CommonMainFenceTest scans
+  all of commonMain (the moved files import nothing forbidden; the gate passed it); EdgeToEdgeCensus and the
+  copy/glyph censuses do not concern these files. No detekt or lint baseline names any of the three files.
+COMMENT-ONLY EDITS (they described copies that no longer exist): iosMain ios/IosLocalStores.kt and
+  ios/IosNotificationPlan.kt, and iosTest detection/NotificationDecisionTwinsIosTest.kt (its header). No code changed
+  in any of them.
+
+================================================================================
+R1243 - ANDROID BEHAVIOUR UNCHANGED
+================================================================================
+- Full :app:gate on e69cafbc: test floor 1564, BUILD SUCCESSFUL in 7m 37s, GATE_EXIT=0. The base floor is 1564, from
+  the orchestrator's gate on 2824e82d (C:/wt/queue-evidence/i1-host/orchestrator-gate-merge-2824e82d.log:
+  "test floor OK: 1564"). 1564 >= 1564, and equal, as it should be: :app lost no test file, and the edited ones kept
+  their counts.
+- The gate's log shows :app:testDebugUnitTest, :app:verifyPaparazziDebug, :app:lintDebug and :shared:testDebugUnitTest
+  EXECUTED. :shared:compileCommonMainKotlinMetadata was UP-TO-DATE: Gradle had already compiled the same commonMain
+  inputs in fastcheck-1, so this is not a skip.
+- NO BASELINE MOVED: `git diff --name-only 2824e82d e69cafbc` lists 14 paths, all .kt/.kts; 0 match
+  snapshot|png|baseline.
+- The moved code is the same bytes (R1240), and :app reaches it through the same packages.
+
+================================================================================
+R1244 - iOS
+================================================================================
+ONE ios-shared.yml dispatch on the pushed code tip: run 44904890784, `--ref m1-twins`, workflow_dispatch, headSha
+e69cafbcb87cc412b0f8e600afb137d638b19b8a, conclusion success, 20 steps. Its artifact ios-shared-test-results was
+downloaded into its own new directory. 78 JUnit XML files: tests=418 failures=0 errors=0, EQUAL to I1's 418 (ios-shared
+run 44851560884).
+  Why it is equal: no iosTest or commonTest test was added or removed. IosAndroidTwinsTest and MovedTwinsFenceTest
+  are androidUnitTest (JVM), not iOS. NotificationDecisionTwinsIosTest's classes still run (their XML is in the
+  artifact) and now exercise the commonMain declarations. The iOS compile is the proof that the iosMain copies'
+  deletion left no dangling reference and no redeclaration.
+Optional, also done: ios-app.yml run 44904893506 on e69cafbc, conclusion success, 23 steps. The host still builds.
+R573: met by 44904890784 for the code tip. If main has not moved when this merges, the merge result's android/ tree is
+e69cafbc's. If it has, R573 asks for the run on the merge result, which is the orchestrator's.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- relay/QUEUE-STATE.md "THE iOS TWINS (Queue Ruling 11, until PARK-IF4)" still tells every Android prompt to mirror
+  edits between the copies and cites IosAndroidTwinsTest. That stops being true at this merge. It is the
+  orchestrator's file, so it is not edited here.
+- The class names in iosTest's NotificationDecisionTwinsIosTest.kt (EveningNotificationDecisionTwinIosTest and its
+  ThresholdAlert sibling) still say "Twin". Renaming changes test identity in the iOS XML, so only the header comment
+  changed.
+- docs/play-release.md:114 and docs/release-audit-android.md:157 cite `account/DeviceLocalStore.kt`. That relative path
+  is still true under commonMain, so they were left as they are.
+- Two other sessions held the heavy lock during this task (gate-a14f and AN-PRIVACY-RECORD), and an Android emulator
+  (qemu, about 4.2 GB commit) was running. The base measurement waited 12:30-13:13Z for the 8 000 MB line, and the
+  gate waited 13:16-14:04Z. Nothing of theirs was touched.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. The base measurement ran in a second worktree of mine, C:/wt/m1-base (detached at 2824e82d, own lock), not in
+   C:/wt/m1-twins. The first attempt waited in m1-twins for the memory line, which blocked every edit. Its background
+   shell was stopped. The lock it had just taken was left held by "m1-twins" with no process behind it, so I released
+   it myself (`heavy-lock.mjs release m1-twins`, my own holder name) 11 s after it was taken. The base worktree was removed clean
+   after use (status 0 lines, my lock file deleted first).
+2. fastCheck ran OUTSIDE the heavy lock, twice, at 3 211 and 2 701 MB commit free (below the 8 000 line, which the
+   prompt sets for the gate). Both MovedTwinsFenceTest plant runs, `:shared:testDebugUnitTest` filtered and about
+   27 s each, also ran outside it. Both fastChecks used --no-daemon. No worker died and nothing aborted. The :app
+   plant run and the full gate ran inside the lock.
+3. fastcheck-1 was RED: kotlin.test's assertTrue takes (actual, message), the reverse of JUnit's, so 7 calls did not
+   compile. I switched to org.junit.Assert (what IosAndroidTwinsTest used) and fastcheck-2 was green. That happened
+   before the commit; the code commit e69cafbc is the green one.
+4. `gradlew --stop` was NOT used, because it would stop other sessions' daemons. Every Gradle run here used
+   --no-daemon.
+5. The iOS runs were dispatched after fastCheck and the fence plants, BEFORE the full gate, so they could run while
+   the gate waited for the lock. The gate then passed on the same e69cafbc, so the code tip never moved after the
+   dispatch.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. QUEUE-STATE.md's "THE iOS TWINS" rule (and the line "Every Android session prompt includes this rule") can be
+    retired at this merge. Should the orchestrator replace it with a one-line note that MovedTwinsFenceTest now
+    refuses a copy?
+Q2. SessionEndSeamFenceTest now scans :shared commonMain and androidMain (R1242 item 2). Move 3 (the session-end
+    seam's pure part, + an iOS seam) will put the seam itself in commonMain. Is a commonMain construction of
+    DeviceLocalStore then a legitimate second site, or should iOS's construction stay in iosMain? Either way,
+    ONE_CONSTRUCTION will need to change in that task, not here.
+Q3. MovedTwinsFenceTest's subject list types the three commonMain paths. It does so on purpose, to assert they are
+    present, so a later move fails loudly. The names it guards are derived. Should the next (c) moves (the /me codec,
+    the seam, the reminder decision) add their files to this one fence, or does each move need no fence because it
+    leaves no copy behind?
+
+================================================================================
+PUSH PROOF
+================================================================================
+(Filled from the pushes below; the report tip is the commit carrying this file.)
