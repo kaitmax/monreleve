@@ -585,7 +585,7 @@ model Entry {
   provenance       Provenance @default(MANUAL)     // MANUAL | DETECTED_CONFIRMED | DETECTED_CORRECTED (D17)
   detectedKind     EntryKind?                      // what detection proposed; set whenever a proposal existed
   detectedAt       DateTime?                       // the phone's clock at the tap that validated a proposed day
-  clientClaimedAt  DateTime?                       // what the offline client asserted
+  clientClaimedAt  DateTime?                       // the device's clock at the write, as the client claims it (the app sends it on every write, online or not - R275)
   firstRecordedAt  DateTime   @default(now())      // server clock at first receipt — IMMUTABLE
   updatedAt        DateTime   @updatedAt
   user             User       @relation(...)

@@ -333,7 +333,7 @@ hides that for the life of the client.
 | `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`. Defaults to `MANUAL`. |
 | `detectedKind` | What detection proposed. **Required when `provenance` is not `MANUAL`**; permitted, and meaningful, on a `MANUAL` row (see §6.3). |
 | `detectedAt` | **The phone's clock at the tap that validated a proposed day** — the person's confirmation or correction, not the moment detection produced the proposal. The app sets it in `AujourdhuiController.recordDetected` (`detectedAt = claimNow()`) and, for a tap on the evening notification, in `EveningTap` (`val detectedAt = if (tap.provenance == Provenance.MANUAL) null else at.claimNow`). An ISO instant with an offset; like `clientClaimedAt`, the device's own clock, never trusted as evidence. |
-| `clientClaimedAt` | What the offline client asserts about when this was written. **Stored verbatim and never trusted as evidence** — the server keeps this *and* its own `firstRecordedAt`, and the dossier shows both, so a reader sees the gap rather than being handed one number and asked to believe it. |
+| `clientClaimedAt` | What the client asserts about when this was written: the device's own clock at the tap. The Android app sends it on **every** write, online or not (R275), so its presence says nothing about connectivity. **Stored verbatim and never trusted as evidence** — the server keeps this *and* its own `firstRecordedAt`, and the dossier shows both, so a reader sees the gap rather than being handed one number and asked to believe it. |
 
 <!-- /fields:write -->
 

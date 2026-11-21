@@ -1,0 +1,425 @@
+REPORT-AN-ANNEX-TRUTH - Mon Releve
+THE RELEVE NEVER CALLS A DAY "OFFLINE" THAT WAS NOT (ORCH-ANDROID step A16; iOS Ruling 6 / Android Ruling 22; A15 Q5, Q6, Q7)
+Session: AN-ANNEX-TRUTH, 2026-11-21. Worktree C:/wt/an-annex-truth (lock .session-lock.json), branch an-annex-truth,
+cut from origin/release/android-v1 = e7c7a254. Rulings R1260-R1262 used; R1263-R1269 unused (re-scanned before the
+push in my worktree's relay/, C:/wt/web-orch/relay and the main checkout's relay/, untracked included: only the
+prompt and RULINGS-2026-11-16.txt name the range). Pure ASCII by transport (R168): every French string below is
+TRANSLITERATED (accents dropped, the typographic apostrophe written ', the middot written "(.)"); the accented
+originals are in the files named by key.
+
+====================================================================
+SUMMARY
+====================================================================
+- R1260 RED first. web/tests/db/annex-device-time.test.ts drives one day through POST /api/v1/entries's ROUTE HANDLER.
+  The body is the app's own (EntriesWire.kt EntryWrite: the five required keys plus clientClaimedAt, set 4 s before the
+  receipt, so the write is ONLINE). It then renders the print page with a minted token, the page the PDF route points
+  Chromium at. Presence first: the row is printed, with the device time under its own heading. Then it asserts that
+  neither the heading nor the whole document carries offline wording. RED on e7c7a254, naming the heading; GREEN after
+  R1261.
+- R1261 the words, each in its surface's register (R165):
+  - the PDF/print annex heading and note (web/lib/fr/dossier.ts);
+  - the CGU availability sentence (web/lib/fr/cgu.ts);
+  - SPEC section 8's model comment (l.588);
+  - docs/api-v1.md's clientClaimedAt write-field row (l.336);
+  - AND the in-app releve's annex (android/shared ReleveCopy). The census found it printing the same claim on every
+    row the app recorded, so android/ changed (DEVIATIONS D1): RED-first commonTest, full :app:gate, R573.
+  Census table below.
+- R1262 the export's credential test now names fcmToken: both the column name and its value, on a device proven
+  stored and exported first. A planted fcmToken in the export made it FAIL by name. Reverted clean.
+- Baselines: two /cgu baselines moved, exactly the two named before the run. Zero Paparazzi baselines moved
+  (verifyPaparazziDebug green, none regenerated).
+- Commits, on top of e7c7a254:
+  - c4ce5aa7 R1260/R1261, web + SPEC + api-v1;
+  - 553c6d32 R1262;
+  - 7d4445ea R1261 in-app (android/shared);
+  - b647698e the two /cgu baselines;
+  - 0915dafc the patterns' no-break spaces as escapes (lint);
+  - 4dd89fc5 the Kotlin pattern portable to Kotlin/Native (R573 run 1 failed on it, D5) - THE CODE TIP GATED.
+  The report commit goes on top. Pushed to origin/an-annex-truth; NOT MERGED.
+
+====================================================================
+STATUS (R391)
+====================================================================
+COMPLETE on the code tip 4dd89fc5 (4dd89fc5ee4543542efa25149258f943a8c8917f), in this session:
+- :app:gate, gate:clone and R573 ran ON 4dd89fc5.
+- gate:changed ran on 0915dafc. 4dd89fc5 differs from it only in one android/shared commonTest file:
+  `git diff --stat 0915dafc 4dd89fc5 -- web` is empty, so the web gate's selection and result are unchanged.
+1. pnpm gate:changed (FRONTALIER_PORT=3976), soft-reset method (D3), run 2.
+   Result: "GATE PASSED for the paths changed.", GATE_EXIT=0.
+   Heavy lock held from 14:43:33Z (commitFree 7 245 MB, line 5 000) through the run.
+   Selection (pasted):
+     web/app/releve/print/page.tsx  ->  app/**
+     web/app/releve/print/page.tsx  ->  the container PDF step: its vitest files and what they read, the print
+                                        page, the export route and what those alone render through (R936, R982, R990)
+     web/app/releve/print/page.tsx  ->  the database layer (prisma/**, lib/db/**, tests/db/**, and anything test:db
+                                        imports)
+     web/lib/fr/cgu.ts  ->  lib/fr/**
+     web/lib/fr/dossier.ts  ->  lib/fr/**
+     web/lib/fr/dossier.ts  ->  the database layer (...)
+     web/tests/db/account-export.test.ts  ->  the database layer (...)
+     web/tests/db/annex-device-time.test.ts  ->  the database layer (...)
+     web/tests/visual/baselines/page-cgu-desktop.png  ->  a baseline, which is the record test:visual compares
+                                                          against (R144)
+     web/tests/visual/baselines/page-cgu-mobile.png  ->  a baseline (R144)
+     suites: typecheck, lint, test, build, test:visual, test:e2e, test:container:e2e, test:db, test:late
+   Counts:
+     test                 4290 passed (253 files)
+     test:visual          176 passed
+     test:e2e             402 passed
+     test:container:e2e   389 passed; vitest step pass 1: 33 passed | 1 skipped; pass 2: 1 passed | 1 skipped;
+                          database-stopped checks 67 passed; "CONTAINER E2E PASSED"
+     test:db              899 passed | 28 skipped (927)
+     test:late            10 passed
+   SPEC, docs/ and tests/unit matched no extra rule (tests/unit is in the base chain). android/ is outside the web
+   selector.
+   Run 1 (on the tip before 0915dafc) FAILED at lint. It is logged and not reported as a pass (D3).
+2. :app:gate (android/). The emulator was NOT running, so there was nothing to shut down (Android Ruling 11).
+   ON THE TIP 4dd89fc5: heavy lock acquired 16:05:16Z at commitFree 9 376 MB (line 8 000).
+     Result: BUILD SUCCESSFUL in 2m 50s, GATE_EXIT=0.
+     - "test floor OK: 1570 unit tests observed";
+     - :app:testDebugUnitTest, :app:verifyPaparazziDebug and :shared:testDebugUnitTest executed;
+     - log C:/wt/queue-evidence/an-annex-truth/app-gate-2.log.
+   EARLIER, on 0915dafc: heavy lock acquired 15:16:26Z at commitFree 9 903 MB.
+     Result: BUILD SUCCESSFUL in 7m 40s, GATE_EXIT=0.
+   - "test floor OK: 1570 unit tests observed";
+   - verifyPaparazziDebug green;
+   - :shared:testDebugUnitTest ran AnnexDeviceTimeWordsTest, 2/2.
+   Log: C:/wt/queue-evidence/an-annex-truth/app-gate.log. Afterwards ./gradlew --stop ("1 Daemon stopped").
+3. pnpm gate:clone (FRONTALIER_PORT=3976), before each push (R199).
+   ON THE TIP 4dd89fc5, run before its push: "GATE:CLONE PASSED", GATE_CLONE_EXIT=0
+   (log C:/wt/queue-evidence/an-annex-truth/gate-clone-2.log).
+   Earlier, on 0915dafc, before the first push: heavy lock acquired 15:24:40Z at commitFree 10 011 MB;
+   "GATE:CLONE PASSED", GATE_CLONE_EXIT=0. Both runs printed the same claim line:
+   Claim line: "this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test
+   (4290 of 4290 tests passed, 253 files), build, size (24 routes measured), db:deploy, test:db (899 of 927 tests
+   passed, 28 skipped, 65 files), test:container:write (10 checks passed) from a clean checkout".
+   Named-not-run (R133), as in every clone run: the live-server halves of export-pdf, web-round-trip and
+   verification-qr (no server inside a clone).
+   CI readiness: "ready - the repository is public and CI_FULL is unset - jobs will skip".
+4. R573 (:shared changed), ios-shared.yml dispatched with --ref an-annex-truth:
+   - run 44923811112 on 4dd89fc5: SUCCESS, 20 steps, job ios-shared-tests 16:18:16Z-16:28:25Z (run 623 s).
+   - run 44919885375 on 0915dafc: FAILURE, 20 steps, 15:34:20Z-15:53:34Z. The step "iOS - simulator tests and
+     device compile" ran 417 tests, of which 2 failed: AnnexDeviceTimeWordsTest x2 [iosSimulatorArm64],
+     FileFailedToInitializeException caused by kotlin.text.PatternSyntaxException at
+     kotlin.text.regex.Lexer.readHex. This is a defect in MY TEST's pattern, not in the product (D5). The log is in
+     C:/wt/queue-evidence/an-annex-truth/r573-failed.log.
+   macOS minutes: billable 0 on both (the repository is public; the timing API's billable MACOS total_ms is 0). The
+   wall time was about 19 + 10 minutes, against this run's 30-minute allotment per task.
+   This is the merge commit's proof only while release/android-v1 stays at e7c7a254 (R573: green on the commit that
+   will become the release tip).
+
+====================================================================
+R1260 - PROVE IT FIRST (R225, RED)
+====================================================================
+FILE web/tests/db/annex-device-time.test.ts (3 tests, test:db). Through the real entry points (R204).
+- POST from app/api/v1/entries/route, bearer from issueTokenPair. Body:
+  {entries:[{clientMutationId, dayDate: today in Paris, portion FULL, kind HOME, provenance MANUAL,
+  clientClaimedAt: now - 4 s}]}.
+- Before anything is read (R180): 200 {status ok, written 1}; the stored Entry.clientClaimedAt equals the sent instant;
+  firstRecordedAt - clientClaimedAt < 60 s (an ONLINE write).
+- PrintPage rendered with mintPrintToken, as annex-rendered.test.ts does.
+- Test 1, PRESENCE FIRST: the document title is present; one annex table; the column headed
+  COPY.annex.clientClaimedAt exists; the day's row is printed and its cell under THAT heading equals
+  formatDateTime(claimed). The cell is read by its heading, because a claim 4 s before the receipt prints the same
+  minute as the server's stamp next to it.
+- Test 2: the heading does not match OFFLINE_CLAIM (hors ligne / hors connexion / hors-ligne, "offline", sans reseau /
+  sans connexion, case-insensitive - the claim judged on its words, so a reworded "offline" heading is the same
+  defect).
+- Test 3: the whole rendered document's text does not match it either.
+THE RED RUN on e7c7a254 (log C:/wt/queue-evidence/an-annex-truth/r1260-red.log): 2 failed | 1 passed.
+  x the heading over that time does not say the day was entered offline
+    AssertionError: the column holding an ONLINE day's device time is headed "Saisi hors ligne le (heure de Paris)":
+    expected 'Saisi hors ligne le (heure de Paris)' not to match /hors[...]
+  x nothing in the rendered document says it was
+    AssertionError: offline wording in a document whose only day was recorded online: expected 'hors ligne' to be null
+  The presence test PASSED on the base, so the red is the claim and not a missing row.
+GREEN after R1261: 3/3, and inside gate:changed's test:db (899 passed).
+NOTE: in the RED run the web pattern's class held literal U+00A0 / U+202F characters. Lint refused them
+(no-irregular-whitespace, gate:changed run 1). 0915dafc writes the web class as backslash-s plus hyphen, because
+JavaScript's backslash-s already matches both characters. The Kotlin class first named them as x{A0} and x{202F}, because
+java.util.regex's backslash-s is ASCII-only. Kotlin/Native's regex refused that escape (D5), so 4dd89fc5 inserts the
+characters through Char(0xA0) / Char(0x202F) templates instead. The matches are the same: "Saisi hors ligne le", "hors<NBSP>ligne" and
+"hors-ligne" match, and the new heading does not (checked by node, quoted in the commit).
+
+====================================================================
+R1261 - THE WORDS
+====================================================================
+WHAT THE COLUMN IS (read in the code, so the words claim no more): Entry.clientClaimedAt is the clientClaimedAt of the
+LAST write that produced the row (lib/entries/write.ts: the upsert's update sets it from the item, null if the item
+carried none). The app stamps it on every record() (R275, EntryRepository: deviceClaimNow at each tap), online or not.
+A day entered without it (the web) leaves the cell blank. So the words name WHOSE time it is (the device's, announced
+at the entry) and condition the note on the device having sent one, never on connectivity. The noun follows A15's
+/confidentialite record ("l'heure qu'il indiquait lors de chaque saisie", "a titre indicatif"), so the page and the
+document agree.
+
+WHERE IT CHANGED (the strings verbatim, transliterated, are in QUESTIONS Q1):
+- web/lib/fr/dossier.ts DOSSIER_COPY.annex.clientClaimedAt (the print/PDF column heading).
+- web/lib/fr/dossier.ts DOSSIER_COPY.annex.offlineNote, renamed deviceTimeNote: a key named for a claim it no longer
+  makes misleads the next reader. Its two readers moved with it: app/releve/print/page.tsx l.527 and
+  tests/unit/fr/dossier.test.ts l.150 ("says which timestamp is the server one", assertion unchanged).
+- web/lib/fr/cgu.ts CGU_COPY.availability: the last clause. The sentence before it stays: days declared "hors
+  connexion" are kept on the phone and sent when the connection returns, which is TRUE (the offline-first queue, SPEC
+  13.2).
+- SPEC-frontalier-web.md l.588 (section 8 model comment): "what the offline client asserted" -> "the device's clock at
+  the write, as the client claims it (the app sends it on every write, online or not - R275)".
+- docs/api-v1.md l.336 (the fields:write row; api-contract-doc.test.ts reads only the field-name column, green):
+  "What the offline client asserts about when this was written." -> "What the client asserts about when this was
+  written: the device's own clock at the tap. The Android app sends it on **every** write, online or not (R275), so
+  its presence says nothing about connectivity." The rest of the row is unchanged.
+- android/shared/.../fr/ReleveCopy.kt ANNEX_CLIENT_CLAIMED, and ANNEX_OFFLINE_NOTE renamed ANNEX_DEVICE_TIME_NOTE (its
+  one reader is ReleveSections.kt l.296). In the in-app register the row's meta line now reads
+  "... (.) Enregistre le <stamp> (.) Selon l'appareil, saisi le <stamp>".
+  RED first: android/shared/src/commonTest/.../fr/AnnexDeviceTimeWordsTest.kt, 2 tests, presence first (the line ends
+  with the device stamp; the note names the server). The RED on the base (log C:/wt/queue-evidence/an-annex-truth/
+  android-red.log; the messages from the JUnit XML):
+    "a row recorded online is labelled as entered offline: Saisie manuelle (.) Enregistre le 21/11/2026 14:32 (.)
+     Saisi hors ligne le 21/11/2026 14:31"
+    "the note says the device time means offline: Lorsque la saisie a eu lieu hors ligne, la date annoncee par
+     l'appareil figure a cote de celle de la reception. Seule la seconde est attribuee par le serveur."
+  GREEN after the fix: fastCheck BUILD SUCCESSFUL; 2/2 inside the full :app:gate.
+
+THE CENSUS. R1261's subject is one claim: that the device's time means the day was entered offline. I looked for it
+anywhere a reader meets it.
+Searched for: hors ligne, hors-ligne, hors connexion, sans reseau, sans connexion, offline, claimed.
+Searched in: web/lib/fr, web/content, web/app, docs/*.md, SPEC, android/shared fr/, android/app res, the CSV writer.
+I then ran one more sweep for offline wording within two lines of clientClaimedAt, across web/lib, web/app,
+web/prisma, android/shared/src/commonMain and android/app/src/main (rows 22-24). I also added the SPEC and audit
+lines met on the way (rows 25-28). Code comments elsewhere are not a reader-facing surface; the two that make the
+claim are listed (#10, #22).
+| #  | Site | Text (transliterated) | Verdict | Action |
+| 1  | web/lib/fr/dossier.ts annex.clientClaimedAt (print + PDF heading) | "Saisi hors ligne le (heure de Paris)" | TRUE HIT | fixed |
+| 2  | web/lib/fr/dossier.ts annex.offlineNote (print + PDF) | "Lorsque la saisie a eu lieu hors ligne, la date annoncee par l'appareil figure ..." | TRUE HIT | fixed; key -> deviceTimeNote |
+| 3  | web/lib/fr/cgu.ts CGU_COPY.availability, last clause | "... et le releve indique les deux dates." (after the offline sentence: two dates only for offline days) | TRUE HIT | fixed |
+| 4  | SPEC l.588 (section 8 model) | "what the offline client asserted" | TRUE HIT | fixed |
+| 5  | docs/api-v1.md l.336 (fields:write) | "What the offline client asserts ..." | TRUE HIT | fixed |
+| 6  | android/shared ReleveCopy.ANNEX_CLIENT_CLAIMED (in-app annex) | "Saisi hors ligne le" | TRUE HIT | fixed (D1) |
+| 7  | android/shared ReleveCopy.ANNEX_OFFLINE_NOTE (in-app annex) | same note as #2 | TRUE HIT | fixed (D1); -> ANNEX_DEVICE_TIME_NOTE |
+| 8  | SPEC l.887 (section 12 item 5: what the annex prints) | "client-claimed time when it was synced offline" | TRUE HIT, in SPEC 12 | NOT edited: Q2 |
+| 9  | SPEC l.633 (section 11) | "When an offline entry syncs late, the server stores both ... and the dossier shows both." | FALSE: true of the offline case; does not say the claim exists ONLY then | none |
+| 10 | web/prisma/schema.prisma l.337 (/// doc comment on Entry.clientClaimedAt) | "What the offline client asserted." | TRUE HIT, in the schema file | NOT edited (a schema touch is Ask-first): Q3 |
+| 11 | CSV header (lib/export/csv.ts CSV_COLUMNS; served header read on pnpm dev) | dayDate,...,clientClaimedAt,late | FALSE: column NAMES only, no header text, no offline word (A15 Q6) | none |
+| 12 | web/lib/fr/cgu.ts availability, first sentence | "Les journees que vous declarez hors connexion sont conservees sur votre telephone et transmises ..." | FALSE: a true capability (SPEC 13.2) | none |
+| 13 | web/lib/fr/application.ts l.159, l.164 | "Fonctionne hors connexion" / "Fonctionnera hors connexion" | FALSE: capability | none |
+| 14 | docs/play-store-listing.md l.43 | "La saisie fonctionne hors connexion : ..." | FALSE: capability | none |
+| 15 | android/shared ReleveCopy.OFFLINE_TITLE | "Copie hors ligne" | FALSE: the cached DOCUMENT shown offline (R288), not a day | none |
+| 16 | web/lib/fr/rappel-form.ts key `offline` | "Le rappel n'a pas pu etre demande..." | FALSE: an error key, no claim | none |
+| 17 | docs/api-v1.md l.301, heading "the offline queue flushing" | - | FALSE: names the mechanism (every app write drains through the queue) | none |
+| 18 | docs/api-v1.md l.590-595, l.624 | "an entry written offline and synced eight days later is genuinely late ..." | FALSE: describes the offline case correctly | none |
+| 19 | docs/api-v1.md l.482, l.1430, l.1707 (read shapes) | "What the client asserted ..." | FALSE: no offline word | none |
+| 20 | web/lib/fr/confidentialite.ts timestamps (A15) | "... l'heure qu'il indiquait lors de chaque saisie ..." | FALSE: already true | none |
+| 21 | SPEC l.89 (D22) | "stores the client-claimed time alongside" | FALSE | none |
+| 22 | web/lib/entries/schema.ts l.128 (code comment on the zod field) | "What the offline client asserts about when this was written." | TRUE HIT, internal comment | NOT edited (a web/lib touch re-owes gate:changed + gate:clone); with #10 in Q3 |
+| 23 | web/prisma/seed.ts l.64, l.907 (the offlineSync fixture) | "offlineSync clientClaimedAt EARLIER than firstRecordedAt" | FALSE: the seed models an offline case, truly | none |
+| 24 | web/lib/entries/late.ts l.69-70 | "AN OFFLINE ENTRY SYNCED EIGHT DAYS LATER IS GENUINELY LATE" | FALSE: the offline case, correctly | none |
+| 25 | SPEC l.1038 (test plan) | "offline log -> reconnect -> entry syncs with both timestamps" | FALSE: the offline case, correctly | none |
+| 26 | SPEC l.1085 (success criteria) | "Offline log queued and synced with both timestamps" | FALSE: same | none |
+| 27 | docs/release-audit-android.md l.56 | "Offline log queued and synced with both timestamps ..." | FALSE: same | none |
+| 28 | docs/release-audit-web.md l.150 | "Offline log queued and synced; EntryEvent append-only" | FALSE: same | none |
+
+====================================================================
+R1262 - THE CREDENTIAL TEST NAMES fcmToken (A15 Q7)
+====================================================================
+web/tests/db/account-export.test.ts "never carries a credential":
+- It stores a device with a known fcmToken ('export-credential-fcm-token-r1262') and proves it stored.
+- It proves the device IS exported (payload.devices has 1 row): presence first, R169.
+- It asserts the produced file contains neither 'tokenHash' nor 'fcmToken' (the column name) nor the token value.
+- 'pushToken' (a name that exists nowhere) is gone.
+PLANT (R180): `fcmToken: device.fcmToken,` inserted after appVersion in lib/account/export.ts's devices map. Verified
+landed at l.332 by grep before reading the result. Run (log C:/wt/queue-evidence/an-annex-truth/r1262-plant.log):
+  x never carries a credential - AssertionError: the push token column, by its name: expected '{ "exportedAt": ...'
+    not to contain 'fcmToken'
+  x carries nothing the page does not name: an unnamed field in the file fails (R1251's test, as A15 found) -
+    devices.fcmToken
+REVERT: the original copied back; `git diff --quiet lib/account/export.ts` true; the file 25/25 green.
+
+====================================================================
+BASELINES (R135, R207)
+====================================================================
+STATED BEFORE THE RUN (C:/wt/queue-evidence/an-annex-truth/baselines-expected.txt, written before
+`pnpm test:visual:update`):
+- web: page-cgu-desktop.png and page-cgu-mobile.png (CGU_COPY.availability gains a clause), and nothing else.
+  - The print page / PDF has NO image baseline: the annex heading and note are asserted by tests/db only.
+  - /confidentialite is unchanged.
+- android (Paparazzi): NONE. ReleveScreenScreenshotTest keeps the annex COLLAPSED and its rows' clientClaimedAt null,
+  so neither ANNEX_CLIENT_CLAIMED nor ANNEX_DEVICE_TIME_NOTE is drawn.
+PRODUCED: `pnpm test:visual:update` (176 passed) printed exactly:
+  re-generated  tests/visual/baselines/page-cgu-desktop.png
+  re-generated  tests/visual/baselines/page-cgu-mobile.png
+  The output equals the expectation.
+CROPPED AND READ (old from git HEAD against new; crop.cjs, images in C:/wt/queue-evidence/an-annex-truth/crop-*.png):
+- desktop 1440x3498 -> 1440x3524 (+26 px, one line). The first changed row, 2389, is the paragraph under
+  "Disponibilite et evolution". The last 1 066 rows are identical: the rest of the page is the same pixels, shifted.
+- mobile 390x4904 -> 390x4982 (+78 px, three lines). The first changed row, 3390, is the same paragraph; the last
+  1 472 rows are identical.
+- On the crop the new clause wraps cleanly, and the next heading, "Droit applicable et juridiction", follows at the
+  usual gap.
+Android: verifyPaparazziDebug green in :app:gate; no snapshot regenerated, as stated.
+Committed alone: b647698e.
+
+====================================================================
+WALKTHROUGH (R176, R177)
+====================================================================
+`pnpm dev` (PORT=3976) against my scratch DB monreleve_an_annex_truth, reseeded with `pnpm db:seed`. Heavy lock held
+from 14:40:38Z, because the PDF render launches a browser. /api/health answered service "monreleve" (R169). Driven by
+HTTP: walk.mjs, output in walkthrough.txt.
+- /cgu 200, 119 010 bytes.
+  - The new availability sentence was served (offset 3651); the old "le releve indique les deux dates" was not.
+  - "hors connexion" occurs twice: the TRUE capability sentence, once in the HTML and once in the RSC payload.
+  - Styles present: 2 stylesheets, 200 (8 609 and 9 993 bytes; 26 and 25 "--colour-" tokens).
+  - 21 links out, each 200.
+- Signed in the SEEDED camille.martin@example.invalid by POST /api/v1/auth/magic-link (202) and /api/v1/auth/code
+  (200). The script read the code from my dev log and NEVER printed it (R574); no token was printed.
+- ONE DAY ONLINE, as the app sends it: POST /api/v1/entries -> 200 ok, written=1.
+  - Body: today 2026-11-21, FULL, HOME, MANUAL, clientClaimedAt in deviceClaimNow's offset form,
+    "2026-11-21T15:41:43.324+01:00".
+  - Stored: clientClaimedAt 14:41:43.324Z; firstRecordedAt 14:41:48.244Z, 4.9 s later.
+- THE PDF: GET /api/v1/export/pdf?year=2026 -> 200 application/pdf, 220 355 bytes, starts %PDF-, 13 pages. Saved to
+  C:/wt/queue-evidence/an-annex-truth/walk-releve.pdf.
+  READ (D4; the repository's extractor; pdf-read.txt). The extractor drops a few characters at in-cell line wraps.
+  - the annex heading row: "... Origine / Enregistre le (heure de Paris) / Modifie le (heure de Paris) / Selon
+    l'appareil, saisi le (heure de Paris)";
+  - the 21.11.2026 row: "Journee entiere / Domicile / Saisie manuelle / 21.11.2026 a 15:41 / [blank] /
+    21.11.2026 a 15:41";
+  - the note: "L'heure annoncee par l'appareil lors de la saisie, quand il l'a transmise, figure a cote de celle de
+    la reception. Seule la seconde est attribuee par le serveur.";
+  - offline wording anywhere in the file: none; "Saisi hors ligne le": absent.
+  PHOTOGRAPHED: /releve/print?year=2026 by Playwright, 200, with a token minted from my AUTH_SECRET (never printed).
+  Images: annex-thead.png, annex-row.png, annex-note.png.
+  - headings ["Date","Journee","Nature","Note","Origine","Enregistre le (heure de Paris)","Modifie le (heure de
+    Paris)","Selon l'appareil, saisi le (heure de Paris)"];
+  - the online day's row ["21.11.2026","Journee entiere","Domicile","","Saisie manuelle","21.11.2026 a 15:41","",
+    "21.11.2026 a 15:41"];
+  - read on the images: the heading wraps to three lines in its column, the row's device time sits under it, and the
+    note reads as quoted.
+- THE CSV: GET /api/v1/export/csv?year=2026 -> 200, header
+  "dayDate,portion,kind,absenceReason,provenance,detectedKind,note,firstRecordedAt,lastModifiedAt,clientClaimedAt,late"
+  (frozen names, no header text; census #11).
+- Signed out after (POST /api/v1/auth/sign-out 200).
+- Server stopped: the tree under cmd PID 9716, whose command line runs `next dev` from C:/wt/an-annex-truth/web
+  (next PIDs 23732, 24204), with taskkill /T. Afterwards no node process named my worktree, port 3976 had no listener,
+  and curl returned 000.
+- My dev log held the sign-in mail. It was deleted, never copied.
+- The in-app releve was NOT driven on the emulator. The android change is two copy constants, proven by
+  AnnexDeviceTimeWordsTest and :app:gate. No device claim is made.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1 web/prisma/schema.prisma l.337, the /// comment on Entry.clientClaimedAt, "What the offline client asserted"
+   (census #10), and web/lib/entries/schema.ts l.128 (census #22); both in Q3. Fold into the next schema task with A15's Q8 detectedAt comment.
+N2 SPEC l.887, section 12 item 5 (census #8; Q2).
+N3 The annex header row is taller now. In the screen render the new heading wraps to 3 lines at 1000 px. The PDF of
+   the seeded camille year has 13 pages. There is no earlier page count on record for this account, so I make no
+   before/after claim, and no test pins a page count.
+N4 Other sessions untouched (R334/R392).
+   - The heavy lock was held by m2-me-base for ~3 min while I waited; I never lowered a line or broke a lock.
+   - The two Java daemons I stopped before :app:gate (PIDs 9984, 18796) were MINE.
+     - Their StartTime read 14:34:00 and 14:34:22. This machine's local zone is UTC: PowerShell Get-Date printed
+       +00:00, matching date -u, zone "Morocco Standard Time".
+     - So they started at 14:34Z, exactly when my first gradlew run (the Android RED, ~14:33Z) spawned a Gradle
+       daemon and then a Kotlin daemon.
+     - A tasklist at 14:33:42Z, just before that run, showed no java.exe at all.
+     - CORRECTION: an earlier draft of this report, pushed as ccda2282, misread the start times as 13:34Z and
+       attributed the daemons to m1-twins. No other session's process was touched.
+     - ./gradlew --stop ("1 Daemon stopped"; no java.exe left), and again after every Gradle step.
+   - The emulator was NOT running at any point, and I did not start it.
+N5 Tooling hazard, not a product finding: my editing tools turned typed escape sequences (backslash-u00a0, a doubled
+   backslash) into characters. That is how a literal NBSP reached lint. Scripts that need a backslash or an NBSP
+   should build it with String.fromCharCode.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1 android/ CHANGED. The launch message expected it would not. But the prompt's R1261 says to check "any in-app string
+   for the same claim; fix true hits", and the census found two true hits in :shared (#6, #7). So I fixed them and
+   paid the cost:
+   - a RED-first commonTest;
+   - fastCheck;
+   - the FULL :app:gate on the code tip, with the emulator down;
+   - one R573 ios-shared run, because :shared changed.
+   No Paparazzi baseline moved. I stated that before the gate: the screenshot test keeps the annex collapsed and its
+   rows' claim null. The iOS twins are untouched (ReleveCopy is commonMain, not a twin).
+D2 Keys renamed: DOSSIER_COPY.annex.offlineNote -> deviceTimeNote; ReleveCopy.ANNEX_OFFLINE_NOTE ->
+   ANNEX_DEVICE_TIME_NOTE. Internal identifiers only, with every reader moved in the same commit. If the orchestrator
+   prefers the old names, the rename reverts mechanically.
+D3 gate:changed ran twice. Run 1 FAILED at lint (the literal NBSP, R1260 NOTE); run 2 is the result reported. Both used
+   the accepted soft-reset method in my own worktree, with nothing pushed in between:
+   - `git reset --soft e7c7a254`;
+   - the gate;
+   - `git reset --soft <tip>`.
+   HEAD and the tree were verified back on the tip afterwards.
+D5 R573 run 1 FAILED, and it was my test, not the product. The Kotlin pattern's x{A0} escape compiles on the JVM,
+   so fastCheck and :app:gate were green, but not on Kotlin/Native. 4dd89fc5 fixes the pattern (Char templates).
+   Plant on the JVM: ANNEX_CLIENT_CLAIMED set to "Saisi hors<NBSP>ligne le" -> FAILED; reverted clean.
+   Then, on 4dd89fc5: :app:gate, gate:clone, the push and R573 run 2 (SUCCESS).
+   The lesson for the next Kotlin test in commonTest: java.util.regex-only syntax ((?U), x{..}, possessive
+   quantifiers) passes every Windows gate and fails only in the cloud run.
+D4 How the walkthrough's PDF was read. This machine has no poppler, so the Read tool could not rasterise it. I read it
+   with the repository's own extractor (web/tests/db/support/pdf-text.ts, copied into the evidence directory). I also
+   photographed the annex from /releve/print on my pnpm dev with Playwright. That is the page the PDF route prints; its
+   token was minted from my worktree's AUTH_SECRET, which was never printed.
+
+====================================================================
+QUESTIONS (for the operator; new public strings first, verbatim by key, transliterated)
+====================================================================
+Q1 THE NEW PUBLIC STRINGS. They ship as written unless refused. The accented originals are in the files named.
+  a) DOSSIER_COPY.annex.clientClaimedAt (web/lib/fr/dossier.ts; the annex column heading in the print page and PDF):
+     old: "Saisi hors ligne le (heure de Paris)"
+     new: "Selon l'appareil, saisi le (heure de Paris)"
+  b) DOSSIER_COPY.annex.offlineNote -> DOSSIER_COPY.annex.deviceTimeNote (the note at the foot of the annex):
+     old: "Lorsque la saisie a eu lieu hors ligne, la date annoncee par l'appareil figure a cote de celle de la
+          reception. Seule la seconde est attribuee par le serveur."
+     new: "L'heure annoncee par l'appareil lors de la saisie, quand il l'a transmise, figure a cote de celle de la
+          reception. Seule la seconde est attribuee par le serveur."
+  c) CGU_COPY.availability (web/lib/fr/cgu.ts, /cgu), the sentence after "... l'horodatage retenu est alors celui de
+     la reception par le":
+     old: "serveur, et le releve indique les deux dates."
+     new: "serveur. Pour chaque journee saisie dans l'application, avec ou sans connexion, le releve indique aussi, a
+          titre indicatif, l'heure annoncee par votre telephone."
+  d) ReleveCopy.ANNEX_CLIENT_CLAIMED (android/shared; the in-app releve annex, before the stamp):
+     old: "Saisi hors ligne le"
+     new: "Selon l'appareil, saisi le"
+  e) ReleveCopy.ANNEX_OFFLINE_NOTE -> ReleveCopy.ANNEX_DEVICE_TIME_NOTE (in-app): the same text as b), old and new.
+Q2 SPEC l.887 (section 12 item 5) still says the annex prints the "client-claimed time when it was synced offline".
+   That is a SPEC 12 statement, so I did not edit it.
+   Proposed one-sentence amendment: "... last-modified timestamp when different, the time the device announced at
+   the entry when it sent one (the app sends it with every write, online or not - R275), the << saisie tardive >>
+   flag, ...".
+   Cost: a SPEC line; no code (the code already prints exactly that).
+Q3 Two internal comments make the same claim:
+   - web/prisma/schema.prisma l.337, /// "What the offline client asserted.";
+   - web/lib/entries/schema.ts l.128, "What the offline client asserts about when this was written.".
+   Fold both, by name, into the next schema / entries task with A15's Q8 (the detectedAt comment)? The first is a
+   doc comment, but it sits in the schema file (Ask-first).
+Q4 A SPEC 12 DECISION, proposed and NOT done (the prompt reserves it). The device column is now honest but carries
+   little: online, it repeats the server's minute. Options, each with its cost:
+   (a) Keep it as is: zero cost; the reader sees two equal times on most rows.
+   (b) Print the device time only when it differs from the receipt by more than a stated gap (e.g. 10 min), so the
+       column shows only the cases that mean something (queued offline, a wrong phone clock).
+       Cost: a new rule and constant (Ask-first), a SPEC 12 amendment, the note reworded, tests both sides of the
+       gap; the CSV keeps the column (frozen) and the raw value.
+   (c) Hide the column from the PDF and keep it in the CSV/export.
+       Cost: SPEC 12 item 5 changes what the document prints; a reader loses the device's account the annex
+       promised; the print and PDF tests move.
+Q5 CGU c) says "pour chaque journee saisie dans l'application". docs/api-v1.md l.482 says a later edit that sends no
+   claim clears the column. Today no surface edits a day without sending one: the app always sends it, and the web's
+   signed-in area is parked. So the sentence is true now. Accept that, or prefer the weaker "lorsqu'une journee est
+   saisie dans l'application"?
+Q6 The key renames (D2): keep them, or revert to offlineNote / ANNEX_OFFLINE_NOTE?
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code tip pushed: origin/an-annex-truth = 4dd89fc5ee4543542efa25149258f943a8c8917f (git ls-remote, before this report
+was committed). It was pushed after gate:clone PASSED on it; the first push, 0915dafc, likewise followed its own
+gate:clone. origin/release/android-v1 = e7c7a2541367b830c356cb7ad75b2cd277b571f5, unmoved since the cut, so the
+branch merges as a fast-forward of the base.
+Report: this file, committed alone on top of 4dd89fc5 and pushed to origin/an-annex-truth. The handback names its
+sha. NOT MERGED: the orchestrator merges into release/android-v1 and forward into main.
+Cleanup at the end:
+- my dev server was stopped earlier (WALKTHROUGH);
+- ./gradlew --stop was run after each Gradle step;
+- the heavy lock was released (16:17:51Z);
+- the dev log was deleted;
+- the scratch DB monreleve_an_annex_truth and web/.env stay in my worktree, for the merge or a re-run;
+- the lock C:/wt/an-annex-truth/.session-lock.json is removed LAST.
