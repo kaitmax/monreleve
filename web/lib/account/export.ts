@@ -134,6 +134,93 @@ export const EXCLUDED: Readonly<Record<string, string>> = {
     'exporting a credential with no informational value.',
 };
 
+// ============================================================================
+// AN-PRIVACY-RECORD (R1251): EVERY COLUMN OF AN EXPORTED TABLE, NOT ONLY EVERY TABLE
+// ============================================================================
+//
+// EXPORTED / EXCLUDED partition the TABLES. They said nothing about the columns,
+// and the columns drifted: /confidentialite named Entry.detectedAt as stored
+// (A14, R1231) while this file never carried it, and the page's own record of
+// the date an address was confirmed had no field here. A page that names what
+// is stored and an export that is "everything this product holds" are two
+// descriptions of one fact (R206), so one is derived from the other:
+// tests/db/account-export.test.ts takes every column lib/content/personal-data.ts
+// maps to a record the page RENDERS, for every exported table, and requires the
+// produced file to carry it - and requires every field the file carries to be
+// such a column, or the word for one.
+//
+// A COLUMN LEFT OUT IS LEFT OUT HERE, WITH ITS REASON, and only of one kind: an
+// identifier or a credential. The test refuses an exclusion of any other name,
+// so a column of data the page names cannot be argued out of the file one at a
+// time. The field carrying a column has the COLUMN'S NAME, under the table's
+// key in EXPORTED - no aliases, so nothing is mapped by hand.
+
+const ROW_ID =
+  'the internal row identifier. It is not a fact about the person, and the ' +
+  'export reconciles a row by its natural key (dayDate and portion for a day), ' +
+  'as the API does.';
+const OWNER_ID =
+  'the identifier of the account the row belongs to. Every row in the file ' +
+  'belongs to the person exporting it, so it would repeat one opaque value on ' +
+  'every row.';
+const LINK_ID =
+  'an internal link to another row, by its identifier. The rows it would link ' +
+  'carry no identifier in the export, so the value could join nothing.';
+const CREDENTIAL =
+  'a credential: how the server addresses a device or recognises a browser. A ' +
+  'file a person e-mails to their accountant should not carry one (the reason ' +
+  'SessionToken is excluded as a table).';
+
+/** Columns of exported tables that the file leaves out, each with its reason (R1251). */
+export const COLUMNS_NOT_EXPORTED: Readonly<Record<string, string>> = {
+  'User.id': ROW_ID,
+  'User.organizationId':
+    'reserved by D33 with no feature built: no code path writes it, so it is ' +
+    'always empty, and a permanently empty field would tell a reader this ' +
+    'product stores something it does not (the reason Account is excluded).',
+  'Entry.id': ROW_ID,
+  'Entry.userId': OWNER_ID,
+  'EntryEvent.id': ROW_ID,
+  'EntryEvent.userId': OWNER_ID,
+  'EntryEvent.entryId': LINK_ID,
+  'Device.id': ROW_ID,
+  'Device.userId': OWNER_ID,
+  'Device.fcmToken': CREDENTIAL,
+  'DeviceSession.id': ROW_ID,
+  'DeviceSession.userId': OWNER_ID,
+  'DeviceSession.deviceId': LINK_ID,
+  'ReminderSent.id': ROW_ID,
+  'ReminderSent.userId': OWNER_ID,
+  'IssuanceRecord.id': ROW_ID,
+  'IssuanceRecord.userId': OWNER_ID,
+  'NameChange.id': ROW_ID,
+  'NameChange.userId': OWNER_ID,
+  'WebSession.id': ROW_ID,
+  'WebSession.userId': OWNER_ID,
+  'WebSession.tokenHash': CREDENTIAL,
+};
+
+/**
+ * Fields the file carries that are not columns: the word beside a code, each
+ * naming the column it is the word for ("every code travels with the word for
+ * it", above). Keyed `<export key>.<field>`.
+ */
+export const DERIVED_FIELDS: Readonly<Record<string, string>> = {
+  'entries.portionLabel': 'Entry.portion',
+  'entries.kindLabel': 'Entry.kind',
+  'entries.absenceLabel': 'Entry.absenceReason',
+  'entries.provenanceLabel': 'Entry.provenance',
+  'trail.portionLabel': 'EntryEvent.portion',
+  'trail.kindLabel': 'EntryEvent.kind',
+  'trail.provenanceLabel': 'EntryEvent.provenance',
+};
+
+/**
+ * The User columns the export carries beyond /api/v1/me's (R1251). ME_FIELDS
+ * is not touched: /me is a frozen contract the app parses.
+ */
+const ACCOUNT_ONLY_SELECT = { email: true, emailVerified: true, createdAt: true } as const;
+
 export interface AccountExport {
   readonly exportedAt: string;
   readonly settings: Record<string, unknown>;
@@ -161,7 +248,10 @@ const instant = (value: Date | null): string | null =>
 export async function buildAccountExport(userId: string): Promise<AccountExport> {
   const [user, entries, trail, devices, sessions, reminders, issuances, nameChanges, webSessions] =
     await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: ME_SELECT }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { ...ME_SELECT, ...ACCOUNT_ONLY_SELECT },
+    }),
     prisma.entry.findMany({
       where: { userId },
       orderBy: [{ dayDate: 'asc' }, { portion: 'asc' }],
@@ -180,7 +270,17 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
 
   return {
     exportedAt: new Date().toISOString(),
-    settings: serialiseMe(user),
+    // /api/v1/me's fields through its own serialiser (R206), then the three the
+    // page names that /me deliberately does not return (R1251). The address is
+    // in /me's "THE EMAIL IS NOT" for a polled settings endpoint; this file is
+    // the person's own copy of everything held, behind their own token, and the
+    // page names « votre adresse e-mail » first in the list.
+    settings: {
+      ...serialiseMe(user),
+      email: user.email,
+      emailVerified: instant(user.emailVerified),
+      createdAt: user.createdAt.toISOString(),
+    },
 
     entries: entries.map((entry) => ({
       dayDate: day(entry.dayDate),
@@ -196,7 +296,13 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       provenance: entry.provenance,
       provenanceLabel: wordFor(PROVENANCE_LABEL, entry.provenance),
       detectedKind: entry.detectedKind,
+      // R1251: the phone's clock at the tap that validated a proposed day
+      // (AujourdhuiController.recordDetected, EveningTap), or null for a day
+      // entered by hand. The page names it in the provenance record.
+      detectedAt: instant(entry.detectedAt),
       firstRecordedAt: entry.firstRecordedAt.toISOString(),
+      // R1251: the server's clock at the last write to this row.
+      updatedAt: entry.updatedAt.toISOString(),
       clientClaimedAt: instant(entry.clientClaimedAt),
       clientMutationId: entry.clientMutationId,
     })),
@@ -221,6 +327,9 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
 
     devices: devices.map((device) => ({
       platform: device.platform,
+      // R1251: stored with the device, so the person's copy carries them.
+      appVersion: device.appVersion,
+      lastSeenAt: device.lastSeenAt.toISOString(),
       createdAt: device.createdAt.toISOString(),
       // NO PUSH TOKEN. It is a credential for addressing the device, not a
       // fact about the person, and the same reasoning excludes SessionToken.
@@ -255,6 +364,7 @@ export async function buildAccountExport(userId: string): Promise<AccountExport>
       periodStartDate: record.periodStartDate,
       sha256: record.sha256,
       generatedAt: record.generatedAt.toISOString(),
+      createdAt: record.createdAt.toISOString(),
     })),
 
     // FW-VERIFY (R331): the dates only. There is no former name to carry.

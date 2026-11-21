@@ -273,6 +273,57 @@ describe('R1231 (A13 Q4): the record that discloses detectedAt names the time of
   });
 });
 
+describe('R1250 (A14 Q2): the timestamps record names the phone time stored beside the server one, as a claim', () => {
+  // Entry.clientClaimedAt and EntryEvent.clientClaimedAt are the phone's clock
+  // at each write (the app's repository stamps every write, R275), stored
+  // verbatim and mapped to the TIMESTAMPS record - which said only that the
+  // horodatages are the server's and never the phone's. The record now says the
+  // phone's time is kept beside them, as a claim, and that the releve relies on
+  // the server's alone (lib/entries/late.ts: lateness reads firstRecordedAt and
+  // has no parameter for the claim), while it PRINTS the claim in its annex
+  // (DOSSIER_COPY.annex.clientClaimedAt) - so the record says that too rather
+  // than implying the phone time is absent from the document. Found through the
+  // column map (R206), rendered (R225), concepts only, no elided French (R126).
+  const rendered = (): string =>
+    render(<ConfidentialiteContent entity={FILLED_ENTITY} />).container.textContent ?? '';
+  const recordFor = (column: string): string => {
+    const key = PERSONAL_DATA[column];
+    expect(key, `${column} is disclosed by a record`).toBeDefined();
+    return DISCLOSED_RECORDS[key as keyof typeof DISCLOSED_RECORDS];
+  };
+
+  it('is ONE record for both stored claims, and it is rendered', () => {
+    expect(recordFor('EntryEvent.clientClaimedAt')).toBe(recordFor('Entry.clientClaimedAt'));
+    expect(rendered()).toContain(recordFor('Entry.clientClaimedAt'));
+  });
+
+  it('names the phone time, kept at each write, as a simple claim of the phone', () => {
+    const record = recordFor('Entry.clientClaimedAt');
+
+    expect(record).toContain('simple déclaration de votre téléphone');
+    expect(record).toContain('indiquait');
+    expect(record).toContain('chaque saisie');
+  });
+
+  it('says the releve prints it, and relies on the server time alone', () => {
+    const record = recordFor('Entry.clientClaimedAt');
+
+    expect(record).toContain('imprime');
+    expect(record).toContain('que sur');
+    expect(record).toContain('heure du serveur');
+  });
+
+  it('keeps the server horodatages first, still never assigned by the phone', () => {
+    // The claim is ADDED beside the server's stamps; the sentence about whose
+    // stamps they are is unchanged and comes first.
+    const record = recordFor('Entry.firstRecordedAt');
+
+    expect(record).toBe(recordFor('Entry.clientClaimedAt'));
+    expect(record).toContain('assignés par le serveur et jamais');
+    expect(record.indexOf('assignés par le serveur')).toBeLessThan(record.indexOf('indiquait'));
+  });
+});
+
 describe('the vocabulary SPEC section 20 forbids', () => {
   it('never claims the record is certified, attested or compliant', () => {
     // Through the shared guard, which distinguishes the CLAIM from the

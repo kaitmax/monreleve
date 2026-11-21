@@ -1,0 +1,347 @@
+REPORT-AN-PRIVACY-RECORD - Mon Releve
+WHAT IS STORED, THE PRIVACY PAGE SAYS AND THE EXPORT GIVES (ORCH-ANDROID step A15; A14 Q2, Q3, Q5, Q6, NOTICED)
+Session: AN-PRIVACY-RECORD, 2026-11-21. Worktree C:/wt/an-privacy-record (lock .session-lock.json), branch
+an-privacy-record, cut from origin/release/android-v1 = b45528e6 (unmoved at push time). Rulings R1250-R1253 used;
+R1254-R1259 unused. Pure ASCII by transport (R168): every French string below is TRANSLITERATED; the accented
+originals live in the files named by key.
+
+====================================================================
+SUMMARY
+====================================================================
+Web and docs only. android/ is untouched: `git diff --stat b45528e6..d282e271 -- android/` prints nothing.
+- R1250 /confidentialite: DISCLOSED_RECORDS.timestamps (the record lib/content/personal-data.ts maps
+  Entry.clientClaimedAt and EntryEvent.clientClaimedAt to) now says three things. The phone's own time is kept beside
+  the server's stamps, as a claim. The releve prints it. The releve relies on the server's time alone. The server
+  sentence is unchanged and still comes first.
+- R1251 the account export (GET /api/v1/account/export, JSON) now carries every stored column the page names. A db
+  test derives the owed field list from PERSONAL_DATA and the records CONFIDENTIALITE_COPY.app renders, for every
+  exported table, and asserts BOTH directions on the file the route produces.
+  - RED first on 8 missing fields; all 8 added.
+  - Only identifiers and credentials may be left out (COLUMNS_NOT_EXPORTED, each argued). The test refuses any other
+    column name.
+  - The app's Parametres export calls this same route and does not parse it: it saves and shares the bytes
+    (ParametresController.exportData). Nothing changes on Android.
+- R1252 SPEC 8, SPEC 11.1, docs/api-v1.md and the web/lib/entries/schema.ts comment now say what the code does.
+  detectedAt is the phone's clock at the validating tap, and SPEC 11.1 cites A6's ModeParityTest. The disclosure is
+  NOT REQUIRED by Play to mention detectedAt; I drafted an optional sentence for the operator (Q4) and did not ship it.
+- R1253 docs/release-audit-android.md section 5, F5c row: "three siblings" -> "four siblings".
+- Commits:
+  - 9b6ac44e (R1251)
+  - 5ba9cf82 (R1250)
+  - a3714894 (R1252/R1253)
+  - d282e271 (the two baselines; the CODE TIP GATED)
+  The report commit goes on top. Pushed to origin/an-privacy-record; NOT MERGED.
+- :app:gate and R573 are NOT OWED, because android/ and android/shared are unchanged. Neither was run, and neither
+  is claimed.
+
+====================================================================
+STATUS (R391)
+====================================================================
+COMPLETE for the web gates on the code tip d282e271 (d282e271308728d942a9ec921c1987e6f10fa2fd), this session, heavy
+lock held (acquired 13:26:42Z at commitFree 10 491 MB, line 5 000; released 14:03:29Z after the push).
+  pnpm gate:changed (FRONTALIER_PORT=3976), run with A13/A14's soft-reset method (DEVIATIONS D1).
+    Result: "GATE PASSED for the paths changed.", GATE_CHANGED_EXIT=0.
+    Selection (pasted):
+      web/lib/account/export.ts  ->  the database layer
+      web/lib/entries/schema.ts  ->  the database layer
+      web/lib/fr/confidentialite.ts  ->  lib/fr/**
+      web/lib/fr/confidentialite.ts  ->  the database layer
+      web/tests/db/account-export.test.ts  ->  the database layer
+      web/tests/visual/baselines/page-confidentialite-{desktop,mobile}.png  ->  a baseline (R144)
+      suites: typecheck, lint, test, build, test:visual, test:e2e, test:db, test:late
+    Counts:
+      test          4290 passed (253 files)
+      test:visual   176 passed
+      test:e2e      402 passed
+      test:db       896 passed (28 skipped)
+      test:late     10 passed
+    (docs/, SPEC and the unit test file matched no rule beyond these; tests/unit is in the base chain.)
+  pnpm gate:clone (FRONTALIER_PORT=3976).
+    Result: "GATE:CLONE PASSED", GATE_CLONE_EXIT=0, commit d282e271308728d942a9ec921c1987e6f10fa2fd.
+    Claim (pasted): "this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test
+    (4290 of 4290 tests passed, 253 files), build, size (24 routes measured), db:deploy, test:db (896 of 924 tests
+    passed, 28 skipped, 64 files), test:container:write (10 checks passed) from a clean checkout".
+    No stale clones. CI readiness line: "the repository is public and CI_FULL is unset - jobs will skip".
+    Named as not run in a clone (R133): test:e2e, test:visual, test:runtime, lighthouse, parity:check, test:container.
+    The first two ran in gate:changed above.
+  :app:gate is NOT OWED (android/ unchanged) and NOT RUN. R573 is NOT OWED (android/shared unchanged).
+  The report commit changes REPORT-AN-PRIVACY-RECORD.txt only, so no gate is owed by it (R182).
+
+====================================================================
+R1250 - clientClaimedAt ON /confidentialite (A14 Q2)
+====================================================================
+FROM THE CODE.
+- The app's repository stamps clientClaimedAt on EVERY write (EntryRepository: `clientClaimedAt =
+  deviceClaimNow(clock, deviceZone)`, R275). The server stores it verbatim on Entry and EntryEvent (lib/entries/write.ts).
+- The releve PRINTS it, in the annex column DOSSIER_COPY.annex.clientClaimedAt (app/releve/print/page.tsx).
+- Lateness reads firstRecordedAt only. lib/entries/late.ts: "clientClaimedAt ... is deliberately not an input, and the
+  signature has no parameter for it".
+- So the record may say "relies on the server's time alone", but it must not say the phone's time is absent from the
+  releve. It says both.
+THE RECORD (web/lib/fr/confidentialite.ts, DISCLOSED_RECORDS.timestamps). The first two sentences keep their words (the second now ends with a full stop); two
+sentences were appended. The NBSP count is unchanged (two), so copy-codepoints' registry did not move. The new text is
+quoted verbatim by key in Q1.
+TESTS (web/tests/unit/pages/confidentialite.test.tsx, the "R1250 (A14 Q2) ..." block, 4 tests).
+- The record is FOUND THROUGH PERSONAL_DATA['Entry.clientClaimedAt'] and ['EntryEvent.clientClaimedAt'], never by a
+  typed key, and it is rendered (R206, R225).
+- It names the phone time as a "simple declaration de votre telephone", "indiquait", "chaque saisie".
+- It says the releve "imprime" it and relies "que sur" the "heure du serveur".
+- The server sentence still comes first.
+- RED: 3 of 4 FAILED on content (red-r1250.txt), GREEN after.
+- The 4th test ("ONE record ... rendered") passed first, so it was PLANTED (R180). DISCLOSED_RECORDS.timestamps was
+  removed from CONFIDENTIALITE_COPY.app; the landing was verified (diff: 1 deletion); exactly that test FAILED; the
+  file was restored.
+
+====================================================================
+R1251 - THE EXPORT HOLDS WHAT THE PAGE NAMES (A14 Q5)
+====================================================================
+THE MECHANISM (web/lib/account/export.ts + web/tests/db/account-export.test.ts, the "R1251 (A14 Q5)" block, 7 tests).
+- Owed fields for an export key K (table M = EXPORTED's inverse) are computed in three steps:
+  - take every PERSONAL_DATA column of M;
+  - remove COLUMNS_NOT_EXPORTED;
+  - add DERIVED_FIELDS (the ...Label words, each naming its source column).
+  A field carries its column's name under K, with no aliases.
+- Every column of every exported table must be disclosed by a record that CONFIDENTIALITE_COPY.app renders. This is
+  the "same record the page renders".
+- The file is produced through the ROUTE (GET), with one row in every exported table. The detected day is written
+  through POST /api/v1/entries exactly as the app sends it, with detectedAt and clientClaimedAt (R204).
+- Both directions on the produced file:
+  - a named field missing fails;
+  - a field that is neither a named column nor its word fails;
+  - the top-level keys must be exactly exportedAt + EXPORTED's keys.
+- COLUMNS_NOT_EXPORTED may only hold an identifier or a credential: /^(id|...Id|tokenHash|fcmToken)$/, a reason
+  over 60 characters, a disclosed column of an exported table. A column of data cannot be argued out one at a time.
+- The phone instants are DELIVERED as stored: entry detectedAt and clientClaimedAt, and the trail's clientClaimedAt,
+  are asserted equal to what was posted (R154).
+RED (red-r1251.txt): 2 of 7 FAILED on content: "named by /confidentialite and absent from the export:
+settings.createdAt, settings.email, settings.emailVerified, entries.detectedAt, entries.updatedAt, devices.appVersion,
+devices.lastSeenAt, issuances.createdAt", plus the delivery test. Three earlier runs were refused on FIXTURE errors
+(the WebSession_short_life and WebSession_token_hash_shape CHECKs). Each fixture was fixed; none was a RED reason.
+GREEN: 25/25 (green-r1251.txt).
+PLANTS (R180), because 5 tests passed first. Each landing was verified by diff, each run seen to fail, each file
+restored, git status clean after:
+  P1 `fcmToken: device.fcmToken` added to devices -> FAILED "carries nothing the page does not name"
+     (devices.fcmToken). The old "never carries a credential" test stayed GREEN under it (NOTICED N2).
+  P2 'Entry.detectedAt' added to COLUMNS_NOT_EXPORTED -> FAILED "names the columns A14 Q5 names", "leaves out only
+     identifiers and credentials" ("detectedAt is neither an identifier nor a credential") and "carries nothing ...".
+  P3 'entries.ghostLabel': 'Entry.id' added to DERIVED_FIELDS -> FAILED "derives each word" and "carries every field".
+  P4 DISCLOSED_RECORDS.webSession removed from the rendered list -> FAILED "each disclosed by a RENDERED record"
+     ("the record of WebSession.id is not rendered").
+THE EXPORT'S FIELD LIST, BEFORE -> AFTER (JSON; the CSV is unchanged, Q6).
+  settings  before: name, canton, employmentRate, denominatorKind, exactTotalWorkDays, granularity, activityStartDate,
+                    reminderTime, reminderEnabled, loggingMode, detectionConsentAt   (/api/v1/me's serialiser)
+            after:  the same + email, emailVerified, createdAt   (ME_FIELDS and serialiseMe untouched: /me unchanged)
+  entries   before: dayDate, portion, portionLabel, kind, kindLabel, absenceReason, absenceLabel, note, provenance,
+                    provenanceLabel, detectedKind, firstRecordedAt, clientClaimedAt, clientMutationId
+            after:  the same + detectedAt, updatedAt
+  trail     unchanged: action, recordedAt, dayDate, portion, portionLabel, kind, kindLabel, provenance,
+                    provenanceLabel, detectedKind, clientClaimedAt, clientMutationId
+  devices   before: platform, createdAt
+            after:  platform, appVersion, lastSeenAt, createdAt
+  issuances before: code, taxYear, version, supersededAt, name, declarableRate, teleworkDays, missionDaysFrance,
+                    missionDaysThirdState, periodFraction, periodStartDate, sha256, generatedAt
+            after:  the same + createdAt
+  reminders, sessions, nameChanges, webSessions: unchanged.
+  LEFT OUT, each argued in COLUMNS_NOT_EXPORTED:
+  - every id and userId;
+  - EntryEvent.entryId and DeviceSession.deviceId (links to rows that carry no id);
+  - Device.fcmToken and WebSession.tokenHash (credentials);
+  - User.organizationId (D33, reserved: nothing writes it, so it is always empty).
+  ADDITIVE ONLY (R217): no field moved or was renamed.
+THE APP. ParametresController.exportData calls ACCOUNT_EXPORT_JSON = "/api/v1/account/export" (and "?format=csv").
+toExportEvent hands `outcome.export.bytes` to ExportEvent.Ready for sharing. Nothing in android/ or iOS parses the
+body, so nothing there changes or breaks.
+DOCS. docs/api-v1.md section 13:
+- the example JSON;
+- the key table: settings' three, plus issuances and nameChanges, which were missing from the table since FW-VERIFY;
+- the rows table: detectedAt, updatedAt;
+- the "three fields absent" paragraph rewritten;
+- the devices row;
+- a new paragraph stating the column partition and that the CSV is not bound by it.
+
+====================================================================
+R1252 - SPEC AND DOCS SAY WHAT THE CODE DOES
+====================================================================
+THE CODE, QUOTED.
+- android/shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt recordDetected (l.665):
+  `detectedAt = claimNow(),`, with the comment "The device's clock at the confirming/correcting tap, sent verbatim".
+- android/app/src/main/kotlin/ch/monreleve/app/notification/EveningTap.kt (l.99):
+  `val detectedAt = if (tap.provenance == Provenance.MANUAL) null else at.claimNow`.
+- web/lib/entries/write.ts (l.231) keeps it across an edit:
+  `item.detectedAt ?? existing?.detectedAt?.toISOString() ?? null`.
+WHERE THE DOCS NOW SAY IT ("the phone's clock at the tap that validated a proposed day"):
+- SPEC section 8 l.587 (model comment);
+- docs/api-v1.md 6.1 l.335 (which quotes both code lines) and 6.2 l.481;
+- 13.3 (rows table + paragraph; the old "the instant a proposal was produced is not in the file" is gone);
+- web/lib/entries/schema.ts (the field's doc comment).
+SPEC 11.1 (Autorisation refusee), "States that manual mode produces exactly the same annual statement" became, in one
+sentence: "States that manual mode produces the same annual statement, identical apart from each day's stated origin -
+what A6's `ModeParityTest` (android/app/src/test/kotlin/ch/monreleve/app/aujourdhui/ModeParityTest.kt, with its server
+half web/tests/unit/dossier/mode-parity.test.tsx) proves - offers one link ...". SPEC D19 ("identical dossier"),
+11.1 item 1 ("the same annual statement", no "exactly") and section 21's checklist line were left as they are.
+R267, THE SITES NOT FIXED (each with its reason):
+- web/prisma/schema.prisma l.334 `/// When the proposal was produced on-device.` Any edit to the schema file comes back
+  to the orchestrator (prompt), and the gate selects test:db for it. Proposed for the orchestrator's next schema
+  touch (Q8).
+- android/shared/.../data/local/EntryEntity.kt l.63, the KDoc "When the proposal was produced on-device". A comment in
+  android/shared owes :app:gate + R573 for no behaviour; it is for the next android/shared task (Q8).
+DOES THE DISCLOSURE (DisclosureCopy, the prominent disclosure) HAVE TO MENTION detectedAt? NO.
+- The deciding constraint: Play's prominent-disclosure requirement is about the LOCATION data the app accesses and how
+  it is used. detectedAt is not location data and is not derived from a position. It is the phone's clock at a tap,
+  of the same kind as clientClaimedAt, which every MANUAL day carries too. What location-derived data leaves the phone
+  (detectedKind, CH/HOME) the sentence already names, and the Data safety form declares it (Android Ruling 18 Q-DS1).
+- The privacy page names detectedAt (A14's R1231) and clientClaimedAt (R1250), so the full record is disclosed where
+  the full record is listed.
+- A caveat for the operator: NEVER_SHARED reads "Seule la journee que vous validez nous est envoyee, avec ce que la
+  detection vous avait propose", and "Seule ... avec" can read as a closed list. An optional draft is in Q4. It is
+  NOT shipped, because shipping it would owe :app:gate, R573, the Paparazzi disclosure baseline and a third Play
+  retake.
+
+====================================================================
+R1253
+====================================================================
+docs/release-audit-android.md l.202 (section 5, F5c): "its three siblings by A14 (R1230)" -> "its four siblings by A14
+(R1230)". This was a scripted edit asserting exactly one match (R211). Section 11's row already lists the four.
+
+====================================================================
+BASELINES (R207: stated BEFORE regeneration in C:/wt/queue-evidence/an-privacy-record/baselines-expected.txt, 12:57Z)
+====================================================================
+Expected: exactly web/tests/visual/baselines/page-confidentialite-{desktop,mobile}.png.
+- `pnpm test:visual` on a3714894 (clean tree): 2 failed (desktop and mobile confidentialite, with their retries),
+  174 passed. That equals the expectation.
+- `pnpm test:visual:update -- --grep confidentialite` printed "photographed: a3714894, clean tree" (R184) and
+  re-generated exactly:
+    re-generated  web/tests/visual/baselines/page-confidentialite-desktop.png  (1440x6916 -> 1440x6994, +78 px,
+                  first changed row 2452; the bottom 4 444 rows identical to the old image)
+    re-generated  web/tests/visual/baselines/page-confidentialite-mobile.png   (390x10460 -> 390x10590, +130 px,
+                  first changed row 3692; the bottom 6 394 rows identical)
+- git status showed exactly those two. Committed alone as d282e271.
+- CROPPED AND READ (R135), crop-{desktop,mobile}-{old,new}.png: the provenance bullet unchanged above; the timestamps
+  bullet with its new clause whole (desktop 6 lines, mobile 11); the history bullet and everything below unchanged.
+  The NBSP before ";" holds the semicolon on its line in both.
+- No Android baseline moved; android/ is unchanged.
+
+====================================================================
+WALKTHROUGH (R176, R177)
+====================================================================
+`pnpm dev` on :3976 against my scratch DB (reseeded with `pnpm db:seed` after test:db emptied it). /api/health answered
+service "monreleve" (R169). Driven by HTTP (walk.mjs; output in walkthrough.txt).
+- /confidentialite 200, 170 936 bytes.
+  - The timestamps record's two new sentences were served (at offsets 4385 and 4481). "assignes par le serveur et
+    jamais par votre telephone" was at 4247.
+  - Order: provenance record 4068 < timestamps 4140 < its claim clause 4395 < history 4566.
+  - Styles present: layout CSS 200, 8 609 bytes, 26 "--colour-" tokens.
+  - 21 links out, each 200.
+- Signed in the SEEDED camille.martin@example.invalid by POST /api/v1/auth/magic-link (202) and /api/v1/auth/code
+  (200). The code was read from my dev log by the script and NEVER printed (R574); the token was never printed.
+- GET /api/v1/account/export, as Parametres fetches it: 200, 487 964 bytes, "mon-releve-donnees.json". Top-level keys:
+  exportedAt, settings, entries, trail, devices, reminders, sessions, issuances, nameChanges, webSessions.
+  - settings carries email (= the signed-in address), emailVerified (set) and createdAt.
+  - entries (487) carry detectedAt and updatedAt.
+  - 51 entries have a non-null detectedAt (e.g. 2026-09-02 DETECTED_CONFIRMED CH detectedAt=2026-09-02T17:50:00.000Z).
+  - 2 entries and 2 trail rows carry clientClaimedAt (the seed's offline case).
+- THE WALKTHROUGH'S REACH, NOT OVERSTATED. The seeded account has 0 devices, reminders, issuances, nameChanges and
+  webSessions. So on `pnpm dev` it showed 5 of the 8 added fields: settings.email, emailVerified, createdAt and
+  entries.detectedAt, updatedAt. devices.appVersion, devices.lastSeenAt and issuances.createdAt are proven by the db
+  test only.
+- CSV: 200, header unchanged, the SPEC 12 columns. Signed out after (POST /api/v1/auth/sign-out 200).
+- Server stopped by PID 12924 (its command line names C:\wt\an-privacy-record\web), with taskkill /T. Afterwards no
+  node process names my worktree, port 3976 had no listener, and curl returned 000.
+- My dev log held the sign-in mail; it was deleted, never copied.
+- Emulator: NOT touched. android/ is unchanged, so I had no authority to shut it down and no reason to drive it.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1 The "offline" framing of the phone time (also Q5). These sites describe clientClaimedAt as an offline-only datum:
+   - DOSSIER_COPY.annex.clientClaimedAt "Saisi hors ligne le";
+   - DOSSIER_COPY.annex.offlineNote "Lorsque la saisie a eu lieu hors ligne...";
+   - CGU_COPY.availability;
+   - SPEC l.588 "what the offline client asserted";
+   - docs/api-v1.md l.336 "What the offline client asserts".
+   But the app stamps EVERY write (R275), so the releve's column is filled for days entered online too. The privacy
+   page now says "lors de chaque saisie", which is true; these sites say less.
+N2 tests/db/account-export.test.ts "never carries a credential" asserts the absence of 'pushToken', a name that exists
+   nowhere (the column is fcmToken). It is a vacuous absence assertion: plant P1 put the token in the file and it
+   stayed green. R1251's unnamed-field direction now catches exactly that case. The old line was left as it is (Q7).
+N3 The schema.prisma and EntryEntity.kt comments (R1252, R267 above).
+N4 Other sessions untouched (R334/R392).
+   - The heavy lock was held by m1-twins and gate-a14f while I waited; I never lowered the line or broke the lock.
+   - The emulator (qemu PID 16860) and two Java daemons (PIDs 18440, 22284; A14's N9) were running and not mine; left
+     alone.
+N5 The visual container's web server logged "[scheduler] failed to start: ECONNREFUSED 127.0.0.1:5436". The container
+   has no route to the host DB, it was the same in both runs, and the suite passed. Not investigated.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1 gate:changed reads the diff from HEAD. To make it select from my changes I ran `git reset --soft b45528e6` in my
+   own worktree (tree unchanged, all staged), ran the gate, then `git reset --soft d282e271` (status clean). Nothing
+   was pushed in between (A13's D1, A14's D2).
+D2 docs/api-v1.md 13.4 listed appVersion and lastSeenAt as DELIBERATELY absent from devices. The one rule R1251 needs
+   (only identifiers and credentials may be left out) adds them; they are additive. This reverses a documented
+   choice, so it is Q3. A refusal means widening the exclusion rule, which the test then has to accept by name.
+D3 settings.email is now in the export, while /api/v1/me withholds it on purpose ("THE EMAIL IS NOT", lib/me/read.ts).
+   /me was not touched; Q2.
+D4 The R1251 block's first three runs were refused by database CHECKs on my WebSession fixture (expiry over 30 min;
+   hash shape). Those were fixture errors, not RED; the RED run is the fourth.
+D5 Scratch DB monreleve_an_privacy_record (my web/.env names only it, with a fresh AUTH_SECRET; neither committed):
+   db:deploy, the test suites, db:seed for the walkthrough.
+   Evidence (not committed) is in C:/wt/queue-evidence/an-privacy-record/:
+   - RED/GREEN logs and plants;
+   - gate-changed.log, gate-clone.log;
+   - visual-before/-update;
+   - the old/new baselines and their crops;
+   - walk.mjs and walkthrough.txt;
+   - scripted-edit helpers.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1 THE NEW PUBLIC STRING, for the operator's approval (it ships as written unless refused). It is accented in the
+   file and transliterated here (R168). old -> new, by key:
+   - DISCLOSED_RECORDS.timestamps (web/lib/fr/confidentialite.ts), rendered on /confidentialite
+       old: "les horodatages, c'est-a-dire la date et l'heure auxquelles le serveur a recu chaque declaration. Ils
+             sont assignes par le serveur et jamais par votre telephone : c'est ce qui donne sa valeur au releve
+             annuel ;"
+       new: "les horodatages, c'est-a-dire la date et l'heure auxquelles le serveur a recu chaque declaration. Ils
+             sont assignes par le serveur et jamais par votre telephone : c'est ce qui donne sa valeur au releve
+             annuel. A cote, le service conserve aussi, comme une simple declaration de votre telephone, l'heure
+             qu'il indiquait lors de chaque saisie. Le releve l'imprime a titre indicatif, mais ne s'appuie que sur
+             l'heure du serveur ;"
+   No other public string changed. The export's new JSON field NAMES are listed under R1251; they are not copy.
+Q2 settings.email in the export. It is the person's own address, behind their own token, and the page names it first
+   in the closed list. But /me withholds it so that a polled endpoint does not echo it, and the export file is often
+   forwarded (to an accountant). Keep it (as shipped), or move User.email to COLUMNS_NOT_EXPORTED? That needs the
+   exclusion rule widened by name, because "email" is neither an identifier nor a credential.
+Q3 devices.appVersion and devices.lastSeenAt (D2): keep them (as shipped), or restore api-v1 13.4's choice? Restoring
+   it widens the rule the same way.
+Q4 The disclosure (R1252). Mentioning detectedAt is NOT required (reason above). If the operator wants "Seule ... avec"
+   to be a complete list anyway, here is a draft for DisclosureCopy.NEVER_SHARED. NOT shipped; it would owe
+   :app:gate, R573, the disclosure baseline and a Play retake:
+       now:   "... Seule la journee que vous validez nous est envoyee, avec ce que la detection vous avait propose :
+               en Suisse ou a domicile."
+       draft: "... Seule la journee que vous validez nous est envoyee, avec ce que la detection vous avait propose
+               (en Suisse ou a domicile) et l'heure a laquelle vous l'avez validee."
+Q5 N1: the releve's column label "Saisi hors ligne le", its offlineNote, the CGU availability sentence, SPEC l.588 and
+   api-v1 l.336 present the phone time as offline-only, while the app sends it with every write. Correct them in a
+   follow-up? The public ones are DOSSIER_COPY / CGU_COPY strings and would move PDF and print baselines.
+Q6 The account CSV (?format=csv) is the entries through toCsv, whose columns SPEC 12 freezes. It carries neither
+   detectedAt nor updatedAt, and R1251 binds the JSON only. Is that the intended reading of "the export holds what
+   the page names"? /confidentialite's rights sentence names a JSON AND a CSV.
+Q7 N2: delete the vacuous 'pushToken' assertion (now subsumed by R1251's unnamed-field direction), or rename it to
+   fcmToken? Test-only.
+Q8 The two "proposal was produced" comments left unfixed (schema.prisma l.334; EntryEntity.kt l.63): fold them into
+   the next schema touch and the next android/shared task respectively?
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code tip pushed: origin/an-privacy-record = d282e271308728d942a9ec921c1987e6f10fa2fd. gate:changed and gate:clone both
+ran on exactly it, before the push (R199).
+R-number scan, repeated after the code push across my worktree's relay/, C:/wt/web-orch/relay and the main checkout's
+relay/ (untracked files included): R1250-R1259 appear only in C:/wt/web-orch/relay/AN-PRIVACY-RECORD.txt and
+RULINGS-2026-11-16.txt (the allocation). No collision.
+Report tip: the commit carrying this file, pushed after it; its SHA is in the handback, since a report cannot name its
+own commit. NOT MERGED: the orchestrator merges into release/android-v1 and forward into main. The lock
+C:/wt/an-privacy-record/.session-lock.json is removed LAST.

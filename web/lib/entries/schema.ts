@@ -116,7 +116,12 @@ const entryItemObject = z
     /** What detection proposed, if anything. Orthogonal to provenance (R202). */
     detectedKind: z.enum(ENTRY_KINDS).optional(),
 
-    /** When the proposal was produced on-device. */
+    /**
+     * The phone's clock at the tap that validated a proposed day - a confirm
+     * or a correct (AujourdhuiController.recordDetected, EveningTap) - never
+     * the moment detection produced the proposal. A device claim, like
+     * clientClaimedAt below.
+     */
     detectedAt: clientInstant.optional(),
 
     /**

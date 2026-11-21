@@ -332,7 +332,7 @@ hides that for the life of the client.
 | `note` | Free text, at most 500 characters. A person's aide-mémoire, not a document. |
 | `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`. Defaults to `MANUAL`. |
 | `detectedKind` | What detection proposed. **Required when `provenance` is not `MANUAL`**; permitted, and meaningful, on a `MANUAL` row (see §6.3). |
-| `detectedAt` | When the proposal was produced on-device. An ISO instant with an offset. |
+| `detectedAt` | **The phone's clock at the tap that validated a proposed day** — the person's confirmation or correction, not the moment detection produced the proposal. The app sets it in `AujourdhuiController.recordDetected` (`detectedAt = claimNow()`) and, for a tap on the evening notification, in `EveningTap` (`val detectedAt = if (tap.provenance == Provenance.MANUAL) null else at.claimNow`). An ISO instant with an offset; like `clientClaimedAt`, the device's own clock, never trusted as evidence. |
 | `clientClaimedAt` | What the offline client asserts about when this was written. **Stored verbatim and never trusted as evidence** — the server keeps this *and* its own `firstRecordedAt`, and the dossier shows both, so a reader sees the gap rather than being handed one number and asked to believe it. |
 
 <!-- /fields:write -->
@@ -478,7 +478,7 @@ client built per §6.4 keeps working.
 | `note` | The note, or `null`. |
 | `provenance` | `MANUAL`, `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`. |
 | `detectedKind` | What detection proposed, or `null`. **Survives an edit that does not mention it** — deleting an overridden proposal is a review rejection (SPEC §8). Supplying one replaces it. |
-| `detectedAt` | When the proposal was produced, or `null`. Survives an edit alongside `detectedKind`. |
+| `detectedAt` | The phone's clock at the tap that validated the proposal (§6.1), or `null`. Survives an edit alongside `detectedKind`. |
 | `clientClaimedAt` | What the client asserted **about the write that produced this row’s current state** — verbatim as sent, or `null` if that write asserted none. **An edit that does not mention it clears it**, and that is not evidence loss: the earlier claim stays on the `CREATED` event in the trail. See §6.3. |
 | `firstRecordedAt` | **The server clock at first receipt, and it never moves.** A database trigger rejects any update that changes it. This is the timestamp the *Relevé annuel* rests on. |
 | `lastModifiedAt` | **The instant this day was last edited, or `null` if it never was.** Derived from the append-only trail: `max(EntryEvent.recordedAt)` over that entry's `MODIFIED` events. See §6.3 for why it is not `updatedAt`. |
@@ -1569,6 +1569,7 @@ in this API breaks on this route. The top level is still an **object**, so
 {
   "exportedAt": "2026-07-07T15:30:00.000Z",
   "settings": {
+    "name": "Camille Martin",
     "canton": "GE",
     "employmentRate": 100,
     "denominatorKind": "SIMPLIFIED240",
@@ -1578,7 +1579,10 @@ in this API breaks on this route. The top level is still an **object**, so
     "reminderTime": "17:30",
     "reminderEnabled": true,
     "loggingMode": "MANUAL",
-    "detectionConsentAt": null
+    "detectionConsentAt": null,
+    "email": "camille.martin@example.invalid",
+    "emailVerified": "2026-01-12T08:02:40.512Z",
+    "createdAt": "2026-01-12T08:02:40.512Z"
   },
   "entries": [
     {
@@ -1593,7 +1597,9 @@ in this API breaks on this route. The top level is still an **object**, so
       "provenance": "DETECTED_CORRECTED",
       "provenanceLabel": "Détection corrigée",
       "detectedKind": "CH",
+      "detectedAt": "2026-03-05T18:44:01.000Z",
       "firstRecordedAt": "2026-03-05T18:44:09.311Z",
+      "updatedAt": "2026-03-05T18:44:09.311Z",
       "clientClaimedAt": "2026-03-05T18:44:02.000Z",
       "clientMutationId": "9f1c0f2e-7b3a-4a6d-9f21-0b2d4c6e8a10"
     }
@@ -1614,7 +1620,14 @@ in this API breaks on this route. The top level is still an **object**, so
       "clientMutationId": "9f1c0f2e-7b3a-4a6d-9f21-0b2d4c6e8a10"
     }
   ],
-  "devices": [{ "platform": "android", "createdAt": "2026-01-12T08:02:44.120Z" }],
+  "devices": [
+    {
+      "platform": "android",
+      "appVersion": "1.0.0",
+      "lastSeenAt": "2026-07-07T15:29:58.441Z",
+      "createdAt": "2026-01-12T08:02:44.120Z"
+    }
+  ],
   "reminders": [{ "sentOn": "2026-03-05", "sentAt": "2026-03-05T16:30:00.000Z" }],
   "sessions": [
     {
@@ -1630,13 +1643,15 @@ in this API breaks on this route. The top level is still an **object**, so
 | key | what it is | order |
 |---|---|---|
 | `exportedAt` | when the file was produced. Server clock, like every stamp in this product | — |
-| `settings` | §9.1's ten fields, through the same serialiser `/api/v1/me` uses | — |
+| `settings` | §9.1's fields, through the same serialiser `/api/v1/me` uses, then `email`, `emailVerified` and `createdAt`, which `/me` does not return (AN-PRIVACY-RECORD, R1251; additive under R217) | — |
 | `entries` | one row per recorded day-portion, **every year** | `dayDate` ascending, then `FULL`, `AM`, `PM` |
 | `trail` | every `EntryEvent` | `recordedAt` ascending |
 | `devices` | one row per registered device | `createdAt` ascending |
 | `reminders` | one row per reminder actually sent | `sentOn` ascending |
 | `sessions` | every sign-in ever made, including the ended ones | `createdAt` ascending |
 | `webSessions` | every sign-in on the website's account area (FW-WEB-ACCOUNT, additive under R217) | `createdAt` ascending |
+| `issuances` | every relevé issued, current and superseded, with its verification code (FW-VERIFY, R329) | `taxYear`, then `version`, ascending |
+| `nameChanges` | the dates the holder name changed, never the former name (FW-VERIFY, R331) | `changedAt` ascending |
 
 **Everything is ordered, so two exports of an unchanged account differ only in
 `exportedAt`.** An export that shuffled its rows between downloads would be
@@ -1686,16 +1701,18 @@ shows every absence as *autre*. It is stated here because it reads as a defect;
 | `note` | **unaltered**, byte for byte as typed, including a leading `=` — see §6.7 |
 | `provenance` / `provenanceLabel` | the provenance, and the word |
 | `detectedKind` | what detection proposed, or `null`. **No label beside it** |
+| `detectedAt` | the phone's clock at the tap that validated a proposed day (§6.1), or `null` |
 | `firstRecordedAt` | the server clock at first receipt, which never moves |
+| `updatedAt` | the server clock at the last write to this row |
 | `clientClaimedAt` | what the client asserted, verbatim, or `null` |
 | `clientMutationId` | the id of the last write the server applied to this row (§6.2) |
 
-**Three fields §6.2 carries are absent here**: `id`, `detectedAt` and
-`lastModifiedAt`, and nothing in the module says why. Two of the three are
-recoverable from what is present — the trail carries every `MODIFIED` event
-with its `recordedAt`, which is what §6.2 derives `lastModifiedAt` from. The
-third is not: **`detectedAt` appears nowhere in this export**, on the entry or
-on the trail, so the instant a proposal was produced is not in the file.
+**`detectedAt` and `updatedAt` arrived with AN-PRIVACY-RECORD (R1251, additive
+under R217).** Before it, `detectedAt` appeared nowhere in this export while
+`/confidentialite` named it as stored. Of the fields §6.2 carries, `id` is still
+absent (a row is reconciled by `(dayDate, portion)`), and `lastModifiedAt` is not
+carried under that name: §6.2 derives it from the trail's `MODIFIED` events,
+which are here with their `recordedAt`.
 
 **A trail row carries the same shape minus the free text.** `action` —
 `CREATED` or `MODIFIED` — `recordedAt`, and then the day's identity and state:
@@ -1713,7 +1730,7 @@ which is the natural key of an entry. There is nothing else to join on: these
 
 | collection | fields | what is deliberately absent |
 |---|---|---|
-| `devices` | `platform`, `createdAt` | **the FCM token**, and the `id`, `appVersion` and `lastSeenAt` §10 returns on registration |
+| `devices` | `platform`, `appVersion`, `lastSeenAt`, `createdAt` | **the FCM token**, and the `id` §10 returns on registration |
 | `reminders` | `sentOn`, `sentAt` | anything about what the reminder said |
 | `sessions` | `createdAt`, `lastUsedAt`, `revokedAt`, `revokedReason` | the token hashes |
 | `webSessions` | `createdAt`, `expiresAt`, `revokedAt`, `revokedReason` | the token hash |
@@ -1750,6 +1767,21 @@ cover everything, with the space between them named rather than left.
 Its reach is written down rather than assumed: the census sees **direct**
 ownership only. `SessionToken` belongs to a person through its session, is
 invisible to that scan, and is in the excluded list by hand.
+
+**The columns are partitioned too, against the privacy page (AN-PRIVACY-RECORD,
+R1251).** The table partition said nothing about columns, and they drifted:
+`/confidentialite` named `detectedAt` as stored while this file never carried it.
+`tests/db/account-export.test.ts` now derives the fields the file owes from the
+same record the page renders — every column `web/lib/content/personal-data.ts`
+maps to a rendered record, for every exported table — and asserts both
+directions on the file the route produces: a named column missing from the file
+fails, and a field in the file that is neither such a column nor the word for
+one (`DERIVED_FIELDS`, the `…Label` fields) fails. A column is left out only in
+`COLUMNS_NOT_EXPORTED` (`web/lib/account/export.ts`), with its reason, and only
+if its name is an identifier or a credential (`id`, `…Id`, `tokenHash`,
+`fcmToken`); the test refuses any other name. A field carries its column's name
+under the table's key — no aliases. The CSV (§13.5) is not bound by this: its
+columns are SPEC §12's, frozen.
 
 **Nothing in the export is bounded.** Every read is `where: { userId }` with no
 year, no limit and no cursor, across all six tables. Measured at ten years:
