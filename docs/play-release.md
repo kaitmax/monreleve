@@ -187,18 +187,22 @@ strengthened.
 > The checks have to happen during the working day, when the person is at work and the app is closed; a
 > foreground-only grant would see the phone only when the person opens the app, typically in the evening at home,
 > and would propose the wrong country. Detection is optional: people who do not grant background location record
-> their days manually, which produces the same statement.
+> their days manually, which produces the same statement with the same figures; only the origin shown for each
+> day differs (entered by hand, rather than proposed by detection and then confirmed or corrected).
 
-**Video:** `C:/wt/play-assets/demo-background-location-emulator-api36-9c194aeb.mp4` - recorded on the emulator
-(emulator API 36, MonReleve_API36, 1080 x 2280, gestural navigation, system language English), `adb shell
-screenrecord`, debug build of 9c194aeb against a local server, 29.02 s; NOT committed. It starts AFTER sign-in, on
-onboarding's mode step (normal usage, no menu), and shows in order: « Automatiquement » chosen -> the in-app
-disclosure, held about 5 s -> Android's runtime prompt (« While using the app ») -> the background page (« Allow all
+**Video:** `C:/wt/play-assets/demo-background-location-emulator-api36-e0b9198e.mp4` (sha256 22e07a42...30bf05) -
+recorded on the emulator (emulator API 36, MonReleve_API36, 1080 x 2280, gestural navigation, system language
+English), `adb shell screenrecord`, debug build of e0b9198e against a local server, 27.49 s; NOT committed. RETAKEN
+by AN-COPY-TRUTH-2 (R1233) because A5's take (`...-9c194aeb.mp4`, kept beside it) films the disclosure's OLD
+sharing sentence, corrected by A13 (R1220): UPLOAD THIS ONE. It starts AFTER sign-in, on onboarding's mode step
+(normal usage, no menu), and shows in order: « Automatiquement » chosen -> the in-app disclosure, about 6 s, its
+whole text and then its buttons (the corrected text no longer fits one screen at 100 %) -> Android's runtime prompt (« While using the app ») -> the background page (« Allow all
 the time ») -> back in the app, onboarding finished -> Aujourd'hui reading « Détection automatique (bêta) » and
 « Détection en cours. Votre journée vous sera proposée ce soir. ». **What it cannot show:** a day actually detected -
 the four checks happen across a working day, so a 30-second take shows the feature switched on and waiting, not a
 proposal. A real-day recording is the S9's (question in the report). **[OPERATOR]** uploads it (YouTube unlisted or
-Google Drive) and pastes the link into the form; the sha256 is in REPORT-AN-PLAY-PACK.txt.
+Google Drive) and pastes the link into the form; the full sha256 and the frame-by-frame check are in
+REPORT-AN-COPY-TRUTH-2.txt.
 
 **Prominent disclosure** (Play: "must appear before your app's location runtime permission", must name "location"
 and "background" / "when the app is closed", and must be "within the app itself as well as in the app description

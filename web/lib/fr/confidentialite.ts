@@ -146,11 +146,18 @@ export const DISCLOSED_RECORDS = {
   // proposal comes from, so the record NEVER_STATEMENTS.automaticMode points
   // at says that a validated day was derived from detection - what the Data
   // safety form declares as Approximate location (Android Ruling 18 Q-DS1).
+  // AN-COPY-TRUTH-2 (R1231, A13 Q4): Entry.detectedAt is disclosed here
+  // (lib/content/personal-data.ts), so the record names it - the PHONE’s clock
+  // at the tap that accepted or corrected the proposal (AujourdhuiController
+  // .recordDetected, EveningTap). It is NOT one of the server’s horodatages
+  // below, and says it is the phone’s so the two cannot be read as one.
   provenance:
     'l’origine de chaque journée, à savoir une saisie à la main, une ' +
     'proposition de la détection automatique acceptée ou une proposition ' +
     'corrigée, ainsi que ce qui ' +
-    'avait été proposé lorsque vous l’avez corrigée ;',
+    'avait été proposé lorsque vous l’avez corrigée et, pour une journée ' +
+    'proposée, l’heure indiquée par votre téléphone au moment où vous ' +
+    'l’avez validée ;',
   timestamps:
     'les horodatages, c’est-à-dire la date et l’heure auxquelles le serveur ' +
     'a reçu chaque déclaration. Ils sont assignés par le serveur et jamais ' +

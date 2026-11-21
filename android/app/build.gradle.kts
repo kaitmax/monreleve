@@ -445,6 +445,11 @@ tasks.withType<Test> {
     inputs.file(rootProject.layout.projectDirectory.file("../docs/play-store-listing.md"))
         .withPropertyName("playStoreListing")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // AN-COPY-TRUTH-2 (R1230/R283): PlayDeclarationCopyTest reads the background-location declaration's English
+    // texts from the document the operator pastes them from, for the same reason.
+    inputs.file(rootProject.layout.projectDirectory.file("../docs/play-release.md"))
+        .withPropertyName("playReleaseDeclaration")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("$projectDir/src/debug/kotlin")
         .withPropertyName("scannedDebugSource")
         .withPathSensitivity(PathSensitivity.RELATIVE)

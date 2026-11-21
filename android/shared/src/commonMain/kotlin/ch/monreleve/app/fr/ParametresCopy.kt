@@ -42,10 +42,12 @@ object ParametresCopy {
     // generic affordance; « En savoir plus » has no prior home, so it is defined here where it is first used.
     const val LEARN_MORE = "En savoir plus"
 
+    // AN-COPY-TRUTH-2 (R1230): the parity sentence names the origin as the one difference (A6 section 3) and
+    // keeps « les deux se valent » (D19).
     const val AUTO_DESCRIPTION =
         "En option, l’application peut déterminer sur votre téléphone si votre journée a été passée en Suisse " +
-            "ou à domicile, et vous la proposer chaque soir à confirmer. La saisie manuelle produit exactement " +
-            "le même relevé annuel ; les deux se valent."
+            "ou à domicile, et vous la proposer chaque soir à confirmer. La saisie manuelle aboutit au même relevé " +
+            "annuel, aux mêmes chiffres ; seule l’origine indiquée pour chaque journée change, et les deux se valent."
     const val AUTO_BETA_NOTE =
         "Fonction en bêta : sa fiabilité est en cours de mesure. L’application vous propose une journée " +
             "seulement lorsqu’elle en est sûre, et vous indique quand elle ne l’est pas."
