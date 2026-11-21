@@ -31,8 +31,22 @@ R1133. THE LAUNCH BLOCKERS, LISTED EXPLICITLY (AN15's AC3), each with its owner:
     first upload" (Android Ruling 8, Q4); the Firebase config and the FCM key rotation; assetlinks
     fingerprints; the S9 checks (cold start, battery, PARKAN-46/47); the Checkpoint E expert
     reviewer; Checkpoint G, which gates LEAVING BETA, not this release (Android Ruling 1).
-R1134. THE POST-LAUNCH LIST, by name (so absence reads as a decision): from Android Rulings 5 and 8
-    and ORCH-ANDROID's DEFERRED list.
+    ADDED BY ANDROID RULINGS 13-18 (each with its owner): the operator's approval of the listing
+    texts (A5 Q1) and of T1-T3 (A4); the first REAL push on the S9, including a battery-restricted
+    app (Ruling 14 Q1); the S9 Doze / standby-bucket drift of the 19:00 fallback (Ruling 15 Q5);
+    Play's account-deletion web link - /confidentialite still says the app is coming, so the
+    launch-day web change flips PRODUCT_STATE.appExists and carries the deletion steps (Ruling 18
+    Q-DS2); whether the hosting keeps client IPs (Ruling 18 Q-DS3, the operator's); setting
+    ANDROID_MINIMUM_VERSION_CODE only once a later release exists (Ruling 13).
+R1134. THE POST-LAUNCH LIST, by name (so absence reads as a decision): from Android Rulings 5, 8-15,
+    18 and ORCH-ANDROID's DEFERRED list.
+R1135. THE DATA SAFETY TABLE, ONE CHANGE (Android Ruling 18 Q-DS1): docs/play-release.md section 2
+    declares Approximate location as COLLECTED, optional (detection only), not shared, App
+    functionality - a confirmed day with DETECTED_* provenance is a country-level location. Precise
+    location stays NOT collected. Trace the new row to code like every other row.
+R1136. THE iOS STATE, stated plainly: the repository is PUBLIC since 2026-11-20 (Android Ruling 17),
+    R573 holds, the last iOS run is green; no iOS app host exists yet - the iOS phase follows this
+    audit (iOS Ruling 1). The Android audit does not claim anything about iOS beyond that.
 
 THE WORK: worktree + lock; the FULL :app:gate (R391) with the emulator shut down and the heavy lock
 held; R573 if :shared changed; push the branch (DO NOT MERGE); report; push; lock removed last;
