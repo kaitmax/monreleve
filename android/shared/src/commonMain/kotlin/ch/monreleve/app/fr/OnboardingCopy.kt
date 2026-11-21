@@ -100,7 +100,12 @@ object OnboardingCopy {
     const val MODE_AUTO_DESC =
         "Votre téléphone vérifie votre position quatre fois par jour et vous propose votre journée. " +
             "Rien n’est enregistré sans votre accord."
-    const val MODE_INFO = "Les deux produisent exactement le même relevé. Vous pourrez changer à tout moment."
+
+    // AN-COPY-TRUTH-2 (R1230): the same releve and the same figures, and the origin named as the one difference -
+    // what A6 proved (docs/release-audit-android.md section 3), short enough to sit under the choice.
+    const val MODE_INFO =
+        "Les deux produisent le même relevé, avec les mêmes chiffres. Seule l’origine de chaque journée y diffère. " +
+            "Vous pourrez changer à tout moment."
 
     // Step 8 - Un rappel le soir ?
     const val REMINDER_TITLE = "Un rappel le soir ?"

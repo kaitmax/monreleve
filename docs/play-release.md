@@ -187,7 +187,8 @@ strengthened.
 > The checks have to happen during the working day, when the person is at work and the app is closed; a
 > foreground-only grant would see the phone only when the person opens the app, typically in the evening at home,
 > and would propose the wrong country. Detection is optional: people who do not grant background location record
-> their days manually, which produces the same statement.
+> their days manually, which produces the same statement with the same figures; only the origin shown for each
+> day differs (entered by hand, rather than proposed by detection and then confirmed or corrected).
 
 **Video:** `C:/wt/play-assets/demo-background-location-emulator-api36-9c194aeb.mp4` - recorded on the emulator
 (emulator API 36, MonReleve_API36, 1080 x 2280, gestural navigation, system language English), `adb shell
