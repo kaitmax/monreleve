@@ -1,0 +1,119 @@
+# ios/project.yml
+#
+# IOS-HOST R1211. THE iOS APP PROJECT, GENERATED - NEVER HAND-WRITTEN. `xcodegen generate` (run from this directory)
+# writes MonReleve.xcodeproj, MonReleve/Info.plist and MonReleve/MonReleve.entitlements from this file; all three are
+# gitignored (ios/.gitignore), so THIS file is the one home of every key below (R206). XcodeGen is a TOOL installed on
+# the runner by brew (.github/workflows/ios-app.yml); nothing it generates is a dependency of the app.
+#
+# WHAT THE APP IS, TODAY: a SwiftUI window hosting the PILOT view controller already in :shared's iosMain
+# (pilot/AujourdhuiPilotViewController.kt - the shared Aujourd'hui screen over an in-memory fixture, no server, no
+# account). The shell's move is iOS Ruling 3's later tasks, not this one. A launch with `-probe YES` also runs the
+# host probe (MonReleve/Sources/HostProbe.swift, R1212); a normal launch never does.
+#
+# THE BUILD SHAPE (REPORT-IOS-HOST-CENSUS R1203):
+#   - :shared is a STATIC framework, baseName "Shared" (android/shared/build.gradle.kts), linked into the app binary.
+#   - The pre-build script runs :shared:embedAndSignAppleFrameworkForXcode. For a static framework that task's own
+#     action (copy + codesign) is disabled, but its dependencies still run: the framework link, the symlink into
+#     xcode-frameworks/, and Compose Multiplatform's syncComposeResourcesForIos, which writes the glyph files into
+#     the .app's compose-resources/ - without it every icon lookup throws at run time. The workflow refuses an .app
+#     with no compose-resources/ic_*.xml.
+#   - ENABLE_USER_SCRIPT_SANDBOXING = NO: both the Kotlin and the Compose Gradle plugins refuse a sandboxed script.
+#   - AD-HOC SIGNING, NO TEAM: identity "-", DEVELOPMENT_TEAM empty, code signing ALLOWED. On the simulator the
+#     entitlements are simulated from the binary's __TEXT,__entitlements section; with signing disabled they are
+#     reported to be stripped, and the Keychain then answers -34018 (IOS-1a R565).
+#   - arm64 only: the workflow passes ARCHS=arm64, the one simulator architecture :shared declares
+#     (iosSimulatorArm64); an x86_64 slice would ask the Kotlin plugin for a target that does not exist.
+
+name: MonReleve
+
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    # The iOS app's OWN version (the App Store's numbering, independent of Play's) - QUESTION in REPORT-IOS-HOST.
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  MonReleve:
+    type: application
+    platform: iOS
+    sources:
+      - path: MonReleve/Sources
+    settings:
+      base:
+        PRODUCT_NAME: MonReleve
+        PRODUCT_BUNDLE_IDENTIFIER: ch.monreleve.app
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/../android/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-framework"
+          - "Shared"
+      configs:
+        # The API base URL (Android: BuildConfig.API_BASE_URL). Debug reaches a server on the simulator's own host
+        # loopback (Android's debug default is the emulator's 10.0.2.2:3000); Release is the site. The pilot makes no
+        # request, so today the key is read only by the probe (info.apiBaseUrl) - QUESTION in REPORT-IOS-HOST.
+        Debug:
+          MONRELEVE_API_BASE_URL: "http://127.0.0.1:3000"
+        Release:
+          MONRELEVE_API_BASE_URL: "https://monreleve.ch"
+    info:
+      path: MonReleve/Info.plist
+      properties:
+        CFBundleDisplayName: "Mon Relevé"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        # Compose Multiplatform 1.7.3 refuses to start without it (PlistSanityCheck.uikit.kt; R1203 item 3).
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        MonReleveApiBaseUrl: "$(MONRELEVE_API_BASE_URL)"
+        # R1212 (4). BGTaskScheduler refuses an identifier the Info.plist does not list (notPermitted), and an app
+        # refresh task needs the fetch background mode - both are declared so that what submit returns on the
+        # simulator measures the SIMULATOR, not a missing key. The identifier names the probe; the real background
+        # sync is PARK-IF1's and replaces it.
+        BGTaskSchedulerPermittedIdentifiers:
+          - ch.monreleve.app.probe.refresh
+        UIBackgroundModes:
+          - fetch
+    entitlements:
+      path: MonReleve/MonReleve.entitlements
+      properties:
+        # The two entitlements the Keychain needs on the simulator (as android/shared/ios-test.entitlements gives the
+        # test binary). No team: the prefix is whatever Xcode resolves for an unsigned-team build, and the workflow
+        # prints the processed file.
+        application-identifier: "$(AppIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)"
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)"
+    preBuildScripts:
+      - name: "Kotlin framework and Compose resources (Gradle)"
+        basedOnDependencyAnalysis: false
+        # The runner's environment is public in a build log; nothing here needs it printed.
+        showEnvVars: false
+        script: |
+          set -e
+          cd "$SRCROOT/../android"
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode --stacktrace
+
+schemes:
+  MonReleve:
+    build:
+      targets:
+        MonReleve: all
+    run:
+      config: Debug

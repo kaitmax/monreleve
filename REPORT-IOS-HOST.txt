@@ -1,0 +1,424 @@
+REPORT-IOS-HOST - THE FIRST iOS APP: A SIMULATOR HOST AROUND THE PILOT, AND WHAT AN AD-HOC BUNDLE CAN DO (iOS phase step I1)
+TASK     C:/wt/web-orch/relay/IOS-HOST.txt (iOS Rulings 1-3, relay/RULINGS-2026-11-16.txt). Rulings R1210-R1219;
+         R1210-R1215 used, R1216-R1219 unused. Before the first push `grep -rlE '\bR121[0-9]\b'` over relay/ (the
+         orchestrator's worktree and the main checkout, untracked files included), REPORT-*.txt, CLAUDE.md, docs and
+         parking.md returned only the prompt itself (C:/wt/web-orch/relay/IOS-HOST.txt).
+BASE     origin/main d63e882c (the I0 merge).
+BRANCH   i1-host - checked against ios-shared.yml's push filter before the first push (`case i1-host in ios-*`:
+         "does not match"). PUSHED, NOT MERGED; the merge is the orchestrator's. When this task started, iOS Ruling 3 had
+         Android frozen until A6. Since then main has moved: at the report, origin/main is ff11b658, which records
+         Android Rulings 19-20 (A6 merged as 93e39a41, release/android-v1 cut there, "main carries the iOS refactor
+         from here"; A13 merged as cca11959). This branch was NOT rebased; everything below was gated on its own
+         commits 2f6a172c and 44724ee9 (base d63e882c).
+WORKTREE C:/wt/i1-host, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/i1-host/ (not committed): run1-expected.txt, run2-expected.txt (each written BEFORE its
+         push/dispatch), dryrun-{gate,fastcheck}-{base,after}.{txt,list}, shared-tasks-{base,after}.txt and
+         shared-tasks.diff, fastcheck-{1,2,3}.log, gate.sh + gate-run.txt + gate.log, run-<id>/ (each run's artifact
+         and log in its own new directory), runs/shared-<id>.log.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- THE FIRST iOS APP EXISTS AND RUNS on the iOS simulator: iPhone 17 Pro, iOS 26.2 runtime, built with Xcode 26.0.1
+  (SDK iphonesimulator26.0) on macos-15 arm64 (macOS 15.8.2). XcodeGen generates its project from ios/project.yml.
+  It is ad-hoc signed (Signature=adhoc, TeamIdentifier not set, code signing allowed). Its one SwiftUI window hosts
+  the PILOT view controller already in iosMain. No shell work, no server, no sign-in.
+- :shared now declares a STATIC framework "Shared" for both iOS targets. Both were LINKED on the runner (simulator and
+  device; `file`: "current ar archive", arm64). The dry-run task lists of :app:gate (446 tasks) and fastCheck (260)
+  are unchanged; `diff` is empty for both.
+- Compose resources reach the .app: 23 ic_*.xml under MonReleve.app/compose-resources, and the screenshots show
+  glyphs drawn from them. Inside xcodebuild, embedAndSignAppleFrameworkForXcode was SKIPPED (disabled for a static
+  framework) while syncComposeResourcesForIos RAN. I0 had ARGUED this; it is now MEASURED.
+- THE PROBE runs inside the bundle, on -probe YES only. Each result is compared with an expectation written before
+  the run:
+    (1) Keychain round-trip through KeychainTokenStore, fake pair ..... PASS     (expected PASS on the GREEN tip)
+    (2) local notification scheduled and DELIVERED .................... PASS     (expected PASS; I0 had it UNCONFIRMED)
+    (3) share sheet presented (UIActivityViewController on screen) .... PASS     (expected PASS)
+    (4) BGTaskScheduler.submit ......... THREW BGTaskSchedulerErrorDomain code 1, "unavailable" (expected exactly this)
+  All four came out as expected in both ios-app runs. In run 1 the Keychain check was RED by design (the stub).
+- Four macOS runs:
+  - ios-app 44848967259 (RED tip) and 44851548358 (code tip);
+  - ios-shared 44848995697 (RED, as expected) and 44851560884 (GREEN on the code tip; R573/R1215).
+  Billable minutes: 0 (public repository). Job wall time: 24 + 17 + 17 + 12 = 70 minutes.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE on the code tip 44724ee9. The full gate and both code-tip iOS runs ran in this session on that commit; the
+RED-tip lines are labelled as such.
+FULL :app:gate (C:/wt/queue-evidence/i1-host/gate.sh, `gradlew.bat :app:gate` in C:/wt/i1-host/android):
+  - Taken under C:/wt/.run-tools/heavy-lock.mjs: "ACQUIRED holder=ios-host commitFree=8115 line=8000" at
+    2026-11-21T11:12:35Z, "RELEASED holder=ios-host" at 11:21:42Z.
+  - Output: "test floor OK: 1561 unit tests observed (>= 10)", ":app:verifyPaparazziDebug" executed, "BUILD
+    SUCCESSFUL in 9m 5s", GATE_EXIT=0. HEAD printed before the run: 44724ee96ff54cca563f2c86c710005065623c3d.
+  - 1561 is A5's floor on 9c194aeb (Android Ruling 18). The new test is in iosTest, which the JVM gate does not run.
+  - After the gate, `git status` showed only the untracked report. No baseline was rewritten.
+  - The first attempt (gate-run-1-interrupted.txt) never started the gate. It waited for the lock with memory below
+    8000 MB and then lost its process when the orchestrator restarted. It is recorded as NO RESULT, not as a run.
+CODE TIP 44724ee96ff54cca563f2c86c710005065623c3d (origin/i1-host before the report commit).
+iOS on the code tip:
+  - ios-app 44851548358: SUCCESS.
+  - ios-shared 44851560884: SUCCESS. "iOS SIMULATOR TESTS EXECUTED: 418", 0 failures, KeychainRoundTripIosTest 3/0,
+    compileKotlinIosArm64 executed, "BUILD SUCCESSFUL in 6m 45s".
+fastCheck per increment:
+  - RED tip 2f6a172c: "BUILD SUCCESSFUL in 1m 57s", FC_EXIT=0. The attempt before the file rename FAILED on detekt
+    MatchingDeclarationName (fastcheck-1.log).
+  - GREEN tip 44724ee9: "BUILD SUCCESSFUL in 58s".
+BASELINES: `git diff --stat d63e882c origin/i1-host -- android/app` is EMPTY. No Paparazzi baseline moved, and no file
+  under android/app changed.
+gate:clone NOT RUN. This is a decision, not an omission (R133).
+  - Nothing under web/ changed. `git diff --stat d63e882c origin/i1-host` lists 8 files:
+    .github/workflows/ios-app.yml, android/shared/build.gradle.kts, one iosMain file, one iosTest file, and four
+    files under ios/.
+  - The one web test that reads a workflow file, gate-covers-ci.test.ts, reads ci.yml only (its WORKFLOW constant).
+
+================================================================================
+R1210 - THE FRAMEWORK, AND THE ANDROID BUILD UNMOVED
+================================================================================
+CHANGE (android/shared/build.gradle.kts):
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { it.binaries.framework { baseName = "Shared"; isStatic = true } }
+  A comment beside it says why, and where the proof is.
+THE ANDROID GRAPH, MEASURED on this Windows machine in the same worktree, before and after the edit (evidence
+dryrun-*):
+  - `gradlew :app:gate -m`: base 446 task lines, after 446. `diff` EMPTY.
+  - `gradlew :app:fastCheck -m`: base 260 task lines, after 260. `diff` EMPTY.
+  - No link*, embedAndSign* or syncCompose* task appears in either list.
+  - The first "after" gate dry-run was REFUSED under R393, because the edit was unstaged. That refusal is NO RESULT,
+    not a diff. It was repeated after `git add`.
+`:shared:tasks --all`, base against after (shared-tasks.diff). The framework ADDS SEVEN registered tasks on Windows:
+  - linkDebugFrameworkIosArm64 and linkDebugFrameworkIosSimulatorArm64;
+  - linkReleaseFrameworkIosArm64 and linkReleaseFrameworkIosSimulatorArm64;
+  - embedAndSignAppleFrameworkForXcode, syncComposeResourcesForIos and checkCanSyncComposeResourcesForIos.
+CORRECTION TO I0 R1203 item 2. It said the Xcode tasks "are NOT registered" on Windows. The umbrella
+  embedAndSignAppleFrameworkForXcode and the Compose sync ARE registered; both are listed. Neither is in the gate's or
+  fastCheck's graph, so I0's conclusion stands (the Android build does not move). Only its premise is corrected.
+The "Disabled Kotlin/Native Targets" warning is printed once, both before and after the edit. It predates this
+  change.
+ON THE MAC (the ios-app step "Link the Shared framework"), both frameworks were LINKED, not only declared:
+  shared/build/bin/iosSimulatorArm64/debugFramework/Shared.framework/Shared: current ar archive, arm64
+  shared/build/bin/iosArm64/debugFramework/Shared.framework/Shared: current ar archive, arm64
+  The device framework is linked but installed nowhere (no account, no device).
+
+================================================================================
+R1211 - THE HOST
+================================================================================
+FILES:
+  - ios/project.yml: the XcodeGen spec, and the ONE home of the Info.plist keys and the entitlements. The files it
+    generates are gitignored by ios/.gitignore: MonReleve.xcodeproj, MonReleve/Info.plist and
+    MonReleve/MonReleve.entitlements.
+  - ios/MonReleve/Sources/MonReleveApp.swift: the SwiftUI App.
+    - A UIViewControllerRepresentable wraps AujourdhuiPilotViewControllerKt.aujourdhuiPilotViewController(scenario:).
+    - The view applies .ignoresSafeArea().
+    - The launch arguments -pilotScenario, -probe and -probeNonce are read from the argument domain.
+  - ios/MonReleve/Sources/HostProbe.swift: the probe (R1212).
+THE BUILD, AS RUN (the xcodebuild logs of 44851548358 and 44848967259 agree):
+  - XcodeGen 2.47.0, brew's, printed by the step. I0 cited 2.48.0 as the newest release; brew served 2.47.0.
+  - The pre-build script runs `./gradlew :shared:embedAndSignAppleFrameworkForXcode`. Inside it:
+      > Task :shared:linkDebugFrameworkIosSimulatorArm64 UP-TO-DATE
+      > Task :shared:assembleDebugAppleFrameworkForXcodeIosSimulatorArm64
+      > Task :shared:symbolicLinkToAssembleDebugAppleFrameworkForXcodeIosSimulatorArm64
+      > Task :shared:syncComposeResourcesForIos
+      > Task :shared:embedAndSignAppleFrameworkForXcode SKIPPED
+  - "** BUILD SUCCEEDED **". The one warning is appintentsmetadataprocessor's "No AppIntents.framework dependency
+    found".
+  - Xcode 26's Debug build uses ENABLE_DEBUG_DYLIB: the static Shared is linked into MonReleve.debug.dylib, and
+    `otool -L MonReleve` lists only @rpath/MonReleve.debug.dylib and libSystem. Stated here; not changed.
+INFO.PLIST (plutil -p of the built .app):
+  - CFBundleIdentifier ch.monreleve.app; CFBundleDisplayName "Mon Releve" (accented in project.yml, as Android's
+    app_name); CFBundleShortVersionString 0.1.0; CFBundleVersion 1.
+  - CADisableMinimumFrameDurationOnPhone 1; UILaunchScreen; UIApplicationSceneManifest.
+  - MonReleveApiBaseUrl http://127.0.0.1:3000 (Debug).
+  - BGTaskSchedulerPermittedIdentifiers [ch.monreleve.app.probe.refresh]; UIBackgroundModes [fetch].
+  The probe read these values back from INSIDE the app: info.bundleIdentifier=ch.monreleve.app,
+  info.version=0.1.0 (1), info.apiBaseUrl=http://127.0.0.1:3000.
+SIGNING:
+  - codesign -dvvv: Identifier=ch.monreleve.app, Signature=adhoc, TeamIdentifier=not set.
+  - The SIGNATURE carries no entitlements (its "[Dict]" is empty). Xcode wrote them into the binary's
+    __TEXT,__entitlements section, from MonReleve.app-Simulated.xcent:
+        "application-identifier" => "FAKETEAMID.ch.monreleve.app"
+        "keychain-access-groups" => [ "FAKETEAMID.ch.monreleve.app" ]
+  - With no team, $(AppIdentifierPrefix) resolves to "FAKETEAMID." (MEASURED).
+  - The link line carries `-sectcreate __TEXT __entitlements ...MonReleve.app-Simulated.xcent`.
+    `grep -a -c keychain-access-groups` on the executable finds 2 matches.
+  - Code signing was never disabled.
+COMPOSE RESOURCES:
+  - The step printed "COMPOSE RESOURCES: 23 ic_*.xml under MonReleve.app/compose-resources". The files are at
+    compose-resources/composeResources/ch.monreleve.app.shared.resources/drawable/ic_*.xml.
+  - 23 was the expected count: every ic_*.xml in android/app/src/main/res/drawable except the launcher's.
+  - The step REFUSES an .app with no glyph file.
+  - From inside the bundle the probe read the same count: info.composeResources=icXml=23.
+AN ICON RENDERED (the screenshots, under R1212):
+  - Both normal launches show the threshold badge's circle-check glyph. ANSWERED_WHOLE also shows the building and
+    status-check glyphs of today's answer.
+  - Glyph.ios.kt draws every icon through painterResource, which throws on a missing resource. Both launches were
+    ALIVE after 15 s and were photographed.
+
+================================================================================
+R1212 - THE PROBE: FOUR POSITIVE SIGNALS, AGAINST THE EXPECTATIONS WRITTEN FIRST
+================================================================================
+MECHANISM:
+  - The workflow launches `simctl launch ... -probe YES -probeNonce run-<run id>-<attempt>
+    -pilotScenario ANSWERED_WHOLE`.
+  - The app writes key=value lines to Documents/ios-host-probe.txt in its data container. Each line is appended and
+    synced as soon as it is known.
+  - The workflow waits for probe.done=true, takes a screenshot, and reads the file back with
+    `simctl get_app_container`. A file without this launch's nonce line or without probe.done is REFUSED (NO RESULT).
+  - The two NORMAL launches run first, and each is asserted to leave NO probe file. The log reads "NO PROBE FILE
+    after the DEFAULT launch (expected)", and the same after ANSWERED_WHOLE. That absence means something because the
+    probe launch then shows the file present.
+  - The BG handler's registration, the notification delegate and all other probe code run only under -probe.
+THE FILE FROM RUN 44851548358 (code tip 44724ee9), verbatim apart from the apostrophe, made ASCII:
+    probe.nonce=run-44851548358-1
+    info.bundleIdentifier=ch.monreleve.app / info.version=0.1.0 (1) / info.apiBaseUrl=http://127.0.0.1:3000 /
+      info.composeResources=icXml=23
+    keychain.accessGroup=FAKETEAMID.ch.monreleve.app
+    keychain.saveStatus=0 / keychain.loadedEqual=true / keychain.clearedToNull=true / keychain.result=PASS
+    bgtask.permittedInPlist=true / bgtask.registered=true
+    bgtask.submit=threw domain=BGTaskSchedulerErrorDomain code=1 description=The operation couldn't be completed.
+      (BGTaskSchedulerErrorDomain error 1.)
+    bgtask.pendingAfterSubmit=0
+    notification.granted=true / notification.authorizationStatus=provisional / notification.added=true /
+      notification.pendingAfterAdd=true / notification.willPresentCalled=true / notification.delivered=true /
+      notification.result=PASS
+    share.presentedClass=UIActivityViewController / share.inWindow=true / share.result=PASS
+    probe.done=true
+  Run 44848967259, on the RED tip 2f6a172c, wrote the same file with four differences: keychain.saveStatus=-2147483648,
+  loadedEqual=false, clearedToNull=false and result=FAIL. That is the stub, exactly as run1-expected.txt said.
+AGAINST THE EXPECTATIONS (run1-expected.txt and run2-expected.txt, each written before its push):
+  (1) KEYCHAIN. Expected PASS, with an access group ending ch.monreleve.app: MET.
+      - The round-trip goes through KeychainTokenStore itself, under service "ch.monreleve.app.probe" (never the
+        session's), with a FAKE pair ("fake-...-not-a-token").
+      - Only booleans are written out. A search for fake-access or fake-refresh over both runs' downloaded artifacts
+        and logs matched 0 files.
+      - The round-trip is in Kotlin (iosMain keychainRoundTrip, KeychainRoundTripResult.kt) because
+        KeychainTokenStore.save throws. A Kotlin exception that crosses into Swift without @Throws ends the process;
+        this function returns the refusal's OSStatus instead.
+      - Test-first: KeychainRoundTripIosTest was RED on ios-shared 44848995697 as written (418 executed, 3 failures,
+        all in that class: "Expected <0>, actual <-2147483648>" and "Expected <-34018>, actual <-2147483648>"). It was
+        GREEN on 44851560884 (3 tests, 0 failures).
+  (2) NOTIFICATION. Expected PASS, labelled a guess beforehand: MET.
+      - Authorization is PROVISIONAL: it was requested with .provisional, so no alert needs a tap on the runner.
+      - The request was pending after add and reached willPresent (the delegate asks for .banner and .list). It was in
+        getDeliveredNotifications within the 15 s poll.
+  (3) SHARE. Expected PASS: MET. presentedViewController is the UIActivityViewController, its view is in a window,
+      and the screenshot shows it.
+  (4) BGTASK. Expected a throw, BGTaskSchedulerErrorDomain code 1 ("unavailable"), with pendingAfterSubmit=0: MET.
+      The identifier was listed in the plist, the fetch mode declared, and the handler registered before launch
+      ended. So the refusal is the SIMULATOR's, not a configuration's.
+THE SCREENSHOTS (iOS simulator, iPhone 17 Pro, iOS 26.2, 1206x2622). All three PNGs of BOTH runs were opened; the
+descriptions are of run 44851548358's, which match run 44848967259's apart from the clock. Two crops of the code-tip
+images were looked at (C:/wt/queue-evidence/i1-host/run-44851548358/crops/): answer-line.png (ANSWERED_WHOLE, x60
+y480 700x300) shows the building glyph beside "En Suisse" and the circle-check glyph beside "Enregistre", both drawn
+in full; top-150.png (DEFAULT, the top 150 px) shows the clock "1:55" drawn across "Bonjour". The
+French text is shown without accents, for ASCII):
+  - launch-DEFAULT.png: the Aujourd'hui pilot with today UNANSWERED.
+    - At the top: "Bonjour", "Samedi 21 novembre 2026", "Saisie manuelle" and "Ou travaillez-vous aujourd'hui ?".
+    - Three choice buttons, "En Suisse", "Domicile" and "Mission", and the link "Declarer une absence".
+    - The card "A traiter": "1 journee en attente d'envoi.", "8 jours non renseignes ce mois", "Voir le calendrier".
+    - The rate card: a green badge "Sous les deux seuils" carrying a circle-check GLYPH, then "1,66 %" ("Taux a
+      declarer a l'AFC") and "1,7 %" ("Part de jours hors de Suisse").
+  - launch-ANSWERED_WHOLE.png: the same screen with today ANSWERED.
+    - The choice card is replaced by the answer line: a BUILDING glyph with "En Suisse", a circle-check glyph with
+      "Enregistre", and "Modifier".
+    - The same "A traiter" card follows, and the rate card, now showing its gauge with the 40 % and 49,9 % marks.
+  - probe-share-sheet.png: the ANSWERED_WHOLE screen dimmed under a share sheet. Its header reads
+    "ios-host-probe-share", "Text Document - 52 bytes"; the actions are Reminders, More, Copy and Save to Files.
+  - ONE DEFECT IS VISIBLE IN ALL THREE: the status-bar clock is drawn over "Bonjour" (the crop reads "Bon" + "1:55" + "jour"; 1:56 on the share-sheet image). See
+    NOTICED N1.
+
+================================================================================
+R1213 - THE WORKFLOW (.github/workflows/ios-app.yml)
+================================================================================
+TAKEN FROM ios-shared.yml, with its reasons cited rather than restated: runs-on macos-15, DEVELOPER_DIR Xcode_26.0.1,
+  the action SHAs, setup-gradle's basic provider, the konan cache key and the commonize-before-KSP step.
+THE STEPS, in order:
+  - print the environment;
+  - brew install xcodegen;
+  - provision Kotlin/Native;
+  - link BOTH frameworks;
+  - xcodegen generate (it prints the generated plist and entitlements);
+  - boot the simulator by ios-shared's own rule, so both workflows name the same device;
+  - xcodebuild for generic/platform=iOS Simulator, with ARCHS=arm64 and JAVA_HOME passed;
+  - inspect the .app, refusing it without glyph files;
+  - install;
+  - two normal launches (alive at 15 s, a screenshot each, no probe file);
+  - the probe launch;
+  - collect the logs;
+  - upload: the screenshots, the probe file, simulator.txt, gradle-framework.log, xcodebuild.log, build.xcresult, the
+    app's system log, and crash reports if any ("crash reports: 0" in both runs' logs).
+TRIGGERS: workflow_dispatch, and a push to branch 'i1-host' ONLY. There is NO pull_request trigger, because the
+  repository is public. paths-ignore covers REPORT-*.txt and parking.md. Concurrency group ios-app-<ref> with
+  cancel-in-progress; timeout-minutes 60.
+PUBLIC LOGS:
+  - No secret is read.
+  - The XcodeGen script phase sets showEnvVars: false.
+  - In the RAW xcodebuild output, as printed in each run's job log, there are 0 "export NAME=" lines (both runs; one
+    PhaseScriptExecution each), so showEnvVars: false did its job; the uploaded copy is filtered as well. A search
+    of both downloaded artifacts, build.xcresult included, for ACTIONS_RUNTIME_TOKEN, GITHUB_TOKEN or ghs_: 0 files.
+  - Nobody is signed in, so no mail, code or token exists in this task.
+EXECUTABLE BIT AND LINE ENDINGS, checked on the PUSHED tree (`git ls-tree -r origin/i1-host`):
+  - The workflow, project.yml, the Swift files and ios/.gitignore are 100644 and i/lf (.gitattributes:
+    `* text=auto eol=lf`).
+  - The runner executes NO new file: every script is inline, in the YAML or in project.yml.
+  - The one file it does execute, android/gradlew, is 100755 as before.
+DISPATCH: the file is not on main, so workflow_dispatch cannot fire it yet (iOS Ruling 2's mechanics). The push
+  started both runs.
+
+================================================================================
+R1214 - PROOF: THE RUNS
+================================================================================
+  run          workflow    commit    event              result                            job wall (UTC)          min
+  44848967259  ios-app     2f6a172c  push               success (keychain FAIL: stub)     01:14:34-01:38:09 23m35s  24
+  44848995697  ios-shared  2f6a172c  workflow_dispatch  failure - the RED run, as         01:14:52-01:31:38 16m46s  17
+                                                        written: 418 run, 3 failed, all
+                                                        in KeychainRoundTripIosTest
+  44851548358  ios-app     44724ee9  push               success, the four probes as       01:40:27-01:57:05 16m38s  17
+                                                        expected
+  44851560884  ios-shared  44724ee9  workflow_dispatch  success, 418 run, 0 failed        01:40:36-01:52:15 11m39s  12
+MINUTES: job wall time rounded up to the minute (IOS-2f's convention). The billable MACOS total_ms from
+  `actions/runs/<id>/timing` is 0 (public repository; iOS Ruling 2 sets no cap). Total: 70 minutes of runner time.
+DEVICE IN EVERY RUN: "iPhone 17 Pro (B290E327-433A-4878-BC55-828A994DCA6C) (Booted)", "-- iOS 26.2 --".
+  macOS 15.8.2 (24H232), runner image 20261118.0550.1, Xcode 26.0.1 (17A400).
+ARTIFACTS: each run's was downloaded into its own new directory, C:/wt/queue-evidence/i1-host/run-<id>/artifact/ios-app/.
+
+================================================================================
+R1215 - R573
+================================================================================
+android/shared changed, so ios-shared.yml ran on the code tip: 44851560884 on 44724ee9, SUCCESS.
+  - "iOS SIMULATOR TESTS EXECUTED: 418". That is 415 from 9c194aeb's run 44834975248 plus KeychainRoundTripIosTest's
+    3; :shared did not change between 9c194aeb and d63e882c.
+  - compileKotlinIosArm64 executed.
+The run on the merge result is the ORCHESTRATOR's. main has already moved (origin/main ff11b658 at the report):
+d63e882c..ff11b658 touches android/shared in two commonMain copy files (fr/DisclosureCopy.kt, fr/SignInCopy.kt; A13)
+and nothing under .github/workflows or ios/. `git merge-tree --write-tree origin/main HEAD`: CLEAN. Neither the
+merge result nor its ios-shared run was produced here.
+
+================================================================================
+WHAT THE NEXT iOS TASKS NEED (what the probe changed in I0's UNCONFIRMED list)
+================================================================================
+I0's UNCONFIRMED LIST, ITEM BY ITEM:
+  1. Why the templates choose static: still unconfirmed as a REASON. That static works end to end here (link,
+     resources, launch, Keychain) is MEASURED.
+  2. Tuist with no account: not tested (XcodeGen was chosen).
+  3. CODE_SIGNING_ALLOWED=NO stripping the entitlements: not tested, because signing stayed allowed as ruled. What is
+     now measured is the mechanism that claim is about: with identity "-" the SIGNATURE carries no entitlements, and
+     the simulated ones live in __TEXT,__entitlements.
+  4. Automatic signing with an empty team: not tested. Manual signing, identity "-" and an empty team WORK (MEASURED),
+     and with no team $(AppIdentifierPrefix) becomes "FAKETEAMID.".
+  5. Universal-link refusal on an ad-hoc build: not tested (the host has no associated-domains entitlement).
+  6. The UI-test runner, ad-hoc signed: not tested (I2's).
+  7. The xcresulttool flags: not tested. The .xcresult is uploaded for I2 to try them on.
+  8. LOCAL-NOTIFICATION DELIVERY ON THE SIMULATOR: CONFIRMED (MEASURED). An ad-hoc app with PROVISIONAL authorization
+     schedules a request, reaches willPresent, and finds it in the delivered list. NOT measured: the alert-style
+     authorization prompt (it needs a tap) and delivery while the app is in the background.
+  9. XcodeGen's default for ENABLE_USER_SCRIPT_SANDBOXING: not measured (it is set to NO explicitly). The Gradle script
+     did run inside xcodebuild.
+ITEMS I0 ARGUED THAT ARE NOW MEASURED:
+  - The Compose resource sync runs for a static framework: embedAndSign SKIPPED, syncComposeResourcesForIos ran,
+    23 files reached the .app, and glyphs are on screen.
+  - CADisableMinimumFrameDurationOnPhone=true lets CMP 1.7.3 start with its strict plist check on.
+  - The Keychain works in an ad-hoc APP bundle, not only in the test binary. G3's first-launch clear and the three
+    Keychain stores can be built on it.
+  - The share sheet presents from the SwiftUI scene's root view controller (G5, PARK-IF2's presenter).
+  - BGTaskScheduler is unavailable on the simulator (code 1) even when fully configured. PARK-IF1's proof stays
+    DEVICE-ONLY, and the host syncs on foreground (iOS Ruling 2's fallback applies).
+FOR THE NEXT TASKS:
+  - The evening reminder (G4) can rely on local delivery on the simulator. The real app, though, must ask for the
+    alert-style authorization: either I2's XCUITest answers that prompt with a tap, or a provisional-first decision
+    is taken (Q4).
+  - The shell's iOS root needs AppRoot's insets (N1).
+  - The probe's BG identifier and fetch mode are placeholders until PARK-IF1 (Q3).
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+N1 THE PILOT DRAWS UNDER THE STATUS BAR. In every screenshot the clock overlaps "Bonjour".
+   - The host applies .ignoresSafeArea() so that the shared root owns the insets (R1170, I0 G1).
+   - But the pilot is AujourdhuiPilot inside FrontierTheme only, not inside AppRoot, so nothing pads the system bars.
+   - Not changed: the pilot and AppRoot are commonMain and :app code, which this task was told not to move.
+   - When iOS Ruling 3's moves bring AppRoot to commonMain, the iOS root wraps the screens in it and the overlap goes.
+     The check is an iOS screenshot of the top 150 px.
+N2 I0 R1203 item 2 said the Xcode tasks are "NOT registered" on Windows. Here `:shared:tasks --all` lists
+   embedAndSignAppleFrameworkForXcode and syncComposeResourcesForIos (R1210). No graph includes them; only the census
+   sentence is wrong.
+N3 In the ANSWERED_WHOLE state the screen shows "1 journee en attente d'envoi." although today's answer reads
+   "Enregistre". The pending day is a seeded past day (PilotFixture holds a day in every state), so the screen does not
+   contradict itself. Recorded so that a reader of the screenshot does not take it for a contradiction.
+N4 CLAUDE.md's R248 still says the repository is private (Android Ruling 17 recorded that as stale). Not edited.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. A NEW iosMain FILE, beyond the framework declaration: KeychainRoundTripResult.kt (keychainRoundTrip and
+   KeychainRoundTripResult).
+   - The probe's Keychain check had to be Kotlin: a KeychainException from KeychainTokenStore.save crossing into Swift
+     would end the process and lose every later result.
+   - It was written test-first: RED, then GREEN, on the simulator (R1212 (1)).
+   - It is not an iOS/Android twin (no :app file exists at that path), so IosAndroidTwinsTest's exact set is
+     unchanged. fastCheck ran that test green.
+2. The file was first named KeychainRoundTrip.kt. detekt's MatchingDeclarationName refused that name
+   (fastcheck-1.log), and the file was renamed before the first commit. So the Swift entry point is
+   KeychainRoundTripResultKt.keychainRoundTrip.
+3. Info.plist carries two keys the prompt did not name: BGTaskSchedulerPermittedIdentifiers
+   [ch.monreleve.app.probe.refresh] and UIBackgroundModes [fetch]. They make probe (4) measure the simulator rather
+   than a missing key. They ship in every build of this host until PARK-IF1 replaces them (Q3).
+4. The notification probe uses PROVISIONAL authorization, which shows no prompt: nobody can tap an alert on the runner.
+5. The NORMAL launch is TWO launches: first the pilot's default (UNANSWERED), then -pilotScenario ANSWERED_WHOLE,
+   because the answer line's glyphs appear only when today is answered. The default state turned out to draw one
+   glyph as well (the threshold badge's circle-check), which my pre-run reading of AnswerIcon.kt had not found.
+6. Xcode builds for generic/platform=iOS Simulator with ARCHS=arm64, and simctl installs the app, rather than building
+   with -destination id=<udid>. -destination id= was NOT tried; the choice was made in advance because Xcode 26.0.1's
+   SDK is 26.0 and the device rule picks a 26.2 runtime, and whether xcodebuild accepts that pairing is untested.
+7. The Gradle steps run with the daemon allowed (ios-shared.yml uses --no-daemon), so that the pre-build script inside
+   xcodebuild reuses the daemon. Nothing else differs.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 THE API BASE URL.
+   - Debug is http://127.0.0.1:3000 (the simulator reaches the host's loopback; Android's debug default is
+     10.0.2.2:3000). Release is https://monreleve.ch.
+   - The value is in the Info.plist key MonReleveApiBaseUrl, set from project.yml's build configurations. Today
+     nothing reads it but the probe.
+   - Keep this, or use another shape? I2 will also need ATS's NSAllowsLocalNetworking to use http on the loopback;
+     it is not added here.
+Q2 THE iOS VERSION. MARKETING_VERSION 0.1.0 and CURRENT_PROJECT_VERSION 1, stated in project.yml as the App Store's
+   own numbering (independent of Play's versionCode). Keep them, or derive them from Android's versionName?
+Q3 PROBE (4)'s PLIST KEYS (DEVIATION 3). Keep them until PARK-IF1? Or, now that the answer (unavailable on the
+   simulator) is recorded, should the host drop the probe's BG check and the two keys?
+Q4 THE EVENING REMINDER'S AUTHORIZATION. The probe proves that PROVISIONAL delivery works with no prompt. The product
+   asks at the toggle and at onboarding's "Oui" (R323/R1145), which is alert-style, with a prompt. Is provisional ever
+   the product's answer (it delivers quietly to the Notification Center, with no banner), or only the probe's?
+Q5 N1. Is the status-bar overlap acceptable for the pilot host until AppRoot moves? Or should the host stop ignoring
+   the top safe area meanwhile, which the shell will then undo?
+
+================================================================================
+PUSH PROOF
+================================================================================
+CODE COMMITS, both PUSHED to origin/i1-host and verified with `git ls-remote` / `git rev-parse origin/i1-host`:
+  2f6a172c  IOS-HOST (I1) RED (framework, host, workflow, stub + test)
+  44724ee9  IOS-HOST (I1) GREEN (keychainRoundTrip) - THE CODE TIP. All four runs above, and the full :app:gate, ran
+            on these two commits only.
+THE REPORT COMMIT (this file only) sits on top of 44724ee9. The runs it should start were worked out from the
+  workflows' `on:` blocks before the push:
+  - ios-app.yml: a push to i1-host, but paths-ignore REPORT-*.txt, so NO run.
+  - ios-shared.yml: push to 'ios-*' only, so NO run.
+  - ci.yml: push to main only, so NO run.
+  - property-sweep.yml: schedule only, so NO run.
+  The hand-back states the push, `git ls-remote origin refs/heads/i1-host`, and `gh run list --branch i1-host` with
+  no workflow filter (expected: the same four runs and nothing newer).
+Ruling numbers were re-scanned before this commit as well, on origin/main too (`git grep R121[0-9] origin/main`:
+only relay/IOS-HOST.txt). origin/main at the report: ff11b65857077fd88f870fe358104ed53636d9cf. NOT MERGED; main and
+release/android-v1 are not touched.
+
+================================================================================
+CLEANUP
+================================================================================
+- The lock C:/wt/i1-host/.session-lock.json is removed LAST. The worktree stays (R392).
+- The evidence stays in C:/wt/queue-evidence/i1-host/.
+- This session's Gradle runs were made in C:/wt/i1-host/android only. gate.sh ran `gradlew.bat --stop` from there
+  after the gate; that command is not scoped to a worktree, and it ran while this session held the heavy lock.
+- It touched no other worktree, and no emulator, server, container or database. Nothing in production was touched.
+
+END OF REPORT-IOS-HOST

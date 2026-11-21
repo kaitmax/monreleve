@@ -138,8 +138,20 @@ kotlin {
     // (compileCommonMainKotlinMetadata), which compiles commonMain against the common stdlib only and so
     // rejects any java./android. reference; that task runs in :app:gate. What only a Mac can prove is
     // printed in the gate's "skipped, with reason" list rather than silently omitted (R133).
-    iosArm64()
-    iosSimulatorArm64()
+    //
+    // IOS-HOST R1210. THE iOS APP'S FRAMEWORK: both iOS targets build a STATIC framework named "Shared" (the Swift
+    // module the app imports, ios/MonReleve/Sources). Static, as JetBrains' KMP and Compose templates declare it: it is
+    // linked into the app binary rather than embedded, and Xcode's pre-build script (ios/project.yml) runs
+    // embedAndSignAppleFrameworkForXcode, whose disabled-for-static action still pulls in the link and Compose's
+    // resource sync into the .app. NOTHING IN THE ANDROID BUILD MOVES: on a Windows host the Apple link tasks are
+    // registered but disabled and the Xcode tasks are not registered at all (REPORT-IOS-HOST-CENSUS R1203 item 2), and
+    // neither :app:gate nor fastCheck names a link task - REPORT-IOS-HOST R1210 diffs both dry-run task lists.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         // KMP-0 increment 6 (R371). kotlinx-datetime is api() so :app receives the shared calendar types

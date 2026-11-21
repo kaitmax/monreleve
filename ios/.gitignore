@@ -1,0 +1,6 @@
+# IOS-HOST R1211. Everything xcodegen generates from project.yml - the one home of those keys (R206) - and Xcode's
+# per-user state. Anchored to this directory.
+/MonReleve.xcodeproj/
+/MonReleve/Info.plist
+/MonReleve/MonReleve.entitlements
+xcuserdata/
