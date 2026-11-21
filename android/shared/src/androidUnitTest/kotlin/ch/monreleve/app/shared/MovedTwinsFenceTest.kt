@@ -8,7 +8,9 @@ import java.io.File
 /**
  * IOS-MOVE-TWINS R1242 (PARK-IF4 closed). THE THREE TWINS HAVE ONE HOME, IN commonMain, AND NO COPY COMES BACK.
  * IOS-MOVE-ME R1273 added the /me codec (settings/MeWire.kt), moved from :app the same way; iOS Ruling 7 Q3: every
- * later (c) move adds its files to [moved].
+ * later (c) move adds its files to [moved]. IOS-MOVE-SEAM R1283 added the session-end seam's pure part
+ * (auth/SessionEndSeam.kt, the contract and the wrapper; auth/SessionEnds.kt, whole). :app kept the Android body of the
+ * seam under a file name of its own (auth/DeviceSessionEndSeam.kt), which is why a moved FILE NAME in :app fails here.
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
@@ -43,14 +45,17 @@ class MovedTwinsFenceTest {
     private val appSrc = File("../app/src")
     private val appMain = File("../app/src/main/kotlin")
 
-    // The subject: the files that moved - the three twins (R1240) and the /me codec (IOS-MOVE-ME R1270, iOS Ruling 7
-    // Q3: every later (c) move adds its files here). Asserted present, so a later move fails here by name.
+    // The subject: the files that moved - the three twins (R1240), the /me codec (IOS-MOVE-ME R1270, iOS Ruling 7
+    // Q3: every later (c) move adds its files here) and the session-end seam's pure part (IOS-MOVE-SEAM R1280/R1283).
+    // Asserted present, so a later move fails here by name.
     private val moved =
         listOf(
             "ch/monreleve/app/account/DeviceLocalStore.kt",
             "ch/monreleve/app/detection/EveningNotificationDecision.kt",
             "ch/monreleve/app/detection/ThresholdAlertDecision.kt",
             "ch/monreleve/app/settings/MeWire.kt",
+            "ch/monreleve/app/auth/SessionEndSeam.kt",
+            "ch/monreleve/app/auth/SessionEnds.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -90,7 +95,11 @@ class MovedTwinsFenceTest {
         // Proof the derivation reaches the classes the files are named after.
         assertTrue(
             guardedNames().containsAll(
-                setOf("DeviceLocalStore", "ThresholdAlertDecision", "eveningDecision", "mePatchBody", "isMeAnswer"),
+                setOf(
+                    "DeviceLocalStore", "ThresholdAlertDecision", "eveningDecision", "mePatchBody", "isMeAnswer",
+                    // IOS-MOVE-SEAM R1283: a fun interface, an enum class, a class, a top-level val and a fun.
+                    "SessionEndSeam", "SessionEndPath", "SessionEndingStore", "processSessionEnds", "heldDays",
+                ),
             ),
         )
     }
@@ -116,6 +125,8 @@ class MovedTwinsFenceTest {
             |fun Settings.extensionFun(a: Int): String = ""
             |fun <T> List<T>.genericExtension() = Unit
             |val Plain.extensionVal: Int get() = 1
+            |fun interface FunInterface {
+            |enum class Enumerated {
             """.trimMargin()
         assertEquals(
             setOf(
@@ -123,6 +134,8 @@ class MovedTwinsFenceTest {
                 // IOS-MOVE-ME R1273: an extension is guarded by ITS name, never its receiver's (mePatchBody,
                 // not Settings).
                 "extensionFun", "genericExtension", "extensionVal",
+                // IOS-MOVE-SEAM R1283: the two declaration shapes this move brings (SessionEndSeam, SessionEndPath).
+                "FunInterface", "Enumerated",
             ),
             declaredNames(text, publicOnly = true),
         )
@@ -133,8 +146,8 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInApp() {
         val found = copiesUnder(appSrc)
         assertTrue(
-            "R1242/R1273: :app declares a name (or holds a file name) of a file moved to :shared commonMain - a " +
-                "second home for it. Delete it; the one home is :shared commonMain.\n${found.joinToString("\n")}",
+            "R1242/R1273/R1283: :app declares a name (or holds a file name) of a file moved to :shared commonMain - " +
+                "a second home for it. Delete it; the one home is :shared commonMain.\n${found.joinToString("\n")}",
             found.isEmpty(),
         )
     }
@@ -143,8 +156,9 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInIosMain() {
         val found = copiesUnder(iosMain)
         assertTrue(
-            "R1242/R1273: iosMain declares a name (or holds a file name) of a file moved to :shared commonMain - a " +
-                "redeclaration only the macOS compilation sees. Delete it; the one home is :shared commonMain.\n" +
+            "R1242/R1273/R1283: iosMain declares a name (or holds a file name) of a file moved to :shared " +
+                "commonMain - a redeclaration only the macOS compilation sees. Delete it; the one home is :shared " +
+                "commonMain.\n" +
                 found.joinToString("\n"),
             found.isEmpty(),
         )

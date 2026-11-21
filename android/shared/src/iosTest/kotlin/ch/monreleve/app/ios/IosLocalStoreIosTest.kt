@@ -1,6 +1,6 @@
 package ch.monreleve.app.ios
 
-import ch.monreleve.app.account.DeviceLocalStore
+import ch.monreleve.app.auth.SessionEndingStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.releve.ExportEvent
@@ -31,6 +31,10 @@ import kotlin.test.assertTrue
 // store and asserts the seed landed (positive controls) before it asserts anything cleared, and keeps the controls
 // Android's test keeps: the pending sign-in SURVIVES a sign-out; the record and its account tag SURVIVE a server-ended
 // session.
+//
+// IOS-MOVE-SEAM R1281: iosDeviceLocalStore now hands the store out through the "session ended" seam. Each test builds
+// the iOS seam the way production does (iosSessionEndSeam) over a counting action in place of the notification
+// centre - which raises an Objective-C exception in this bundle-less process - and asserts it ran once per scope.
 
 private const val R889_TAG = "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"
 private const val R889_YEAR = 2026
@@ -59,7 +63,10 @@ private class R889Device {
                 drainCancelled = true
             }
         }
-    val store: DeviceLocalStore =
+
+    /** R1281: how many times the iOS seam removed the pending requests - the notification centre's call, counted. */
+    var pendingRemovals = 0
+    val store: SessionEndingStore =
         iosDeviceLocalStore(
             database = database,
             syncTrigger = trigger,
@@ -70,6 +77,7 @@ private class R889Device {
             dossierCache = cache,
             pendingSignIn = pending,
             accountStore = account,
+            sessionEndSeam = iosSessionEndSeam(removePendingRequests = { pendingRemovals += 1 }),
         )
     var exportPath = ""
     var drainJob: Job? = null
@@ -97,6 +105,7 @@ private class R889Device {
         assertTrue(NSFileManager.defaultManager.fileExistsAtPath(exportPath), "control: an export on disk")
         assertFalse(drainCancelled, "control: the drain is running")
         assertEquals(LoggingMode.AUTO_DETECT, detectionMode.load(), "control: auto mode")
+        assertEquals(0, pendingRemovals, "control: no session has ended")
     }
 
     fun close() {
@@ -125,6 +134,7 @@ class IosLocalStoreIosTest {
             d.seed()
             d.store.clearForSignOut()
 
+            assertEquals(1, d.pendingRemovals, "R1281: the sign-out removed the pending requests, once")
             assertNull(d.account.current(), "R303: sign-out clears the account tag")
             assertTrue(d.database.entryDao().all().isEmpty(), "R295: the record is cleared")
             assertTrue(d.database.tallyDao().all().isEmpty(), "R295: the tally is cleared")
@@ -146,6 +156,7 @@ class IosLocalStoreIosTest {
             d.seed()
             d.store.clearForDeletion()
 
+            assertEquals(1, d.pendingRemovals, "R1281: the deletion removed the pending requests, once")
             assertNull(d.account.current(), "R289: deletion clears the account tag")
             assertNull(d.pending.pending(), "R289: deletion clears the pending sign-in")
             assertTrue(d.database.entryDao().all().isEmpty(), "R289: the record is cleared")
@@ -161,6 +172,7 @@ class IosLocalStoreIosTest {
             d.seed()
             d.store.clearForSessionEnd()
 
+            assertEquals(1, d.pendingRemovals, "R1281: the server-ended session removed the pending requests, once")
             assertEquals(R889_TAG, d.account.current(), "R521: the account tag is KEPT")
             assertEquals(1, d.database.entryDao().all().size, "R521: the record is KEPT")
             assertFalse(d.drainCancelled, "R521: the queued sync is not cancelled")
