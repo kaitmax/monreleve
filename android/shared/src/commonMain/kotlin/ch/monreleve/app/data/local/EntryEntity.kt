@@ -60,7 +60,11 @@ data class EntryEntity(
     val provenance: Provenance,
     /** What detection proposed, if anything. Required iff provenance != MANUAL (R202). */
     val detectedKind: EntryKind?,
-    /** When the proposal was produced on-device: an ISO instant with offset, or null. */
+    /**
+     * The phone's clock at the tap that VALIDATED a proposed day (the confirmation or correction - not when detection
+     * produced the proposal): AujourdhuiController.recordDetected and EveningTap set it from claimNow, null on a manual
+     * entry (docs/api-v1.md 6.1). An ISO instant with offset; like clientClaimedAt, never trusted as evidence.
+     */
     val detectedAt: String?,
     /** The device's clock at the tap, sent verbatim and never trusted as evidence. ISO instant with offset. */
     val clientClaimedAt: String?,

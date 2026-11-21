@@ -22,6 +22,9 @@ class FixtureGeneratorTest {
                 "forecast-cases.json",
                 "geneva-cases.json",
                 "late-threshold-cases.json",
+                // IOS-MOVE-ME (R1271): the /me codec's golden (MeCodecGoldenTest) and the route/app join (:app's
+                // MeRouteJoinTest, web's me-cases-join.test.ts).
+                "me-cases.json",
                 // AN-FCM-CLIENT (R1151): the push join; its Kotlin consumer is :app's PushClientFixtureTest.
                 "push-client-cases.json",
                 "rate-cases.json",

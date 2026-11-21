@@ -11,10 +11,10 @@ import ch.monreleve.app.dossier.AggregatableUser
 // stays MANUAL by the server's default; consent stays absent.
 //
 // KMP-3 (R446): the Settings data class and toAggregatableUser MOVED to :shared commonMain.
-// mePatchBody and parseMeSettings did NOT - they are org.json and they are the /api/v1/me WIRE,
-// not an on-device format. They are in :app/settings/MeWire.kt, which states the measured reason
-// the codec could not simply be rewritten under KMP-1 one-Json: one body needs EXPLICIT nulls for
-// two fields and OMISSION for three, and a single configuration cannot express both. PARK-D3.
+// mePatchBody and parseMeSettings did not, then: they were org.json, the /api/v1/me WIRE, and stayed in
+// :app/settings/MeWire.kt (PARK-D3). IOS-MOVE-ME (R1270) moved that file here, beside this one, on
+// kotlinx.serialization's JSON tree - which, unlike one Json configuration, CAN send explicit nulls for
+// two fields and omit three in one body (MeWire.kt states how).
 
 /**
  * The complete, validated settings, in the /api/v1/me vocabulary (strings, as the wire carries them).

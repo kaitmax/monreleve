@@ -1,0 +1,1539 @@
+{
+  "$comment": "IOS-MOVE-ME (R1270, R1271, R204). The /api/v1/me codec, before and after it moved from org.json in :app to :shared commonMain (kotlinx.serialization). `answers[].old` and `patches[].oldBody` are what the OLD codec RETURNED, captured by running it at 7df4d9fa (the JVM org.json library in :app's tests) before it was deleted - never typed. android/shared/src/commonTest/kotlin/ch/monreleve/app/settings/MeCodecGoldenTest.kt requires the moved codec to return the same (on the JVM and on the iOS simulator); android/app/src/test/kotlin/ch/monreleve/app/startup/MeRouteJoinTest.kt requires RESOLVING to decide `old.start` on every body and the app to send every patch `body` exactly; web/tests/db/me-cases-join.test.ts seeds each answer `row` and requires the REAL GET route to answer that `body` byte for byte, and PATCHes every patch `body` to the REAL route. A case's `divergence` is where the new codec differs from the old, with the new result and why; the golden asserts the set by name. A patch `body` is the old code's put() order (Android's org.json kept insertion order); `oldBody` is the JVM library's HashMap order, so the two are compared as JSON values, not bytes.",
+  "answers": [
+    {
+      "name": "route: a new account, never onboarded",
+      "row": {},
+      "body": "{\"name\":null,\"canton\":null,\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": null,
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "route: complete, simplified basis, manual",
+      "row": {
+        "name": "Camille Rey",
+        "canton": "GE",
+        "employmentRate": 100
+      },
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "route: complete, exact basis, start date, automatic with consent, evening reminder on",
+      "row": {
+        "name": "Alex Dupont",
+        "canton": "VD",
+        "employmentRate": 80,
+        "denominatorKind": "EXACT",
+        "exactTotalWorkDays": 220,
+        "granularity": "HALF_DAY",
+        "activityStartDate": "2026-03-01",
+        "reminderEnabled": true,
+        "loggingMode": "AUTO_DETECT",
+        "detectionConsentAt": "2026-01-15T08:30:00.000Z"
+      },
+      "body": "{\"name\":\"Alex Dupont\",\"canton\":\"VD\",\"employmentRate\":80,\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":220,\"granularity\":\"HALF_DAY\",\"activityStartDate\":\"2026-03-01\",\"reminderTime\":\"17:30\",\"reminderEnabled\":true,\"loggingMode\":\"AUTO_DETECT\",\"detectionConsentAt\":\"2026-01-15T08:30:00.000Z\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": "2026-03-01",
+          "denominatorKind": "EXACT",
+          "exactTotalWorkDays": 220,
+          "granularity": "HALF_DAY",
+          "name": "Alex Dupont",
+          "canton": "VD",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 80
+        },
+        "view": {
+          "activityStartDate": "2026-03-01",
+          "denominatorKind": "EXACT",
+          "exactTotalWorkDays": 220,
+          "granularity": "HALF_DAY",
+          "name": "Alex Dupont",
+          "canton": "VD",
+          "employmentRate": 80
+        },
+        "loggingMode": "AUTO_DETECT",
+        "reminderEnabled": true,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "route: a canton but no name (partial)",
+      "row": {
+        "canton": "GE"
+      },
+      "body": "{\"name\":null,\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "an error body",
+      "body": "{\"status\":\"error\",\"code\":\"read_failed\",\"message\":\"x\"}",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": null,
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "an empty object",
+      "body": "{}",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": null,
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "an empty string",
+      "body": "",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "not JSON",
+      "body": "not json at all",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "a JSON array",
+      "body": "[1]",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "a JSON null",
+      "body": "null",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "a JSON string",
+      "body": "\"{}\"",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "cut short",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"emp",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "canton present, loggingMode absent",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"granularity\":\"DAY\"}",
+      "old": {
+        "meAnswer": false,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "loggingMode present, canton absent",
+      "body": "{\"loggingMode\":\"MANUAL\",\"employmentRate\":100}",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": null,
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "only the two answer keys, both null",
+      "body": "{\"canton\":null,\"loggingMode\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": null,
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "AUTO_DETECT without a consent stamp",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"AUTO_DETECT\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "AUTO_DETECT with the stamp key absent",
+      "body": "{\"canton\":\"GE\",\"loggingMode\":\"AUTO_DETECT\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": "GE",
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "a stamp but loggingMode null",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":null,\"detectionConsentAt\":\"2026-01-15T08:30:00.000Z\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "loggingMode a number",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":5,\"detectionConsentAt\":\"2026-01-15T08:30:00.000Z\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "loggingMode in lower case",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"auto_detect\",\"detectionConsentAt\":\"2026-01-15T08:30:00.000Z\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "an unknown loggingMode",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"SOMETHING\",\"detectionConsentAt\":\"2026-01-15T08:30:00.000Z\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "the stamp is not a string",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"AUTO_DETECT\",\"detectionConsentAt\":0}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "AUTO_DETECT",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "the stamp is an empty string",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"AUTO_DETECT\",\"detectionConsentAt\":\"\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "AUTO_DETECT",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "reminderEnabled the string \"true\"",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":\"true\",\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "reminderEnabled 1",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":1,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "reminderEnabled null",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":null,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "reminderEnabled absent",
+      "body": "{\"canton\":\"GE\",\"loggingMode\":\"MANUAL\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": "GE",
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "reminderEnabled true in a not-an-answer body",
+      "body": "{\"reminderEnabled\":true}",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": null,
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": true,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "employmentRate the string \"80\"",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":\"80\",\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 80
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 80
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "employmentRate 80.0",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":80.0,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 80
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 80
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "employmentRate 80.7",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":80.7,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 80
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 80
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "employmentRate 8e1",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":8e1,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 80
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 80
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "employmentRate the string \"80.5\"",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":\"80.5\",\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "employmentRate null",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":null,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "employmentRate true",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":true,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "employmentRate 3000000000",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":3000000000,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": -1294967296
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": -1294967296
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "employmentRate absent",
+      "body": "{\"canton\":\"GE\",\"denominatorKind\":\"SIMPLIFIED240\",\"granularity\":\"DAY\",\"loggingMode\":\"MANUAL\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "exactTotalWorkDays the string \"220\"",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":\"220\",\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "EXACT",
+          "exactTotalWorkDays": 220,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "EXACT",
+          "exactTotalWorkDays": 220,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "exactTotalWorkDays 220.5",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":220.5,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "EXACT",
+          "exactTotalWorkDays": 220,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "EXACT",
+          "exactTotalWorkDays": 220,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "exactTotalWorkDays absent",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"granularity\":\"DAY\",\"activityStartDate\":null,\"loggingMode\":\"MANUAL\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "canton a number",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":5,\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "canton an empty string",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "canton an object",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":{\"x\":1},\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "canton true",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":true,\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "denominatorKind null",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":null,\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "denominatorKind a number",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":240,\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "granularity absent",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"loggingMode\":\"MANUAL\"}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "activityStartDate a number",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":20260301,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "name a number",
+      "body": "{\"name\":7,\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "name with a slash, a quote, a backslash and accents",
+      "body": "{\"name\":\"Zoé \\\"Z\\\" A/B \\\\ Müller\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Zoé \"Z\" A/B \\ Müller",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Zoé \"Z\" A/B \\ Müller",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "name with a control character",
+      "body": "{\"name\":\"A\\tB\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "A\tB",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "A\tB",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "an unknown extra key",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null,\"futureField\":[1,{\"a\":null}]}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "a duplicate key",
+      "body": "{\"canton\":\"GE\",\"canton\":\"VD\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"granularity\":\"DAY\",\"loggingMode\":\"MANUAL\"}",
+      "old": {
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Unresolved:UNREADABLE"
+      },
+      "divergence": {
+        "why": "The JVM org.json library refuses a body that repeats a key; kotlinx.serialization keeps the LAST value (measured, run 1). The route never repeats a key (it writes one object through JSON.stringify), so no answer the server gives is affected. Android's own org.json was not run (it is stubbed under JVM tests).",
+        "meAnswer": true,
+        "settings": {
+          "canton": "VD",
+          "employmentRate": 100,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "activityStartDate": null,
+          "name": null,
+          "loggingMode": null,
+          "detectionConsent": null
+        },
+        "view": {
+          "name": null,
+          "canton": "VD",
+          "employmentRate": 100,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "activityStartDate": null
+        },
+        "start": "Onboard"
+      }
+    },
+    {
+      "name": "trailing text after the object",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null} trailing",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      },
+      "divergence": {
+        "why": "The JVM org.json library read the first object and ignored the text after it; kotlinx.serialization parses STRICT JSON and refuses the whole body, so it reads as not a /me answer (Unresolved, a retry), never as an account. The route never writes text after its object.",
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "a second object after the first",
+      "body": "{\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}{}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      },
+      "divergence": {
+        "why": "As for trailing text: the JVM org.json library read the first object only; kotlinx.serialization refuses the body (Unresolved, a retry). The route writes one object.",
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "unquoted keys and single quotes",
+      "body": "{canton:'GE',employmentRate:100,denominatorKind:'SIMPLIFIED240',granularity:'DAY',loggingMode:'MANUAL'}",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": null,
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      },
+      "divergence": {
+        "why": "The JVM org.json library is lenient and read unquoted keys and single-quoted strings; kotlinx.serialization (wireJson, isLenient = false) refuses them (Unresolved, a retry). The route writes strict JSON.",
+        "meAnswer": false,
+        "settings": null,
+        "view": null,
+        "start": "Unresolved:UNREADABLE"
+      }
+    },
+    {
+      "name": "leading and trailing whitespace",
+      "body": "\n  {\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"reminderTime\":\"17:30\",\"reminderEnabled\":false,\"loggingMode\":\"MANUAL\",\"detectionConsentAt\":null}  \n",
+      "old": {
+        "meAnswer": true,
+        "settings": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "detectionConsent": null,
+          "loggingMode": null,
+          "employmentRate": 100
+        },
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": "SIMPLIFIED240",
+          "exactTotalWorkDays": null,
+          "granularity": "DAY",
+          "name": "Camille Rey",
+          "canton": "GE",
+          "employmentRate": 100
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Main"
+      }
+    },
+    {
+      "name": "a trailing comma",
+      "body": "{\"canton\":\"GE\",\"loggingMode\":\"MANUAL\",}",
+      "old": {
+        "meAnswer": true,
+        "settings": null,
+        "view": {
+          "activityStartDate": null,
+          "denominatorKind": null,
+          "exactTotalWorkDays": null,
+          "granularity": null,
+          "name": null,
+          "canton": "GE",
+          "employmentRate": null
+        },
+        "loggingMode": "MANUAL",
+        "reminderEnabled": false,
+        "start": "Onboard"
+      },
+      "divergence": {
+        "why": "The JVM org.json library accepted a comma before the closing brace; kotlinx.serialization refuses it (Unresolved, a retry). The route writes strict JSON.",
+        "meAnswer": false,
+        "view": null,
+        "start": "Unresolved:UNREADABLE"
+      }
+    }
+  ],
+  "patches": [
+    {
+      "name": "the six settings, simplified basis, nothing optional",
+      "settings": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null,
+        "name": null,
+        "loggingMode": null,
+        "detectionConsent": null
+      },
+      "reminderEnabled": null,
+      "oldBody": "{\"activityStartDate\":null,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"canton\":\"GE\",\"employmentRate\":100}",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null}"
+    },
+    {
+      "name": "exact basis with a start date",
+      "settings": {
+        "canton": "VD",
+        "employmentRate": 80,
+        "denominatorKind": "EXACT",
+        "exactTotalWorkDays": 220,
+        "granularity": "HALF_DAY",
+        "activityStartDate": "2026-03-01",
+        "name": null,
+        "loggingMode": null,
+        "detectionConsent": null
+      },
+      "reminderEnabled": null,
+      "oldBody": "{\"activityStartDate\":\"2026-03-01\",\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":220,\"granularity\":\"HALF_DAY\",\"canton\":\"VD\",\"employmentRate\":80}",
+      "body": "{\"canton\":\"VD\",\"employmentRate\":80,\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":220,\"granularity\":\"HALF_DAY\",\"activityStartDate\":\"2026-03-01\"}"
+    },
+    {
+      "name": "onboarding: a name, automatic with consent, evening reminder on",
+      "settings": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null,
+        "name": "Alex Dupont",
+        "loggingMode": "AUTO_DETECT",
+        "detectionConsent": true
+      },
+      "reminderEnabled": true,
+      "oldBody": "{\"reminderEnabled\":true,\"activityStartDate\":null,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"name\":\"Alex Dupont\",\"canton\":\"GE\",\"detectionConsent\":true,\"loggingMode\":\"AUTO_DETECT\",\"employmentRate\":100}",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"name\":\"Alex Dupont\",\"loggingMode\":\"AUTO_DETECT\",\"detectionConsent\":true,\"reminderEnabled\":true}"
+    },
+    {
+      "name": "onboarding: a name, manual, evening reminder off",
+      "settings": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null,
+        "name": "Camille Rey",
+        "loggingMode": null,
+        "detectionConsent": null
+      },
+      "reminderEnabled": false,
+      "oldBody": "{\"reminderEnabled\":false,\"activityStartDate\":null,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"name\":\"Camille Rey\",\"canton\":\"GE\",\"employmentRate\":100}",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"name\":\"Camille Rey\",\"reminderEnabled\":false}"
+    },
+    {
+      "name": "rate and total at their bounds",
+      "settings": {
+        "canton": "GE",
+        "employmentRate": 1,
+        "denominatorKind": "EXACT",
+        "exactTotalWorkDays": 365,
+        "granularity": "DAY",
+        "activityStartDate": null,
+        "name": null,
+        "loggingMode": null,
+        "detectionConsent": null
+      },
+      "reminderEnabled": null,
+      "oldBody": "{\"activityStartDate\":null,\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":365,\"granularity\":\"DAY\",\"canton\":\"GE\",\"employmentRate\":1}",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":1,\"denominatorKind\":\"EXACT\",\"exactTotalWorkDays\":365,\"granularity\":\"DAY\",\"activityStartDate\":null}"
+    },
+    {
+      "name": "consent false without a mode",
+      "settings": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null,
+        "name": null,
+        "loggingMode": null,
+        "detectionConsent": false
+      },
+      "reminderEnabled": null,
+      "oldBody": "{\"activityStartDate\":null,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"canton\":\"GE\",\"detectionConsent\":false,\"employmentRate\":100}",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"detectionConsent\":false}"
+    },
+    {
+      "name": "a name with a slash, a quote, a backslash and accents",
+      "settings": {
+        "canton": "GE",
+        "employmentRate": 100,
+        "denominatorKind": "SIMPLIFIED240",
+        "exactTotalWorkDays": null,
+        "granularity": "DAY",
+        "activityStartDate": null,
+        "name": "Zoé \"Z\" A/B \\ Müller",
+        "loggingMode": null,
+        "detectionConsent": null
+      },
+      "reminderEnabled": null,
+      "oldBody": "{\"activityStartDate\":null,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"name\":\"Zoé \\\"Z\\\" A/B \\\\ Müller\",\"canton\":\"GE\",\"employmentRate\":100}",
+      "body": "{\"canton\":\"GE\",\"employmentRate\":100,\"denominatorKind\":\"SIMPLIFIED240\",\"exactTotalWorkDays\":null,\"granularity\":\"DAY\",\"activityStartDate\":null,\"name\":\"Zoé \\\"Z\\\" A/B \\\\ Müller\"}"
+    }
+  ]
+}

@@ -12,9 +12,9 @@ package ch.monreleve.app.settings
 //
 // KMP-3 (R446): the completeness RULES moved to :shared commonMain - MeView, toMeView, ReleveField,
 // missingReleveFields and isComplete - because SettingsStore.isOnboarded is a default method that
-// calls them, and the interface moved. parseMeView did NOT: it is org.json, and it went to
-// :app/settings/MeWire.kt beside the other two /me functions, so the /api/v1/me vocabulary still has
-// one home (R206) even though it is now spread over two files in two modules.
+// calls them, and the interface moved. parseMeView did NOT then: it was org.json, and it went to
+// :app/settings/MeWire.kt beside the other two /me functions. IOS-MOVE-ME (R1270) moved MeWire.kt to
+// commonMain settings/, so the /api/v1/me vocabulary is one home (R206) in one module again.
 
 /**
  * A tolerant view of GET /api/v1/me: every releve-relevant field, each nullable, read WITHOUT requiring any of
