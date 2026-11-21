@@ -182,6 +182,10 @@ THE CENSUS. R1261's subject is one claim: that the device's time means the day w
 anywhere a reader meets it.
 Searched for: hors ligne, hors-ligne, hors connexion, sans reseau, sans connexion, offline, claimed.
 Searched in: web/lib/fr, web/content, web/app, docs/*.md, SPEC, android/shared fr/, android/app res, the CSV writer.
+I then ran one more sweep for offline wording within two lines of clientClaimedAt, across web/lib, web/app,
+web/prisma, android/shared/src/commonMain and android/app/src/main (rows 22-24). I also added the SPEC and audit
+lines met on the way (rows 25-28). Code comments elsewhere are not a reader-facing surface; the two that make the
+claim are listed (#10, #22).
 | #  | Site | Text (transliterated) | Verdict | Action |
 | 1  | web/lib/fr/dossier.ts annex.clientClaimedAt (print + PDF heading) | "Saisi hors ligne le (heure de Paris)" | TRUE HIT | fixed |
 | 2  | web/lib/fr/dossier.ts annex.offlineNote (print + PDF) | "Lorsque la saisie a eu lieu hors ligne, la date annoncee par l'appareil figure ..." | TRUE HIT | fixed; key -> deviceTimeNote |
@@ -204,6 +208,13 @@ Searched in: web/lib/fr, web/content, web/app, docs/*.md, SPEC, android/shared f
 | 19 | docs/api-v1.md l.482, l.1430, l.1707 (read shapes) | "What the client asserted ..." | FALSE: no offline word | none |
 | 20 | web/lib/fr/confidentialite.ts timestamps (A15) | "... l'heure qu'il indiquait lors de chaque saisie ..." | FALSE: already true | none |
 | 21 | SPEC l.89 (D22) | "stores the client-claimed time alongside" | FALSE | none |
+| 22 | web/lib/entries/schema.ts l.128 (code comment on the zod field) | "What the offline client asserts about when this was written." | TRUE HIT, internal comment | NOT edited (a web/lib touch re-owes gate:changed + gate:clone); with #10 in Q3 |
+| 23 | web/prisma/seed.ts l.64, l.907 (the offlineSync fixture) | "offlineSync clientClaimedAt EARLIER than firstRecordedAt" | FALSE: the seed models an offline case, truly | none |
+| 24 | web/lib/entries/late.ts l.69-70 | "AN OFFLINE ENTRY SYNCED EIGHT DAYS LATER IS GENUINELY LATE" | FALSE: the offline case, correctly | none |
+| 25 | SPEC l.1038 (test plan) | "offline log -> reconnect -> entry syncs with both timestamps" | FALSE: the offline case, correctly | none |
+| 26 | SPEC l.1085 (success criteria) | "Offline log queued and synced with both timestamps" | FALSE: same | none |
+| 27 | docs/release-audit-android.md l.56 | "Offline log queued and synced with both timestamps ..." | FALSE: same | none |
+| 28 | docs/release-audit-web.md l.150 | "Offline log queued and synced; EntryEvent append-only" | FALSE: same | none |
 
 ====================================================================
 R1262 - THE CREDENTIAL TEST NAMES fcmToken (A15 Q7)
@@ -295,18 +306,22 @@ HTTP: walk.mjs, output in walkthrough.txt.
 NOTICED BUT NOT TOUCHING
 ====================================================================
 N1 web/prisma/schema.prisma l.337, the /// comment on Entry.clientClaimedAt, "What the offline client asserted"
-   (census #10; Q3). Fold into the next schema task with A15's Q8 detectedAt comment.
+   (census #10), and web/lib/entries/schema.ts l.128 (census #22); both in Q3. Fold into the next schema task with A15's Q8 detectedAt comment.
 N2 SPEC l.887, section 12 item 5 (census #8; Q2).
 N3 The annex header row is taller now. In the screen render the new heading wraps to 3 lines at 1000 px. The PDF of
    the seeded camille year has 13 pages. There is no earlier page count on record for this account, so I make no
    before/after claim, and no test pins a page count.
 N4 Other sessions untouched (R334/R392).
    - The heavy lock was held by m2-me-base for ~3 min while I waited; I never lowered a line or broke a lock.
-   - When I first looked, two Java daemons were running (PIDs 9984, 18796, started 13:34Z). They were idle (CPU
-     unchanged over 10 s), and their apparent owner, m1-twins, had finished: its lock was gone and its report was
-     pushed at 14:20Z. My own fastCheck/test runs had connected to them (no other daemon existed). Before :app:gate I
-     stopped them with ./gradlew --stop ("1 Daemon stopped"; no java.exe left), as the end-of-task rule asks of any
-     session that ran Gradle.
+   - The two Java daemons I stopped before :app:gate (PIDs 9984, 18796) were MINE.
+     - Their StartTime read 14:34:00 and 14:34:22. This machine's local zone is UTC: PowerShell Get-Date printed
+       +00:00, matching date -u, zone "Morocco Standard Time".
+     - So they started at 14:34Z, exactly when my first gradlew run (the Android RED, ~14:33Z) spawned a Gradle
+       daemon and then a Kotlin daemon.
+     - A tasklist at 14:33:42Z, just before that run, showed no java.exe at all.
+     - CORRECTION: an earlier draft of this report, pushed as ccda2282, misread the start times as 13:34Z and
+       attributed the daemons to m1-twins. No other session's process was touched.
+     - ./gradlew --stop ("1 Daemon stopped"; no java.exe left), and again after every Gradle step.
    - The emulator was NOT running at any point, and I did not start it.
 N5 Tooling hazard, not a product finding: my editing tools turned typed escape sequences (backslash-u00a0, a doubled
    backslash) into characters. That is how a literal NBSP reached lint. Scripts that need a backslash or an NBSP
@@ -371,8 +386,11 @@ Q2 SPEC l.887 (section 12 item 5) still says the annex prints the "client-claime
    the entry when it sent one (the app sends it with every write, online or not - R275), the << saisie tardive >>
    flag, ...".
    Cost: a SPEC line; no code (the code already prints exactly that).
-Q3 web/prisma/schema.prisma l.337, /// "What the offline client asserted." Fold it into the next schema task with
-   A15's Q8 (the detectedAt comment), by name? It is a doc comment, but it sits in the schema file (Ask-first).
+Q3 Two internal comments make the same claim:
+   - web/prisma/schema.prisma l.337, /// "What the offline client asserted.";
+   - web/lib/entries/schema.ts l.128, "What the offline client asserts about when this was written.".
+   Fold both, by name, into the next schema / entries task with A15's Q8 (the detectedAt comment)? The first is a
+   doc comment, but it sits in the schema file (Ask-first).
 Q4 A SPEC 12 DECISION, proposed and NOT done (the prompt reserves it). The device column is now honest but carries
    little: online, it repeats the server's minute. Options, each with its cost:
    (a) Keep it as is: zero cost; the reader sees two equal times on most rows.
