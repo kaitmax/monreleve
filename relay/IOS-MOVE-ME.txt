@@ -1,0 +1,41 @@
+IOS-MOVE-ME SESSION PROMPT - Mon Releve
+THE /me CODEC BECOMES COMMON (iOS phase, (c) move 2)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 3, 7). Read first:
+relay/RULINGS-2026-11-16.txt iOS Rulings 3, 4 and 7 whole; REPORT-IOS-HOST-CENSUS.txt (R1200-R1201:
+"the /me codec (MeWire, org.json) blocks StartupDecider, OnboardingController's patchBody and
+ParametresWire") and REPORT-IOS-MOVE-TWINS.txt (M1: how a move is done, pinned, fenced and planted -
+follow it); android/app/.../MeWire.kt and every caller; :shared's existing JSON
+(data/remote/WireJson.kt - kotlinx.serialization, already in commonMain); the pins named by I0
+(ParametresWirePinTest, MeSettingsTest) and A9's resolveStart / A7's reminderEnabled read-back that
+parse /me; docs/api-v1.md (the /me contract); CLAUDE.md R154, R178, R180, R181, R196, R204, R206,
+R246, R391, R573.
+Names: worktree C:/wt/m2-me, branch m2-me (NOT ios-*), report REPORT-IOS-MOVE-ME.txt. Ruling
+numbers: R1270-R1279. YOUR OWN advisor may advise you. A NEW dependency comes back to the
+orchestrator (none is needed: kotlinx.serialization is already in commonMain).
+
+R1270. THE MOVE: the /me codec - parse and the PATCH body - lives once in :shared commonMain, on
+    kotlinx.serialization, in the package it has today where that compiles; :app's org.json version
+    is deleted. Behaviour is byte-for-byte the same on Android: the same fields, the same fail-closed
+    reading (A9's \"a body that is not a /me answer is UNREADABLE\", parseLoggingMode's fail-closed
+    read, A7's reminderEnabled read-back) and the same PATCH bytes.
+R1271. THE PINS STAY AND PROVE SAMENESS: :app's pinning tests keep compiling and passing unedited
+    against the moved codec (state the classes and counts before and after). Add ONE golden test
+    that runs the SAME fixture bodies through the old org.json codec (captured BEFORE you delete it -
+    keep the expected outputs as fixture files) and asserts the new codec produces identical results,
+    including every refusal case (R196). An R204 test drives the real /me route handler's response
+    into the common parser (the web side already has route tests to reuse).
+R1272. iOS: commonTest gains the cases iOS needs; ios-shared.yml (ONE run on your pushed code tip)
+    shows them executing - state the test count against M1's 418.
+R1273. THE FENCE: add the moved codec's top-level names to MovedTwinsFenceTest's guarded set (derived
+    from the moved file, R246) and plant a :app copy to see it fail (R180). Reword the fence's
+    \"shadows\" message to what is measured (iOS Ruling 7 NOTICED).
+R1274. ANDROID UNCHANGED: the full :app:gate, no baseline moved, test floor >= the base's.
+R1275. Q8 of A15, folded here: the stale detectedAt comment in android/shared EntryEntity.kt l.63
+    says what the code stores (the phone's clock at the validating tap).
+
+THE WORK: worktree + lock (R349); test-first; fastCheck per increment; the FULL :app:gate (R391)
+under the heavy lock (no emulator needed); R573; push the branch (DO NOT MERGE); report; push;
+gradlew --stop at the end; lock removed last.
+REPORT: SUMMARY / STATUS (R391) / R1270-R1275 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-MOVE-ME PROMPT

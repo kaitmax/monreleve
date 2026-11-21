@@ -38,12 +38,11 @@ HOW EVERY SESSION IN THIS RUN WORKS
   The emulator's Wi-Fi TEARS ITSELF DOWN, at times every 12-20 s (A9): a network-looking
   failure in a walkthrough is first checked against that (logcat, airplane state) before it is
   called a defect.
-- THE iOS TWINS (Queue Ruling 11; relay/QUEUE-STATE.md "THE iOS TWINS"): account/DeviceLocalStore.kt,
-  detection/EveningNotificationDecision.kt, detection/ThresholdAlertDecision.kt exist byte-identical
-  under android/app/src/main/kotlin/ch/monreleve/app/ and android/shared/src/iosMain/kotlin/ch/monreleve/app/;
-  edit both in one commit (IosAndroidTwinsTest), and such an edit owes R573.
-- macOS MINUTES: 14 spent of the last queue's 200 (QUEUE-STATE.md); this run allots <= 30 per
-  task, and each report states its runs' billed minutes.
+- THE iOS TWINS ARE RETIRED (iOS Ruling 7): M1 (IOS-MOVE-TWINS) moved DeviceLocalStore,
+  EveningNotificationDecision and ThresholdAlertDecision ONCE to :shared commonMain; there are no twins
+  to mirror. MovedTwinsFenceTest fails if any moved name reappears in :app or iosMain.
+- macOS MINUTES: UNCAPPED (iOS Ruling 2, the operator: "No cap, it's free"; the repository is public,
+  Android Ruling 17). Each report still states its runs' minutes and writes the expected result first.
 - R-NUMBERS: before pushing, re-scan relay/ in YOUR worktree, C:/wt/web-orch and the main checkout
   ("c:/Users/KAMXKAM/Downloads/frontier work", untracked files included) for your range.
 - `connectedAndroidTest` uninstalls the app and its data.

@@ -2565,3 +2565,200 @@ Q6 (the web sentence's tenses): KEEP as written; the operator may refuse.
 docs/release-audit-android.md still shows F1 and F5a-c open: A14 marks them
   closed by cca11959 (with evidence), as the audit's own maintenance.
 A14 AN-COPY-TRUTH-2 (R1230-R1239): Q2-Q4 above, on release/android-v1.
+
+====================================================================
+iOS RULING 4 - I1 MERGED (THE MERGE RESULT RE-GATED); I1's QUESTIONS; THE FIRST (c) MOVE
+====================================================================
+I1 (IOS-HOST) merged to main as 2824e82d (the merge of 2bfaf8c5; token hits
+0). On its code tip 44724ee9: :app:gate BUILD SUCCESSFUL in 9m 5s, test floor
+1561; ios-app run 44851548358 success; ios-shared run 44851560884 success
+(418 tests). main had MOVED in android/ (A6, A13), so the MERGE RESULT was
+re-gated before landing, pushed first to an orchestrator ref (orch-i1-merge,
+deleted after): :app:gate on 2824e82d BUILD SUCCESSFUL in 11m 22s, GATE
+EXIT=0, test floor 1564 (log C:/wt/queue-evidence/i1-host/
+orchestrator-gate-merge-2824e82d.log); ios-shared run 44899288191 success on
+2824e82d, 20 steps. (Android Ruling 21 is not used; this is the record.)
+PROVEN ON THE iOS SIMULATOR (iPhone 17 Pro, iOS 26.2, Xcode 26.0.1): an
+ad-hoc signed app bundle (no Apple account) runs the pilot; the Keychain
+round-trips; a local notification is delivered; the share sheet presents;
+BGTaskScheduler.submit is UNAVAILABLE on the simulator (code 1), so
+PARK-IF1's proof stays device-only and the host syncs on foreground.
+ON I1's QUESTIONS (the orchestrator's):
+Q1 (API base URL: Debug http://127.0.0.1:3000, Release https://monreleve.ch,
+  Info.plist MonReleveApiBaseUrl): KEEP the shape; the debug value becomes
+  a build setting the workflow sets (I2 runs its own server on the runner,
+  on its own port); NSAllowsLocalNetworking for Debug only.
+Q2 (iOS version 0.1.0 (1)): KEEP - iOS has its own App Store numbering.
+Q3 (the probe's BG plist keys): KEEP until PARK-IF1 is decided; the iOS
+  audit (I3) removes them if unused before any App Store submission.
+Q4 (provisional notification authorization): the PROBE's only; the
+  product asks with the alert prompt (R323/R1145).
+Q5 (the status bar drawn over "Bonjour"): ACCEPTED until AppRoot reaches
+  iOS - the pilot is not the product.
+THE (c) MOVES, ONE PER TASK, IN ORDER (iOS Ruling 3):
+1. IOS-MOVE-TWINS (R1240-R1249): PARK-IF4 - the three byte-identical twins
+   move to commonMain once; both copies go; IosAndroidTwinsTest becomes a
+   fence that no copy reappears (planted, seen to fail).
+2. the /me codec; 3. the session-end seam's pure part (+ iOS seam); 4. the
+   reminder decision (IosNotificationPlan superseded, R892 RED-first);
+   5. the shell (AppRoot and the routes) - then I2 (walkthrough), I3 (audit).
+
+====================================================================
+ANDROID RULING 21 - A14 MERGED TO release/android-v1; A14's QUESTIONS; A15
+====================================================================
+A14 (AN-COPY-TRUTH-2) merged to release/android-v1 as b45528e6 (the merge of
+40f428ef; release unmoved at cca11959; token hits 0). On the code tip
+98abd818: :app:gate BUILD SUCCESSFUL in 6m 14s, GATE_EXIT=0, test floor 1570;
+gate:changed GATE PASSED (test 4286, visual 176, e2e 402, db 889, late 10);
+gate:clone GATE:CLONE PASSED; R573 run 44903314575 success. The retaken
+Play assets (C:/wt/play-assets/*-e0b9198e.*) SUPERSEDE A5's video and
+screenshot 04 for submission. Forward merge into main: see iOS Ruling 5.
+ON A14's QUESTIONS (the orchestrator's; public texts stay the operator's):
+Q1 (the new strings): SHIP AS WRITTEN unless refused - put to the operator.
+Q2 (clientClaimedAt: a phone-supplied time, stored, mapped to the
+  timestamps record that says timestamps are never set by the phone):
+  PRE-LAUNCH, A15 - the record names it truthfully (the server's recording
+  time stays the only timestamp the Releve relies on; the phone's claimed
+  time is stored beside it, as a claim). A privacy record that says less
+  than is stored is the defect R172/R183 exist for.
+Q3 (SPEC 11.1 / l.838 and the FD5/FD12 design prompts still ask for
+  "exactly the same"): AMEND SPEC 11.1 in one sentence citing A6's
+  ModeParityTest (A15); the design prompts stay as historical input.
+Q4 (screenshot 04: the text screen or the scrolled one): the TEXT screen,
+  as taken - it carries the statement the reviewers judge.
+Q5 (the account export and detectedAt): PRE-LAUNCH, A15 - the export holds
+  every stored field the privacy page names, detectedAt and clientClaimedAt
+  included; a test derives the export's field list from the same record
+  the page renders (R206), so the two cannot drift.
+Q6 ("its three siblings" -> four, in release-audit-android.md section 5):
+  A15 fixes it.
+NOTICED (SPEC and docs/api-v1.md define detectedAt as "when the proposal was
+  produced"; the code stores the phone's clock at the validating tap): A15
+  aligns the docs to the code (R181) and says whether the disclosure needs
+  to mention it.
+A15 AN-PRIVACY-RECORD (R1250-R1259), on release/android-v1.
+
+====================================================================
+iOS RULING 5 - release/android-v1 (A14) MERGED FORWARD INTO main, RE-GATED
+====================================================================
+main = 52e4931f, the merge of release/android-v1 (b45528e6, A14) into main
+(2824e82d, which carried I1). main had moved in android/ (I1's framework and
+Keychain probe), so the MERGE RESULT was re-gated before landing, pushed
+first to orch-a14-fwd (deleted after): :app:gate on 52e4931f BUILD
+SUCCESSFUL in 9m 29s, GATE EXIT=0, test floor 1570 (log C:/wt/queue-evidence/
+an-copy-truth-2/orchestrator-gate-forward-52e4931f.log); ios-shared run
+44905240931 success on 52e4931f, 20 steps. web/ is identical to A14's gated
+tip 98abd818 (git diff empty), so A14's gate:changed and gate:clone carry.
+MEMORY NOTE: the gate waited ~35 min below the 8 000 MB line until the
+orchestrator stopped two IDLE Gradle/Kotlin daemons left by A14's finished
+session (gradlew --stop, ~4.1 GB) and shut the emulator down (Android Ruling
+11, ~4.2 GB); nothing else was touched. Sessions: run gradlew --stop at the
+end of your task so your daemons do not outlive you.
+
+====================================================================
+iOS RULING 6 / ANDROID RULING 22 - A15 MERGED (release + main); A15's QUESTIONS; A16
+====================================================================
+A15 (AN-PRIVACY-RECORD) merged to release/android-v1 as e7c7a254 (release
+unmoved at b45528e6; token hits 0) and forward into main as 8daae51a. On the
+code tip d282e271: gate:changed GATE PASSED (test 4290, visual 176, e2e 402,
+db 896, late 10); gate:clone GATE:CLONE PASSED; android/ unchanged (no
+:app:gate, no R573 owed). The forward merge needed NO new gate: its web/
+equals d282e271's and its android/ equals main's gated 52e4931f (git diff
+empty on both, checked before the push).
+ON A15's QUESTIONS (the orchestrator's; public texts stay the operator's):
+Q1 (DISCLOSED_RECORDS.timestamps' new sentence): SHIP AS WRITTEN unless
+  refused - put to the operator.
+Q2 (settings.email in the export): KEEP - the export is the person's own
+  data (right of access); what they forward is theirs to decide.
+Q3 (devices.appVersion and lastSeenAt in the export): KEEP - stored
+  personal data; api-v1 13.4's earlier choice is superseded and A15
+  already updated the doc.
+Q4 (an optional NEVER_SHARED sentence naming the validation time): NOT
+  shipped - Play's prominent disclosure concerns location; the privacy page
+  already names the time. The draft stays in A15's report.
+Q5 (the phone's time presented as OFFLINE-ONLY): A PRE-LAUNCH DEFECT IN THE
+  DOCUMENT, read by the orchestrator: app/releve/print/page.tsx renders
+  stamp(entry.clientClaimedAt) under DOSSIER_COPY.annex.clientClaimedAt =
+  "Saisi hors ligne le" for EVERY row that has one, and the app stamps
+  clientClaimedAt on EVERY write (R275) - so every day recorded in the app
+  would be printed as "entered offline". The Releve must never claim more
+  than the record supports: A16 makes the annex label and its offlineNote
+  say what the column is (the time the device announced), and corrects the
+  CGU, SPEC l.588 and docs/api-v1.md l.336 the same way.
+Q6 (the CSV, whose columns SPEC 12 freezes): OUT of R1251's scope - the
+  CSV's column NAMES stay; A16 checks whether any CSV header TEXT carries
+  the same "offline" claim.
+Q7 (the vacuous 'pushToken' credential test): A16 renames it to fcmToken and
+  plants a violation to prove it fires.
+Q8 (the stale detectedAt comments in schema.prisma l.334 and EntryEntity.kt
+  l.63): folded into the next schema task and the next android/shared
+  task, by name.
+A16 AN-ANNEX-TRUTH (R1260-R1269), on release/android-v1.
+
+====================================================================
+iOS RULING 7 - M1 (THE TWINS) MERGE; M1's QUESTIONS; MOVE 2
+====================================================================
+M1 (IOS-MOVE-TWINS): code tip e69cafbc, report tip 4a973ce6. :app:gate BUILD
+SUCCESSFUL in 7m 37s, test floor 1564, no baseline moved; ios-shared run
+44904890784 success (418 tests); ios-app run 44904893506 success. Merged
+locally as 7df4d9fa WITHOUT the branch's parking.md edit (sessions do not
+write parking.md; main's file kept). PARK-IF4 IS CLOSED BY THIS MERGE: the
+three twins live once in :shared commonMain; IosAndroidTwinsTest is replaced
+by MovedTwinsFenceTest. main had moved in android/shared (A13-A15), so the
+merge result is re-gated before landing (orch-m1-merge: ios-shared run
+44913464303; :app:gate in C:/wt/gate-m1m) - the landing is recorded below.
+ON M1's QUESTIONS:
+Q1 (retire QUEUE-STATE's "THE iOS TWINS" rule): RETIRED - ORCH-ANDROID's
+  twins bullet now says so; QUEUE-STATE.md is a closed queue's record and
+  is left as history.
+Q2 (SessionEndSeamFenceTest's ONE_CONSTRUCTION once the seam's pure part
+  moves): move 3 decides it - the one construction follows the seam; if a
+  commonMain construction becomes THE site, the :app one goes.
+Q3 (later moves and the fence): EVERY later (c) move adds its moved files'
+  top-level names to MovedTwinsFenceTest's guarded set, derived from the
+  moved files themselves (R246), with a plant each time.
+NOTICED (the fence's message says a :app copy "shadows" the commonMain
+  class, argued not measured): move 2 rewords it to what is measured.
+MOVE 2 IOS-MOVE-ME (R1270-R1279): the /me codec (MeWire, org.json in :app)
+  becomes common on kotlinx.serialization, which commonMain ALREADY uses
+  (WireJson.kt) - no new dependency.
+M1 LANDED: main = 7df4d9fa. The merge result's own gates: :app:gate BUILD
+SUCCESSFUL in 10m 37s, GATE EXIT=0, test floor 1570 (log C:/wt/queue-evidence/
+m1-twins/orchestrator-gate-merge-7df4d9fa.log); ios-shared run 44913464303
+success on 7df4d9fa, 20 steps. orch-m1-merge deleted.
+
+====================================================================
+iOS RULING 8 - M2 (THE /me CODEC) MERGE; M2's QUESTIONS; MOVE 3
+====================================================================
+M2 (IOS-MOVE-ME): code tip 6c9286f3, report tip c03bab6b (report only).
+:app:gate BUILD SUCCESSFUL in 6m 47s, 1573 tests (floor 1570), no baseline
+moved; gate:changed and gate:clone PASSED; ios-shared run 44922646032
+success, 422 tests (M1's 418 + MeCodecGoldenTest's 4); ios-app run
+44922650138 success. main was unmoved at 7df4d9fa, so the merge's android/
+and web/ trees equal the gated tip (diff 0 lines) and no re-gate was owed.
+M2 LANDED: main = bd17d00b. Token check 0.
+PARK-D3 IS CLOSED IN SUBSTANCE BY THIS MERGE: the /me codec lives once in
+:shared commonMain on kotlinx.serialization; :app's org.json MeWire is gone.
+Recording it in parking.md is the operator's (sessions and this orchestrator
+do not write it, as for PARK-IF4).
+ON M2's QUESTIONS:
+Q1 (the edited ParametresWirePinTest helper): ACCEPTED. Android's org.json
+  is insertion-ordered, so a phone always sent mePatchBody's own key order
+  (canton first); the pin encoded the JVM test library's HashMap order,
+  which its own header said a phone never sends. The common codec therefore
+  sends the SAME bytes a phone sent - R1270 holds - and R1271's "unedited"
+  yields to it: the pin's EXPECTATION was wrong about the phone, not the
+  codec. Keys and values unchanged. The same answer covers Q2's pins.
+Q2 (detectionConsentBody, reminderOptInBody, the account-delete pair): they
+  move WITH THE SCREEN THAT NEEDS THEM in move 5 (the shell), not as a move
+  of their own: reminderOptInBody and the delete pair because iOS v1 has
+  the reminder and must offer account deletion; detectionConsentBody STAYS
+  in :app, because iOS v1 is manual-only (iOS Ruling 2) and has no
+  detection consent. Their pins take Q1's key-order answer.
+Q3 (a duplicate key: last value wins where org.json refused): ACCEPTED as
+  declared. The route writes JSON.stringify output, which cannot carry a
+  duplicate key; a pre-scan would add code for a body the server never
+  sends. The fixture keeps it named, so a change is seen.
+MOVE 3 IOS-MOVE-SEAM (R1280-R1289): the session-end seam's pure part
+  becomes common (I0 Finding 2), with an iOS seam, and decides M1's Q2
+  (SessionEndSeamFenceTest's ONE_CONSTRUCTION).

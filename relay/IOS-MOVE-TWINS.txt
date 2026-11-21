@@ -1,0 +1,38 @@
+IOS-MOVE-TWINS SESSION PROMPT - Mon Releve
+THE THREE TWINS BECOME ONE FILE EACH, IN commonMain (iOS phase, (c) move 1; PARK-IF4)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 3-4). Read first:
+relay/RULINGS-2026-11-16.txt iOS Rulings 3 and 4 whole; relay/QUEUE-STATE.md "THE iOS TWINS" and
+"WAITS ON THE APPLE ACCOUNT"; parking.md PARK-IF4; REPORT-IOS-2f.txt (R889-R892, how the twins were
+made and why); REPORT-IOS-HOST-CENSUS.txt (R1200-R1201); the twins themselves -
+account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt,
+detection/ThresholdAlertDecision.kt under android/app/src/main/kotlin/ch/monreleve/app/ and
+android/shared/src/iosMain/kotlin/ch/monreleve/app/ - and IosAndroidTwinsTest; CLAUDE.md R154, R178,
+R180, R206, R246, R268, R391, R573.
+Names: worktree C:/wt/m1-twins, branch m1-twins (it must NOT match ios-*, which fires
+ios-shared.yml on every push), report REPORT-IOS-MOVE-TWINS.txt. Ruling numbers: R1240-R1249.
+YOUR OWN advisor may advise you. A dependency or version change comes back to the orchestrator.
+
+R1240. THE MOVE: each of the three files moves ONCE to android/shared/src/commonMain/kotlin/
+    ch/monreleve/app/ under its SAME package, and both copies (:app and iosMain) are deleted. If a
+    file does not compile in commonMain as-is (a java.* or Android import), STOP on that file, name
+    the blocker, and move the other two - never rewrite behaviour to make a move fit.
+    Use git mv for one copy and git rm for the other, and verify the COMMITTED blob of the moved
+    file equals the pre-move blob (memory: git mv on an edited file stages the pre-edit blob).
+R1241. THE PINS STAY: :app's tests that exercise these types keep compiling unedited against the
+    moved types (same packages) - say which, with their counts before and after. commonTest gains a
+    case only where iOS needs one (iOS Ruling 3).
+R1242. THE FENCE: IosAndroidTwinsTest asserted an exact set of byte-identical pairs. Replace it with
+    a fence that FAILS if any of the three names reappears in :app or iosMain (discovery by type name,
+    not a typed path list - R246). PLANT a copy, see the fence fail (R178/R180: verify the plant
+    landed), remove it. Name every other fence or census you had to edit (EdgeToEdgeCensus,
+    SessionEndSeamFence, FencesTest allowlists...) and plant against each one you changed.
+R1243. ANDROID BEHAVIOUR UNCHANGED: the full :app:gate, no baseline moved, test floor >= the base's
+    (state both numbers).
+R1244. iOS: dispatch ONE ios-shared.yml run on your pushed code tip (--ref m1-twins); its test count
+    against I1's 418, explained if it differs.
+
+THE WORK: worktree + lock (R349); fastCheck per increment; the FULL :app:gate (R391) under the heavy
+lock (you need no emulator); push the branch (DO NOT MERGE); report; push; lock removed last.
+REPORT: SUMMARY / STATUS (R391) / R1240-R1244 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-MOVE-TWINS PROMPT

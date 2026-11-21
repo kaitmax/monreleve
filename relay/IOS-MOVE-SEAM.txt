@@ -1,0 +1,48 @@
+IOS-MOVE-SEAM SESSION PROMPT - Mon Releve
+THE SESSION-END SEAM'S PURE PART BECOMES COMMON, AND iOS GETS ITS SEAM (iOS phase, (c) move 3)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 3, 7, 8). Read first:
+relay/RULINGS-2026-11-16.txt iOS Rulings 3, 4, 7 and 8 whole; REPORT-IOS-HOST-CENSUS.txt FINDING 2
+(G4, N2: "iosDeviceLocalStore returns DeviceLocalStore with no SessionEndSeam ... It becomes wrong the
+moment G4 schedules ahead"); REPORT-IOS-MOVE-TWINS.txt and REPORT-IOS-MOVE-ME.txt (how a move is done,
+pinned, fenced and planted - follow them); android/app/.../auth/SessionEndSeam.kt, auth/SessionEnds.kt,
+account/DeviceLocalStores.kt and every caller; android/shared/src/iosMain/.../IosLocalStores.kt; the
+pins SessionEndSeamTest, SessionEndSeamFenceTest (ONE_CONSTRUCTION), ForcedSignOutTest,
+ErasureCensusTest; A11's report (REPORT-AN-SESSION-END.txt: what a session end must stop and why);
+CLAUDE.md R154, R178, R180, R196, R204, R206, R246, R391, R573.
+Names: worktree C:/wt/m3-seam, branch m3-seam (NOT ios-*), report REPORT-IOS-MOVE-SEAM.txt. Ruling
+numbers: R1280-R1289. YOUR OWN advisor may advise you. A NEW dependency comes back to the orchestrator.
+BASE: origin/main (= bd17d00b).
+
+R1280. THE MOVE: the part of the seam with no Android import - the seam contract, the store wrapper that
+    runs it on every session end (sign-out, deletion, a server-ended session, a replayed token), and
+    whatever pure state SessionEnds.kt holds that compiles in commonMain - lives once in :shared
+    commonMain, same packages where that compiles. The Android-bound actions (WorkManager, the FCM
+    token, FallbackReminderScheduling) stay in :app behind the contract. Never rewrite behaviour to
+    make a move fit: a file that will not compile as-is is NAMED, not bent (as M1 did).
+R1281. iOS GETS ITS SEAM: iosDeviceLocalStore is wrapped by the moved wrapper with an iOS seam whose
+    action removes this app's PENDING local notification requests (the reminder move 4 will schedule)
+    - delivered ones are left to the user. A commonTest proves, with a fake seam, that every session-end
+    path through the wrapper calls it exactly once and that a seam failure does not leave the store
+    half-cleared (state what the Android code does on failure today and keep it). The real
+    UNUserNotificationCenter call is proven on the simulator by I2's walkthrough: name the observable
+    I2 must check (a pending request before sign-out, none after).
+R1282. M1's Q2 DECIDED HERE: SessionEndSeamFenceTest's ONE_CONSTRUCTION follows the construction site.
+    If the commonMain wrapper is THE site, the fence asserts that and the :app one goes; if each
+    platform constructs once, say so and make the fence assert one per platform. Plant a second
+    construction and see it fail (R180: verify the plant landed).
+R1283. THE FENCE: the moved files' top-level names join MovedTwinsFenceTest's guarded set, derived from
+    the moved files (R246, iOS Ruling 7 Q3); plant a :app copy and see it fail.
+R1284. THE PINS STAY: :app's pinning tests keep compiling and passing unedited against the moved code -
+    the classes and counts before and after. An edit is a DEVIATION put to the orchestrator with its
+    reason, as M2 did.
+R1285. ANDROID UNCHANGED: the full :app:gate, no baseline moved, test floor >= the base's (1573).
+    iOS: ONE ios-shared.yml run and ONE ios-app.yml run on your pushed code tip; the test count against
+    M2's 422.
+
+THE WORK: worktree + lock (R349); test-first (the iOS seam's commonTest is RED before the wrapper
+moves); fastCheck per increment; the FULL :app:gate (R391) under the heavy lock (no emulator needed);
+R573; push the branch (DO NOT MERGE); report; push; gradlew --stop at the end; lock removed last.
+Sessions do not write parking.md.
+REPORT: SUMMARY / STATUS (R391) / R1280-R1285 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-MOVE-SEAM PROMPT

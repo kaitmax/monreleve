@@ -1,0 +1,45 @@
+AN-ANNEX-TRUTH SESSION PROMPT - Mon Releve
+THE RELEVE NEVER CALLS A DAY "OFFLINE" THAT WAS NOT (ORCH-ANDROID step A16)
+Written by the orchestrating session on 2026-11-21 (iOS Ruling 6 / Android Ruling 22). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); that ruling in
+relay/RULINGS-2026-11-16.txt; REPORT-AN-PRIVACY-RECORD.txt (A15, its Q5 and Q7); SPEC section 12
+(the document: its items, the frozen CSV columns) and l.588; R275 (the app stamps clientClaimedAt on
+every write); web/lib/fr/dossier.ts (annex.clientClaimedAt "Saisi hors ligne le", offlineNote);
+web/app/releve/print/page.tsx (~l.492, l.511); the CGU copy; docs/api-v1.md ~l.336; CLAUDE.md
+"Never claim more than the record supports", R135, R153, R155, R181, R206, R207, R225.
+Names: worktree C:/wt/an-annex-truth, branch an-annex-truth, report REPORT-AN-ANNEX-TRUTH.txt.
+Ruling numbers: R1260-R1269. YOUR OWN advisor may advise you. Changing what the document prints
+beyond the label and its note (e.g. hiding the column) is a SPEC 12 decision: propose it as a
+QUESTION with its cost, do not do it.
+BASE: origin/release/android-v1 (= e7c7a254). The orchestrator merges into the release branch and
+forward into main.
+
+THE DEFECT (read by the orchestrator): the annex prints stamp(entry.clientClaimedAt) under the
+header "Saisi hors ligne le" for every row that has one, and the app sends clientClaimedAt on EVERY
+write - so every day recorded in the app is printed as "entered offline", online or not. Days
+entered on the web have none, so the column is blank for them.
+
+R1260. PROVE IT FIRST (R225, RED): a test renders the print document for an account with one day
+    recorded ONLINE through POST /api/v1/entries exactly as the app sends it (clientClaimedAt set,
+    seconds before recordedAt) and asserts the document does NOT say that day was entered offline.
+    It must FAIL on today's code, naming the header.
+R1261. THE WORDS: the annex header and offlineNote say what the column is - the time the device
+    announced when the day was entered, beside the server's reception time, which alone is
+    attributed by the server - with no "hors ligne" claim. Same correction, in each surface's own
+    register (R165), in the CGU, SPEC l.588 and docs/api-v1.md ~l.336. Check the CSV's header TEXT
+    (not its frozen column names) and any in-app string for the same claim; fix true hits, list false
+    ones (a census table).
+R1262. Q7: the credential test's 'pushToken' (a name that exists nowhere) becomes fcmToken; plant a
+    violation and see it fail (R180).
+EVERY NEW PUBLIC STRING verbatim by key in QUESTIONS for the operator; ships as written unless
+refused. The document's baselines and PDF tests that move are stated BEFORE regeneration (R207) and
+cropped (R135); render one real PDF on `pnpm dev` (R176) for a seeded .invalid account and read the
+annex.
+
+THE WORK: worktree + lock; test-first; gate:changed (FRONTALIER_PORT=your port; the soft-reset method
+in your own worktree is accepted) and gate:clone before the push; :app:gate and R573 only if android/
+changes; push the branch (DO NOT MERGE); report; push; run gradlew --stop / stop your servers at the
+end so nothing of yours outlives you; lock removed last.
+REPORT: SUMMARY / STATUS / R1260-R1262 with evidence (the census table) / BASELINES / WALKTHROUGH /
+NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS (new strings first, verbatim by key) / PUSH PROOF
+END OF AN-ANNEX-TRUTH PROMPT

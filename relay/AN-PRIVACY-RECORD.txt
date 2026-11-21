@@ -1,0 +1,45 @@
+AN-PRIVACY-RECORD SESSION PROMPT - Mon Releve
+WHAT IS STORED, THE PRIVACY PAGE SAYS AND THE EXPORT GIVES (ORCH-ANDROID step A15)
+Written by the orchestrating session on 2026-11-21 (Android Ruling 21). Read first:
+relay/ORCH-ANDROID.txt "HOW EVERY SESSION IN THIS RUN WORKS" whole (it binds you); Android Rulings
+18-21 in relay/RULINGS-2026-11-16.txt; REPORT-AN-COPY-TRUTH.txt and REPORT-AN-COPY-TRUTH-2.txt (A13,
+A14 - their strings, tests and the order test); FW22's privacy work (lib/content/personal-data.ts,
+DISCLOSED_RECORDS, NOT_PERSONAL) and the account export route and its tests; SPEC section 8 (the
+data model: detectedAt, clientClaimedAt, recordedAt) and 11.1; docs/api-v1.md; CLAUDE.md "Timestamps
+are server-assigned", "Never claim more than the record supports", R153, R155, R172, R181, R196,
+R204, R206, R225.
+Names: worktree C:/wt/an-privacy-record, branch an-privacy-record, report REPORT-AN-PRIVACY-RECORD.txt.
+Ruling numbers: R1250-R1259. YOUR OWN advisor may advise you. A schema change comes back to the
+orchestrator (none should be needed).
+BASE: origin/release/android-v1 (= b45528e6). The orchestrator merges into the release branch and
+forward into main.
+
+R1250. clientClaimedAt ON /confidentialite (A14 Q2): the timestamps record states truthfully that the
+    phone's own claimed time is stored beside the server's recording time, as a claim; the server's
+    recording time stays the only timestamp the Releve relies on. Derived from the record (R206),
+    rendered and asserted (R225).
+R1251. THE EXPORT HOLDS WHAT THE PAGE NAMES (A14 Q5): the account data export includes every stored
+    field the privacy page names - detectedAt and clientClaimedAt included. A test derives the
+    export's expected field list from the SAME record the page renders, so page and export cannot
+    drift (R206); both directions (a named field missing from the export fails; an exported personal
+    field the page does not name fails - R196). Test first, RED with the reason. Check the app's
+    in-app export path (Parametres) reaches the same route; if Android parses the export, it still
+    does.
+R1252. SPEC AND DOCS SAY WHAT THE CODE DOES (R181): SPEC 11.1's "exactly the same statement" becomes
+    one sentence citing A6's ModeParityTest (identical apart from each day's stated origin); SPEC
+    section 8 and docs/api-v1.md define detectedAt as what the code stores (the phone's clock at the
+    validating tap) - read the code first and quote the line. Say whether the disclosure must mention
+    it; if yes, draft the sentence for the operator, do not ship it.
+R1253. docs/release-audit-android.md section 5's F5c row: "its three siblings" -> four (A14 Q6).
+EVERY NEW PUBLIC STRING verbatim by key in QUESTIONS for the operator; ships as written unless
+refused. Baselines that move are stated BEFORE regeneration (R207) and cropped (R135).
+
+THE WORK: worktree + lock; test-first; gate:changed (FRONTALIER_PORT=your port; A13/A14's soft-reset
+method in your own worktree is accepted) and gate:clone before the push (web/ changes); the FULL
+:app:gate (R391) only if android/ changes (emulator shut down, Android Ruling 11; heavy lock); R573
+if android/shared changes; the walkthrough of /confidentialite and the export on `pnpm dev` (R176,
+R177) - sign in a SEEDED .invalid account, never print the code (R574); push the branch (DO NOT
+MERGE); report; push; lock removed last.
+REPORT: SUMMARY / STATUS / R1250-R1253 with evidence / BASELINES / WALKTHROUGH / NOTICED BUT NOT
+TOUCHING / DEVIATIONS / QUESTIONS (new strings first, verbatim by key) / PUSH PROOF
+END OF AN-PRIVACY-RECORD PROMPT
