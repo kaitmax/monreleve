@@ -42,9 +42,18 @@ of the report so the operator decides with it in view.
    off-device transmission. Mon Releve determines country on-device against a
    bundled polygon and discards the fix (D18), transmitting no coordinate - Case 1,
    *"Not Transferred (Local only) -> EXEMPT"* (docs/android-skills.md 7.2,
-   play-policy-insights Data Safety Case Matrix). The Data Safety form declares
-   location NOT collected / NOT shared, and prominent-disclosure-for-collection is
-   exempt. This holds ONLY while D18 holds.
+   play-policy-insights Data Safety Case Matrix). That is true of the COORDINATE
+   (Precise location: NOT collected), and it holds ONLY while D18 holds.
+   **CORRECTED (Android Ruling 18 Q-DS1, 2026-11-20; recorded by AN15-AUDIT,
+   R1135).** This item used to say "The Data Safety form declares location NOT
+   collected / NOT shared, and prominent-disclosure-for-collection is exempt". That
+   is SUPERSEDED: a day the person confirms or corrects from a detection proposal
+   (`CH` / `HOME` sent with `DETECTED_*` provenance) is a country-level location
+   that leaves the phone, so the form declares **Approximate location: collected,
+   optional (detection only), not shared, App functionality**. The table and its
+   trace to code are `docs/play-release.md` section 2 (2.3 names what this
+   supersedes). The in-app prominent disclosure is shown regardless
+   (`docs/play-release.md` section 3).
 2. **The restricted-permission MECHANICS.** Surmountable, but costly. Regardless
    of transmission, `ACCESS_BACKGROUND_LOCATION` triggers Play's
    restricted-permission review: a Permissions Declaration Form in Play Console and

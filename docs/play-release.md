@@ -90,7 +90,7 @@ never a guess.
 | Play data type | Answer | What, exactly | Enforced by |
 |---|---|---|---|
 | **Location - Precise location** | NOT collected, not shared | The fix is classified on the phone against the bundled border polygon and discarded; no coordinate is stored, logged or sent (D18). Holds ONLY while D18 holds | `android/app/src/main/kotlin/ch/monreleve/app/detection/LiveLocation.kt` (the coordinate's two reads go straight to `classify`); `CoordinateConfinementTest` (the type leaving classification holds no coordinate); `fences/FencesTest.kt` (no coordinate name escapes `detection/`); `RoomSchemaContractTest` (no coordinate column); server: `web/lib/entries/no-coordinates.ts` `findLocationKeys`, refused as `coordinates_refused` by every `/api/v1` write route (`entries`, `me`, `devices`, ...), `web/tests/unit/entries/no-coordinates.test.ts`, `web/tests/db/privacy-claims.test.ts` "CLAIM (R325)" |
-| **Location - Approximate location** | **QUESTION Q-DS1** (section 2.2) | A confirmed day's `kind` (`CH` / `HOME`, ...) with `provenance` `DETECTED_CONFIRMED` and `detectedKind`/`detectedAt` - a per-day, country-level conclusion | `docs/api-v1.md` fields:write; `web/prisma/schema.prisma` `Entry` |
+| **Location - Approximate location** | **Collected, OPTIONAL (automatic detection only), not shared. Purpose: App functionality.** Decided by Android Ruling 18 Q-DS1 (relay/RULINGS-2026-11-16.txt), recorded here by AN15-AUDIT (R1135); it SUPERSEDES the earlier "location NOT collected" position (section 2.3) | A day the person CONFIRMED or CORRECTED from a detection proposal: its `kind` (`CH` = in Switzerland / `HOME` = at home, a country-level fact, larger than Play's 3 km2) sent with `provenance` `DETECTED_CONFIRMED` or `DETECTED_CORRECTED`, `detectedKind` (the side detection proposed) and `detectedAt` (the phone's clock at the confirming tap). Never a coordinate (the precise row above). Sent only after the person's tap; nothing is sent for a day nobody confirmed | PHONE: `android/shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt` `confirmDetected` / `correctDetected` -> `recordDetected` (the only writers of `DETECTED_*` from Aujourd'hui), `android/app/src/main/kotlin/ch/monreleve/app/detection/EveningNotifier.kt` (the evening notification's Confirmer / other-side buttons, `EveningTap`), `android/shared/src/commonMain/kotlin/ch/monreleve/app/data/sync/EntriesMapping.kt` `toEntryWrite` (the three fields on the wire); tests `AujourdhuiAutoControllerTest` ("confirming a proposal records a FULL day with provenance DETECTED_CONFIRMED", "correcting a proposal records ... DETECTED_CORRECTED"), `EveningTapTest`, `ModeParityTest` (the wire differs from a manual day's ONLY in these three fields). OPTIONAL: no `DETECTED_*` day exists without the automatic mode, which needs the in-app disclosure and the person's opt-in (`ui/screens/disclosure/DisclosureScreen.kt`) and the location grant; the server refuses `AUTO_DETECT` without a consent (`web/app/api/v1/me/route.ts`, `consent_required`); the manual-only build cannot create one (`detection/DetectionAvailability.kt`, section 4). SERVER: `web/lib/entries/schema.ts` (`detectedKind`, `detectedAt`; a `DETECTED_*` entry without `detectedKind` refused), `web/prisma/schema.prisma` `Entry.provenance`, `Entry.detectedKind`, `Entry.detectedAt`, `EntryEvent` |
 | **Personal info - Email address** | Collected, required, not shared. Purposes: Account management, App functionality (the sign-in code) | `User.email` | `web/prisma/schema.prisma` `User.email`; the sign-in routes under `web/app/api/v1/auth/`; mail sent through Resend, the provider `/confidentialite` names (`web/lib/fr/confidentialite.ts` hosting) |
 | **Personal info - Name** | Collected, required, not shared. Purpose: App functionality (the holder printed on the relevé) | `User.name`, asked at onboarding (step NOM) | `web/prisma/schema.prisma` `User.name`; `android/shared/.../settings/ReleveCompleteness.kt` (NAME is a releve field) |
 | **Personal info - Other info** | Collected, required, not shared. Purpose: App functionality | The canton, the employment rate, the day-count method, the granularity, the activity start date; the reminder opt-in (`reminderEnabled`, written by the app since A8/A7) and the reminder time (`reminderTime`, a server default the app does not edit); the logging mode and the date detection consent was given | `web/prisma/schema.prisma` `User` (canton, employmentRate, denominatorKind, exactTotalWorkDays, granularity, activityStartDate, reminderTime, reminderEnabled, loggingMode, detectionConsentAt); the `fields` table of `PATCH /api/v1/me` in `docs/api-v1.md` |
@@ -108,9 +108,12 @@ TLS termination is the hosting's, not this repository's (the operator's Coolify 
 **Can users request deletion? YES, in the app**: Paramètres -> Supprimer mon compte -> `POST /api/v1/account/delete`
 (`web/lib/account/delete.ts`, `web/tests/db/account-delete.test.ts`, `web/tests/db/privacy-claims.test.ts` "CLAIM 9":
 the account, the days, their history and the devices are erased; the FCM token row goes with the account by cascade).
-On the phone, every session ending (sign-out, server-ended, deletion) invalidates the token and wipes the local store
-(`auth/SessionEndSeam.kt`, `SessionEndSeamTest`, `ErasureCensusTest`). The **web link** Play also requires is
-**QUESTION Q-DS2**.
+On the phone, every session ending (sign-out, server-ended, deletion) invalidates the token (`auth/SessionEndSeam.kt`,
+`SessionEndSeamTest`, `ErasureCensusTest`); a sign-out and a deletion wipe the local store (R295), while a session the
+SERVER ended keeps the unsent days under their account tag for the same person's return and clears the rest (R521,
+`account/DeviceLocalStore.kt` `clearForSessionEnd`) - corrected by AN15-AUDIT, which saw it on the emulator
+(`docs/release-audit-android.md` section 4). The **web link** Play also requires is **QUESTION Q-DS2** (answered:
+Android Ruling 18 - a launch-day web task).
 
 ### 2.1 What the form is answered from
 
@@ -120,15 +123,12 @@ every collected type (each is stored).
 
 ### 2.2 Questions this section cannot answer from the code (the operator's)
 
-- **Q-DS1 - approximate location.** Play: "**User or device physical location to an area greater than or equal to 3
-  square kilometers**". A confirmed day sent as `CH` or `HOME` is a statement of where the person worked that day, at
-  country level; in automatic mode it carries `DETECTED_CONFIRMED` and `detectedKind`, i.e. it was derived from the
-  phone's location before the person confirmed it. `docs/android-skills.md` 7.2 and PARKAN-32 classify detection as
-  "Case 1, not collected" because no coordinate leaves the phone - true of the coordinate; silent on the
-  conclusion. `tasks/todo.md` AN14 says "location collected but not stored or shared". The safer reading
-  (never claim less than the record supports) declares Approximate location COLLECTED, not shared, App
-  functionality; the narrower reading declares it under Other user-generated content only. Precise location is not
-  collected under either.
+- **Q-DS1 - approximate location. ANSWERED (Android Ruling 18, 2026-11-20): DECLARE IT** - "Approximate location:
+  collected, optional (detection only), not shared, App functionality"; the table above carries it (R1135). Play:
+  "**User or device physical location to an area greater than or equal to 3 square kilometers**". A confirmed day
+  sent as `CH` or `HOME` is a statement of where the person worked that day, at country level; in automatic mode it
+  carries `DETECTED_CONFIRMED` / `DETECTED_CORRECTED` and `detectedKind`, i.e. it was derived from the phone's
+  location before the person confirmed it. Precise location stays NOT collected.
 - **Q-DS2 - the account-deletion web link.** Play (answer/13327111): an app that enables account creation must
   "provide a web link resource where users can request app account deletion" and give it in the Data safety form;
   the page must work "without sending the user back to the app". `/confidentialite` today says the deletion is done
@@ -136,6 +136,21 @@ every collected type (each is stored).
   contact address. A web route or a published request path is a web change outside this task.
 - **Q-DS3 - the server's request logs.** Whether the hosting's proxy or the server logs keep client IP addresses
   (which Play counts as inferred location) is not traceable in this repository.
+
+### 2.3 What the Approximate-location row supersedes (R1135, recorded by AN15-AUDIT)
+
+Before Android Ruling 18 three records said location is NOT collected. They are superseded for the Data safety form
+by the row above; each is named so a reader meeting it knows which statement wins:
+
+- `docs/play-background-location.md`, "The two things that are NOT the problem", item 1 - corrected in the same
+  commit as this table, with a pointer here.
+- `parking.md` PARKAN-32, NEEDS ("the Play data-safety-form entry declaring location as accessed-on-device /
+  not-collected / not-transmitted") - an operator file, not edited; superseded by Android Ruling 18 Q-DS1.
+- `docs/android-skills.md` 7.2 ("Case 1, not collected") - true of the COORDINATE (the precise row), silent on the
+  confirmed day; not edited.
+
+`tasks/todo.md` AN14 ("location collected but not stored or shared") is closer to the ruling than either and is
+left as it is.
 
 ---
 
@@ -217,7 +232,10 @@ shows no detection entry point:
 - **The listing:** `docs/play-store-listing.md` minus its detection paragraph (`StoreListingCopyTest` asserts nothing
   outside that paragraph names location or detection); leave out any screenshot showing detection.
 - **The declaration:** none (no restricted permission is declared). Data safety: the precise-location row stays
-  "not collected"; Q-DS1 becomes moot for new days (no day is `DETECTED_*`).
+  "not collected"; the manual-only build creates no `DETECTED_*` day, so for a manual-only FIRST release the
+  approximate-location row has nothing to describe and is answered "not collected" - unless a person's account
+  already holds detected days from an earlier detection build (the server keeps and exports them), in which case the
+  row stays as declared. Which of the two applies is the operator's at the time (AN15-AUDIT, R1135).
 - **What stays in Paramètres:** the evening reminder switch (both modes since A7, AN-MANUAL-REMINDER, 34db1eee: the
   push reminder, or the 19:00 local fallback on a phone without push) and the threshold alert. Neither reads the
   position, neither is a detection entry point, and neither collects data beyond `reminderEnabled` (section 2).
