@@ -158,10 +158,24 @@ export const DISCLOSED_RECORDS = {
     'avait été proposé lorsque vous l’avez corrigée et, pour une journée ' +
     'proposée, l’heure indiquée par votre téléphone au moment où vous ' +
     'l’avez validée ;',
+  // AN-PRIVACY-RECORD (R1250, A14 Q2). Entry.clientClaimedAt and
+  // EntryEvent.clientClaimedAt map here (lib/content/personal-data.ts): the
+  // PHONE's clock at each write, which the app's repository stamps on every
+  // write (R275) and the server stores verbatim. This record used to name only
+  // the server's stamps, so a stored, phone-supplied time had no words on the
+  // page. It now says the phone's time is kept beside them AS A CLAIM, that the
+  // releve prints it (the annex's clientClaimedAt column,
+  // DOSSIER_COPY.annex.clientClaimedAt) and that it relies on the server's time
+  // alone (lib/entries/late.ts reads firstRecordedAt and has no parameter for
+  // the claim). The server sentence is unchanged and comes first.
   timestamps:
     'les horodatages, c’est-à-dire la date et l’heure auxquelles le serveur ' +
     'a reçu chaque déclaration. Ils sont assignés par le serveur et jamais ' +
-    'par votre téléphone : c’est ce qui donne sa valeur au relevé annuel ;',
+    'par votre téléphone : c’est ce qui donne sa valeur au relevé annuel. ' +
+    'À côté, le service conserve aussi, comme une simple déclaration de votre ' +
+    'téléphone, l’heure qu’il indiquait lors de chaque saisie. Le relevé ' +
+    'l’imprime à titre indicatif, mais ne s’appuie que sur l’heure du ' +
+    'serveur ;',
   history:
     'l’historique des modifications, en ajout seul. Une correction ajoute ' +
     'une ligne, elle n’en efface aucune ;',
