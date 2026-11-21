@@ -217,10 +217,27 @@ describe('AC2: the export contains every row belonging to the caller', () => {
   it('never carries a credential', async () => {
     // SessionToken and the device push token are excluded, and this asserts it
     // on the produced file rather than on the list that says so.
+    //
+    // AN-ANNEX-TRUTH (R1262, A15 Q7): this used to assert the absence of
+    // 'pushToken', a name that exists nowhere - the column is Device.fcmToken -
+    // so it passed whatever the export held (A15's plant P1 put the token in the
+    // file and it stayed green). It now names the real column AND its value, on
+    // a device that is proven stored and exported first (R169): an absence
+    // assertion is only meaningful once presence is established.
+    const FCM_TOKEN = 'export-credential-fcm-token-r1262';
+
+    await prisma.device.create({ data: { userId, fcmToken: FCM_TOKEN, appVersion: '1.0.0' } });
+
+    expect((await prisma.device.findFirstOrThrow({ where: { userId } })).fcmToken).toBe(FCM_TOKEN);
+
     const text = await (await GET(get())).text();
+    const payload = JSON.parse(text) as { devices: unknown[] };
+
+    expect(payload.devices, 'the device itself is exported').toHaveLength(1);
 
     expect(text).not.toContain('tokenHash');
-    expect(text).not.toContain('pushToken');
+    expect(text, 'the push token column, by its name').not.toContain('fcmToken');
+    expect(text, 'the push token itself').not.toContain(FCM_TOKEN);
   });
 
   it('refuses an unauthenticated caller', async () => {
