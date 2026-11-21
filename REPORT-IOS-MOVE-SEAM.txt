@@ -1,0 +1,327 @@
+REPORT-IOS-MOVE-SEAM - THE SESSION-END SEAM'S PURE PART BECOMES COMMON, AND iOS GETS ITS SEAM (iOS phase, (c) move 3)
+TASK     C:/wt/web-orch/relay/IOS-MOVE-SEAM.txt (iOS Rulings 3, 4, 7, 8 in relay/RULINGS-2026-11-16.txt). Rulings R1280-R1289;
+         R1280-R1285 used, R1286-R1289 unused. Before the push, `grep -rlE '\bR128[0-9]\b'` over relay/, REPORT-*.txt,
+         CLAUDE.md, parking.md and docs/ of this worktree, C:/wt/web-orch and the main checkout returned only
+         C:/wt/web-orch/relay/IOS-MOVE-SEAM.txt and relay/RULINGS-2026-11-16.txt (the allocation).
+BASE     origin/main bd17d00b (M2 merged), as the launch message named. origin/main MOVED during this session to e69a4f08
+         (A16 forward-merged); see PUSH PROOF and Q4.
+BRANCH   m3-seam (does not match ios-*). PUSHED, NOT MERGED; the merge is the orchestrator's.
+         Code tip 55c1e9f7 (one commit on the base). The report tip is the commit carrying this file only.
+WORKTREE C:/wt/m3-seam, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/m3-seam/ (not committed): red.sh + red.log (the RED); draft/ (the files as written before
+         they were applied); run1.sh + run1.log + run1-xml-{app,shared}/ (fastCheck + the :app fences and pins);
+         mutants.sh + mut-{A,B}.log + mut-{A,B}-xml/ + ktlint2.log; plants-and-gate.sh + plant.log + plant-xml/ +
+         gate.log + gate-xml-{app,shared}/; every *-lock.log; ios-expected.txt (written before dispatch);
+         ios-shared-44929307413/ (the run's own artifact).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- The seam's pure part lives ONCE in :shared commonMain, packages unchanged:
+    android/shared/src/commonMain/kotlin/ch/monreleve/app/auth/SessionEndSeam.kt  SessionEndPath, SessionEndSeam,
+                                                                                    SessionEndingStore (the wrapper)
+    android/shared/src/commonMain/kotlin/ch/monreleve/app/auth/SessionEnds.kt      moved WHOLE (git sees the rename)
+  :app keeps what is Android's, unchanged: android/app/src/main/kotlin/ch/monreleve/app/auth/DeviceSessionEndSeam.kt
+  holds deviceSessionEndSeam (the sampler, push, the 19:00 fallback) and processSessionEndSeam (Context).
+- iOS gets its seam: android/shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosSessionEndSeam.kt, iosSessionEndSeam -
+  this app's PENDING local notification requests removed. iosDeviceLocalStore now returns the SessionEndingStore over
+  it (closes I0's FINDING 2 in code; the real UNUserNotificationCenter call is I2's to prove on the simulator).
+- commonTest SessionEndingStoreTest (5 tests, JVM and iOS simulator): RED first; two wrapper mutants each fail it.
+- R1282 DECIDED: ONE CONSTRUCTION PER PLATFORM. SessionEndSeamFenceTest now asserts Android's site and iOS's site
+  separately (3 -> 6 tests). Plants on :app, commonMain and iosMain each failed where they should.
+- R1283: MovedTwinsFenceTest guards the two moved files; a planted :app copy failed by file name and by both names.
+- STATUS: :app:gate on 55c1e9f7 BUILD SUCCESSFUL in 9m 47s, GATE_EXIT=0, test floor 1576 (base 1573, +3 =
+  SessionEndSeamFenceTest's new iOS tests). ios-shared run 44929307413 success, 427 tests (422 + 5).
+  ios-app run 44929318806 success.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 55c1e9f7 in this session, on a clean tree
+(`git status --porcelain --untracked-files=all` = 0 lines after the plants were removed, before the gate started):
+    GATE HEAD=55c1e9f7231ed8b11fb1bd2da45fcf51cba0b99d start=2026-11-21T17:21:19Z
+    test floor OK: 1576 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 9m 47s
+    GATE_EXIT=0
+It ran under the heavy lock as holder m3-seam-gate (line 8 000 MB, not lowered; acquired at commitFree=9528),
+released at 17:31:15Z. The gate log shows :app:testDebugUnitTest, :app:verifyPaparazziDebug, :app:lintDebug and
+:shared:testDebugUnitTest executed (:app:detekt and :app:ktlintCheck UP-TO-DATE from run 1 on the same sources).
+web/ is not changed by this branch (`git diff --name-only bd17d00b 55c1e9f7 -- web/` is empty), so gate:clone and
+gate:changed are not owed (R199) and were not run - a decision, not an omission.
+The report tip changes only REPORT-IOS-MOVE-SEAM.txt, so its android/ tree is 55c1e9f7's.
+
+================================================================================
+R1280 - THE MOVE
+================================================================================
+WHAT MOVED (git diff -M bd17d00b 55c1e9f7):
+  R  app/.../auth/SessionEnds.kt -> shared/src/commonMain/.../auth/SessionEnds.kt
+     Whole. Every import was already common (kotlinx.coroutines.flow, data.local.EntryEntity). It holds SessionEnds,
+     processSessionEnds (the process's pure state), onServerEndedSession, sessionClosedByServer and heldDays. Code
+     change: `internal` removed from those five declarations, nothing else. A header paragraph says so.
+  D  app/.../auth/SessionEndSeam.kt  +  A  shared/src/commonMain/.../auth/SessionEndSeam.kt
+     SessionEndPath, SessionEndSeam (fun interface) and SessionEndingStore. The header and the wrapper's KDoc now name
+     both platforms' constructions.
+  A  app/.../auth/DeviceSessionEndSeam.kt
+     deviceSessionEndSeam and processSessionEndSeam, still `internal`, same package.
+  MEASURED: the old file's non-comment, non-blank, non-import lines (`git show bd17d00b:`, a leading "internal "
+  stripped) against the same lines of the two new files: 44 lines and 44 lines, IDENTICAL as a multiset
+  (old-seam.txt / new-seam.txt in the evidence). SessionEnds.kt: the draft diff against the old file shows only the
+  five `internal` removals and the header paragraph.
+THE FILE THAT WOULD NOT COMPILE AS-IS, NAMED (R1280, not bent): auth/SessionEndSeam.kt. It imports android.content.Context,
+DetectionScheduling, push.endPushOnThisPhone and reminder.FallbackReminderScheduling, all in :app. It was SPLIT along
+that line: the contract and the wrapper went to commonMain; processSessionEndSeam stayed in :app. The :app remainder
+has a new file name because MovedTwinsFenceTest refuses a :app file named after a moved one.
+deviceSessionEndSeam has no Android import and would compile in commonMain. I KEPT IT IN :app: it is Android's body
+(three named Android attachments, the A8/A7 runCatching order), R1280's list names only the contract, the wrapper and
+SessionEnds' state, and keeping it leaves the Android diff smaller. Put as Q1.
+VISIBILITY: every moved declaration lost `internal`. :app is another module and :shared declares no friend path, so
+`internal` there would hide them from every :app caller. That is not a behaviour change. They are now also exported
+in the iOS framework's header.
+CALLERS: MainActivity, SessionHolder, DeviceLocalStores and every :app test compile with no import edited (same
+packages). Stale comment pointers left as they are: see NOTICED.
+
+================================================================================
+R1281 - iOS GETS ITS SEAM
+================================================================================
+THE iOS SEAM (iosMain ios/IosSessionEndSeam.kt):
+    fun iosSessionEndSeam(removePendingRequests: () -> Unit = {
+        UNUserNotificationCenter.currentNotificationCenter().removeAllPendingNotificationRequests() }): SessionEndSeam
+  The same action on every path, as Android's body is. PENDING requests only; delivered notifications are left to the
+  person. The centre is resolved INSIDE the action, never when the seam is built: AppHostProbeIosTest's header records
+  that a host API in the bundle-less simulator test process raises an Objective-C exception that ends the run.
+  Building the store therefore touches no centre, and the tests pass their own action. This is the first Kotlin use of
+  platform.UserNotifications in the repository; it compiled for iosSimulatorArm64 in run 44929307413 (its own step
+  "iOS - simulator tests and device compile": success).
+THE COMPOSITION (iosMain ios/IosLocalStores.kt): iosDeviceLocalStore gained `sessionEndSeam: SessionEndSeam =
+  iosSessionEndSeam()` and returns SessionEndingStore(DeviceLocalStore(...), sessionEndSeam) instead of the bare
+  DeviceLocalStore. The DeviceLocalStore arguments are unchanged.
+WHAT ANDROID DOES ON A SEAM FAILURE TODAY, KEPT: SessionEndingStore runs the seam inside a try and the scope's clear in
+  its finally. The clear runs whole, then the seam's exception reaches the caller. (If the clear also throws, the
+  clear's exception is the one that propagates; Kotlin's try/finally.) The iOS seam goes through the same wrapper, so it
+  inherits exactly that. Inside Android's body, push and the fallback are each in runCatching and the sampler is not,
+  and none of that changed.
+THE commonTest: android/shared/src/commonTest/kotlin/ch/monreleve/app/auth/SessionEndingStoreTest.kt, 5 tests, over the
+  REAL SessionEndingStore and the REAL DeviceLocalStore, with commonTest's reference stores (MemoryTokenStore,
+  MemorySettingsStore, MemoryDossierCache, MemoryAccountStore), InMemoryDetectionModeStore and a pending-sign-in fake:
+    everyPathTellsTheSeamExactlyOnceAndNamesItself - each of the three paths on a fresh seeded device: the seam's
+      calls equal listOf(path) (list equality), and the scope's every store is checked, including what it must KEEP
+      (sign-out keeps the pending sign-in; a server-ended session keeps the record, the tag, the sync and the pending
+      sign-in). Asserts the three scopes cover SessionEndPath.entries.
+    aStoreNobodyEndsTellsTheSeamNothing - the zero side (R196).
+    aSeamThatThrowsStillLeavesEachScopeWhollyClearedAndTheFailureReachesTheCaller - each path, the seam throws: the
+      SEAM's exception (by message) reaches the caller, the seam was told once, and every store of the scope is
+      cleared as on the green path.
+    theSeamIsToldFirstWhileTheSessionIsStillThere - each path: tokens are still present when the seam runs.
+    aClearThatThrowsHasAlreadyToldTheSeam.
+  RED FIRST: red.log, at bd17d00b with only the test file added: BUILD FAILED in 1m 39s, RED_EXIT=1, 39 compiler errors,
+    e.g. "SessionEndingStoreTest.kt:74:9 Unresolved reference 'SessionEndingStore'" and "Unresolved reference
+    'SessionEndSeam'". This RED is a missing name only, so after the move two MUTANTS of the moved wrapper were run
+    (mutants.sh; each verified landed by grep before its run, restored by copy and `cmp` identical after):
+      A, the finally dropped (try count 0, finally count 0): 5 tests, 1 failed -
+        aSeamThatThrowsStillLeavesEachScopeWhollyCleared...: "R295: tokens expected null, but was:<TokenPair(...)>"
+      B, the seam told twice (sessionEnded(path) count 2): 5 tests, 2 failed -
+        everyPathTellsTheSeamExactlyOnce...: "SIGNED_OUT: ... expected:<[SIGNED_OUT]> but was:<[SIGNED_OUT,
+        SIGNED_OUT]>", and aClearThatThrowsHasAlreadyToldTheSeam.
+    Green: run 1 and the gate, 5/5 on the JVM; run 44929307413, 5/5 on the iOS simulator (iosSimulatorArm64Test).
+THE iOS COMPOSITION TEST (iosTest ios/IosLocalStoreIosTest.kt, EDITED - see DEVIATIONS 1): the store is built with
+  sessionEndSeam = iosSessionEndSeam(removePendingRequests = { pendingRemovals += 1 }), i.e. the production seam
+  function over a counting action. A control asserts 0 removals after seeding; each of its three tests asserts exactly
+  1 after its scope. 3/3 on the simulator in run 44929307413.
+WHAT I2 MUST CHECK (the real call, on the simulator, labelled "iOS simulator"): with the app signed in, at least one
+  PENDING request exists (UNUserNotificationCenter getPendingNotificationRequestsWithCompletionHandler: count >= 1 -
+  the reminder move 4 schedules, or one the walkthrough schedules); the person signs out (and separately: deletion; a
+  server-ended session); then the same query returns 0 pending requests. removeAllPendingNotificationRequests returns
+  at once and completes asynchronously (Apple's documented behaviour, NOT measured here), so "none after" is a POLL
+  with a bound, not one immediate read - I2's poll is the measurement. A delivered
+  notification, if any was on screen, is still in getDeliveredNotifications afterwards (delivered ones are left).
+  Not run here: there is no iOS host composition yet that signs out (the shell arrives with move 5).
+
+================================================================================
+R1282 - M1's Q2 DECIDED: ONE CONSTRUCTION PER PLATFORM
+================================================================================
+The commonMain wrapper is NOT the site: commonMain only DECLARES SessionEndingStore. It cannot build the store, because
+the stores beneath are each platform's own (Keystore/SharedPreferences; Keychain/UserDefaults). Each platform builds it
+exactly once:
+    Android  account/DeviceLocalStores.kt   deviceLocalStore(context)   over processSessionEndSeam   (unchanged)
+    iOS      ios/IosLocalStores.kt          iosDeviceLocalStore(...)    over iosSessionEndSeam       (new)
+android/app/src/test/kotlin/ch/monreleve/app/fences/SessionEndSeamFenceTest.kt now has two root sets. Android's set
+(app main, app debug, shared commonMain, shared androidMain) is unchanged, and its three tests keep their names and
+messages. iOS's set is shared commonMain + shared iosMain, pinned on IosLocalStores.kt (R460). Three tests were added:
+theFenceFoundEveryTreeTheIosAppRuns, onIosTheDeviceStoreIsBuiltOnlyInsideItsOneConstruction and
+onIosTheSeamStoreIsBuiltOnlyInsideItsOneConstruction. commonMain is in BOTH sets, so a construction there fails both.
+The KDoc's sentence "iosMain is not scanned" is replaced by the decision and its reason. :app's test task already
+declares ../shared/src (every source set) as an input, so an iosMain edit re-runs it.
+PLANT (R180), against the committed 55c1e9f7 (dirty=0 before), under the heavy lock (plant.log). Three files, each
+holding one `"DeviceLocalStore("` line and one `"SessionEndingStore("` line, VERIFIED LANDED (grep -c = 1 and 1 in
+each; git status listed the three untracked files):
+    app/src/main/kotlin/ch/monreleve/app/auth/R1282PlantApp.kt
+    shared/src/commonMain/kotlin/ch/monreleve/app/auth/R1282PlantCommon.kt
+    shared/src/iosMain/kotlin/ch/monreleve/app/ios/R1282PlantIos.kt
+  `:app:testDebugUnitTest --tests SessionEndSeamFenceTest` (same invocation as R1283's): 6 tests, 4 failed - exactly
+  the four construction tests, each naming its plants:
+    theDeviceStoreIsBuiltOnlyInsideTheOneConstruction  expected:<[DeviceLocalStores.kt]> but
+                                     was:<[DeviceLocalStores.kt, R1282PlantApp.kt, R1282PlantCommon.kt]>
+    theSeamStoreIsBuiltOnlyInsideTheOneConstruction    the same three files
+    onIosTheDeviceStoreIsBuiltOnlyInsideItsOneConstruction  expected:<[IosLocalStores.kt]> but
+                                     was:<[R1282PlantCommon.kt, IosLocalStores.kt, R1282PlantIos.kt]>
+    onIosTheSeamStoreIsBuiltOnlyInsideItsOneConstruction    the same three files
+  The commonMain plant failed BOTH platforms. The two root tests passed.
+  Restored: the plant files removed (mine), dirty=0. The gate then ran on that clean tree with SessionEndSeamFenceTest
+  6/0.
+
+================================================================================
+R1283 - THE FENCE
+================================================================================
+android/shared/src/androidUnitTest/kotlin/ch/monreleve/app/shared/MovedTwinsFenceTest.kt:
+  - `moved` gained "ch/monreleve/app/auth/SessionEndSeam.kt" and "ch/monreleve/app/auth/SessionEnds.kt" (asserted
+    present in commonMain). The guarded names are still DERIVED from the moved files' own top-level non-private
+    declarations (R246, iOS Ruling 7 Q3).
+  - This move brings two declaration shapes, `fun interface` and `enum class`. theExtractorMatchesDeclarationsAndNothing-
+    Else gained `fun interface FunInterface {` and `enum class Enumerated {`, which must yield their own names.
+    theRootsAndTheSubjectAreTheRealOnes now also requires SessionEndSeam, SessionEndPath, SessionEndingStore,
+    processSessionEnds and heldDays in the derived set. Both green in run 1 and the gate.
+  - Message prefix now "R1242/R1273/R1283"; the KDoc names this move and the :app remainder's own file name.
+PLANT (R180), same invocation as R1282's, verified landed (grep -c = 1 and 1):
+    app/src/main/kotlin/ch/monreleve/app/r1283plant/SessionEnds.kt (package ch.monreleve.app.r1283plant - another
+    package, so the :app compilation cannot conflict) declaring `internal fun heldDays(...)` and
+    `internal enum class SessionEndPath { SIGNED_OUT }`.
+  `:shared:testDebugUnitTest --tests MovedTwinsFenceTest`: 5 tests, 1 failed - noCopyOfAMovedFileIsInApp:
+    "R1242/R1273/R1283: :app declares a name (or holds a file name) of a file moved to :shared commonMain - a second
+     home for it. ... r1283plant/SessionEnds.kt: a file named SessionEnds.kt | ...: declares heldDays | ...: declares
+     SessionEndPath"
+  The file name, the top-level fun and the enum class were each caught. PLANT_STEP_EXIT=1 (the five expected failures
+  across both classes, nothing else failed). Restored: dirty=0 (AFTER RESTORE line in plant.log).
+
+================================================================================
+R1284 - THE PINS STAY
+================================================================================
+BEFORE = the base bd17d00b. Its android/ tree equals M2's gated 6c9286f3 (`git diff bd17d00b 6c9286f3 -- android/` is
+empty), so the base counts are M2's own gate XML (C:/wt/queue-evidence/m2-me/gate-xml-*). AFTER = this gate's XML.
+    class                                   before        after
+    auth.SessionEndSeamTest                  10            10   unedited
+    auth.ForcedSignOutTest                   27            27   unedited
+    account.ErasureCensusTest                 3             3   unedited
+    auth.SignOutRefreshTest                   7             7   unedited (it uses the seam names too)
+    fences.SessionEndSeamFenceTest            3             6   EDITED as R1282 orders (+3 iOS tests)
+    shared.MovedTwinsFenceTest                5             5   EDITED as R1283 orders
+    auth.SessionEndingStoreTest (new)         -             5
+    all failures                              0             0
+A per-class diff of the two gates' XML (every class and its tests= count) differs ONLY in SessionEndSeamFenceTest
+(3 -> 6) and the new SessionEndingStoreTest. Every other :app and :shared class kept its count. :app 1573 -> 1576,
+:shared JVM 290 -> 295.
+No :app pinning test was edited. The two fences were edited because R1282 and R1283 order it.
+
+================================================================================
+R1285 - ANDROID UNCHANGED, AND iOS
+================================================================================
+- Full :app:gate on 55c1e9f7: BUILD SUCCESSFUL in 9m 47s, GATE_EXIT=0, test floor 1576 >= the base's 1573.
+- NO BASELINE MOVED: `git diff --name-only bd17d00b 55c1e9f7` lists 10 paths, 0 matching snapshot|png|baseline.
+  verifyPaparazziDebug executed in the gate and passed.
+- Behaviour: the Android code that runs is the same code. The wrapper, the contract and SessionEnds moved with
+  `internal` removed. deviceSessionEndSeam and processSessionEndSeam are unchanged. DeviceLocalStores.kt is untouched.
+  The Android pins above pass unedited.
+- fastCheck: run 1 (working tree after the move) FAILED on one thing, :shared:ktlintIosTestSourceSetCheck:
+  "IosLocalStoreIosTest.kt:66:5 Declarations and declarations with comments should have an empty space between".
+  In the same --continue run every test passed: :shared 295/0 and the :app fences/auth/account/parametres classes,
+  223/0. One blank line was added. :shared:ktlintCheck then ran green (ktlint2.log, BUILD SUCCESSFUL, KTLINT_EXIT=0).
+  fastCheck was NOT re-run whole after that one-line fix. The gate's own log lists fastCheck's tasks: :shared:detekt
+  executed; :shared:compileCommonMainKotlinMetadata, :shared:ktlintCheck and every :shared ktlint*SourceSetCheck
+  (iosTest included) UP-TO-DATE on the sources ktlint2 had passed; :app:detekt and :app:ktlintCheck UP-TO-DATE from
+  run 1, whose :app sources did not change afterwards.
+- iOS (R573). Expected result written BEFORE dispatch (ios-expected.txt): ios-shared success with 427 tests = 422 +
+  SessionEndingStoreTest's 5, IosLocalStoreIosTest staying at 3; ios-app success.
+  ios-shared.yml: run 44929307413, `--ref m3-seam`, workflow_dispatch, headSha 55c1e9f7231ed8b11fb1bd2da45fcf51cba0b99d,
+    conclusion SUCCESS. Its artifact, downloaded into its own new directory: 80 JUnit XML files, tests=427 failures=0
+    errors=0. SessionEndingStoreTest 5/0 and IosLocalStoreIosTest 3/0 under build/test-results/iosSimulatorArm64Test.
+    Job 17:18:30Z - 17:35:29Z (about 17 macOS minutes).
+  ios-app.yml: run 44929318806, `--ref m3-seam`, workflow_dispatch, headSha 55c1e9f7, conclusion SUCCESS (about 21
+    macOS minutes). Both results match what was written before dispatch.
+  R573 holds for the code tip. It does NOT cover the merge result: main moved (Q4).
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- Comment pointers in :app still say the seam's body is in "auth/SessionEndSeam.kt": detection/SamplingWorker.kt l.42,
+  push/PushRuntime.kt l.191 and reminder/FallbackReminderRuntime.kt l.50. The CONTRACT is still at that path (now in
+  :shared). The body they mean is now in auth/DeviceSessionEndSeam.kt. Left as they are, to keep :app's diff to the
+  move. Also comments only: SessionEndSeamTest l.31 and ErasureCensusTest l.56.
+- processSessionEnds is now a commonMain global. Nothing on iOS reads or records it yet. The iOS session's onEnded
+  wiring belongs to the shell move (move 5), which should call onServerEndedSession(iosDeviceLocalStore(...),
+  processSessionEnds) as SessionHolder does on Android.
+- ObjC export: the moved public declarations (SessionEndSeam as a protocol, SessionEndPath, SessionEndingStore,
+  SessionEnds, the SessionEndsKt functions) now appear in the iOS framework header. Nothing in ios/ (Swift) uses them.
+- The iOS seam removes ALL of this app's pending requests, including any the I1 probe schedules. Today the probe's
+  request is the only other kind; once move 4 lands, the reminder is the only kind.
+- removeAllPendingNotificationRequests returns before the removal completes (Apple's documentation; not measured
+  here - IosSessionEndSeam.kt's header states it the same way, unlabelled, and is left as committed). A sign-out
+  followed at once by a re-schedule (move 4's re-plan on the next foreground) could in principle race it.
+  That is move 4's to order, and I2's poll will show it if it happens.
+- docs/play-release.md l.111 cites `auth/SessionEndSeam.kt` for "every session ending invalidates the token". The
+  contract is still at that path (now :shared); the token's line is in :app auth/DeviceSessionEndSeam.kt. Left.
+- android/scripts walk.mjs (I0's census) indexes :app main only. Its next run will see the seam's pure part gone from
+  :app.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. android/shared/src/iosTest/kotlin/ch/monreleve/app/ios/IosLocalStoreIosTest.kt was EDITED. It is an iosTest, not one
+   of the :app pins R1284 names, but it is a pin of the iOS composition, so the edit is stated. Unedited it could not
+   stand. It declared `val store: DeviceLocalStore = iosDeviceLocalStore(...)`, a type mismatch once the function
+   returns the wrapper. And its three clears would have invoked the production seam, i.e. UNUserNotificationCenter, in
+   the bundle-less test process (the run-ending case AppHostProbeIosTest's header records). The edit changes the
+   declared type to SessionEndingStore, passes iosSessionEndSeam over a counting action, adds a 0-removals control in
+   seed() and a 1-removal assertion per test. Every existing assertion is unchanged.
+2. The two fences were edited (SessionEndSeamFenceTest by R1282, MovedTwinsFenceTest by R1283). Both rulings order
+   these edits, so this is not a deviation from R1284; it is stated because both files are in the prompt's pin list.
+3. `gradlew --stop` was NOT run. It would stop other sessions' daemons, and A16 and the orchestrator held the heavy
+   lock between my runs. Every Gradle run here used --no-daemon (M2's deviation 4), and after the last run no java.exe
+   was running at all (CLEANUP).
+4. The RED is a compile RED (unresolved references), which is all a test written before a move can produce. Behaviour
+   failure was shown afterwards by the two mutants (R1281).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. deviceSessionEndSeam (Android's seam body: sampler, push, fallback, each attachment's runCatching) compiles in
+    commonMain but stayed in :app with processSessionEndSeam. iOS's body is a separate one-action function in iosMain.
+    Accept the split as drawn, or should deviceSessionEndSeam move too? It would then be guarded by MovedTwinsFenceTest
+    and could be reused by a platform with more than one attachment.
+Q2. R1282 is decided as ONE CONSTRUCTION PER PLATFORM, not a commonMain site (commonMain cannot build the platform
+    stores). Accept, and record M1's Q2 as closed by this?
+Q3. The iOS seam removes ALL pending requests of the app, not a named set of identifiers. Move 4 owns the reminder's
+    identifiers. Should move 4 narrow the removal to its own identifiers, or is "all pending" the right sign-out rule
+    (nothing of the previous person stays scheduled, whatever scheduled it)?
+Q4. origin/main moved from bd17d00b to e69a4f08 during this session (A16 forward-merged; android/ changes in
+    shared/commonMain fr/ReleveCopy.kt, ui/screens/releve/ReleveSections.kt and commonTest fr/
+    AnnexDeviceTimeWordsTest.kt - none of my paths). `git merge-tree --write-tree origin/main m3-seam` is CLEAN. The
+    branch was not rebased: the launch message named bd17d00b as the base. R573 and R391 hold for 55c1e9f7, not for the
+    merge result, which needs the orchestrator's re-gate and iOS run, as in iOS Ruling 7. Expected ios-shared count
+    for the merge result: 427 + the @Test count of A16's AnnexDeviceTimeWordsTest on main (2, by grep) = 429.
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code tip 55c1e9f7231ed8b11fb1bd2da45fcf51cba0b99d: pushed as the new branch m3-seam (`* [new branch] m3-seam ->
+  m3-seam`). `git ls-remote origin m3-seam` then read 55c1e9f7. Both iOS runs were dispatched on that SHA (headSha
+  checked with gh run list / gh run view).
+- ios-app run 44929318806: workflow_dispatch, headSha 55c1e9f7, conclusion SUCCESS (job 17:18:39Z - 17:40:07Z, about
+  21 macOS minutes). Its steps all succeeded, among them "Link the Shared framework (simulator and device)", "Build
+  the app (xcodebuild, ad-hoc signed)", "Install", "Normal launches (screenshots; no probe file)" and "Probe launch
+  (results read back with simctl)".
+- This report: one commit on 55c1e9f7 touching only REPORT-IOS-MOVE-SEAM.txt. Its ls-remote tip is in the handback.
+- NOT MERGED. The branch, its remote ref and C:/wt/m3-seam stay for the orchestrator.
+- origin/main at the code push and re-fetched at 17:42Z before the report push: e69a4f08 (moved from the base, Q4).
+- R128x re-scan at 17:42Z (after main moved): only C:/wt/web-orch/relay/IOS-MOVE-SEAM.txt, relay/RULINGS-2026-11-16.txt
+  and this report.
+
+================================================================================
+CLEANUP
+================================================================================
+- Heavy lock: holders m3-seam-red, m3-seam-run1, m3-seam-mut and m3-seam-gate were each RELEASED (their lock logs'
+  RELEASED lines).
+- Gradle: every run used --no-daemon; `gradlew --stop` deliberately not run (DEVIATIONS 3). After the last run,
+  Win32_Process listed NO java.exe at all (count 0), mine or anyone else's.
+- Plants and mutants: all removed or restored (dirty=0 before the gate; both mutants cmp-identical after restore).
+- No emulator, no server, no database used.
+- C:/wt/m3-seam/.session-lock.json: removed last, after the final push.
