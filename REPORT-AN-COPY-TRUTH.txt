@@ -1,0 +1,268 @@
+REPORT-AN-COPY-TRUTH - Mon Releve
+THE PUBLIC WORDS SAY NO MORE THAN THE APP DOES (ORCH-ANDROID step A13; A6's F1 and F5a-F5c)
+Session: AN-COPY-TRUTH, 2026-11-21. Worktree C:/wt/an-copy-truth, branch an-copy-truth, cut from
+origin/release/android-v1 = 93e39a41 (iOS Ruling 3, Android Ruling 19). Rulings R1220-R1223 used; R1224-R1229 unused.
+Pure ASCII by transport (R168): every French string below is TRANSLITERATED; the accented originals live in the files
+named by key, and the operator's approval list is in QUESTIONS Q1 (pointing there).
+
+====================================================================
+SUMMARY
+====================================================================
+Behaviour unchanged; only what four surfaces claim moved, each held by a test that went RED first.
+- R1220 (F5a) DisclosureCopy.NEVER_SHARED no longer opens "Rien n'est transmis": the position is never transmitted, to
+  anybody; only the day the person validates is sent, with what detection had proposed (en Suisse / a domicile).
+- R1221 (F1) SignInCopy.sessionClosed(1) and (n): the tail now advises the condition the wait holds under - the same
+  address, "avant d'y connecter un autre compte". The zero sentence is unchanged.
+- R1222 (F5b) /confidentialite: the never-list's automatic-mode statement (now keyed NEVER_STATEMENTS.automaticMode)
+  ends with what IS sent and stored; DISCLOSED_RECORDS.provenance names "la detection automatique".
+- R1223 (F5c) docs/play-store-listing.md: "exactement le meme releve" -> the same releve, the same figures, only the
+  origin shown for each day differs.
+- Commits (code tip 6a83392c): 0a4a45d8 (R1220/R1221 + 4 Android baselines), c843aece (R1223), 87b2113d (R1222),
+  6a83392c (2 web baselines), pushed; the report commit goes on top (its push is confirmed in the handback, not
+  here). NOT MERGED - pending the orchestrator's merge.
+- android/shared changed -> R573 MET: ios-shared run 44856944136, conclusion success, on 6a83392c.
+
+====================================================================
+STATUS (R391)
+====================================================================
+COMPLETE on the code tip 6a83392c (this session, emulator SHUT DOWN, heavy lock held):
+  ./gradlew :app:gate  ->  "BUILD SUCCESSFUL in 6m 7s", GATE_EXIT=0, "test floor OK: 1564 unit tests observed"
+  (A6's floor was 1562; +2 = DisclosureCopyTest and StoreListingCopyTest's new tests; ForcedSignOutTest gained
+  assertions, not tests).
+  pnpm gate:changed (FRONTALIER_PORT=3976) -> "GATE PASSED for the paths changed.", exit 0. Selection printed:
+    web/lib/fr/confidentialite.ts -> lib/fr/** ; -> the database layer (anything test:db imports)
+    web/tests/visual/baselines/page-confidentialite-{desktop,mobile}.png -> a baseline (R144)
+    suites: typecheck, lint, test, build, test:visual, test:e2e, test:db, test:late
+    test 4277 passed | test:visual 176 passed | test:e2e 402 passed | test:db 889 passed (28 skipped) | test:late 10
+  pnpm gate:clone (FRONTALIER_PORT=3976) -> "GATE:CLONE PASSED", exit 0, commit 6a83392cb70c29502fd958193243925aa1454e09,
+    "this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (4277 of 4277
+    tests passed, 252 files), build, size (24 routes measured), db:deploy, test:db (889 of 917 tests passed, 28
+    skipped, 64 files), test:container:write (10 checks passed) from a clean checkout"; tree clean; no stale clones.
+    Named as not run in a clone (R133): export-pdf, web-round-trip, verification-qr (no live server).
+  fastCheck per increment: BUILD SUCCESSFUL (after R1220/R1221/R1223's code, before the commits).
+  The report commit changes REPORT-AN-COPY-TRUTH.txt only (no gate owed by it, R182).
+
+====================================================================
+R1220 - THE DISCLOSURE (A6 F5a)  android/shared/.../fr/DisclosureCopy.kt NEVER_SHARED
+====================================================================
+WHY THE WORDS ARE WHAT THEY ARE (checked against the wire, EntriesMapping.toEntryWrite / AujourdhuiController):
+- "validez", not "confirmez": a CONFIRMED and a CORRECTED proposal are both sent (DETECTED_CONFIRMED/_CORRECTED).
+- The sent day's kind is NOT enumerated: a corrected day may be a mission or an absence. What is enumerated is "ce que
+  la detection vous avait propose" = detectedKind, which recordDetected always sets to the CH/HOME side.
+- "Seule ..." is bounded by the screen it sits on (what detection produces), the listing's own "seulement la journee
+  que vous confirmez" construction that A6 marked AGREES.
+- The employer/administration clause (A6: "true") is kept, now about the position, which is what it was true of.
+TEST: DisclosureCopyTest.theSharingSentenceSaysTheValidatedDayIsSentAndThePositionNever - RED first
+  (DisclosureCopyTest.kt:41, the validated-day assertion), GREEN after. Surface: DisclosureScreen.kt renders
+  DisclosureCopy.NEVER_SHARED (CopyReachabilityTest, 4/4 green); baseline disclosure.png moved (BASELINES).
+EMULATOR API 36 (debug build of 6a83392c, :3976): onboarding step 7 -> "Automatiquement" -> the disclosure; the UI
+  dump carries the new sentence once and "Rien n" zero times (emu-r1220-disclosure-dump.txt); screenshot
+  emu-r1220-disclosure.png (the whole sentence on screen at 100 %). "Rester en saisie manuelle" returned to step 7.
+
+====================================================================
+R1221 - THE FORCED-SIGN-OUT NOTICE (A6 F1)  android/shared/.../fr/SignInCopy.kt sessionClosed(heldDays)
+====================================================================
+WHAT ERASES A SET-ASIDE DAY, read from the code before writing: only clearForSignOut / clearForDeletion
+  (DeviceLocalStore -> MonReleveDatabase.clearAllTables), i.e. a person's sign-out or deletion on this phone, ANY
+  account's. A server-ended session (clearForSessionEnd, R521) keeps the rows; another account's SIGN-IN clears
+  nothing. Once another account is connected, the way back to the first is that account's sign-out (A6 saw it).
+  So the notice advises the SUFFICIENT condition ("avant d'y connecter un autre compte") and claims nothing more:
+  no "it will wait", no "it will be erased". Not alarming: it says what to do, not what is lost.
+- Tail only: "journee(s) enregistree(s) sur ce telephone" and "envoyee(s)" stay ReleveCopy.pendingNotSynced's words
+  (R561). heldDays = 0 unchanged.
+TEST: ForcedSignOutTest "R528 / R225 - ONE day waiting" and "R520 / R225 / R528 - TWO days waiting" now also assert
+  "la meme adresse" and "avant d'y connecter un autre compte" on the sentence the real forced sign-out's count
+  renders (R225) - RED first (ForcedSignOutTest.kt:641 and :687), GREEN after (27/27).
+EMULATOR API 36: signed in as camille (seed), Domicile recorded OFFLINE (airplane on) -> "1 journee en attente
+  d'envoi"; Camille's DeviceSessions revoked in MY scratch DB (revokedAt=now(), REVOKED_ALL, 2 rows); airplane off
+  -> within ~4 s the app ended the session itself: sign-in screen with the new 1-day notice (dump: the clause present
+  once; emu-r1221-forced-signout-1day.png). Then the ADVICE WAS FOLLOWED: same address signed in again -> Aujourd'hui
+  "Domicile / Enregistre", and the scratch DB holds 2026-11-21 HOME MANUAL for camille (emu-r1221-same-address-sent.png).
+  The other-account branch (B's sign-out erasing it) is A6's emulator observation; not re-run.
+
+====================================================================
+R1222 - /confidentialite (A6 F5b)  web/lib/fr/confidentialite.ts
+====================================================================
+- The never[1] sentence moved, unchanged, into a keyed object NEVER_STATEMENTS.automaticMode (R206; read by key, R171)
+  and `never` renders it by key. Then two sentences were appended (future tense kept, R138 - appExists is not this
+  task's): of all the checks, the app will send only the day you will have validated, with what detection proposed
+  (en Suisse ou a domicile), recorded with its origin "comme indique plus haut".
+- DERIVE, NOT TRANSCRIBE (R181): the stored record is NOT described again; the sentence points at it ("plus haut"),
+  and DISCLOSED_RECORDS.provenance (the record it points at, which personal-data.ts maps Entry.provenance,
+  detectedKind and detectedAt to) now says the proposal is "de la detection automatique".
+- No new no-break space (no colon or semicolon added), so copy-codepoints' census is unchanged.
+TESTS (tests/unit/pages/confidentialite.test.tsx, "R1222 (A6 F5b) ..."): the statement is rendered on the page BY KEY;
+  it says "jamais votre position" AND "la journee que vous aurez validee" / "la detection vous avait propose" /
+  "sera enregistree avec son origine"; the record it points at says "detection automatique" and RENDERS ABOVE it
+  ("plus haut" is a layout claim, so the layout is asserted). RED: first on the missing key (shape), then - after
+  the key move with the old text - 2 failed ON CONTENT (red-web-r1222.txt), GREEN after; tests/unit/fr and
+  tests/unit/content (449) green; privacy-claims CLAIM (R325) still holds ("ne conservera ni", "jamais votre
+  position" unchanged).
+
+====================================================================
+R1223 - THE STORE LISTING (A6 F5c)  docs/play-store-listing.md listing:detection
+====================================================================
+"La saisie manuelle produit exactement le meme releve." -> "La saisie manuelle produit le meme releve, avec les memes
+chiffres : seule l'origine indiquee pour chaque journee differe." - what A6's section 3 proved (byte-identical once
+the provenance strings are masked). Still inside the detection paragraph, so the manual-only listing is unaffected.
+TEST: StoreListingCopyTest.theModeParityClaimNamesTheOriginAsTheOneDifference - concepts, never the sentence (R181):
+the parity sentence names "origine", keeps "meme releve", and no "exactement" survives. RED first
+(StoreListingCopyTest.kt:108), GREEN after (8/8); length/forbidden-word/apostrophe/% guards green.
+
+====================================================================
+BASELINES (R207 expectation stated BEFORE regeneration: C:/wt/queue-evidence/an-copy-truth/baselines-expected.txt)
+====================================================================
+ANDROID (Paparazzi, verify first on the two classes: 4 failed / 15):
+  moved  ..._DisclosureScreenScreenshotTest_disclosure.png                 NEVER_SHARED (R1220)
+  moved  ..._SignInScreensScreenshotTest_connexionSessionClosedOneDay.png  sessionClosed(1) (R1221)
+  moved  ..._SignInScreensScreenshotTest_connexionSessionClosedTwoDays.png sessionClosed(2) (R1221)
+  moved  ..._SignInScreensScreenshotTest_connexionSessionClosedLarge.png   sessionClosed(2) at 200 % (R1221)
+  EXPECTED BUT DID NOT MOVE: disclosureLarge.png - NEVER_SHARED sits BELOW its 200 % fold (cropped: the frame ends
+    in ON_DEVICE). A finding about the baseline, not a pass: no Paparazzi image shows the sentence at 200 %.
+  NOT EXPECTED, NOT COMMITTED: the record run also rewrote codeWrong.png (68 178 -> 64 762 bytes) although verify
+    had PASSED it at maxPercentDifference 0.0; both images viewed, identical. A re-encoding, restored to HEAD.
+  connexionSessionClosedNoDays: unchanged, as expected.
+  Cropped and read (R135): each new sentence whole; the 200 % sign-in frame clips the prompt and the button label
+    exactly as before (pre-existing, see N3).
+WEB (container, `pnpm test:visual` on 87b2113d: 2 failed - desktop/mobile confidentialite - 174 passed = the
+  expectation; then `pnpm test:visual:update -- --grep confidentialite`, photographed 87b2113d, clean tree):
+  re-generated  web/tests/visual/baselines/page-confidentialite-desktop.png  (first differing row 2287; +78 px)
+  re-generated  web/tests/visual/baselines/page-confidentialite-mobile.png   (first differing row 3371; +182 px)
+  Cropped and read: the provenance bullet and the automatic-mode bullet render whole, in order; nothing else moved.
+  gate:changed's full test:visual afterwards: 176 passed.
+
+====================================================================
+R573
+====================================================================
+android/shared changed (DisclosureCopy.kt, SignInCopy.kt). Expected result written BEFORE dispatch
+(queue-evidence/.../r573-expected.txt): success; no iosTest asserts either text, and SimulationForecastScreensIosTest
+step 1 reads the disclosure's other keys. ONE dispatch: `gh workflow run ios-shared.yml --ref an-copy-truth`
+-> run 44856944136 on headSha 6a83392cb70c29502fd958193243925aa1454e09.
+RESULT: conclusion SUCCESS (job ios-shared-tests success, 02:37:55Z -> 02:52:22Z; run_duration_ms 872 000, about
+14.5 min; billable macOS 0 ms - the repository is public). The log shows
+SimulationForecastScreensIosTest.step1TheDisclosureShowsItsTwoEqualChoicesAndEachAnswers run on iosSimulatorArm64.
+Matches the expectation written before the dispatch. One dispatch only.
+
+====================================================================
+WALKTHROUGH (R176) - emulator API 36 (MonReleve_API36), debug build of 6a83392c (-PfrontalierPort=3976,
+sha256 81b6de33...07c4), my dev server on :3976, scratch DB monreleve_an_copy_truth
+====================================================================
+welcome -> Commencer -> sign-in (address typed, code read from my dev log and typed one key per digit, NEVER printed,
+no capture while digits were on screen - R574) -> onboarding steps 1-7 (name, Berne, 100 %, simplifiee, journees
+entieres, toute l'annee) -> step 7 "Automatiquement" -> THE DISCLOSURE (R1220 shot) -> "Rester en saisie manuelle"
+-> Manuellement -> step 8 "Pas maintenant" -> "Tout est pret" -> Aujourd'hui "Bonjour Camille" -> airplane ON ->
+Domicile "Enregistre sur le telephone, en attente d'envoi" -> server-side revoke -> airplane OFF -> THE NOTICE
+(R1221 shot) -> same address, code -> Aujourd'hui "Domicile / Enregistre" -> the day on the server.
+Each screen agreed with the others: the onboarding mode step still says the two modes produce "exactement le meme
+releve" (N1 - a second site, NOT touched). "System UI isn't responding" appeared at first launch (Wait tapped; known).
+/confidentialite ON pnpm dev (R176/R177), :3976 after /api/health answered service "monreleve": GET /confidentialite
+200 (171 558 bytes); the served HTML carries the new provenance wording (offset 9 783), the automatic-mode statement's
+new sentences after it (13 608) and "comme indique plus haut" after those (13 795) - the order "plus haut" claims;
+the old provenance wording is absent. Stylesheets: layout.css 200, 8 609 bytes, 26 "--colour-" token declarations
+(styles present, R177); the page's own page.css 200. Every link out of the page (12 routes: /, /a-propos, /alertes,
+/application, /calculateur-lamal-cmu, /calculateur-teletravail-frontalier, /cgu, /guides, /mentions-legales,
+/releve-annuel, /sources, /tarifs) answered 200. Server stopped by PID after; port read free.
+
+====================================================================
+NOTICED BUT NOT TOUCHING
+====================================================================
+N1 THE SAME OVERCLAIM AS F5c, IN THREE MORE PLACES (R267: named, not fixed - the prompt names four statements):
+   android/shared/.../fr/OnboardingCopy.kt MODE_INFO ("Les deux produisent exactement le meme releve.", seen on the
+   emulator at step 7); web/lib/fr/application.ts lines ~120-122 ("Les deux modes produisent / produiront exactement
+   le meme document."); docs/play-release.md section 3's declaration text ("...which produces the same statement",
+   English, weaker). Q3.
+N2 A5's PLAY ASSETS FILM THE OLD DISCLOSURE: C:/wt/play-assets/04-disclosure-before-the-system-prompt-emulator-api36.png
+   and demo-background-location-emulator-api36-9c194aeb.mp4 (the disclosure "held about 5 s") were taken from
+   9c194aeb, before R1220. Not re-recorded (not this task's). Q2.
+N3 200 % sign-in frame: the prompt is cut and the button reads "Recevoir mon lien de" (clipped) - identical on the
+   HEAD baseline; the known large-font items (A1, N6, F6).
+N4 DisclosureCopy's 200 % baseline cannot see NEVER_SHARED or the buttons (below the fold) - a scroll-captured
+   variant would; not added.
+N5 /confidentialite's provenance record does not describe detectedAt (the phone's time at the validating tap), which
+   personal-data.ts maps to it and the Data safety row lists. Not touched; Q4.
+N6 The disclosure's 9 h 30 breaks as "16 h / 30" at 100 % (both baselines) - pre-existing typography.
+N7 STILL RUNNING, so the memory is accounted for: Gradle daemon PID 4564 (started 01:39, before this session's first
+   build; it served my builds; not known to be mine, so NOT stopped) and my Kotlin compile daemon PID 27264 (started
+   01:45 by my first build; my attempt to end it was refused by the permission classifier and not retried).
+N8 docs/release-audit-android.md on this branch still reads F1 and F5a-F5c as open (section 5's "CONTRADICTS" /
+   "TENSION" rows, section 9, B11). It is A6's document, so it is named here, not edited; this report is the record
+   that they are addressed (pending approval of Q1's strings).
+N9 Other sessions' worktrees and locks under C:/wt untouched (R334/R392); i1-host's lock seen, not touched.
+
+====================================================================
+DEVIATIONS
+====================================================================
+D1 gate:changed reads `git diff HEAD`; my increments were already committed, so to make it select from MY changes I
+   ran `git reset --soft 93e39a41` in my own worktree (tree unchanged, everything staged), ran the gate, then
+   `git reset --soft 6a83392c` (status clean, HEAD 6a83392c, diff empty) - the branch was never pushed in between.
+   The selection is pasted in STATUS rather than in a commit body (R132's paste was not possible after the fact).
+D2 Scratch-DB writes (mine, local): monreleve_an_copy_truth created by `migrate deploy`, seeded; Camille's onboarding
+   saved through the app; 2 DeviceSession rows revoked by SQL (REVOKED_ALL) to simulate a server-ended session; one
+   entry 2026-11-21 HOME. web/.env (gitignored) names only that database and carries a fresh AUTH_SECRET.
+D3 The pnpm dev walkthrough of /confidentialite was driven by HTTP (served HTML, stylesheets, links), not in a
+   browser window; the rendered pixels are the two baselines' crops (container) and the jsdom render.
+D4 Emulator state: shut down (`emu kill`, Android Ruling 11) before the Gradle runs, booted detached after; my APK
+   installed with `pm clear`; airplane on/off; then my app UNINSTALLED and the orchestrator's APK
+   (C:/wt/web-orch/android/app/build/outputs/apk/debug/app-debug.apk, sha256 2e90464a...5443) installed fresh ->
+   the welcome screen, signed out; navigation_mode 2 (gestural); airplane disabled. Left BOOTED.
+D5 My dev server survived TaskStop TWICE (R179's orphan, the known pattern): stopped by PID (5388, then 18764) after
+   checking each command line named this worktree; port 3976 read free after each (netstat empty AND refused). My dev log (it held
+   sign-in mails) was deleted; never copied.
+
+====================================================================
+QUESTIONS
+====================================================================
+Q1 THE NEW STRINGS, for the operator's approval (they ship as written unless refused). Verbatim and accented in the
+   files; transliterated here (R168). old -> new, by key:
+   - DisclosureCopy.NEVER_SHARED (android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/DisclosureCopy.kt)
+       old: "Rien n'est transmis : votre position n'est jamais partagee avec votre employeur ni avec l'administration."
+       new: "Votre position n'est jamais transmise, ni a nous, ni a votre employeur, ni a l'administration. Seule la
+             journee que vous validez nous est envoyee, avec ce que la detection vous avait propose : en Suisse ou a
+             domicile."
+   - SignInCopy.sessionClosed(1) (.../fr/SignInCopy.kt)
+       old: "Votre session a ete fermee. 1 journee enregistree sur ce telephone attend d'etre envoyee : reconnectez-vous
+             avec la meme adresse pour l'envoyer."
+       new: "Votre session a ete fermee. 1 journee enregistree sur ce telephone attend d'etre envoyee : reconnectez-vous
+             avec la meme adresse, avant d'y connecter un autre compte, pour l'envoyer."
+   - SignInCopy.sessionClosed(n >= 2)
+       old: "Votre session a ete fermee. $n journees enregistrees sur ce telephone attendent d'etre envoyees :
+             reconnectez-vous avec la meme adresse pour les envoyer."
+       new: "Votre session a ete fermee. $n journees enregistrees sur ce telephone attendent d'etre envoyees :
+             reconnectez-vous avec la meme adresse, avant d'y connecter un autre compte, pour les envoyer."
+   - NEVER_STATEMENTS.automaticMode (web/lib/fr/confidentialite.ts; was CONFIDENTIALITE_COPY.never[1]) - unchanged
+       text, PLUS appended: "De tout cela, elle n'enverra que la journee que vous aurez validee, avec ce que la
+       detection vous avait propose, en Suisse ou a domicile. Cette journee sera enregistree avec son origine, comme
+       indique plus haut."
+   - DISCLOSED_RECORDS.provenance
+       old: "l'origine de chaque journee, a savoir une saisie a la main, une proposition acceptee ou une proposition
+             corrigee, ainsi que ce qui avait ete propose lorsque vous l'avez corrigee ;"
+       new: "l'origine de chaque journee, a savoir une saisie a la main, une proposition de la detection automatique
+             acceptee ou une proposition corrigee, ainsi que ce qui avait ete propose lorsque vous l'avez corrigee ;"
+   - docs/play-store-listing.md listing:detection, last sentence
+       old: "La saisie manuelle produit exactement le meme releve."
+       new: "La saisie manuelle produit le meme releve, avec les memes chiffres : seule l'origine indiquee pour chaque
+             journee differe."
+Q2 N2: screenshot 04 and the demo video show the OLD disclosure sentence, and the disclosure is what Play's reviewers
+   judge (Android Ruling 19). Retake both from this branch's merge before the submission (a small A5-style task),
+   or submit as they are?
+Q3 N1: should OnboardingCopy.MODE_INFO, web/lib/fr/application.ts and play-release.md section 3 move to the same
+   wording as R1223 (each is the same "exactement le meme" claim), in a follow-up on release/android-v1?
+Q4 N5: should /confidentialite's provenance record also name the time of the validating tap (detectedAt)? It is
+   stored and the Data safety row lists it.
+Q6 Tense in the new web sentence: "que vous aurez validee, avec ce que la detection vous avait propose" pairs a future
+   perfect with a pluperfect. "vous aura propose" would keep one tense line (R138's future). Left as written - a
+   change re-moves both web baselines and re-owes the gates; the operator's call.
+Q5 The page does not use the word "localisation approximative" for the validated day; it says what is sent ("ce que
+   la detection vous avait propose, en Suisse ou a domicile"). Enough for a reviewer comparing it with the form, or
+   should the page name the Play category?
+
+====================================================================
+PUSH PROOF
+====================================================================
+Code tip pushed: origin/an-copy-truth = 6a83392cb70c29502fd958193243925aa1454e09 (gate:clone ran on exactly it).
+R-number scan before the push (my worktree, C:/wt/web-orch, the main checkout incl. untracked): R1220-R1229 appear
+only in relay/AN-COPY-TRUTH.txt, ORCH-ANDROID.txt and RULINGS-2026-11-16.txt (the allocation) - no collision.
+Report tip: the commit carrying this file, pushed after it (its SHA is in the handback; a report cannot name its own
+commit). NOT MERGED - the orchestrator merges into release/android-v1 and forward into main.
+Evidence (not committed): C:/wt/queue-evidence/an-copy-truth/ (RED/GREEN logs, gate logs, crops, emulator shots and
+dumps, the APK, drive.mjs, crop.cjs). The lock C:/wt/an-copy-truth/.session-lock.json is removed LAST.
