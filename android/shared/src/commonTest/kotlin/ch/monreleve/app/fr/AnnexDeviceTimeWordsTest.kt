@@ -13,9 +13,16 @@ import kotlin.test.assertTrue
 // PRESENCE FIRST (R169): the row's line does carry the device time, so the absence of offline wording cannot pass
 // on a line that dropped the stamp.
 
+// The no-break spaces French typography puts between words are inserted as Char(0xA0) and Char(0x202F): the
+// JVM's regex reads an x{..} escape and Kotlin/Native's does not (R573 run 44919885375 failed on exactly that,
+// PatternSyntaxException in Lexer.readHex), and a literal no-break space in source is invisible to a reader.
+
 /** Any wording that says a day was entered without a connection; judged on the words, not on one string. */
 private val OFFLINE_CLAIM =
-    Regex("hors[\\s\\x{A0}\\x{202F}-]+(ligne|connexion)|offline|sans\\s+(r[eé]seau|connexion)", RegexOption.IGNORE_CASE)
+    Regex(
+        "hors[\\s${Char(0xA0)}${Char(0x202F)}-]+(ligne|connexion)|offline|sans\\s+(r[eé]seau|connexion)",
+        RegexOption.IGNORE_CASE,
+    )
 
 class AnnexDeviceTimeWordsTest {
     @Test
