@@ -12,6 +12,8 @@ CHANGES  This report only. No code changed, no workflow dispatched, no Gradle ta
          Evidence (scripts and their outputs, not committed): C:/wt/queue-evidence/ios-host-census/
            walk.mjs + walk-out.txt     reachability over :app main from the entry points, to a fixpoint (R1200)
            impl.mjs + impl-out.txt     implementers of every store/transport interface, all source sets (by role)
+           edges.mjs + edges-out.txt   each shell-side file's references to OTHER :app files, and JVM APIs with no
+                                       import (the check that NONE-import files really are platform-free)
            resolve.sh + shell-imports.txt, level2-imports.txt   the first import pass (superseded by walk.mjs: it
                                        missed `suspend fun` and misread extension functions as their receiver)
            cmp-src/                    CMP 1.7.3 sources unzipped from the Gradle cache (foundation-layout, ui)
@@ -52,8 +54,10 @@ SUMMARY
   needed both.
 - R1203:
   - Generate the Xcode project with XcodeGen on the runner (brew install; it is not preinstalled).
-  - Link a STATIC framework through embedAndSignAppleFrameworkForXcode. That task is also what copies the Compose
-    resources into the .app; without it every glyph lookup throws.
+  - Link a STATIC framework through embedAndSignAppleFrameworkForXcode (its own embed action is off for a static
+    framework; its dependencies still link it). CMP's resource sync hangs off that task, and it is what copies the
+    Compose resources into the .app; without it every glyph lookup throws. That the sync still runs for a static
+    framework is ARGUED, and I1 proves it.
   - Info.plist needs CADisableMinimumFrameDurationOnPhone=true, or CMP 1.7.3 errors at start.
   - Sign ad-hoc with identity "-" and an entitlements file. Signing must stay ALLOWED, or the Keychain fails with
     -34018.
@@ -92,8 +96,15 @@ HOW IT WAS DERIVED.
 - (3) BLOCKER per file: the non-ch.monreleve imports, plus BuildConfig/R by body scan. NONE means platform-free
   imports. JVM means java.time, java.net, java.io or org.json, which iOS cannot compile. ANDROID means an android.*,
   WorkManager, ActivityResult or Firebase API.
-  - Caveat: NONE describes the file's own imports, not what it calls. StartupDecider imports nothing platform-bound,
-    yet it calls MeWire (org.json); such rows say so.
+  - Caveat: NONE describes the file's own imports, not what it calls. So every NONE file's references to OTHER :app
+    files were listed (edges.mjs + edges-out.txt). Import-free JVM APIs were grepped too (.format(, javaClass,
+    synchronized(, @Volatile, ::class.java, System., Thread.): 0 hits in the shell files.
+    - Real edges: StartupDecider -> MeWire and DetectionMode (org.json); SessionEnds -> SessionEndingStore
+      (SessionEndSeam.kt, Context); FallbackReminder -> EveningConditions / EveningNotice / eveningDecision. Those
+      three exist only in :app and as iosMain twins, NOT in commonMain.
+    - False hits, each read and found to be a PARAMETER name: LoggingModeRestore (locationFullyGranted),
+      ManualOnlyOnboarding (detectionAvailable), ResolvingScreen (message), EveningTap (at), FallbackReminder
+      (pushAvailable, notificationsPermitted).
 - (4) COUNTERPART BY ROLE, not only by name (R133).
   - impl.mjs lists every class or object whose supertype list names each store or transport interface, across :app,
     commonMain, iosMain and androidMain (impl-out.txt). The regex truncated two names, read off by hand:
@@ -131,8 +142,8 @@ CallbackActivity.kt (95; ANDROID, BuildConfig)
                                           gate                                          CallbackScreen); no host       R1202 for v1)
 ShellState.kt (231; LocalContext, java.time)
                                           (i) PURE: sessionReconciled,                  none                            MISSING ON iOS;
-                                          destinationSaver (Compose Saver: runtime-                                    (i) platform-free
-                                          saveable is CMP common), startDestination,
+                                          destinationSaver (Compose Saver; see "PLAT-                                  (i) platform-free
+                                          FORM FACILITIES" below), startDestination,
                                           destinationAfterSessionEnd, rememberShellTab;
                                           (ii) rememberMainControllers: SharedPrefs
                                           stores, MonReleveDatabase.get(context),
@@ -161,9 +172,12 @@ auth/SessionHolder.kt (67; Context, BuildConfig)
                                           process (R507) over UrlConnectionTransport +  NsUrlSessionTransport,          and the base URL);
                                           Keystore + API_BASE_URL; onEnded -> the       KeychainTokenStore              pieces iOS HAS ITS OWN
                                           server-ended clear
-auth/SessionEnds.kt (72; NONE)            the process's session-end signal (R520),      none                            MISSING; platform-free
-                                          sessionClosedByServer, heldDays,
-                                          onServerEndedSession
+auth/SessionEnds.kt (72; NONE)            the process's session-end signal (R520),      none                            MISSING; imports are
+                                          sessionClosedByServer, heldDays,                                              platform-free BUT it
+                                          onServerEndedSession                                                          references Session-
+                                                                                                                        EndingStore (SessionEnd-
+                                                                                                                        Seam.kt): it moves only
+                                                                                                                        with that pure half
 auth/SessionEndSeam.kt (124; Context)     SessionEndPath / SessionEndSeam /             iosDeviceLocalStore returns a   MISSING ON iOS
                                           deviceSessionEndSeam / SessionEndingStore     BARE DeviceLocalStore: no seam  (FINDING 2)
                                           are pure; processSessionEndSeam wires
@@ -245,8 +259,13 @@ data/sync/SyncScheduler.kt (WorkManager)  requestSync / cancel                  
                                                                                         cancel)                         is PARK-IF1
 data/sync/YearDownloads.kt (android SQLException, Log, androidx.room.withTransaction, java.time)
                                           the process's year-download coordinator       EntriesDownload commonMain; no  MISSING ON iOS (R894)
-                                          (R481-R485), ShellYearDownload,               coordinator, no inTransaction
-                                          taxYearsToDownload                            for iOS
+                                          (R481-R485), ShellYearDownload,               coordinator; nothing supplies
+                                          taxYearsToDownload                            EntriesDownload's inTransaction
+                                                                                        on iOS, though the Room KMP
+                                                                                        pattern is in iosMain
+                                                                                        (IosLocalStores.kt:96-97,
+                                                                                        useWriterConnection +
+                                                                                        withTransaction IMMEDIATE)
 
 F. UPDATE GATE (A4)
 update/PlayListing.kt (Intent, Toast, BuildConfig)
@@ -301,11 +320,19 @@ ui/screens/onboarding/OnboardingStartDatePicker.kt, ui/screens/parametres/Parame
                                           screens' startDatePicker slot                 1.7.3's calendar model is       "a native iOS date
                                                                                         UNLINKED on iOS (fenced)        picker")
 
-PLATFORM FACILITIES THE SHELL USES, ON iOS (MEASURED from the CMP 1.7.3 sources in the Gradle cache, cmp-src/):
-  - LocalLifecycleOwner WORKS on iOS. ComposeHostingViewController.uikit.kt:415 provides it, and
+PLATFORM FACILITIES THE SHELL USES, ON iOS (MEASURED from the CMP 1.7.3 sources and module files in the Gradle cache,
+cmp-src/):
+  - ON THE CLASSPATH: cmp-ui 1.7.3's ui-1.7.3.module lists runtime-saveable 1.7.3 and lifecycle-common /
+    lifecycle-runtime / lifecycle-runtime-compose 2.8.4 as dependencies of its metadataApiElements variant, and :shared
+    takes cmp-ui as `api`. So rememberSaveable/Saver and the lifecycle types reach :shared's common compilation without
+    a new dependency.
+    Nothing in commonMain uses them yet (grep: the only commonMain mentions of rememberSaveable are comments; no
+    androidx.lifecycle import). That the shell's uses COMPILE in commonMain is therefore ARGUED, and the first move
+    proves it.
+  - LocalLifecycleOwner is PROVIDED on iOS: ComposeHostingViewController.uikit.kt:415 provides it, and
     ViewControllerBasedLifecycleOwner moves to RESUMED when the view has appeared and the app is foreground and active
-    (NSNotificationCenter listeners). MainShell's ON_RESUME refresh (F8) can stay common, and so can an ON_START update
-    check moved into the composition.
+    (NSNotificationCenter listeners). That MainShell's ON_RESUME refresh (F8), and an ON_START update check moved into
+    the composition, behave the same on iOS is ARGUED from that source. A simulator run proves it.
   - BackHandler has NO public common API in 1.7.3. Across the 21 common source jars of org.jetbrains.compose.* 1.7.3 in
     the cache, the only hit is material3's `internal` BackHandler.kt. The shell's two BackHandler calls stay
     platform-side; on iOS the overlays close by their on-screen back buttons, which every overlay screen has.
@@ -340,10 +367,19 @@ COMMON TO ALL THREE. Each touches android/shared (at least the framework declara
     or behind an interface. That changes the Android wire code. ParametresWirePinTest, MeSettingsTest and the wire
     fixtures are the pins.
   TESTS THAT PIN IT: SessionReconciledTest, MainGraphWiringTest (166 lines), SessionEndSeamTest, LoggingModeRestoreTest,
-    ManualOnlyOnboardingTest, ResolveStartTest, StartupDeciderTest, AppSiteLinksTest, YearDownloadsTest. They are
-    git-mv'd to commonTest unedited (R457 authorises kotlin-test in :app's test scope for exactly this) and then run on
-    the JVM AND the simulator. ResolveFlowTest, ForcedSignOutTest, ErasureCensusTest and
-    StatePreservationInstrumentedTest (androidTest) stay as Android's integration pins.
+    ManualOnlyOnboardingTest, ResolveStartTest, StartupDeciderTest, AppSiteLinksTest, YearDownloadsTest. Moved to
+    commonTest, they would run on the JVM AND the simulator. They CANNOT move unedited:
+    - seven are Kotest (io.kotest.core.spec.style);
+    - two are JUnit (org.junit);
+    - MainGraphWiringTest also uses java.time and kotlin.reflect.full;
+    - SessionEndSeamTest and YearDownloadsTest use java.time;
+    - AppSiteLinksTest uses java.io.
+    So each is TRANSCRIBED to kotlin.test with values and expectations unchanged, as IOS-2f transcribed its twin cases.
+    kotlin-test is already in :app's test scope (app/build.gradle.kts:583, R457). The transcription is per-test work,
+    priced into (a) and (c). The pin-then-move workflow is to transcribe the test where the code lives TODAY, see it
+    green against the :app code, then move both.
+    ResolveFlowTest, ForcedSignOutTest, ErasureCensusTest and StatePreservationInstrumentedTest (androidTest) stay as
+    Android's integration pins.
   FENCES TO EDIT:
     - EdgeToEdgeCensusTest: WRAPPER_FILE is the hard-coded :app path ui/shell/AppRoot.kt, its roots pin MainActivity.kt,
       and it reasons "Nothing outside :app enters commonMain".
@@ -370,15 +406,18 @@ COMMON TO ALL THREE. Each touches android/shared (at least the framework declara
     - an iOS session-end seam.
   WHAT KEEPS THEM IN STEP, and its limit:
     - IosAndroidTwinsTest holds an iosMain file byte-identical to the :app file at the same relative path, and asserts
-      the EXACT set (three today). Only whole files that already compile on iOS can be twins: AppRoot.kt, AppTab.kt,
-      ResolvingScreen.kt, SessionEnds.kt, LoggingModeRestore.kt, ManualOnlyOnboarding.kt, EveningTap.kt,
+      the EXACT set (three today).
+    - Only whole files whose imports AND :app references all compile on iOS can be twins (edges-out.txt): AppRoot.kt,
+      AppTab.kt, ResolvingScreen.kt, LoggingModeRestore.kt, ManualOnlyOnboarding.kt, EveningTap.kt,
       NotificationCopy.kt.
-    - StartupDecider.kt could also be a twin IF iosMain declared MeWire's five functions under the same names in
-      another file.
-    - The twins set would grow from 3 to about 9-10, each one argued (R206's corollary).
-    - NOTHING mechanical holds the rest in step: ShellState (Android imports), MainGraph (java.time), SessionEndSeam
-      (Context), and above all the ~1 000 lines of routes and MainShell, rewritten. That is the AN10/R291 class twice
-      over: two wirings, each tested only where it lives.
+    - SessionEnds.kt is NOT on that list: it references SessionEndingStore, declared in SessionEndSeam.kt next to an
+      android.content.Context function.
+    - StartupDecider.kt could be a twin IF iosMain declared MeWire's four functions and DetectionMode's
+      parseLoggingMode under the same names in other files.
+    - The twins set would grow from 3 to about 8-9, each one argued (R206's corollary).
+    - NOTHING mechanical holds the rest in step: ShellState (Android imports), MainGraph (java.time), SessionEnds and
+      SessionEndSeam (Context), FallbackReminder (java.time), and above all the ~1 000 lines of routes and MainShell,
+      rewritten. That is the AN10/R291 class twice over: two wirings, each tested only where it lives.
   TESTS THAT PIN IT: the twins guard for the copies; new iosTest for the iOS routes (runComposeUiTest runs on iOS,
     IOS-1b-A R606); nothing shared across the two wirings.
   COST: :app:gate (twins guard) + R573; no :app edit, no fence edit, no baseline at risk.
@@ -396,8 +435,10 @@ COMMON TO ALL THREE. Each touches android/shared (at least the framework declara
     - LoggingModeRestore, ManualOnlyOnboarding
     - the /me codec + StartupDecider
     - Site (+HOST), NotificationCopy, the EmployerFigureStore interface
-    - FallbackReminder.kt's pure decision in kotlinx-datetime (it answers FINDING 1)
-    - PARK-IF4's three twins
+    - PARK-IF4's three twins, FIRST, because the next item needs them
+    - FallbackReminder.kt's pure decision in kotlinx-datetime (it answers FINDING 1). It references EveningConditions /
+      EveningNotice / eveningDecision, which today exist only in :app and as iosMain twins, so it can enter commonMain
+      only after PARK-IF4 has moved EveningNotificationDecision.kt there.
   STAYS PER PLATFORM: the routes and MainShell (Android in MainActivity; iOS in a new iosMain root), the stores, the
     session holder, the permission/share/toast/openURL/back calls.
   WHAT KEEPS THEM IN STEP: MainGraphWiringTest and SessionReconciledTest in commonTest run against the ONE graph and the
@@ -410,9 +451,11 @@ COMMON TO ALL THREE. Each touches android/shared (at least the framework declara
     leaner iOS equivalent with no detection or push branches).
 
 EVIDENCE-BASED OBSERVATIONS (not a choice):
-  - Seven of the shell files have platform-free imports today: AppRoot, AppTab, ResolvingScreen, SessionEnds,
-    LoggingModeRestore, ManualOnlyOnboarding, NotificationCopy. Two more are one change from it: MainGraph (java.time)
-    and AppBottomBar (R).
+  - Six shell-side files are platform-free today, in their imports AND their :app references (edges-out.txt, the
+    parameter-name hits read): AppRoot, AppTab, ResolvingScreen, LoggingModeRestore, ManualOnlyOnboarding,
+    NotificationCopy.
+  - Three more are one change from it: MainGraph (java.time, via the JavaTime* factories), AppBottomBar (R ->
+    Glyph), SessionEnds (moves with SessionEndSeam's pure half).
   - The /me codec (org.json) is on the path of all three options. Without a common codec, even (b) re-implements it.
   - The one hard blocker of a shared route layer is that CMP 1.7.3 has no common BackHandler. Lifecycle is available.
 
@@ -486,9 +529,16 @@ R1203 - THE BUILD SHAPE (read-only research; all pages read 2026-11-21)
    - The default is DYNAMIC: KGP 2.2.21 NativeBinaries.kt, `var isStatic = false`.
    - JetBrains' templates use isStatic = true (KMP-App-Template; compose-multiplatform-ios-android-template). No
      official page states that CMP REQUIRES static; that is UNCONFIRMED.
-   - KGP source on static vs dynamic: for a static framework, embedAndSign's copy/codesign into the app's Frameworks
-     folder is skipped (AppleXcodeTasks.kt:154, `onlyIf { ... !isStatic.get() }`), and the framework links into the
-     app binary.
+   - KGP 2.2.21 source on static vs dynamic (AppleXcodeTasks.kt, the copy in research/):
+     - line 270 registers embedAndSign with its enable flag `{ !framework.isStatic }`, and line 332 applies it
+       (`task.isEnabled = embedAndSignEnabled()`). For a STATIC framework, embedAndSign's own action (copy into the
+       app's Frameworks folder and codesign) is disabled.
+     - lines 271-272: embedAndSign still dependsOn the framework's assemble (link) task and the symlink task that
+       places it in $BUILT_PRODUCTS_DIR. A static framework is linked into the app binary rather than embedded.
+     - (line 154 is the dSYM copy during archiving, `onlyIf { action == install && !isStatic }`, and is not about
+       embedding.)
+     - That Gradle still runs a disabled task's dependencies (the link, the symlink and CMP's resource sync, item 4)
+       is ARGUED from Gradle's semantics for a disabled task. I1 proves it by the .app containing compose-resources/.
    - baseName: any. The Swift import name follows it.
    Sources:
      https://kotlinlang.org/docs/multiplatform/multiplatform-build-native-binaries.html (page dated 13 May 2026)
@@ -496,10 +546,16 @@ R1203 - THE BUILD SHAPE (read-only research; all pages read 2026-11-21)
      github.com/JetBrains/kotlin @ v2.2.21 (copies in research/)
      github.com/Kotlin/KMP-App-Template shared/build.gradle.kts
 2. DOES IT TOUCH THE ANDROID BUILD? Not the gate's task graph. MEASURED in this repository, then ARGUED from KGP source:
-   - Repository: :app:gate depends on assembleDebug, testDebugUnitTest, ktlint, detekt, verifyPaparazziDebug, lint,
-     release checks and compileDebugAndroidTestKotlin. fastCheck depends on :shared:compileCommonMainKotlinMetadata,
-     :shared:testDebugUnitTest, ktlint/detekt and :app:compileDebugKotlin (app/build.gradle.kts:1434, :1680). Neither
-     names :shared:assemble, `build` or any link task.
+   - Repository: :app:gate's dependsOn list, read whole to its closing parenthesis (app/build.gradle.kts from line
+     1434):
+       assembleDebug, testDebugUnitTest, checkTestFloor, ktlintCheck, detekt, verifyPaparazziDebug,
+       checkReleaseCleartext, checkReleaseNoDebugInjection, checkReleaseLocationPermissions, checkReleaseNoDevComponent,
+       checkReleasePushManifest, checkMinifiedWireContract, checkReleaseVcsInfo, checkReleaseBundle, checkLicences,
+       lintDebug, compileDebugAndroidTestKotlin, :shared:compileCommonMainKotlinMetadata, :shared:testDebugUnitTest,
+       :shared:ktlintCheck, :shared:detekt.
+     fastCheck (line 1680): :shared:compileCommonMainKotlinMetadata, :shared:testDebugUnitTest, :shared:ktlintCheck,
+     :shared:detekt, compileDebugKotlin, ktlintCheck, detekt.
+     Neither names :shared:assemble, `build` or any link task. Every :app task is an Android variant task.
    - KGP 2.2.21 source:
      - every native link task gets `task.enabled = enabledOnCurrentHostForBinariesCompilation`
        (KotilnNativeConfigureBinariesSideEffect.kt:121-122), so on Windows the Apple link tasks are registered but
@@ -658,9 +714,15 @@ Q6 FINDING 1: does the iOS reminder take :app's FallbackReminder decision (moved
 ================================================================================
 PUSH PROOF
 ================================================================================
+Expected before the push, from the three workflows' `on:` blocks:
+  - ios-shared.yml: push to 'ios-*' (and dispatch). i0-host-census does not match.
+  - ci.yml: push to [main] (and dispatch).
+  - property-sweep.yml: schedule (and dispatch).
+  So the push starts NO run. Ruling numbers were re-scanned before the push, untracked files included, in
+  C:/wt/web-orch/relay and the main checkout's relay/: the only hit for R120[0-9] is the prompt itself
+  (C:/wt/web-orch/relay/IOS-HOST-CENSUS.txt).
 PENDING at the time of writing. The hand-back states the push, `git ls-remote origin refs/heads/i0-host-census`, and
-`gh run list --workflow ios-shared.yml --branch i0-host-census` (expected: no run, since the branch name does not
-match 'ios-*'). Not pushed, not touched: main, production. No merge.
+`gh run list --branch i0-host-census` with no workflow filter. Not pushed, not touched: main, production. No merge.
 
 ================================================================================
 CLEANUP - PENDING at the time of writing
