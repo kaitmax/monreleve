@@ -37,6 +37,7 @@ import {
 import { CONFIDENTIALITE_COPY, DISCLOSED_RECORDS, NEVER_STATEMENTS, WEB_STATEMENTS } from '@/lib/fr/confidentialite';
 import { PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
 import { DAYS_BEFORE } from '@/lib/rappel/window';
+import { PERSONAL_DATA } from '@/lib/content/personal-data';
 
 describePlaceholderCensus({
   page: '/confidentialite',
@@ -233,6 +234,42 @@ describe('R1222 (A6 F5b): what automatic mode sends, as the Data safety form dec
     expect(DISCLOSED_RECORDS.provenance).toContain('détection automatique');
     expect(text.indexOf(DISCLOSED_RECORDS.provenance)).toBeGreaterThanOrEqual(0);
     expect(text.indexOf(DISCLOSED_RECORDS.provenance)).toBeLessThan(text.indexOf(NEVER_STATEMENTS.automaticMode));
+  });
+});
+
+describe('R1231 (A13 Q4): the record that discloses detectedAt names the time of the validating tap', () => {
+  // Entry.detectedAt is the PHONE's clock at the tap that confirmed or
+  // corrected a proposal (AujourdhuiController.recordDetected, EveningTap):
+  // stored, and declared on the Data safety form. The record is found through
+  // the column map (R206), never by a key typed here, so the sentence checked
+  // is the one the privacy census binds that column to. Concepts, not the
+  // sentence (R181); no elided French (R126).
+  const rendered = (): string =>
+    render(<ConfidentialiteContent entity={FILLED_ENTITY} />).container.textContent ?? '';
+  const recordFor = (column: string): string => {
+    const key = PERSONAL_DATA[column];
+    expect(key, `${column} is disclosed by a record`).toBeDefined();
+    return DISCLOSED_RECORDS[key as keyof typeof DISCLOSED_RECORDS];
+  };
+
+  it('is the record the column map assigns Entry.detectedAt to, and it is rendered', () => {
+    expect(rendered()).toContain(recordFor('Entry.detectedAt'));
+  });
+
+  it('names the time, says it is the phone that gives it, and when: the validating tap', () => {
+    const record = recordFor('Entry.detectedAt');
+
+    expect(record).toContain('heure');
+    expect(record).toContain('votre téléphone');
+    expect(record).toContain('validée');
+  });
+
+  it('and the recording timestamps stay the server one, a different record from it', () => {
+    // The phone's time of the tap is a different datum from the time the
+    // server received the day; the timestamps record keeps saying whose that
+    // one is, so the two do not read as one claim.
+    expect(recordFor('Entry.firstRecordedAt')).toContain('serveur');
+    expect(recordFor('Entry.firstRecordedAt')).not.toBe(recordFor('Entry.detectedAt'));
   });
 });
 

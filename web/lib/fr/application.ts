@@ -114,12 +114,19 @@ export const APPLICATION_COPY = {
   // -- the two modes -------------------------------------------------------
   modesHeading: 'Deux façons d’enregistrer, un seul relevé',
 
+  // AN-COPY-TRUTH-2 (R1230). The old sentence called the two documents
+  // exactly alike, which claimed the origin column too; A6 proved the documents identical ONCE EACH DAY’S
+  // ORIGIN IS SET ASIDE (docs/release-audit-android.md section 3). So: the
+  // same document, the same figures, and the origin named as the difference.
+  // It does not list the origins - modesFooter below does (R206).
   modesIntro: (state: ProductState): string =>
     state.appExists
       ? 'Vous choisissez à l’installation et vous pouvez changer à tout ' +
-        'moment. Les deux modes produisent exactement le même document.'
+        'moment. Les deux modes produisent le même document et les mêmes ' +
+        'chiffres. Seule l’origine indiquée pour chaque journée les distingue.'
       : 'Le choix se fera à l’installation et pourra changer à tout moment. ' +
-        'Les deux modes produiront exactement le même document.',
+        'Les deux modes produiront le même document et les mêmes chiffres. ' +
+        'Seule l’origine indiquée pour chaque journée les distinguera.',
 
   /**
    * FD12's two cards, as data.
