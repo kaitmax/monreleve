@@ -24,7 +24,8 @@ import java.io.File
 private val FR_DIRS =
     listOf(
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "NotificationCopy.kt"),
+        // IOS-MOVE-REMINDER R1291: NotificationCopy, the last copy file in :app, moved to :shared fr (read by the root
+        // above), so :app's fr root is gone; CopyDuplicationTest.appHoldsNoFrCopy refuses one coming back.
     )
 
 /** A literal continued on the next line (`"... " +` newline `"..."`) is one sentence to a reader: join it. */

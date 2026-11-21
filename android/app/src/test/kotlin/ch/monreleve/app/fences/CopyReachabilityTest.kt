@@ -61,9 +61,8 @@ import java.io.File
 private val FR_DIRS =
     listOf(
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
-        // IOS-2d R816/R819: ComparisonCopy moved to :shared fr (read by the root above); NotificationCopy is the one
-        // copy file left in :app, so it pins this root now (R460).
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "NotificationCopy.kt"),
+        // IOS-MOVE-REMINDER R1291: NotificationCopy, the last copy file in :app, moved to :shared fr (read by the root
+        // above), so :app's fr root is gone; CopyDuplicationTest.appHoldsNoFrCopy refuses one coming back.
     )
 private val SURFACE_DIRS =
     listOf(

@@ -29,9 +29,8 @@ import java.io.File
 private val FR_DIRS =
     listOf(
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/fr"), pin = "Fr.kt"),
-        // IOS-2d R816/R819: ComparisonCopy moved to :shared fr (read by the root above); NotificationCopy is the one
-        // copy file left in :app, so it pins this root now (R460).
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/fr"), pin = "NotificationCopy.kt"),
+        // IOS-MOVE-REMINDER R1291: NotificationCopy, the last copy file in :app, moved to :shared fr (read by the root
+        // above), so :app's fr root is gone; CopyDuplicationTest.appHoldsNoFrCopy refuses one coming back.
     )
 
 private fun frFiles(): List<File> {
@@ -68,6 +67,19 @@ private fun copyConstants(): List<Pair<String, String>> =
     }
 
 class CopyDuplicationTest {
+    /**
+     * IOS-MOVE-REMINDER R1291: :app's fr/ held one copy file, NotificationCopy, and it moved to :shared fr. The four
+     * copy censuses read :shared fr only now, so a copy file written into :app fr again would be outside all of
+     * them: asserted EMPTY, with a positive control that the :app source root is the real one (R154).
+     */
+    @Test
+    fun appHoldsNoFrCopy() {
+        assertTrue(":app main root not found", File("src/main/kotlin/ch/monreleve/app/MainActivity.kt").isFile)
+        val appFr = File("src/main/kotlin/ch/monreleve/app/fr")
+        val found = appFr.walkTopDown().filter { it.isFile && it.extension == "kt" }.map { it.name }.toList()
+        assertTrue("R1291: copy belongs in :shared fr, found in :app fr: $found", found.isEmpty())
+    }
+
     @Test
     fun findsConstantsToInspectSoTheGuardCannotPassVacuously() {
         assertTrue("expected at least one copy constant under fr/, found none", copyConstants().isNotEmpty())

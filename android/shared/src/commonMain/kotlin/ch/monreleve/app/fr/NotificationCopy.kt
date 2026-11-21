@@ -24,6 +24,11 @@ import ch.monreleve.app.fr.text.formatDate
 // record - never where someone was, and NO recording buttons (D18 extends to the lock screen; the unlock gate is
 // setAuthenticationRequired on the actions themselves, API 31+). The UNLOCKED (private) notification may name the
 // detected side and carry the buttons.
+//
+// IOS-MOVE-REMINDER (R1291, R206: one text, one home). MOVED WHOLE from :app to :shared commonMain, same package, no
+// line of copy changed: the iOS evening reminder (iosMain ios/IosEveningReminders.kt) says what Android's manual
+// reminder says - MANUAL_TITLE over formatDayLong(day) - from this file, so the text has one home on both platforms.
+// Every import was already common. MovedTwinsFenceTest refuses a copy of it in :app or iosMain.
 
 /** A notification's two lines. */
 data class NotificationLines(

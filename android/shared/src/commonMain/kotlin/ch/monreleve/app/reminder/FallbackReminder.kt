@@ -4,10 +4,16 @@ import ch.monreleve.app.detection.DetectionOutcome
 import ch.monreleve.app.detection.EveningConditions
 import ch.monreleve.app.detection.EveningNotice
 import ch.monreleve.app.detection.eveningDecision
-import java.time.Instant
-import java.time.LocalTime
-import java.time.ZoneId
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atTime
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // AN-MANUAL-REMINDER (R1140-R1142, Android Rulings 3, 7 and 8; PARKAN-45). THE 19:00 FALLBACK, PURE.
 //
@@ -28,18 +34,31 @@ import kotlin.coroutines.cancellation.CancellationException
 // 19:00 IS A TARGET, NOT A GUARANTEE. The wake is deferrable (FallbackReminderRuntime.kt says by what, and how much),
 // so the time gate is "at or after 19:00 on the local day", never equality: a late wake still reminds the same evening,
 // and a wake deferred past local midnight reads a local time before 19:00 and shows nothing.
+//
+// IOS-MOVE-REMINDER (R1290, iOS Rulings 3 and 9). MOVED FROM :app TO :shared commonMain, same package, and PORTED from
+// java.time to kotlinx-datetime: java.time's Instant / ZoneId / LocalTime became kotlin.time.Instant /
+// kotlinx.datetime.TimeZone / LocalTime, line for line (atZone(zone).toInstant() -> toInstant(zone), isAfter -> >,
+// isBefore -> <). Sameness is PROVEN, not assumed: FallbackReminderGoldenTest (commonTest, JVM and iOS) runs these
+// three functions over every (zone, instant) of a fixture whose expected outputs the java.time versions wrote at the
+// base, before anything changed. The rest of the file is unchanged apart from `internal` removed - :app is another
+// module, and :shared declares no friend path. :app keeps the runtime (WorkManager, the replan receiver) and reaches
+// these through :shared androidMain's java.time overloads (JavaTimeFallbackReminder.kt), which convert types only.
+// iOS asks the same decision for its local reminder plan (EveningReminderPlan.kt, R1291).
+//
+// The kotlin.time opt-ins (KMP-DT R590) sit on each function that takes or returns an Instant, on the allowlist.
 
 /** Android Ruling 3: the fallback's time, device-local. Fixed at launch - SPEC 13.3's reminderTime is the push's. */
-internal val FALLBACK_REMINDER_TIME: LocalTime = LocalTime.of(19, 0)
+val FALLBACK_REMINDER_TIME: LocalTime = LocalTime(19, 0)
 
 /** R1140: the next 19:00 in [zone] strictly after [now] - today's while it is still ahead, otherwise tomorrow's. */
-internal fun nextFallbackAt(
+@OptIn(ExperimentalTime::class) // KMP-DT R590 / IOS-MOVE-REMINDER R1290: kotlin.time.Instant - on the allowlist.
+fun nextFallbackAt(
     now: Instant,
-    zone: ZoneId,
+    zone: TimeZone,
 ): Instant {
-    val day = now.atZone(zone).toLocalDate()
-    val today = day.atTime(FALLBACK_REMINDER_TIME).atZone(zone).toInstant()
-    return if (today.isAfter(now)) today else day.plusDays(1).atTime(FALLBACK_REMINDER_TIME).atZone(zone).toInstant()
+    val day = now.toLocalDateTime(zone).date
+    val today = day.atTime(FALLBACK_REMINDER_TIME).toInstant(zone)
+    return if (today > now) today else day.plus(1, DateTimeUnit.DAY).atTime(FALLBACK_REMINDER_TIME).toInstant(zone)
 }
 
 /**
@@ -48,23 +67,25 @@ internal fun nextFallbackAt(
  * 19:00 has missed that evening. So a boot re-plans from the zone in force, and if 19:00 has already come on this
  * local day it plans NOW - the wake then decides, under the one-a-day rule, and plans tomorrow.
  */
-internal fun bootFallbackAt(
+@OptIn(ExperimentalTime::class) // KMP-DT R590 / IOS-MOVE-REMINDER R1290: kotlin.time.Instant - on the allowlist.
+fun bootFallbackAt(
     now: Instant,
-    zone: ZoneId,
+    zone: TimeZone,
 ): Instant = if (reachedFallbackTime(now, zone)) now else nextFallbackAt(now, zone)
 
 /** R1140: whether [now] is at or after 19:00 on its local day in [zone] (a late wake counts; midnight resets). */
-internal fun reachedFallbackTime(
+@OptIn(ExperimentalTime::class) // KMP-DT R590 / IOS-MOVE-REMINDER R1290: kotlin.time.Instant - on the allowlist.
+fun reachedFallbackTime(
     now: Instant,
-    zone: ZoneId,
-): Boolean = !now.atZone(zone).toLocalTime().isBefore(FALLBACK_REMINDER_TIME)
+    zone: TimeZone,
+): Boolean = now.toLocalDateTime(zone).time >= FALLBACK_REMINDER_TIME
 
 /**
  * R1141: the notice the fallback shows, or null. R339's decision ([conditions], gathered as SamplingWorker's are), with
  * the fallback's own refusals in front and R339's "day concluded" answered by [reachedReminderTime].
  */
 @Suppress("LongParameterList")
-internal fun fallbackReminderDecision(
+fun fallbackReminderDecision(
     signedIn: Boolean,
     pushAvailable: Boolean,
     notificationsPermitted: Boolean,
@@ -79,7 +100,7 @@ internal fun fallbackReminderDecision(
 }
 
 /** R1141: what one wake of the fallback did - logged by name (never a token, an account or a day). */
-internal enum class FallbackWake {
+enum class FallbackWake {
     /** Nobody is signed in: the schedule cancelled itself and nothing was planned (Android Ruling 8). */
     SIGNED_OUT_CANCELLED,
 
@@ -102,7 +123,7 @@ internal enum class FallbackWake {
  * and RETURN, never rethrow (REMIND_FAILED), so WorkManager never fails the next link with this one.
  */
 @Suppress("TooGenericExceptionCaught", "SwallowedException")
-internal suspend fun fallbackWake(
+suspend fun fallbackWake(
     signedIn: () -> Boolean,
     cancelOwnSchedule: () -> Unit,
     remind: suspend () -> EveningNotice?,
@@ -132,7 +153,7 @@ internal suspend fun fallbackWake(
  * this phone may post notifications (A9's LoggingModeRestore precedent: a server value is applied only where the
  * permission it needs is held, and nothing is sent).
  */
-internal fun restoredEveningOptIn(
+fun restoredEveningOptIn(
     serverOn: Boolean,
     notificationsPermitted: Boolean,
 ): Boolean = serverOn && notificationsPermitted

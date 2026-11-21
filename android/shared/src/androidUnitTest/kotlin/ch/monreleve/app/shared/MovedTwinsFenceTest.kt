@@ -11,6 +11,11 @@ import java.io.File
  * later (c) move adds its files to [moved]. IOS-MOVE-SEAM R1283 added the session-end seam's pure part
  * (auth/SessionEndSeam.kt, the contract and the wrapper; auth/SessionEnds.kt, whole). :app kept the Android body of the
  * seam under a file name of its own (auth/DeviceSessionEndSeam.kt), which is why a moved FILE NAME in :app fails here.
+ * IOS-MOVE-REMINDER R1293 added the 19:00 fallback's pure part (reminder/FallbackReminder.kt, ported to
+ * kotlinx-datetime), the iOS reminder plan beside it (reminder/EveningReminderPlan.kt, new) and the copy they use
+ * (fr/NotificationCopy.kt). The java.time overloads that keep :app's runtime and pin unedited share three of the
+ * moved names by design; they live in :shared androidMain (reminder/JavaTimeFallbackReminder.kt), which is not a
+ * place this fence reads.
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
@@ -56,6 +61,10 @@ class MovedTwinsFenceTest {
             "ch/monreleve/app/settings/MeWire.kt",
             "ch/monreleve/app/auth/SessionEndSeam.kt",
             "ch/monreleve/app/auth/SessionEnds.kt",
+            // IOS-MOVE-REMINDER R1293.
+            "ch/monreleve/app/reminder/FallbackReminder.kt",
+            "ch/monreleve/app/reminder/EveningReminderPlan.kt",
+            "ch/monreleve/app/fr/NotificationCopy.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -99,6 +108,11 @@ class MovedTwinsFenceTest {
                     "DeviceLocalStore", "ThresholdAlertDecision", "eveningDecision", "mePatchBody", "isMeAnswer",
                     // IOS-MOVE-SEAM R1283: a fun interface, an enum class, a class, a top-level val and a fun.
                     "SessionEndSeam", "SessionEndPath", "SessionEndingStore", "processSessionEnds", "heldDays",
+                    // IOS-MOVE-REMINDER R1293: a val, annotated funs, a suspend fun, an enum, a const, data
+                    // classes and an object.
+                    "FALLBACK_REMINDER_TIME", "nextFallbackAt", "fallbackWake", "FallbackWake",
+                    "restoredEveningOptIn", "EVENING_REMINDER_HORIZON", "EveningReminderPlan",
+                    "eveningReminderPlan", "NotificationCopy", "NotificationLines",
                 ),
             ),
         )
@@ -127,6 +141,9 @@ class MovedTwinsFenceTest {
             |val Plain.extensionVal: Int get() = 1
             |fun interface FunInterface {
             |enum class Enumerated {
+            |@OptIn(Marker::class) // a comment after an annotation
+            |fun annotatedFun(
+            |const val TOP_CONST: Int = 7
             """.trimMargin()
         assertEquals(
             setOf(
@@ -136,6 +153,8 @@ class MovedTwinsFenceTest {
                 "extensionFun", "genericExtension", "extensionVal",
                 // IOS-MOVE-SEAM R1283: the two declaration shapes this move brings (SessionEndSeam, SessionEndPath).
                 "FunInterface", "Enumerated",
+                // IOS-MOVE-REMINDER R1293: a declaration under its annotation line, and a const val.
+                "annotatedFun", "TOP_CONST",
             ),
             declaredNames(text, publicOnly = true),
         )
@@ -146,8 +165,9 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInApp() {
         val found = copiesUnder(appSrc)
         assertTrue(
-            "R1242/R1273/R1283: :app declares a name (or holds a file name) of a file moved to :shared commonMain - " +
-                "a second home for it. Delete it; the one home is :shared commonMain.\n${found.joinToString("\n")}",
+            "R1242/R1273/R1283/R1293: :app declares a name (or holds a file name) of a file moved to :shared " +
+                "commonMain - a second home for it. Delete it; the one home is :shared commonMain.\n" +
+                found.joinToString("\n"),
             found.isEmpty(),
         )
     }
@@ -156,7 +176,7 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInIosMain() {
         val found = copiesUnder(iosMain)
         assertTrue(
-            "R1242/R1273/R1283: iosMain declares a name (or holds a file name) of a file moved to :shared " +
+            "R1242/R1273/R1283/R1293: iosMain declares a name (or holds a file name) of a file moved to :shared " +
                 "commonMain - a redeclaration only the macOS compilation sees. Delete it; the one home is :shared " +
                 "commonMain.\n" +
                 found.joinToString("\n"),
