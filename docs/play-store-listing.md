@@ -63,4 +63,6 @@ https://monreleve.ch/confidentialite
 
 Taken on the emulator (labelled "emulator API 36", never "device"), from the commit named in REPORT-AN-PLAY-PACK.txt
 ASSETS, saved under C:/wt/play-assets/ (not committed). The list, the sizes and the sha256 of each are in that
-report. Under the manual-only fallback, any screenshot that shows detection or its disclosure is left out.
+report. Screenshot 04 (the disclosure) was RETAKEN on the corrected text by AN-COPY-TRUTH-2:
+`04-disclosure-before-the-system-prompt-emulator-api36-e0b9198e.png` replaces A5's 04 in the upload
+(REPORT-AN-COPY-TRUTH-2.txt). Under the manual-only fallback, any screenshot that shows detection or its disclosure is left out.

@@ -192,14 +192,14 @@ manual-only fallback) says when the row would read "not collected".
 
 | Surface | Sentence (by key / line) | Verdict |
 |---|---|---|
-| In-app disclosure | `android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/DisclosureCopy.kt` `NEVER_SHARED` (line 51-52), opening « Rien n’est transmis » | **CONTRADICTS** "Approximate location: collected". The confirmed day (Suisse / domicile) IS transmitted to our server. The rest of the sentence (never shared with the employer or the administration) is true. Finding F5a |
+| In-app disclosure | `android/shared/src/commonMain/kotlin/ch/monreleve/app/fr/DisclosureCopy.kt` `NEVER_SHARED` (line 51-52), opening « Rien n’est transmis » | **CONTRADICTS** "Approximate location: collected". The confirmed day (Suisse / domicile) IS transmitted to our server. The rest of the sentence (never shared with the employer or the administration) is true. Finding F5a - **CLOSED by cca11959 (A13, R1220); see section 11** |
 | In-app disclosure | `DisclosureCopy.NETWORK_LOCATION` (« ne conserve ni n’envoie jamais votre position »), `ON_DEVICE`, `WHAT_IS_KEPT` | consistent if "position" means the coordinate; `WHAT_IS_KEPT` says one conclusion a day is kept but not that it is sent once confirmed |
 | Welcome screen | the « Confidentialité » line, « Aucune position n’est conservée » (seen on the emulator) | consistent read as "coordinate"; tension, not a contradiction |
-| /confidentialite | `web/lib/fr/confidentialite.ts` `never[1]` (« L’application, elle, ne conservera ni n’enverra jamais votre position ») under the heading « Ce qui n’est jamais enregistré »; the collected list (`day`, `provenance`) does name each day's nature and its detected origin | **TENSION**: the page lists what is collected without calling the confirmed day a location, and a reviewer comparing it with "Approximate location: collected" meets "never sends your position". Finding F5b |
+| /confidentialite | `web/lib/fr/confidentialite.ts` `never[1]` (« L’application, elle, ne conservera ni n’enverra jamais votre position ») under the heading « Ce qui n’est jamais enregistré »; the collected list (`day`, `provenance`) does name each day's nature and its detected origin | **TENSION**: the page lists what is collected without calling the confirmed day a location, and a reviewer comparing it with "Approximate location: collected" meets "never sends your position". Finding F5b - **CLOSED by cca11959 (A13, R1222); detectedAt named by A14 (R1231); see section 11** |
 | /confidentialite | `appThirdParty` (« L’application Android n’existe pas encore ») and the rights section’s « lorsqu’elle sera disponible » | stale at launch; launch blocker B12 (Q-DS2) |
 | Store listing | `docs/play-store-listing.md` `listing:detection` (« … ne conserve ni n’envoie jamais votre position, seulement la journée que vous confirmez ») | **AGREES** - it says the confirmed day is sent |
 | Store listing | `listing:full`, VOS DONNEES (« Aucune coordonnée géographique n’est enregistrée ni transmise ») | **TRUE** (no coordinate; a confirmed CH/HOME day is not a coordinate) |
-| Store listing | `listing:detection`, last sentence (« La saisie manuelle produit exactement le même relevé ») | true of every figure (section 3) but not of the provenance column the releve prints; « exactement » is stronger than section 3's "identical apart from provenance". Finding F5c |
+| Store listing | `listing:detection`, last sentence (« La saisie manuelle produit exactement le même relevé ») | true of every figure (section 3) but not of the provenance column the releve prints; « exactement » is stronger than section 3's "identical apart from provenance". Finding F5c - **CLOSED by cca11959 (A13, R1223); its three siblings by A14 (R1230); see section 11** |
 
 The operator approves the form and the listing together; the copy calls are theirs.
 
@@ -213,7 +213,7 @@ None of these is closable by a session. "Owner" is who acts; the operator decide
 |---|---|---|
 | B1 | The release (upload) key and the Play Console account; Play App Signing (R250: no session creates a key) | operator |
 | B2 | Play's acceptance of the release: review, the Data safety form (section 5), App access, content rating | operator (Play) |
-| B3 | The background-location declaration - verdict LIKELY REFUSED (`docs/play-background-location.md`); if refused, R1124's fallback: `-PmanualOnly=true`, versionCode + 1, no declaration, the listing minus `listing:detection`, screenshot 06 retaken (Android Ruling 18 Q4); Q3: if Play asks for more than the 29 s emulator video, a real detected day is recorded on the S9 | operator (Play) |
+| B3 | The background-location declaration - verdict LIKELY REFUSED (`docs/play-background-location.md`); if refused, R1124's fallback: `-PmanualOnly=true`, versionCode + 1, no declaration, the listing minus `listing:detection`, screenshot 06 retaken (Android Ruling 18 Q4); Q3: if Play asks for more than the emulator video (retaken by A14 on the corrected disclosure, 27.49 s, section 11), a real detected day is recorded on the S9 | operator (Play) |
 | B4 | "Play's acceptance of compileSdk 35 with targetSdk 36 is unproven until the first upload" (Android Ruling 8 Q4; the built APK reads compileSdkVersion 35, targetSdkVersion 36 - aapt2 on this tip) | operator (first upload) |
 | B5 | The Firebase app config (the four FCM_ANDROID_* values, on the release command only) and the FCM_PRIVATE_KEY rotation that turns the server's daily push on; without them the release is valid with push unavailable (the 19:00 fallback stands in) | operator |
 | B6 | assetlinks fingerprints: Play's APP-SIGNING key SHA-256 (and the upload key) in ANDROID_SHA256_CERT_FINGERPRINTS (PARK4-2), after B1 | operator |
@@ -221,7 +221,7 @@ None of these is closable by a session. "Owner" is who acts; the operator decide
 | B8 | The first REAL push on the S9, including a battery-restricted / force-stopped app (Android Ruling 14 Q1: data-only envelope, high priority with nothing shown, android.priority never checked against the real API) | operator (S9) |
 | B9 | The Checkpoint E expert reviewer (SPEC 21 row 8; also rules on how provenance is worded in the document) | operator |
 | B10 | The S9 Doze / standby-bucket drift of the 19:00 fallback reminder (Android Ruling 15 Q5) | operator (S9) |
-| B11 | The operator's approval of the listing texts (A5 Q1, `docs/play-store-listing.md`, and the title question) and of T1-T3 (A4, `UpdateCopy.TITLE/BODY/BUTTON`) - ship as written unless refused; plus this audit's F5a-F5c | operator |
+| B11 | The operator's approval of the listing texts (A5 Q1, `docs/play-store-listing.md`, and the title question) and of T1-T3 (A4, `UpdateCopy.TITLE/BODY/BUTTON`) - ship as written unless refused; plus the corrected strings that close F1 and F5a-F5c (REPORT-AN-COPY-TRUTH.txt Q1, REPORT-AN-COPY-TRUTH-2.txt QUESTIONS; section 11) | operator |
 | B12 | Play's account-deletion WEB link: /confidentialite still says the app is coming; the LAUNCH-DAY web change flips `PRODUCT_STATE.appExists` and carries the deletion steps (Ruling 18 Q-DS2) | operator rules, a web session builds it on launch day |
 | B13 | Whether the hosting keeps client IP addresses (Play counts IP-inferred location) - blocks the Data safety form (Ruling 18 Q-DS3) | operator |
 | B14 | Setting ANDROID_MINIMUM_VERSION_CODE only once a LATER release exists to require (Android Ruling 13); it ships unset | operator (after a second release) |
@@ -260,7 +260,7 @@ From Android Rulings 5, 8-15, 18 and ORCH-ANDROID's DEFERRED list:
   cosmetic/tooling parks (Web Ruling 36's logic) unless the operator promotes one. PARKAN-47 is a launch blocker (B7),
   not post-launch.
 - **This audit adds (proposed post-launch, the operator's to rule):** F1 (a set-aside day erased by another account's
-  sign-out), F2 (a pixel rail-parity test), F3 (ValidationError copy on Android, traced), F4 (a simulated-month
+  sign-out; its NOTICE was corrected by A13, section 11 - the erasure itself stays ruled design, R303), F2 (a pixel rail-parity test), F3 (ValidationError copy on Android, traced), F4 (a simulated-month
   harness), F6 (Releve identity label at 200 %), F7 (a TalkBack speech capture on an AVD), F8 (the R248 bullet).
 
 ---
@@ -283,6 +283,8 @@ d’être envoyée : reconnectez-vous avec la même adresse », but R303 makes e
 set-aside rows included, so B's sign-out erases A's day without B being told it exists. Not a privacy leak (nothing of
 A reached B). Options for the operator: keep R303 and soften A's notice; or warn in B's sign-out dialog; or keep
 set-aside rows across a foreign sign-out. Not fixed (product rule + copy).
+**CLOSED (the copy option) by cca11959 - section 11.** The notice no longer promises the day will wait; R303 is
+unchanged, so B's sign-out still erases it.
 
 **F2 - rail parity is geometric, not pixel (evidence gap).** SPEC 21 asks pixel-for-pixel at the same width; the
 codebase proves the same geometry by ported literals (and, by docs/audit-android.md F5, ported literals are
@@ -299,6 +301,7 @@ entries, 51 detected) but the replay writes no `daily_tally`; a month of automat
 transmis » contradicts the form; F5b /confidentialite's "never" list says the position is never sent without calling
 the confirmed day a location; F5c the listing’s « exactement le même relevé » is stronger than "identical apart from
 provenance". The operator's copy (approved with the form and the listing).
+**CLOSED - F5a-F5c by cca11959, F5c's siblings and detectedAt by A14 (section 11).**
 
 **F6 - Releve's identity row « Méthode de calcul » breaks mid-word at 200 %** (emulator API 36), the same family as the
 bottom-bar labels (Ruling 8 N6).
@@ -324,4 +327,26 @@ minified build, blocked by PARKAN-34" is closed by section 4 here; PARKAN-34 its
 this tip, an evidence gap that is not a product defect (F2-F4, rows 5 and 12), or not re-run with its unit evidence green, and the one HIGH-severity defect the earlier audit
 found (F4, one account's days reaching another) is now shown closed on the minified build. Production waits on the
 human list in section 6 - the key, Play's verdict on background location, the S9 measurements, the real push and the
-expert reviewer - and on the operator's answers to F1 and F5.
+expert reviewer - and on the operator's answers to F1 and F5 (since answered in copy: section 11; the strings ship as
+written unless the operator refuses them).
+
+---
+
+## 11. Maintenance after the audit: F1 and F5 closed in copy (2026-11-21, A14 AN-COPY-TRUTH-2, R1232)
+
+The audited tip, the criteria and their counts above are unchanged: this section records what LATER commits did
+about two findings, as the audit's own maintenance (Android Ruling 20). What closed is the WORDS: each surface now
+says no more than the app does. Behaviour is unchanged - no product code, no rule (R303 included) moved. Every new
+string ships as written unless the operator refuses it (Android Ruling 20 Q1); the list is in the two reports named.
+
+| Finding | Closed by | What changed | Evidence |
+|---|---|---|---|
+| F1 | cca11959 (A13, R1221) | `SignInCopy.sessionClosed(1)` / `(n)`: the notice no longer says the day will wait; it advises the condition the wait holds under - the same address, « avant d’y connecter un autre compte » (the zero sentence unchanged). R303 stands: another account's sign-out still erases a set-aside day; the notice no longer promises otherwise | `ForcedSignOutTest` (the ONE-day and TWO-day cases assert the clause on the sentence the real forced sign-out renders, R225; RED first); 3 `connexionSessionClosed*` baselines; emulator API 36: the notice after a server-ended session, then the advice followed and the day sent (REPORT-AN-COPY-TRUTH.txt R1221); `:app:gate` BUILD SUCCESSFUL on 6a83392c |
+| F5a | cca11959 (A13, R1220) | `DisclosureCopy.NEVER_SHARED` no longer opens « Rien n’est transmis »: the position is never transmitted, to anybody; only the day the person validates is sent, with what detection had proposed | `DisclosureCopyTest.theSharingSentenceSaysTheValidatedDayIsSentAndThePositionNever` (RED first); `disclosure.png` baseline; emulator API 36 dump of the disclosure |
+| F5b | cca11959 (A13, R1222); A14 (R1231) | /confidentialite: `NEVER_STATEMENTS.automaticMode` ends with what IS sent and stored; `DISCLOSED_RECORDS.provenance` names « la détection automatique » and, since A14, the time the phone showed when the person validated a proposed day (`Entry.detectedAt`, which `lib/content/personal-data.ts` maps to that record) | `web/tests/unit/pages/confidentialite.test.tsx` "R1222" (the record renders ABOVE the statement that says « plus haut ») and "R1231" (the record found through `PERSONAL_DATA['Entry.detectedAt']`, rendered, naming the hour, the phone and the validation); both `page-confidentialite-*` baselines, regenerated twice (A13, A14) |
+| F5c | cca11959 (A13, R1223) | `docs/play-store-listing.md` `listing:detection`: the same releve, the same figures, only the origin shown for each day differs | `StoreListingCopyTest.theModeParityClaimNamesTheOriginAsTheOneDifference` (RED first) |
+| F5c's siblings | A14 (R1230): 58f3dec4, 5bd9ad75, e0b9198e | the same claim, in each surface's own register: `OnboardingCopy.MODE_INFO` (step 7), `ParametresCopy.AUTO_DESCRIPTION` (« En savoir plus », keeps « les deux se valent », D19), `web/lib/fr/application.ts` `modesIntro` (both product states), `docs/play-release.md` section 3 (the English declaration) | `ModeParityCopyTest` (both strings + a census of every fr/ file, matcher shown to fire), `PlayDeclarationCopyTest` (plant verified), `web/tests/unit/fr/mode-parity-copy.test.ts` (both states + a census of `web/lib/fr` and `content/guides`); baselines `OnboardingScreenScreenshotTest_mode`/`_modeAuto`, `page-application-*`; REPORT-AN-COPY-TRUTH-2.txt (the census table) |
+
+The Play assets that filmed the OLD disclosure (screenshot 04 and the demo video, A5) were retaken by A14 from its
+code tip, under new names beside A5's (R1233; paths and sha256 in REPORT-AN-COPY-TRUTH-2.txt and
+`docs/play-release.md` section 3). B11 now lists these strings among the operator's approvals.
