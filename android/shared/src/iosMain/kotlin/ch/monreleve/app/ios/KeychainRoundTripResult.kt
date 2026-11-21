@@ -26,12 +26,19 @@ data class KeychainRoundTripResult(
     val passed: Boolean get() = saveStatus == 0 && loadedEqual && clearedToNull
 }
 
-/** IOS-HOST RED STUB: measures nothing yet. */
-@Suppress("UnusedParameter")
+/**
+ * Saves [fake] in [store], reads it back, clears it, and reads again. A refused save is caught and returned by its
+ * OSStatus (nothing is read or cleared after it); no exception leaves this function for a KeychainException.
+ */
 fun keychainRoundTrip(
     store: TokenStore,
     fake: TokenPair,
-): KeychainRoundTripResult {
-    val notMeasured = Int.MIN_VALUE
-    return KeychainRoundTripResult(saveStatus = notMeasured, loadedEqual = false, clearedToNull = false)
-}
+): KeychainRoundTripResult =
+    try {
+        store.save(fake)
+        val loadedEqual = store.load() == fake
+        store.clear()
+        KeychainRoundTripResult(saveStatus = 0, loadedEqual = loadedEqual, clearedToNull = store.load() == null)
+    } catch (refused: KeychainException) {
+        KeychainRoundTripResult(saveStatus = refused.status, loadedEqual = false, clearedToNull = false)
+    }
