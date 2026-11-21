@@ -199,7 +199,7 @@ manual-only fallback) says when the row would read "not collected".
 | /confidentialite | `appThirdParty` (« L’application Android n’existe pas encore ») and the rights section’s « lorsqu’elle sera disponible » | stale at launch; launch blocker B12 (Q-DS2) |
 | Store listing | `docs/play-store-listing.md` `listing:detection` (« … ne conserve ni n’envoie jamais votre position, seulement la journée que vous confirmez ») | **AGREES** - it says the confirmed day is sent |
 | Store listing | `listing:full`, VOS DONNEES (« Aucune coordonnée géographique n’est enregistrée ni transmise ») | **TRUE** (no coordinate; a confirmed CH/HOME day is not a coordinate) |
-| Store listing | `listing:detection`, last sentence (« La saisie manuelle produit exactement le même relevé ») | true of every figure (section 3) but not of the provenance column the releve prints; « exactement » is stronger than section 3's "identical apart from provenance". Finding F5c - **CLOSED by cca11959 (A13, R1223); its three siblings by A14 (R1230); see section 11** |
+| Store listing | `listing:detection`, last sentence (« La saisie manuelle produit exactement le même relevé ») | true of every figure (section 3) but not of the provenance column the releve prints; « exactement » is stronger than section 3's "identical apart from provenance". Finding F5c - **CLOSED by cca11959 (A13, R1223); its four siblings by A14 (R1230); see section 11** |
 
 The operator approves the form and the listing together; the copy calls are theirs.
 
