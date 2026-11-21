@@ -8,6 +8,8 @@ import androidx.room.useWriterConnection
 import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.DeviceLocalStore
 import ch.monreleve.app.auth.PendingSignInStore
+import ch.monreleve.app.auth.SessionEndSeam
+import ch.monreleve.app.auth.SessionEndingStore
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
 import ch.monreleve.app.data.local.MonReleveDatabase
@@ -34,13 +36,20 @@ import ch.monreleve.app.settings.SettingsStore
 //   clearExports    the IosExportFiles directory clear (File(cacheDir, EXPORTS_DIR).deleteRecursively() - R891)
 // Android's clearRecord first stops a year still downloading (AN-PULL, processYearDownloads.stop()); iOS has no year
 // download yet, so there is nothing to stop - the iOS host that adds one owes that line here (PARKED, R893).
+//
+// IOS-MOVE-SEAM (R1281, closing I0's FINDING 2). THE STORE IS HANDED OUT THROUGH THE "SESSION ENDED" SEAM, as Android's
+// is: the commonMain wrapper SessionEndingStore (auth/SessionEndSeam.kt) over iOS's seam, iosSessionEndSeam
+// (ios/IosSessionEndSeam.kt) - this app's PENDING local notification requests removed, then the scope cleared in a
+// finally. Before, this returned the bare DeviceLocalStore, so a reminder scheduled ahead would have outlived a
+// sign-out, a deletion or a server-ended session. SessionEndSeamFenceTest (R1282) holds this as iOS's ONE construction.
 
 // The parameters ARE the device's stores and seams, as DeviceLocalStore's own are; a holder would only move the list.
 
 /**
- * The device's LocalStore over iOS's own stores - the one construction (Android's deviceLocalStore). The defaults are
- * the production stores; tests pass test-scoped ones (a unique Keychain service, a UserDefaults suite, a temporary
- * directory) through the same parameters, so the wiring under test is this function's.
+ * The device's LocalStore over iOS's own stores - the one construction (Android's deviceLocalStore) - handed out
+ * through the "session ended" seam (R1281). The defaults are the production stores and seam; tests pass test-scoped
+ * ones (a unique Keychain service, a UserDefaults suite, a temporary directory, a seam action that touches no
+ * notification centre) through the same parameters, so the wiring under test is this function's.
  */
 @Suppress("LongParameterList")
 fun iosDeviceLocalStore(
@@ -53,17 +62,21 @@ fun iosDeviceLocalStore(
     dossierCache: DossierCache = FileDossierCache(),
     pendingSignIn: PendingSignInStore = KeychainPendingSignInStore(),
     accountStore: AccountStore = KeychainAccountStore(),
-): DeviceLocalStore =
-    DeviceLocalStore(
-        tokenStore = tokenStore,
-        settingsStore = settingsStore,
-        dossierCache = dossierCache,
-        pendingSignIn = pendingSignIn,
-        accountStore = accountStore,
-        detectionModeStore = detectionModeStore,
-        clearRecord = { clearIosRecord(database) },
-        cancelSync = { syncTrigger.cancel() },
-        clearExports = { exportFiles.clear() },
+    sessionEndSeam: SessionEndSeam = iosSessionEndSeam(),
+): SessionEndingStore =
+    SessionEndingStore(
+        DeviceLocalStore(
+            tokenStore = tokenStore,
+            settingsStore = settingsStore,
+            dossierCache = dossierCache,
+            pendingSignIn = pendingSignIn,
+            accountStore = accountStore,
+            detectionModeStore = detectionModeStore,
+            clearRecord = { clearIosRecord(database) },
+            cancelSync = { syncTrigger.cancel() },
+            clearExports = { exportFiles.clear() },
+        ),
+        sessionEndSeam,
     )
 
 // Room's own bookkeeping, never part of the record: its identity hash (room_master_table) and SQLite's internals.

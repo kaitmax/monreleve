@@ -24,9 +24,14 @@ import kotlinx.coroutines.flow.update
 // its tokens (R508). A voluntary sign-out and a deletion clear the tag with everything else (R295/R289); a fresh
 // install never had one. So "not signed in, an account still current" IS the forced state, readable at any launch,
 // whether or not this process saw the ending happen.
+//
+// IOS-MOVE-SEAM (R1280): MOVED WHOLE from :app to :shared commonMain, package unchanged - every import here was already
+// common (the flow types, EntryEntity), so the file compiles as it stood. Its declarations lost `internal` (:app,
+// which calls them, is another module) and nothing else changed. Nothing on iOS calls it yet: the iOS host's session
+// and shell arrive with the shell move.
 
 /** Every session the server ended in this process, counted - the shell reacts to each new value. */
-internal class SessionEnds {
+class SessionEnds {
     private val count = MutableStateFlow(0)
 
     val ends: StateFlow<Int> = count.asStateFlow()
@@ -37,7 +42,7 @@ internal class SessionEnds {
 }
 
 /** THE PROCESS'S record of server-ended sessions, beside its one session (SessionHolder.kt). */
-internal val processSessionEnds = SessionEnds()
+val processSessionEnds = SessionEnds()
 
 /**
  * WHAT THE PROCESS DOES WHEN THE SERVER ENDS ITS SESSION - SessionManager's onEnded, for the process's session
@@ -46,7 +51,7 @@ internal val processSessionEnds = SessionEnds()
  * (R1181): the clear goes through the "session ended" seam (SessionEndSeam.kt, path ENDED_BY_SERVER), which cancels the
  * sampler before it clears.
  */
-internal suspend fun onServerEndedSession(
+suspend fun onServerEndedSession(
     store: SessionEndingStore,
     ends: SessionEnds,
 ) {
@@ -58,7 +63,7 @@ internal suspend fun onServerEndedSession(
  * R520: is this the state a sign-out nobody asked for leaves behind - no session, yet an account still current?
  * Both are read by the caller when it asks, never captured (R423).
  */
-internal fun sessionClosedByServer(
+fun sessionClosedByServer(
     signedIn: Boolean,
     currentAccount: String?,
 ): Boolean = !signedIn && currentAccount != null
@@ -68,4 +73,4 @@ internal fun sessionClosedByServer(
  * account's own, never another's, R303). DISTINCT dates, because half-day mode writes two rows for one date
  * (ParametresController.pendingDatesNow counts the same way, for the same reason).
  */
-internal fun heldDays(accountPending: List<EntryEntity>): Int = accountPending.map { it.dayDate }.distinct().size
+fun heldDays(accountPending: List<EntryEntity>): Int = accountPending.map { it.dayDate }.distinct().size
