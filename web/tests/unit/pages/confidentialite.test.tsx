@@ -34,7 +34,7 @@ import {
   describePlaceholderCensus,
   expectNoComplianceClaims,
 } from './placeholder-census';
-import { CONFIDENTIALITE_COPY, DISCLOSED_RECORDS, WEB_STATEMENTS } from '@/lib/fr/confidentialite';
+import { CONFIDENTIALITE_COPY, DISCLOSED_RECORDS, NEVER_STATEMENTS, WEB_STATEMENTS } from '@/lib/fr/confidentialite';
 import { PURGE_AFTER_DAYS } from '@/lib/alerts/lifetimes';
 import { DAYS_BEFORE } from '@/lib/rappel/window';
 
@@ -197,6 +197,42 @@ describe('R919: the deadline reminder, in one sentence, on the rendered page', (
     expect(text).toContain(WEB_STATEMENTS.emailCases);
     expect(WEB_STATEMENTS.emailCases).toContain('trois cas seulement');
     expect(text.indexOf(WEB_STATEMENTS.emailCases)).toBeLessThan(text.indexOf(DISCLOSED_RECORDS.deadlineReminder));
+  });
+});
+
+describe('R1222 (A6 F5b): what automatic mode sends, as the Data safety form declares it', () => {
+  // docs/play-release.md section 2 declares Approximate location COLLECTED
+  // (Android Ruling 18 Q-DS1): a day the person validated from a detection
+  // proposal is sent and stored; a position never is. The page said only the
+  // second half, under the "never recorded" heading. These assertions name
+  // concepts, not the sentence (the file's own rule), and read the sentence
+  // through its key (R206). No elided French here (R126).
+  const rendered = (): string =>
+    render(<ConfidentialiteContent entity={FILLED_ENTITY} />).container.textContent ?? '';
+
+  it('renders the automatic-mode statement, by its key, in the never list', () => {
+    expect(typeof NEVER_STATEMENTS.automaticMode).toBe('string');
+    expect(CONFIDENTIALITE_COPY.never).toContain(NEVER_STATEMENTS.automaticMode);
+    expect(rendered()).toContain(NEVER_STATEMENTS.automaticMode);
+  });
+
+  it('says the position is never sent AND the validated day is, with what detection proposed', () => {
+    const statement = NEVER_STATEMENTS.automaticMode;
+
+    expect(statement).toContain('jamais votre position');
+    expect(statement).toContain('la journée que vous aurez validée');
+    expect(statement).toContain('la détection vous avait proposé');
+    expect(statement).toContain('sera enregistrée avec son origine');
+  });
+
+  it('points at the record it creates, and that record is rendered ABOVE it and names detection', () => {
+    // "plus haut" is a claim about the layout, so the layout is asserted.
+    const text = rendered();
+
+    expect(NEVER_STATEMENTS.automaticMode).toContain('plus haut');
+    expect(DISCLOSED_RECORDS.provenance).toContain('détection automatique');
+    expect(text.indexOf(DISCLOSED_RECORDS.provenance)).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf(DISCLOSED_RECORDS.provenance)).toBeLessThan(text.indexOf(NEVER_STATEMENTS.automaticMode));
   });
 });
 

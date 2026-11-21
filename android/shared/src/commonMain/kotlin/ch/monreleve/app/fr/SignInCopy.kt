@@ -35,16 +35,26 @@ object SignInCopy {
      *
      * AT ZERO IT STILL SPEAKS. « Votre session a été fermée » is true with nothing held, and it is the only thing
      * that tells somebody why they are looking at a sign-in screen they did not ask for; only the days clause goes.
+     *
+     * AN-COPY-TRUTH R1221 (A6 F1). THE CONDITION IS SAID. The days wait on this phone for the SAME address (R509,
+     * R521 keeps them), but R303/R295 make any sign-out here clear every row - another account's sign-out included,
+     * set-aside rows included - and once another account is connected here, the way back to this one is that
+     * account's sign-out (A6 saw it on the emulator: B's sign-out erased A's set-aside day). So the
+     * notice advises the sufficient condition, « avant d’y connecter un autre compte » (« y »: ce téléphone), instead
+     * of letting « attend » read as a wait with no end. Advice, not a warning: it names what to do, not what is lost.
+     * Only the tail moved; « journée(s) enregistrée(s) sur ce téléphone » and « envoyée(s) » stay the words
+     * ReleveCopy.pendingNotSynced shares with this sentence (R561).
      */
     fun sessionClosed(heldDays: Int): String =
         when (heldDays) {
             0 -> "Votre session a été fermée. Reconnectez-vous pour continuer."
             1 ->
                 "Votre session a été fermée. 1 journée enregistrée sur ce téléphone attend d’être envoyée : " +
-                    "reconnectez-vous avec la même adresse pour l’envoyer."
+                    "reconnectez-vous avec la même adresse, avant d’y connecter un autre compte, pour l’envoyer."
             else ->
                 "Votre session a été fermée. $heldDays journées enregistrées sur ce téléphone attendent d’être " +
-                    "envoyées : reconnectez-vous avec la même adresse pour les envoyer."
+                    "envoyées : reconnectez-vous avec la même adresse, avant d’y connecter un autre compte, pour " +
+                    "les envoyer."
         }
 
     const val RATE_LIMITED = "Trop de demandes de connexion. Patientez quelques minutes avant de réessayer."
