@@ -634,6 +634,11 @@ class ForcedSignOutTest : FunSpec({
             // THE SINGULAR, each word that agrees with the number: the day, the verb, the pronoun.
             sentence shouldContain "1 journée enregistrée sur ce téléphone attend d’être envoyée"
             sentence shouldContain "pour l’envoyer."
+            // R1221 (A6 F1): the condition the wait holds under is SAID - the same address, before another account
+            // is connected on this phone (R303: a sign-out here clears every row, set-aside ones included). The
+            // notice advises the sufficient condition; it never promises the day will simply wait.
+            sentence shouldContain "la même adresse"
+            sentence shouldContain "avant d’y connecter un autre compte"
             // ... and no plural anywhere: "envoyée" is a prefix of "envoyées", so the line above cannot see it alone.
             sentence shouldNotContain "journées"
             sentence shouldNotContain "enregistrées"
@@ -677,6 +682,9 @@ class ForcedSignOutTest : FunSpec({
             sentence shouldContain "2 journées enregistrées sur ce téléphone attendent d’être envoyées"
             sentence shouldContain "pour les envoyer."
             sentence shouldNotContain "l’envoyer"
+            // R1221 (A6 F1): the same condition, said in the plural sentence too.
+            sentence shouldContain "la même adresse"
+            sentence shouldContain "avant d’y connecter un autre compte"
             shell.close()
         }
     }

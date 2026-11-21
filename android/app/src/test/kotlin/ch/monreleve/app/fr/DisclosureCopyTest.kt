@@ -28,6 +28,25 @@ class DisclosureCopyTest {
         assertTrue("R325: it is about the position", text.contains("position"))
     }
 
+    /**
+     * AN-COPY-TRUTH R1220 (A6 F5a). « Rien n’est transmis » was false the day a confirmed day was sent: the Data
+     * safety form declares Approximate location COLLECTED (Android Ruling 18 Q-DS1). The sentence now says what
+     * leaves the phone and what never does. Presence first (R154): the validated day IS sent, with what detection
+     * had proposed (EntriesMapping.toEntryWrite carries detectedKind, the CH/HOME side, on a corrected day too); the
+     * position is NEVER sent, to anybody. Then the absence of the false opening.
+     */
+    @Test
+    fun theSharingSentenceSaysTheValidatedDayIsSentAndThePositionNever() {
+        val text = DisclosureCopy.NEVER_SHARED
+        assertTrue("R1220: the validated day is sent", text.contains("la journée que vous validez nous est envoyée"))
+        assertTrue("R1220: with what detection proposed", text.contains("ce que la détection vous avait proposé"))
+        assertTrue("R1220: the position is never sent", text.contains("Votre position n’est jamais transmise"))
+        assertTrue("the employer is still named", text.contains("employeur"))
+        assertTrue("the administration is still named", text.contains("administration"))
+        assertFalse("R1220: « Rien n’est transmis » is false: a confirmed day is sent", text.contains("Rien n"))
+        assertFalse("R126: no ASCII apostrophe in fr/ copy", text.contains("'"))
+    }
+
     @Test
     fun theNetworkDisclosureIsTypographicAndNonTrivial() {
         val text = DisclosureCopy.NETWORK_LOCATION

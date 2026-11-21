@@ -48,8 +48,16 @@ object DisclosureCopy {
         "L’application ne conserve qu’une conclusion par jour : ni trajet, ni adresse, ni historique de vos " +
             "déplacements."
 
+    // AN-COPY-TRUTH R1220 (A6 F5a). « Rien n’est transmis » was false: a day the person validates from a proposal IS
+    // sent, and the Data safety form declares it as Approximate location, collected (Android Ruling 18 Q-DS1). The
+    // sentence now says what leaves the phone and what never does. « validez » covers a confirmed AND a corrected
+    // proposal (both are sent); « ce que la détection vous avait proposé » is detectedKind, which is always the
+    // CH/HOME side (EntriesMapping.toEntryWrite) - the day itself may have been corrected to a mission or an absence,
+    // so its kind is not enumerated. « Seule » is bounded by the screen it sits on: what detection produces.
     const val NEVER_SHARED =
-        "Rien n’est transmis : votre position n’est jamais partagée avec votre employeur ni avec l’administration."
+        "Votre position n’est jamais transmise, ni à nous, ni à votre employeur, ni à l’administration. Seule la " +
+            "journée que vous validez nous est envoyée, avec ce que la détection vous avait proposé : en Suisse ou " +
+            "à domicile."
 
     // SPEC 11.1: warn in advance that Android 10+ asks TWICE (in-use, then background) - the unexplained second
     // dialog is the main reason background grants get refused.
