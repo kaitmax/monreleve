@@ -25,6 +25,8 @@ import java.io.File
  * Android half under its own name).
  * IOS-MOVE-TABS R1361 added the four-tab wiring (MainTabs.kt) and its route (ForecastRoute.kt), moved from :app's
  * MainShell in MainActivity.kt; iOS's copy, IosMainShell's `when (tab)` and IosForecastRoute, was deleted (R206).
+ * IOS-SHELL-3 R1371 added the year downloads' coordinator (data/sync/YearDownloadCoordinator.kt: YearDownloads and
+ * YearDownloadStatus), moved from :app's data/sync/YearDownloads.kt, which keeps Android's half under its own name.
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
@@ -98,6 +100,9 @@ class MovedTwinsFenceTest {
             // IOS-MOVE-TABS R1360/R1361: the bottom bar, the four tabs and the forecast overlays, moved from MainShell.
             "ch/monreleve/app/MainTabs.kt",
             "ch/monreleve/app/ForecastRoute.kt",
+            // IOS-SHELL-3 R1371: the year downloads' coordinator and its status, moved from :app's
+            // data/sync/YearDownloads.kt (which keeps Android's instance, construction and tax years by its own name).
+            "ch/monreleve/app/data/sync/YearDownloadCoordinator.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -161,6 +166,8 @@ class MovedTwinsFenceTest {
                     "ShellRouter", "SignInRoute", "CodeRoute", "ResolvingRoute", "SignInStep",
                     // IOS-MOVE-TABS R1361: a composable and an enum (Android's ForecastRoute, iOS's IosForecastRoute).
                     "MainTabs", "ForecastRoute",
+                    // IOS-SHELL-3 R1371: a sealed interface and a class.
+                    "YearDownloadStatus", "YearDownloads",
                 ),
             ),
         )

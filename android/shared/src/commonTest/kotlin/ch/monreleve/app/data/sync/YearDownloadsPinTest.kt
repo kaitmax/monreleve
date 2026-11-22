@@ -6,7 +6,6 @@ import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.Portion
 import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.SyncState
-import ch.monreleve.app.data.repo.FakeEntryDao
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -16,12 +15,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-// IOS-SHELL-3 R1371 (iOS Ruling 15 Q2): PIN THEN MOVE, as IOS-MOVE-GRAPH (5b) did. YearDownloadsTest's eight cases about
-// the coordinator, transcribed to kotlin.test (R457) where the code lives TODAY, run green against :app's YearDownloads
+// IOS-SHELL-3 R1371 (iOS Ruling 15 Q2): PIN THEN MOVE, as IOS-MOVE-GRAPH (5b) did. YearDownloadsTest's eight cases
+// about the coordinator, transcribed to kotlin.test (R457) where the code lived, run green against :app's YearDownloads
 // beside the Kotest originals, and then moved to :shared commonTest WITH the coordinator. Each `actual shouldBe
 // expected` became assertEquals(expected, actual) and each `shouldContain` an assertTrue naming the line; no value,
 // count or order changed. The ninth original case (R28, taxYearsToDownload over java.time) stays in :app as
 // TaxYearsToDownloadTest, because the function it pins stays (java.time is Android's).
+// MOVED (step 2): the only change from the green :app blob is the DAO - :app's FakeEntryDao became commonTest's
+// InMemoryEntryDao (DownloadRig.kt), which keys its rows by the same (account, day, portion) triple, upserts the
+// same way and reads through the same cold flowOf - and this paragraph. It now runs on the JVM and the simulator.
 //
 // AN-PULL (R481, R484, R485). WHEN the year comes down - the trigger layer (R482). WHAT a download does is
 // EntriesDownload's, proven in :shared's commonTest; here the download is real (over an in-memory DAO and a scripted
@@ -77,7 +79,7 @@ private class PinRig(
     scope: TestScope,
     server: Map<Int, List<String>>,
 ) {
-    val dao = FakeEntryDao()
+    val dao = InMemoryEntryDao()
     val server = PinServer(server)
     val log = mutableListOf<String>()
     val downloads = YearDownloads(scope) { log += it }
