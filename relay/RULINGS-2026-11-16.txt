@@ -3020,3 +3020,40 @@ Q5 (the threshold alert's two entry points still drawn on iOS): IOS-SHELL-2,
    as R1330's "hidden, asserted by test", with the two entry points NAMED
    (R1338): hidden on iOS by a common-screen change, a PRESENCE control that
    Android still draws both, and Android's baselines unmoved.
+
+iOS Ruling 14 - IOS-MOVE-TABS, 2026-11-22. LANDED: main f2f230bb (merge of
+m6-tabs ffa59c70; main unmoved at d6486016, merge tree = gated tree).
+:app:gate on code tip 3db54fa0: BUILD SUCCESSFUL 6m54s, dirty=0/0,
+GATE_EXIT=0, floor 1568 (per-class diff empty, before on d6486016 and after).
+R573: ios-shared 45030136957 counted by the orchestrator from the JUnit XML:
+91 suites, 461 tests, 0 failures, 0 errors (459 +
+IosLoggerDefaultSinkIosTest 2); ios-app 45030139585 success, probe keys
+keychain, notification, reminder, share, firstLaunch PASS, apiBaseUrl
+127.0.0.1:3000. web/ and .github/ untouched; token check 0.
+THE FLOOR FROM HERE IS 1568; iOS SHARED FROM HERE IS 461.
+THE RUN-B SIGSEGV - CAUSE ESTABLISHED (closes iOS Ruling 13's open item):
+   reproduced in run 45025248454 on 07018900 (read by the orchestrator from
+   the job log: signal 11 in IosLoggerDefaultSinkIosTest on an ORDINARY
+   line, no '%', 0 suites written - run B's signature). Fixed by ONE console
+   function (NSLog with the scrubbed line as its format, '%' doubled, no
+   vararg) serving IosLogger's default sink and the shell's log (R206); the
+   same test, body unedited, green in 45030136957.
+Deviations 1-5 ACCEPTED (ForecastRoute in its own file for detekt; the base
+   measured in the session's own second worktree; a comment rewrap committed
+   without re-running fastCheck, covered by the gate's detekt/ktlint; the
+   LaunchedEffect's order argued; no gradlew --stop). NOTE: verifyPaparazzi
+   ran with 0 files changed, but no Paparazzi test composes MainShell or
+   MainTabs - pixel neutrality of the move is ARGUED, not proven; IOS-WALK's
+   screenshots and the operator's S9 look are where it is seen.
+Q1 (a structural fence against a renamed copy of the tab wiring): YES - a
+   fence refusing any `AppTab.<X> ->` branch outside MainTabs.kt and
+   AppBottomBar.kt in :app and iosMain, planted. It goes to I3 IOS-AUDIT
+   (R1350-R1359), not IOS-SHELL-2, whose scope is already full.
+Q2 (MainTabs has no runtime exercise; SimulationForecastScreensIosTest holds
+   hand-written reductions): YES, an iosTest driving MainTabs itself (open
+   Prevision, the simulator, back; Calendrier and Releve selected) that
+   replaces the reductions with a case map (R268) - in I3 IOS-AUDIT. IOS-WALK
+   drives the same path on the simulator meanwhile.
+Q3 (Release logging): the defect is CLOSED in the test process; R1347's
+   iPhone item stays as a CONFIRMATION of the Release build, not an open
+   defect.
