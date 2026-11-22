@@ -18,6 +18,10 @@
 //   (5) reminder      IOS-MOVE-REMINDER R1292: the evening reminder's production glue over the REAL centre - the
 //                     plan held, re-planned (replaced, not doubled), then signed out (removed) - each read back
 //                     from the PENDING list. Runs after (2), whose provisional authorization it relies on.
+//   (6) firstLaunch   IOS-SHELL-1 R1321: the first-launch clear over the REAL Keychain stores and a REAL UserDefaults
+//                     marker (probe names - the app's own items are never touched): cleared when unmarked, kept after.
+//   (7) ats           IOS-SHELL-1 R1320: whether App Transport Security refuses plain http to the Debug base URL,
+//                     told apart by the error code against a port where nothing listens.
 //
 // NOTHING SECRET: no server, no sign-in, no real token. The fake pair's values are never written out - only whether
 // they came back equal. The repository is public, and so are the run's logs and artifacts.
@@ -66,6 +70,8 @@ final class HostProbe {
         await notification(log)
         await reminder(log)
         await share(log)
+        firstLaunch(log)
+        await transportSecurity(log)
         log.line("probe.done", "true")
     }
 
@@ -254,6 +260,47 @@ final class HostProbe {
         return "\(request.identifier) hour=\(parts.hour ?? -1) minute=\(parts.minute ?? -1) "
             + "timeZone=\(parts.timeZone?.identifier ?? "nil") repeats=\(trigger.repeats) next=\(next) "
             + "titleIsManual=\(request.content.title == NotificationCopy.shared.MANUAL_TITLE)"
+    }
+
+    // MARK: - (6) the first-launch clear, on the real Keychain (IOS-SHELL-1 R1321)
+
+    /// The production clearKeychainOnFirstLaunch over the three REAL Keychain stores and a REAL UserDefaults marker,
+    /// each on a probe name (FirstLaunchProbeResult.kt): no marker -> all three cleared and the marker set; marker set ->
+    /// nothing cleared. The ORDER inside the app's start path is IosFirstLaunchIosTest's (doubles, no bundle there).
+    private func firstLaunch(_ log: ProbeLog) {
+        let result = FirstLaunchProbeResultKt.firstLaunchProbe()
+        log.line("firstLaunch.firstCleared", "\(result.firstCleared)")
+        log.line("firstLaunch.firstLeftAllEmpty", "\(result.firstLeftAllEmpty)")
+        log.line("firstLaunch.firstSetTheMarker", "\(result.firstSetTheMarker)")
+        log.line("firstLaunch.secondCleared", "\(result.secondCleared)")
+        log.line("firstLaunch.secondKeptAll", "\(result.secondKeptAll)")
+        if let failure = result.failure { log.line("firstLaunch.failure", failure) }
+        log.line("firstLaunch.result", result.passed ? "PASS" : "FAIL")
+    }
+
+    // MARK: - (7) App Transport Security and the Debug base URL (IOS-SHELL-1 R1320)
+
+    /// R1320: MEASURE whether iOS refuses plain http to the Debug base URL (http://127.0.0.1:3000) before any exception
+    /// is added. Nothing listens there on the runner, so the answer is told apart by its error code: -1022
+    /// (NSURLErrorAppTransportSecurityRequiresSecureConnection) is ATS refusing; -1004 (cannot connect) is ATS letting
+    /// the request through to a closed port. The request carries nothing and reaches no server.
+    private func transportSecurity(_ log: ProbeLog) async {
+        guard let base = Bundle.main.object(forInfoDictionaryKey: "MonReleveApiBaseUrl") as? String,
+              let url = URL(string: base + "/api/health")
+        else {
+            log.line("ats.result", "NO RESULT no base URL in Info.plist")
+            return
+        }
+        log.line("ats.scheme", url.scheme ?? "nil")
+        do {
+            let (_, response) = try await URLSession.shared.data(from: url)
+            log.line("ats.answer", "status \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            log.line("ats.refusedByAts", "false")
+        } catch {
+            let failure = error as NSError
+            log.line("ats.answer", "\(failure.domain) \(failure.code)")
+            log.line("ats.refusedByAts", "\(failure.code == NSURLErrorAppTransportSecurityRequiresSecureConnection)")
+        }
     }
 
     // MARK: - (3) the share sheet, on screen

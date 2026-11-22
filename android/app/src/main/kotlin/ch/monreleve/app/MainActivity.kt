@@ -26,7 +26,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,34 +38,23 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
-import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.account.EXPORTS_DIR
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.account.SharedPrefsAccountStore
 import ch.monreleve.app.account.deviceLocalStore
 import ch.monreleve.app.auth.BytesOutcome
-import ch.monreleve.app.auth.CodeController
-import ch.monreleve.app.auth.CodePhase
-import ch.monreleve.app.auth.CodeSnapshot
 import ch.monreleve.app.auth.KeystoreTokenStore
 import ch.monreleve.app.auth.PostOutcome
 import ch.monreleve.app.auth.SessionManager
 import ch.monreleve.app.auth.SharedPrefsPendingSignInStore
-import ch.monreleve.app.auth.SignInController
-import ch.monreleve.app.auth.SignInPhase
-import ch.monreleve.app.auth.SignInSnapshot
-import ch.monreleve.app.auth.TokenStore
-import ch.monreleve.app.auth.heldDays
 import ch.monreleve.app.auth.processSession
 import ch.monreleve.app.auth.processSessionEnds
-import ch.monreleve.app.auth.sessionClosedByServer
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.SharedPrefsDossierCache
 import ch.monreleve.app.data.local.get
 import ch.monreleve.app.data.remote.AuthApi
 import ch.monreleve.app.data.remote.DossierApi
 import ch.monreleve.app.data.remote.DossierResult
-import ch.monreleve.app.data.remote.ME_PATH
 import ch.monreleve.app.data.remote.UrlConnectionTransport
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
@@ -126,11 +114,6 @@ import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEmployerFigureStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
-import ch.monreleve.app.startup.StartDecision
-import ch.monreleve.app.startup.UnresolvedCause
-import ch.monreleve.app.startup.decideStartAfterSignIn
-import ch.monreleve.app.startup.meFetchOf
-import ch.monreleve.app.startup.message
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
@@ -149,23 +132,16 @@ import ch.monreleve.app.ui.screens.releve.ReleveActions
 import ch.monreleve.app.ui.screens.releve.ReleveScreen
 import ch.monreleve.app.ui.screens.rythme.RythmeActions
 import ch.monreleve.app.ui.screens.rythme.RythmeScreen
-import ch.monreleve.app.ui.screens.signin.CodeActions
-import ch.monreleve.app.ui.screens.signin.CodeScreen
-import ch.monreleve.app.ui.screens.signin.RequestLinkScreen
-import ch.monreleve.app.ui.screens.signin.SignInActions
-import ch.monreleve.app.ui.screens.signin.WelcomeScreen
 import ch.monreleve.app.ui.screens.simulation.SimulationActions
 import ch.monreleve.app.ui.screens.simulation.SimulationScreen
 import ch.monreleve.app.ui.screens.update.UpdateRequiredScreen
 import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppRoot
 import ch.monreleve.app.ui.shell.AppTab
-import ch.monreleve.app.ui.shell.ResolvingScreen
 import ch.monreleve.app.update.openPlayListingFrom
 import ch.monreleve.app.update.processUpdateGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Clock
@@ -274,67 +250,51 @@ class MainActivity : ComponentActivity() {
                     val activity = LocalContext.current
                     UpdateRequiredScreen(onUpdate = { openPlayListingFrom(activity) })
                 } else {
-                    // AN-STATE (R310): the destination survives a rebuild, reconciled against the session (see
-                    // sessionReconciled). `start`, recomputed in onCreate from the session, is the authority.
-                    // AN-FORCED-SIGNOUT (R521): reconciled AS IT IS RESTORED (destinationSaver), so a restored MAIN
-                    // with no session never composes - the LaunchedEffect below is then a no-op kept for its R310 role.
-                    var destination by rememberSaveable(stateSaver = destinationSaver(start)) { mutableStateOf(start) }
-                    // R335: the onboarding prefill (the steps owed + their /me values) the RESOLVING step computes,
-                    // carried into OnboardingRoute. Saveable so a rebuild during onboarding keeps the same subset.
-                    var onboardingSeed by rememberSaveable { mutableStateOf<OnboardingSnapshot?>(null) }
-                    LaunchedEffect(Unit) { destination = sessionReconciled(destination, start) }
-                    // AN-FORCED-SIGNOUT (R520): a session the SERVER ends - met by a screen or by the worker, in this
-                    // process (R507) - takes the person to sign-in from whatever screen is open (PARK-T1).
-                    LaunchedEffect(Unit) {
-                        processSessionEnds.ends.collect {
-                            destination = destinationAfterSessionEnd(destination, session.isSignedIn())
-                        }
-                    }
-                    when (destination) {
-                        Destination.SIGN_IN -> {
-                            // R520: arrived here because the server ended the session? Read when sign-in opens, from
-                            // the stores (SessionEnds.kt) - and then the days still waiting, counted from the record
-                            // as the screen renders (R181), the current account's own (R303).
-                            val closed =
-                                remember { sessionClosedByServer(session.isSignedIn(), accountStore.current()) }
-                            val pendingRows by
-                                remember { if (closed) repository.observePending() else flowOf(null) }
-                                    .collectAsState(initial = null)
-                            SignInRoute(
-                                api,
-                                tokenStore,
-                                pending,
-                                accountStore,
+                    // IOS-SHELL-1 (R1328): the destination switch, the sign-in flow and RESOLVING are COMMON now
+                    // (ShellRoutes.kt, :shared commonMain) - moved from this file with their comments. What was
+                    // Android's in them is handed in here: the activity's context for the legal pages, the mail app
+                    // and the sign-in's drain; RESOLVING's two phone-side writes; the year download; and the two
+                    // routes that stay Android's (OnboardingRoute, MainShell) as slots.
+                    val activityContext = LocalContext.current
+                    ShellRouter(
+                        start = start,
+                        session = session,
+                        api = api,
+                        tokenStore = tokenStore,
+                        pending = pending,
+                        accountStore = accountStore,
+                        repository = repository,
+                        settingsStore = settingsStore,
+                        scope = lifecycleScope,
+                        sessionEnds = processSessionEnds,
+                        // AN-TOKEN-RACE (R509): the sign-in sends the account's held days through the worker's own
+                        // drain (R206).
+                        syncNow = { buildSyncEngine(activityContext).sync() },
+                        onOpenLegal = { openLegal(activityContext, it) },
+                        onOpenMail = { openMail(activityContext) },
+                        restoreMode = { serverMode -> restoreLoggingMode(activityContext, serverMode) },
+                        // AN-MANUAL-REMINDER (R1147): the evening opt-in the server holds, applied where this phone
+                        // may notify.
+                        restoreReminder = { serverOn ->
+                            SharedPrefsEveningNotificationStore(activityContext)
+                                .setEnabled(
+                                    restoredEveningOptIn(serverOn, notificationsPermitted(activityContext)),
+                                )
+                        },
+                        afterSignIn = {
+                            processYearDownloads.afterSignIn(entriesDownload, taxYearsToDownload(clock))
+                        },
+                        onboarding = { seed, onDone ->
+                            OnboardingRoute(
+                                session,
+                                settingsStore,
+                                taxYear,
                                 lifecycleScope,
-                                sessionClosed = closed,
-                                sessionClosedHeldDays = pendingRows?.let(::heldDays),
-                                onSignedIn = { destination = Destination.RESOLVING },
+                                seed = seed,
+                                onDone = onDone,
                             )
-                        }
-                        Destination.RESOLVING -> {
-                            // R481: every route here follows a sign-in (the code path's onSignedIn, or the link's
-                            // relaunch with its settings cleared), so this is where BOTH years come down. It does
-                            // not block the /me decision below; the shell shows its outcome (R484).
-                            LaunchedEffect(Unit) {
-                                processYearDownloads.afterSignIn(entriesDownload, taxYearsToDownload(clock))
-                            }
-                            ResolvingRoute(session, settingsStore) { decision ->
-                                when (decision) {
-                                    StartDecision.Main -> destination = Destination.MAIN
-                                    StartDecision.SignIn -> destination = Destination.SIGN_IN
-                                    is StartDecision.Onboard -> {
-                                        onboardingSeed = decision.prefill
-                                        destination = Destination.ONBOARDING
-                                    }
-                                    is StartDecision.Unresolved -> Unit
-                                }
-                            }
-                        }
-                        Destination.ONBOARDING ->
-                            OnboardingRoute(session, settingsStore, taxYear, lifecycleScope, seed = onboardingSeed) {
-                                destination = Destination.MAIN
-                            }
-                        Destination.MAIN ->
+                        },
+                        main = { onSignedOut ->
                             MainShell(
                                 repository,
                                 rhythmRepository,
@@ -363,158 +323,14 @@ class MainActivity : ComponentActivity() {
                                 yearDownload = yearDownload,
                                 // R295/R289: sign-out or deletion has wiped the local store; return to first-run.
                                 // A re-auth restarts this activity, and `start` recomputes the destination.
-                                onSignedOut = { destination = Destination.SIGN_IN },
+                                onSignedOut = onSignedOut,
                             )
-                    }
+                        },
+                    )
                 }
             }
         }
     }
-}
-
-// AN-ONBOARD: the sign-in flow is now three screens - Bienvenue (fresh install), the email request, and the
-// six-digit code - the second way in beside the App Link callback (R195 leaves the callback untouched). On a
-// code SIGNED it hands off to RESOLVING exactly as the callback's activity restart does: the start decision
-// (GET /api/v1/me) then routes to onboarding or the shell. The welcome is shown only while unsigned.
-private enum class SignInStep { WELCOME, EMAIL, CODE }
-
-// LongParameterList suppressed as MainShell/MainGraph are: this is the composition root wiring the sign-in
-// flow's stores and seams, not tangled logic (the ui/ screens bundle their callbacks into Actions instead,
-// which the no-literal fence requires there - this file is the root, where @Suppress is permitted).
-@Suppress("LongParameterList")
-@Composable
-private fun SignInRoute(
-    api: AuthApi,
-    tokenStore: TokenStore,
-    pending: SharedPrefsPendingSignInStore,
-    accountStore: AccountStore,
-    scope: CoroutineScope,
-    // AN-FORCED-SIGNOUT (R520): the server ended the session - open on the sign-in screen itself, with the notice,
-    // never on Bienvenue, which is a first-run pitch and says nothing of why the person is here.
-    sessionClosed: Boolean,
-    sessionClosedHeldDays: Int?,
-    onSignedIn: () -> Unit,
-) {
-    val context = LocalContext.current
-    var step by rememberSaveable { mutableStateOf(if (sessionClosed) SignInStep.EMAIL else SignInStep.WELCOME) }
-    // AN-STATE (R310): the typed email and a stable phase survive a rebuild.
-    var saved by rememberSaveable { mutableStateOf<SignInSnapshot?>(null) }
-    val controller = remember { SignInController(api, pending, scope, restored = saved) }
-    val state by controller.state.collectAsState()
-    LaunchedEffect(controller) { controller.state.collect { saved = SignInSnapshot(it.email, it.phase) } }
-    // The request succeeded (one answer whatever the truth, docs 1.5) -> move to the code screen.
-    LaunchedEffect(state.phase) { if (state.phase == SignInPhase.LINK_SENT) step = SignInStep.CODE }
-
-    when (step) {
-        SignInStep.WELCOME -> WelcomeScreen(onStart = { step = SignInStep.EMAIL })
-        SignInStep.EMAIL ->
-            RequestLinkScreen(
-                state = state,
-                // R520: named only while the server-ended state holds; null on any other arrival.
-                sessionClosedHeldDays = if (sessionClosed) sessionClosedHeldDays else null,
-                actions =
-                    SignInActions(
-                        onEmailChange = controller::onEmailChange,
-                        onSubmit = controller::submit,
-                        onRetry = controller::retry,
-                        onBack = { step = SignInStep.WELCOME },
-                        onOpenCgu = { openLegal(context, LegalPage.TERMS) },
-                        onOpenPrivacy = { openLegal(context, LegalPage.PRIVACY) },
-                    ),
-            )
-        SignInStep.CODE ->
-            CodeRoute(
-                api = api,
-                tokenStore = tokenStore,
-                pending = pending,
-                accountStore = accountStore,
-                email = state.email.trim(),
-                scope = scope,
-                onModify = { step = SignInStep.EMAIL },
-                onSignedIn = onSignedIn,
-            )
-    }
-}
-
-@Suppress("LongParameterList")
-@Composable
-private fun CodeRoute(
-    api: AuthApi,
-    tokenStore: TokenStore,
-    pending: SharedPrefsPendingSignInStore,
-    accountStore: AccountStore,
-    email: String,
-    scope: CoroutineScope,
-    onModify: () -> Unit,
-    onSignedIn: () -> Unit,
-) {
-    val context = LocalContext.current
-    // AN-STATE (R310): the typed digits and a stable phase survive a rebuild.
-    var saved by rememberSaveable { mutableStateOf<CodeSnapshot?>(null) }
-    // AN-TOKEN-RACE (R509): the sign-in sends the account's held days through the worker's own drain (R206).
-    val controller =
-        remember {
-            CodeController(
-                api,
-                tokenStore,
-                pending,
-                accountStore,
-                email,
-                scope,
-                syncNow = { buildSyncEngine(context).sync() },
-                restored = saved,
-            )
-        }
-    val state by controller.state.collectAsState()
-    LaunchedEffect(controller) { controller.state.collect { saved = CodeSnapshot(it.code, it.phase) } }
-    LaunchedEffect(state.phase) { if (state.phase == CodePhase.SIGNED) onSignedIn() }
-
-    CodeScreen(
-        email = email,
-        state = state,
-        actions =
-            CodeActions(
-                onCodeChange = controller::onCodeChange,
-                onSubmit = controller::submit,
-                onModify = onModify,
-                onResend = controller::resend,
-                onOpenMail = { openMail(context) },
-            ),
-    )
-}
-
-// R297: signed in but no local settings. Consult GET /api/v1/me BEFORE the onboarding decision - the settings
-// are held by the server, so a re-sign-in after sign-out's wipe restores them rather than re-onboarding. The
-// decision itself is JVM-tested in StartupDeciderTest over fakes (and ResolveFlowTest through the real session);
-// this route is only the wiring and the loading state (the DoD's loading state for a screen that waits on the network).
-// AN-SIGNIN-RESOLVE (R1161): an Unresolved decision is NOT handed on - it stays here as a retry line, and the retry
-// runs the resolve again (the attempt is the effect's key). R1162: a positive answer restores the server's logging
-// mode on the phone (restoreLoggingMode) before the settings are cached.
-@Composable
-private fun ResolvingRoute(
-    session: SessionManager,
-    settingsStore: SettingsStore,
-    onResolved: (StartDecision) -> Unit,
-) {
-    val context = LocalContext.current
-    var attempt by rememberSaveable { mutableIntStateOf(0) }
-    var unresolved by remember { mutableStateOf<UnresolvedCause?>(null) }
-    LaunchedEffect(attempt) {
-        unresolved = null
-        val decision =
-            decideStartAfterSignIn(
-                { meFetchOf(session.authenticatedGet(ME_PATH)) },
-                settingsStore,
-                restoreMode = { serverMode -> restoreLoggingMode(context, serverMode) },
-                // AN-MANUAL-REMINDER (R1147): the evening opt-in the server holds, applied where this phone may notify.
-                restoreReminder = { serverOn ->
-                    SharedPrefsEveningNotificationStore(context)
-                        .setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted(context)))
-                },
-            )
-        if (decision is StartDecision.Unresolved) unresolved = decision.cause else onResolved(decision)
-    }
-    ResolvingScreen(message = unresolved?.message(), onRetry = { attempt += 1 })
 }
 
 // AN-SIGNIN-RESOLVE (R1162, PARK-E3): the mode the server holds, applied on THIS phone - AUTO_DETECT with the sampler

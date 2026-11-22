@@ -5,10 +5,12 @@
 # gitignored (ios/.gitignore), so THIS file is the one home of every key below (R206). XcodeGen is a TOOL installed on
 # the runner by brew (.github/workflows/ios-app.yml); nothing it generates is a dependency of the app.
 #
-# WHAT THE APP IS, TODAY: a SwiftUI window hosting the PILOT view controller already in :shared's iosMain
-# (pilot/AujourdhuiPilotViewController.kt - the shared Aujourd'hui screen over an in-memory fixture, no server, no
-# account). The shell's move is iOS Ruling 3's later tasks, not this one. A launch with `-probe YES` also runs the
-# host probe (MonReleve/Sources/HostProbe.swift, R1212); a normal launch never does.
+# WHAT THE APP IS, TODAY (IOS-SHELL-1 R1320): a SwiftUI window hosting ONE ComposeUIViewController - the COMMON AppRoot
+# around the common router, over the process's shell (:shared iosMain ios/MonReleveViewController.kt, IosShell.kt):
+# sign-in by code, RESOLVING, the manual-only onboarding and the four tabs. It reads MonReleveApiBaseUrl and the version
+# keys below from Info.plist. A launch with `-probe YES` or `-pilotScenario <NAME>` shows the PILOT view controller
+# instead (the probe's and the glyph screenshot's only - MonReleveApp.swift); `-probe YES` also runs the host probe
+# (MonReleve/Sources/HostProbe.swift, R1212). A normal launch never does either.
 #
 # THE BUILD SHAPE (REPORT-IOS-HOST-CENSUS R1203):
 #   - :shared is a STATIC framework, baseName "Shared" (android/shared/build.gradle.kts), linked into the app binary.
@@ -63,8 +65,9 @@ targets:
           - "Shared"
       configs:
         # The API base URL (Android: BuildConfig.API_BASE_URL). Debug reaches a server on the simulator's own host
-        # loopback (Android's debug default is the emulator's 10.0.2.2:3000); Release is the site. The pilot makes no
-        # request, so today the key is read only by the probe (info.apiBaseUrl) - QUESTION in REPORT-IOS-HOST.
+        # loopback (Android's debug default is the emulator's 10.0.2.2:3000); Release is the site. IOS-SHELL-1 R1320:
+        # the app's AuthApi reads it (MonReleveViewController.kt) - the ONE home, never a literal in code (R206). The
+        # workflow builds Debug only, so no run of it ever contacts production.
         Debug:
           MONRELEVE_API_BASE_URL: "http://127.0.0.1:3000"
         Release:

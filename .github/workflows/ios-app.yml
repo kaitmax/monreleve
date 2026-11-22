@@ -13,8 +13,9 @@ name: ios-app
 #      allowed) with the Kotlin framework and Compose's resources inside it.
 #   4. The .app carries compose-resources/ic_*.xml - refused if it does not, since
 #      every icon the shared screens draw is read from there (R1203 item 4).
-#   5. A NORMAL launch (twice: the pilot's default state, then a state that draws
-#      icons) is photographed, and leaves NO probe file behind.
+#   5. A NORMAL launch (twice: the app itself - IOS-SHELL-1's AppRoot, on its
+#      sign-in screen - then the pilot in a state that draws icons) is
+#      photographed, and leaves NO probe file behind.
 #   6. A -probe launch writes its result file; the step reads it back with simctl
 #      and refuses a file without this run's nonce or without its last line.
 #
@@ -200,10 +201,13 @@ jobs:
           xcrun simctl uninstall "$udid" ch.monreleve.app || true
           xcrun simctl install "$udid" "$(cat "$RUNNER_TEMP/app.path")"
 
-      # R1211/R1214. TWO NORMAL LAUNCHES. The pilot's default state (today unanswered) draws no icon, so the second
-      # launch opens today ANSWERED_WHOLE, whose answer and status lines are glyphs - the screenshot that shows an
-      # icon rendered from compose-resources. Each must still be running when photographed, and neither may leave a
-      # probe file: absence is meaningful only beside the presence the probe launch shows next (R169's corollary).
+      # R1211/R1214, IOS-SHELL-1 R1320. TWO NORMAL LAUNCHES. DEFAULT (no argument) is THE APP ITSELF since IOS-SHELL-1:
+      # the common AppRoot and router, signed out on a fresh install, so its screenshot is the first sign-in screen
+      # (Bienvenue - no code is on it, R574). ANSWERED_WHOLE passes -pilotScenario, which now opens the PILOT (a
+      # probe/test-only path, MonReleveApp.swift) on today ANSWERED_WHOLE, whose answer and status lines are glyphs -
+      # the screenshot that shows an icon rendered from compose-resources. Each must still be running when
+      # photographed, and neither may leave a probe file: absence is meaningful only beside the presence the probe
+      # launch shows next (R169's corollary).
       - name: Normal launches (screenshots; no probe file)
         run: |
           udid=$(cat "$RUNNER_TEMP/sim.udid")

@@ -40,7 +40,8 @@ class IosTestRawWaitUntilFenceTest {
             // R808, measured on 7b0df23 and unchanged by IOS-2c-FIX: their conversion is a later task's (PARKED), so
             // the sign-in and onboarding pilots' timing is not coupled to this change with no second run to see it.
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/OnboardingScreensIosTest.kt" to 16,
-            "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/SignInScreensIosTest.kt" to 6,
+            // IOS-SHELL-1 R1328: SignInScreensIosTest's six raw waits went with its hand-written route reduction; the
+            // file now drives the real extracted routes through waitBounded, so its line is deleted (R808's shrink).
         )
 
     private val rawWait = Regex("""\bwaitUntil\w*\s*\(""")

@@ -89,6 +89,10 @@ class MovedTwinsFenceTest {
             // IOS-MOVE-GRAPH R1310/R1312: the one graph, and the destination logic split from ShellState.kt.
             "ch/monreleve/app/MainGraph.kt",
             "ch/monreleve/app/Destination.kt",
+            // IOS-SHELL-1 R1329: the evening switch's body, moved from :app's push/PushRegistration.kt.
+            "ch/monreleve/app/push/ReminderOptIn.kt",
+            // IOS-SHELL-1 R1328: the destination switch and the sign-in/RESOLVING routes, moved from MainActivity.kt.
+            "ch/monreleve/app/ShellRoutes.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -146,6 +150,10 @@ class MovedTwinsFenceTest {
                     // IOS-MOVE-GRAPH R1312: an object, a class, an enum and four plain funs.
                     "MainGraph", "MainControllers", "Destination", "sessionReconciled", "destinationSaver",
                     "startDestination", "destinationAfterSessionEnd",
+                    // IOS-SHELL-1 R1329: a const and a fun.
+                    "KEY_REMINDER_ENABLED", "reminderOptInBody",
+                    // IOS-SHELL-1 R1328: four composables and an internal enum.
+                    "ShellRouter", "SignInRoute", "CodeRoute", "ResolvingRoute", "SignInStep",
                 ),
             ),
         )

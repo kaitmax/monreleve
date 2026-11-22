@@ -1,0 +1,315 @@
+REPORT-IOS-SHELL-1 - THE iOS APP STARTS THE REAL SHELL: SCENE, FIRST-LAUNCH CLEAR, CODE SIGN-IN, ONBOARDING (shell 1 of 2)
+TASK     relay/IOS-SHELL-1.txt (iOS Rulings 2, 3, 9, 10, 11, 12). Rulings R1320-R1329 as the prompt allocated them; no
+         new ruling number was minted by this session.
+BASE     origin/main f29f6ec9 (5b's merge 42229742 + a records commit). :app:gate floor 1568; ios-shared 447 tests
+         (run 45012299645).
+BRANCH   s1-shell. PUSHED, NOT MERGED. Code tip e0dae700 - five commits on the base:
+           f603f5fc  increment 1   R1329, the common Parametres wire and its golden
+           4b947a9f  increment 2   R1328, the routes move to commonMain
+           ca312090  increment 3   the iOS shell, WITH two deliberate REDs (and one compile error, see run A)
+           4120e812  increment 3b  compile fix + the iOS detection file, REDs still in (run B)
+           e0dae700  increment 4   GREEN: REDs reverted, run B's SIGSEGV addressed
+         The report tip is the commit carrying this file only.
+WORKTREE C:/wt/s1-shell, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/s1-shell/ (not committed): inc*.log (+ .lock), gate.log (+ .lock), plant.log,
+         plant-landed.txt, plant-failures.txt + the fences' JUnit XML, diff-inc2-MainActivity.txt, diff-moved-routes.txt,
+         routes-at-base.kt / routes-at-tip.kt, ios-expected-inc2.txt / -runA.txt / -runC.txt (each written BEFORE its
+         dispatch), the iOS runs' artifacts (ios-shared-<id>/, ios-app-<id>/) and counts (ios-shared-<id>-count.txt),
+         tools/ (every scripted edit asserted its anchor count before writing, R211).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- The iOS app's content is the REAL shell now: ONE ComposeUIViewController whose content is the common AppRoot around
+  the common router, over a process-wide shell built once by ONE composition function, startIosShell (iosMain
+  ios/IosShell.kt). A launch with no argument reaches the first sign-in screen (Bienvenue) on the simulator - ios-app
+  runs 45019966294 and 45021921410, launch-DEFAULT.png, read by me.
+- R1328: SignInRoute, CodeRoute, ResolvingRoute and the destination switch (ShellRouter) moved from :app's
+  MainActivity to :shared commonMain (ShellRoutes.kt); Android passes its platform parts as parameters, behaviour
+  unchanged, :app's pins unedited, no baseline moved. OnboardingRoute and MainShell are NAMED as not movable without
+  bending; iOS writes its own (IosShellUi.kt).
+- R1329: the Parametres wire is common (CommonParametresWire), equal to Android's on every pinned vector except one
+  declared divergence (a malformed receipt's exception CLASS) - so Android keeps its org.json wire, as R1329 says.
+  reminderOptInBody and KEY_REMINDER_ENABLED moved to commonMain (same package).
+- Four new iosTest classes (R1321, R1323+R1329, R1324, R1326); the two R1321/R1326 asks for RED-first were RED in
+  run B for their stated reasons, then GREEN in run C.
+- :app:gate on e0dae700: BUILD SUCCESSFUL in 5m 26s, GATE_EXIT=0, floor 1568, no baseline moved.
+- ios-shared 45021918348 on e0dae700: success, 459 tests, 0 failures. ios-app 45021921410 on e0dae700: success, every
+  probe key PASS (the new firstLaunch included), ATS measured as NOT refusing the Debug loopback URL.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip e0dae700 in this session, on a clean tree (gate.log):
+    GATE HEAD=e0dae7009e97efb6a7af02b40117fd30bb210301 start=2026-11-22T12:22:30Z dirty=0
+    test floor OK: 1568 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 5m 26s
+    GATE_EXIT=0
+    end=2026-11-22T12:27:57Z dirty-after=0
+- Heavy lock s1-shell-gate: ACQUIRED 12:22:30Z commitFree=12788 (line 8000, not lowered), RELEASED 12:27:57Z.
+- Every Gradle run used --no-daemon. `gradlew --stop` was never run.
+- Counts in the gate's XML: :app 209 classes / 1568 tests / 0 failures; :shared JVM 61 / 328 / 0 (base 322 + 6,
+  CommonParametresWireGoldenTest).
+- verifyPaparazziDebug EXECUTED in the gate; `git diff --name-only f29f6ec9 e0dae700 -- android/app/src/test/snapshots`
+  = 0 files.
+- web/ unchanged (`git diff --name-only f29f6ec9 e0dae700 -- web` = 0), so gate:clone / gate:changed are not owed
+  (R199) - a decision, not an omission.
+- R573: ONE ios-shared and ONE ios-app run on the pushed code tip e0dae700 (below). Earlier runs on earlier commits
+  were compile/RED checks and are all listed under PUSH PROOF.
+
+================================================================================
+R1320 - THE SCENE
+================================================================================
+- MonReleveApp.swift: the WindowGroup shows AppScreen (UIViewControllerRepresentable over
+  MonReleveViewControllerKt.monReleveViewController()) with .ignoresSafeArea(), so AppRoot owns the insets (R1170).
+- monReleveViewController (iosMain ios/MonReleveViewController.kt): ComposeUIViewController { IosShellRoot(shell) },
+  the shell built by startIosShell the first time and reused after (one per process).
+- IosShellRoot = AppRoot { ShellRouter(...) } with iOS's ONBOARDING and MAIN routes in the router's slots.
+- Info.plist (ios/project.yml, unchanged keys): CADisableMinimumFrameDurationOnPhone, UIApplicationSceneManifest,
+  UILaunchScreen, CFBundleShortVersionString/CFBundleVersion (read by Kotlin into ParametresCopy.version, R894) and
+  MonReleveApiBaseUrl = $(MONRELEVE_API_BASE_URL), ONE build setting (Debug http://127.0.0.1:3000, Release
+  https://monreleve.ch). Kotlin reads the key and REFUSES a bundle without it (checkNotNull) - no literal in code.
+- DEBUG ONLY, NEVER PRODUCTION. The workflow's build line (run 45021921410's log):
+      xcodebuild build -project ios/MonReleve.xcodeproj -scheme MonReleve -configuration Debug -sdk iphonesimulator
+  and the probe read back info.apiBaseUrl=http://127.0.0.1:3000. No run of this session contacted production.
+- ATS, MEASURED FIRST (probe step 7, new): a GET to the Debug base URL + /api/health, nothing listening on the runner:
+      ats.scheme=http   ats.answer=NSURLErrorDomain -1004   ats.refusedByAts=false     (runs 45019966294, 45021921410)
+  -1004 is "cannot connect" (ATS let the plain-http loopback request through); ATS refusing would have been -1022. So
+  NO ATS exception was added - none to assert absent from Release.
+- THE PILOT: it is no longer the content. It stays ONLY for a launch carrying -pilotScenario or -probe
+  (LaunchArguments.pilotLaunch) - the probe's and the glyph screenshot's (I3 removes it). The workflow's launches:
+      DEFAULT (no argument)         -> THE APP ITSELF: launch-DEFAULT.png shows Bienvenue (sign-in, no code on it);
+      -pilotScenario ANSWERED_WHOLE -> the PILOT, a probe/test-only path, kept for the icon-from-compose-resources shot;
+      -probe YES ...                -> the PILOT plus the probe, unchanged (M4's step 5 included: reminder.result=PASS).
+  Both normal launches were ALIVE after 15 s with no probe file; ios-app.yml's comments say what each launch is now
+  (comment-only edit; triggers untouched).
+
+================================================================================
+R1321 - THE FIRST-LAUNCH CLEAR
+================================================================================
+- iosMain ios/IosFirstLaunch.kt: FirstLaunchMarker (UserDefaults key ch.monreleve.app.firstLaunchCleared) and
+  clearKeychainOnFirstLaunch(marker, tokens, pending, account): no marker -> the three stores cleared, THEN the marker
+  set. startIosShell calls it FIRST, before the SessionManager exists and before startDestination reads isSignedIn().
+- TEST-FIRST, RED WITH THE REASON (run B, ios-shared 45019964025 on 4120e812, the clear deliberately moved after the
+  start read): IosFirstLaunchIosTest.aFirstLaunchClears... FAILED "a reinstalled app starts signed out, as Android does.
+  Expected <SIGN_IN>, actual <RESOLVING>." GREEN in run C.
+- THE ORDER IS ASSERTED: one ordered event log over doubles (ShellTestDoubles.kt); the test asserts all three clears
+  happened, each BEFORE marker.set, and marker.set BEFORE the first tokens.load / account.read. The second case (marker
+  present) asserts no clear, no marker write, the stores kept, start RESOLVING.
+- THE REAL KEYCHAIN CLEAR, MEASURED in the app bundle (probe step 6, new, FirstLaunchProbeResult.kt over the production
+  function and the REAL KeychainTokenStore/KeychainPendingSignInStore/KeychainAccountStore and a REAL UserDefaults
+  marker, each on a PROBE name so no app item is touched): firstCleared=true firstLeftAllEmpty=true
+  firstSetTheMarker=true secondCleared=false secondKeptAll=true -> firstLaunch.result=PASS (both ios-app runs).
+
+================================================================================
+R1322 - CODE-ONLY SIGN-IN
+================================================================================
+- The flow ends at the six-digit code (CodeRoute). project.yml declares no CFBundleURLTypes and no associated-domains
+  entitlement; nothing in iosMain handles a link.
+- The common routes take the commonMain PendingSignInStore (census N3). Android's call passes the SAME
+  SharedPrefsPendingSignInStore object it always did; the widening is the parameter type only.
+- R574: this session's captures are launch-DEFAULT.png (Bienvenue), launch-ANSWERED_WHOLE.png (the pilot) and
+  probe-share-sheet.png (the pilot) - none shows a code field. The iosTests capture nothing; their digits are fixtures.
+
+================================================================================
+R1323 - THE SESSION AND THE ENDINGS
+================================================================================
+- THE COMPOSITION FUNCTION IS startIosShell (ios/IosShell.kt), built once per process (MonReleveViewController.kt):
+  first-launch clear -> SessionManager(onEnded = onServerEndedSession(store, processSessionEnds)) -> the record, the
+  rhythm, IosSyncTrigger, and the device's LocalStore = iosDeviceLocalStore(..., sessionEndSeam =
+  iosSessionEndSeam(removePendingRequests = centre::removeAllPending)) -> the start. The SAME IosNotificationCentre
+  is handed to M4's re-plan and to M3's seam. The controllers come from the common MainGraph.build when MAIN composes
+  (IosShell.buildControllers), with the common wire.
+- IosDetectionFile (IosShell.kt): the mode (MANUAL) and the evening opt-in, cleared TOGETHER - Android's
+  monreleve.detection file holds both and DetectionModeStore.clear / clearForSessionEnd erase "the evening and alert
+  opt-ins" (R295/R527). So every ending clears what Android's clears, and removes the pending reminders.
+- THE TEST THROUGH THE SHELL (R204): IosShellSignOutIosTest renders IosShellRoot over a signed-in, onboarded, opted-in
+  shell; the re-plan fills the recording centre and the BEFORE count is asserted > 0 (R169's corollary); then the
+  Parametres tab, "Se deconnecter", the confirmation are TAPPED; asserted after: 0 pending requests, the seam's
+  removal ran, tokens/account/settings gone, evening opt-in off, back on Bienvenue. Green in run C. The real centre's
+  count is I2's.
+
+================================================================================
+R1324 - THE UPDATE GATE IS OUT ON iOS, BY TEST
+================================================================================
+IosShellStartupIosTest: startIosShell signed in with NO settings (so startup MUST ask GET /api/v1/me - RESOLVING,
+R297), IosShellRoot composed over a recording transport. Asserted: "GET /api/v1/me" WAS requested (the positive
+control, named), the shell reached MAIN on its answer, and NO request contains MINIMUM_VERSION_PATH (read from its one
+home, R181). It also asserts the year-download stub is named in the log (R1320's "stub it visibly"). Green in run C.
+
+================================================================================
+R1325 - ONBOARDING, MANUAL-ONLY
+================================================================================
+IosOnboardingRoute (IosShellUi.kt): the common OnboardingController/OnboardingScreen/PretScreen with
+onboardingSeedFor(seed, detectionAvailable = false) - no mode step, MANUAL; no detection consent exists on iOS
+(detectionConsentBody stays in :app). "Oui" asks UNUserNotificationCenter for the ALERT authorization (never
+provisional, iOS Ruling 4 Q4), then saves with the answer; once the server took the save, the opt-in is written and
+the shell re-plans (M4's eveningReminderPlan + replanEveningReminders). A refusal saves reminderEnabled=false - the
+opt-in stays off and the Parametres switch reads off with its existing copy (Android's behaviour; no nag, no new copy).
+The two startDatePicker slots get IosStartDatePicker: a native UIDatePicker (inline, date only) through CMP 1.7.3's
+androidx.compose.ui.viewinterop.UIKitView, in a Dialog (the slot's own-layer contract), confirmed with the existing
+OnboardingCopy.CONTINUE. NOT exercised by a test or a run in this session (no flow reaches it) - see QUESTIONS.
+
+================================================================================
+R1326 - THE RENDER PROOF
+================================================================================
+- AppRootRenderIosTest draws AppRoot around a Scaffold whose bottomBar is the common AppBottomBar, selects each tab in
+  turn, asserts the four glyph ids in tab order and that only that tab is marked Selected.
+- The bar's icons carried NO semantics, so commonMain design/NavIconSemantics.kt adds navIconRes (kindIconRes's shape)
+  and AppBottomBar writes glyphSemanticsId(glyph) onto each icon. It draws nothing (verifyPaparazziDebug passed, 0
+  snapshot files changed).
+- RED FIRST (run B): Calendrier deliberately expected Glyph.CALENDAR_CHECK -> "Expected <[18, 14, 15, 20]>, actual
+  <[18, 19, 15, 20]>" (SUN 18, CALENDAR 19, FILE_TEXT 15, SETTINGS 20). GREEN in run C.
+
+================================================================================
+R1327 - ANDROID UNCHANGED; iOS
+================================================================================
+- :app:gate above: floor 1568 = the base's (no :app test added or removed; three :app FENCES edited - DEVIATIONS 2-4).
+- ios-shared 45021918348 on e0dae700: success; ios-shared-test-results counted from the JUnit XML: 90 suites, 459 tests,
+  0 failures, 0 errors, 0 skipped. Expected 459 = base 447 + 12, written before dispatch. Per-class difference from the
+  base: + CommonParametresWireGoldenTest 6 (commonTest), SignInScreensIosTest 2 -> 3, + IosFirstLaunchIosTest 2,
+  + IosShellStartupIosTest 1, + IosShellSignOutIosTest 1, + AppRootRenderIosTest 1. (Run A0 45017866190 on 4b947a9f
+  counted 454 = 447 + 7, and run C differs from it ONLY by the four new classes.)
+- ios-app 45021921410 on e0dae700: success. ios-host-probe.txt (nonce run-45021921410-1, probe.done=true):
+  keychain.result=PASS notification.result=PASS reminder.result=PASS share.result=PASS firstLaunch.result=PASS
+  ats.refusedByAts=false (bgtask.submit threw code 1 as before - the simulator, PARK-IF1).
+- THE LAUNCH WITHOUT -probe: LAUNCH DEFAULT pid ALIVE after 15 s; launch-DEFAULT.png = Bienvenue ("Vos jours de
+  teletravail, prets pour votre declaration.", "Commencer") - the app's first sign-in screen, no code on it.
+
+================================================================================
+R1328 - THE ROUTES EXTRACTED (the MainActivity edit is the task)
+================================================================================
+MOVED to shared/src/commonMain/kotlin/ch/monreleve/app/ShellRoutes.kt, comments carried. diff-moved-routes.txt compares
+the base's MainActivity lines 375-518 with the moved block; the differences are ONLY:
+  - private -> public (SignInRoute, CodeRoute, ResolvingRoute) / internal (SignInStep), cross-module;
+  - pending: SharedPrefsPendingSignInStore -> PendingSignInStore;
+  - `val context = LocalContext.current` gone from three routes; its uses became parameters: onOpenLegal (was
+    openLegal(context, ...)), onOpenMail (openMail(context)), syncNow (buildSyncEngine(context).sync()),
+    restoreMode / restoreReminder (restoreLoggingMode(context, ...), SharedPrefsEveningNotificationStore(context)...);
+  - one KDoc per public route, and one comment noting iOS's code-only flow.
+ShellRouter is the setContent block's switch, verbatim but for: processSessionEnds -> the `sessionEnds` parameter;
+processYearDownloads.afterSignIn(...) -> `afterSignIn`; OnboardingRoute(...) and MainShell(...) -> the `onboarding`
+and `main` slots.
+MainActivity (diff-inc2-MainActivity.txt; 39 insertions, 232 deletions at increment 2). Every line that is not a move:
+  - 24 imports removed (only the moved code used them);
+  - the switch became ONE ShellRouter call passing EXACTLY the objects the old code used, read in the same places:
+    `val activityContext = LocalContext.current` (the Activity, as LocalContext.current was inside each route) for the
+    legal pages, the mail app, CodeRoute's drain and RESOLVING's two writes; lifecycleScope; processSessionEnds; the
+    year download with the same entriesDownload/taxYearsToDownload(clock); MainShell with its unchanged argument list
+    and `onSignedOut` from the slot; OnboardingRoute with the same arguments;
+  - two lines re-wrapped for detekt's line length.
+NAMED, NOT MOVED (R1328's "cannot move without bending"; iOS wrote its own, IosShellUi.kt):
+  - OnboardingRoute: three rememberLauncherForActivityResult permission launchers, Build.VERSION gates and the
+    disclosure overlay are interleaved with the controller; separating them needs a callback-into-launcher seam that
+    does not exist.
+  - MainShell: launchers, Toasts, Intents, FileProvider, the push and threshold-alert passes, BackHandler, the update
+    of the notification extras. IosMainShell repeats its four-tab wiring (see QUESTIONS Q1).
+  - The update gate and CallbackActivity stay in :app, around/outside the switch.
+FENCED: MovedTwinsFenceTest's `moved` gained ShellRoutes.kt and push/ReminderOptIn.kt (names derived; the containsAll
+proof names ShellRouter, SignInRoute, CodeRoute, ResolvingRoute, SignInStep, KEY_REMINDER_ENABLED, reminderOptInBody).
+PLANTED (plant.log, on the committed tree; each verified landed first, R180, plant-landed.txt):
+  - :app r1328plant/R1328PlantApp.kt declaring `fun SignInRoute()` -> noCopyOfAMovedFileIsInApp FAILED naming it;
+  - iosMain R1329PlantIos.kt declaring reminderOptInBody -> noCopyOfAMovedFileIsInIosMain FAILED naming it;
+  - commonMain PlantedRoute { WelcomeScreen } called from the :app plant file -> EdgeToEdgeCensusTest FAILED
+    ("23 screens, 21 hosted": PlantedRoute and WelcomeScreen unhosted);
+  - one more ExperimentalTime opt-in in IosShell.kt -> ExperimentalTimeOptInAllowlistTest FAILED (IosShell.kt 1 -> 2).
+  Restored by removing the plant files and copying IosShell.kt back; `git status --porcelain` = 0 lines.
+SignInScreensIosTest (R268): the hand-written SignInHost reduction is DELETED. Case map:
+  aLinkIsRequestedAWrongCodeIsRefusedAndTheRightOneSignsIn (SignInHost)
+      -> theRealSignInRouteRequestsACodeRefusesAWrongOneAndSignsInWithTheRightOne (the real SignInRoute; "signed in"
+         is the route's own onSignedIn hand-off);
+  aRefusedLinkSaysSoAndOffersTheWayBack -> unchanged (CallbackController/CallbackScreen, never the reduction);
+  (new) theShellRouterTakesAFreshSignInThroughResolvingToMain (the real ShellRouter, SIGN_IN -> RESOLVING's GET /me ->
+         MAIN slot; asserts the mode/opt-in restores, the cached settings and the afterSignIn call).
+  Every wait goes through waitBounded (R807).
+
+================================================================================
+R1329 - iOS's ParametresWire
+================================================================================
+- CommonParametresWire (commonMain parametres/CommonParametresWire.kt): patchBody = mePatchBody; reminderBody =
+  reminderOptInBody (moved, push/ReminderOptIn.kt); deleteBody = accountDeleteBody; parseReceipt = parseDeleteReceipt
+  (org.json's optJSONObject/optInt/optBoolean reproduced); consentBody is HANDED IN.
+- GOLDEN (CommonParametresWireGoldenTest, commonTest - JVM in the gate 6/0, iOS in run C 6/0): ParametresWirePinTest's
+  literals and all ten receipt vectors. RED first on stubs (inc1-red.log: 3 of 6 failed - deleteBody, the receipt
+  vectors, the malformed case).
+- ANDROID KEEPS ITS org.json WIRE: the pin asserts JSONException::class for a malformed receipt; the common parse
+  throws kotlinx.serialization's exception. Equal outcome, unequal class, pins unedited - so no switch (DECLARED
+  DIVERGENCE, named in the golden).
+- THE CONSENT MEMBER ON iOS: detectionConsentUnreachableOnIos throws DetectionNotInIosV1. IosShellSignOutIosTest
+  wires a recorder behind it, drives the Parametres tab and the sign-out, and asserts it was asked ZERO times; the tab
+  shows no detection entry point (ParametresCopy.AUTO_LABEL asserted absent while the sign-out row is present), since
+  the iOS actions pass onToggleAutoDetection = null and setAutoDetection is the member's only caller.
+- A signed-out first launch reaches SIGN_IN (startDestination: SignIn before Onboard): IosFirstLaunchIosTest asserts
+  SIGN_IN after the clear, and launch-DEFAULT.png shows it.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- IosLogger's default sink is NSLog("%@", line): a Kotlin String passed as a C vararg where %@ expects an object. Run B
+  (45019964025) ended in SIGSEGV (signal 11) in the first test that reached a shell log line through it. I did not
+  change IosLogger; the shell logs through its own format-only NSLog (consoleLine, % doubled), and run C had no crash.
+  That the crash WAS that sink is inferred from timing (the next run without it is green), not proven by a crash log.
+  IosUnownedReporter in a Release build would hit the same sink.
+- The threshold alert is "hidden in iOS v1" (iOS Ruling 3 Q4), but ParametresScreen and PrevisionScreen still DRAW
+  its two entry points; on iOS their handlers are named no-op stubs. Hiding them needs a common-screen change.
+- The per-class comparison of run C was made against my run A0 45017866190 (454 = base 447 + 7), not against a fresh
+  download of the base run 45012299645; the base's 447 total is the orchestrator's count (iOS Ruling 12).
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. :app main beyond R1328: PushRegistration.kt lost reminderOptInBody and KEY_REMINDER_ENABLED (R1329's move, same
+   package, every caller resolves to the common one).
+2. :app fence EdgeToEdgeCensusTest: `*Route` / `*Router` top-level functions under :shared commonMain join the hosting
+   fixed point as hosts (a screen inside a common route counts only if every call site of the route is hosted).
+   Without it the census reported WelcomeScreen, RequestLinkScreen, CodeScreen and ResolvingScreen unhosted, because
+   their call sites left the wrapped MainActivity file. Planted (above).
+3. :app fence IosTestRawWaitUntilFenceTest: SignInScreensIosTest's allowlist line (6) deleted - its raw waits went with
+   the reduction.
+4. :app fence ExperimentalTimeOptInAllowlistTest: three new entries, each count 1, function or property scope:
+   IosShell.kt (startIosShell - every Clock use is inside it), MonReleveViewController.kt (calling startIosShell,
+   whose signature names kotlin.time.Clock - run A's one compile error) and iosTest ShellTestDoubles.kt (the fixed
+   clock). The fence's own message says a new site is an argument for the operator: this is that argument (Q3).
+5. commonMain AppBottomBar.kt + new design/NavIconSemantics.kt (semantics only) for R1326.
+6. ios-app.yml: comment-only edits (header item 5 and the launch step) so they say what each launch is now.
+7. The evening opt-in on iOS is IN MEMORY (InMemoryEveningNotificationStore) - persistence and the other re-plan
+   triggers are IOS-SHELL-2's; RESOLVING rewrites it after every sign-in and every ending clears it (IosDetectionFile).
+8. iOS runs beyond the final pair, each listed under PUSH PROOF: A0 (compile check), A (ios-app compile failure;
+   ios-shared cancelled by me - NO RESULT), B (the REDs).
+9. No `gradlew --stop`; every run --no-daemon.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. IosMainShell repeats MainShell's four-tab wiring (the `when (tab)` and the forecast overlays). Should IOS-SHELL-2
+    extract a common MainTabs composable both shells call (Android's launchers stay outside it), or is the repetition
+    accepted until the iOS facilities settle?
+Q2. The native date picker (IosStartDatePicker, UIDatePicker through UIKitView in a Dialog) compiled and is wired into
+    both slots, but no test or run in this session opened it. Should I2's walkthrough open it, or should IOS-SHELL-2
+    add an iosTest for it?
+Q3. The ExperimentalTime allowlist grew by three entries (DEVIATION 4). Accepted, or should the iOS composition take
+    a non-experimental time seam so that only one entry remains?
+Q4. IosLogger's NSLog("%@", line) sink (NOTICED): fix it in IOS-SHELL-2 (it is the Release reporter's sink), with a
+    test that calls the real NSLog in the test process?
+Q5. The threshold alert's two entry points still draw on iOS (NOTICED): a common-screen change (nullable handlers, as
+    onToggleAutoDetection) in IOS-SHELL-2, or later?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code commits, each pushed to origin/s1-shell when made: f603f5fc, 4b947a9f, ca312090, 4120e812, e0dae700.
+- Report commit: the commit adding this file, on e0dae700, changing only this file.
+- iOS runs (all workflow_dispatch on s1-shell; ios-app.yml's dispatch has no branch filter - no trigger edited):
+    ios-shared 45017866190 on 4b947a9f   success, 454 tests, 0 failures (compile check of increment 2)
+    ios-app    45019445494 on ca312090   failure: Kotlin/Native compile, MonReleveViewController.kt:22 needs opt-in
+    ios-shared 45019442777 on ca312090   cancelled by me before its tests - NO RESULT
+    ios-shared 45019964025 on 4120e812   failure as expected: the two deliberate REDs, then SIGSEGV (NOTICED)
+    ios-app    45019966294 on 4120e812   success, all probe keys PASS, ats -1004
+    ios-shared 45021918348 on e0dae700   success, 459 tests, 0 failures  <- R573 / R1327
+    ios-app    45021921410 on e0dae700   success, all probe keys PASS    <- R1327
+- Heavy-lock holds: s1-shell-inc1red, -inc1, -inc2, -inc3, -inc3f, -inc3b, -inc4, -plant, -gate - every one RELEASED
+  (the *.lock logs). None is held by this session.
+- Not merged. parking.md not written. Token check: `git diff f29f6ec9 e0dae700` for ghp_/github_pat/private keys/JWT
+  prefixes = 0 hits.
+- C:/wt/s1-shell/.session-lock.json: removed after the report push, as the last act.

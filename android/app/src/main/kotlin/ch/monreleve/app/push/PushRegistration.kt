@@ -37,7 +37,6 @@ import org.json.JSONObject
 internal const val DEVICES_PATH = "/api/v1/devices"
 internal const val KEY_FCM_TOKEN = "fcmToken"
 internal const val KEY_APP_VERSION = "appVersion"
-internal const val KEY_REMINDER_ENABLED = "reminderEnabled"
 
 /** R1151: the POST /api/v1/devices body for [token] - fixtures/push-client-cases.json's registration.body. */
 internal fun registrationBody(
@@ -45,8 +44,8 @@ internal fun registrationBody(
     appVersion: String,
 ): String = JSONObject().put(KEY_FCM_TOKEN, token).put(KEY_APP_VERSION, appVersion).toString()
 
-/** The PATCH /api/v1/me body that sets the server's opt-in - fixtures/push-client-cases.json's optIn.body. */
-internal fun reminderOptInBody(enabled: Boolean): String = JSONObject().put(KEY_REMINDER_ENABLED, enabled).toString()
+// IOS-SHELL-1 (R1329): reminderOptInBody and KEY_REMINDER_ENABLED MOVED to :shared commonMain, same package
+// (push/ReminderOptIn.kt) - iOS v1 sends the same body. Every caller here and every pin resolves to it unedited.
 
 /** What this phone last established with the server, for ONE account (R1153). Never the token itself. */
 internal data class PushRecord(
