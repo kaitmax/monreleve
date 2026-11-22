@@ -13,9 +13,17 @@ import platform.Foundation.NSLog
 //     worked from home is health-adjacent personal data), and a six-digit sign-in code.
 //
 // NSLog is the sink: it is visible in Console and a crash report's breadcrumbs, but writes nothing the person
-// can read back from the app, and os_log is a C macro Kotlin cannot call. NSLog's first argument is a FORMAT, so
-// the scrubbed message is passed as an argument to "%@", never as the format itself - a message containing a
-// percent sign must not be interpreted.
+// can read back from the app, and os_log is a C macro Kotlin cannot call. NSLog's first argument is a FORMAT, so a
+// message containing a percent sign must not be interpreted: [consoleLine] passes the scrubbed line AS the format
+// with every % doubled, and nothing as a C vararg.
+//
+// IOS-MOVE-TABS R1362 (iOS Ruling 13 Q4, THE RUN-B SIGSEGV). This sink used to be NSLog("%@", line) - the line as a
+// C variadic argument where %@ expects an Objective-C object. Reproduced before this change, by
+// IosLoggerDefaultSinkIosTest calling the real default sink in the test process: ios-shared run 45025248454 printed
+// "R1362 BEFORE ordinary", then "Child process terminated with signal 11: Segmentation fault", and wrote no JUnit
+// suite - an ORDINARY sentence, no percent sign in it, killed the process. The shell already wrote through its own
+// format-only line (IOS-SHELL-1's consoleLine in IosShell.kt); the two are now this ONE function (R206), the scrub
+// still before the write (R574).
 
 private val EMAIL = Regex("""[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}""")
 private val TOKENISH = Regex("""[A-Za-z0-9_\-.]{24,}""")
@@ -32,8 +40,16 @@ internal fun scrub(message: String): String =
         .replace(TOKENISH, REDACTED)
         .replace(SIX_DIGIT_CODE, REDACTED)
 
+/**
+ * One line to the console: scrubbed (R574), then handed to NSLog as its FORMAT with every % doubled - never as a C
+ * vararg. iOS's ONE console sink: IosLogger's default and the shell's log default (startIosShell) both write here.
+ */
+internal fun consoleLine(line: String) {
+    NSLog(scrub(line).replace("%", "%%"))
+}
+
 class IosLogger(
-    private val sink: (String) -> Unit = { line -> NSLog("%@", line) },
+    private val sink: (String) -> Unit = ::consoleLine,
 ) {
     fun error(
         tag: String,

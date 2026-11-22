@@ -12,6 +12,11 @@ import kotlin.test.assertEquals
 // sink argument, in the test process - with an ordinary line and with a line carrying '%'. If the process dies here,
 // that is the reproduction; if it does not, the cause of run B's crash is still open and this test says so by passing.
 //
+// RED, REPRODUCED (ios-shared run 45025248454, on the commit adding this file, the sink unchanged): "R1362 BEFORE
+// ordinary", then "Child process terminated with signal 11: Segmentation fault", no AFTER line, exitValue=139, and no
+// JUnit suite written. STEP 2: the default sink is now consoleLine (IosLogger.kt), the shell's format-only line, ONE
+// function for both; this same test, its body unedited, is the green.
+//
 // What a run shows, read from its job log (R133 - a pass is a statement about something that happened):
 //   - "R1362 BEFORE <case>" on the test's STANDARD_OUT, then the sink's own line if NSLog's stderr reaches the log,
 //     then "R1362 AFTER <case>" - the call returned and the process lived through it;
