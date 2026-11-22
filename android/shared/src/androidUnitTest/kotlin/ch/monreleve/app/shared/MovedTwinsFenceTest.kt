@@ -14,8 +14,12 @@ import java.io.File
  * IOS-MOVE-REMINDER R1293 added the 19:00 fallback's pure part (reminder/FallbackReminder.kt, ported to
  * kotlinx-datetime), the iOS reminder plan beside it (reminder/EveningReminderPlan.kt, new) and the copy they use
  * (fr/NotificationCopy.kt). The java.time overloads that keep :app's runtime and pin unedited share three of the
- * moved names by design; they live in :shared androidMain (reminder/JavaTimeFallbackReminder.kt), which is not a
- * place this fence reads.
+ * moved names by design; they live in :shared androidMain (reminder/JavaTimeFallbackReminder.kt).
+ * IOS-MOVE-CORE R1303 added the shell's platform-free files (ui/shell, detection/LoggingModeRestore.kt,
+ * onboarding/ManualOnlyOnboarding.kt, startup/StartupDecider.kt), Site and the two contracts split from :app
+ * (auth/CallbackLinkHost.kt, settings/EmployerFigureStore.kt). And, by iOS Ruling 10 Q2, it now READS androidMain: the
+ * bridge there may declare EXACTLY its three type-only java.time overloads, by name, and no other androidMain file may
+ * declare a moved name at all - so the one place moved names are shared by design cannot grow a fourth unseen.
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
@@ -49,6 +53,7 @@ class MovedTwinsFenceTest {
     private val iosMain = File("src/iosMain/kotlin")
     private val appSrc = File("../app/src")
     private val appMain = File("../app/src/main/kotlin")
+    private val androidMain = File("src/androidMain/kotlin")
 
     // The subject: the files that moved - the three twins (R1240), the /me codec (IOS-MOVE-ME R1270, iOS Ruling 7
     // Q3: every later (c) move adds its files here) and the session-end seam's pure part (IOS-MOVE-SEAM R1280/R1283).
@@ -184,7 +189,7 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInApp() {
         val found = copiesUnder(appSrc)
         assertTrue(
-            "R1242/R1273/R1283/R1293: :app declares a name (or holds a file name) of a file moved to :shared " +
+            "R1242/R1273/R1283/R1293/R1303: :app declares a name (or holds a file name) of a file moved to :shared " +
                 "commonMain - a second home for it. Delete it; the one home is :shared commonMain.\n" +
                 found.joinToString("\n"),
             found.isEmpty(),
@@ -195,10 +200,43 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInIosMain() {
         val found = copiesUnder(iosMain)
         assertTrue(
-            "R1242/R1273/R1283/R1293: iosMain declares a name (or holds a file name) of a file moved to :shared " +
-                "commonMain - a redeclaration only the macOS compilation sees. Delete it; the one home is :shared " +
-                "commonMain.\n" +
+            "R1242/R1273/R1283/R1293/R1303: iosMain declares a name (or holds a file name) of a file moved to " +
+                ":shared commonMain - a redeclaration only the macOS compilation sees. Delete it; the one home is " +
+                ":shared commonMain.\n" +
                 found.joinToString("\n"),
+            found.isEmpty(),
+        )
+    }
+
+    @Test
+    fun theAndroidMainBridgeDeclaresExactlyItsThreeJavaTimeOverloads() {
+        val file = File(androidMain, BRIDGE)
+        assertTrue("R1303: the java.time bridge is not at ${file.absolutePath} - moved or deleted? (R460)", file.isFile)
+        val text = file.readText()
+        assertEquals(
+            "R1303 (iOS Ruling 10 Q2): $BRIDGE declares exactly the three java.time overloads - private too",
+            BRIDGE_NAMES,
+            declaredNames(text, publicOnly = false),
+        )
+        // Each one overloads a MOVED common function (the decision stays there) ...
+        assertTrue("R1303: a bridge name is not a moved common function", guardedNames().containsAll(BRIDGE_NAMES))
+        // ... and is type-only in its parameters: a java.time Instant and a ZoneId, nothing else.
+        for (name in BRIDGE_NAMES) {
+            assertTrue(
+                "R1303: $name in $BRIDGE does not take (now: JavaInstant, zone: ZoneId)",
+                Regex("""fun\s+$name\(\s*now:\s*JavaInstant,\s*zone:\s*ZoneId,?\s*\)""") in text,
+            )
+        }
+    }
+
+    @Test
+    fun noOtherAndroidMainFileDeclaresAMovedName() {
+        assertTrue("androidMain root not found at ${androidMain.absolutePath}", File(androidMain, PIN_ANDROID).isFile)
+        val allowed = BRIDGE_NAMES.map { "$BRIDGE: declares $it" }.toSet()
+        val found = copiesUnder(androidMain).filterNot { it in allowed }
+        assertTrue(
+            "R1303 (iOS Ruling 10 Q2): androidMain declares a moved name outside the java.time bridge's three - a " +
+                "second home for it.\n" + found.joinToString("\n"),
             found.isEmpty(),
         )
     }
@@ -221,6 +259,11 @@ class MovedTwinsFenceTest {
         const val PIN_IOS = "ch/monreleve/app/ios/IosSyncTrigger.kt"
         const val PIN_APP = "main/kotlin/ch/monreleve/app/MainActivity.kt"
         const val PIN_APP_MAIN = "ch/monreleve/app/MainActivity.kt"
+        const val PIN_ANDROID = "ch/monreleve/app/design/Glyph.android.kt"
+
+        // IOS-MOVE-CORE R1303: the one androidMain file allowed to share moved names, and those names, by name.
+        const val BRIDGE = "ch/monreleve/app/reminder/JavaTimeFallbackReminder.kt"
+        val BRIDGE_NAMES = setOf("nextFallbackAt", "bootFallbackAt", "reachedFallbackTime")
 
         private val DECLARATION =
             Regex(

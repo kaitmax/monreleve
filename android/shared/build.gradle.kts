@@ -259,6 +259,10 @@ tasks.withType<Test>().configureEach {
     inputs.dir(rootProject.layout.projectDirectory.dir("app/src"))
         .withPropertyName("appSourceForTwins")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // IOS-MOVE-CORE R1303 (iOS Ruling 10 Q2): it reads androidMain too (the java.time bridge's exact set), so the same.
+    inputs.dir(layout.projectDirectory.dir("src/androidMain/kotlin"))
+        .withPropertyName("androidMainSourceForTwins")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     // AN-SHARED-FIXES R1092 (R283): FilenameOfServerNamesTest derives every export filename the server sends from
     // web/'s own source - each content-disposition template under web/app and web/lib, and the csvFilename names
     // web/'s csv.test.ts expects - so a server rename must re-run it rather than leave this task UP-TO-DATE.
