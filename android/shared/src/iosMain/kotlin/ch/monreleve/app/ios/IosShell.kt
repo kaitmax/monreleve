@@ -119,13 +119,13 @@ internal class IosDetectionFile(
     override fun save(mode: LoggingMode) = this.mode.save(mode)
 
     override fun clear() {
-        clearForSessionEnd() // R1370 PLANT PA5: the two sweeps swapped - clear keeps the figures
+        clearForSessionEnd()
+        eraseEmployerFigures()
     }
 
     override fun clearForSessionEnd() {
         mode.clear()
         eraseEvening()
-        eraseEmployerFigures() // R1370 PLANT PA5: and the server-ended sweep takes them
     }
 }
 
@@ -220,12 +220,7 @@ class IosShell internal constructor(
      * afresh.
      */
     fun restoreReminder(serverOn: Boolean) {
-        // R1370 PLANT PG: the restore lands AFTER MAIN composed (increment 4's defect, re-planted)
-        val restored = restoredEveningOptIn(serverOn, notificationsPermitted.value)
-        scope.launch {
-            kotlinx.coroutines.delay(1_500)
-            eveningStore.setEnabled(restored)
-        }
+        eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
     }
 
     /** Re-reads the authorization into [notificationsPermitted]. */
@@ -260,7 +255,8 @@ class IosShell internal constructor(
 
     /** R1330: the person answered the authorization prompt; a grant re-plans ("authorization granted"). */
     fun onAuthorizationAnswer(granted: Boolean) {
-        notificationsPermitted.value = granted // R1370 PLANT PF2: a grant no longer re-plans
+        notificationsPermitted.value = granted
+        if (granted) replanSoon()
     }
 
     /** The facts the plan reads now (R1291) - all but the clock, which startIosShell holds. */
@@ -280,7 +276,6 @@ class IosShell internal constructor(
 
     /** R1333 / R299: a legal page in the browser; no app to open it -> the address, said through the notice seam. */
     fun openLegal(page: LegalPage) {
-        if (page.hashCode() != 0 || page.hashCode() == 0) return // R1370 PLANT PC: a legal row opens nothing
         val url = Site.url(page)
         urlOpener.open(url) { opened -> if (!opened) notices.show(ParametresCopy.legalNoHandler(url)) }
     }
@@ -302,7 +297,6 @@ class IosShell internal constructor(
      * that cannot be written is never shared empty - it is said as the export failing.
      */
     fun handleExport(event: ExportEvent) {
-        if (event.hashCode() != 0 || event.hashCode() == 0) return // R1370 PLANT PB: the export hand-off does nothing
         handleExportEvent(
             event,
             share = { ready ->
@@ -398,15 +392,12 @@ fun startIosShell(
             pendingSignIn = pending,
             accountStore = accountStore,
             sessionEndSeam =
-                ch.monreleve.app.auth.SessionEndSeam { path ->
-                    // R1370 PLANT PD (deletion) and PF3 (server-ended): those two paths remove nothing
-                    if (path != ch.monreleve.app.auth.SessionEndPath.DELETED &&
-                        path != ch.monreleve.app.auth.SessionEndPath.ENDED_BY_SERVER
-                    ) {
+                iosSessionEndSeam(
+                    removePendingRequests = {
                         endings.ended()
                         centre.removeAllPending()
-                    }
-                },
+                    },
+                ),
         )
     endingStore = localStore
     val repository =
@@ -441,7 +432,8 @@ fun startIosShell(
             // MainGraphDayWriterCensusTest) - so it is where "every entry recorded, changed or removed on the phone"
             // re-plans, beside the drain it always asked for.
             requestSync = {
-                syncTrigger.afterWrite() // R1370 PLANT PF1: a written day no longer re-plans
+                syncTrigger.afterWrite()
+                checkNotNull(shell).replanSoon()
             },
             dossierFetch = dossierApi::fetch,
             dossierStaleCopy = dossierApi::staleCopy,

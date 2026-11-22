@@ -238,7 +238,8 @@ internal fun IosMainShell(
     val tapped by shell.taps.openAujourdhui.collectAsState()
     LaunchedEffect(tapped) {
         if (tapped) {
-            forecastRoute = null // R1370 PLANT PE2: the tab is no longer switched
+            forecastRoute = null
+            tab = AppTab.AUJOURDHUI
             controllers.aujourdhui.refresh()
             shell.taps.consume()
         }

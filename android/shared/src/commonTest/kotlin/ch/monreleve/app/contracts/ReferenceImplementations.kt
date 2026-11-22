@@ -116,7 +116,7 @@ class MemoryEmployerFigureStore(
     private val backing: MutableMap<String, Double>,
     private val accountTag: () -> String?,
 ) : EmployerFigureStore {
-    private fun keyFor(year: Int): String? = accountTag()?.let { "$year" } // R1370 PLANT PA2: the account is dropped
+    private fun keyFor(year: Int): String? = accountTag()?.let { "$it.$year" }
 
     override fun figureFor(year: Int): Double? = keyFor(year)?.let { backing[it] }
 
