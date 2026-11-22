@@ -67,18 +67,20 @@ final class WalkUITests: XCTestCase {
     }
 
     private func signIn(_ address: String, step: String) {
-        let email = app.textFields.firstMatch
-        guard email.waitForExistence(timeout: 30) else {
+        guard let email = app.field(below: L.emailLabel) else {
             Walk.tree("\(step)-no-email-field", app)
             XCTFail("no e-mail field")
             return
         }
         Walk.tree("\(step)-signin", app)
         Walk.shot("\(step)-signin")
-        email.tap()
-        email.typeText(address)
         let before = Walk.mailCount(address)
-        tapLabel(L.signInSubmit, "\(step)-submit")
+        let keyboard = app.type(address, into: email)
+        Walk.note("\(step) sign-in: e-mail typed (keyboard shown=\(keyboard))")
+        dismissKeyboard()
+        if app.labelled(L.signInSubmit).exists && !app.labelled(L.codeTitle).exists {
+            app.labelled(L.signInSubmit).tap()
+        }
         let codeScreen = app.shows(L.codeTitle, within: 60)
         Walk.note("\(step) sign-in: code screen shown=\(codeScreen) (mails to the account before: \(before))")
         guard codeScreen else {
@@ -93,11 +95,15 @@ final class WalkUITests: XCTestCase {
             XCTFail("no code")
             return
         }
-        let field = app.textFields.firstMatch
-        field.tap()
-        field.typeText(code)
+        guard let field = app.field(below: L.codeLabel) else {
+            Walk.note("FAIL \(step): no code field below \"\(L.codeLabel)\"")
+            XCTFail("no code field")
+            return
+        }
+        _ = app.type(code, into: field)
+        dismissKeyboard()
         let submit = app.labelled(L.codeSubmit)
-        if submit.exists && submit.isHittable { submit.tap() }
+        if submit.exists { submit.tap() }
         var left = false
         for _ in 0..<60 {
             if !app.labelled(L.codeTitle).exists { left = true; break }
@@ -108,6 +114,21 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         Walk.tree("\(step)-after-signin", app)
         Walk.shot("\(step)-after-signin")
+    }
+
+    /// The keyboard covers the bottom actions: its return key (whatever the field's IME action names it) closes it.
+    private func dismissKeyboard() {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.exists else { return }
+        let names = ["Return", "return", "Done", "Go", "Next", "Send", "OK", "Terminé", "Aller", "Suivant", "Envoyer",
+                     "retour"]
+        let key = keyboard.buttons.matching(NSPredicate(format: "label IN %@", names)).firstMatch
+        if key.exists {
+            key.tap()
+        } else {
+            Walk.note("keyboard: no return key among \(keyboard.buttons.allElementsBoundByIndex.suffix(4).map { $0.label })")
+        }
+        Thread.sleep(forTimeInterval: 1)
     }
 
     // MARK: - 03 onboarding, manual-only, the native start-date picker opened (iOS Ruling 13 Q2)
@@ -123,9 +144,12 @@ final class WalkUITests: XCTestCase {
             }
             if app.labelled(L.onbNameTitle).exists {
                 seen.append("name")
-                let field = app.textFields.firstMatch
-                field.tap()
-                field.typeText("Camille Simulateur")
+                if let field = app.field(below: L.onbNameLabel, within: 5) {
+                    _ = app.type("Camille Simulateur", into: field)
+                    dismissKeyboard()
+                } else {
+                    Walk.note("03 name: no field below \"\(L.onbNameLabel)\"")
+                }
                 shotAndContinue("03-name")
             } else if app.labelled(L.onbCantonTitle).exists {
                 seen.append("canton")

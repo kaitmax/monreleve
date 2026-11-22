@@ -10,6 +10,9 @@
 enum L {
     static let welcomeStart = "Commencer" // WelcomeCopy.START
     static let signInSubmit = "Recevoir mon lien de connexion" // SignInCopy.SUBMIT
+    static let emailLabel = "Adresse e-mail" // SignInCopy.EMAIL_LABEL
+    static let codeLabel = "Code à 6 chiffres" // CodeCopy.CODE_LABEL
+    static let onbNameLabel = "Prénom et nom" // OnboardingCopy.NAME_LABEL
     static let codeTitle = "Vérifiez votre messagerie" // CodeCopy.TITLE
     static let codeSubmit = "Valider le code" // CodeCopy.SUBMIT
     static let onbContinue = "Continuer" // OnboardingCopy.CONTINUE

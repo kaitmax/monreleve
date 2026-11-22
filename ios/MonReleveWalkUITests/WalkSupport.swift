@@ -126,4 +126,33 @@ extension XCUIApplication {
     func shows(_ label: String, within seconds: TimeInterval) -> Bool {
         labelled(label).waitForExistence(timeout: seconds)
     }
+
+    /// The first element whose label CONTAINS [text].
+    func containing(_ text: String) -> XCUIElement {
+        descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+    }
+
+    /// A Compose text field: run 45057577050 showed Compose 1.7.3 exposes an OutlinedTextField as an UNLABELLED
+    /// Button (its label is drawn above it as a separate text). So the field is the nearest unlabelled, field-sized
+    /// element BELOW the text [label] - found by geometry from the copy's own label, never by an index.
+    func field(below label: String, within seconds: TimeInterval = 30) -> XCUIElement? {
+        let anchor = labelled(label)
+        guard anchor.waitForExistence(timeout: seconds) else { return nil }
+        let top = anchor.frame.maxY - 1
+        let candidates = descendants(matching: .any).allElementsBoundByIndex.filter { element in
+            let frame = element.frame
+            return element.label.isEmpty && frame.minY >= top && frame.height >= 36 && frame.height <= 120
+                && frame.width >= 120 && [.button, .textField, .other].contains(element.elementType)
+                && element.identifier.contains("SemanticsNode")
+        }
+        return candidates.min { $0.frame.minY < $1.frame.minY }
+    }
+
+    /// Taps [field], waits for the software keyboard, and types [text] (never logged by the walk).
+    func type(_ text: String, into field: XCUIElement) -> Bool {
+        field.tap()
+        let keyboard = keyboards.firstMatch.waitForExistence(timeout: 5)
+        typeText(text)
+        return keyboard
+    }
 }
