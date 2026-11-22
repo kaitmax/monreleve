@@ -24,7 +24,20 @@ RUNS SO FAR (each read by this session from its job log and artifact; evidence i
   45059644071 (f147faa0): the field found below its label and focused, the keyboard up - but typeText refused
       ("Neither element nor any descendant has keyboard focus": Compose's text-input view is not in the AX tree).
       FIRST ANSWER: 112 ms after didFinishLaunching (5 166 ms after process start).
-  45073103807 (ff5a1154): typing through the keyboard's own keys - pending.
+  45073103807 (ff5a1154): typing by the keyboard's own keys WORKS: the e-mail typed, the code screen reached.
+      The code is six boxes labelled "Chiffre N sur 6" (CodeCopy.digitLabel), not one field.
+      R1346 side-result (account C, before the code step failed): the runner's GET of the callback link answered 200.
+  45075605782 (01afa45e): SIGN-IN PASSED END TO END - e-mail and code typed by key, the code screen left, the
+      first onboarding step (name) done. NOTE: Compose puts a field's TYPED TEXT into its accessibility label
+      (the name field read 'Camille Simulateur'), so each code box carries one digit once typed: the walk never
+      dumps, photographs or notes the code screen after typing (R574), and test14 drops any 'Chiffre' label.
+      Next blocker: the canton Genève below the fold, empty AX frame, not hittable.
+  45078149756 (215e3ea2): flings scrolled past it. 45080869893 (12e408fd): did not compile (my argument label).
+  45081978093 (832ae3df): short drags - the same failure (2nd time): approach changed, not repeated.
+  45084504474 (d30d0e80): the canton screen's own search field ("gen") - pending.
+FIRST ANSWER across cold launches (iOS Ruling 16 Q1; the centre's answer to getNotificationSettings asked at
+didFinishLaunching, as startIosShell asks it): 132, 83, 112, 83, 69, 68, 94 ms after didFinishLaunching - all far
+under IosShellRoot's 2 000 ms bound; process start to didFinishLaunching was 2.7-5.1 s on this runner.
 
 BEFORE THE FIRST REAL DISPATCH - THE ALLOWLIST AND THE MASKING STEPS (R1343)
 Re-read of .github/workflows/ios-walk.yml before the first dispatch: no repository or environment secret is read;
