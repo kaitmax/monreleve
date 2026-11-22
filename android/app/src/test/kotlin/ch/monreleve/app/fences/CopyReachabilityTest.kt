@@ -66,7 +66,9 @@ private val FR_DIRS =
     )
 private val SURFACE_DIRS =
     listOf(
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "AppBottomBar.kt"),
+        // IOS-MOVE-CORE R1303: AppBottomBar moved to :shared commonMain's ui/ (read by the shared root here); :app's
+        // ui/ keeps the two start-date pickers, so the root stays, pinned by one of them (R460).
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "OnboardingStartDatePicker.kt"),
         // IOS-1b-A R604: Aujourd'hui's screen moved to :shared commonMain - its ui/ root is read too, pinned (R460).
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/ui"), pin = "AujourdhuiScreen.kt"),
         // IOS-1b-A R603: design/ moved to :shared commonMain - the surface root follows it, still pinned by Tokens.kt.

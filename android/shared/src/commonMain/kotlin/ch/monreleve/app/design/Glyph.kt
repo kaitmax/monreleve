@@ -40,6 +40,12 @@ enum class Glyph {
     FILE_TEXT,
     LOCK,
     BELL,
+
+    // IOS-MOVE-CORE R1300 (I0's N5): the bottom bar's three, now that AppBottomBar is common. APPENDED, never inserted:
+    // on iOS the semantics id is the ordinal (glyphSemanticsId), so every earlier constant keeps its own.
+    SUN,
+    CALENDAR,
+    SETTINGS,
     ;
 
     /** The drawable's file name without extension - the one derivation every platform uses. */

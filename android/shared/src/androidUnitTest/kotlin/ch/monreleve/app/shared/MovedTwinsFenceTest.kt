@@ -72,6 +72,12 @@ class MovedTwinsFenceTest {
             "ch/monreleve/app/detection/LoggingModeRestore.kt",
             "ch/monreleve/app/onboarding/ManualOnlyOnboarding.kt",
             "ch/monreleve/app/startup/StartupDecider.kt",
+            // IOS-MOVE-CORE R1300: the one-change files - the bar on Glyph, Site on the split-off host - and the two
+            // contracts split from :app files that keep their Android halves under their own names.
+            "ch/monreleve/app/ui/shell/AppBottomBar.kt",
+            "ch/monreleve/app/parametres/Site.kt",
+            "ch/monreleve/app/auth/CallbackLinkHost.kt",
+            "ch/monreleve/app/settings/EmployerFigureStore.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -124,6 +130,8 @@ class MovedTwinsFenceTest {
                     "AppRoot", "AppTab", "ResolvingScreen", "phoneLoggingMode", "applyServerLoggingMode",
                     "onboardingSeedFor", "StartDecision", "UnresolvedCause", "MeFetch", "Resolution", "resolveStart",
                     "decideStartAfterSignIn", "meFetchOf",
+                    // IOS-MOVE-CORE R1300: the one-change files and the two split-off contracts.
+                    "AppBottomBar", "Site", "CallbackLinkHost", "EmployerFigureStore",
                 ),
             ),
         )

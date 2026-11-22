@@ -15,7 +15,9 @@ import java.net.URLDecoder
 // configured base URL, never a host taken from this URI (AuthApi).
 
 object CallbackLink {
-    const val HOST = "monreleve.ch"
+    // IOS-MOVE-CORE R1300: the host lives in :shared commonMain (CallbackLinkHost) so Site could follow it there. One
+    // value, read here, never retyped (R206).
+    const val HOST = CallbackLinkHost.HOST
     const val PATH = "/api/v1/auth/callback"
 
     data class Parsed(val token: String, val email: String)

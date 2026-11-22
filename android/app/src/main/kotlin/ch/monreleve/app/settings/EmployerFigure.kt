@@ -30,16 +30,8 @@ import android.content.SharedPreferences
  */
 internal const val EMPLOYER_KEY_PREFIX = "employer."
 
-/** The employer attestation rate the current account entered for a given year - phone-only (R342). */
-interface EmployerFigureStore {
-    /** The rate saved for [year] under the active account, or null (no figure, or no active account). */
-    fun figureFor(year: Int): Double?
-
-    fun save(
-        year: Int,
-        rate: Double,
-    )
-}
+// IOS-MOVE-CORE R1300 (I0's N4): the EmployerFigureStore INTERFACE moved to :shared commonMain (EmployerFigureStore.kt)
+// so iOS can implement it; the two stores below implement it from there.
 
 /** The default for JVM tests and a safe fallback; the app injects the SharedPreferences store. */
 class InMemoryEmployerFigureStore(

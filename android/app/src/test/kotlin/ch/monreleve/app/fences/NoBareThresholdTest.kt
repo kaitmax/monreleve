@@ -51,7 +51,9 @@ private val DEV_DIR = File("src/main/kotlin/ch/monreleve/app/dev")
 private val SCANNED_ROOTS =
     listOf(
         FenceRoot(CALC_DIR, pin = "Rules.kt"),
-        FenceRoot(UI_DIR, pin = "AppBottomBar.kt"),
+        // IOS-MOVE-CORE R1303: AppBottomBar moved to :shared commonMain's ui/ (read by the shared root here); :app's
+        // ui/ keeps the two start-date pickers, so the root stays, pinned by one of them (R460).
+        FenceRoot(UI_DIR, pin = "OnboardingStartDatePicker.kt"),
         FenceRoot(SHARED_UI_DIR, pin = "AujourdhuiScreen.kt"),
         FenceRoot(DESIGN_DIR, pin = "RailGeometry.kt"),
         FenceRoot(DEV_DIR, pin = "GalleryScreen.kt"),
