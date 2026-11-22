@@ -3102,3 +3102,55 @@ ORDER FROM HERE: IOS-SHELL-3 (R1370-R1377) -> IOS-WALK (R1340-R1348, now
    background-then-foreground in its first increment; a legal link opened;
    the alert switch absent; the comparison; the reminder tap measured) ->
    IOS-AUDIT (R1350-R1359, prompt committed with this ruling).
+
+iOS Ruling 16 - IOS-SHELL-3, 2026-11-22. LANDED: main de4ac091 (merge of
+s3-shell 710b69e5; main unmoved at fa591ec8, merge tree = gated tree).
+:app:gate on code tip 49b0eb7f: BUILD SUCCESSFUL 8m52s, dirty=0,
+GATE_EXIT=0, floor 1562 = 1568 - 9 (YearDownloadsTest, FunSpec, 9 cases,
+counted from the deleted file by the orchestrator) + 1 (TaxYearsToDownloadTest,
+the R28 case kept in :app because it pins java.time) + 2
+(ThresholdAlertPresenceTest). :shared JVM 338 -> 346 AS REPORTED from the
+session's fastCheck (the gate's :shared tasks were UP-TO-DATE); the +8 is
+YearDownloadsPinTest's eight @Test, counted from source. No snapshot file
+changed; web/, ios/, .github/ untouched; token check 0. R573: ios-shared
+45049757851 counted by the orchestrator from the JUnit XML: 106 suites, 523
+tests, 0 failures, 0 errors (503 + 20, six new classes named); ios-app
+45049761910 success, keychain/notification/reminder/share/firstLaunch PASS,
+launch-DEFAULT.png looked at: the Bienvenue screen, no code field.
+THE FLOOR FROM HERE IS 1562; iOS SHARED FROM HERE IS 523.
+R1370 (the plants IOS-SHELL-2 owed): MET across two runs. Run 45044737295:
+   19 failures, each by name AND by its failure message matched to the
+   expectation file (read by the orchestrator); the 20th, PA5's sign-out case,
+   did not fail because the plant itself missed that path (clear() reaches
+   clearForSessionEnd(), which carried the planted erase) - a plant defect,
+   not a test defect. PA5b alone in run 45048280096: exactly 1 failure, that
+   test, by name and message. The expectation header's "21" was a miscount
+   of its own list of 20.
+:app's MainActivity edit: read by the orchestrator. The comparison overlay
+   moved to MainTabs whole; its back is now the shared overlayBackHandler
+   slot, composed AFTER the forecast's, as MainShell composed it after
+   MainTabs - so back still closes the top overlay first. ARGUED from
+   composition order, not tested (no Paparazzi or JVM test composes
+   MainShell): back from the comparison goes on the operator's S9 list.
+Deviations 1-5, 7, 8 ACCEPTED. Deviation 9 (a server-ended session during a
+   download) accepted as ARGUED, not tested. Deviation 6 (stopYearDownloads
+   defaults to {} and nothing fails if the wire is dropped) NOT final:
+   IOS-AUDIT R1381.
+Q1 (the 2 s bound): the timeout path is STICKY - read by the orchestrator in
+   IosShell.restoreReminder and IosShellRoot: past the bound the restore
+   writes restoredEveningOptIn(serverOn, false) = OFF to the local store;
+   the settings are then cached, so RESOLVING does not run on later launches
+   and nothing restores the ON until the next sign-in. So the bound is not
+   only tuning: IOS-AUDIT R1380 makes a restore with no answer yet WRITE
+   NOTHING (RED first), and IOS-WALK R1345 measures the centre's real
+   first-answer time on the simulator.
+Q2 (iOS stops downloads on a server-ended session too): ACCEPTED, iOS
+   stricter. Nothing crosses accounts on either platform, and the next
+   sign-in downloads both years again. No Android task.
+Q3 (re-plan after each landed year): ACCEPTED as iOS's own (its requests are
+   planned a week ahead). IOS-WALK R1345 makes it observable: after the
+   second sign-in, once the years land, today's pending request is ABSENT
+   when today was recorded before the sign-out.
+ORDER FROM HERE: IOS-WALK (R1340-R1348; its increment 0 is an inert
+   ios-walk.yml the orchestrator merges alone so it can be dispatched) ->
+   IOS-AUDIT (R1350-R1359 and R1380-R1381).

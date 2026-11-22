@@ -8,7 +8,7 @@ measured, what it could not); ios/project.yml; ios/MonReleve/Sources/*.swift; .g
 ios-shared.yml and ios-walk.yml; android/shared/src/iosMain/**; CLAUDE.md R154, R169, R172, R178, R180, R204,
 R205, R206, R246, R268, R349, R391, R573, R574.
 Names: worktree C:/wt/i3-audit, branch i3-audit (NOT ios-*), report REPORT-IOS-AUDIT.txt. Ruling numbers:
-R1350-R1359. YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, new user-facing copy, a
+R1350-R1359 and R1380-R1381 (iOS Ruling 16). YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, new user-facing copy, a
 workflow trigger other than workflow_dispatch, any legal or privacy CLAIM not derived from code, or anything
 needing an Apple account comes back to the orchestrator as a QUESTION - continue with the rest.
 BASE: origin/main as stated in your brief.
@@ -60,6 +60,15 @@ R1358. ANDROID UNCHANGED: if android/app is touched, the full :app:gate (R391), 
     Release step green); if web/ is touched, gate:changed and gate:clone.
 R1359. NOTHING LEAVES THE RUNNER THAT SHOULD NOT: the Release inspection prints names and keys, never a binary
     dump; the repository is PUBLIC.
+R1380. A RESTORE WITH NO ANSWER WRITES NOTHING (iOS Ruling 16 Q1). Past IosShellRoot's 2 s bound, RESOLVING's
+    restoreReminder writes OFF over the server's ON, and because the settings are then cached nothing restores it
+    until the next sign-in. Test-first: an iosTest whose centre never answers within the bound, /me ON, a
+    persisted ON - RED (the store reads OFF) - then the fix: a restore before the centre's first answer leaves the
+    store as it was and applies the server's value when the answer comes. Use IOS-WALK's measured first-answer
+    time if it changes the bound, and say so.
+R1381. THE YEAR-DOWNLOAD STOP IS PINNED (iOS Ruling 16, IOS-SHELL-3 DEVIATION 6). iosSessionEndSeam's
+    stopYearDownloads loses its default {}; an iosTest with a RECORDING stop asserts it is called on each of the
+    three endings, PLANTED (the wire dropped in startIosShell, verified landed, seen to fail by name - R180).
 
 THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without it
 Gradle says "SDK location not found" - NO RESULT); test-first; fastCheck per increment; PUSH EVERY INCREMENT (a

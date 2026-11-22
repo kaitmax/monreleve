@@ -74,6 +74,12 @@ R1345. EACH OBSERVABLE IS PROVEN TO HAVE RUN (the overnight plan's point 3), mea
       account.
     - The server side of the walk: the entries recorded on the phone are on the throwaway server, with
       server-assigned timestamps (read through the API, not the database).
+    - THE YEARS AND THE PLAN (iOS Ruling 16 Q3): after the SECOND sign-in, once the years have landed, today's
+      pending request is ABSENT when today was recorded before the sign-out - read on the real centre.
+    - THE FIRST ANSWER (iOS Ruling 16 Q1): the time from launch to the notification centre's first authorization
+      answer, measured on a cold launch (the bound IosShellRoot waits is 2 s); the figure goes in the report.
+    - BACK FROM THE COMPARISON: nothing to drive on iOS (no system back), so it is NOT a walk line - it is on
+      the operator's S9 list (iOS Ruling 16).
 R1346. THE LINK VERSUS THE CODE (iOS Ruling 3 Q2). The mail carries both the https link and the six-digit code.
     It runs AFTER R1344's walk, on its OWN fresh sign-in (a third @monreleve.test account), so a consumed
     token cannot turn the main walk into NO RESULT. The walk requests the link through the runner (an HTTP GET of the callback, as a mail client opening it
@@ -91,7 +97,11 @@ R1348. ANDROID UNCHANGED. If this session edits nothing under android/, :app:gat
     walk's workflow run id and the ios-shared run (if owed) are reported with what was read from each.
 
 THE WORK: worktree + lock (R349); prefer a NEW workflow file (ios-walk.yml, workflow_dispatch ONLY) over
-editing ios-app.yml, so the existing probe run stays as it is; PUSH EVERY INCREMENT; heavy lock with
+editing ios-app.yml, so the existing probe run stays as it is. A workflow file cannot be dispatched until it
+exists on the default branch, so INCREMENT 0 is an INERT ios-walk.yml (workflow_dispatch only, one step that
+prints the commit, no secret, no server, no build): pushed, then handed back to the orchestrator, who reads it
+and merges THAT FILE ALONE to main; the session then proves the mechanism with ONE dispatch (--ref i2-walk,
+which runs the branch's version) before building on it; PUSH EVERY INCREMENT; heavy lock with
 --min-free 8000 --wait-min 600 for any local Gradle run (--no-daemon, never `gradlew --stop`); push the branch
 (DO NOT MERGE); report; push; lock removed last. Sessions do not write parking.md. Before the FIRST dispatch,
 the orchestrator-facing report draft lists the allowlist and the masking steps, and the session re-reads the
