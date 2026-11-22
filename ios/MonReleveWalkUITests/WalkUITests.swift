@@ -142,7 +142,7 @@ final class WalkUITests: XCTestCase {
         let keyboard = app.keyboards.firstMatch
         guard keyboard.exists else { return }
         let names = ["Return", "return", "Done", "done", "Go", "Next", "Send", "OK", "Terminé", "Aller", "Suivant", "Envoyer",
-                     "retour"]
+                     "retour", "search", "Search", "Rechercher"]
         let key = keyboard.buttons.matching(NSPredicate(format: "label IN %@", names)).firstMatch
         if key.exists {
             key.tap()
@@ -180,6 +180,12 @@ final class WalkUITests: XCTestCase {
                 shotAndContinue("\(step)-name")
             } else if app.labelled(L.onbCantonTitle).exists {
                 seen.append("canton")
+                // Run 45081978093: Genève sits below the fold and scrolling did not bring it into the AX tree with a
+                // frame - so the walk uses the screen's own search field (it filters by contains, ignoring case).
+                if let search = app.field(below: L.onbCantonTitle, within: 5) {
+                    _ = app.type("gen", into: search)
+                    dismissKeyboard()
+                }
                 tapLabel(L.cantonGeneve, "\(step)-canton")
                 shotAndContinue("\(step)-canton")
             } else if app.labelled(L.onbRateTitle).exists {
