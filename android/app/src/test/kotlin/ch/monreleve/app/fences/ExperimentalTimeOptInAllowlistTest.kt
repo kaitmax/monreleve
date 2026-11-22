@@ -149,6 +149,7 @@ class ExperimentalTimeOptInAllowlistTest {
             // every use is inside startIosShell, one function-scope opt-in (ShellState.kt's role on Android); and the
             // shell's iosTests hand it a fixed one, one property-scope opt-in.
             "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosShell.kt" to 1,
+            "shared/src/iosMain/kotlin/ch/monreleve/app/ios/MonReleveViewController.kt" to 1,
             "shared/src/iosTest/kotlin/ch/monreleve/app/ios/ShellTestDoubles.kt" to 1,
         )
 

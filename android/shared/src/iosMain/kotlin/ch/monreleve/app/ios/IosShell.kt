@@ -76,6 +76,29 @@ class DetectionNotInIosV1(
     enable: Boolean,
 ) : IllegalStateException("detection consent ($enable) is not part of iOS v1 (iOS Ruling 2)")
 
+/**
+ * iOS's counterpart of Android's detection file (monreleve.detection): the logging mode - always MANUAL on iOS v1 - AND
+ * the evening opt-in, cleared TOGETHER, as that one file is (DetectionModeStore's contract: clear and
+ * clearForSessionEnd erase "the evening and alert opt-ins" with the mode, R295/R527). So every ending path the device's
+ * LocalStore runs - sign-out, deletion, a server-ended session - leaves the opt-in off, and the next account on this
+ * phone does not inherit it (R303). The opt-in itself is still held in memory until IOS-SHELL-2 persists it.
+ */
+internal class IosDetectionFile(
+    private val evening: EveningNotificationStore,
+    private val mode: InMemoryDetectionModeStore = InMemoryDetectionModeStore(),
+) : DetectionModeStore {
+    override fun load(): LoggingMode = mode.load()
+
+    override fun save(mode: LoggingMode) = this.mode.save(mode)
+
+    override fun clear() {
+        mode.clear()
+        evening.setEnabled(false)
+    }
+
+    override fun clearForSessionEnd() = clear()
+}
+
 /** The detection-consent member of the iOS Parametres wire: unreachable on iOS v1, and loud if reached. */
 fun detectionConsentUnreachableOnIos(enable: Boolean): String = throw DetectionNotInIosV1(enable)
 
@@ -205,7 +228,7 @@ fun startIosShell(
 
     // 3. The record, the device's LocalStore through iOS's seam, the drain and its trigger.
     val db = database()
-    val detectionModeStore = InMemoryDetectionModeStore()
+    val detectionModeStore = IosDetectionFile(eveningStore)
     val drain = iosSyncDrain(db.entryDao(), session, accountStore, dossierCache)
     val syncTrigger = IosSyncTrigger(scope, drain)
     val localStore =

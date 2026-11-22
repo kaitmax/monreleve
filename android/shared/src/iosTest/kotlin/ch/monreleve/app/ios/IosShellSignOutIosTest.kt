@@ -85,6 +85,7 @@ class IosShellSignOutIosTest {
                 assertNull(rig.tokens.pair, "the token pair is gone")
                 assertNull(rig.account.tag, "the account tag is gone")
                 assertNull(rig.settings.load(), "the settings are gone")
+                assertFalse(rig.evening.isEnabled(), "the evening opt-in is cleared with the detection file (R527)")
                 assertEquals(emptyList(), rig.consentAsked, "the detection-consent body was never asked for (R1329)")
             } finally {
                 rig.close()

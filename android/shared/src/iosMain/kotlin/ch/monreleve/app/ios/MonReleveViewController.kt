@@ -4,6 +4,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import ch.monreleve.app.fr.ParametresCopy
 import platform.Foundation.NSBundle
 import platform.UIKit.UIViewController
+import kotlin.time.ExperimentalTime
 
 // IOS-SHELL-1 (R1320). THE iOS APP'S CONTENT: ONE ComposeUIViewController whose content is the COMMON AppRoot around
 // the
@@ -18,6 +19,7 @@ import platform.UIKit.UIViewController
 private var processShell: IosShell? = null
 
 /** The app's view controller - what MonReleveApp.swift hosts with .ignoresSafeArea() (R1170). */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: startIosShell's signature names kotlin.time.Clock - on the allowlist.
 fun monReleveViewController(): UIViewController {
     val shell = processShell ?: startIosShell(apiBaseUrl(), appVersion()).also { processShell = it }
     return ComposeUIViewController { IosShellRoot(shell) }
