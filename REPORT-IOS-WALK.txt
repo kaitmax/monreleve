@@ -1,0 +1,33 @@
+REPORT-IOS-WALK - I2: THE iOS APP DRIVEN END TO END ON THE SIMULATOR AGAINST A THROWAWAY SERVER
+DRAFT (written before the first real dispatch, as the prompt requires; completed at the end of the session)
+
+STATUS: DRAFT - nothing measured yet beyond increment 0's inert run 45053771464.
+
+BEFORE THE FIRST REAL DISPATCH - THE ALLOWLIST AND THE MASKING STEPS (R1343)
+Re-read of .github/workflows/ios-walk.yml before the first dispatch: no repository or environment secret is read;
+no production host appears in it (the one place the production host is needed - to assert the build does NOT name
+it - reads it from web/identity.json's `domain` at run time); no step prints a server, PostgreSQL, helper,
+masks or xcodebuild-test file; there is no failure-only step.
+
+THE ARTIFACT ALLOWLIST (step "Allowlist and secret scan of the upload directory"; the upload runs only if it passed):
+  walk-result.txt          the walk's result lines (written through the helper, which refuses a line carrying a
+                           code or token it has seen)
+  app.log                  the app's unified-log lines, copied ONLY after a grep for every code and every token's
+                           first 12 characters returned 0 lines
+  simulator.txt            the device line
+  server-entries-<N>.json  /api/v1/entries read back through the API with the app's own bearer
+  shots/<name>.png         simctl screenshots, names [a-z0-9-] only, never of the code screen
+  trees/<name>.txt         XCUITest accessibility dumps, names [a-z0-9-] only (the helper refuses one carrying a
+                           secret; the code screen is dumped only BEFORE a digit is typed)
+  Any other name fails the step; any .txt/.json/.log in the directory carrying a code or a token fails it too.
+
+THE MASKING STEPS:
+  1. The database password and AUTH_SECRET: openssl rand on the runner, ::add-mask:: on the next line, before any
+     other use; passed to later steps through $GITHUB_ENV; never echoed.
+  2. Every sign-in code and every link token: the helper (ios-walk-helper.py) appends it to the private masks file
+     and waits 1.5 s BEFORE answering the walk; the driving step's background reader turns each line into
+     ::add-mask::. The app's bearer tokens, seen by the relay, go the same way the first time each is seen.
+  3. Nothing prints them anyway: server stdout (the outbox), helper output, xcodebuild's test output (which shows
+     typed text) and the .xcresult bundle are files under $RUNNER_TEMP/private, never printed, never uploaded,
+     deleted by the last step.
+  4. The upload: the allowlist above, plus a grep of every text file for every recorded secret.

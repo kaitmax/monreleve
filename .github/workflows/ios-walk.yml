@@ -1,19 +1,42 @@
 name: ios-walk
 
 # ===========================================================================
-# IOS-WALK (I2), INCREMENT 0: THE INERT WORKFLOW.
+# IOS-WALK (I2) R1340-R1347. THE iOS APP DRIVEN END TO END ON THE SIMULATOR
+# (XCUITest) AGAINST A THROWAWAY SERVER RUN ON THIS RUNNER - NEVER PRODUCTION.
 # ===========================================================================
 #
-# GitHub dispatches only a workflow whose file is on the DEFAULT branch. This
-# file exists so that ios-walk.yml can land on main ALONE, before anything it
-# will later do is written; a dispatch with --ref i2-walk then runs the
-# branch's version of it.
+# WHAT RUNS, ALL ON 127.0.0.1 OF THIS RUNNER, ALL DESTROYED WITH IT:
+#   - PostgreSQL, initialised for this run into $RUNNER_TEMP (a runner tool:
+#     it is in no package.json, gradle file or lockfile);
+#   - a scratch database created and migrated by the project's OWN mechanism:
+#     gate-clone-parts.mjs's administer() through the server's `postgres`
+#     database, scratch-database.mjs's name, `pnpm db:deploy` (R206);
+#   - web/'s `pnpm dev` (NODE_ENV=development, FRONTALIER_RUNTIME unset, so a
+#     sign-in link names localhost and the mail is printed to the server's
+#     stdout - the development outbox's file equivalent), on WALK_SERVER_PORT;
+#   - .github/scripts/ios-walk-helper.py: the relay the app talks to
+#     (WALK_RELAY_PORT) and the control routes the walk calls (WALK_CONTROL_PORT).
+# The app is a Debug build whose MONRELEVE_API_BASE_URL is overridden on the
+# xcodebuild command line with the relay's address (R1340, one build setting).
 #
-# WHAT IT DOES: prints the commit it ran on. Nothing else.
-# No checkout, no secret, no server, no database, no build, no artifact.
+# SECRETS ARE BORN HERE (R1341): the database password and AUTH_SECRET come
+# from openssl rand on this runner, are ::add-mask::ed before any other use,
+# and are never echoed. No repository or environment secret is read.
 #
-# TRIGGERS: workflow_dispatch ONLY. No push, no pull_request, no schedule:
-# on a PUBLIC repository a pull_request trigger would run for anyone's fork.
+# NOTHING THAT CARRIES A CODE OR A TOKEN LEAVES THE RUNNER (R1342, R1343):
+#   - the server's stdout/stderr, PostgreSQL's log, the helper's output, the
+#     masks file, xcodebuild's test output and its result bundle all live
+#     under $RUNNER_TEMP/private, which NO step prints - including on failure
+#     (there is no failure-only step at all);
+#   - the helper writes every code and token it reads to the masks file
+#     BEFORE answering, and the driving step turns each into ::add-mask::;
+#   - the artifact is an ALLOWLIST: a step lists the upload directory and
+#     fails on any other name, and scans every text file in it for every
+#     secret the run saw; the upload runs only if that step passed;
+#   - the app's own log is uploaded only after a grep for every code and
+#     every token prefix returns nothing.
+#
+# TRIGGERS: workflow_dispatch ONLY (public repository: no pull_request).
 
 on:
   workflow_dispatch:
@@ -24,13 +47,316 @@ permissions:
 jobs:
   ios-walk:
     name: ios-walk
-    # macos-15 pinned, as in ios-app.yml and ios-shared.yml.
+    # macos-15 pinned, as in ios-app.yml and ios-shared.yml (arm64, Xcode 26).
     runs-on: macos-15
-    timeout-minutes: 5
+    timeout-minutes: 90
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+      WALK_SERVER_PORT: '3311'
+      WALK_RELAY_PORT: '3310'
+      WALK_CONTROL_PORT: '3320'
+      WALK_PG_PORT: '55432'
+
     steps:
-      - name: Print the commit
-        env:
-          WALK_SHA: ${{ github.sha }}
-          WALK_REF: ${{ github.ref }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Directories and runner facts (R1340 - measured, not assumed)
         run: |
-          echo "ios-walk inert: ref=${WALK_REF} sha=${WALK_SHA}"
+          set +e
+          echo "OUT=$RUNNER_TEMP/walk-out" >> "$GITHUB_ENV"
+          echo "PRIVATE=$RUNNER_TEMP/private" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/walk-out" "$RUNNER_TEMP/private"
+          chmod 700 "$RUNNER_TEMP/private"
+          sw_vers; uname -m; xcodebuild -version
+          echo "--- PostgreSQL on the image:"
+          for tool in initdb pg_ctl psql postgres; do echo "$tool: $(command -v $tool || echo absent)"; done
+          ls -d /opt/homebrew/opt/postgresql* /usr/local/opt/postgresql* 2>/dev/null || echo "no Homebrew postgresql keg"
+          echo "--- docker: $(command -v docker || echo absent)"
+          echo "--- node on the image: $(node --version 2>/dev/null || echo absent)"
+          echo "--- time zone before: $(readlink /etc/localtime)"
+          exit 0
+
+      # Every recorded day is a PARIS day (iOS Ruling 10 Q1) and the reminder fires at 19:00 device-local; the
+      # product's people live in France, so the simulator (which takes the host's zone at boot) is set to theirs.
+      - name: Time zone Europe/Paris (before the simulator boots)
+        run: |
+          sudo systemsetup -settimezone Europe/Paris >/dev/null 2>&1 || sudo ln -sf /usr/share/zoneinfo/Europe/Paris /etc/localtime
+          echo "time zone now: $(readlink /etc/localtime); local time $(date '+%Y-%m-%d %H:%M %Z (%a)')"
+
+      - name: Secrets, born on this runner and masked (R1341)
+        run: |
+          db_password=$(openssl rand -hex 24)
+          echo "::add-mask::$db_password"
+          auth_secret=$(openssl rand -hex 32)
+          echo "::add-mask::$auth_secret"
+          printf '%s' "$db_password" > "$PRIVATE/pg-password"
+          echo "WALK_DB_PASSWORD=$db_password" >> "$GITHUB_ENV"
+          echo "WALK_AUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "two secrets generated and masked (never echoed)"
+
+      - name: PostgreSQL for this run only (a runner tool, not a project dependency)
+        run: |
+          if ! command -v initdb >/dev/null 2>&1; then
+            if [ -x /opt/homebrew/opt/postgresql@16/bin/initdb ]; then
+              echo "using the image's postgresql@16 keg"
+            else
+              echo "installing postgresql@16 with Homebrew (runner tool, this run only)"
+              brew install postgresql@16 > "$PRIVATE/brew-postgres.log" 2>&1 || { tail -20 "$PRIVATE/brew-postgres.log"; exit 1; }
+            fi
+            echo "/opt/homebrew/opt/postgresql@16/bin" >> "$GITHUB_PATH"
+            export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+          fi
+          echo "initdb: $(command -v initdb) ($(initdb --version))"
+          initdb -D "$RUNNER_TEMP/pgdata" -U walk --auth=scram-sha-256 --pwfile="$PRIVATE/pg-password" > "$PRIVATE/initdb.log" 2>&1
+          pg_ctl -D "$RUNNER_TEMP/pgdata" -o "-p $WALK_PG_PORT -c listen_addresses=127.0.0.1 -k $RUNNER_TEMP" -l "$PRIVATE/postgres.log" -w start > /dev/null
+          rm -f "$PRIVATE/pg-password"
+          echo "PostgreSQL listening on 127.0.0.1:$WALK_PG_PORT (its log is never printed)"
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (the version ci.yml resolves)
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (the version ci.yml resolves)
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install web/ (from the lockfile)
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile > "$PRIVATE/pnpm-install.log" 2>&1 || { tail -30 "$PRIVATE/pnpm-install.log"; exit 1; }
+          tail -3 "$PRIVATE/pnpm-install.log"
+
+      # gate:clone's own mechanism, called directly (R206): the name from scratch-database.mjs, the CREATE through
+      # administer() on the server's `postgres` database, the URL from scratchDatabaseUrl, the schema by db:deploy.
+      - name: The throwaway database (created and migrated by the project's mechanism)
+        working-directory: web
+        run: |
+          export BASE="postgresql://walk:${WALK_DB_PASSWORD}@127.0.0.1:${WALK_PG_PORT}/postgres?schema=public"
+          node --input-type=module -e "
+            import { administer, scratchDatabaseUrl } from './scripts/gate-clone-parts.mjs';
+            import { scratchDatabaseName } from './lib/db/scratch-database.mjs';
+            import { writeFileSync } from 'node:fs';
+            const name = scratchDatabaseName('ios_walk_' + process.env.GITHUB_RUN_ID);
+            await administer(process.env.BASE, ['DROP DATABASE IF EXISTS \"' + name + '\" WITH (FORCE)', 'CREATE DATABASE \"' + name + '\"']);
+            writeFileSync(process.env.PRIVATE + '/database-url', scratchDatabaseUrl(process.env.BASE, name));
+            console.log('scratch database created: ' + name);
+          "
+          unset BASE
+          set +e
+          DATABASE_URL="$(cat "$PRIVATE/database-url")" pnpm db:deploy > "$PRIVATE/db-deploy.log" 2>&1
+          deploy=$?
+          set -e
+          grep -E 'migrations? (have been|has been) applied|No pending migrations|migrations found' "$PRIVATE/db-deploy.log" || true
+          if [ "$deploy" -ne 0 ]; then echo "db:deploy FAILED (its log is private)"; exit 1; fi
+
+      - name: The throwaway server (pnpm dev), asserted by NAME (R169)
+        working-directory: web
+        run: |
+          (
+            export DATABASE_URL="$(cat "$PRIVATE/database-url")"
+            export AUTH_SECRET="$WALK_AUTH_SECRET"
+            export PORT="$WALK_SERVER_PORT"
+            unset FRONTALIER_RUNTIME RESEND_API_KEY
+            nohup pnpm dev > "$PRIVATE/server.log" 2>&1 &
+            echo $! > "$PRIVATE/server.pid"
+          )
+          expected=$(node -e "console.log(require('./identity.json').service)")
+          body=""
+          for i in $(seq 1 120); do
+            body=$(curl -s --max-time 30 "http://127.0.0.1:$WALK_SERVER_PORT/api/health" || true)
+            if [ -n "$body" ]; then break; fi
+            sleep 3
+          done
+          service=$(printf '%s' "$body" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).service)}catch{console.log('')}})")
+          if [ "$service" != "$expected" ]; then
+            echo "REFUSED (R169): /api/health on 127.0.0.1:$WALK_SERVER_PORT names '$service', not '$expected'"
+            exit 1
+          fi
+          echo "R169: /api/health names '$service' (expected '$expected', read from web/identity.json)"
+          # next dev compiles each route on its first request: warm the ones the app calls, with no account and no
+          # mail (an empty body is refused before anything is sent).
+          for route in "GET /api/v1/me" "GET /api/v1/entries?year=2026" "POST /api/v1/auth/magic-link" "POST /api/v1/auth/code" "POST /api/v1/auth/refresh" "POST /api/v1/auth/sign-out" "POST /api/v1/entries" "GET /api/v1/dossier" "POST /api/v1/devices"; do
+            set -- $route
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 180 -X "$1" -H 'Content-Type: application/json' "http://127.0.0.1:$WALK_SERVER_PORT$2" || echo ERR)
+            echo "warm $1 $2 -> $code"
+          done
+
+      - name: Labels the walk matches are the common copy's own
+        run: python3 .github/scripts/ios-walk-labels.py
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+          cache-read-only: true
+
+      - name: Restore the Kotlin/Native toolchain
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/gradle/libs.versions.toml') }}
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen > /dev/null
+          echo "XCODEGEN: $(xcodegen --version)"
+
+      - name: Provision the Kotlin/Native toolchain and link the framework
+        working-directory: android
+        run: |
+          ./gradlew :shared:commonize --stacktrace > "$PRIVATE/gradle-commonize.log" 2>&1 || { tail -30 "$PRIVATE/gradle-commonize.log"; exit 1; }
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace > "$PRIVATE/gradle-link.log" 2>&1 || { tail -30 "$PRIVATE/gradle-link.log"; exit 1; }
+          tail -2 "$PRIVATE/gradle-link.log"
+
+      - name: Generate the walk project (project.yml + the UI-test target)
+        working-directory: ios
+        run: xcodegen generate --spec project-walk.yml
+
+      - name: Boot the iPhone simulator
+        run: |
+          udid=$(xcrun simctl list devices available | awk '/^-- iOS/{h=1; first=""; next} /^-- /{h=0} h && first=="" {match($0,/[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}/); if (RSTART>0) {first=substr($0,RSTART,RLENGTH); last=first}} END{print last}')
+          if [ -z "$udid" ]; then echo "NO RESULT: no iOS simulator device found"; exit 1; fi
+          echo "$udid" > "$RUNNER_TEMP/sim.udid"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b > /dev/null
+          echo "DEVICE: $(xcrun simctl list devices | grep "$udid" | sed 's/^ *//')" | tee "$OUT/simulator.txt"
+
+      - name: Build for testing (Debug, the API base URL = the runner-local relay)
+        run: |
+          udid=$(cat "$RUNNER_TEMP/sim.udid")
+          xcodebuild build-for-testing \
+            -project ios/MonReleve.xcodeproj -scheme MonReleveWalk -configuration Debug \
+            -sdk iphonesimulator -destination "id=$udid" -derivedDataPath "$RUNNER_TEMP/dd" \
+            ARCHS=arm64 JAVA_HOME="$JAVA_HOME" \
+            MONRELEVE_API_BASE_URL="http://127.0.0.1:$WALK_RELAY_PORT" > "$PRIVATE/xcodebuild-build.log" 2>&1 \
+            || { grep -v -E '^[[:space:]]*export ' "$PRIVATE/xcodebuild-build.log" | grep -E 'error:|BUILD|FAILED' | tail -40; exit 1; }
+          grep -E '\*\* (TEST )?BUILD' "$PRIVATE/xcodebuild-build.log" | tail -2
+          app="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/MonReleve.app"
+          base=$(plutil -extract MonReleveApiBaseUrl raw "$app/Info.plist")
+          prod=$(node -e "console.log(require('./web/identity.json').domain)")
+          echo "built MonReleveApiBaseUrl: $base"
+          if [ "$base" != "http://127.0.0.1:$WALK_RELAY_PORT" ]; then echo "REFUSED (R1340): the walk build does not point at the relay"; exit 1; fi
+          if grep -a -q -F "$prod" "$app/Info.plist"; then echo "REFUSED (R1340): the walk build's Info.plist names the production host"; exit 1; fi
+          echo "R1340: the walk build reaches the runner-local relay only; its Info.plist does not name the production host"
+          ls "$RUNNER_TEMP/dd/Build/Products/"*.xctestrun
+
+      - name: The helper (relay + control), runner-local
+        run: |
+          udid=$(cat "$RUNNER_TEMP/sim.udid")
+          nohup python3 .github/scripts/ios-walk-helper.py \
+            --relay-port "$WALK_RELAY_PORT" --upstream-port "$WALK_SERVER_PORT" --control-port "$WALK_CONTROL_PORT" \
+            --server-log "$PRIVATE/server.log" --masks "$PRIVATE/masks.txt" --out "$OUT" --udid "$udid" \
+            --bundle ch.monreleve.app > "$PRIVATE/helper.log" 2>&1 &
+          for i in $(seq 1 30); do curl -s "http://127.0.0.1:$WALK_CONTROL_PORT/health" > /dev/null && break; sleep 1; done
+          curl -s "http://127.0.0.1:$WALK_CONTROL_PORT/health"; echo
+          service=$(curl -s --max-time 60 "http://127.0.0.1:$WALK_RELAY_PORT/api/health" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).service)}catch{console.log('')}})")
+          echo "through the relay, /api/health names: '$service'"
+
+      # THE DRIVING STEP. Its stdout carries ONLY ::add-mask:: lines (from the masks file, as the helper adds each code
+      # and token) and the filtered summary below; xcodebuild's own output - which shows typed text - goes to a
+      # private file, and the result bundle is never uploaded.
+      - name: The walk (XCUITest)
+        id: walk
+        run: |
+          touch "$PRIVATE/masks.txt"
+          ( tail -n +1 -F "$PRIVATE/masks.txt" 2>/dev/null | while IFS= read -r secret; do
+              if [ -n "$secret" ]; then echo "::add-mask::$secret"; fi
+            done ) &
+          masker=$!
+          udid=$(cat "$RUNNER_TEMP/sim.udid")
+          xctestrun=$(ls "$RUNNER_TEMP/dd/Build/Products/"*.xctestrun | head -1)
+          set +e
+          TEST_RUNNER_WALK_CONTROL="http://127.0.0.1:$WALK_CONTROL_PORT" \
+          TEST_RUNNER_WALK_ACCOUNT_A="walk-a-${GITHUB_RUN_ID}@monreleve.test" \
+          TEST_RUNNER_WALK_ACCOUNT_B="walk-b-${GITHUB_RUN_ID}@monreleve.test" \
+          TEST_RUNNER_WALK_ACCOUNT_C="walk-c-${GITHUB_RUN_ID}@monreleve.test" \
+          xcodebuild test-without-building -xctestrun "$xctestrun" -destination "id=$udid" \
+            -resultBundlePath "$PRIVATE/walk.xcresult" > "$PRIVATE/xctest.log" 2>&1
+          status=$?
+          sleep 2
+          kill "$masker" 2>/dev/null
+          echo "--- test cases (from the private xcodebuild log; typed text is never printed):"
+          grep -E "^Test Case '.*' (passed|failed)" "$PRIVATE/xctest.log" || echo "(no test case line - NO RESULT)"
+          grep -E "error: -\[|\*\* TEST" "$PRIVATE/xctest.log" | sed -E 's/^.*(error: -\[)/\1/' | cut -c1-300
+          echo "--- the walk's result file:"
+          cat "$OUT/walk-result.txt" 2>/dev/null || echo "(no result file)"
+          echo "xcodebuild test exit: $status"
+          exit $status
+
+      - name: The app's own log, uploaded only if no code or token is in it
+        if: always()
+        run: |
+          set +e
+          udid=$(cat "$RUNNER_TEMP/sim.udid" 2>/dev/null)
+          [ -z "$udid" ] && { echo "no simulator: nothing to read"; exit 0; }
+          touch "$PRIVATE/masks.txt"
+          xcrun simctl spawn "$udid" log show --last 90m --style compact --predicate 'process == "MonReleve"' > "$PRIVATE/app.log" 2>&1
+          : > "$PRIVATE/patterns.txt"
+          while IFS= read -r secret; do
+            [ -z "$secret" ] && continue
+            printf '%s\n' "$secret" >> "$PRIVATE/patterns.txt"
+            [ ${#secret} -gt 12 ] && printf '%s\n' "${secret:0:12}" >> "$PRIVATE/patterns.txt"
+          done < "$PRIVATE/masks.txt"
+          secrets=$(wc -l < "$PRIVATE/patterns.txt" | tr -d ' ')
+          hits=0
+          if [ "$secrets" -gt 0 ]; then hits=$(grep -F -c -f "$PRIVATE/patterns.txt" "$PRIVATE/app.log"); fi
+          echo "app log: $(wc -l < "$PRIVATE/app.log" | tr -d ' ') lines; $secrets code/token pattern(s) searched; lines carrying one: $hits"
+          if [ "$secrets" -gt 0 ] && [ "$hits" = "0" ]; then cp "$PRIVATE/app.log" "$OUT/app.log"; else echo "app log NOT uploaded (a hit, or no secret was read to search for)"; fi
+          exit 0
+
+      # R1343: the upload is an allowlist. Any other name - and any text file carrying a secret the run saw - fails
+      # this step, and the upload below runs only when it passed.
+      - name: Allowlist and secret scan of the upload directory
+        id: allow
+        if: always()
+        run: |
+          cd "$OUT"
+          bad=0
+          while IFS= read -r path; do
+            case "$path" in
+              ./walk-result.txt|./app.log|./simulator.txt) ;;
+              ./server-entries-[0-9].json|./server-entries-[0-9][0-9].json) ;;
+              ./shots/*.png|./trees/*.txt)
+                name=$(basename "$path"); stem="${name%.*}"
+                if ! printf '%s' "$stem" | grep -qE '^[a-z0-9][a-z0-9-]{0,63}$'; then echo "NOT ALLOWED: $path"; bad=1; fi ;;
+              *) echo "NOT ALLOWED: $path"; bad=1 ;;
+            esac
+          done < <(find . -type f | sort)
+          if [ -s "$PRIVATE/patterns.txt" ]; then
+            leaked=$(find . -type f \( -name '*.txt' -o -name '*.json' -o -name '*.log' \) -exec grep -F -l -f "$PRIVATE/patterns.txt" {} + | wc -l | tr -d ' ')
+            echo "files carrying a code or token: $leaked"
+            [ "$leaked" != "0" ] && bad=1
+          else
+            echo "no secret patterns were recorded"
+          fi
+          echo "upload directory: $(find . -type f | wc -l | tr -d ' ') file(s)"
+          find . -type f | sort
+          exit $bad
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.allow.outcome == 'success'
+        with:
+          name: ios-walk
+          path: ${{ runner.temp }}/walk-out/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Destroy the server and the database (nothing printed)
+        if: always()
+        run: |
+          set +e
+          pkill -f 'next dev' 2>/dev/null
+          pkill -f 'next-server' 2>/dev/null
+          pkill -f ios-walk-helper.py 2>/dev/null
+          pg_ctl -D "$RUNNER_TEMP/pgdata" -m fast stop > /dev/null 2>&1
+          rm -rf "$RUNNER_TEMP/pgdata" "$PRIVATE"
+          echo "server, helper and PostgreSQL stopped; data directory and private files removed"
+          exit 0
