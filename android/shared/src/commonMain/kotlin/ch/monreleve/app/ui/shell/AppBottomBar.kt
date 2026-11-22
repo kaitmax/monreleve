@@ -7,10 +7,14 @@ import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
 import ch.monreleve.app.design.glyphPainter
+import ch.monreleve.app.design.glyphSemanticsId
+import ch.monreleve.app.design.navIconRes
 import ch.monreleve.app.fr.NavCopy
 
 // AN10. The app's bottom navigation (SPEC 11). Two items - Aujourd'hui and Calendrier - because those
@@ -52,30 +56,42 @@ fun AppBottomBar(
         NavigationBarItem(
             selected = selected == AppTab.AUJOURDHUI,
             onClick = { onSelect(AppTab.AUJOURDHUI) },
-            icon = { Icon(painter = glyphPainter(Glyph.SUN), contentDescription = null) },
+            icon = { BarIcon(Glyph.SUN) },
             label = { Text(text = NavCopy.AUJOURDHUI) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == AppTab.CALENDRIER,
             onClick = { onSelect(AppTab.CALENDRIER) },
-            icon = { Icon(painter = glyphPainter(Glyph.CALENDAR), contentDescription = null) },
+            icon = { BarIcon(Glyph.CALENDAR) },
             label = { Text(text = NavCopy.CALENDRIER) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == AppTab.RELEVE,
             onClick = { onSelect(AppTab.RELEVE) },
-            icon = { Icon(painter = glyphPainter(Glyph.FILE_TEXT), contentDescription = null) },
+            icon = { BarIcon(Glyph.FILE_TEXT) },
             label = { Text(text = NavCopy.RELEVE) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == AppTab.PARAMETRES,
             onClick = { onSelect(AppTab.PARAMETRES) },
-            icon = { Icon(painter = glyphPainter(Glyph.SETTINGS), contentDescription = null) },
+            icon = { BarIcon(Glyph.SETTINGS) },
             label = { Text(text = NavCopy.PARAMETRES) },
             colors = colors,
         )
     }
+}
+
+// IOS-SHELL-1 (R1326): each icon carries its glyph's id (design/NavIconSemantics.kt) for the render proof to read. The
+// semantics draw nothing, so the bar's pixels are unchanged on both platforms.
+@Composable
+private fun BarIcon(glyph: Glyph) {
+    val glyphId = glyphSemanticsId(glyph)
+    Icon(
+        painter = glyphPainter(glyph),
+        contentDescription = null,
+        modifier = Modifier.semantics { navIconRes = glyphId },
+    )
 }

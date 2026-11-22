@@ -145,6 +145,11 @@ class ExperimentalTimeOptInAllowlistTest {
             // IOS-MOVE-REMINDER R1292: the host probe's one call reads the device clock; the glue test's one plan.
             "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosEveningReminderProbe.kt" to 1,
             "shared/src/iosTest/kotlin/ch/monreleve/app/ios/IosEveningRemindersIosTest.kt" to 1,
+            // IOS-SHELL-1 (R1323): the iOS composition root hands MainGraph and the reminder plan a kotlin.time.Clock -
+            // every use is inside startIosShell, one function-scope opt-in (ShellState.kt's role on Android); and the
+            // shell's iosTests hand it a fixed one, one property-scope opt-in.
+            "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosShell.kt" to 1,
+            "shared/src/iosTest/kotlin/ch/monreleve/app/ios/ShellTestDoubles.kt" to 1,
         )
 
     private val optIn = Regex("""OptIn\(\s*(kotlin\.time\.)?ExperimentalTime::class\s*\)""")

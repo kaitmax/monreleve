@@ -1,0 +1,35 @@
+package ch.monreleve.app.ios
+
+import androidx.compose.ui.window.ComposeUIViewController
+import ch.monreleve.app.fr.ParametresCopy
+import platform.Foundation.NSBundle
+import platform.UIKit.UIViewController
+
+// IOS-SHELL-1 (R1320). THE iOS APP'S CONTENT: ONE ComposeUIViewController whose content is the COMMON AppRoot around
+// the
+// common router (IosShellRoot), over the process's ONE shell (startIosShell - built the first time this is called and
+// reused after, so a second view controller can never build a second session, R507's rule on iOS).
+//
+// The two values Swift does not pass come from Info.plist, where ios/project.yml writes them (R206 - one home each):
+//   MonReleveApiBaseUrl          the API base URL, ONE build setting per configuration (MONRELEVE_API_BASE_URL)
+//   CFBundleShortVersionString   with CFBundleVersion, the version line ParametresCopy.version formats (R894)
+// A bundle without the base URL is refused loudly rather than defaulted: a default would be a literal in code.
+
+private var processShell: IosShell? = null
+
+/** The app's view controller - what MonReleveApp.swift hosts with .ignoresSafeArea() (R1170). */
+fun monReleveViewController(): UIViewController {
+    val shell = processShell ?: startIosShell(apiBaseUrl(), appVersion()).also { processShell = it }
+    return ComposeUIViewController { IosShellRoot(shell) }
+}
+
+private fun infoString(key: String): String? = NSBundle.mainBundle.objectForInfoDictionaryKey(key) as? String
+
+private fun apiBaseUrl(): String =
+    checkNotNull(infoString("MonReleveApiBaseUrl")) { "Info.plist carries no MonReleveApiBaseUrl (ios/project.yml)" }
+
+private fun appVersion(): String =
+    ParametresCopy.version(
+        infoString("CFBundleShortVersionString").orEmpty(),
+        infoString("CFBundleVersion").orEmpty(),
+    )
