@@ -85,7 +85,8 @@ fun CodeScreen(
                 onClick = actions.onSubmit,
                 enabled = !submitting && state.code.length == CODE_LENGTH,
             )
-            SecondaryButton(label = CodeCopy.OPEN_MAIL, onClick = actions.onOpenMail)
+            // IOS-SHELL-2 (R1333): no handler, no button - the phone has no mail app to open.
+            actions.onOpenMail?.let { openMail -> SecondaryButton(label = CodeCopy.OPEN_MAIL, onClick = openMail) }
             ResendLine(state = state, onResend = actions.onResend)
         }
     }

@@ -86,6 +86,11 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         MonReleveApiBaseUrl: "$(MONRELEVE_API_BASE_URL)"
+        # IOS-SHELL-2 R1333 (iOS Ruling 3 Q5): canOpenURL answers for a scheme only when it is listed here. "Ouvrir ma
+        # messagerie" opens message:// and is hidden when nothing can (ios/IosUrlOpener.kt's MAIL_APP_URL). Nothing else
+        # is listed.
+        LSApplicationQueriesSchemes:
+          - message
         # R1212 (4). BGTaskScheduler refuses an identifier the Info.plist does not list (notPermitted), and an app
         # refresh task needs the fetch background mode - both are declared so that what submit returns on the
         # simulator measures the SIMULATOR, not a missing key. The identifier names the probe; the real background

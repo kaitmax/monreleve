@@ -2,10 +2,14 @@ package ch.monreleve.app.ios
 
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.contracts.DossierCacheContract
+import ch.monreleve.app.contracts.EmployerFigureStoreContract
+import ch.monreleve.app.contracts.EveningNotificationStoreContract
 import ch.monreleve.app.contracts.MutationIdContract
 import ch.monreleve.app.contracts.SettingsStoreContract
 import ch.monreleve.app.contracts.TokenStoreContract
 import ch.monreleve.app.data.local.DossierCache
+import ch.monreleve.app.settings.EmployerFigureStore
+import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -70,6 +74,37 @@ class KeychainTokenStoreContractTest : TokenStoreContract() {
     }
 
     override fun somethingIsStored(): Boolean = KeychainTokenStore(service).lookupStatus() == errSecSuccess
+
+    @AfterTest
+    fun cleanUp() = reset()
+}
+
+// IOS-SHELL-2 (R1337): the evening store's contract, simulator half - over a suite of its own, each instance a NEW
+// NSUserDefaults (what a relaunch reads). MemoryEveningNotificationStoreContractTest is its JVM half.
+class UserDefaultsEveningNotificationStoreContractTest : EveningNotificationStoreContract() {
+    private val suite = uniqueName("ios-shell-2-evening")
+
+    override fun reset() {
+        NSUserDefaults.standardUserDefaults.removePersistentDomainForName(suite)
+    }
+
+    override fun newInstance(): EveningNotificationStore =
+        UserDefaultsEveningNotificationStore(NSUserDefaults(suiteName = suite))
+
+    @AfterTest
+    fun cleanUp() = reset()
+}
+
+// IOS-SHELL-2 (R1334): the employer figure's contract, simulator half (MemoryEmployerFigureStoreContractTest: JVM).
+class UserDefaultsEmployerFigureStoreContractTest : EmployerFigureStoreContract() {
+    private val suite = uniqueName("ios-shell-2-employer")
+
+    override fun reset() {
+        NSUserDefaults.standardUserDefaults.removePersistentDomainForName(suite)
+    }
+
+    override fun newInstance(accountTag: () -> String?): EmployerFigureStore =
+        UserDefaultsEmployerFigureStore(NSUserDefaults(suiteName = suite), accountTag)
 
     @AfterTest
     fun cleanUp() = reset()

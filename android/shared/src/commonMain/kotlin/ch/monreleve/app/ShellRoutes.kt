@@ -81,7 +81,7 @@ fun ShellRouter(
     sessionEnds: SessionEnds,
     syncNow: suspend () -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
-    onOpenMail: () -> Unit,
+    onOpenMail: (() -> Unit)?,
     restoreMode: (LoggingMode) -> Unit,
     restoreReminder: (Boolean) -> Unit,
     afterSignIn: suspend () -> Unit,
@@ -178,7 +178,7 @@ fun SignInRoute(
     sessionClosedHeldDays: Int?,
     syncNow: suspend () -> Unit,
     onOpenLegal: (LegalPage) -> Unit,
-    onOpenMail: () -> Unit,
+    onOpenMail: (() -> Unit)?,
     onSignedIn: () -> Unit,
 ) {
     var step by rememberSaveable { mutableStateOf(if (sessionClosed) SignInStep.EMAIL else SignInStep.WELCOME) }
@@ -235,7 +235,7 @@ fun CodeRoute(
     scope: CoroutineScope,
     syncNow: suspend () -> Unit,
     onModify: () -> Unit,
-    onOpenMail: () -> Unit,
+    onOpenMail: (() -> Unit)?,
     onSignedIn: () -> Unit,
 ) {
     // AN-STATE (R310): the typed digits and a stable phase survive a rebuild.

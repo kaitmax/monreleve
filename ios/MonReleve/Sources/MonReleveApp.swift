@@ -53,6 +53,11 @@ final class HostAppDelegate: NSObject, UIApplicationDelegate {
         if LaunchArguments.probe {
             HostProbe.registerBackgroundTask()
         }
+        // IOS-SHELL-2 R1330: a tap on the evening reminder opens Aujourd'hui. The delegate must be set before launch
+        // ends for a tap that LAUNCHES the app to reach it. Not for the pilot or the probe (the probe sets its own).
+        if !LaunchArguments.pilotLaunch {
+            IosNotificationTapsKt.installNotificationTapDelegate()
+        }
         return true
     }
 }

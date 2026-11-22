@@ -43,7 +43,7 @@ import ch.monreleve.app.ui.shell.AppTab
 //   - the SYSTEM BACK of the forecast overlay, a slot: Android's BackHandler (there is no common one - iOS Ruling 3);
 //     iOS passes none, as before, and its overlays close through their own back arrows;
 //   - the year-download retry and its failure flag, the employer comparison's opening (an overlay Android keeps in
-//     :app) and the threshold alert's opt-in offer (hidden in iOS v1, iOS Ruling 3 Q4 - a named stub there).
+//     :app) and the threshold alert's opt-in offer (hidden in iOS v1, iOS Ruling 3 Q4 - iOS passes null, R1338).
 //
 // Nothing here is new behaviour: every line below was MainShell's, and the comments that explain them came with them.
 // The forecast route itself is in ForecastRoute.kt, beside this file.
@@ -68,7 +68,8 @@ fun MainTabs(
     yearDownloadFailed: Boolean,
     onRetryDownload: () -> Unit,
     onCompareEmployer: () -> Unit,
-    onEnableAlert: () -> Unit,
+    // IOS-SHELL-2 (R1338): null where the threshold alert is not offered (iOS v1) - Prevision then draws no offer.
+    onEnableAlert: (() -> Unit)?,
     parametresTab: @Composable (state: ParametresState, onOpenRhythm: () -> Unit) -> Unit,
     forecastBackHandler: @Composable (onBack: () -> Unit) -> Unit,
 ) {

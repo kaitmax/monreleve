@@ -21,16 +21,23 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.detection.applyServerLoggingMode
+import ch.monreleve.app.fr.CodeCopy
+import ch.monreleve.app.fr.ParametresCopy
+import ch.monreleve.app.fr.ReleveCopy
+import ch.monreleve.app.handleExportEvent
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.parametres.CommonParametresWire
+import ch.monreleve.app.parametres.LegalPage
 import ch.monreleve.app.parametres.ParametresWire
+import ch.monreleve.app.parametres.Site
+import ch.monreleve.app.releve.ExportEvent
 import ch.monreleve.app.reminder.EveningReminderState
 import ch.monreleve.app.reminder.eveningReminderPlan
 import ch.monreleve.app.reminder.restoredEveningOptIn
 import ch.monreleve.app.settings.DetectionModeStore
+import ch.monreleve.app.settings.EmployerFigureStore
 import ch.monreleve.app.settings.EveningNotificationStore
 import ch.monreleve.app.settings.InMemoryDetectionModeStore
-import ch.monreleve.app.settings.InMemoryEveningNotificationStore
 import ch.monreleve.app.settings.LoggingMode
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.startDestination
@@ -38,9 +45,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import platform.Foundation.NSUserDefaults
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.time.Clock
@@ -67,9 +78,20 @@ import kotlin.time.ExperimentalTime
 // iOS RULING 3 Q3 - THE UPDATE GATE IS OUT ON iOS: nothing here, and nothing ShellRouter reaches, asks
 // /api/v1/android/minimum-version (IosShellStartupIosTest proves it against a recording transport).
 //
-// NAMED STUBS, IOS-SHELL-2's (R1320's "stub it visibly"): the legal pages and message:// (G7) are logged and not
-// opened; the year downloads (Android's processYearDownloads) are not run; the evening opt-in is held in memory
-// (InMemoryEveningNotificationStore) until IOS-SHELL-2 gives it a persistent home with the foreground re-plan.
+// IOS-SHELL-2 (R1330-R1337) GAVE THE SHELL ITS FACILITIES:
+//   - R1337: the evening opt-in and (R1334) the employer figures PERSIST, in iOS's detection file over NSUserDefaults
+//     (IosDetectionStores.kt) - a relaunch rebuilds the graph from them and the plan still runs with the opt-in on;
+//   - R1330: M4's re-plan runs on EVERY trigger in R1292's list - a foreground (onForeground), a day recorded, changed
+//     or removed (the graph's requestSync), an opt-in written (ReplanningEveningStore: Parametres, onboarding,
+//     RESOLVING's restore), a sign-in (the main shell opening) and the authorization granted (onAuthorizationAnswer);
+//     each plan READS the authorization afresh (never a value cached before the centre answered), runs one at a time,
+//     and is not applied if a session ended while it was computed (endings, below);
+//   - R1332: a foreground drains the queue (onForeground - called from ONE place, IosShellRoot's lifecycle observer);
+//   - R1331, R1333: exports go to the share sheet, the legal pages and the mail app open through UIApplication, and
+//     every message Android shows as a Toast goes through the ONE notice seam (notices).
+// NAMED STUBS STILL (no ruling R1330-R1339 builds them; QUESTIONS in REPORT-IOS-SHELL-2): the year downloads (Android's
+// processYearDownloads) and the employer comparison's overlay, whose store now exists (employerStore) with no iOS
+// caller.
 
 /** Raised if the iOS composition is ever asked for the detection-consent body: detection is not in iOS v1. */
 class DetectionNotInIosV1(
@@ -77,14 +99,19 @@ class DetectionNotInIosV1(
 ) : IllegalStateException("detection consent ($enable) is not part of iOS v1 (iOS Ruling 2)")
 
 /**
- * iOS's counterpart of Android's detection file (monreleve.detection): the logging mode - always MANUAL on iOS v1 - AND
- * the evening opt-in, cleared TOGETHER, as that one file is (DetectionModeStore's contract: clear and
- * clearForSessionEnd erase "the evening and alert opt-ins" with the mode, R295/R527). So every ending path the device's
- * LocalStore runs - sign-out, deletion, a server-ended session - leaves the opt-in off, and the next account on this
- * phone does not inherit it (R303). The opt-in itself is still held in memory until IOS-SHELL-2 persists it.
+ * iOS's counterpart of Android's detection file (monreleve.detection): the logging mode - always MANUAL on iOS v1 - the
+ * evening opt-in with its last-notified day, and the employer figures, swept as that one file is (DetectionModeStore's
+ * contract, R295/R527):
+ *   - clear (a sign-out, a deletion): the mode, the evening opt-in and day, AND every employer figure;
+ *   - clearForSessionEnd (a session the server ended): the mode and the evening opt-in and day, the employer figures
+ *     KEPT (R527 - already their account's own, on this phone only, and brought back by nothing if erased).
+ * So no ending leaves the opt-in on, and the next account on this phone inherits none of it (R303). The erases go to
+ * the RAW stores, never through the re-plan (R1292: an ending needs no plan - the session-end seam removes every
+ * pending request, and a plan launched mid-clear would read a half-cleared shell).
  */
 internal class IosDetectionFile(
-    private val evening: EveningNotificationStore,
+    private val eraseEvening: () -> Unit,
+    private val eraseEmployerFigures: () -> Unit,
     private val mode: InMemoryDetectionModeStore = InMemoryDetectionModeStore(),
 ) : DetectionModeStore {
     override fun load(): LoggingMode = mode.load()
@@ -92,11 +119,42 @@ internal class IosDetectionFile(
     override fun save(mode: LoggingMode) = this.mode.save(mode)
 
     override fun clear() {
-        mode.clear()
-        evening.setEnabled(false)
+        clearForSessionEnd()
+        eraseEmployerFigures()
     }
 
-    override fun clearForSessionEnd() = clear()
+    override fun clearForSessionEnd() {
+        mode.clear()
+        eraseEvening()
+    }
+}
+
+/**
+ * R1330: the evening store the shell's writers see - every opt-in WRITE (Parametres' switch once the server took it,
+ * onboarding's answer, RESOLVING's restore at a sign-in) is followed by a re-plan, whatever it wrote, so a sign-in
+ * that restores "off" over "off" still re-plans. Reads go straight through. The endings never write through this (see
+ * IosDetectionFile).
+ */
+internal class ReplanningEveningStore(
+    private val inner: EveningNotificationStore,
+    private val replan: () -> Unit,
+) : EveningNotificationStore by inner {
+    override fun setEnabled(enabled: Boolean) {
+        inner.setEnabled(enabled)
+        replan()
+    }
+}
+
+/** The count of session endings this process has seen - a plan computed across one is not applied (R1323). */
+internal class SessionEndings {
+    // Written by the session-end seam, read by the plan: on the app's main thread in production (MainScope, the
+    // controllers' scope); a test that runs both elsewhere runs them one after the other.
+    var count = 0
+        private set
+
+    fun ended() {
+        count += 1
+    }
 }
 
 /** The detection-consent member of the iOS Parametres wire: unreachable on iOS v1, and loud if reached. */
@@ -108,7 +166,7 @@ fun detectionConsentUnreachableOnIos(enable: Boolean): String = throw DetectionN
  * ExperimentalTime opt-in (R590) stays on that one function. The parameters ARE the device's stores and seams, as
  * DeviceLocalStore's own are; a holder would only move the list (IosLocalStores.kt's reasoning).
  */
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "TooManyFunctions")
 class IosShell internal constructor(
     val start: Destination,
     val api: AuthApi,
@@ -124,15 +182,26 @@ class IosShell internal constructor(
     val syncTrigger: IosSyncTrigger,
     val syncNow: suspend () -> Unit,
     val detectionModeStore: DetectionModeStore,
+    /** The evening opt-in as the shell's writers see it: each write re-plans (ReplanningEveningStore, R1330). */
     val eveningStore: EveningNotificationStore,
+    /** R1334: the employer figures, persistent and account-tagged (no iOS screen reads it yet - QUESTIONS). */
+    val employerStore: EmployerFigureStore,
     val centre: IosNotificationCentre,
     val parametresWire: ParametresWire,
     val sessionEnds: SessionEnds,
     val appVersion: String,
     /** R28: the tax year is the Paris calendar year, not the device's - read at start, as onCreate reads it. */
     val taxYear: Int,
-    /** Whether this app may notify, as last read from the centre (refreshed at start and after each ask). */
+    /** Whether this app may notify, as last read from the centre (each plan reads it afresh, R1330). */
     val notificationsPermitted: MutableStateFlow<Boolean>,
+    /** R1331: the ONE notice seam's iOS side - every message Android shows as a Toast. */
+    val notices: IosNotices,
+    /** R1330: a reminder tap waiting for the main shell to open Aujourd'hui. */
+    val taps: IosNotificationTaps,
+    private val urlOpener: IosUrlOpener,
+    private val exportFiles: IosExportFiles,
+    private val presentShare: (path: String) -> Unit,
+    private val scope: CoroutineScope,
     private val planNow: suspend () -> Unit,
     private val graph: (CoroutineScope) -> MainControllers,
     private val log: (String) -> Unit,
@@ -142,9 +211,13 @@ class IosShell internal constructor(
         applyServerLoggingMode(serverMode, false, detectionModeStore, startSampling = {}, stopSampling = {})
     }
 
-    /** R1147: the evening opt-in the server holds, applied where this phone may notify. */
+    /**
+     * R1147: the evening opt-in the server holds, applied where this phone may notify - the authorization read AFRESH
+     * first, so a sign-in right after launch is not judged by a value the centre has not answered yet. The write goes
+     * through [eveningStore], so it re-plans (R1330: "the opt-in restored at sign-in").
+     */
     fun restoreReminder(serverOn: Boolean) {
-        eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
+        scope.launch { eveningStore.setEnabled(restoredEveningOptIn(serverOn, readAuthorization())) }
     }
 
     /** Re-reads the authorization into [notificationsPermitted]. */
@@ -152,30 +225,88 @@ class IosShell internal constructor(
         centre.readAuthorization { notificationsPermitted.value = it }
     }
 
-    /**
-     * M4's re-plan over the facts now (R1291): signed in, opted in, permitted, the days recorded on this phone and the
-     * days already reminded (the delivered list, iOS Ruling 2). IOS-SHELL-1 calls it from onboarding's reminder answer
-     * (R1325); the other triggers - every foreground, every day recorded - are IOS-SHELL-2's.
-     */
+    /** The centre's answer to "may this app notify", awaited - and kept in [notificationsPermitted]. */
+    private suspend fun readAuthorization(): Boolean {
+        val permitted = suspendCoroutine { done -> centre.readAuthorization { done.resume(it) } }
+        notificationsPermitted.value = permitted
+        return permitted
+    }
+
+    /** M4's re-plan over the facts now (R1291), awaited - for a caller that must know it has been applied. */
     suspend fun replanReminders() = planNow()
+
+    /** R1330: a re-plan, launched - every trigger's one call. Plans run one at a time (startIosShell's lock). */
+    fun replanSoon() {
+        scope.launch { planNow() }
+    }
+
+    /**
+     * R1330 / R1332: the app came to the foreground. ONE call for both things a foreground does on iOS - the queue
+     * drained (requestDrain; BGTaskScheduler is device-only, PARK-IF1) and the reminders re-planned. Called from ONE
+     * place: IosShellRoot's lifecycle observer (ON_RESUME).
+     */
+    fun onForeground() {
+        syncTrigger.requestDrain()
+        replanSoon()
+    }
+
+    /** R1330: the person answered the authorization prompt; a grant re-plans ("authorization granted"). */
+    fun onAuthorizationAnswer(granted: Boolean) {
+        notificationsPermitted.value = granted
+        if (granted) replanSoon()
+    }
 
     /** The facts the plan reads now (R1291) - all but the clock, which startIosShell holds. */
     internal suspend fun reminderState(): EveningReminderState {
+        val permitted = readAuthorization()
         val delivered = suspendCoroutine { done -> centre.deliveredIdentifiers { done.resume(it) } }
         val recorded =
             repository.observeAll().first().mapNotNull { runCatching { LocalDate.parse(it.dayDate) }.getOrNull() }
         return EveningReminderState(
             signedIn = session.isSignedIn(),
             optedIn = eveningStore.isEnabled(),
-            notificationsPermitted = notificationsPermitted.value,
+            notificationsPermitted = permitted,
             recordedDays = recorded.toSet(),
             notifiedDays = deliveredEveningReminderDays(delivered),
         )
     }
 
-    /** NAMED STUB (IOS-SHELL-2, G7): a legal page or the mail app, logged and not opened. */
+    /** R1333 / R299: a legal page in the browser; no app to open it -> the address, said through the notice seam. */
+    fun openLegal(page: LegalPage) {
+        val url = Site.url(page)
+        urlOpener.open(url) { opened -> if (!opened) notices.show(ParametresCopy.legalNoHandler(url)) }
+    }
+
+    /**
+     * R1333 (iOS Ruling 3 Q5): « Ouvrir ma messagerie » as message:// - or NULL, so the code screen hides the button,
+     * when nothing on this phone can open it. If the open still fails, R299's fallback says so.
+     */
+    fun mailAction(): (() -> Unit)? =
+        if (urlOpener.canOpen(MAIL_APP_URL)) {
+            { urlOpener.open(MAIL_APP_URL) { opened -> if (!opened) notices.show(CodeCopy.NO_MAIL_APP) } }
+        } else {
+            null
+        }
+
+    /**
+     * R1331 (G5): an export event, through the common hand-off (handleExportEvent): a Ready file written where the
+     * erasure deletes (IosExportFiles) and handed to the share sheet; a failure said through the notice seam. A file
+     * that cannot be written is never shared empty - it is said as the export failing.
+     */
+    fun handleExport(event: ExportEvent) {
+        handleExportEvent(
+            event,
+            share = { ready ->
+                val path = runCatching { exportFiles.write(ready) }.getOrNull()
+                if (path == null) notices.show(ReleveCopy.EXPORT_FAILED) else presentShare(path)
+            },
+            notices = notices,
+        )
+    }
+
+    /** NAMED STUB: what no ruling R1330-R1339 builds on iOS (the year downloads, the employer comparison) - logged. */
     fun notYetOnIos(what: String) {
-        log("I/$TAG: IOS-SHELL-2 owes: $what")
+        log("I/$TAG: not on iOS yet: $what")
     }
 
     /**
@@ -211,7 +342,11 @@ fun startIosShell(
     database: () -> MonReleveDatabase = { buildIosDatabase() },
     exportFiles: () -> IosExportFiles = { IosExportFiles() },
     centre: IosNotificationCentre = SystemNotificationCentre(),
-    eveningStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
+    // IOS-SHELL-2 R1337/R1334: the detection file's home - the evening opt-in and the employer figures persist here.
+    detectionDefaults: NSUserDefaults = NSUserDefaults.standardUserDefaults,
+    urlOpener: IosUrlOpener = SystemUrlOpener(),
+    presentShare: (path: String) -> Unit = ::presentShareSheet,
+    taps: IosNotificationTaps = processNotificationTaps,
     consentBody: (Boolean) -> String = ::detectionConsentUnreachableOnIos,
     reportUnowned: (String) -> Unit = { IosUnownedReporter().report(it) },
     log: (String) -> Unit = ::consoleLine,
@@ -229,23 +364,37 @@ fun startIosShell(
     val session =
         SessionManager(api, tokenStore, onEnded = { onServerEndedSession(checkNotNull(endingStore), sessionEnds) })
 
-    // 3. The record, the device's LocalStore through iOS's seam, the drain and its trigger.
+    // 3. The record, the device's LocalStore through iOS's seam, the drain and its trigger. The detection file's two
+    //    persistent stores are erased RAW on the endings (IosDetectionFile); the writers get the re-planning view.
+    var shell: IosShell? = null
     val db = database()
-    val detectionModeStore = IosDetectionFile(eveningStore)
+    val eveningFile = UserDefaultsEveningNotificationStore(detectionDefaults)
+    val employerStore = UserDefaultsEmployerFigureStore(detectionDefaults) { accountStore.current() }
+    val detectionModeStore =
+        IosDetectionFile(eraseEvening = eveningFile::erase, eraseEmployerFigures = employerStore::erase)
+    val eveningStore = ReplanningEveningStore(eveningFile) { shell?.replanSoon() }
+    val endings = SessionEndings()
     val drain = iosSyncDrain(db.entryDao(), session, accountStore, dossierCache)
     val syncTrigger = IosSyncTrigger(scope, drain)
+    val files = exportFiles()
     val localStore =
         iosDeviceLocalStore(
             database = db,
             syncTrigger = syncTrigger,
-            exportFiles = exportFiles(),
+            exportFiles = files,
             detectionModeStore = detectionModeStore,
             tokenStore = tokenStore,
             settingsStore = settingsStore,
             dossierCache = dossierCache,
             pendingSignIn = pending,
             accountStore = accountStore,
-            sessionEndSeam = iosSessionEndSeam(removePendingRequests = { centre.removeAllPending() }),
+            sessionEndSeam =
+                iosSessionEndSeam(
+                    removePendingRequests = {
+                        endings.ended()
+                        centre.removeAllPending()
+                    },
+                ),
         )
     endingStore = localStore
     val repository =
@@ -266,7 +415,6 @@ fun startIosShell(
     val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
     val syncNow: suspend () -> Unit = { drain() }
     val parametresWire = CommonParametresWire(consentBody = consentBody)
-    var shell: IosShell? = null
     // THE ONE GRAPH (R291): MainGraph.build - the function Android's rememberMainControllers calls - with iOS's seams.
     val graph: (CoroutineScope) -> MainControllers = { controllersScope ->
         MainGraph.build(
@@ -277,7 +425,13 @@ fun startIosShell(
             clock = clock,
             deviceZone = zone,
             scope = controllersScope,
-            requestSync = { syncTrigger.afterWrite() },
+            // R1330: every day-writer calls this after a write that recorded, changed or removed a day (SPEC 13.2,
+            // MainGraphDayWriterCensusTest) - so it is where "every entry recorded, changed or removed on the phone"
+            // re-plans, beside the drain it always asked for.
+            requestSync = {
+                syncTrigger.afterWrite()
+                checkNotNull(shell).replanSoon()
+            },
             dossierFetch = dossierApi::fetch,
             dossierStaleCopy = dossierApi::staleCopy,
             exportBytes = session::authenticatedGetBytes,
@@ -291,10 +445,16 @@ fun startIosShell(
             eveningNotificationStore = eveningStore,
         )
     }
-    // M4's re-plan (R1291) over the facts now, at this clock's instant in the device's zone.
+    // M4's re-plan (R1291) over the facts now, at this clock's instant in the device's zone. One at a time (the lock),
+    // and NOT APPLIED if a session ended while it was computed: the seam has already removed every request, and a plan
+    // read from the signed-in state must not put them back (R1323's zero after a sign-out).
+    val planLock = Mutex()
     val planNow: suspend () -> Unit = {
-        val state = checkNotNull(shell).reminderState()
-        replanEveningReminders(eveningReminderPlan(clock.now(), zone, state), centre)
+        planLock.withLock {
+            val before = endings.count
+            val state = checkNotNull(shell).reminderState()
+            if (endings.count == before) replanEveningReminders(eveningReminderPlan(clock.now(), zone, state), centre)
+        }
     }
     return IosShell(
         start = start,
@@ -312,12 +472,19 @@ fun startIosShell(
         syncNow = syncNow,
         detectionModeStore = detectionModeStore,
         eveningStore = eveningStore,
+        employerStore = employerStore,
         centre = centre,
         parametresWire = parametresWire,
         sessionEnds = sessionEnds,
         appVersion = appVersion,
         taxYear = clock.now().toLocalDateTime(TimeZone.of(PARIS)).year,
         notificationsPermitted = MutableStateFlow(false),
+        notices = IosNotices(scope),
+        taps = taps,
+        urlOpener = urlOpener,
+        exportFiles = files,
+        presentShare = presentShare,
+        scope = scope,
         planNow = planNow,
         graph = graph,
         log = log,

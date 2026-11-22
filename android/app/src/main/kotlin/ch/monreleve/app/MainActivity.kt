@@ -671,7 +671,7 @@ internal fun MainShell(
                     if (controllers.parametres.state.value.autoDetectionEnabled && !locationFullyGranted(context)) {
                         controllers.parametres.onLocationPermissionRevoked()
                         controllers.aujourdhui.refresh()
-                        Toast.makeText(context, DisclosureCopy.PERMISSION_REVOKED, Toast.LENGTH_LONG).show()
+                        toastNotices(context).show(DisclosureCopy.PERMISSION_REVOKED)
                     }
                 }
             }
@@ -832,7 +832,7 @@ private fun openLegal(
     openLegalLink(
         url = Site.url(page),
         open = { launchCustomTab(context, it) },
-        showAddress = { Toast.makeText(context, ParametresCopy.legalNoHandler(it), Toast.LENGTH_LONG).show() },
+        showAddress = { toastNotices(context).show(ParametresCopy.legalNoHandler(it)) },
     )
 }
 
@@ -866,7 +866,7 @@ private fun openMail(context: Context) {
     val intent =
         Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_APP_EMAIL) }
     runCatching { context.startActivity(intent) }.onFailure {
-        Toast.makeText(context, ch.monreleve.app.fr.CodeCopy.NO_MAIL_APP, Toast.LENGTH_LONG).show()
+        toastNotices(context).show(ch.monreleve.app.fr.CodeCopy.NO_MAIL_APP)
     }
 }
 
@@ -917,18 +917,17 @@ private fun parametresActions(
 // spreadsheet app opens the PDF/CSV. A connectivity or server failure is surfaced as a toast, never silently
 // (SPEC 13.2: the export requires connectivity and says so). Lives in the composition root (not ui/), where
 // a Context, an Intent and a FileProvider are permitted.
+// IOS-SHELL-2 (R1331): the mapping from the event to what the person meets is the common handleExportEvent
+// (:shared NoticeSink.kt), which iOS calls too; Android's share and its Toast are passed in, unchanged.
 private fun handleExport(
     context: Context,
     event: ExportEvent,
-) {
-    when (event) {
-        is ExportEvent.Ready -> shareFile(context, event)
-        ExportEvent.RequiresConnectivity ->
-            Toast.makeText(context, ReleveCopy.EXPORT_REQUIRES_CONNECTIVITY, Toast.LENGTH_LONG).show()
-        ExportEvent.Failed ->
-            Toast.makeText(context, ReleveCopy.EXPORT_FAILED, Toast.LENGTH_LONG).show()
-    }
-}
+) = handleExportEvent(event, share = { shareFile(context, it) }, notices = toastNotices(context))
+
+// IOS-SHELL-2 (R1331): Android's side of the ONE notice seam (NoticeSink, :shared NoticeSink.kt) - the Toast every
+// site here showed, unchanged (LENGTH_LONG). iOS puts its own transient notice behind the same seam.
+private fun toastNotices(context: Context): NoticeSink =
+    NoticeSink { message -> Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
 
 private fun shareFile(
     context: Context,

@@ -4,6 +4,7 @@ import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
+import ch.monreleve.app.settings.EmployerFigureStore
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 
@@ -103,5 +104,26 @@ class MemoryAccountStore(
 
     override fun clear() {
         holder[0] = null
+    }
+}
+
+/**
+ * IOS-SHELL-2 (R1334): the employer figure's in-memory reference, over a shared map so several instances see one
+ * storage - :app's InMemoryEmployerFigureStore keeps its own map and a settable account, so it cannot be "another
+ * instance" of anything. Keys are "<accountTag>.<year>"; no account reads and writes nothing (R303).
+ */
+class MemoryEmployerFigureStore(
+    private val backing: MutableMap<String, Double>,
+    private val accountTag: () -> String?,
+) : EmployerFigureStore {
+    private fun keyFor(year: Int): String? = accountTag()?.let { "$it.$year" }
+
+    override fun figureFor(year: Int): Double? = keyFor(year)?.let { backing[it] }
+
+    override fun save(
+        year: Int,
+        rate: Double,
+    ) {
+        keyFor(year)?.let { backing[it] = rate }
     }
 }

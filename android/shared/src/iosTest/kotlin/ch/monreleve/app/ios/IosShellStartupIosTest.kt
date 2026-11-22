@@ -42,7 +42,7 @@ class IosShellStartupIosTest {
                 )
             try {
                 assertEquals(Destination.RESOLVING, rig.shell.start, "signed in, no settings: the start resolves")
-                setContent { IosShellRoot(rig.shell) }
+                setShellContent(rig)
                 waitBounded("the startup asked GET $ME_PATH", TIMEOUT) { "GET $ME_PATH" in rig.transport.requests }
                 waitBounded("the shell reached MAIN on /me's answer", TIMEOUT) { tabShown(NavCopy.CALENDRIER) }
                 waitForIdle()

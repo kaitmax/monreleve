@@ -112,14 +112,17 @@ internal fun SaisieSection(
         )
         // AN-ALERT: the threshold alert is NOT gated on detection - it reads the forecast, not the position - so
         // its switch is always offered here (its own switch, the Prevision screen offers the same opt-in once).
-        RowDivider()
-        SwitchRow(
-            ParametresCopy.ALERT_LABEL,
-            ParametresCopy.ALERT_DESCRIPTION,
-            state.thresholdAlertEnabled,
-            actions.onToggleThresholdAlert,
-            enabled,
-        )
+        // IOS-SHELL-2 (R1338): unless the platform passes no handler (iOS v1) - then neither the switch nor its rule.
+        actions.onToggleThresholdAlert?.let { onToggle ->
+            RowDivider()
+            SwitchRow(
+                ParametresCopy.ALERT_LABEL,
+                ParametresCopy.ALERT_DESCRIPTION,
+                state.thresholdAlertEnabled,
+                onToggle,
+                enabled,
+            )
+        }
     }
 }
 

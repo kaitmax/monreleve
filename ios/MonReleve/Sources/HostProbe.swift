@@ -22,6 +22,9 @@
 //                     marker (probe names - the app's own items are never touched): cleared when unmarked, kept after.
 //   (7) ats           IOS-SHELL-1 R1320: whether App Transport Security refuses plain http to the Debug base URL,
 //                     told apart by the error code against a port where nothing listens.
+//   (8) mail          IOS-SHELL-2 R1333: a MEASUREMENT, not a check - whether this phone can open the Mail app's
+//                     scheme (message://), asked through the shell's own function (canOpenMailApp), which decides
+//                     whether the code screen shows "Ouvrir ma messagerie". It opens nothing.
 //
 // NOTHING SECRET: no server, no sign-in, no real token. The fake pair's values are never written out - only whether
 // they came back equal. The repository is public, and so are the run's logs and artifacts.
@@ -72,6 +75,7 @@ final class HostProbe {
         await share(log)
         firstLaunch(log)
         await transportSecurity(log)
+        mailApp(log)
         log.line("probe.done", "true")
     }
 
@@ -301,6 +305,16 @@ final class HostProbe {
             log.line("ats.answer", "\(failure.domain) \(failure.code)")
             log.line("ats.refusedByAts", "\(failure.code == NSURLErrorAppTransportSecurityRequiresSecureConnection)")
         }
+    }
+
+    // MARK: - (8) the Mail app's scheme (IOS-SHELL-2 R1333)
+
+    /// R1333: MEASURE what this phone answers for message:// - through the shell's own function, so the answer is the
+    /// one the code screen acts on - and whether Info.plist lists the scheme (canOpenURL answers only for a listed one).
+    private func mailApp(_ log: ProbeLog) {
+        let listed = Bundle.main.object(forInfoDictionaryKey: "LSApplicationQueriesSchemes") as? [String] ?? []
+        log.line("mail.schemeListed", "\(listed.contains("message"))")
+        log.line("mail.canOpenMessageScheme", "\(IosUrlOpenerKt.canOpenMailApp())")
     }
 
     // MARK: - (3) the share sheet, on screen

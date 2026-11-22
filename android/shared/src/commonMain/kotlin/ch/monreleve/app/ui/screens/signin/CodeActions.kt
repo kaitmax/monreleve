@@ -8,5 +8,11 @@ data class CodeActions(
     val onSubmit: () -> Unit,
     val onModify: () -> Unit,
     val onResend: () -> Unit,
-    val onOpenMail: () -> Unit,
+    /**
+     * « Ouvrir ma messagerie ». IOS-SHELL-2 (R1333, iOS Ruling 3 Q5): NULL where this phone cannot open a mail app -
+     * iOS asks canOpenURL for message:// - and the screen then shows no such button. No handler, no button: one fact,
+     * never a second flag beside it (onToggleAutoDetection's rule, R1124). Android always passes one (its own
+     * fallback, R299, says why when no mail app answers).
+     */
+    val onOpenMail: (() -> Unit)?,
 )
