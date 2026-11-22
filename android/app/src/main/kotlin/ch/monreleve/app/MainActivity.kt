@@ -77,12 +77,9 @@ import ch.monreleve.app.detection.detectionAvailable
 import ch.monreleve.app.detection.locationFullyGranted
 import ch.monreleve.app.detection.maybeAlertThreshold
 import ch.monreleve.app.dossier.DossierDocument
-import ch.monreleve.app.dossier.buildComparison
-import ch.monreleve.app.dossier.parseEmployerRate
 import ch.monreleve.app.fr.DisclosureCopy
 import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.ReleveCopy
-import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
 import ch.monreleve.app.onboarding.OnboardingPhase
@@ -99,7 +96,6 @@ import ch.monreleve.app.parametres.openLegalLink
 import ch.monreleve.app.push.notificationsPermitted
 import ch.monreleve.app.push.syncPush
 import ch.monreleve.app.releve.ExportEvent
-import ch.monreleve.app.releve.ReleveState
 import ch.monreleve.app.reminder.FallbackReminderScheduling
 import ch.monreleve.app.reminder.restoredEveningOptIn
 import ch.monreleve.app.settings.EmployerFigureStore
@@ -109,8 +105,6 @@ import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEmployerFigureStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsSettingsStore
-import ch.monreleve.app.ui.screens.comparison.ComparisonActions
-import ch.monreleve.app.ui.screens.comparison.ComparisonScreen
 import ch.monreleve.app.ui.screens.disclosure.DisclosureScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
@@ -526,7 +520,6 @@ internal fun MainShell(
     // already ran in this process makes this a no-op (YearDownloads.atStart).
     LaunchedEffect(Unit) { yearDownload.atStart() }
     val yearDownloadStatus by yearDownload.status.collectAsState()
-    val releveState by controllers.releve.state.collectAsState()
     val parametresState by controllers.parametres.state.collectAsState()
 
     // AC2 / R136: an export event carries the server-rendered file to the platform share sheet. Handled at
@@ -681,7 +674,7 @@ internal fun MainShell(
 
     // IOS-MOVE-TABS R1360: the bottom bar, the four tabs and the forecast overlays are the common MainTabs (:shared
     // commonMain MainTabs.kt), which iOS's shell calls too. What is Android's reaches it as a parameter: the tab and
-    // forecast state held above, the year download's retry, the comparison overlay below, the alert's OS prompt, the
+    // forecast state held above, the year download's retry, the comparison's year and store, the alert's OS prompt, the
     // Parametres tab (BuildConfig, the permission launchers, the Material date picker) and the system back.
     MainTabs(
         controllers = controllers,
@@ -692,10 +685,12 @@ internal fun MainShell(
         yearDownloadFailed = yearDownloadStatus is YearDownloadStatus.Failed,
         // AN-PULL (R484): the person asks again for the years that failed.
         onRetryDownload = yearDownload.retry,
-        // AN-RECON: open the comparison overlay for the year on screen.
-        onCompareEmployer = { (releveState as? ReleveState.Loaded)?.let { comparisonYear = it.selectedYear } },
+        // AN-RECON: the comparison overlay - drawn by MainTabs since IOS-SHELL-3 R1372 - for the year held above.
+        comparisonYear = comparisonYear,
+        onComparisonYearChange = { comparisonYear = it },
+        employerStore = employerStore,
         // AN-ALERT: the contextual opt-in offer enables the alert (via the OS prompt).
-        onEnableAlert = { onToggleThresholdAlert(true) },
+        onEnableAlert = thresholdAlertOffer(onToggleThresholdAlert),
         parametresTab = { state, onOpenRhythm ->
             ParametresTab(
                 state = state,
@@ -725,55 +720,11 @@ internal fun MainShell(
             )
         },
         // AN-SIM: system back from the simulator returns to Prevision; the other routes close to the tab beneath.
-        forecastBackHandler = { onBack -> BackHandler(onBack = onBack) },
+        overlayBackHandler = { onBack -> BackHandler(onBack = onBack) },
     )
 
-    // AN-RECON: the employer comparison, a full-screen overlay over the releve. It reads the releve's current
-    // Loaded document for the year it holds (R287: the server's figure, never a phone-side calc) and the
-    // employer figure from the phone store (R342). Computing the gap writes nothing (R340); only the person's
-    // typed figure is persisted, to the account-scoped phone store. Back closes it; a cause or "voir mes
-    // journees" opens the day-by-day record.
-    comparisonYear?.let { year ->
-        val loaded = releveState as? ReleveState.Loaded
-        BackHandler { comparisonYear = null }
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            if (loaded != null) {
-                var employerInput by
-                    rememberSaveable(year) {
-                        mutableStateOf(employerStore.figureFor(year)?.let { formatPercent(it, 2) } ?: "")
-                    }
-                val employerRate = parseEmployerRate(employerInput)
-                val view =
-                    remember(loaded.document, loaded.pendingCount, loaded.isCurrentYear, employerRate) {
-                        buildComparison(
-                            document = loaded.document,
-                            isCurrentYear = loaded.isCurrentYear,
-                            daysUnsynced = loaded.pendingCount,
-                            missionCap = loaded.rules.missionCapDays,
-                            simplifiedBasisDays = loaded.rules.simplifiedBasisDays,
-                            employerRate = employerRate,
-                        )
-                    }
-                ComparisonScreen(
-                    view = view,
-                    employerInput = employerInput,
-                    employerRate = employerRate,
-                    actions =
-                        ComparisonActions(
-                            onInputChange = { text ->
-                                employerInput = text
-                                parseEmployerRate(text)?.let { employerStore.save(year, it) }
-                            },
-                            onViewDays = {
-                                comparisonYear = null
-                                tab = AppTab.CALENDRIER
-                            },
-                            onBack = { comparisonYear = null },
-                        ),
-                )
-            }
-        }
-    }
+    // AN-RECON: the employer comparison's overlay is drawn by MainTabs (IOS-SHELL-3 R1372 moved it there, unchanged,
+    // so iOS draws the same one); its open year is held above, its back is the overlay slot's BackHandler.
 
     // R316/D5: the prominent disclosure, shown BEFORE the OS prompt, as a full-screen overlay over the shell.
     if (showDisclosure) {
@@ -870,10 +821,18 @@ private fun openMail(context: Context) {
     }
 }
 
+/**
+ * AN-ALERT: Prevision's contextual offer turns the threshold alert ON through the same toggle as the Parametres switch
+ * (the OS prompt first). IOS-SHELL-3 R1375: named, and internal with parametresActions below, so the presence control
+ * (ThresholdAlertPresenceTest) renders both entry points with the handlers MainShell actually builds.
+ */
+internal fun thresholdAlertOffer(onToggleThresholdAlert: (Boolean) -> Unit): (() -> Unit)? =
+    { onToggleThresholdAlert(true) }
+
 // LongParameterList suppressed as the composition root's helpers are: a plain pass-through of the screen's
-// callbacks (now with the threshold-alert toggle), not tangled logic.
+// callbacks (now with the threshold-alert toggle), not tangled logic. Internal for R1375's presence control.
 @Suppress("LongParameterList")
-private fun parametresActions(
+internal fun parametresActions(
     controller: ParametresController,
     onToggleAuto: ((Boolean) -> Unit)?,
     onToggleEvening: (Boolean) -> Unit,

@@ -99,7 +99,8 @@ import kotlin.time.ExperimentalTime
 // sign-in both tax years (RESOLVING's afterSignIn), once per process the empty ones (the main shell opening), the
 // person's retry; stopped on every ending through the session-end seam; and every year that lands re-plans the
 // evening reminder, because a day it brings may be today, recorded on another phone.
-// NAMED STUB STILL: the employer comparison's overlay, whose store exists (employerStore) with no iOS caller.
+// IOS-SHELL-3 R1372 (iOS Ruling 15 Q1): the employer comparison is the common overlay MainTabs draws, over
+// employerStore.
 
 /** Raised if the iOS composition is ever asked for the detection-consent body: detection is not in iOS v1. */
 class DetectionNotInIosV1(
@@ -192,7 +193,7 @@ class IosShell internal constructor(
     val detectionModeStore: DetectionModeStore,
     /** The evening opt-in as the shell's writers see it: each write re-plans (ReplanningEveningStore, R1330). */
     val eveningStore: EveningNotificationStore,
-    /** R1334: the employer figures, persistent and account-tagged (no iOS screen reads it yet - QUESTIONS). */
+    /** R1334: the employer figures, persistent and account-tagged - read and written by the comparison (R1372). */
     val employerStore: EmployerFigureStore,
     val centre: IosNotificationCentre,
     val parametresWire: ParametresWire,
@@ -217,7 +218,6 @@ class IosShell internal constructor(
     private val scope: CoroutineScope,
     private val planNow: suspend () -> Unit,
     private val graph: (CoroutineScope) -> MainControllers,
-    private val log: (String) -> Unit,
 ) {
     /** R1162 on iOS: detection is not in v1, so the server's mode always lands as MANUAL, nothing sampled. */
     fun restoreMode(serverMode: LoggingMode) {
@@ -355,21 +355,12 @@ class IosShell internal constructor(
     /** R1371 / R484: the person's « Réessayer » - the years that failed, again. */
     fun retryYearDownloads() = yearDownloads.retry(entriesDownload)
 
-    /** NAMED STUB: what no ruling builds on iOS yet (the employer comparison) - logged. */
-    fun notYetOnIos(what: String) {
-        log("I/$TAG: not on iOS yet: $what")
-    }
-
     /**
      * THE ONE GRAPH (R291), built through the common MainGraph.build when MAIN composes - the same function Android's
      * rememberMainControllers calls, with iOS's seams. No saved-state snapshots: a ComposeUIViewController is not
      * rebuilt on rotation and iOS has no process-death restore (REPORT-IOS-HOST-CENSUS, "rememberSaveable").
      */
     fun buildControllers(scope: CoroutineScope): MainControllers = graph(scope)
-
-    private companion object {
-        const val TAG = "IosShell"
-    }
 }
 
 private const val PARIS = "Europe/Paris"
@@ -561,7 +552,6 @@ fun startIosShell(
         scope = scope,
         planNow = planNow,
         graph = graph,
-        log = log,
     ).also {
         shell = it
         it.refreshAuthorization()
