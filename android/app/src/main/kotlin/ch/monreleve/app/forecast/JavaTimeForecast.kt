@@ -24,6 +24,9 @@ import java.time.LocalDate as JavaLocalDate
 // day: :app's todayInParis(java.time.Clock) was itself `todayInParis(clock.toKotlinClock())`), and a java.time
 // LocalDate becomes the kotlinx one - exactly the conversion projectedThresholdCrossing made on its first use of
 // `today` before. Named for what it holds, so its JVM facade class cannot collide with a file of :shared's.
+//
+// IOS-MOVE-GRAPH (R1310): the composition root's graph no longer calls this - MainGraph moved to :shared commonMain
+// and builds the class itself, from the kotlin.time Clock and zone ShellState.kt splits off its java.time Clock.
 
 /** The year-end crossing, from a java.time LocalDate: :app's call into the kotlinx version. */
 fun projectedThresholdCrossing(

@@ -22,6 +22,9 @@ import java.time.Clock as JavaClock
 // still hold a java.time.Clock - a clock AND a zone - so this factory, named like the class, keeps every one of those
 // call sites unedited: it splits the java clock into the kotlin.time instant source and the zone the device's claim
 // is written in, exactly the two things the java clock carried. Named for what it holds, not AujourdhuiController.kt.
+//
+// IOS-MOVE-GRAPH (R1310): the composition root's graph no longer calls this - MainGraph moved to :shared commonMain
+// and builds the class itself, from the kotlin.time Clock and zone ShellState.kt splits off its java.time Clock.
 
 /** The shared AujourdhuiController, built from a java.time.Clock (its instant source, and its zone for the claim). */
 @Suppress("LongParameterList", "FunctionNaming", "ktlint:standard:function-naming")

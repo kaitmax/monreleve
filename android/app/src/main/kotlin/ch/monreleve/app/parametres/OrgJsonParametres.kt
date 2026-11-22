@@ -29,6 +29,9 @@ import org.json.JSONObject
 // receipt parse moved here from the controller unchanged, line for line (ParametresWirePinTest pins them, on the JVM
 // org.json library - not Android's). IOS-MOVE-ME (R1270): mePatchBody is no longer org.json - it moved to :shared
 // commonMain (settings/MeWire.kt, kotlinx.serialization); the other four sites here still are.
+//
+// IOS-MOVE-GRAPH (R1310): the composition root's graph no longer calls this factory - MainGraph moved to :shared
+// commonMain and builds the class itself, with this file's wire handed in (orgJsonParametresWire, below).
 
 /**
  * The wire sites, Android's implementation: four in org.json, and patchBody through the common mePatchBody
