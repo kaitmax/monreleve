@@ -272,6 +272,12 @@ jobs:
             done ) &
           masker=$!
           udid=$(cat "$RUNNER_TEMP/sim.udid")
+          # Compose Multiplatform 1.7.3 exposes its semantics tree to UIAccessibility ONLY while VoiceOver reports
+          # running (AccessibilitySyncOptions.WhenRequiredByAccessibilityServices, its default): run 45055507141 saw
+          # an EMPTY tree under XCUITest. The simulator's accessibility preference is set so that the app's own check
+          # answers true; WalkProbe records what the app read (voiceOverRunning).
+          xcrun simctl spawn "$udid" defaults write com.apple.Accessibility VoiceOverTouchEnabled -bool true
+          echo "simulator VoiceOverTouchEnabled: $(xcrun simctl spawn "$udid" defaults read com.apple.Accessibility VoiceOverTouchEnabled 2>&1)"
           xctestrun=$(ls "$RUNNER_TEMP/dd/Build/Products/"*.xctestrun | head -1)
           set +e
           TEST_RUNNER_WALK_CONTROL="http://127.0.0.1:$WALK_CONTROL_PORT" \

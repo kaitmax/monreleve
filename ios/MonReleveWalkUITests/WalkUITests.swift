@@ -51,7 +51,8 @@ final class WalkUITests: XCTestCase {
             + "msFromProcessStart=\(Walk.probeValue("firstAnswer.msFromProcessStart", lines) ?? "?") "
             + "msFromDidFinish=\(Walk.probeValue("firstAnswer.msFromDidFinish", lines) ?? "?") "
             + "didFinishAfterProcessStartMs=\(Walk.probeValue("launch.didFinishAfterProcessStartMs", lines) ?? "?") "
-            + "timeZone=\(Walk.probeValue("timeZone", lines) ?? "?")")
+            + "timeZone=\(Walk.probeValue("timeZone", lines) ?? "?") "
+            + "voiceOverRunning=\(Walk.probeValue("voiceOverRunning", lines) ?? "?")")
         XCTAssertTrue(welcome)
         // DRIVER PROOF (a): one Compose element found by its accessibility label and tapped.
         tapLabel(L.welcomeStart, "01-start")

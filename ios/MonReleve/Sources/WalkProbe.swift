@@ -47,6 +47,9 @@ final class WalkProbe {
         set("launch.processStart", WalkProbe.iso(processStart))
         set("launch.didFinishAfterProcessStartMs", "\(Int(didFinish.timeIntervalSince(processStart) * 1000))")
         set("timeZone", TimeZone.current.identifier)
+        // Compose 1.7.3 syncs its semantics tree to UIAccessibility only while this is true (its default
+        // AccessibilitySyncOptions.WhenRequiredByAccessibilityServices) - what the XCUITest driver can see depends on it.
+        set("voiceOverRunning", "\(UIAccessibility.isVoiceOverRunning)")
         center.getNotificationSettings { settings in
             let answered = Date()
             self.set("firstAnswer.status", WalkProbe.statusName(settings.authorizationStatus))
