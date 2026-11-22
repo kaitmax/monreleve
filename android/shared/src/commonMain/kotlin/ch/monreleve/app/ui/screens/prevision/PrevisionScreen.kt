@@ -67,7 +67,9 @@ data class PrevisionActions(
     // AN-SIM: open the simulator ("Tester un changement"), now live (R85).
     val onTestChange: () -> Unit = {},
     // AN-ALERT: opt into the threshold alert from the contextual offer (the permission prompt is the shell's).
-    val onEnableAlert: () -> Unit = {},
+    // IOS-SHELL-2 (R1338): NULL where the alert is not offered (iOS v1) - then no offer is drawn. The default stays a
+    // handler, so every existing caller draws the offer as before.
+    val onEnableAlert: (() -> Unit)? = {},
     val onBack: () -> Unit = {},
 )
 
@@ -99,7 +101,8 @@ fun PrevisionScreen(
                 Text(text = PrevisionCopy.TITLE, style = FrontierType.h1)
                 ForecastCard(projection)
                 // AN-ALERT: the contextual opt-in offer, below the forecast, only while the alert is off.
-                if (!alertEnabled) AlertOfferRow(onEnable = actions.onEnableAlert)
+                // IOS-SHELL-2 (R1338): and only where the platform offers the alert at all.
+                actions.onEnableAlert?.let { onEnable -> if (!alertEnabled) AlertOfferRow(onEnable = onEnable) }
             }
         }
         BottomActions {

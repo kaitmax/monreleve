@@ -22,7 +22,8 @@ private var processShell: IosShell? = null
 @OptIn(ExperimentalTime::class) // KMP-DT R590: startIosShell's signature names kotlin.time.Clock - on the allowlist.
 fun monReleveViewController(): UIViewController {
     val shell = processShell ?: startIosShell(apiBaseUrl(), appVersion()).also { processShell = it }
-    return ComposeUIViewController { IosShellRoot(shell) }
+    // IOS-SHELL-2 (R1331): the share sheet is presented from this controller (IosShareSheet.kt).
+    return ComposeUIViewController { IosShellRoot(shell) }.also { hostViewController = it }
 }
 
 private fun infoString(key: String): String? = NSBundle.mainBundle.objectForInfoDictionaryKey(key) as? String

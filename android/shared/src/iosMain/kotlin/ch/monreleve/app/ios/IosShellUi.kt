@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -18,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import ch.monreleve.app.ForecastRoute
 import ch.monreleve.app.MainTabs
 import ch.monreleve.app.ShellRouter
@@ -40,7 +44,6 @@ import ch.monreleve.app.ui.shell.AppRoot
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSCalendarUnitMonth
@@ -65,41 +68,71 @@ import platform.UIKit.UIDatePickerStyle
 //   - MAIN (IosMainShell): the COMMON MainTabs (MainTabs.kt, IOS-MOVE-TABS R1360: the bottom bar, the four tabs and
 //     the forecast overlays - the wiring Android's MainShell calls too) over the common graph (buildControllers).
 //     Android's MainShell keeps what is Android's (permission launchers, Toasts, Intents, the push and alert passes)
-//     and passes it in; iOS passes its own. What IOS-SHELL-2 owes is stubbed by name, never silently: the share sheet
-//     (exports are logged and dropped), legal links, the employer comparison (EmployerFigureStore), the foreground
-//     refresh and sync, and the reminder triggers beyond onboarding. The threshold alert is hidden in iOS v1 (iOS
-// Ruling
-//     3 Q4); until the common screens can hide its two entry points, its handlers are named no-ops.
+//     and passes it in; iOS passes its own (IOS-SHELL-2): the exports to the share sheet (R1331), the legal pages and
+//     the mail app through UIApplication (R1333), a re-plan when the shell opens - a sign-in - and a reminder tap that
+//     opens Aujourd'hui (R1330). The threshold alert is hidden in iOS v1 (iOS Ruling 3 Q4): iOS passes NO handler for
+//     its two entry points - Parametres' switch and Prevision's offer - so neither is drawn (R1338). Still named
+//     stubs: the employer comparison and the year downloads (no ruling builds them here - REPORT-IOS-SHELL-2).
+//   - THE ROOT (IosShellRoot): one lifecycle observer - a foreground drains the queue and re-plans (R1332, R1330) - and
+//     the notice host every Toast-like message is drawn by (R1331).
 //   - THE DATE PICKER (G7): a native UIDatePicker in the two common startDatePicker slots, presented in its own layer
 //     (a Dialog - the slot's contract, ParametresEditTypes.kt), confirmed with the existing CONTINUE copy.
 
 /** The iOS app's whole content: AppRoot around the common router, over this process's [shell]. */
 @Composable
 fun IosShellRoot(shell: IosShell) {
+    // R1332 / R1330: the ONE place a foreground is seen. Chosen over Swift's scenePhase because it is the lifecycle the
+    // ComposeUIViewController itself reports (RESUMED once its view has appeared with the app active - CMP 1.7.3's
+    // ViewControllerBasedLifecycleOwner), the same ON_RESUME Android's MainShell observes, and an iosTest drives it
+    // through this very root by handing in its own owner (R204) - a Swift call site no iosTest can reach.
+    ForegroundEffect(shell::onForeground)
     AppRoot {
         val scope = rememberCoroutineScope()
-        ShellRouter(
-            start = shell.start,
-            session = shell.session,
-            api = shell.api,
-            tokenStore = shell.tokenStore,
-            pending = shell.pending,
-            accountStore = shell.accountStore,
-            repository = shell.repository,
-            settingsStore = shell.settingsStore,
-            scope = scope,
-            sessionEnds = shell.sessionEnds,
-            syncNow = shell.syncNow,
-            onOpenLegal = { shell.notYetOnIos("legal page $it (G7)") },
-            onOpenMail = { shell.notYetOnIos("message:// (G7, iOS Ruling 3 Q5)") },
-            restoreMode = shell::restoreMode,
-            restoreReminder = shell::restoreReminder,
-            // NAMED STUB: the year downloads (Android's processYearDownloads, AN-PULL) are not built on iOS yet.
-            afterSignIn = { shell.notYetOnIos("the year downloads after a sign-in") },
-            onboarding = { seed, onDone -> IosOnboardingRoute(shell, scope, seed, onDone) },
-            main = { onSignedOut -> IosMainShell(shell, scope, onSignedOut) },
-        )
+        val openMail = remember { shell.mailAction() }
+        IosNoticeHost(shell.notices) { IosRouter(shell, scope, openMail) }
     }
+}
+
+/** ON_RESUME of the composition's lifecycle owner -> [onForeground]: the app came (back) to the foreground. */
+@Composable
+private fun ForegroundEffect(onForeground: () -> Unit) {
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) onForeground() }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+}
+
+/** The common router over this process's [shell], with iOS's own routes in its two slots. */
+@Composable
+private fun IosRouter(
+    shell: IosShell,
+    scope: CoroutineScope,
+    openMail: (() -> Unit)?,
+) {
+    ShellRouter(
+        start = shell.start,
+        session = shell.session,
+        api = shell.api,
+        tokenStore = shell.tokenStore,
+        pending = shell.pending,
+        accountStore = shell.accountStore,
+        repository = shell.repository,
+        settingsStore = shell.settingsStore,
+        scope = scope,
+        sessionEnds = shell.sessionEnds,
+        syncNow = shell.syncNow,
+        onOpenLegal = shell::openLegal,
+        // R1333: null - no button - when nothing on this phone opens message:// (asked once per root).
+        onOpenMail = openMail,
+        restoreMode = shell::restoreMode,
+        restoreReminder = shell::restoreReminder,
+        // NAMED STUB: the year downloads (Android's processYearDownloads, AN-PULL) are not built on iOS yet.
+        afterSignIn = { shell.notYetOnIos("the year downloads after a sign-in") },
+        onboarding = { seed, onDone -> IosOnboardingRoute(shell, scope, seed, onDone) },
+        main = { onSignedOut -> IosMainShell(shell, scope, onSignedOut) },
+    )
 }
 
 /** R1325: the common onboarding wizard, manual-only, its reminder answer asked of the notification centre. */
@@ -123,9 +156,9 @@ internal fun IosOnboardingRoute(
                 patchBody = { settings, reminderEnabled -> settings.mePatchBody(reminderEnabled) },
                 onModeSaved = shell::restoreMode,
                 // R1145: the opt-in reaches this phone once the server TOOK the save that carried it - then the plan.
+                // The shell's evening store re-plans on every write (R1330).
                 onReminderSaved = { on ->
                     shell.eveningStore.setEnabled(on)
-                    scope.launch { shell.replanReminders() }
                 },
             )
         }
@@ -168,7 +201,7 @@ internal fun IosOnboardingRoute(
                 // R1325: "Oui" asks the authorization (the alert prompt), then saves with what the person answered.
                 onReminderYes = {
                     shell.centre.requestAuthorization { granted ->
-                        shell.notificationsPermitted.value = granted
+                        shell.onAuthorizationAnswer(granted)
                         controller.onReminderChange(granted)
                         controller.next()
                     }
@@ -198,12 +231,25 @@ internal fun IosMainShell(
     var tab by rememberSaveable { mutableStateOf(AppTab.AUJOURDHUI) }
     var forecastRoute by rememberSaveable { mutableStateOf<ForecastRoute?>(null) }
 
-    // NAMED STUB (IOS-SHELL-2, G5): the share sheet. The export events are read so none is left waiting, and logged.
+    // R1330: the signed-in shell opened - after a sign-in, after onboarding, at every launch - so the reminders are
+    // planned (Android's FallbackReminderScheduling.ensure, at the same moment).
+    LaunchedEffect(Unit) { shell.replanSoon() }
+    // R1330 (R323 / D16 on iOS): a tap on the evening reminder opens Aujourd'hui, refreshed - and records nothing.
+    val tapped by shell.taps.openAujourdhui.collectAsState()
+    LaunchedEffect(tapped) {
+        if (tapped) {
+            forecastRoute = null
+            tab = AppTab.AUJOURDHUI
+            controllers.aujourdhui.refresh()
+            shell.taps.consume()
+        }
+    }
+    // R1331 (G5): both exports through the common hand-off - the share sheet, or a notice for a failure.
     LaunchedEffect(controllers.releve) {
-        controllers.releve.exportEvents.collect { shell.notYetOnIos("the share sheet for a releve export") }
+        controllers.releve.exportEvents.collect(shell::handleExport)
     }
     LaunchedEffect(controllers.parametres) {
-        controllers.parametres.exportEvents.collect { shell.notYetOnIos("the share sheet for an account export") }
+        controllers.parametres.exportEvents.collect(shell::handleExport)
     }
     // R295: when sign-out or deletion completes (session revoked, local store wiped), leave the signed-in shell.
     LaunchedEffect(controllers.parametres) {
@@ -220,7 +266,8 @@ internal fun IosMainShell(
         yearDownloadFailed = false,
         onRetryDownload = { shell.notYetOnIos("the year downloads' retry") },
         onCompareEmployer = { shell.notYetOnIos("the employer comparison (EmployerFigureStore)") },
-        onEnableAlert = { shell.notYetOnIos("the threshold alert (hidden in iOS v1)") },
+        // R1338 (iOS Ruling 3 Q4): no threshold alert in iOS v1 - no handler, so Prevision draws no offer.
+        onEnableAlert = null,
         parametresTab = { state, onOpenRhythm ->
             ParametresScreen(
                 state = state,
@@ -262,7 +309,7 @@ private fun iosParametresActions(
         onConfirmDelete = controller::confirmDelete,
         onCancelDelete = controller::cancelDelete,
         onAcknowledgeDelete = controller::acknowledgeDelete,
-        onOpenLegal = { shell.notYetOnIos("legal page $it (G7)") },
+        onOpenLegal = shell::openLegal,
         // iOS v1 is manual-only (iOS Ruling 2): NO handler, so the screen shows no detection entry point (R1124's
         // rule).
         onToggleAutoDetection = null,
@@ -272,12 +319,13 @@ private fun iosParametresActions(
                 controller.setEveningNotification(false)
             } else {
                 shell.centre.requestAuthorization { granted ->
-                    shell.notificationsPermitted.value = granted
+                    shell.onAuthorizationAnswer(granted)
                     if (granted) controller.setEveningNotification(true)
                 }
             }
         },
-        onToggleThresholdAlert = { shell.notYetOnIos("the threshold alert (hidden in iOS v1)") },
+        // R1338 (iOS Ruling 3 Q4): no threshold alert in iOS v1 - no handler, so Parametres draws no switch.
+        onToggleThresholdAlert = null,
         onOpenRhythm = onOpenRhythm,
     )
 

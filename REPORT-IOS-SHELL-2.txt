@@ -1,0 +1,372 @@
+REPORT-IOS-SHELL-2 - THE iOS MAIN SHELL'S FACILITIES: REMINDERS IN THE RUNNING APP, SHARE, SYNC, LINKS, MAIL, EMPLOYER FIGURE
+TASK     relay/IOS-SHELL-2.txt (iOS Rulings 2, 3, 9-14). Rulings R1330-R1339 as the prompt allocated them; no new ruling
+         number minted by this session.
+BASE     origin/main c171c25b (records commit on the IOS-MOVE-TABS merge f2f230bb). :app floor 1568; ios-shared 461 tests /
+         91 suites (run 45030136957, re-counted by me from its JUnit XML: 461/0).
+BRANCH   s2-shell. PUSHED, NOT MERGED. Code tip f08425f0 - five commits on the base:
+           0790d875  increment 1      the facilities and their tests (GREEN intent)
+           5d97fa75  increment 1-RED  three deliberate RED plants P1-P3 (run 1)
+           ab72e40b  increment 2      the plants reverted (tree == 0790d875's)
+           b06ded9d  increment 3      a test-harness fix (the mail tests' rig, see run 1)
+           f08425f0  increment 4      restoreReminder synchronous again (found after review, see R1330); one assertion
+         The report tip is the last commit, carrying this file only (46585a22 was an earlier report-only commit, on
+         b06ded9d; it is superseded by the report on top of f08425f0).
+WORKTREE C:/wt/s2-shell, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/s2-shell/ (not committed): inc1-check.log / inc1b-check.log (fastCheck + :app fences),
+         gate-b06ded9d.log and gate-f08425f0.log (+ .lock), ios-expected-run1/2/3.txt (written BEFORE each dispatch),
+         ios-shared-<id>/ and ios-app-<id>/ artifacts, ios-shared-<id>-count.txt, the base's artifact
+         ios-shared-base-45030136957/, cmp-src/ (the CMP 1.7.3 / lifecycle 2.8.4 sources read for R1332 and R1339),
+         tools/ (every scripted edit asserted its anchor count or line text before writing, R211).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1337/R1334: the evening opt-in (with its last-notified day) and the employer figures PERSIST on iOS, over
+  NSUserDefaults (ios/IosDetectionStores.kt), behind the common interfaces, each held to a NEW commonTest contract run
+  on the JVM (in-memory reference) and on the simulator (the UserDefaults store). IosDetectionFile sweeps them as
+  Android's file is swept: sign-out/deletion take all three; a server-ended session keeps the employer figures (R527).
+- R1330: M4's re-plan runs on every trigger in R1292's list, from the shell: foreground, every day written by a
+  day-writer (the graph's requestSync), every opt-in write (Parametres, onboarding, RESOLVING's restore), the main
+  shell opening (a sign-in), the authorization granted. Each plan reads the authorization AFRESH, plans run one at a
+  time, and a plan computed across a session ending is not applied. (No path removes an entry on the phone - see
+  R1330.) A tap on the reminder opens Aujourd'hui through a
+  UNUserNotificationCenterDelegate installed from didFinishLaunching.
+- R1332: ONE foreground seam - a common LocalLifecycleOwner ON_RESUME observer in IosShellRoot - drains the queue and
+  re-plans.
+- R1331: one common notice seam (NoticeSink) with Android's Toast behind it unchanged and an iOS transient notice;
+  exports go to a UIActivityViewController presented from the app's own view controller.
+- R1333: legal pages through UIApplication.openURL with R299's fallback; "Ouvrir ma messagerie" is message:// and is
+  HIDDEN when canOpenURL says no. MEASURED on the simulator: canOpenURL(message://) = false (scheme listed).
+- R1338: the threshold alert's two entry points (Parametres' switch, Prevision's offer) take nullable handlers in the
+  common screens; iOS passes null; Android's defaults and call sites are unchanged.
+- R1339: MEASURED - the native picker cannot be composed in an iosTest (UIKitView needs LocalInteropContainer, which
+  runComposeUiTest does not provide); a canary asserts that exact failure.
+- :app:gate on f08425f0: BUILD SUCCESSFUL, GATE_EXIT=0, floor 1568. ios-shared 45040631818 on f08425f0: 503 tests, 0 failures.
+  ios-app 45040634871 on f08425f0: success, every probe key PASS.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip f08425f0 in this session, on a clean tree
+(gate-f08425f0.log):
+    GATE HEAD=f08425f0ff3a56e177f69dca959f033d35b8d2c7 start=2026-11-22T15:52:07Z dirty=0
+    test floor OK: 1568 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 1m 55s
+    GATE_EXIT=0
+    end=2026-11-22T15:54:04Z dirty-after=0
+- Heavy lock s2-shell-gate: ACQUIRED 15:52:07Z commitFree=9335 (line 8000, not lowered), RELEASED 15:54:04Z.
+- EXECUTED in it: :app:testDebugUnitTest, :app:verifyPaparazziDebug, :app:lintDebug, :shared:testDebugUnitTest,
+  :shared:detekt, :shared:ktlintCheck. UP-TO-DATE: :app:detekt and :app:ktlintCheck - no :app source changed since
+  they EXECUTED green in inc1b-check.log and in the earlier full gate on b06ded9d (gate-b06ded9d.log: BUILD SUCCESSFUL
+  in 6m 5s, GATE_EXIT=0, floor 1568, dirty=0/0).
+- Counts from THIS gate's XML (written 15:53-15:54): :app 209 classes / 1568 tests / 0 failures (= the base's floor);
+  :shared JVM 63 / 338 / 0 (base 61 / 328 + MemoryEveningNotificationStoreContractTest 4 +
+  MemoryEmployerFigureStoreContractTest 6).
+- `git diff --name-only c171c25b f08425f0 -- android/app/src/test/snapshots web .github` = 0 files: no baseline moved,
+  web/ untouched (gate:clone / gate:changed not owed, R199 - a decision, not an omission), no workflow edited.
+- Every Gradle run --no-daemon; `gradlew --stop` never run.
+- R573: ONE ios-shared and ONE ios-app run on the pushed code tip f08425f0 (R1336 below).
+
+================================================================================
+R1330 - THE REMINDER IN THE RUNNING APP
+================================================================================
+THE TRIGGERS (R1292's list), each wired once in iosMain (IosShell.kt / IosShellUi.kt), each calling replanSoon():
+  - every foreground ......................... IosShell.onForeground (from R1332's one observer);
+  - every entry recorded, changed or removed . the graph's requestSync (every day-writer calls it after a write that
+                                               changed a day, SPEC 13.2, MainGraphDayWriterCensusTest), beside the drain.
+                                               READ, not assumed: Aujourd'hui's record and the calendar's save and bulk
+                                               confirm all write through repository.record and then call requestSync
+                                               (written > 0); NOTHING in the shared code removes an entry on the phone
+                                               (no delete/remove on EntryRepository), so "removed" has no path to wire,
+                                               and "changed" rides the same call as "recorded". Only "recorded" was
+                                               DRIVEN through the shell;
+  - an opt-in change, incl. the RESOLVING restore . ReplanningEveningStore: every write through the shell's evening
+                                               store re-plans (Parametres once the server took it, onboarding's answer,
+                                               restoreReminder);
+  - a sign-in ................................ IosMainShell's LaunchedEffect(Unit) - the signed-in shell opening;
+  - authorization granted .................... IosShell.onAuthorizationAnswer (onboarding "Oui", the Parametres switch).
+  The endings write the RAW stores (IosDetectionFile), never through the re-plan; M3's seam still removes everything.
+THE PLAN ITSELF (startIosShell): one at a time (a Mutex); the authorization is AWAITED inside reminderState (the
+  advisor's point 1: notificationsPermitted starts false and the system answers late, so a cached read could remove
+  the whole window at relaunch); NOT APPLIED when a session ended while it was computed (a SessionEndings count the
+  seam bumps), so a plan read while signed in cannot put requests back after a sign-out.
+RESTORE AT SIGN-IN STAYS SYNCHRONOUS (increment 4). Increment 1 made restoreReminder await a fresh authorization
+  read; the review found ParametresController reads the opt-in ONCE when built (its initial state), and RESOLVING moves
+  to MAIN at once - so a restore landing late could show the switch OFF beside a planned week. f08425f0 restores
+  IOS-SHELL-1's synchronous write (from the authorization as last read); the PLAN still reads it afresh.
+  aSignInRestores... now also asserts the Parametres switch reads ON. That assertion did NOT have a RED run of its own
+  (the synchronous test centre answers in time either way) - it pins the outcome, it did not catch the defect.
+THE TAP: ios/IosNotificationTaps.kt - routeNotificationTap (an evening reminder's DEFAULT action raises a process-wide
+  flag), a NotificationTapDelegate held strongly, installNotificationTapDelegate() called by MonReleveApp.swift's
+  didFinishLaunching on every launch but the pilot's/probe's. IosMainShell consumes the flag: forecast closed,
+  Aujourd'hui selected and refreshed. WHAT HAS RUN: the install, on the ios-app DEFAULT launch (alive after 15 s, the
+  Bienvenue screenshot); routeNotificationTap and the shell's reaction, in iosTest. WHAT HAS NOT: the delegate method
+  receiving a real tap - IOS-WALK's.
+HIDDEN, BY TEST: no request carries a category (so no action buttons) - asserted over every request the shell adds.
+reminderOptInBody: already in commonMain (IOS-SHELL-1 R1329) - nothing left in :app to move.
+TESTS THROUGH THE SHELL (IosShellRemindersIosTest, 7; IosNotificationTapIosTest, 2) - each trigger with its own
+observable (the centre emptied, or one fact changed, just before it):
+  aForegroundReplansWaitingForTheAuthorizationTheCentreAnswersLate - lifecycle CREATED -> RESUMED refills the week;
+      the centre answers the authorization 300 ms late; also asserts only-ours and no category;
+  recordingTodayOnAujourdhuiRemovesTodaysReminderAndKeepsTheRest - tap "Domicile": today's id gone, 4 kept;
+  turningTheEveningSwitchOnInParametresPlansTheWeek - BEFORE 0, the tab's ONE switch tapped, week planned, persisted;
+  theAuthorizationGrantedReplans - BEFORE 0 (not permitted), the grant re-plans;
+  aSignInRestoresTheOptInFromTheServerAndPlans - RESOLVING over /me reminderEnabled=true -> opt-in persisted + week;
+  aRelaunchRebuildsFromTheStoresAndStillPlansWithTheOptInOn - R1337 below;
+  aServerEndedSessionClearsTheOptInAndLeavesNoPendingReminder - onServerEndedSession: 0 pending, opt-in off;
+  onlyAnEveningRemindersTapRaisesTheFlag / aReminderTapTakesTheShellFromParametresToAujourdhui.
+
+================================================================================
+R1331 - THE SHARE SHEET AND THE ONE NOTICE SEAM
+================================================================================
+- commonMain NoticeSink.kt: `fun interface NoticeSink` and handleExportEvent (Android's handleExport mapping, moved:
+  Ready -> share, RequiresConnectivity / Failed -> the same ReleveCopy constants). No new copy.
+- Android (:app MainActivity - DEVIATION 1): toastNotices(context) = NoticeSink { Toast.makeText(..., LENGTH_LONG) };
+  the five Toast sites (export x2 via handleExportEvent, legal no-handler, no mail app, location revoked) go through it.
+  Same messages, same duration.
+- iOS: IosNotices (ios/IosNotices.kt) - a Material3 Snackbar at the window's bottom, drawn by IosShellRoot above every
+  screen, gone after 3.5 s (Toast LENGTH_LONG) on the shell's scope. iOS reaches: both export failures, the legal
+  fallback, NO_MAIL_APP.
+- The share: IosShell.handleExport -> IosExportFiles.write (unchanged, R891) -> presentShareSheet(path)
+  (ios/IosShareSheet.kt): UIActivityViewController presented from the app's own ComposeUIViewController
+  (monReleveViewController sets it) or what it presents. A file that cannot be written is said as EXPORT_FAILED.
+  NOT RUN ANYWHERE: presentShareSheet itself (the iosTests record the path instead; the probe's step (3) is Swift's OWN
+  presenter over the pilot, not this function). IOS-WALK is the first to run it.
+- Tests (IosShellFacilitiesIosTest): r1331AnAccountExportIsWrittenAndHandedToTheShareSheet (Parametres -> export ->
+  JSON; the presenter got <rig>/exports/<file> with the server's bytes, verbatim); r1331AFailedExportIsSaidOnScreen
+  NeverSilently (500 -> EXPORT_FAILED on screen, nothing shared). Only the ACCOUNT export was driven; the releve's
+  export events go through the same collector line (shell::handleExport) and were not driven. The iOS notice has been
+  seen only as text in the semantics tree, never in a window (QUESTIONS Q5).
+
+================================================================================
+R1332 - FOREGROUND SYNC
+================================================================================
+ONE PLACE: a common LocalLifecycleOwner ON_RESUME observer in IosShellRoot calling IosShell.onForeground()
+(requestDrain + replanSoon). WHY THIS AND NOT Swift scenePhase: it is the lifecycle the ComposeUIViewController itself
+reports (CMP 1.7.3 ComposeHostingViewController.uikit.kt:415 provides it; ViewControllerBasedLifecycleOwner is RESUMED
+when the view has appeared and the app is active), the same ON_RESUME Android's MainShell observes, and an iosTest
+drives it THROUGH THE ROOT by providing its own owner (R204) - a Swift call site no iosTest reaches.
+MEASURED BEFORE WRITING (the advisor's check): runComposeUiTest provides NO LocalLifecycleOwner (its scene is a
+CanvasLayersComposeScene over PlatformContext.Empty; lifecycle-runtime-compose 2.8.4's nonAndroid default is
+error("CompositionLocal LocalLifecycleOwner not present")). So every test composing IosShellRoot now goes through
+setShellContent(rig), which provides the rig's TestLifecycleOwner (LifecycleRegistry.createUnsafe) - the two
+IOS-SHELL-1 tests that composed the root were moved to it.
+BGTaskScheduler stays out (PARK-IF1 device-only).
+ARGUED, NOT MEASURED: that ON_RESUME fires on a REAL foreground on iOS is read from the CMP source above; the ios-app
+DEFAULT launch proves only that the owner is provided and nothing crashes. IOS-WALK sees it (background, foreground,
+a drained write).
+IMPORT: iosMain and iosTest now import androidx.lifecycle (Lifecycle, LifecycleEventObserver, LocalLifecycleOwner,
+LifecycleRegistry) - TRANSITIVE through cmp-ui's api (census R1200: lifecycle 2.8.4), not declared in the build file;
+no dependency was added.
+Test: r1332AForegroundDrainsAWriteQueuedInTheBackground - a write queued through the repository (no drain asked),
+root composed in CREATED, BEFORE: no POST /api/v1/entries; RESUMED -> the POST is made.
+
+================================================================================
+R1333 - LEGAL LINKS AND MAIL
+================================================================================
+- ios/IosUrlOpener.kt: IosUrlOpener (canOpen / open with a completion), SystemUrlOpener over UIApplication
+  canOpenURL / openURL(options, completionHandler) - of which only canOpen has RUN (the probe); SystemUrlOpener.open has
+  run nowhere (IOS-WALK); MAIL_APP_URL = "message://" (one home); canOpenMailApp() for the
+  probe. Legal pages: UIApplication.openURL - chosen over SFSafariViewController because its completion says whether
+  ANY app took the address, R299's exact signal (and no SafariServices link); a refusal shows
+  ParametresCopy.legalNoHandler(url) through the notice seam.
+- "Ouvrir ma messagerie": common CodeActions.onOpenMail became nullable (CodeScreen draws no button when null; the
+  three ShellRoutes parameters widened); iOS passes shell.mailAction(): null when canOpenURL(message://) is false,
+  else open message:// with NO_MAIL_APP as the fallback. Android passes its lambda unchanged.
+- ios/project.yml: LSApplicationQueriesSchemes: [message] - nothing else added.
+- MEASURED (ios-app run 45035966974, probe step (8), new - a measurement line, not a .result):
+      mail.schemeListed=true
+      mail.canOpenMessageScheme=false
+  So the simulator gives the HIDDEN state. Tested: r1333NoMailAppTheButtonIsHidden (code screen reached through the
+  shell; SUBMIT present as the presence guard; OPEN_MAIL absent). The OTHER state is tested with a double
+  (r1333AMailAppTheButtonOpensMessageScheme: present, tap opens message://) and is LISTED FOR THE OPERATOR'S iPHONE
+  (a phone with Mail installed: the button shows and opens Mail; with Mail deleted: hidden).
+- r1333ALegalRowOpensTheSitesPage (Site.url(PRIVACY) opened, no fallback) and r1333ALegalPageNothingCanOpenShowsIts
+  AddressR299 (the address shown on screen).
+
+================================================================================
+R1334 - THE EMPLOYER FIGURE ON iOS
+================================================================================
+- UserDefaultsEmployerFigureStore (ios/IosDetectionStores.kt): ONE NSUserDefaults key holding "<accountTag>.<year>" ->
+  rate as JSON (one atomic write, one erase); the account read at each call; no account reads and writes nothing.
+- NEW commonTest EmployerFigureStoreContract (6 tests: round-trip through another instance, per-account, fail-closed,
+  per-year, account read live). JVM half MemoryEmployerFigureStoreContractTest over a commonTest reference
+  (:app's InMemoryEmployerFigureStore cannot be "another instance" and stays in :app as Android's test double,
+  untouched); simulator half UserDefaultsEmployerFigureStoreContractTest. "The contract tests the other stores already
+  have" did not exist for this interface (or the evening one) - they are written here, in the existing contracts' shape.
+- Sweeps: IosDetectionFileIosTest (2) - clear() erases it, clearForSessionEnd() keeps it (R527).
+- It has NO iOS caller yet: the comparison overlay that reads it is :app MainShell's, and no ruling R1330-R1339 builds
+  it on iOS (QUESTIONS Q1).
+
+================================================================================
+R1335 - ACCOUNT DELETION ON iOS
+================================================================================
+- The delete pair's copy/body: nothing left in :app to move - the common accountDeleteBody / parseDeleteReceipt
+  (IOS-SHELL-1 R1329) are iOS's; :app's OrgJsonParametresWire keeps Android's own (R1329's declared divergence).
+- r1335DeletingTheAccountThroughTheShellLeavesZeroPendingRequests: BEFORE > 0 pending; Parametres -> "Supprimer mon
+  compte" -> the typed word (DELETE_CONFIRMATION) -> confirm -> "Terminer" -> Bienvenue. Asserted: POST
+  /api/v1/account/delete made; 0 pending; the seam's removeAll ran; tokens, pending sign-in, settings gone; the
+  persisted opt-in off.
+
+================================================================================
+R1336 - ANDROID UNCHANGED; iOS RUNS
+================================================================================
+- ANDROID: the gate above. The :app edit is MainActivity.kt only (DEVIATION 1); MainActivity's alert call sites are
+  untouched. Floor 1568 = base.
+- ios-shared 45040631818 on f08425f0 (THE R573 RUN): success. Counted from the JUnit XML
+  (ios-shared-45040631818-count.txt):
+      suites=100 tests=503 failures=0 errors=0 skipped=0
+  Expected 503 = base 461 + 42, written BEFORE dispatch (ios-expected-run3.txt). Per-class difference from the base
+  run 45030136957 (downloaded and re-counted: 91 / 461 / 0) - only additions, no existing class changed its count:
+      + MemoryEmployerFigureStoreContractTest 6, + MemoryEveningNotificationStoreContractTest 4 (commonTest),
+      + UserDefaultsEmployerFigureStoreContractTest 6, + UserDefaultsEveningNotificationStoreContractTest 4,
+      + IosDetectionFileIosTest 2, + IosShellRemindersIosTest 7, + IosShellFacilitiesIosTest 10,
+      + IosNotificationTapIosTest 2, + IosStartDatePickerCanaryIosTest 1.
+  The same 503/0 with the same class list on b06ded9d (run 45037852240), before increment 4.
+- RED BY PLANT - ios-shared 45035963759 on 5d97fa75 (the plants), expectation written before dispatch
+  (ios-expected-run1.txt): 100 suites, 503 tests, 9 failures. The 7 the plants predicted, each for its stated reason:
+      P1 (opt-in in memory): aRelaunch... "persisted before the relaunch"; aSignInRestores... "R1147: the server's
+         opt-in restored where the phone may notify";
+      P2 (root ignores ON_RESUME): aForegroundReplans... and r1332AForegroundDrains... - bounded waits expired;
+      P3 (no-op alert handlers): r1338Parametres... "no threshold alert switch", r1338Prevision... "no threshold
+         alert offer", turningTheEveningSwitch... "one switch: the evening's. Expected <1>, actual <2>".
+  Plus 2 the plants did not predict: r1333NoMailApp... and r1333AMailApp... - "the code screen" never reached (the
+  harness, DEVIATION 6), fixed in b06ded9d and green in run 2. The R1339 canary PASSED in both runs; no SIGSEGV.
+- ios-app 45040634871 on f08425f0 (THE R573 RUN): success. ios-host-probe.txt (nonce run-45040634871-1,
+  probe.done=true):
+      keychain.result=PASS notification.result=PASS reminder.result=PASS share.result=PASS firstLaunch.result=PASS
+      ats.refusedByAts=false  info.apiBaseUrl=http://127.0.0.1:3000 (Debug; production never contacted)
+      mail.schemeListed=true  mail.canOpenMessageScheme=false   (step (8), new; the same in 45035966974 and 45038498461)
+  launch-DEFAULT.png LOOKED AT: Bienvenue ("Vos jours de teletravail, prets pour votre declaration.", "Commencer"),
+  no code field (R574). The DEFAULT launch is the one that installs the tap delegate; it stayed alive.
+- macOS wall time of this session's six runs: 15.3 + 26.2 + 10.5 + 19.3 + 11.0 + 17.3 min (created->updated).
+
+================================================================================
+R1337 - THE EVENING OPT-IN PERSISTS
+================================================================================
+- UserDefaultsEveningNotificationStore: isEnabled/setEnabled/lastNotifiedDay/markNotified + erase() (both keys).
+  startIosShell takes `detectionDefaults: NSUserDefaults` (the detection file's home) instead of IOS-SHELL-1's
+  in-memory `eveningStore`.
+- NEW commonTest EveningNotificationStoreContract (4) - JVM over InMemoryEveningNotificationStore, simulator over the
+  UserDefaults store, each instance a NEW NSUserDefaults on the test's suite.
+- aRelaunchRebuildsFromTheStoresAndStillPlansWithTheOptInOn: opt in through the shell's store -> persisted ->
+  ShellRig.relaunch() (database closed and reopened from its file, a NEW startIosShell over the same suite and
+  Keychain doubles) -> centre emptied -> root composed -> the week planned, opt-in on. The centre answers late.
+- Every ending clears it through M3's seam's store: sign-out (IosShellSignOutIosTest, now reading the PERSISTED
+  store), deletion (R1335's test), server-ended (aServerEndedSessionClears...).
+
+================================================================================
+R1338 - THE THRESHOLD ALERT'S ENTRY POINTS
+================================================================================
+NAMED: (1) ParametresScreen's "Alerte de seuil" switch (ParametresSections.kt, ParametresActions.onToggleThreshold
+Alert) and (2) PrevisionScreen's contextual offer (AlertOfferRow, PrevisionActions.onEnableAlert, MainTabs.onEnableAlert).
+COMMON CHANGE: both handlers nullable, the DEFAULT kept a handler ({}), so every existing caller draws as before; null
+draws neither the switch (with its RowDivider) nor the offer. iOS passes null for both.
+NO :app EDIT WAS NEEDED: MainShell's lambdas are assignable to the nullable types; MainActivity's alert call sites are
+unchanged (the one :app edit is R1331's, DEVIATION 1).
+ABSENT ON iOS (through the shell): r1338ParametresDrawsNoThresholdAlertSwitchOnIos (EVENING_LABEL present on the same
+card; ALERT_LABEL and ALERT_DESCRIPTION absent) and r1338PrevisionDrawsNoThresholdAlertOfferOnIos (a rhythm saved,
+Parametres -> rythme -> "Voir ma prevision"; PrevisionCopy.TITLE present, so a projection exists; ALERT_OFFER absent).
+Also: turningTheEveningSwitch... asserts the tab has exactly ONE switch.
+PRESENCE ON ANDROID: Android's call sites pass non-null handlers (unchanged lines), and the Paparazzi baselines that
+draw them through the defaults - PrevisionScreenScreenshotTest previsionCompliant / previsionCompliantLarge /
+previsionOverFiscal / previsionWithUnrecorded (offer, alertEnabled=false with a projection) and
+ParametresListScreenshotTest parametresList* incl. parametresListManualOnly (whose comment says its card "keeps the
+threshold alert alone") - were verified by verifyPaparazziDebug at zero tolerance in the gate with 0 snapshot files
+changed. LOOKED AT: parametresListManualOnly.png draws "M'avertir si j'approche d'un seuil" with its switch under
+"Me prevenir le soir"; previsionCompliant.png shows the forecast card and, below it, only the top edge of the offer's
+bordered row before the frame ends - so the Prevision baseline proves the row is laid out, not its text. Presence of the
+offer's text with a handler on iOS: SimulationForecastScreensIosTest step4 (taps ALERT_OFFER), green.
+RED BY PLANT: P3 (run 1) made iOS pass no-op handlers; both r1338 tests failed for that reason, and the evening test saw
+2 switches.
+
+================================================================================
+R1339 - THE NATIVE DATE PICKER
+================================================================================
+MEASURED: it CANNOT be opened in an iosTest. CMP 1.7.3's UIKitView reads LocalInteropContainer
+(ui-1.7.3-sources uikitMain viewinterop/UIKitView.uikit.kt:56), whose default is error("LocalInteropContainer not
+provided") (skikoMain viewinterop/InteropContainer.skiko.kt:37); only a ComposeUIViewController's scene provides it,
+runComposeUiTest's does not, and the local is internal. IosStartDatePickerCanaryIosTest composes the REAL
+IosStartDatePicker and asserts the failure names LocalInteropContainer - PASSED in runs 45035963759 and 45037852240
+(no SIGSEGV; every suite written). When it starts failing, R1339's slot tests become possible. IOS-WALK opens the
+picker from onboarding and from Parametres.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- Android's MainShell refreshes Aujourd'hui on every ON_RESUME (F8, the midnight case); iOS's onForeground drains and
+  re-plans only (R1332 asks for the drain). A phone left open across midnight on iOS keeps yesterday on Aujourd'hui
+  until a tab change. One line in onForeground would match it.
+- iOS shows no notification while the app is in the foreground (the delegate implements only the tap; no
+  willPresent), Android does. The 19:00 reminder with the app open would be silent.
+- The pilot/probe launch paths still exist (I3 removes them).
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. :app MainActivity.kt (R1331's "Android keeps its Toast behind it"): the five Toast.makeText sites go through
+   toastNotices(context), a NoticeSink; handleExport delegates to the common handleExportEvent. 11 insertions, 12
+   deletions; behaviour identical (same constants, LENGTH_LONG). Gate green, floor 1568, no baseline moved.
+2. Common screens edited (R1333, R1338): CodeActions.onOpenMail, ParametresActions.onToggleThresholdAlert,
+   PrevisionActions.onEnableAlert, MainTabs.onEnableAlert, ShellRoutes' three onOpenMail parameters nullable; Android
+   unchanged by default values / assignability. ShellNotices became NoticeSink.kt (detekt MatchingDeclarationName).
+3. startIosShell's signature: `eveningStore` replaced by `detectionDefaults`; new `urlOpener`, `presentShare`, `taps`.
+   ShellRig rewritten (relaunch, lifecycle, recorders, thread-safe centre/transport, an exception handler on the rig's
+   scope so a stray failure cannot end the test process). Its ExperimentalTime opt-in stays ONE (now on the builder
+   lambda), so the allowlist fence is unedited.
+4. ios-app.yml NOT edited; HostProbe.swift gained step (8) (a measurement line); MonReleveApp.swift installs the tap
+   delegate on non-pilot launches.
+5. android/local.properties was copied from the main checkout (the brief's C:/wt/web-orch path has none); same content
+   as C:/wt/als-a's.
+6. TEST-FIRST, AS DONE: the code was written FIRST and three regressions were then PLANTED (P1-P3) for the RED run -
+   not tests written against absent code. Tests that NEVER had a red run (they passed on their first run, so they are
+   evidence of their assertions, not of their ability to fail): the four contract classes (Memory/UserDefaults x
+   Evening/Employer), IosDetectionFileIosTest, r1331 x2 (export), r1333 legal x2, r1335 (deletion), IosNotificationTap
+   x2, recordingTodayOnAujourdhui..., theAuthorizationGrantedReplans, aServerEndedSessionClears..., and the switch-ON
+   assertion added in increment 4. The mail pair failed in run 1 for a harness reason, not a product one.
+7. Run 1 also failed two tests the plants did not explain - the mail tests' rig answered a code request 200, which
+   AuthApi.requestMagicLink correctly refuses (only 202 is "sent"). A harness error, fixed in increment 3 (b06ded9d).
+8. iOS runs beyond the final pair (PUSH PROOF): run 1 (RED) and its ios-app (the measurement); run 2 and its ios-app
+   on b06ded9d (green, superseded by increment 4).
+9. No `gradlew --stop`; every Gradle run --no-daemon; every heavy run under the heavy lock, released.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. The employer comparison on iOS: the store exists (R1334) but nothing on iOS reads it - the overlay (ComparisonScreen
+    over buildComparison) is composed in :app's MainShell, and "Comparer avec mon employeur" on iOS is still a logged
+    stub. Should a later session move the overlay into common (MainTabs or a sibling) so both shells draw it, or does
+    iOS v1 ship without the comparison?
+Q2. The year downloads after a sign-in (Android's processYearDownloads, AN-PULL) are still a logged stub on iOS - no
+    ruling R1330-R1339 names them. A phone that signs in on iOS sees only the days recorded on it until a sync. Which
+    session owns them?
+Q3. Foreground parity (NOTICED): add Aujourd'hui's refresh to onForeground (Android's F8), and a willPresent that shows
+    the reminder while the app is open? Both are one-liners but behaviour beyond R1330-R1339.
+Q4. The mail button's other state (Mail installed) is a double in the iosTest; the iPhone check is the operator's. Add
+    it to IOS-WALK's operator list?
+Q5. The iOS transient notice is a Material3 Snackbar with the theme's default colours (inverse surface), at the window's
+    bottom, 3.5 s. Nobody has seen it in a window. Is that the presentation wanted for the four messages, or should
+    IOS-WALK photograph one and the operator decide?
+Q6. restoreReminder applies the opt-in from the authorization AS LAST READ (refreshed at start). A sign-in within the
+    first instants of a launch, before the centre answers, would restore OFF. Accept (as IOS-SHELL-1 had it), or should
+    ParametresController re-read the store on refresh so the restore can wait for a fresh read?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code commits, each pushed to origin/s2-shell when made: 0790d875 + 5d97fa75 (one push, run 1), ab72e40b + b06ded9d
+  (one push, run 2), f08425f0 (run 3). Code tip f08425f0.
+- Report commits: 46585a22 (on b06ded9d, this file only - superseded) and the report tip on top of f08425f0, each
+  changing only this file.
+- iOS runs (all workflow_dispatch on s2-shell; no trigger edited):
+    ios-shared 45035963759 on 5d97fa75   failure as planned: 503 tests, 9 failures (7 planted + 2 harness)
+    ios-app    45035966974 on 5d97fa75   success, all probe keys PASS, mail.canOpenMessageScheme=false (the measurement)
+    ios-shared 45037852240 on b06ded9d   success, 503 tests, 0 failures
+    ios-app    45038498461 on b06ded9d   success, all probe keys PASS
+    ios-shared 45040631818 on f08425f0   success, 503 tests, 0 failures   <- R573 / R1336
+    ios-app    45040634871 on f08425f0   success, all probe keys PASS     <- R1336
+- Heavy-lock holds: s2-shell-inc1, s2-shell-inc1b, s2-shell-gate (twice: b06ded9d, f08425f0) - every one RELEASED. None held by this session.
+- Not merged. parking.md not written. Token check: `git diff c171c25b f08425f0`, excluding this report (whose own line names the patterns, the one hit), for ghp_/github_pat_/private keys/JWT
+  prefixes = 0 hits.
+- C:/wt/s2-shell/.session-lock.json: removed after the report push, as the last act.

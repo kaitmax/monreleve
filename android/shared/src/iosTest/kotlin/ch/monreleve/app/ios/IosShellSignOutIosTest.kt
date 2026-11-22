@@ -68,7 +68,7 @@ class IosShellSignOutIosTest {
                 val before = rig.centre.pending.size
                 assertTrue(before > 0, "the BEFORE count: the plan must hold requests, or zero after proves nothing")
 
-                setContent { IosShellRoot(rig.shell) }
+                setShellContent(rig)
                 waitFor("the bottom bar") { clickable(NavCopy.PARAMETRES) }
                 onAllNodes(hasText(NavCopy.PARAMETRES) and hasClickAction()).onFirst().performClick()
                 waitFor("the Paramètres tab's sign-out row") { clickable(ParametresCopy.SIGN_OUT) }

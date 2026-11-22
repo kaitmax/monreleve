@@ -4,6 +4,9 @@ import ch.monreleve.app.account.AccountStore
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.auth.TokenStore
 import ch.monreleve.app.data.local.DossierCache
+import ch.monreleve.app.settings.EmployerFigureStore
+import ch.monreleve.app.settings.EveningNotificationStore
+import ch.monreleve.app.settings.InMemoryEveningNotificationStore
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import kotlin.test.Test
@@ -60,6 +63,31 @@ class MemoryAccountStoreContractTest : AccountStoreContract() {
     }
 
     override fun newInstance(): AccountStore = MemoryAccountStore(holder)
+}
+
+// IOS-SHELL-2 (R1337): the evening store's contract, JVM half; UserDefaultsEveningNotificationStoreContractTest is its
+// simulator half. The in-memory store has no storage of its own to share, so "another instance" is the same one.
+class MemoryEveningNotificationStoreContractTest : EveningNotificationStoreContract() {
+    private var store = InMemoryEveningNotificationStore()
+
+    override fun reset() {
+        store = InMemoryEveningNotificationStore()
+    }
+
+    override fun newInstance(): EveningNotificationStore = store
+}
+
+// IOS-SHELL-2 (R1334): the employer figure's contract, JVM half; UserDefaultsEmployerFigureStoreContractTest is its
+// simulator half.
+class MemoryEmployerFigureStoreContractTest : EmployerFigureStoreContract() {
+    private var backing = HashMap<String, Double>()
+
+    override fun reset() {
+        backing = HashMap()
+    }
+
+    override fun newInstance(accountTag: () -> String?): EmployerFigureStore =
+        MemoryEmployerFigureStore(backing, accountTag)
 }
 
 class TheDossierContractCanFailTest {
