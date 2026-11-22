@@ -35,8 +35,7 @@ import kotlin.test.assertEquals
 private val EXPECTED_GLYPHS: Map<AppTab, Glyph> =
     mapOf(
         AppTab.AUJOURDHUI to Glyph.SUN,
-        // DELIBERATE RED (R1326): the wrong glyph, expected to fail.
-        AppTab.CALENDRIER to Glyph.CALENDAR_CHECK,
+        AppTab.CALENDRIER to Glyph.CALENDAR,
         AppTab.RELEVE to Glyph.FILE_TEXT,
         AppTab.PARAMETRES to Glyph.SETTINGS,
     )

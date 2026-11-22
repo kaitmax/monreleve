@@ -49,6 +49,10 @@ class IosShellStartupIosTest {
                 val requested = rig.transport.requests.toList()
                 assertTrue("GET $ME_PATH" in requested, "the positive control: the path startup must ask")
                 assertTrue(
+                    rig.logLines.any { "year downloads" in it },
+                    "RESOLVING's year-download stub is named in the log, not silent (R1320): ${rig.logLines}",
+                )
+                assertTrue(
                     requested.none { MINIMUM_VERSION_PATH in it },
                     "the iOS startup must never ask $MINIMUM_VERSION_PATH (iOS Ruling 3 Q3): $requested",
                 )

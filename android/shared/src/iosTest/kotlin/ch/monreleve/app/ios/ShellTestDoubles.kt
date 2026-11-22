@@ -194,6 +194,8 @@ internal class ShellRig(
     val evening = InMemoryEveningNotificationStore().also { it.setEnabled(eveningOptedIn) }
     val consentAsked = mutableListOf<Boolean>()
     val directory = freshTempDirectory()
+    val database = buildIosDatabase(directory)
+    val logLines = mutableListOf<String>()
 
     @OptIn(ExperimentalTime::class) // KMP-DT R590: the fixed kotlin.time.Clock it hands in - on the allowlist.
     val shell: IosShell =
@@ -207,7 +209,7 @@ internal class ShellRig(
             settingsStore = this.settings,
             dossierCache = FileDossierCache("$directory/dossier"),
             marker = marker,
-            database = { buildIosDatabase(directory) },
+            database = { database },
             exportFiles = { IosExportFiles("$directory/exports") },
             centre = centre,
             eveningStore = evening,
@@ -216,6 +218,7 @@ internal class ShellRig(
                 detectionConsentUnreachableOnIos(enable)
             },
             reportUnowned = {},
+            log = { logLines += it },
             sessionEnds = SessionEnds(),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             clock =
@@ -225,5 +228,8 @@ internal class ShellRig(
             zone = TimeZone.of("Europe/Paris"),
         )
 
-    fun close() = removeDirectory(directory)
+    fun close() {
+        database.close()
+        removeDirectory(directory)
+    }
 }

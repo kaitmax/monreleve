@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import platform.Foundation.NSLog
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.time.Clock
@@ -135,6 +136,7 @@ class IosShell internal constructor(
     val notificationsPermitted: MutableStateFlow<Boolean>,
     private val planNow: suspend () -> Unit,
     private val graph: (CoroutineScope) -> MainControllers,
+    private val log: (String) -> Unit,
 ) {
     /** R1162 on iOS: detection is not in v1, so the server's mode always lands as MANUAL, nothing sampled. */
     fun restoreMode(serverMode: LoggingMode) {
@@ -174,7 +176,7 @@ class IosShell internal constructor(
 
     /** NAMED STUB (IOS-SHELL-2, G7): a legal page or the mail app, logged and not opened. */
     fun notYetOnIos(what: String) {
-        IosLogger().info(TAG, "IOS-SHELL-2 owes: $what")
+        log("I/$TAG: IOS-SHELL-2 owes: $what")
     }
 
     /**
@@ -190,6 +192,18 @@ class IosShell internal constructor(
 }
 
 private const val PARIS = "Europe/Paris"
+
+/**
+ * One line to the console, scrubbed as IosLogger scrubs (R574), and passed to NSLog as its FORMAT with every % doubled
+ * -
+ * never as a C vararg. IOS-SHELL-1's run B (ios-shared 45019964025) ended in SIGSEGV in the first test that reached a
+ * shell log line, which went through IosLogger's default sink, NSLog("%@", line): a Kotlin String handed to a C
+ * variadic function as an Objective-C object. That sink is not this task's to change (NOTICED in the report); this
+ * line avoids the vararg altogether.
+ */
+private fun consoleLine(line: String) {
+    NSLog(scrub(line).replace("%", "%%"))
+}
 
 /**
  * THE iOS COMPOSITION FUNCTION (R1323): builds the process's shell in the header's order. Every parameter after the two
@@ -213,12 +227,14 @@ fun startIosShell(
     eveningStore: EveningNotificationStore = InMemoryEveningNotificationStore(),
     consentBody: (Boolean) -> String = ::detectionConsentUnreachableOnIos,
     reportUnowned: (String) -> Unit = { IosUnownedReporter().report(it) },
+    log: (String) -> Unit = ::consoleLine,
     sessionEnds: SessionEnds = processSessionEnds,
     scope: CoroutineScope = MainScope(),
     clock: Clock = Clock.System,
     zone: TimeZone = TimeZone.currentSystemDefault(),
 ): IosShell {
-    // 1. R1321 - DELIBERATE RED (IOS-SHELL-1 run A): the clear is moved AFTER the start is read, below.
+    // 1. R1321: the first-launch clear, BEFORE the session exists or anything reads isSignedIn().
+    clearKeychainOnFirstLaunch(marker, tokenStore, pending, accountStore)
 
     // 2. The session. Its server-ended path clears through the store built in 3 (late-bound: each needs the other).
     val api = AuthApi(transport, apiBaseUrl)
@@ -259,7 +275,6 @@ fun startIosShell(
 
     // 4. Where the person starts - read only now, after the clear (R1321).
     val start = startDestination(signedIn = session.isSignedIn(), onboarded = settingsStore.isOnboarded())
-    clearKeychainOnFirstLaunch(marker, tokenStore, pending, accountStore) // DELIBERATE RED: after the read.
     val rhythmRepository = LocalRhythmRepository(db.rhythmDao()) { accountStore.current() }
     val dossierApi = DossierApi(session::authenticatedGet, dossierCache)
     val syncNow: suspend () -> Unit = { drain() }
@@ -318,6 +333,7 @@ fun startIosShell(
         notificationsPermitted = MutableStateFlow(false),
         planNow = planNow,
         graph = graph,
+        log = log,
     ).also {
         shell = it
         it.refreshAuthorization()
