@@ -32,6 +32,18 @@ final class WalkUITests: XCTestCase {
             XCTFail("no element labelled \(label)")
             return
         }
+        // Run 45075605782: an element below the fold exists with an EMPTY frame and is not hittable - scroll it in.
+        for _ in 0..<6 where !element.isHittable {
+            app.swipeUp(velocity: .slow)
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+        guard element.isHittable else {
+            Walk.tree("unhittable-\(step)", app)
+            Walk.shot("unhittable-\(step)")
+            Walk.note("FAIL \(step): \"\(label)\" exists but is not hittable after scrolling (tree unhittable-\(step))")
+            XCTFail("not hittable: \(label)")
+            return
+        }
         element.tap()
     }
 
