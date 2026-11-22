@@ -1,0 +1,52 @@
+IOS-MOVE-CORE SESSION PROMPT - Mon Releve
+THE SHELL'S PLATFORM-FREE FILES BECOME COMMON (iOS phase, (c) move 5a)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 3, 8, 9 and the overnight plan in
+relay/RULINGS-2026-11-16.txt). Read first: those rulings whole; REPORT-IOS-HOST-CENSUS.txt R1200 and R1201
+option (c) ("TO commonMain") and N3-N5; the four earlier move reports REPORT-IOS-MOVE-TWINS.txt,
+REPORT-IOS-MOVE-ME.txt, REPORT-IOS-MOVE-SEAM.txt, REPORT-IOS-MOVE-REMINDER.txt (how a move is pinned, fenced
+and planted - follow them); every file named below and its callers and pins; CLAUDE.md R114, R135, R154,
+R178, R180, R206, R207, R246, R345, R391, R573.
+Names: worktree C:/wt/m5a-core, branch m5a-core (NOT ios-*), report REPORT-IOS-MOVE-CORE.txt. Ruling
+numbers: R1300-R1309. YOUR OWN advisor may advise you. A NEW dependency comes back to the orchestrator.
+BASE: origin/main as stated in your brief.
+
+R1300. THE MOVE, file by file, each to :shared commonMain under its SAME package, Android behaviour
+    unchanged - whichever of these is still in :app (a move-4 file already moved is skipped and named):
+    - already platform-free (I0's evidence): AppRoot, AppTab, ResolvingScreen, LoggingModeRestore,
+      ManualOnlyOnboarding (NotificationCopy ALREADY MOVED by M4 - skip it and name it);
+    - one change from it: AppBottomBar (R.drawable -> Glyph, adding SUN, CALENDAR, SETTINGS - N5; the
+      drawables already reach iOS through generateGlyphResources); StartupDecider (now unblocked by M2's
+      common /me codec); Site (CallbackLink.HOST split from the java.net parser, which stays in :app); the
+      EmployerFigureStore INTERFACE (N4; its SharedPreferences implementation stays).
+    A file that will not compile as-is is NAMED and left, never bent (as M1 did). git mv; verify every
+    COMMITTED blob of a pure move equals its pre-move blob (memory: git mv on an edited file stages the
+    pre-edit blob); for a one-change file, show the diff is that change only.
+R1301. THE PINS STAY: :app's pins of these files keep compiling and passing UNEDITED (classes and counts
+    before and after). commonTest gains a case only where iOS needs one. An edit is a DEVIATION with its
+    reason.
+R1302. THE BASELINES (R345, R114 - zero tolerance): AppRootScreenshotTest_appRootPadsTheInsetsOnce and
+    AppBottomBarScreenshotTest_appBottomBarCalendrierActive are at risk (the bar's icon source changes).
+    Equal pixels is ARGUED by I0; PROVE it - verifyPaparazziDebug at zero tolerance, no baseline
+    regenerated. If one moves, STOP on that file and report the crop (R135); never regenerate to pass.
+R1303. THE FENCES: EdgeToEdgeCensusTest (WRAPPER_FILE is the hard-coded :app path ui/shell/AppRoot.kt; its
+    reasoning "Nothing outside :app enters commonMain" becomes false), MovedTwinsFenceTest (the moved
+    files' top-level names, derived - R246) and any other fence the move touches: each edited fence gets a
+    PLANT that is verified landed and seen to fail (iOS Ruling 3: a fence with a hard-coded path that now
+    points at nothing passes vacuously).
+    ALSO (iOS Ruling 10 Q2): MovedTwinsFenceTest reads :shared androidMain too and asserts the EXACT set of
+    type-only java.time overloads in reminder/JavaTimeFallbackReminder.kt (the three, by name) - a plant of a
+    fourth function there is seen to fail.
+R1304. ANDROID UNCHANGED: the full :app:gate, test floor >= the base's. iOS: ONE ios-shared.yml and ONE
+    ios-app.yml run on your pushed code tip; read the TEST COUNT from the artifact's JUnit XML, not the
+    conclusion, against the base's.
+
+THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored);
+fastCheck per increment; every Gradle run --no-daemon, NEVER `gradlew --stop` (it stops other sessions'
+daemons); PUSH EVERY INCREMENT (a session that dies at its limit is relaunched from your
+pushed tip); the FULL :app:gate (R391) under the heavy lock (node C:/wt/.run-tools/heavy-lock.mjs acquire
+<id> --min-free 8000 --wait-min 600; the operator's applications may hold memory - wait, never lower the
+line, never touch their processes); --no-daemon; R573; push the branch (DO NOT MERGE); report; push; lock
+removed last. Sessions do not write parking.md. Repository is PUBLIC: nothing secret reaches a log.
+REPORT: SUMMARY / STATUS (R391) / R1300-R1304 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-MOVE-CORE PROMPT

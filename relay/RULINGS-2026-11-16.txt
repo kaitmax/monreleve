@@ -2762,3 +2762,155 @@ Q3 (a duplicate key: last value wins where org.json refused): ACCEPTED as
 MOVE 3 IOS-MOVE-SEAM (R1280-R1289): the session-end seam's pure part
   becomes common (I0 Finding 2), with an iOS seam, and decides M1's Q2
   (SessionEndSeamFenceTest's ONE_CONSTRUCTION).
+
+====================================================================
+ANDROID RULING 23 - A16 (THE ANNEX'S DEVICE TIME) MERGE; A16's QUESTIONS
+====================================================================
+A16 (AN-ANNEX-TRUTH): code tip 4dd89fc5, report tip 7d947f7f (report only).
+gate:changed PASSED on 0915dafc (the tip adds one android commonTest file;
+web diff empty), gate:clone PASSED on 4dd89fc5, :app:gate BUILD SUCCESSFUL
+on 4dd89fc5 (floor 1570); R573 ios-shared 44923811112 success on 4dd89fc5
+(the first run 44919885375 failed on the session's own test regex,
+\x{A0}, which Kotlin/Native rejects - fixed, not the product). Merged into
+release/android-v1 as 11582623 (release unmoved at e7c7a254; trees equal
+the tip, diff 0; token check 0). Forward into main: merge result e69a4f08,
+re-gated on orch-a16f because main had M1/M2 in android/ and web/ - the
+landing is recorded below.
+D1 (android/ changed: the app's own annex carried the same claim): RIGHT -
+  R1261 says fix true hits; the gates it owed ran.
+ON A16's QUESTIONS:
+Q1 (the strings): ship as written unless the operator refuses; they join
+  the operator's copy-approval list with A4, A5, A13-A15.
+Q2 (SPEC l.887, section 12 item 5): AMEND to the device time "announced at
+  the entry, when it sent one" - folded into the next task that touches
+  SPEC or the entries schema, with Q3.
+Q3 (schema.prisma l.337, lib/entries/schema.ts l.128 comments): FOLDED into
+  that same task, alongside A15's Q8. Comments only; no schema change.
+Q4 (the column): (a) KEEP IT AS IS. It is now labelled for what it is, and
+  an online day repeating the server's minute is true, not noise worth a new
+  constant (b) or a lost account of the device (c).
+Q5 (the CGU's "pour chaque journee saisie dans l'application"): KEEP - true
+  today; a future surface that edits a day without a device time must change
+  the sentence in the same task (R225's shape).
+Q6 (the key renames deviceTimeNote, ANNEX_DEVICE_TIME_NOTE): KEEP - a key
+  that names the claim it no longer makes is the defect one layer down.
+A16 LANDED ON MAIN: main = e69a4f08 (release 11582623 forward over f45ec594).
+The merge result's own gates: :app:gate BUILD SUCCESSFUL in 9m 55s,
+GATE_EXIT=0, floor 1573 (run 2; run 1 was NO RESULT - the fresh gate
+worktree had no local.properties, "SDK location not found", 39 s); gate:clone
+PASSED (test 4290/4290, build, size 24 routes); ios-shared run 44926089251
+success on e69a4f08. Logs: C:/wt/queue-evidence/an-annex-truth/orchestrator-
+gate*-merge-e69a4f08*.log. orch-a16f deleted. M3 (base bd17d00b) now merges
+over A16's android/ change, so its merge result is re-gated.
+
+====================================================================
+iOS RULING 9 - M3 (THE SESSION-END SEAM) MERGE; M3's QUESTIONS; MOVE 4
+====================================================================
+M3 (IOS-MOVE-SEAM): code tip 55c1e9f7, report tip e3e1f970 (report only).
+:app:gate BUILD SUCCESSFUL in 9m 47s, 1576 tests (floor 1573), no baseline
+moved; web/ unchanged; ios-shared run 44929307413 success, 427 tests
+(M2's 422 + SessionEndingStoreTest's 5); ios-app run 44929318806 success.
+main moved to e69a4f08 (A16) during the session; merge-tree clean. Merge
+result 2168ad5a re-gated on orch-m3m (ios-shared run 44931754090, expected
+429 = 427 + A16's 2; :app:gate in C:/wt/gate-m3m) - landing recorded below.
+DEVIATIONS ACCEPTED: IosLocalStoreIosTest edited (its type changed, and its
+clears would have reached the real notification centre with no bundle -
+now a counting action with a 0-removals control); both fences edited as
+R1282/R1283 ordered; no gradlew --stop (every run --no-daemon).
+ON M3's QUESTIONS:
+Q1 (deviceSessionEndSeam stays in :app): ACCEPTED. No second platform has
+  Android's attachments (sampler, push, fallback); moving code no iOS path
+  calls adds a fence entry and nothing else.
+Q2 (ONE CONSTRUCTION PER PLATFORM): ACCEPTED; M1's Q2 (iOS Ruling 7) is
+  CLOSED by it - commonMain declares the wrapper and cannot build the
+  platform stores, so each platform constructs once and the fence says so.
+Q3 (the iOS seam removes ALL pending requests): ACCEPTED as the sign-out
+  rule - nothing scheduled for the previous person survives their session,
+  whatever scheduled it. Move 4 does NOT narrow it; its own re-plan may use
+  named identifiers for its own removal.
+Q4 (main moved): re-gated as above.
+MOVE 4 IOS-MOVE-REMINDER (R1290-R1299): the evening reminder's pure
+  decision ported to commonMain on kotlinx-datetime with a golden sameness
+  test over java.time's outputs; the iOS local plan (19:00, working days,
+  at most 7 ahead) replaces IosNotificationPlan.
+M3 LANDED ON MAIN: main = 2168ad5a. The merge result's own gates: ios-shared
+run 44931754090 success; :app:gate BUILD SUCCESSFUL in 11m 40s, GATE_EXIT=0,
+floor 1576 (log C:/wt/queue-evidence/m3-seam/orchestrator-gate-merge-
+2168ad5a.log). The first queued gate was NO RESULT: the heavy lock waited
+180 min below the 8000 MB line (the operator's own applications held the
+memory) and gave up without running; re-queued with --wait-min 720, it ran
+when memory freed. orch-m3m is kept until move 4 (based on it) merges.
+VERIFIED AFTER THE LANDINGS (2026-11-21, late):
+- main's web/ tree differs from release/android-v1's (A16, whose gate:changed
+  ran test:visual 176 and test:e2e 402) ONLY by web/tests/db/me-cases-join.
+  test.ts (M2), a database test gate:clone ran - so main owes no browser
+  suite for A16's forward merge.
+- ios-shared run 44931754090 on the M3 merge result: 81 JUnit files, 429
+  tests, 0 failures, 0 errors - exactly the expected 427 + A16's 2. From
+  here on an iOS run is read by its COUNT, not its conclusion.
+
+ORCHESTRATION WHILE THE OPERATOR SLEEPS (the operator, 2026-11-21: "ask
+advisor and verify the solution he provides, if it's ok move on, till the
+project ends"):
+1. Land M4 BEFORE any records commit (main stays its base: no re-gate);
+   then delete orch-m3m; records commit after EACH landing.
+2. Move 5 (the shell) is split from I0's census into 2-3 sessions run
+   strictly ONE AT A TIME, each landing before the next starts, each pushing
+   every increment (a session that dies at its limit is relaunched fresh
+   from its pushed tip).
+3. Then I2 IOS-WALK, whose prompt REQUIRES: a runner-local server and a
+   throwaway database, never production; secrets generated on the runner;
+   the sign-in code read by the test and never echoed; no server or mail log
+   uploaded; an explicit artifact allowlist; captures only after sign-in or
+   masked (R574); and proof each observable ran (M3's pending-request count
+   before and after sign-out; M4's request set). Then I3 IOS-AUDIT.
+4. Memory: the 8000 MB line stays; long --wait-min; the operator's
+   permission to free memory is read narrowly (only this orchestrator's own
+   processes - never the operator's applications, WSL or another project).
+5. PARK, don't push through: a permission refusal, an ask-first item, a
+   fixture failure, or the same failure twice parks that task; the rest
+   continues. No deploy, no production promotion, no release signing,
+   nothing from the operator's owed list.
+6. OWED, NOT YET ASSIGNED: SPEC l.887 and the two entries comments (Android
+   Ruling 23 Q2/Q3) - assigned to the first move-5 session that touches the
+   entries path, else listed as owed in the final summary.
+
+iOS Ruling 10 - IOS-MOVE-REMINDER (M4), 2026-11-22. LANDED: main f70a89ff
+(merge of m4-reminder 16740de6; main was unmoved at 2168ad5a, so the merge
+tree equals the gated tree - `git diff HEAD^2 HEAD` empty). :app:gate on
+301fd376: BUILD SUCCESSFUL 10m6s, floor 1577 (+1 CopyDuplicationTest),
+GATE_EXIT=0. R573: ios-shared 44964715746 counted by the orchestrator from
+the JUnit XML: 83 suites, 438 tests, 0 failures (base 429: -10 deleted
+IosNotificationPlanIosTest, +2 FallbackReminderGoldenTest, +12
+EveningReminderPlanTest, +5 IosEveningRemindersIosTest); ios-app
+44964719530 success, reminder.result=PASS. Token check 0. orch-m3m deleted.
+Deviations 1-5 ACCEPTED as reported (the four copy fences lost a folder that
+no longer exists and appHoldsNoFrCopy pins it empty; the bridge in
+androidMain; the real-centre measurement done in the host probe; the ten
+opt-in sites; no `gradlew --stop`, which would stop other sessions' daemons -
+--no-daemon throughout is the correct substitute and the prompts say so from
+now on).
+Q1 (WHICH DAY): KEEP ANDROID'S PARIS DAY on both platforms. One decision,
+   one home (R206). The record's days are Paris days - that is why
+   todayInParis exists - and the reminder asks about the day the record will
+   hold. Ruling 2's "device-local" governs WHEN the request fires (19:00 on
+   the phone's clock), not which day it asks about. For the product's users
+   (living in France, working in Switzerland: one zone) the two are the same
+   day. A phone set to a far zone is a stated limit, pinned by the existing
+   test, not a defect.
+Q2 (THE BRIDGE): ACCEPTED in :shared androidMain. Move 5a closes the gap the
+   question names: MovedTwinsFenceTest also reads androidMain and asserts the
+   EXACT set of type-only overloads there (the three, by name), with a plant
+   seen to fail (added to IOS-MOVE-CORE as R1303's last clause).
+Q3 (LOCK SCREEN, SOUND): the operator's copy and behaviour call. iOS v1 ships
+   as built (the title names no place, no sound) until the operator decides;
+   listed in the final summary's owed list.
+Q4: ACCEPTED - the ten sites are this move's, deleted at the Kotlin 2.3 move
+   (PARK-Z3) with the rest.
+Q5 (HORIZON): SEVEN 19:00s, as built. Ruling 2 and R1291 agree on it;
+   Ruling 3 Q6's "up to 7 working days" is read as the request cap, which
+   seven 19:00s never exceeds. The plan re-runs on every foreground, so the
+   horizon only matters for a phone left unopened for more than a week.
+Q6 (PROBE): KEEP step (5) and IosEveningReminderProbe.kt until I2's
+   walkthrough measures the same observable; I3 removes them with the other
+   probe keys (added to I3's prompt when it is written).

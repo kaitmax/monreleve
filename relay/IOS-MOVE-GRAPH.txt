@@ -1,0 +1,38 @@
+IOS-MOVE-GRAPH SESSION PROMPT - Mon Releve
+THE ONE GRAPH AND THE ONE DESTINATION LOGIC BECOME COMMON, PINNED ON BOTH PLATFORMS (iOS phase, (c) move 5b)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 3, 8, 9 and the overnight plan in
+relay/RULINGS-2026-11-16.txt). Read first: those rulings whole; REPORT-IOS-HOST-CENSUS.txt R1201 options (a)
+"TESTS THAT PIN IT" (the transcription rule) and (c) "WHAT KEEPS THEM IN STEP"; the move reports
+REPORT-IOS-MOVE-*.txt (follow them); android/app/.../ShellState.kt, MainGraph.kt and every caller;
+MainGraphWiringTest, SessionReconciledTest; the ExperimentalTime allowlist; CLAUDE.md R154, R178, R180,
+R204, R206, R246, R268, R291, R391, R573.
+Names: worktree C:/wt/m5b-graph, branch m5b-graph (NOT ios-*), report REPORT-IOS-MOVE-GRAPH.txt. Ruling
+numbers: R1310-R1319. YOUR OWN advisor may advise you. A NEW dependency comes back to the orchestrator.
+BASE: origin/main as stated in your brief.
+
+R1310. THE MOVE: ShellState's PURE destination functions and MainGraph go to :shared commonMain, same
+    packages. MainGraph takes kotlin.time.Clock + kotlinx.datetime TimeZone; the JavaTime* factories stay
+    at Android's call site. ShellState's Android half stays. Android behaviour unchanged; a file that will
+    not compile as-is is NAMED, never bent.
+R1311. PIN THEN MOVE (I0's transcription rule): MainGraphWiringTest and SessionReconciledTest are
+    TRANSCRIBED to kotlin.test (kotlin-test is in :app's test scope, R457) with values and expectations
+    unchanged, FIRST where the code lives today, and seen GREEN against the :app code; then code and
+    transcribed tests move together, the transcriptions into commonTest, where they run on the JVM AND the
+    simulator. The originals are then deleted (R268: the wider file subsumes them) - and the report maps
+    every original case to its transcription, so nothing is dropped silently. kotlin.reflect.full and
+    java.time uses in MainGraphWiringTest are replaced by common equivalents or the case is named as
+    JVM-only and kept in :app, with its reason.
+R1312. THE ALLOWLIST AND THE FENCES: the ExperimentalTime allowlist takes MainGraph by name; MovedTwinsFence
+    takes the moved names (derived - R246); each edited fence and allowlist gets a verified PLANT that fails.
+R1313. ANDROID UNCHANGED: the full :app:gate, no baseline moved, test floor >= the base's MINUS the
+    transcribed originals PLUS nothing (state the arithmetic: the cases now run in :shared's JVM tests
+    instead, so :shared's count rises by the same number). iOS: ONE ios-shared.yml and ONE ios-app.yml run
+    on your pushed code tip; the TEST COUNT read from the JUnit XML, and the transcribed cases named in it.
+
+THE WORK: as IOS-MOVE-CORE's THE WORK, word for word (worktree + lock; local.properties copied; fastCheck
+per increment; PUSH EVERY INCREMENT; full :app:gate under the heavy lock with --min-free 8000 --wait-min
+600, never lowering the line or touching the operator's processes; --no-daemon; R573; push the branch, DO
+NOT MERGE; report; push; lock removed last; no parking.md; nothing secret in a public log).
+REPORT: SUMMARY / STATUS (R391) / R1310-R1313 with evidence (the case map) / NOTICED BUT NOT TOUCHING /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF IOS-MOVE-GRAPH PROMPT

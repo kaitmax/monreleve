@@ -1,0 +1,63 @@
+IOS-MOVE-REMINDER SESSION PROMPT - Mon Releve
+THE EVENING REMINDER'S DECISION BECOMES COMMON, AND iOS PLANS ITS LOCAL REMINDERS (iOS phase, (c) move 4)
+Written by the orchestrating session on 2026-11-21 (iOS Rulings 2, 3, 8). Read first:
+relay/RULINGS-2026-11-16.txt iOS Ruling 2 "C8 Q1" (the iOS reminder: LOCAL, one request per next
+WORKING day at 19:00 device-local, at most 7 days ahead, re-planned on every foreground and every day
+recorded on the phone; "already notified" read from the delivered list; the stated limit about another
+device) and iOS Rulings 3, 7, 8 whole; REPORT-IOS-HOST-CENSUS.txt G4 and FINDING 1 ("IosNotificationPlan
+plans today only, at 17:00 Paris. FallbackReminder.kt's pure decision is the one that matches, but it is
+java.time"); REPORT-IOS-2f.txt (R889-R892: how IosNotificationPlan was made, and R892's tests);
+REPORT-IOS-HOST.txt (I1's simulator notification probe); REPORT-IOS-MOVE-ME.txt and the move-3 report
+REPORT-IOS-MOVE-SEAM.txt (how a move is pinned, golden-tested, fenced and planted - follow them; move 3's
+iOS seam removes the PENDING requests this move schedules); android/app/.../reminder/FallbackReminder.kt,
+FallbackReminderRuntime.kt, FallbackReminderTest.kt; detection/ EveningNotificationDecision (already
+common, M1); android/shared/src/iosMain/.../ios/IosNotificationPlan.kt and its iosTest; the working-day
+definition the app already uses (find it; never write a second one - R206; if the app has none that
+fits, STOP and ask the orchestrator rather than invent one); CLAUDE.md R154, R178, R180,
+R196, R204, R206, R246, R268, R391, R573.
+Names: worktree C:/wt/m4-reminder, branch m4-reminder (NOT ios-*), report REPORT-IOS-MOVE-REMINDER.txt.
+Ruling numbers: R1290-R1299. YOUR OWN advisor may advise you. A NEW dependency or version change comes
+back to the orchestrator (none is needed: kotlinx-datetime is already in commonMain - mind the
+libs.versions.toml note on Material3 and kotlinx-datetime 0.7.1 on iOS).
+BASE: 2168ad5a (ref orch-m3m) - M3's merge onto main, iOS-green (run 44931754090), its :app:gate queued on memory.
+If that gate fails, the orchestrator tells you; do not merge or rebase on your own.
+
+R1290. THE PORT: FallbackReminder.kt's PURE functions (FALLBACK_REMINDER_TIME, nextFallbackAt,
+    bootFallbackAt, reachedFallbackTime, fallbackReminderDecision, and any other function in it with no
+    Android type) live once in :shared commonMain on kotlinx-datetime, same package where it compiles;
+    :app keeps only the runtime (WorkManager, AlarmManager, the boot receiver) and calls the common code.
+    Unlike moves 1-2 this is a PORT (java.time -> kotlinx-datetime), so sameness is PROVEN, not assumed:
+    before you change anything, run the java.time versions over a fixture of instants and zones (DST
+    edges both ways in Europe/Zurich and Europe/Paris, 18:59/19:00/19:01, local midnight, a zone change,
+    a leap day) and keep their outputs as fixture files; one golden test runs the common code over the
+    same inputs on JVM AND iOS and asserts identical results.
+R1291. THE iOS PLAN: a common pure function plans the iOS requests - from now, the device zone, the
+    working-day definition, the days already recorded on the phone and the opt-in state - returning at
+    most 7 request times, each 19:00 device-local on a working day, today's only while 19:00 is still
+    ahead AND today is not recorded. Test-first (RED with the reason): today recorded removes today's
+    request; a weekend and a non-working day get none; a DST night keeps 19:00 local; opted out or
+    signed out plans none. The iosMain glue replaces IosNotificationPlan: it removes this app's pending
+    requests and adds the planned ones (UNUserNotificationCenter), using the copy :app's reminder uses
+    (R206 - one text, one home; if that copy is still in :app, move it with this task and fence it).
+    IosNotificationPlan and its iosTest are DELETED (iOS Ruling 3: superseded); every case of its test
+    that still states a true requirement is carried into the new tests first (R268), and the report
+    lists each case kept or dropped with the reason.
+R1292. THE TRIGGERS: name where iOS must call the plan (every foreground, every day recorded on the
+    phone, opt-in changed, sign-in) - the shell is move 5, so this move delivers the function and an
+    iosTest proving the glue's request set on the simulator's notification center (I1 proved delivery
+    needs no entitlement); the shell wires it. State the observable I2 must check.
+R1293. THE FENCE: the moved and new top-level names join MovedTwinsFenceTest's guarded set, derived
+    from the files (R246); plant a :app copy and see it fail (R180).
+R1294. THE PINS STAY: FallbackReminderTest and every :app test reaching these functions keep compiling
+    and passing unedited (classes and counts before and after); an edit is a DEVIATION with its reason.
+    ANDROID UNCHANGED: the full :app:gate, no baseline moved, test floor >= the base's. iOS: ONE
+    ios-shared.yml and ONE ios-app.yml run on your pushed code tip, test count against the base's.
+
+THE WORK: worktree + lock (R349); test-first; fastCheck per increment; the FULL :app:gate (R391) under
+the heavy lock (node C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 8000; no emulator); a fresh
+worktree needs android/local.properties copied from the main checkout (gitignored; without it Gradle
+says "SDK location not found" - that is NO RESULT); R573; push the branch (DO NOT MERGE); report; push;
+gradlew --stop at the end; lock removed last. Sessions do not write parking.md.
+REPORT: SUMMARY / STATUS (R391) / R1290-R1294 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-MOVE-REMINDER PROMPT
