@@ -1,0 +1,441 @@
+REPORT-IOS-MOVE-REMINDER - THE EVENING REMINDER'S DECISION BECOMES COMMON, AND iOS PLANS ITS LOCAL REMINDERS (iOS (c) move 4)
+TASK     C:/wt/web-orch/relay/IOS-MOVE-REMINDER.txt (iOS Rulings 2, 3, 8, 9 in C:/wt/web-orch/relay/RULINGS-2026-11-16.txt).
+         Rulings R1290-R1299: R1290-R1294 used, R1295-R1299 unused. Before the push, `grep -rlE '\bR129[0-9]\b'` over relay/,
+         REPORT-*.txt and CLAUDE.md of this worktree, C:/wt/web-orch/relay and the main checkout's relay/ returned only
+         C:/wt/web-orch/relay/IOS-MOVE-REMINDER.txt and C:/wt/web-orch/relay/RULINGS-2026-11-16.txt (the allocation).
+BASE     2168ad5a (ref orch-m3m). The orchestrator reported it green on :app:gate (floor 1576) and that it is now
+         origin/main. No rebase.
+BRANCH   m4-reminder. PUSHED, NOT MERGED. Code tip 301fd376 (one commit on the base). The report tip is the commit carrying
+         this file only.
+WORKTREE C:/wt/m4-reminder, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/m4-reminder/ (not committed): tools/M4CaptureJavaTimeTest.kt (the capture) + capture/ (its
+         output); base-run.sh/.log + base-xml-{app,shared}/ (run 0, on the base); draft/ (the files as written) +
+         tools/apply.mjs (the apply, each edit asserting its anchor count, R211); red.sh/.log + red-xml-*/ + red-reasons.txt;
+         run2.sh + green-attempt1.log (the one red fast check) + green.log + green-xml-*/; mut-{A,B}.log + mut-*-xml/;
+         plant.log + plant-xml/; gate.log + gate-xml-*/; every *-lock.log; ios-expected.txt (written before dispatch);
+         ios-shared-44964715746/ and ios-app-44964719530/ (the runs' own artifacts).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1290: reminder/FallbackReminder.kt moved WHOLE to :shared commonMain (same package) and was PORTED from java.time to
+  kotlinx-datetime. :app keeps the runtime (FallbackReminderRuntime.kt, unedited). Three java.time overloads in :shared
+  androidMain (reminder/JavaTimeFallbackReminder.kt) convert types only, so the runtime and FallbackReminderTest compile
+  unedited. Sameness is PROVEN: the java.time versions ran at the base over 252 (zone, instant) inputs, their outputs
+  became a generated fixture, and FallbackReminderGoldenTest asserts the common code returns the same. It is green on the
+  JVM and on the iOS simulator. Two mutants of the port each fail the golden.
+- R1291: reminder/EveningReminderPlan.kt (commonMain, new) plans the iOS reminders. It takes the next seven 19:00s
+  device-local and asks each one of the common fallbackReminderDecision as at that 19:00. iosMain ios/IosEveningReminders.kt
+  turns the plan into notification requests and replaces IosNotificationPlan, which is DELETED with its iosTest.
+  fr/NotificationCopy.kt moved whole to :shared commonMain, so both platforms read the reminder's copy from one home (R206).
+  EveningReminderPlanTest (12) went RED first against a stub, then green on the JVM and on iOS.
+- R1292: IosEveningRemindersIosTest (5, simulator) checks the request set over a recording centre. The REAL centre was
+  measured in the ios-app run's host probe (step 5, new): plan held, re-plan replaced rather than doubled, signed out
+  removed everything. Result: reminder.result=PASS.
+- R1293: MovedTwinsFenceTest guards the three moved files. A planted :app body copy, :app copies of new names and an iosMain
+  copy each failed it, by name.
+- STATUS: :app:gate on 301fd376 BUILD SUCCESSFUL in 10m 6s, GATE_EXIT=0, test floor 1577 (base 1576, +1). ios-shared run
+  44964715746 success, 438 tests (429 - 10 + 19). ios-app run 44964719530 success.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 301fd376 in this session, on a clean tree
+(`git status --porcelain --untracked-files=all` = 0 lines after the plants were removed, before the gate started;
+plant.log "AFTER RESTORE: dirty=0"):
+    GATE HEAD=301fd376517e5185fd400b3ad7cd66bbf799f614 start=2026-11-21T23:49:47Z
+    test floor OK: 1577 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 10m 6s
+    GATE_EXIT=0
+It ran under the heavy lock as holder m4-reminder-run2 (line 8 000 MB, not lowered; acquired at commitFree=13275 at
+23:31:42Z, released 2026-11-22T00:00:08Z). Its log shows :app:testDebugUnitTest, :app:verifyPaparazziDebug, :app:lintDebug
+and :shared:testDebugUnitTest executing. :app:detekt, :app:ktlintCheck and :shared:detekt were UP-TO-DATE from the fast
+check on the same sources a few minutes earlier, in the same lock hold.
+The gate was NOT run a second time after the orchestrator's resume message. That message asked for a full :app:gate on
+301fd376, and this one is it: same SHA, this session, clean tree.
+web/ is not changed by this branch (`git diff --name-only 2168ad5a 301fd376 -- web` is empty), so gate:clone and
+gate:changed are not owed (R199) and were not run. That is a decision, not an omission.
+The report tip changes only this file, so its android/ and ios/ trees are 301fd376's.
+
+================================================================================
+R1290 - THE PORT, PROVEN
+================================================================================
+CAPTURE FIRST. Run 0 ran at the base 2168ad5a with only an UNCOMMITTED capture test added (base-run.log, BUILD SUCCESSFUL
+in 7m 26s, BASE_EXIT=0). That test was M4CaptureJavaTimeTest, in :app's JVM tests, in package
+ch.monreleve.app.reminder. It ran the java.time nextFallbackAt, bootFallbackAt and reachedFallbackTime over 42 instants
+x 6 zones (Europe/Zurich, Europe/Paris, Europe/London, UTC, America/New_York, Asia/Kolkata) = 252 rows and wrote them out.
+The instants cover:
+  - EU spring DST 2026-03-29: 18:59:59/19:00/19:01 the evening before, the gap (00:59:59.999999999Z, 01:00Z, 01:30Z) and
+    the evening after;
+  - EU autumn DST 2026-10-25: the evenings either side and the repeated hour (00:30Z, 00:59:59Z, 01:30Z);
+  - a winter Friday: 18:59/19:00/19:01 Paris, one nanosecond either side of 19:00 and of local midnight;
+  - summer, the year's end, the 2028-02-29 leap day, and US DST in and out around 19:00 New York.
+The same test wrote the commonTest fixture android/shared/src/commonTest/kotlin/ch/monreleve/app/reminder/
+FallbackReminderJavaTimeFixture.kt. It was copied in, and `cmp` with the capture output read FIXTURE_IDENTICAL. No value
+in it is typed. The capture test was then deleted; it is in the evidence only.
+THE PORT (git: R073 app/.../reminder/FallbackReminder.kt -> shared/src/commonMain/.../reminder/FallbackReminder.kt):
+  - java.time.Instant / ZoneId / LocalTime became kotlin.time.Instant / kotlinx.datetime.TimeZone / LocalTime.
+  - The calls map one to one: atZone(zone).toLocalDate() -> toLocalDateTime(zone).date; atZone(zone).toInstant() ->
+    toInstant(zone); isAfter -> >; !isBefore -> >=; plusDays(1) -> plus(1, DateTimeUnit.DAY).
+  - fallbackReminderDecision, FallbackWake, fallbackWake and restoredEveningOptIn are unchanged apart from `internal`
+    removed (:app is another module; :shared declares no friend path).
+  - A header paragraph records the move.
+  - On the JVM, kotlinx-datetime's toInstant(zone) IS java.time's atZone(...).toInstant() (its jvmMain source, read).
+    Its documented gap and overlap rule (the earlier offset) is java.time's too. iOS is where the golden matters.
+THE BRIDGE: android/shared/src/androidMain/kotlin/ch/monreleve/app/reminder/JavaTimeFallbackReminder.kt. It holds three
+public overloads, nextFallbackAt(java.time.Instant, ZoneId), bootFallbackAt(...) and reachedFallbackTime(...). Each
+converts with the standard library's toKotlinInstant/toJavaInstant and kotlinx-datetime's toKotlinTimeZone, then calls
+the common function. This is JavaTimeCalendarDay's shape (KMP-4).
+  - FallbackReminderRuntime's `::nextFallbackAt`, `::bootFallbackAt` and `reachedFallbackTime(clock.instant(),
+    ZoneId.systemDefault())` resolve to these with no edit.
+  - The file name differs from FallbackReminder.kt, so its JVM facade cannot collide.
+  - WHERE IT LIVES IS A CHOICE: see DEVIATIONS 2 and Q2.
+THE GOLDEN: android/shared/src/commonTest/kotlin/ch/monreleve/app/reminder/FallbackReminderGoldenTest.kt, 2 tests.
+  theCommonFunctionsReturnWhatJavaTimeReturnedOnEveryRow:
+    - compares Instants as VALUES (Instant.parse on both sides), never strings;
+    - lists every mismatching answer by zone, instant and function.
+  theFixtureWasReadAndCarriesBothSidesOfEveryAnswer (presence first, R154) checks:
+    - 6 zones, one row per (zone, instant), at least 240 rows;
+    - reached both true and false;
+    - boot equal to now and not, and equal to next and not;
+    - a .000000001Z row and a .999999999Z row;
+    - Zurich and Paris both present.
+  Green: run 2 and the gate on the JVM, 2/0; ios-shared 44964715746 on iosSimulatorArm64Test, 2/0.
+MUTANTS. Each was verified landed (grep counts from=0 to=1), restored by copy, and `cmp` read identical afterwards. Each
+ran `:shared:testDebugUnitTest --tests FallbackReminderGoldenTest`:
+  A, nextFallbackAt `today > now` -> `today >= now`: 2 tests, 1 failed, "R1290: the port differs from java.time on 18
+    answer(s): Europe/Zurich 2026-03-28T18:00:00Z nextFallbackAt | Europe/Zurich 2026-03-29T17:00:00Z nextFallbackAt | ...".
+  B, reachedFallbackTime `>=` -> `>`: 2 tests, 1 failed, "... on 36 answer(s): Europe/Zurich 2026-03-28T18:00:00Z
+    bootFallbackAt | Europe/Zurich 2026-03-28T18:00:00Z reachedFallbackTime | ...".
+  The golden therefore fails on a one-character change to either gate at exactly 19:00.
+THE RED for the port itself: none. The port is a sameness claim, and its proof is the golden over pre-change outputs plus
+the two mutants, not a missing name.
+
+================================================================================
+R1291 - THE iOS PLAN
+================================================================================
+THE WORKING-DAY DEFINITION: the app has one, detection/isWorkingDay(dayOfWeekValue) (commonMain since M1; Monday to
+Friday). Android's EveningNotifier uses it through gatherEveningConditions on the Paris day. CalendarModel, ForecastDays and
+Denominator were among the grep hits; none is on the reminder path. No second definition was written. The plan takes the
+definition as a parameter, with `{ isWorkingDay(it.dayOfWeek.isoDayNumber) }` as the default.
+THE FUNCTION: android/shared/src/commonMain/kotlin/ch/monreleve/app/reminder/EveningReminderPlan.kt
+    eveningReminderPlan(now: Instant, zone: TimeZone, state: EveningReminderState, workingDay = <the app's>):
+        EveningReminderPlan(reminders: List<PlannedEveningReminder(at: LocalDateTime, day: LocalDate)>,
+                            unplannedDays: List<LocalDate>)
+    EveningReminderState(signedIn, optedIn, notificationsPermitted, recordedDays, notifiedDays);
+    EVENING_REMINDER_HORIZON = 7.
+  - CANDIDATES: nextFallbackAt chained seven times, so: the next seven 19:00s, device-local, strictly after now.
+  - EACH CANDIDATE is asked of fallbackReminderDecision as at that 19:00:
+      - signedIn, notificationsPermitted, optedIn;
+      - pushAvailable = false and autoMode = false (iOS v1, by ruling);
+      - workingDay(day), hasEntryToday = day in recordedDays, alreadyNotified = day in notifiedDays;
+      - reachedReminderTime = true.
+  - THE DAY a candidate asks about is parisDayOf(its 19:00), as Android's wake names today (todayInParis, R28). In
+    Switzerland and France this is the device's date; see Q1.
+  - unplannedDays are the window's days with no reminder. The window is the candidates' Paris days plus one day either
+    side. The glue removes exactly those.
+TEST-FIRST: android/shared/src/commonTest/kotlin/ch/monreleve/app/reminder/EveningReminderPlanTest.kt, 12 tests.
+  RED in run 1: the whole move was applied with the plan's answer withheld. The body ran and the function returned an
+  empty plan (a stub line, verified landed: "STUB LINE: 1"). Result: `:shared:testDebugUnitTest` 311 tests, 12 failed,
+  all EveningReminderPlanTest; RED_EXIT=1. Every other :shared test passed, as did the 468 :app tests in reminder, fences,
+  fr, auth, detection and push. The reasons (red-reasons.txt), e.g.:
+    aWeekendGetsNone                  expected:<[2026-11-23, ..., 2026-11-27]> but was:<[]>
+    signedOut...RemovesTheWholeWindow "signed out: every day of the window is removed expected:<[2026-11-15, ...]>"
+    aDaylightSavingNight...           expected:<[2026-10-23, 2026-10-26, ...]> but was:<[]>
+    theWindowIsDisjoint...            "the candidates' days and one either side ... expected:<9> but was:<0>"
+    atMostSevenRequests...            "every day a working day, from 2026-11-16T10:00:00Z expected:<7> but was:<0>"
+    (three tests failed on "List is empty" reading the first planned day).
+  GREEN: run 2 and the gate on the JVM, 12/0; ios-shared 44964715746 on the iOS simulator, 12/0.
+  THE CASES R1291 NAMES, each a test:
+  - today recorded removes today's request: todayRecordedRemovesTodaysRequestAndOnlyThatOne. Today is gone and named in
+    unplannedDays; a later recorded day goes too.
+  - today's only while 19:00 is still ahead: todaysRequestIsHeldOnlyWhileNineteenIsStillAhead. At 17:59:59.999999999Z
+    today is planned; at 18:00:00Z (19:00 Paris) it is not, and it is removed.
+  - a weekend and a non-working day get none: aWeekendGetsNone, and
+    aNonWorkingDayGetsNoneTheDefinitionIsTheInputAndItsDefaultIsTheAppsOne. The second injects a holiday and shows the
+    default equals isWorkingDay passed explicitly.
+  - a DST night keeps 19:00 local, asserted by INSTANTS: aDaylightSavingNightKeepsNineteenLocalTheInstantsMove.
+    - Paris autumn: Friday 2026-10-23 fires 17:00Z; Monday 26 to Thursday 29 fire 18:00Z.
+    - Zurich spring: Friday 2026-03-27 fires 18:00Z; Monday 30 to Thursday 2 April fire 17:00Z.
+  - opted out or signed out plans none: signedOutOptedOutOrNotPermittedPlansNoneAndRemovesTheWholeWindow. Also "not
+    permitted"; each removes all nine window days.
+  - at most 7: atMostSevenRequestsAndTheLastAtMostSevenDaysAhead. With every day working: exactly 7 requests, and the last
+    is at most 7 days after now, both before and at 19:00.
+  Also: a zone change (London's 19:00 is 19:00Z, same days); the delivered-list case
+  (aDayAlreadyNotifiedIsNotAskedAgainAfterAZoneChangeBringsNineteenRound: notified in Paris at 19:00, now 18:30 in London -
+  without notifiedDays today would be planned again, with it the first day is tomorrow); the far zone (Q1); and the
+  window (disjoint, contiguous, HORIZON + 2 days).
+THE GLUE: android/shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosEveningReminders.kt
+  - Identifier: EVENING_REMINDER_ID_PREFIX "ch.monreleve.app.reminder.evening." + the ISO day.
+    eveningReminderDayOf / deliveredEveningReminderDays read days back from delivered identifiers (iOS Ruling 2:
+    "already notified" comes from the delivered list).
+  - eveningReminderRequest builds:
+    - content title NotificationCopy.MANUAL_TITLE and body formatDayLong(day) - EveningNotifier's lines for
+      EveningNotice.Manual, from the same homes;
+    - a UNCalendarNotificationTrigger on NSDateComponents year/month/day/hour/minute, no time zone, repeats = false;
+    - no category and no buttons (iOS Ruling 3 Q4).
+  - replanEveningReminders(plan, center) removes the unplanned days' identifiers, then adds the planned requests. A
+    request with the same identifier replaces the pending one. The two sets are disjoint, so the outcome does not depend on
+    the order the centre applies them in. This answers M3's NOTICED race.
+  - The re-plan NEVER removes all pending requests. That stays the sign-out rule (iosSessionEndSeam, iOS Ruling 9 Q3,
+    not narrowed).
+  - The centre is an EveningReminderCenter seam. SystemEveningReminderCenter resolves UNUserNotificationCenter inside
+    each call.
+THE COPY (R206): fr/NotificationCopy.kt was :app's last fr file. It moved WHOLE to :shared commonMain, same package (git
+R092). No copy line changed; one header paragraph was added. Every import was already common. Consequences:
+  - The four :app copy fences pinned a root on it, so each lost that root: CopyDuplicationTest, CopyReachabilityTest,
+    ModeParityCopyTest and ParametresCopyAccentTest (DEVIATIONS 1).
+  - CopyDuplicationTest gained appHoldsNoFrCopy, which asserts :app fr holds no Kotlin file, with a positive control on
+    MainActivity.kt.
+  - The fence is MovedTwinsFenceTest (R1293).
+R268 - IosNotificationPlanIosTest's 10 cases, kept or dropped, each with its reason:
+  1 theConclusionMinuteIsTheEndOfTheLastCheckWindow: DROPPED. DAY_CONCLUSION_MINUTE (17:00 Paris) is superseded
+    (iOS Ruling 3 Q6).
+  2 beforeTheDayConcludes...ScheduledForTheConclusionMinuteInParis: CARRIED as "before 19:00 today's request is held at
+    19:00 local" (aMondayBefore..., todaysRequestIsHeld...).
+  3 onceTheDayHasConcludedTheReminderIsDueAtOnce: DROPPED. R1291 holds today's only while 19:00 is still ahead; no
+    "now" request exists.
+  4 whatItSaysIsEveningDecisionsAnswerByMode: MANUAL CARRIED (theRequestSaysWhatAndroidsManualReminderSays: title
+    MANUAL_TITLE, body formatDayLong). AUTO DROPPED: iOS v1 is manual-only (iOS Ruling 2). eveningDecision's auto answers
+    stay pinned on iOS by NotificationDecisionTwinsIosTest.
+  5 nothingIsScheduledWhenAnyOfAndroidsRulesSaysNo: CARRIED whole:
+    - Saturday: aWeekendGetsNone;
+    - opted out: signedOutOptedOut...;
+    - recorded: todayRecorded...;
+    - already notified: aDayAlreadyNotified....
+  6 aThresholdAlreadyAlertedTodayJoinsTheReminder, and 7-10 aFirstCrossingBefore..., aFirstCrossingOnceTheReminderIsDue...,
+    bothAtOnceAnnounceSocial and stayingCrossedOptedOutOrNoProjectionPlansNothing: DROPPED. The threshold alert is
+    HIDDEN in iOS v1 (iOS Ruling 3 Q4). The rules beneath stay pinned on iOS by NotificationDecisionTwinsIosTest
+    (decideThresholdAlert, composeDaily, the same-day merge) and on Android by ThresholdAlertDecisionTest.
+  IosNotificationPlan.kt was deleted with its test (git D both). Nothing else referenced its names; a grep over android/,
+  ios/ and .github/ found only parking.md l.5745, which this session does not write.
+
+================================================================================
+R1292 - THE TRIGGERS, THE iOS TEST, AND WHAT I2 MUST CHECK
+================================================================================
+WHERE iOS MUST CALL THE PLAN (the shell, move 5, wires these). Each call is eveningReminderPlan(now, device zone, state,
+default working day) then replanEveningReminders, where state is: signed in, the evening opt-in, the notification
+authorization, the days with any entry on the phone, and the days in the delivered list. The calls:
+  - every foreground (scene active);
+  - every day recorded on the phone, and every entry removed or changed;
+  - the opt-in changed in Parametres, and the opt-in restored at RESOLVING (restoredEveningOptIn);
+  - a sign-in (after RESOLVING);
+  - the notification authorization granted.
+A sign-out, a deletion and a server-ended session need NO call: iosSessionEndSeam already removes every pending request.
+THE iOS TEST: android/shared/src/iosTest/kotlin/ch/monreleve/app/ios/IosEveningRemindersIosTest.kt, 5 tests. It runs the
+REAL plan (Paris, Monday 2026-11-16 10:00Z) through the production glue into a RECORDING centre, so it builds real
+UNNotificationRequest objects on the simulator. It asserts:
+  - 5 identifiers;
+  - each a UNCalendarNotificationTrigger with year/month/day/19/0, timeZone nil, repeats false;
+  - title MANUAL_TITLE and body formatDayLong;
+  - the removal list is the unplanned days and disjoint from the additions;
+  - signed out or opted out: 0 additions and the whole window removed;
+  - the delivered-list reader refuses foreign and malformed identifiers and round-trips a day.
+ios-shared 44964715746: 5/0. The real centre is NOT reachable from the test process (DEVIATIONS 3).
+THE REAL CENTRE, MEASURED (iOS simulator, ios-app run 44964719530, the probe launch; probe file from the run's artifact):
+  - ios/MonReleve/Sources/HostProbe.swift gained step (5), run only under `-probe YES`, after step (2)'s provisional
+    authorization. It calls eveningReminderProbeReplan (iosMain ios/IosEveningReminderProbe.kt), which plans from the
+    device clock and zone and hands the plan to replanEveningReminders over SystemEveningReminderCenter. It does this
+    three times: signed in, signed in again, signed out. After each it polls the PENDING list for 5 s at most.
+  - Verbatim:
+    reminder.planned=ch.monreleve.app.reminder.evening.2026-11-23,...-24,...-25,...-26,...-27
+    reminder.pendingAfterPlan=(the same five)
+    reminder.firstTrigger=ch.monreleve.app.reminder.evening.2026-11-23 hour=19 minute=0 timeZone=nil repeats=false
+      next=2026-11-23T19:00:00Z titleIsManual=true
+    reminder.pendingAfterReplanCount=5
+    reminder.pendingAfterSignedOutCount=0
+    reminder.result=PASS
+  - So, on the simulator's real centre: the glue's requests are held; a second re-plan REPLACES by identifier (5, not 10);
+    a signed-out plan removes them all; and the trigger fires at 19:00 in the device's zone. The runner's zone is UTC:
+    next=19:00Z.
+  - The removals were applied by the time the 5 s poll read the list. This is measured once and not timed per step.
+THE OBSERVABLE I2 MUST CHECK (the shell's wiring, labelled "iOS simulator"). With the app signed in and opted in, after a
+foreground:
+  - getPendingNotificationRequests lists exactly ch.monreleve.app.reminder.evening.<day> for the working days among the
+    next seven 19:00s;
+  - each is a calendar trigger at 19:00 with no zone;
+  - each has the title "Ou avez-vous travaille aujourd'hui ?" (accented in fr/NotificationCopy.kt).
+Then, in this order:
+  - record TODAY before 19:00: within a bounded poll, today's identifier is gone and the others remain;
+  - switch the evening opt-in off: none of ours remains; switch it back on: they return;
+  - sign out: 0 pending (the seam);
+  - at a 19:00 reached on the simulator, or with the clock moved: the day's identifier is in getDeliveredNotifications,
+    and a re-plan after a zone change does not add it again.
+I2 also decides what the tap opens (Aujourd'hui, iOS Ruling 3 Q4). Nothing here wires a tap.
+
+================================================================================
+R1293 - THE FENCE
+================================================================================
+android/shared/src/androidUnitTest/kotlin/ch/monreleve/app/shared/MovedTwinsFenceTest.kt:
+  - `moved` gained reminder/FallbackReminder.kt, reminder/EveningReminderPlan.kt and fr/NotificationCopy.kt, each
+    asserted present in commonMain.
+  - The guarded names are still DERIVED from those files' own top-level declarations (R246).
+  - The containsAll proof now also requires FALLBACK_REMINDER_TIME, nextFallbackAt, fallbackWake, FallbackWake,
+    restoredEveningOptIn, EVENING_REMINDER_HORIZON, EveningReminderPlan, eveningReminderPlan, NotificationCopy and
+    NotificationLines.
+  - The extractor's known-string test gained an annotated declaration (`@OptIn(...) // comment` above `fun annotatedFun(`)
+    and a `const val`, since the port puts @OptIn lines above three functions.
+  - The message prefix is now R1242/R1273/R1283/R1293. 5/0 in the gate.
+PLANT (R180), on the committed 301fd376 (dirty=0 before). Four files, each verified landed by grep before the result was
+read:
+    app/src/main/kotlin/ch/monreleve/app/r1293plant/FallbackReminder.kt - the BASE file's whole body (git show
+      2168ad5a:...), package changed to r1293plant;
+    app/src/main/kotlin/ch/monreleve/app/r1293plant/R1293Copies.kt - `internal object NotificationCopy`,
+      `internal fun eveningReminderPlan()`;
+    shared/src/iosMain/kotlin/ch/monreleve/app/ios/R1293PlantIos.kt - `internal fun eveningReminderPlan()`;
+    app/src/main/kotlin/ch/monreleve/app/fr/R1291PlantCopy.kt - one const (for appHoldsNoFrCopy).
+  The run was `:shared:testDebugUnitTest --tests MovedTwinsFenceTest` plus `:app:testDebugUnitTest --tests
+  CopyDuplicationTest`; PLANT_STEP_EXIT=1. Results:
+    noCopyOfAMovedFileIsInApp FAILED, naming: "a file named FallbackReminder.kt" and the declarations
+      FALLBACK_REMINDER_TIME, nextFallbackAt, bootFallbackAt, reachedFallbackTime, fallbackReminderDecision, FallbackWake,
+      fallbackWake, restoredEveningOptIn, NotificationCopy, eveningReminderPlan.
+    noCopyOfAMovedFileIsInIosMain FAILED: "ch/monreleve/app/ios/R1293PlantIos.kt: declares eveningReminderPlan".
+    CopyDuplicationTest.appHoldsNoFrCopy FAILED: "R1291: copy belongs in :shared fr, found in :app fr: [R1291PlantCopy.kt]".
+  No other test failed. Restored: the plants removed (mine), and "AFTER RESTORE: dirty=0". The gate then ran on that tree.
+NOT FENCED, stated: the androidMain bridge shares three moved names by design, and this fence does not read androidMain
+(Q2).
+
+================================================================================
+R1294 - THE PINS STAY, ANDROID UNCHANGED, iOS
+================================================================================
+BEFORE = run 0 on the base 2168ad5a: :app 1577 = 1576 + the capture test's 1; :shared 297. AFTER = this gate.
+    class                                          before   after
+    reminder.FallbackReminderTest                    23       23   unedited (the java.time pin, through the bridge)
+    auth.SessionEndSeamTest                          10       10   unedited
+    detection.EveningNotificationDecisionTest         9        9   unedited
+    push.PushReceiptTest                             12       12   unedited
+    detection.ThresholdAlertNotifierTest              5        5   unedited
+    fences.CopyDuplicationTest                        2        3   EDITED (root dropped, appHoldsNoFrCopy added) - D1
+    fences.CopyReachabilityTest                       4        4   EDITED (root dropped) - D1
+    fr.ModeParityCopyTest                             4        4   EDITED (root dropped) - D1
+    fr.ParametresCopyAccentTest                       3        3   EDITED (root dropped) - D1
+    fences.ExperimentalTimeOptInAllowlistTest         3        3   EDITED (six files listed) - D4
+    shared.MovedTwinsFenceTest                        5        5   EDITED as R1293 orders
+    reminder.FallbackReminderGoldenTest (new)         -        2
+    reminder.EveningReminderPlanTest (new)            -       12
+    all failures                                      0        0
+A per-class diff of every class and its tests= count, base XML against gate XML, shows only: CopyDuplicationTest 2 -> 3,
+the two new :shared classes, and the base-only capture class. 267 -> 268 classes. :app 1576 -> 1577 (floor >= base);
+:shared JVM 297 -> 311.
+- NO BASELINE MOVED: `git diff --name-only 2168ad5a 301fd376` lists 19 paths, 0 matching snapshot|png|baseline.
+  verifyPaparazziDebug executed in the gate and passed.
+- Android behaviour: the code that runs is the same decision. The runtime file is unedited; the three time functions run
+  through the bridge into the ported code, which the golden pins to java.time's outputs; the rest moved verbatim. Android
+  reads NotificationCopy from the same package, unchanged.
+- fast check: the first attempt (green-attempt1.log) FAILED on one thing. MovedTwinsFenceTest.kt:168 was over 120 columns
+  (detekt MaxLineLength and ktlint), a line this task wrote. In that same --continue run every test passed (:shared 311/0,
+  :app 468/0). The line was rewrapped, and the second fast check (green.log) gave BUILD SUCCESSFUL in 2m 40s, GREEN_EXIT=0.
+  The commit came only after that (run2.sh commits only on green).
+- iOS (R573). The expected result was written BEFORE dispatch (ios-expected.txt):
+    ios-shared: 438 = 429 - 10 + 2 + 12 + 5;
+    ios-app: success, with reminder.result=PASS (labelled a guess).
+  ios-shared.yml: run 44964715746, `--ref m4-reminder`, workflow_dispatch, headSha 301fd376, conclusion SUCCESS.
+    - Its artifact (83 JUnit XML files): tests=438 failures=0 errors=0. The base run 44931754090's artifact read 429.
+    - NEW on iOS: FallbackReminderGoldenTest 2/0, EveningReminderPlanTest 12/0, IosEveningRemindersIosTest 5/0.
+    - GONE: IosNotificationPlanIosTest (10); no file of that name is in the artifact.
+    - TRANSCRIBED (R268) into the new tests: cases 2, 4 (manual) and 5, as listed under R1291.
+    - Job 00:03:06Z - 00:17:34Z, about 14 macOS minutes.
+  ios-app.yml: run 44964719530, `--ref m4-reminder`, workflow_dispatch, headSha 301fd376, conclusion SUCCESS.
+    - The probe file is as quoted under R1292. Its steps (1)-(4) read as I1's did.
+    - Job 00:03:09Z - 00:25:41Z, about 23 macOS minutes.
+  Both match what was written before dispatch.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- Android's own manual reminder on a far-zone phone (Q1): it reminds at 19:00 local about the PARIS day. On New York's
+  Sunday evening it asks about Monday. iOS now does the same, and a test pins it.
+- iOS shows no separate lock-screen version: the content's visibility follows the person's preview setting. Android
+  posts a public version, "Mon Releve / Une journee a enregistrer.". The iOS title asks where the person worked and names
+  no place (D18 holds), but the two platforms differ on a locked screen. Put as Q3.
+- No sound is set on the iOS request. Android's channel is IMPORTANCE_DEFAULT, which sounds. Under provisional
+  authorization iOS delivers quietly anyway. Q3.
+- MovedTwinsFenceTest does not read :shared androidMain, so a copy there would pass it. Today androidMain holds only the
+  type bridge. Q2.
+- The four copy fences now scan :shared fr only; appHoldsNoFrCopy keeps :app fr empty. If :app ever needs copy again, the
+  roots come back with it.
+- FallbackReminderRuntime.kt's header still says "reminder/FallbackReminder.kt" and "auth/SessionEndSeam.kt" as if
+  local. Both now live in :shared (same package). Left, to keep :app's diff to zero.
+- parking.md l.5745 mentions NotificationTime.ParisWallClock (now deleted). Sessions do not write parking.md.
+- Two re-plans in flight are safe because the centre calls are synchronous and the sets disjoint. A plan computed from
+  stale state (an entry saved after the plan was read) would hold a request until the next trigger. The shell should
+  re-plan after the write completes.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. Four :app copy fences were EDITED: CopyDuplicationTest, CopyReachabilityTest, ModeParityCopyTest and
+   ParametresCopyAccentTest. R1291 orders the copy moved "with this task", and NotificationCopy was the pin of each
+   fence's :app fr root (R460). Unedited, each would fail "root not found". Each edit removes that root and comments why.
+   CopyDuplicationTest also gained appHoldsNoFrCopy (+1 :app test), so the root's disappearance is asserted, not silent.
+   No assertion about copy content changed.
+2. The java.time overloads live in :shared androidMain, not in :app.
+   - Reason: MovedTwinsFenceTest refuses a moved NAME anywhere in :app, whatever its signature, yet R1294 wants
+     FallbackReminderTest and the runtime unedited, and those need overloads with the moved names.
+   - androidMain is the same module, Android-only, and holds conversions only.
+   - The alternatives were an asserted exemption in the fence, or renamed bridges with FallbackReminderTest edited.
+   - Q2.
+3. R1292's "iosTest proving the glue's request set on the simulator's notification center" was met in TWO parts, not one:
+   - the iosTest proves the request set over a RECORDING centre, because the bundle-less test process cannot hold the
+     real one (AppHostProbeIosTest's header, IosSessionEndSeam.kt, M3's accepted deviation 1);
+   - the REAL centre was measured in the ios-app run's host probe: a new step (5) in HostProbe.swift and a probe-only
+     Kotlin entry, IosEveningReminderProbe.kt.
+   The probe was not asked for. It touches ios/, and adds one Kotlin file the product never calls.
+4. ExperimentalTimeOptInAllowlistTest was EDITED to list 6 files and 10 new function-scoped @OptIn(ExperimentalTime)
+   sites:
+     androidMain JavaTimeFallbackReminder.kt 3
+     commonMain FallbackReminder.kt 3, EveningReminderPlan.kt 1
+     commonTest FallbackReminderGoldenTest.kt 1, EveningReminderPlanTest.kt 1
+     iosMain IosEveningReminderProbe.kt 1
+     iosTest IosEveningRemindersIosTest.kt 1
+   The test's own message says a new site is "an argument for the operator". Here is the argument. R1290 orders the port
+   onto kotlinx-datetime, whose only instant type in 0.7.1 is kotlin.time.Instant (@ExperimentalTime on Kotlin 2.2.21).
+   Each site is on one function, none is file- or class-wide, and the counts are exact. iosMain's glue needs none: it
+   takes wall clocks. Q4.
+5. `gradlew --stop` was NOT run: it would stop other sessions' daemons. Every Gradle run here used --no-daemon (M2/M3's
+   deviation). The CLEANUP section says what was running afterwards.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. WHICH DAY a reminder asks about. Android's wake names today in Paris (todayInParis), and reads the working day and
+    the entry from it. The iOS plan does the same at each 19:00 device-local. In Switzerland and France that is the
+    device's date. On a phone set to New York, Friday's and Saturday's 19:00 ask about a Paris weekend day (no request),
+    and Sunday's 19:00 asks about Monday (a test pins this). iOS Ruling 2 says "per next WORKING day at 19:00
+    device-local". Keep Android's Paris day (one decision, R206), or take the device-local date on iOS (and then on
+    Android too)?
+Q2. The java.time bridge lives in :shared androidMain, where MovedTwinsFenceTest does not look. Accept it there? Or
+    should the fence also read androidMain with an exact, asserted list of the three type-only overloads?
+Q3. The iOS request has no lock-screen variant and no sound. Android posts a public lock-screen version and its channel
+    sounds. For iOS v1: is the title on a locked screen acceptable (it names no place), or should the request use a
+    category with hiddenPreviewsBodyPlaceholder, or the public lines as its content? And should it set the default sound?
+    These are the operator's copy and behaviour calls; nothing was decided here.
+Q4. Ten new ExperimentalTime opt-in sites in six files (DEVIATIONS 4). Accept them as this move's, to be deleted at the
+    Kotlin 2.3 move (PARK-Z3) like the rest?
+Q5. The horizon is the next SEVEN 19:00s, which gives at most 7 requests and at most 7 days ahead. With Monday-Friday
+    working days that is 4 or 5 requests. iOS Ruling 2 says "at most 7 days ahead" and iOS Ruling 3 Q6 says "up to 7
+    working days ahead"; R1291 says "at most 7 request times". Seven 19:00s satisfies Ruling 2 and R1291. If Ruling 3's
+    "7 working days" is meant (about 9 calendar days), EVENING_REMINDER_HORIZON's meaning changes. Which?
+Q6. The host probe's step (5) and IosEveningReminderProbe.kt (DEVIATIONS 3): keep them as the real-centre measurement
+    until I2's walkthrough replaces it, then let I3 remove them with the other probe keys? Or remove them now?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code tip 301fd376517e5185fd400b3ad7cd66bbf799f614: pushed as the new branch m4-reminder (`* [new branch] m4-reminder ->
+  m4-reminder`). `git ls-remote origin m4-reminder` then read 301fd376. Both iOS runs were dispatched on that SHA
+  (headSha checked with gh run list / gh run view).
+- This report: one commit on 301fd376 touching only REPORT-IOS-MOVE-REMINDER.txt. Its ls-remote tip is in the handback.
+- NOT MERGED. The branch, its remote ref and C:/wt/m4-reminder stay for the orchestrator.
+
+================================================================================
+CLEANUP
+================================================================================
+- Heavy lock: holders m4-reminder-base, m4-reminder-red and m4-reminder-run2 (two holds) were each RELEASED (their lock
+  logs' RELEASED lines). No lock is held by this session.
+- Gradle: every run used --no-daemon. `gradlew --stop` was not run (DEVIATIONS 5).
+- Plants and mutants: all removed or restored (dirty=0 before the gate; both mutants `cmp` identical after restore). The
+  capture test was deleted before the move was applied.
+- No emulator, no server, no database used.
+- C:/wt/m4-reminder/.session-lock.json: removed last, after the final push.

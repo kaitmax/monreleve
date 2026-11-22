@@ -15,6 +15,9 @@
 //   (3) share         a UIActivityViewController presented over the pilot; the workflow screenshots it after
 //                     share.result is written.
 //   (4) bgtask        BGTaskScheduler.submit's answer as returned (or thrown, with its domain and code).
+//   (5) reminder      IOS-MOVE-REMINDER R1292: the evening reminder's production glue over the REAL centre - the
+//                     plan held, re-planned (replaced, not doubled), then signed out (removed) - each read back
+//                     from the PENDING list. Runs after (2), whose provisional authorization it relies on.
 //
 // NOTHING SECRET: no server, no sign-in, no real token. The fake pair's values are never written out - only whether
 // they came back equal. The repository is public, and so are the run's logs and artifacts.
@@ -61,6 +64,7 @@ final class HostProbe {
         keychain(log)
         await backgroundTask(log)
         await notification(log)
+        await reminder(log)
         await share(log)
         log.line("probe.done", "true")
     }
@@ -197,6 +201,59 @@ final class HostProbe {
         case .ephemeral: return "ephemeral"
         @unknown default: return "unknown(\(status.rawValue))"
         }
+    }
+
+    // MARK: - (5) the evening reminder's re-plan, on the real centre (IOS-MOVE-REMINDER R1292)
+
+    /// The production glue (replanEveningReminders over the SYSTEM centre, via the Kotlin eveningReminderProbeReplan)
+    /// three times: planned, planned again (a re-plan must REPLACE by identifier, never duplicate), then signed out
+    /// (every planned request removed). After each, this app's evening-reminder requests in the PENDING list are
+    /// polled until they equal what was planned, for at most 5 s (the centre applies removals and additions
+    /// asynchronously). Runs after (2), so the provisional authorization is already granted. Cleaned up at the end.
+    private func reminder(_ log: ProbeLog) async {
+        let center = UNUserNotificationCenter.current()
+        let planned = Set(IosEveningReminderProbeKt.eveningReminderProbeReplan(signedIn: true))
+        log.line("reminder.planned", planned.sorted().joined(separator: ","))
+        let afterPlan = await pendingReminders(center, expecting: planned)
+        log.line("reminder.pendingAfterPlan", afterPlan.sorted().joined(separator: ","))
+        if let first = await firstReminderTrigger(center) { log.line("reminder.firstTrigger", first) }
+        let again = Set(IosEveningReminderProbeKt.eveningReminderProbeReplan(signedIn: true))
+        let afterReplan = await pendingReminders(center, expecting: again)
+        log.line("reminder.pendingAfterReplanCount", "\(afterReplan.count)")
+        _ = IosEveningReminderProbeKt.eveningReminderProbeReplan(signedIn: false)
+        let afterSignedOut = await pendingReminders(center, expecting: [])
+        log.line("reminder.pendingAfterSignedOutCount", "\(afterSignedOut.count)")
+        let pass = !planned.isEmpty && afterPlan == planned && afterReplan == again && again == planned
+            && afterSignedOut.isEmpty
+        log.line("reminder.result", pass ? "PASS" : "FAIL")
+        center.removeAllPendingNotificationRequests()
+    }
+
+    /// This app's evening-reminder identifiers in the pending list, polled until they equal [expecting] or 5 s pass.
+    private func pendingReminders(_ center: UNUserNotificationCenter, expecting: Set<String>) async -> Set<String> {
+        var seen: Set<String> = []
+        for _ in 0..<20 {
+            let pending = await center.pendingNotificationRequests()
+            seen = Set(pending.map { $0.identifier }.filter { $0.hasPrefix(IosEveningRemindersKt.EVENING_REMINDER_ID_PREFIX) })
+            if seen == expecting { break }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        return seen
+    }
+
+    /// The earliest pending evening reminder's trigger, as the system holds it: its components and next fire date.
+    private func firstReminderTrigger(_ center: UNUserNotificationCenter) async -> String? {
+        let pending = await center.pendingNotificationRequests()
+            .filter { $0.identifier.hasPrefix(IosEveningRemindersKt.EVENING_REMINDER_ID_PREFIX) }
+            .sorted { $0.identifier < $1.identifier }
+        guard let request = pending.first, let trigger = request.trigger as? UNCalendarNotificationTrigger else {
+            return nil
+        }
+        let parts = trigger.dateComponents
+        let next = trigger.nextTriggerDate().map { ISO8601DateFormatter().string(from: $0) } ?? "nil"
+        return "\(request.identifier) hour=\(parts.hour ?? -1) minute=\(parts.minute ?? -1) "
+            + "timeZone=\(parts.timeZone?.identifier ?? "nil") repeats=\(trigger.repeats) next=\(next) "
+            + "titleIsManual=\(request.content.title == NotificationCopy.shared.MANUAL_TITLE)"
     }
 
     // MARK: - (3) the share sheet, on screen

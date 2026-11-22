@@ -85,6 +85,9 @@ class ExperimentalTimeOptInAllowlistTest {
             // (one each); the controllers' own seam sites moved to :shared with them (R814, below).
             "app/src/main/kotlin/ch/monreleve/app/forecast/JavaTimeForecast.kt" to 2,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
+            // IOS-MOVE-REMINDER R1290: :shared androidMain's java.time overloads of the ported 19:00 fallback, one
+            // per function (nextFallbackAt, bootFallbackAt, reachedFallbackTime), converting types only.
+            "shared/src/androidMain/kotlin/ch/monreleve/app/reminder/JavaTimeFallbackReminder.kt" to 3,
             // IOS-1b-A R602c: CalendarModel moved to :shared on kotlin.time (1 in :app -> 2: serverLate and its parse).
             // IOS-1b-A R602d: 1 in :app -> 5 here: the clock property and the four private helpers that read it.
             "shared/src/commonMain/kotlin/ch/monreleve/app/aujourdhui/AujourdhuiController.kt" to 5,
@@ -108,6 +111,10 @@ class ExperimentalTimeOptInAllowlistTest {
             // IOS-1b-A R608: the pilot fixture hands the controller its clock; the pilot screen reads the system clock.
             "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt" to 1,
             "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/PilotFixture.kt" to 1,
+            // IOS-MOVE-REMINDER R1290/R1291: the 19:00 fallback ported from java.time (one per function taking an
+            // Instant: nextFallbackAt, bootFallbackAt, reachedFallbackTime) and the iOS plan built on it.
+            "shared/src/commonMain/kotlin/ch/monreleve/app/reminder/EveningReminderPlan.kt" to 1,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/reminder/FallbackReminder.kt" to 3,
             // IOS-2c R787: the pin, moved unedited - its three are function-scoped helpers; its tests take strings.
             "shared/src/commonTest/kotlin/ch/monreleve/app/calendar/CalendarDatesPinTest.kt" to 3,
             // IOS-2c R788: the controller pin, moved unedited - its one build helper hands over a fixed Clock.
@@ -120,10 +127,16 @@ class ExperimentalTimeOptInAllowlistTest {
             "shared/src/commonTest/kotlin/ch/monreleve/app/forecast/ForecastControllerPinTest.kt" to 1,
             "shared/src/commonTest/kotlin/ch/monreleve/app/forecast/SimulationControllerPinTest.kt" to 1,
             "shared/src/commonTest/kotlin/ch/monreleve/app/pilot/PilotFixtureTest.kt" to 2,
+            // IOS-MOVE-REMINDER R1290/R1291: the golden's one comparison helper; the plan test's one plan helper.
+            "shared/src/commonTest/kotlin/ch/monreleve/app/reminder/EveningReminderPlanTest.kt" to 1,
+            "shared/src/commonTest/kotlin/ch/monreleve/app/reminder/FallbackReminderGoldenTest.kt" to 1,
             // IOS-2c R793: the iOS UI test's one builder hands the shared CalendarController a fixed kotlin.time.Clock.
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/CalendrierReleveScreensIosTest.kt" to 1,
             // IOS-2d R820: the iOS UI test's one builder hands the shared forecast controllers a fixed Clock.
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/SimulationForecastScreensIosTest.kt" to 1,
+            // IOS-MOVE-REMINDER R1292: the host probe's one call reads the device clock; the glue test's one plan.
+            "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosEveningReminderProbe.kt" to 1,
+            "shared/src/iosTest/kotlin/ch/monreleve/app/ios/IosEveningRemindersIosTest.kt" to 1,
         )
 
     private val optIn = Regex("""OptIn\(\s*(kotlin\.time\.)?ExperimentalTime::class\s*\)""")
