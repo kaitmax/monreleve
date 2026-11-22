@@ -1,6 +1,7 @@
 package ch.monreleve.app.ios
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
@@ -161,6 +162,11 @@ class IosShellRemindersIosTest {
                 waitFor("RESOLVING reached the tabs") { clickable(NavCopy.PARAMETRES) }
                 waitFor("the restored opt-in planned the week") { rig.centre.pendingNow() == week }
                 assertTrue(rig.evening.isEnabled(), "R1147: the server's opt-in restored where the phone may notify")
+                // The switch Parametres draws agrees with what was planned: its controller reads the store ONCE when
+                // built, so a restore that landed after it would show OFF beside a planned week.
+                openParametres()
+                waitFor("the Paramètres tab's evening switch") { shows(ParametresCopy.EVENING_LABEL) }
+                assertEquals(1, onAllNodes(isToggleable() and isOn()).fetchSemanticsNodes().size, "the switch reads ON")
             } finally {
                 rig.close()
             }

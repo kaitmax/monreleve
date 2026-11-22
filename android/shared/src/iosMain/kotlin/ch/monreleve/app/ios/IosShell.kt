@@ -212,12 +212,15 @@ class IosShell internal constructor(
     }
 
     /**
-     * R1147: the evening opt-in the server holds, applied where this phone may notify - the authorization read AFRESH
-     * first, so a sign-in right after launch is not judged by a value the centre has not answered yet. The write goes
-     * through [eveningStore], so it re-plans (R1330: "the opt-in restored at sign-in").
+     * R1147: the evening opt-in the server holds, applied where this phone may notify (as last read - refreshed at
+     * start and after every ask). SYNCHRONOUS on purpose: RESOLVING moves to MAIN at once, and the Parametres
+     * controller reads the store ONCE when it is built (ParametresController's initial state) - a write that landed
+     * after it would leave the switch showing the old value while the plan used the new one. The write goes through
+     * [eveningStore], so it re-plans (R1330: "the opt-in restored at sign-in"); the plan itself reads the authorization
+     * afresh.
      */
     fun restoreReminder(serverOn: Boolean) {
-        scope.launch { eveningStore.setEnabled(restoredEveningOptIn(serverOn, readAuthorization())) }
+        eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
     }
 
     /** Re-reads the authorization into [notificationsPermitted]. */
