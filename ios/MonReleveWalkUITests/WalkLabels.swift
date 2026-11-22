@@ -13,6 +13,9 @@ enum L {
     static let emailLabel = "Adresse e-mail" // SignInCopy.EMAIL_LABEL
     static let codeLabel = "Code à 6 chiffres" // CodeCopy.CODE_LABEL
     static let onbNameLabel = "Prénom et nom" // OnboardingCopy.NAME_LABEL
+    // The first of the six code boxes: CodeCopy.digitLabel(1) - a template ("Chiffre $position sur 6"), so not
+    // checked as a literal; run 45073103807 showed the boxes labelled this way.
+    static let codeDigit1 = "Chiffre 1 sur 6"
     static let codeTitle = "Vérifiez votre messagerie" // CodeCopy.TITLE
     static let codeSubmit = "Valider le code" // CodeCopy.SUBMIT
     static let onbContinue = "Continuer" // OnboardingCopy.CONTINUE

@@ -95,8 +95,9 @@ final class WalkUITests: XCTestCase {
             XCTFail("no code")
             return
         }
-        guard let field = app.field(below: L.codeLabel) else {
-            Walk.note("FAIL \(step): no code field below \"\(L.codeLabel)\"")
+        let field = app.labelled(L.codeDigit1)
+        guard field.waitForExistence(timeout: 10) else {
+            Walk.note("FAIL \(step): no code box \"\(L.codeDigit1)\"")
             XCTFail("no code field")
             return
         }
@@ -630,8 +631,9 @@ final class WalkUITests: XCTestCase {
         let link = (Walk.json("/link?to=" + Walk.q(Walk.accountC)) as? [String: Any]) ?? [:]
         Walk.note("14 R1346 the link GET by the runner first: status=\(link["status"] ?? "?") "
             + "location=\(link["location"] ?? "?")")
-        guard let field = app.field(below: L.codeLabel) else {
-            Walk.note("FAIL 14 no code field")
+        let field = app.labelled(L.codeDigit1)
+        guard field.waitForExistence(timeout: 10) else {
+            Walk.note("FAIL 14 no code box")
             return
         }
         _ = app.type(code, into: field)
@@ -647,7 +649,7 @@ final class WalkUITests: XCTestCase {
             Walk.shot("14-after-code")
         } else {
             let shown = app.descendants(matching: .any).allElementsBoundByIndex.map { $0.label }
-                .filter { !$0.isEmpty && !$0.contains(code) && $0.count < 200 && $0 != "Mon Relevé" }
+                .filter { !$0.isEmpty && !$0.contains(code) && !$0.hasPrefix("Chiffre") && $0.count < 200 && $0 != "Mon Relevé" }
             Walk.note("14 code screen texts: \(shown.prefix(12).joined(separator: " | "))")
         }
     }
