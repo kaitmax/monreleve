@@ -3,6 +3,7 @@ package ch.monreleve.app.ios
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import platform.UserNotifications.UNNotificationDefaultActionIdentifier
+import platform.UserNotifications.UNNotificationPresentationOptions
 import platform.UserNotifications.UNNotificationResponse
 import platform.UserNotifications.UNUserNotificationCenter
 import platform.UserNotifications.UNUserNotificationCenterDelegateProtocol
@@ -56,6 +57,17 @@ fun routeNotificationTap(
     if (isEveningReminder && isTheTap) taps.raise()
     return isEveningReminder && isTheTap
 }
+
+/**
+ * IOS-SHELL-3 R1373 (b) - SKELETON FOR THE RED RUN (test-first): how an evening reminder is presented while the app is
+ * OPEN. Today nothing is (no willPresent: iOS's default shows nothing in the foreground); the next increment
+ * decides it.
+ */
+@Suppress("UnusedParameter", "FunctionOnlyReturningConstant") // SKELETON: the identifier decides, next increment.
+internal fun foregroundPresentation(identifier: String): UNNotificationPresentationOptions = 0uL
+
+/** The delegate the app installs, as an object a test can ask which selectors it answers (R1373 b). */
+internal fun notificationDelegate(taps: IosNotificationTaps): NSObject = NotificationTapDelegate(taps)
 
 private class NotificationTapDelegate(
     private val taps: IosNotificationTaps,
