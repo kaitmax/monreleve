@@ -41,7 +41,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import platform.Foundation.NSLog
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.time.Clock
@@ -192,18 +191,6 @@ class IosShell internal constructor(
 }
 
 private const val PARIS = "Europe/Paris"
-
-/**
- * One line to the console, scrubbed as IosLogger scrubs (R574), and passed to NSLog as its FORMAT with every % doubled
- * -
- * never as a C vararg. IOS-SHELL-1's run B (ios-shared 45019964025) ended in SIGSEGV in the first test that reached a
- * shell log line, which went through IosLogger's default sink, NSLog("%@", line): a Kotlin String handed to a C
- * variadic function as an Objective-C object. That sink is not this task's to change (NOTICED in the report); this
- * line avoids the vararg altogether.
- */
-private fun consoleLine(line: String) {
-    NSLog(scrub(line).replace("%", "%%"))
-}
 
 /**
  * THE iOS COMPOSITION FUNCTION (R1323): builds the process's shell in the header's order. Every parameter after the two

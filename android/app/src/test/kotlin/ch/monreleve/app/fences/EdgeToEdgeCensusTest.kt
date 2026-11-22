@@ -84,8 +84,11 @@ private val SCREEN_DECLARATION =
 // that must itself be hosted: a screen inside a route counts only if EVERY call site of that route is hosted. So the
 // rule is unchanged - every screen reaches a wrapped root - and a route called from an unwrapped place fails as a
 // screen would.
+// IOS-MOVE-TABS R1360/R1361: the four tabs and the forecast overlays moved from MainShell (MainActivity.kt, wrapped) to
+// :shared commonMain (MainTabs.kt), so the tab and forecast screens are now reached THROUGH MainTabs. `<Name>Tabs`
+// joins the two route suffixes on the same terms: a host that must itself be hosted, its name asserted found below.
 private val ROUTE_DECLARATION =
-    Regex("""^(?:(?:public|internal)\s+)?fun\s+([A-Z]\w*(?:Route|Router))\s*\(""", RegexOption.MULTILINE)
+    Regex("""^(?:(?:public|internal)\s+)?fun\s+([A-Z]\w*(?:Route|Router|Tabs))\s*\(""", RegexOption.MULTILINE)
 
 private val FUNCTION_DECLARATION = Regex("""\bfun\s+(?:<[^>]*>\s*)?([A-Za-z_]\w*)\s*\(""")
 
@@ -203,7 +206,7 @@ class EdgeToEdgeCensusTest {
             listOf(SHIPPED_ROOTS[1]).ktFiles().flatMap { file ->
                 ROUTE_DECLARATION.findAll(Source(file).code).map { it.groupValues[1] }.toList()
             }.toSet()
-        for (probe in listOf("ShellRouter", "SignInRoute", "CodeRoute", "ResolvingRoute")) {
+        for (probe in listOf("ShellRouter", "SignInRoute", "CodeRoute", "ResolvingRoute", "MainTabs")) {
             assertTrue("$FENCE: route discovery did not find $probe - it found ${routes.sorted()}", probe in routes)
         }
         return declared + routes

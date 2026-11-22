@@ -23,6 +23,8 @@ import java.io.File
  * IOS-MOVE-GRAPH R1312 added the one graph (MainGraph.kt: MainGraph and MainControllers) and the shell's destination
  * logic (Destination.kt: Destination and the four pure functions split from :app's ShellState.kt, which keeps its
  * Android half under its own name).
+ * IOS-MOVE-TABS R1361 added the four-tab wiring (MainTabs.kt) and its route (ForecastRoute.kt), moved from :app's
+ * MainShell in MainActivity.kt; iOS's copy, IosMainShell's `when (tab)` and IosForecastRoute, was deleted (R206).
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
@@ -93,6 +95,9 @@ class MovedTwinsFenceTest {
             "ch/monreleve/app/push/ReminderOptIn.kt",
             // IOS-SHELL-1 R1328: the destination switch and the sign-in/RESOLVING routes, moved from MainActivity.kt.
             "ch/monreleve/app/ShellRoutes.kt",
+            // IOS-MOVE-TABS R1360/R1361: the bottom bar, the four tabs and the forecast overlays, moved from MainShell.
+            "ch/monreleve/app/MainTabs.kt",
+            "ch/monreleve/app/ForecastRoute.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -154,6 +159,8 @@ class MovedTwinsFenceTest {
                     "KEY_REMINDER_ENABLED", "reminderOptInBody",
                     // IOS-SHELL-1 R1328: four composables and an internal enum.
                     "ShellRouter", "SignInRoute", "CodeRoute", "ResolvingRoute", "SignInStep",
+                    // IOS-MOVE-TABS R1361: a composable and an enum (Android's ForecastRoute, iOS's IosForecastRoute).
+                    "MainTabs", "ForecastRoute",
                 ),
             ),
         )

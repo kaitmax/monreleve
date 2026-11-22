@@ -1,0 +1,293 @@
+REPORT-IOS-MOVE-TABS - THE FOUR-TAB WIRING IS ONE COMMON COMPOSABLE; THE iOS LOG SINK'S CRASH IS REPRODUCED AND FIXED
+TASK     relay/IOS-MOVE-TABS.txt (iOS Rulings 3, 9-13 in relay/RULINGS-2026-11-16.txt). Rulings R1360-R1365, all used.
+BASE     origin/main d6486016 (records commit on the IOS-SHELL-1 merge 06ec1c0c). Its android/, ios/ and .github/ trees
+         equal IOS-SHELL-1's gated code tip e0dae700 (`git diff e0dae700 d6486016 -- android ios .github` = 0 lines).
+BRANCH   m6-tabs. PUSHED, NOT MERGED. Code tip 3db54fa0 (three commits on the base: 07018900, 1f71ed07, 3db54fa0).
+         The report tip is the commit carrying this file only.
+WORKTREE C:/wt/m6-tabs, lock .session-lock.json (gitignored, R349), removed last. A second worktree of mine,
+         C:/wt/m6-base (detached at d6486016, its own lock), held the base measurement; removed by me once its run
+         ended, `git status --porcelain --untracked-files=all` = 0 lines first.
+EVIDENCE C:/wt/queue-evidence/m6-tabs/ (not committed): base.log + base-xml-{app,shared}/ (the before-counts, run on
+         d6486016 itself); runB-45019964025.log and runC-45021918348.log (IOS-SHELL-1's runs, read for R1362);
+         runR-45025248454.log + ios-shared-45025248454/ (the RED); inc2a-unfenced.log + inc2a-xml-app/ (the census's
+         first run on the move); inc3.log + inc3-xml-*/; plant.log + plant-xml-*/ + plant-failures.txt; gate.log +
+         gate-xml-*/ + verify.lock; diff-moved-tabs.txt (the moved block against MainTabs), diff-MainActivity.txt,
+         diff-IosShellUi.txt, removed-*.kt; ios-expected-runR.txt and ios-expected-final.txt (written before dispatch);
+         the final runs' artifacts and job logs; tools/ (every scripted edit asserts its anchors before writing, R211).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1360: MainShell's bottom bar, `when (tab)` over the four tabs and forecast overlays are now ONE common composable,
+  MainTabs (:shared commonMain ch/monreleve/app/MainTabs.kt), with ForecastRoute beside it (ForecastRoute.kt, same
+  package). Android's MainShell and iOS's IosMainShell both call it. IosMainShell's copy of the wiring and
+  IosForecastRoute are DELETED. The move did not bend: every difference between the moved block and MainTabs is a
+  state write become its setter or a value become a parameter (diff-moved-tabs.txt, below). No keep-in-step fence was
+  needed.
+- R1361: :app's pins are unedited; the whole :app suite is 1568/0 in 209 classes before and after, and no class's
+  count differs; :shared JVM 328/0 in 61 classes before and after, identical. verifyPaparazziDebug ran in the gate;
+  no baseline file changed. Two fences edited (MovedTwinsFenceTest, EdgeToEdgeCensusTest), each planted, each plant
+  verified landed and seen to fail by name.
+- R1362: REPRODUCED. An iosTest calling IosLogger's real default sink, NSLog("%@", line), killed the test process on
+  an ORDINARY sentence (run 45025248454: "R1362 BEFORE ordinary", then signal 11, no AFTER, no JUnit suite). Fixed:
+  the shell's format-only consoleLine is now IosLogger's default sink too - one function (R206), scrub before the
+  write (R574). The same test, body unedited, is the green on the code tip.
+- R1364: :app:gate on 3db54fa0 BUILD SUCCESSFUL, GATE_EXIT=0, floor 1568.
+- R1365: ios-shared and ios-app, one run each on 3db54fa0 (results below).
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 3db54fa0 in this session, on a clean tree
+(`git status --porcelain --untracked-files=all` = 0 lines before and after; gate.log):
+    GATE HEAD=3db54fa012c7032bfad22bdbffa13498844012fb start=2026-11-22T13:58:44Z dirty=0
+    test floor OK: 1568 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 6m 54s
+    GATE_EXIT=0
+    end=2026-11-22T14:05:40Z dirty-after=0
+- EXECUTED in it: :app:testDebugUnitTest, :app:checkTestFloor, :app:assembleDebug, :app:verifyPaparazziDebug,
+  :app:lintDebug, :shared:compileCommonMainKotlinMetadata, :shared:detekt, :shared:ktlintCheck,
+  :shared:testDebugUnitTest, :app:gate. UP-TO-DATE: :app:detekt and :app:ktlintCheck - they EXECUTED and passed in
+  increment 3's fastCheck on the same :app sources (inc3.log: "> Task :app:detekt", "> Task :app:ktlintCheck", neither
+  FAILED; the one failure there was :shared:detekt, fixed before the commit and executed green in the gate).
+- Holder m6-tabs-verify, line 8000 MB not lowered: ACQUIRED 13:57:09Z commitFree=9643, RELEASED 14:05:43Z. The same
+  hold ran the plants first; restored and dirty=0 before the gate.
+- Every Gradle run --no-daemon; `gradlew --stop` never run. web/ unchanged, so gate:clone/gate:changed not owed.
+- The report tip changes only this file, so its android/ and ios/ trees are 3db54fa0's.
+
+================================================================================
+R1360 - THE MOVE
+================================================================================
+MainTabs(controllers, tab, onTabChange, forecastRoute, onForecastRouteChange, yearDownloadFailed, onRetryDownload,
+onCompareEmployer, onEnableAlert, parametresTab, forecastBackHandler) emits, in this order, exactly what MainShell
+emitted: the forecast/simulation state collectors, LaunchedEffect(forecastRoute) (AN-CALENDAR R475's refresh), the
+other four collectors, the Scaffold with AppBottomBar and the `when (tab)`, then the forecast overlay (its system-back
+slot first, then the Surface). It emits no wrapper node: the Scaffold and the overlay Surface are siblings as before,
+so Android's comparison and disclosure overlays, composed after the MainTabs call, still stack above it.
+WHAT STAYS OUT, AS PARAMETERS:
+  - the STATE. `tab` (rememberShellTab) and `forecastRoute` (rememberSaveable) stay declared where they were in each
+    shell, with their saved-state keys; MainTabs takes value + setter. Android writes both from outside the wiring
+    (the notification extras, the comparison overlay's "voir mes journees").
+  - the PARAMETRES TAB, a composable slot `(state, onOpenRhythm)`. Android passes its ParametresTab call unchanged
+    (BuildConfig version, the :app overload's Material picker, the disclosure/evening/alert launchers); iOS passes
+    ParametresScreen with its actions and the native picker.
+  - the SYSTEM BACK of the forecast overlay, a slot. Android passes `{ onBack -> BackHandler(onBack = onBack) }` (no
+    common BackHandler exists, iOS Ruling 3); iOS passes `{}`, as before the move (IosMainShell had none).
+  - yearDownloadFailed / onRetryDownload, onCompareEmployer, onEnableAlert: Android's exact former expressions; iOS's
+    named stubs (unchanged strings). These stubs stay stubs; building them is IOS-SHELL-2's.
+THE MOVED BLOCK AGAINST MainTabs (diff-moved-tabs.txt, `diff` of MainShell's Scaffold..overlay at the base against
+MainTabs's): every hunk is one of
+  - `tab = X` -> `onTabChange(X)`; `forecastRoute = X` -> `onForecastRouteChange(X)`;
+  - `yearDownload.retry` -> `onRetryDownload`; `yearDownloadStatus is YearDownloadStatus.Failed` -> `yearDownloadFailed`;
+    the comparison lambda -> `onCompareEmployer`; `{ onToggleThresholdAlert(true) }` -> `onEnableAlert`;
+  - `ParametresTab(...)` -> `parametresTab(parametresState) { onForecastRouteChange(ForecastRoute.RYTHME) }` (the
+    ParametresTab call itself moved, verbatim with its comments, into Android's slot lambda);
+  - `BackHandler { ... }` -> `forecastBackHandler { ... }` with the same body.
+MainShell'S DIFF, ARGUED (diff-MainActivity.txt; 48 insertions, 206 deletions). Every line that is not a move:
+  1. 18 imports removed - only the moved code used them.
+  2. ForecastRoute's declaration removed (moved to ForecastRoute.kt; `internal` -> public, cross-module).
+  3. `val simulationState ...` and `val calendarState ...` removed: only the moved tabs read them.
+     `val forecastState ...` KEPT (the threshold-alert LaunchedEffect keys on it); `aujourdhuiState`, `releveState`,
+     `parametresState` KEPT for MainShell's own effects/overlays. MainTabs collects its own from the same StateFlows -
+     collectAsState starts from the flow's current value, so both read the same value; nothing is drawn differently.
+  4. LaunchedEffect(forecastRoute) moved into MainTabs. Its position among MainShell's effects changes: it now
+     launches after the other first-composition effects instead of before them. On a first composition with a null
+     route it does nothing; with a restored route its two refreshes are independent of the other effects (year
+     download, alert pass, push pass, reminder plan, notification extras), so the order carries no behaviour. This is
+     the one line I argue rather than call a pure move.
+  5. The MainTabs call (one call, its arguments being MainShell's former expressions). Its comment lines: four new
+     ones above it saying where the wiring went; two new ones above `val forecastState` saying why it stays and
+     where the rest went; and inside the call, the moved code's own comments (AN-PULL R484, AN-RECON, AN-ALERT x2,
+     R316, AN-PLAY-PACK R1124) carried with their lines, plus one rewritten from the moved BackHandler's AN-SIM
+     comment ("system back from the simulator returns to Prevision; the other routes close to the tab beneath").
+     None of the 14 added comment lines is code.
+  NOT edited, stated: MainActivity's comment "the Scaffold in MainShell pads nothing more" (line ~94) and
+  AppRootScreenshotTest's "MainShell's Scaffold" now mean the Scaffold MainShell reaches through MainTabs (NOTICED).
+IosShellUi.kt (diff-IosShellUi.txt): IosMainShell keeps its controllers, its two rememberSaveable states, the share-
+sheet stubs and the accountEvents collector, then calls MainTabs; IosForecastRoute deleted; iosParametresActions takes
+`onOpenRhythm: () -> Unit` instead of `openForecast: (IosForecastRoute) -> Unit`; 20 imports removed, 2 added; the file
+header's MAIN bullet rewritten, because it said "Android's MainShell is not moved" (R181). On iOS the LaunchedEffect
+(forecastRoute) now launches after the stubs' collectors instead of before - the same argument as 4 above.
+
+================================================================================
+R1361 - THE PINS AND THE PIXELS
+================================================================================
+BEFORE: base.log, `:app:testDebugUnitTest :shared:testDebugUnitTest` on d6486016 itself (worktree C:/wt/m6-base,
+RUN HEAD=d6486016, dirty=0, BUILD SUCCESSFUL, EXIT=0). AFTER: the gate's XML on 3db54fa0.
+  :app     1568 tests / 0 failures, 209 classes  ->  1568 / 0, 209 classes. Per-class (name, tests, f, e) lists: diff EMPTY.
+  :shared   328 tests / 0 failures,  61 classes  ->   328 / 0,  61 classes. Per-class lists: diff EMPTY.
+No :app or :shared test file was edited except the two fences below (`git diff --name-only d6486016 3db54fa0` over
+test source sets lists exactly EdgeToEdgeCensusTest.kt, MovedTwinsFenceTest.kt and the new iosTest). Both fences keep
+their test counts (3 and 7): the edits change what they read, not how many tests they hold.
+PIXELS: the gate executed `:app:verifyPaparazziDebug` (zero tolerance, fences.PaparazziZeroToleranceTest 2/0 in the
+same run); `git diff --name-only d6486016 3db54fa0 -- android/app/src/test/snapshots` = 0 files; dirty-after=0, so no
+snapshot was written. STATED PLAINLY: no Paparazzi test composes MainShell or MainTabs (MainShell needs an Activity
+and a built graph), so this zero-tolerance pass proves the screens are unchanged, NOT that this diff is pixel-neutral.
+Android's proof for the wiring is the argued diff above. RUNTIME EXERCISE OF MainTabs, read from the two iOS shell
+tests (both compose IosShellRoot(rig.shell), so they reach IosMainShell -> MainTabs):
+  - IosShellStartupIosTest waits until the bar shows NavCopy.CALENDRIER after /me answers: MainTabs's Scaffold, bar and
+    the AUJOURDHUI branch composed;
+  - IosShellSignOutIosTest taps the bar's NavCopy.PARAMETRES item, finds the sign-out row, asserts no detection entry,
+    and signs out: the bar's onSelect -> onTabChange, the PARAMETRES branch and iOS's parametresTab slot.
+  NOT EXERCISED AT RUNTIME on either platform: the forecast overlay (RYTHME/PREVISION/SIMULATION), the
+  forecastBackHandler slot, the forecast setters, and the CALENDRIER and RELEVE branches as reached through MainTabs.
+  Those rest on diff-moved-tabs.txt alone - as they did before the move, when no test composed MainShell either
+  (SimulationForecastScreensIosTest exercises the three forecast screens through hand-written reductions; Q2).
+FENCES:
+  1. shared MovedTwinsFenceTest: `moved` gained MainTabs.kt and ForecastRoute.kt; the containsAll proof gained
+     MainTabs and ForecastRoute - derived from the files (R246), a header line. 7/0.
+  2. :app EdgeToEdgeCensusTest: ROUTE_DECLARATION's suffixes (Route|Router) gain Tabs - a discovered host that must
+     itself be hosted, on IOS-SHELL-1's accepted terms - and the probe list asserts MainTabs found.
+     ITS REAL INSTANCE FIRST (R178): the census's first run on the unfenced move (inc2a-unfenced.log, 13:45Z) FAILED:
+     "22 screens, 16 hosted ... AujourdhuiScreen, CalendrierScreen, PrevisionScreen, ReleveScreen, RythmeScreen,
+     SimulationScreen <- shared/src/commonMain/kotlin/ch/monreleve/app/MainTabs.kt (not under a wrapped root)".
+     Fenced: "23 screens, 23 hosted" (base: 22 screens, 22 hosted; +1 = MainTabs itself). NOT-ANDROID list unchanged
+     (AujourdhuiPilot.kt:47 only).
+PLANTS, on the committed 3db54fa0, under the same lock hold as the gate (plant.log). Verified landed before the result
+was read: "LANDED app: enum ForecastRoute=1 MainTabs-call=1", "LANDED ios: fun MainTabs=1".
+  - :app main r1361plant/R1361PlantApp.kt: `internal enum class ForecastRoute { PLANTED }` and an @Composable that
+    calls MainTabs(...) from outside any wrapped root;
+  - iosMain ios/r1361plant/R1361PlantIos.kt: `internal fun MainTabs() = Unit`.
+  Result PLANT_EXIT=1 (plant-failures.txt):
+  - MovedTwinsFenceTest.noCopyOfAMovedFileIsInApp: "main/kotlin/ch/monreleve/app/r1361plant/R1361PlantApp.kt:
+    declares ForecastRoute";
+  - MovedTwinsFenceTest.noCopyOfAMovedFileIsInIosMain: "ch/monreleve/app/ios/r1361plant/R1361PlantIos.kt: declares
+    MainTabs";
+  - EdgeToEdgeCensusTest.everyScreenIsHostedByTheRootWrapper: "23 screens, 16 hosted ... MainTabs <- ...
+    r1361plant/R1361PlantApp.kt:13 (not under a wrapped root)" and the six tab/forecast screens "(inside MainTabs, not
+    hosted)" - a screen inside MainTabs counts only if every call site of MainTabs is hosted.
+  No other test failed (MovedTwins 7 run / 2 failed; census 3 run / 1 failed).
+  NOT PLANTED, stated: the census's MainTabs probe assertion ("route discovery did not find MainTabs") - the unfenced
+  run (inc2a) shows what the census does without the Tabs suffix, but no run removed the suffix from the fenced
+  version; and MovedTwins's moved-FILE-NAME branch (a file named MainTabs.kt or ForecastRoute.kt elsewhere) - only the
+  declaration branch was planted. Restored by removing the two plant files
+  and their directories (mine): "AFTER RESTORE dirty=0" with untracked files counted.
+
+================================================================================
+R1362 - THE LOG SINK
+================================================================================
+(1) REPRODUCE (commit 07018900, iosTest only; pushed; ios-shared run 45025248454 on 07018900, expectation written
+    first in ios-expected-runR.txt). IosLoggerDefaultSinkIosTest calls IosLogger() - the real default sink - with
+    "R1362 probe: an ordinary sentence through the default sink" and with "R1362 probe: 100% of a sentence with %d and
+    %@ and %s written as text", each between "R1362 BEFORE <case>" / "R1362 AFTER <case>" on STANDARD_OUT, after
+    asserting scrub leaves the sentence whole. THE PROCESS DIED on the first, ordinary, line. Job log, quoted:
+      13:14:02.3070910Z ch.monreleve.app.ios.IosLoggerDefaultSinkIosTest.theRealDefaultSinkWritesAnOrdinaryLineAnd
+                        TheProcessLives[iosSimulatorArm64] STANDARD_OUT
+      13:14:02.3192190Z     Child process terminated with signal 11: Segmentation fault
+      13:14:03.9447810Z     R1362 BEFORE ordinary
+      13:14:04.0678610Z [ExecAsyncHandle :shared:iosSimulatorArm64Test] finished {exitValue=139, failure=null}
+      13:14:05.6727950Z ch.monreleve.app.ios.IosLoggerDefaultSinkIosTest.theRealDefaultSinkWritesAnOrdinaryLineAnd
+                        TheProcessLives[iosSimulatorArm64] FAILED
+    No "R1362 AFTER" line anywhere in the log; the results step: "NO RESULT: no JUnit XML ... the iOS tests did not
+    run" (0 suites - run B's signature exactly). So the '%' line never ran: the crash needs no percent sign.
+(2) FIX (commit 1f71ed07, pushed). consoleLine - NSLog(scrub(line).replace("%", "%%")), the line as the FORMAT,
+    nothing as a C vararg - moves from IosShell.kt (private) to IosLogger.kt (internal), and is BOTH IosLogger's
+    default sink and startIosShell's `log` default: one function (R206). The scrub stays before the write (R574);
+    IosLogger's error/info still scrub the message first, so an IosLogger line is scrubbed twice; that scrub is
+    idempotent on its own output ("<redacted>" matches none of its four patterns) is ARGUED, not tested. The test's body
+    is unchanged; its header records the RED. GREEN: ios-shared 45030136957 on 3db54fa0: IosLoggerDefaultSinkIosTest 2/0, and its job
+    log shows the sink reached and returned - "R1362 BEFORE ordinary", NSLog's own lines
+    "... test.kexe[21846:60415] I/R1362: R1362 probe: an ordinary sentence through the default sink" and the E/ twin,
+    "R1362 AFTER ordinary", then the same for "percent", whose NSLog line prints "100% of a sentence with %d and %@ and
+    %s written as text" literally.
+    WHAT THIS CANNOT PROVE, said plainly: no CI run builds Release, and a test-only crash cannot be proven absent in a
+    Release build here. IosUnownedReporter's Release path used this sink; the Release check is on the operator's
+    iPhone list (IOS-WALK R1347).
+    Run B is now explained by evidence rather than timing: B's notYetOnIos went through IosLogger().info, the default
+    sink reproduced here. (Run C also closed the rig's database before removing its directory; that difference is no
+    longer needed to explain B and was not tested on its own.)
+
+================================================================================
+R1363 - NOTHING SECRET IN A LOG
+================================================================================
+The two test sentences are fixed strings with no mail, code, token or day; scrub is asserted to leave them whole.
+The job log is a publication now that the default sink prints there: `grep -c 'test.kexe[' ` on run 45030136957's
+log = 4, and the four are exactly the two fixed sentences, I/ and E/ each - nothing else went out through NSLog.
+IosLoggerAndReporterTest (the existing scrub test) is unchanged and passes in the final run (IosLoggerAndReporterTest 3/0 in ios-shared 45030136957).
+Token check: `git diff d6486016 3db54fa0` for ghp_/github_pat/private keys/JWT prefixes = 0 hits.
+
+================================================================================
+R1364 - ANDROID UNCHANGED BEYOND THE EXTRACTION
+================================================================================
+:app:gate on 3db54fa0 (STATUS). Every :app edit is the extraction (MainActivity.kt, argued above) or a fence (R1361).
+web/ unchanged (`git diff --name-only d6486016 3db54fa0 -- web` = 0 files): gate:clone and gate:changed not owed (R199).
+
+================================================================================
+R1365 - iOS
+================================================================================
+ONE run each, dispatched on the pushed code tip 3db54fa0 (expectation in ios-expected-final.txt, written first):
+- ios-shared 45030136957: success, head 3db54fa0, 20 steps. Artifact ios-shared-test-results counted from the JUnit XML:
+  91 suites, 461 tests, 0 failures, 0 errors, 0 skipped. Expected 461 = base 459 (run 45021918348: 90 suites) + 2.
+  Per-class (suite, tests) list against the base run's: the ONLY difference is the new class
+  ch.monreleve.app.ios.IosLoggerDefaultSinkIosTest 2. Among the unchanged: IosShellSignOutIosTest 1/0 and
+  IosShellStartupIosTest 1/0 (both drive IosShellRoot -> IosMainShell -> MainTabs), AppRootRenderIosTest 1/0. The iOS
+  compilation of MainTabs and the new IosMainShell is proven by this run (iosMain does not compile on Windows).
+- ios-app 45030139585: success, head 3db54fa0, 23 steps. ios-host-probe.txt (probe.nonce=run-45030139585-1,
+  probe.done=true): keychain.result=PASS notification.result=PASS reminder.result=PASS share.result=PASS
+  firstLaunch.result=PASS; ats.refusedByAts=false (NSURLErrorDomain -1004); info.apiBaseUrl=http://127.0.0.1:3000.
+  LAUNCH DEFAULT: pid alive after 15 s. launch-DEFAULT.png LOOKED AT: the Bienvenue sign-in screen ("Vos jours de
+  teletravail, prets pour votre declaration.", "Commencer"), no code field.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- SimulationForecastScreensIosTest (iosTest pilot/) carries three hand-written reductions headed "MainActivity's
+  ForecastRoute.X branch, reduced to its calls". Those branches are now MainTabs's, a common composable an iosTest
+  can drive whole; the reductions are R268's shape (a narrower copy of what a wider test could assert). Not folded.
+- MainActivity.kt's comment "so the Scaffold in MainShell pads nothing more" and AppRootScreenshotTest's "what
+  MainShell's Scaffold and NavigationBar each" now describe the Scaffold MainShell reaches through MainTabs. Comments
+  only; left as they are.
+- Both shells still collect parametres.accountEvents into onSignedOut() themselves - the same three lines twice. It
+  is the shell's exit, not tab wiring, so R1360 did not move it.
+- MainActivity.kt still uses the deprecated androidx.compose.ui.platform.LocalLifecycleOwner (compiler warning,
+  base code, untouched).
+- My first run.sh wrote its log relative to the directory it cd'd into, so inc2a-unfenced.log and base.log landed
+  inside the worktrees for the length of a run (untracked, mine). Moved to the evidence folder; run.sh fixed; both
+  trees read 0 dirty lines afterwards.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. ForecastRoute is in its own file, ForecastRoute.kt, not inside MainTabs.kt: detekt's MatchingDeclarationName
+   refused MainTabs.kt with one class (ForecastRoute) beside a function. Both files are in MovedTwinsFenceTest's list.
+2. The base measurement ran in a second worktree of mine (C:/wt/m6-base at d6486016), because the first attempt would
+   have measured my working tree; it was stopped while still waiting for the lock (and its orphaned lock waiter, my
+   own node process, was killed so it could not take the lock later), then re-run there. Removed after.
+3. Increment 3's fastCheck (inc3.log) failed on one detekt MaxLineLength in ForecastRoute.kt's comment; the line was
+   rewrapped and the commit made without a second fastCheck - the full :app:gate that followed executed
+   :shared:detekt and :shared:ktlintCheck green on that commit (:app's detekt and ktlint were UP-TO-DATE from inc3,
+   same :app sources).
+4. LaunchedEffect(forecastRoute) moved into MainTabs, changing its launch order among each shell's effects (argued in
+   R1360 item 4; no behaviour depends on it).
+5. No `gradlew --stop`; every Gradle run --no-daemon.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. MovedTwinsFenceTest guards MainTabs and ForecastRoute by NAME. A renamed copy of the wiring (a second `when (tab)`
+    under another name, as IosForecastRoute was) would pass it. Should a structural fence refuse any `AppTab.X ->`
+    branch outside MainTabs.kt and AppBottomBar.kt in :app and iosMain? (Not added: R1361 orders the derived-name fence.)
+Q2. The forecast overlay, its back slot and the CALENDRIER/RELEVE branches have no runtime exercise through MainTabs
+    on either platform (R1361 above), and SimulationForecastScreensIosTest holds hand-written reductions of the
+    forecast branches (NOTICED). Should a later session add an iosTest that drives MainTabs itself (open Prevision,
+    the simulator, back) and fold the reductions into it - and which session? (Not added here: a new code tip would
+    owe a re-gate and both iOS runs for a test R1360-R1365 do not order.)
+Q3. The Release build's logging (IosUnownedReporter through the default sink) can only be checked on a device: is the
+    fixed sink enough to keep it on IOS-WALK's R1347 list as a confirmation rather than an open defect?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code commits, each pushed to origin/m6-tabs when made: 07018900 (R1362 RED test), 1f71ed07 (R1362 fix),
+  3db54fa0 (R1360/R1361 move and fences). `git ls-remote origin m6-tabs` after each = that sha.
+- Report commit: the commit adding this file, on 3db54fa0, changing only this file.
+- iOS runs (workflow_dispatch on m6-tabs; no workflow file edited):
+    ios-shared 45025248454 on 07018900   failure as intended: R1362's RED, signal 11, 0 JUnit suites
+    ios-shared 45030136957 on 3db54fa0   success, 461 tests, 0 failures   <- R1365 / R573 / R1362's green
+    ios-app    45030139585 on 3db54fa0   success, all probe keys PASS     <- R1365
+- Heavy-lock holds: m6-tabs-base (stopped while waiting, NO RESULT; its waiter killed), m6-tabs-base (in m6-base),
+  m6-tabs-inc2a, m6-tabs-inc3, m6-tabs-verify (plants + gate) - every one RELEASED (*.lock logs). None held by me.
+- Not merged. parking.md not written. origin/main at the report push: d6486016 - unmoved since the base, so the
+  merge result's tree would equal the gated tree and the R573 run above is on it.
+- C:/wt/m6-tabs/.session-lock.json: removed after the report push, as the last act.

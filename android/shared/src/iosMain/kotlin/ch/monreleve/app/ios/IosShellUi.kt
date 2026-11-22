@@ -1,16 +1,11 @@
 package ch.monreleve.app.ios
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,8 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.window.Dialog
+import ch.monreleve.app.ForecastRoute
+import ch.monreleve.app.MainTabs
 import ch.monreleve.app.ShellRouter
-import ch.monreleve.app.forecast.RhythmChoice
 import ch.monreleve.app.fr.OnboardingCopy
 import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
@@ -33,27 +29,13 @@ import ch.monreleve.app.onboarding.OnboardingSnapshot
 import ch.monreleve.app.onboarding.SessionSettingsSaver
 import ch.monreleve.app.onboarding.onboardingSeedFor
 import ch.monreleve.app.parametres.AccountExportKind
-import ch.monreleve.app.releve.ExportKind
 import ch.monreleve.app.settings.mePatchBody
-import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
-import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
-import ch.monreleve.app.ui.screens.calendrier.CalendarActions
-import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
 import ch.monreleve.app.ui.screens.onboarding.OnboardingActions
 import ch.monreleve.app.ui.screens.onboarding.OnboardingScreen
 import ch.monreleve.app.ui.screens.onboarding.PretScreen
 import ch.monreleve.app.ui.screens.onboarding.TertiaryButton
 import ch.monreleve.app.ui.screens.parametres.ParametresActions
 import ch.monreleve.app.ui.screens.parametres.ParametresScreen
-import ch.monreleve.app.ui.screens.prevision.PrevisionActions
-import ch.monreleve.app.ui.screens.prevision.PrevisionScreen
-import ch.monreleve.app.ui.screens.releve.ReleveActions
-import ch.monreleve.app.ui.screens.releve.ReleveScreen
-import ch.monreleve.app.ui.screens.rythme.RythmeActions
-import ch.monreleve.app.ui.screens.rythme.RythmeScreen
-import ch.monreleve.app.ui.screens.simulation.SimulationActions
-import ch.monreleve.app.ui.screens.simulation.SimulationScreen
-import ch.monreleve.app.ui.shell.AppBottomBar
 import ch.monreleve.app.ui.shell.AppRoot
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -80,10 +62,10 @@ import platform.UIKit.UIDatePickerStyle
 //     which the summary then states with the existing copy. Android's OnboardingRoute is not moved: its three OS
 //     permission launchers and the disclosure overlay are interleaved with this same controller, so the common part
 //     was not separable without bending it (R1328 - named in the report).
-//   - MAIN (IosMainShell): the bottom bar over the four common tabs, built by the common graph
-// (IosShell.buildControllers),
-//     and the forecast overlays. Android's MainShell is not moved for the same reason (permission launchers, Toasts,
-//     Intents, the push and alert passes). What IOS-SHELL-2 owes is stubbed by name, never silently: the share sheet
+//   - MAIN (IosMainShell): the COMMON MainTabs (MainTabs.kt, IOS-MOVE-TABS R1360: the bottom bar, the four tabs and
+//     the forecast overlays - the wiring Android's MainShell calls too) over the common graph (buildControllers).
+//     Android's MainShell keeps what is Android's (permission launchers, Toasts, Intents, the push and alert passes)
+//     and passes it in; iOS passes its own. What IOS-SHELL-2 owes is stubbed by name, never silently: the share sheet
 //     (exports are logged and dropped), legal links, the employer comparison (EmployerFigureStore), the foreground
 //     refresh and sync, and the reminder triggers beyond onboarding. The threshold alert is hidden in iOS v1 (iOS
 // Ruling
@@ -202,8 +184,10 @@ internal fun IosOnboardingRoute(
     )
 }
 
-/** The iOS main shell: the bottom bar over the four common tabs and the forecast overlays (see the header). */
-@Suppress("LongMethod", "CyclomaticComplexMethod")
+/**
+ * The iOS main shell: the common MainTabs (IOS-MOVE-TABS R1360 - the bar, the four tabs and the forecast overlays, the
+ * same wiring Android's MainShell calls) over the common graph, with iOS's own seams (see the header).
+ */
 @Composable
 internal fun IosMainShell(
     shell: IosShell,
@@ -212,20 +196,8 @@ internal fun IosMainShell(
 ) {
     val controllers = remember { shell.buildControllers(scope) }
     var tab by rememberSaveable { mutableStateOf(AppTab.AUJOURDHUI) }
-    var forecastRoute by rememberSaveable { mutableStateOf<IosForecastRoute?>(null) }
-    val aujourdhuiState by controllers.aujourdhui.state.collectAsState()
-    val calendarState by controllers.calendar.state.collectAsState()
-    val releveState by controllers.releve.state.collectAsState()
-    val parametresState by controllers.parametres.state.collectAsState()
-    val forecastState by controllers.forecast.state.collectAsState()
-    val simulationState by controllers.simulation.state.collectAsState()
+    var forecastRoute by rememberSaveable { mutableStateOf<ForecastRoute?>(null) }
 
-    LaunchedEffect(forecastRoute) {
-        if (forecastRoute != null) {
-            controllers.forecast.refresh()
-            controllers.simulation.refresh()
-        }
-    }
     // NAMED STUB (IOS-SHELL-2, G5): the share sheet. The export events are read so none is left waiting, and logged.
     LaunchedEffect(controllers.releve) {
         controllers.releve.exportEvents.collect { shell.notYetOnIos("the share sheet for a releve export") }
@@ -238,145 +210,37 @@ internal fun IosMainShell(
         controllers.parametres.accountEvents.collect { onSignedOut() }
     }
 
-    Scaffold(
-        bottomBar = {
-            AppBottomBar(
-                selected = tab,
-                onSelect = { selected ->
-                    if (selected == AppTab.AUJOURDHUI) controllers.aujourdhui.refresh()
-                    if (selected == AppTab.CALENDRIER) controllers.calendar.refresh()
-                    tab = selected
+    MainTabs(
+        controllers = controllers,
+        tab = tab,
+        onTabChange = { tab = it },
+        forecastRoute = forecastRoute,
+        onForecastRouteChange = { forecastRoute = it },
+        // NAMED STUB: the year downloads (Android's AN-PULL) are not built on iOS yet - never failed, retry logged.
+        yearDownloadFailed = false,
+        onRetryDownload = { shell.notYetOnIos("the year downloads' retry") },
+        onCompareEmployer = { shell.notYetOnIos("the employer comparison (EmployerFigureStore)") },
+        onEnableAlert = { shell.notYetOnIos("the threshold alert (hidden in iOS v1)") },
+        parametresTab = { state, onOpenRhythm ->
+            ParametresScreen(
+                state = state,
+                actions = iosParametresActions(shell, controllers.parametres, onOpenRhythm),
+                appVersion = shell.appVersion,
+                startDatePicker = { initial, onPicked, onDismiss ->
+                    IosStartDatePicker(initial, onPicked, onDismiss)
                 },
             )
         },
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (tab) {
-                AppTab.AUJOURDHUI ->
-                    AujourdhuiScreen(
-                        state = aujourdhuiState,
-                        actions =
-                            AujourdhuiActions(
-                                onRecord = controllers.aujourdhui::record,
-                                onConfirmDetected = controllers.aujourdhui::confirmDetected,
-                                onCorrectDetected = controllers.aujourdhui::correctDetected,
-                                onNavigateToCalendrier = { tab = AppTab.CALENDRIER },
-                                onNavigateToForecast = { forecastRoute = IosForecastRoute.PREVISION },
-                                onRetryDownload = { shell.notYetOnIos("the year downloads' retry") },
-                            ),
-                        yearDownloadFailed = false,
-                    )
-                AppTab.CALENDRIER ->
-                    CalendrierScreen(
-                        state = calendarState,
-                        actions =
-                            CalendarActions(
-                                onPreviousMonth = controllers.calendar::goPreviousMonth,
-                                onNextMonth = controllers.calendar::goNextMonth,
-                                onDayClick = controllers.calendar::openDay,
-                                onSave = controllers.calendar::save,
-                                onDismissSheet = controllers.calendar::closeSheet,
-                                onStartSelection = { controllers.calendar.startSelection() },
-                                onStartSelectionWithDay = { iso -> controllers.calendar.startSelection(iso) },
-                                onToggleDay = controllers.calendar::tapDay,
-                                onCancelSelection = controllers.calendar::cancelSelection,
-                                onChooseBulk = controllers.calendar::chooseBulk,
-                                onConfirmBulk = controllers.calendar::confirmBulk,
-                                onCancelConfirmation = controllers.calendar::cancelBulkConfirmation,
-                            ),
-                    )
-                AppTab.RELEVE -> {
-                    // AN-RELEVE-FRESH (R560): opening the tab refreshes a stale year; leaving it stops the fetch.
-                    DisposableEffect(controllers.releve) {
-                        controllers.releve.onOpened()
-                        onDispose { controllers.releve.onClosed() }
-                    }
-                    ReleveScreen(
-                        state = releveState,
-                        actions =
-                            ReleveActions(
-                                onRetry = controllers.releve::load,
-                                onExportPdf = { controllers.releve.export(ExportKind.PDF) },
-                                onExportCsv = { controllers.releve.export(ExportKind.CSV) },
-                                onSelectYear = controllers.releve::selectYear,
-                                onCompareEmployer = {
-                                    shell.notYetOnIos("the employer comparison (EmployerFigureStore)")
-                                },
-                            ),
-                    )
-                }
-                AppTab.PARAMETRES ->
-                    ParametresScreen(
-                        state = parametresState,
-                        actions = iosParametresActions(shell, controllers.parametres) { forecastRoute = it },
-                        appVersion = shell.appVersion,
-                        startDatePicker = { initial, onPicked, onDismiss ->
-                            IosStartDatePicker(initial, onPicked, onDismiss)
-                        },
-                    )
-            }
-        }
-    }
-
-    forecastRoute?.let { route ->
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            when (route) {
-                IosForecastRoute.RYTHME ->
-                    RythmeScreen(
-                        state = forecastState,
-                        actions =
-                            RythmeActions(
-                                onSetDay = controllers.forecast::setDay,
-                                onViewForecast = { forecastRoute = IosForecastRoute.PREVISION },
-                                onBack = { forecastRoute = null },
-                            ),
-                    )
-                IosForecastRoute.PREVISION ->
-                    PrevisionScreen(
-                        state = forecastState,
-                        actions =
-                            PrevisionActions(
-                                onModifyRhythm = { forecastRoute = IosForecastRoute.RYTHME },
-                                onTestChange = { forecastRoute = IosForecastRoute.SIMULATION },
-                                onEnableAlert = { shell.notYetOnIos("the threshold alert (hidden in iOS v1)") },
-                                onBack = { forecastRoute = null },
-                            ),
-                        alertEnabled = parametresState.thresholdAlertEnabled,
-                    )
-                IosForecastRoute.SIMULATION ->
-                    SimulationScreen(
-                        state = simulationState,
-                        actions =
-                            SimulationActions(
-                                onSelectScenario = controllers.simulation::selectScenario,
-                                onInputsChange = controllers.simulation::updateInputs,
-                                onAdopt = {
-                                    simulationState.inputs.extraWeekday?.let {
-                                        controllers.forecast.setDay(it, RhythmChoice.DOMICILE)
-                                    }
-                                    forecastRoute = IosForecastRoute.PREVISION
-                                },
-                                onChangeRate = {
-                                    forecastRoute = null
-                                    tab = AppTab.PARAMETRES
-                                },
-                                onReturn = { forecastRoute = IosForecastRoute.PREVISION },
-                                onBack = { forecastRoute = IosForecastRoute.PREVISION },
-                            ),
-                    )
-            }
-        }
-    }
+        // No system back on iOS: the overlays close through their own back arrows, as before the move.
+        forecastBackHandler = {},
+    )
 }
-
-/** The forecast sub-screens over the shell (Android's ForecastRoute, which stays private to MainActivity). */
-internal enum class IosForecastRoute { RYTHME, PREVISION, SIMULATION }
 
 /** The Parametres tab's callbacks on iOS: no detection entry point (manual-only), the reminder asked of the centre. */
 private fun iosParametresActions(
     shell: IosShell,
     controller: ch.monreleve.app.parametres.ParametresController,
-    openForecast: (IosForecastRoute) -> Unit,
+    onOpenRhythm: () -> Unit,
 ): ParametresActions =
     ParametresActions(
         onCantonChange = controller::onCantonChange,
@@ -414,7 +278,7 @@ private fun iosParametresActions(
             }
         },
         onToggleThresholdAlert = { shell.notYetOnIos("the threshold alert (hidden in iOS v1)") },
-        onOpenRhythm = { openForecast(IosForecastRoute.RYTHME) },
+        onOpenRhythm = onOpenRhythm,
     )
 
 /**
