@@ -65,6 +65,13 @@ class MovedTwinsFenceTest {
             "ch/monreleve/app/reminder/FallbackReminder.kt",
             "ch/monreleve/app/reminder/EveningReminderPlan.kt",
             "ch/monreleve/app/fr/NotificationCopy.kt",
+            // IOS-MOVE-CORE R1300/R1303: the shell's platform-free files, moved whole (git mv, blobs unchanged).
+            "ch/monreleve/app/ui/shell/AppRoot.kt",
+            "ch/monreleve/app/ui/shell/AppTab.kt",
+            "ch/monreleve/app/ui/shell/ResolvingScreen.kt",
+            "ch/monreleve/app/detection/LoggingModeRestore.kt",
+            "ch/monreleve/app/onboarding/ManualOnlyOnboarding.kt",
+            "ch/monreleve/app/startup/StartupDecider.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -113,6 +120,10 @@ class MovedTwinsFenceTest {
                     "FALLBACK_REMINDER_TIME", "nextFallbackAt", "fallbackWake", "FallbackWake",
                     "restoredEveningOptIn", "EVENING_REMINDER_HORIZON", "EveningReminderPlan",
                     "eveningReminderPlan", "NotificationCopy", "NotificationLines",
+                    // IOS-MOVE-CORE R1303: composables, an enum, plain and extension funs, sealed interfaces.
+                    "AppRoot", "AppTab", "ResolvingScreen", "phoneLoggingMode", "applyServerLoggingMode",
+                    "onboardingSeedFor", "StartDecision", "UnresolvedCause", "MeFetch", "Resolution", "resolveStart",
+                    "decideStartAfterSignIn", "meFetchOf",
                 ),
             ),
         )

@@ -13,7 +13,8 @@ import java.io.File
  * button sat under the navigation bar - with 3-button navigation a tap on Prevision's button opened Recents. Nothing
  * failed, because nothing asked: the S9 (API 29) never draws behind its bars, and no gate runs a device.
  *
- * THE RULE (R1170): the system-bar insets are applied ONCE, by [WRAPPER] (ui/shell/AppRoot.kt), at the composition
+ * THE RULE (R1170): the system-bar insets are applied ONCE, by [WRAPPER] (:shared commonMain ui/shell/AppRoot.kt since
+ * IOS-MOVE-CORE R1300), at the composition
  * root of every activity the app ships - and consumed there, so a Scaffold or NavigationBar beneath it adds nothing.
  *
  * DISCOVERY, NOT A TYPED LIST (R246). Both subjects are read from their sources of truth:
@@ -36,7 +37,10 @@ import java.io.File
  */
 
 private const val WRAPPER = "AppRoot"
-private const val WRAPPER_FILE = "src/main/kotlin/ch/monreleve/app/ui/shell/AppRoot.kt"
+
+// IOS-MOVE-CORE R1300/R1303: AppRoot moved to :shared commonMain, same package, unchanged. This path follows it; read
+// by subjectFile, so a path pointing at nothing fails rather than passing over nothing (R460).
+private const val WRAPPER_FILE = "../shared/src/commonMain/kotlin/ch/monreleve/app/ui/shell/AppRoot.kt"
 private const val MAIN_MANIFEST = "src/main/AndroidManifest.xml"
 private const val APP_PACKAGE = "ch.monreleve.app"
 private const val APP_KOTLIN = "src/main/kotlin"
@@ -49,7 +53,9 @@ private const val FENCE = "EdgeToEdgeCensusTest"
 private val SCREEN_ROOTS =
     listOf(
         FenceRoot(File("../shared/src/commonMain/kotlin/ch/monreleve/app/ui"), pin = "WelcomeScreen.kt"),
-        FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "ResolvingScreen.kt"),
+        // IOS-MOVE-CORE R1303: ResolvingScreen moved to :shared commonMain's ui/ with the shell - read by the root
+        // above. :app's ui/ keeps the two start-date pickers, so the root stays, pinned by one of them.
+        FenceRoot(File("src/main/kotlin/ch/monreleve/app/ui"), pin = "OnboardingStartDatePicker.kt"),
     )
 
 // The shipped sources a call site can live in. dev/ is filtered out of the first, with DEV_EXCLUSION_REASON.
@@ -177,7 +183,8 @@ class EdgeToEdgeCensusTest {
             SCREEN_ROOTS.ktFiles().flatMap { file ->
                 SCREEN_DECLARATION.findAll(Source(file).code).map { it.groupValues[1] }.toList()
             }.toSet()
-        // Positive controls: a screen outside the Scaffold (N1), a tab inside it, and the :app shell's own screen.
+        // Positive controls: a screen outside the Scaffold (N1), a tab inside it, and the shell's own screen (in
+        // :shared commonMain since IOS-MOVE-CORE).
         for (probe in listOf("WelcomeScreen", "AujourdhuiScreen", "ResolvingScreen")) {
             assertTrue("$FENCE: discovery did not find $probe - it found ${declared.sorted()}", probe in declared)
         }
@@ -200,7 +207,12 @@ class EdgeToEdgeCensusTest {
                     val outer = enclosing.firstOrNull()
                     // ONLY in :shared. An :app function can be a framework entry point - CallbackActivity's onCreate
                     // has no caller in any source, the framework calls it (R246) - and this census's own first run
-                    // classed CallbackScreen as off-Android on exactly that. Nothing outside :app enters commonMain.
+                    // classed CallbackScreen as off-Android on exactly that. commonMain holds no framework entry
+                    // point: every activity the manifest names is resolved under :app's src/main/kotlin by
+                    // manifestActivities (subjectFile fails otherwise). IOS-MOVE-CORE R1303: this line used to read
+                    // "Nothing outside :app enters commonMain", which stopped being true when the shell's platform-free
+                    // files (AppRoot among them) moved there; they are entered by calls from :app's activities, which
+                    // is what this census counts.
                     val offAndroid =
                         outer?.takeIf { inScreen == null && source.isShared && !calledFrom(it, sources) }
                     CallSite(source, m.range.first, inScreen, offAndroid)
@@ -272,7 +284,7 @@ class EdgeToEdgeCensusTest {
                         }
                     appendLine("  $screen <- $where")
                 }
-                append("Fix: host the composition in $WRAPPER (ui/shell/AppRoot.kt), never per call site (R1170).")
+                append("Fix: host the composition in $WRAPPER ($WRAPPER_FILE), never per call site (R1170).")
             }
         assertTrue(report, unhosted.isEmpty())
     }
