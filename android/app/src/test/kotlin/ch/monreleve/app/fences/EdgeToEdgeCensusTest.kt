@@ -77,6 +77,16 @@ private val INSET_HANDLING =
 private val SCREEN_DECLARATION =
     Regex("""^(?:(?:public|internal)\s+)?fun\s+([A-Z]\w*Screen)\s*\(""", RegexOption.MULTILINE)
 
+// IOS-SHELL-1 R1328: the shell's routes moved from MainActivity.kt (a wrapped activity file) to :shared commonMain
+// (ShellRoutes.kt), so a screen is now reached THROUGH a route there - WelcomeScreen inside SignInRoute, inside
+// ShellRouter, called from MainActivity's AppRoot. A ROUTE is therefore discovered as a screen is (top-level, not
+// private, named `<Name>Route` or `<Name>Router`, under :shared commonMain) and joins the fixed point below as a HOST
+// that must itself be hosted: a screen inside a route counts only if EVERY call site of that route is hosted. So the
+// rule is unchanged - every screen reaches a wrapped root - and a route called from an unwrapped place fails as a
+// screen would.
+private val ROUTE_DECLARATION =
+    Regex("""^(?:(?:public|internal)\s+)?fun\s+([A-Z]\w*(?:Route|Router))\s*\(""", RegexOption.MULTILINE)
+
 private val FUNCTION_DECLARATION = Regex("""\bfun\s+(?:<[^>]*>\s*)?([A-Za-z_]\w*)\s*\(""")
 
 private class Source(
@@ -188,7 +198,15 @@ class EdgeToEdgeCensusTest {
         for (probe in listOf("WelcomeScreen", "AujourdhuiScreen", "ResolvingScreen")) {
             assertTrue("$FENCE: discovery did not find $probe - it found ${declared.sorted()}", probe in declared)
         }
-        return declared
+        // IOS-SHELL-1 R1328: the routes, read from the :shared commonMain root (ROUTE_DECLARATION).
+        val routes =
+            listOf(SHIPPED_ROOTS[1]).ktFiles().flatMap { file ->
+                ROUTE_DECLARATION.findAll(Source(file).code).map { it.groupValues[1] }.toList()
+            }.toSet()
+        for (probe in listOf("ShellRouter", "SignInRoute", "CodeRoute", "ResolvingRoute")) {
+            assertTrue("$FENCE: route discovery did not find $probe - it found ${routes.sorted()}", probe in routes)
+        }
+        return declared + routes
     }
 
     private fun callSites(
