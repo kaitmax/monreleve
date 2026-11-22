@@ -40,6 +40,6 @@ class InMemoryEveningNotificationStore(
     override fun lastNotifiedDay(): String? = lastDay
 
     override fun markNotified(dayDate: String) {
-        lastDay = dayDate
+        if (lastDay == null) lastDay = dayDate // R1370 PLANT PA1: only the first day is ever kept
     }
 }

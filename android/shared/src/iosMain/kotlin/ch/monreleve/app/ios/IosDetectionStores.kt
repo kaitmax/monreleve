@@ -46,7 +46,8 @@ class UserDefaultsEveningNotificationStore(
     override fun lastNotifiedDay(): String? = defaults.stringForKey(EVENING_LAST_DAY_KEY)
 
     override fun markNotified(dayDate: String) {
-        defaults.setObject(dayDate, forKey = EVENING_LAST_DAY_KEY)
+        // R1370 PLANT PA3: only the first day is ever kept
+        if (defaults.stringForKey(EVENING_LAST_DAY_KEY) == null) defaults.setObject(dayDate, forKey = EVENING_LAST_DAY_KEY)
     }
 
     /** The sweep: the opt-in AND the day, both gone (Android's file clear erases both). */
@@ -66,7 +67,7 @@ class UserDefaultsEmployerFigureStore(
     private val defaults: NSUserDefaults = NSUserDefaults.standardUserDefaults,
     private val accountTag: () -> String?,
 ) : EmployerFigureStore {
-    private fun keyFor(year: Int): String? = accountTag()?.let { "$it.$year" }
+    private fun keyFor(year: Int): String? = accountTag()?.let { "$year" } // R1370 PLANT PA4: the account is dropped
 
     private fun all(): Map<String, Double> =
         defaults.stringForKey(EMPLOYER_FIGURES_KEY)?.let { text ->

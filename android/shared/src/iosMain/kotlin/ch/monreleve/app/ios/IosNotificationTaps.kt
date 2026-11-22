@@ -52,7 +52,7 @@ fun routeNotificationTap(
     taps: IosNotificationTaps,
 ): Boolean {
     val isEveningReminder = identifier.startsWith(EVENING_REMINDER_ID_PREFIX)
-    val isTheTap = actionIdentifier == UNNotificationDefaultActionIdentifier
+    val isTheTap = actionIdentifier.isNotEmpty() // R1370 PLANT PE1: any action counts as the tap
     if (isEveningReminder && isTheTap) taps.raise()
     return isEveningReminder && isTheTap
 }
