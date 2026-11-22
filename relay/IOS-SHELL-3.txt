@@ -1,0 +1,73 @@
+IOS-SHELL-3 SESSION PROMPT - Mon Releve
+THE iOS SHELL'S LAST GAPS: THE YEAR DOWNLOADS, THE EMPLOYER COMPARISON, FOREGROUND PARITY, THE RESTORE RACE
+(iOS phase, shell 3 of 3 - before IOS-WALK)
+Written by the orchestrating session on 2026-11-22 (iOS Ruling 15 in relay/RULINGS-2026-11-16.txt, and Rulings
+2, 3, 9-14). Read first: those rulings whole; REPORT-IOS-SHELL-2.txt (QUESTIONS Q1-Q6, NOTICED, DEVIATION 6);
+REPORT-IOS-SHELL-1.txt; REPORT-IOS-MOVE-GRAPH.txt and REPORT-IOS-MOVE-CORE.txt (how a move is pinned, transcribed,
+fenced and planted - follow them); :app data/sync/YearDownloads.kt, account/DeviceLocalStores.kt, YearDownloadsTest
+and YearDownloadRoomTransactionInstrumentedTest; :shared data/sync/EntriesDownload.kt; MainActivity's MainShell
+(the comparison overlay) and :shared MainTabs.kt; iosMain ios/IosShell.kt, IosShellUi.kt, IosSessionEndSeam.kt;
+CLAUDE.md R154, R169, R178, R180, R196, R204, R206, R246, R268, R349, R391, R573, R574.
+Names: worktree C:/wt/s3-shell, branch s3-shell (NOT ios-*), report REPORT-IOS-SHELL-3.txt. Ruling numbers:
+R1370-R1379. YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, NEW COPY, a workflow trigger
+change or anything needing an Apple account comes back to the orchestrator as a QUESTION - continue with the rest.
+THE :app EDITS NAMED BELOW ARE THE TASK, not deviations (as R1328 was); the report shows each :app diff and argues
+every line that is not a move. Anything else in :app is a DEVIATION with its reason.
+BASE: origin/main as stated in your brief.
+
+R1370. INCREMENT 0 - THE PLANTS IOS-SHELL-2 OWED (iOS Ruling 15 on its DEVIATION 6). Before any new code: plant ONE
+    regression per group of IOS-SHELL-2's tests that never ran RED - (a) the four store contract classes and
+    IosDetectionFileIosTest; (b) the export pair; (c) the legal pair; (d) the deletion test; (e) the two tap tests;
+    (f) recordingToday / authorizationGranted / serverEnded; (g) increment 4's switch-ON assertion - each plant
+    verified LANDED (R180), all in ONE ios-shared run, each seen to fail BY NAME for its stated reason; then
+    reverted, the revert verified (dirty=0). A group whose plant does not fail is a FINDING: the test is fixed so it
+    can fail, and that is reported.
+R1371. THE YEAR DOWNLOADS COME TO iOS (iOS Ruling 15 Q2 - A SHIP BLOCKER: without them an existing account's
+    threshold answer on iOS is wrong, and reminders fire for days already recorded elsewhere). PIN THEN MOVE, as 5b:
+    YearDownloadsTest transcribed to kotlin.test where the code lives, seen GREEN against :app's code, then
+    YearDownloads' platform-free part and the transcription move together to :shared commonMain/commonTest; the
+    original deleted with a case map (R268) and the floor arithmetic STATED (as R1313). What is Android-only stays in
+    :app behind parameters. Then iOS wires it:
+    - THROUGH THE SHELL (R204): an iosTest signs in through the shell against a recording transport carrying a
+      prior year's entries and asserts they are in the iOS database afterwards - not by calling the downloader.
+    - SESSION END: Android stops the downloads in DeviceLocalStores; iOS stops them through IosSessionEndSeam. An
+      iosTest proves a download that completes AFTER an ending writes NOTHING (one account's entries must never land
+      in the next account's database) - with a positive control that the same download, uninterrupted, writes.
+    - ATOMICITY ON iOS: Android's proof is an instrumented test outside the gate, so iOS gets its own iosTest
+      against the iOS database (a failure mid-year leaves the year as it was).
+R1372. THE EMPLOYER COMPARISON ON iOS (iOS Ruling 15 Q1). ComparisonScreen and buildComparison are already common;
+    the overlay MainShell composes becomes a slot of the common MainTabs (as the forecast overlay is), both shells
+    draw it, iOS reads R1334's UserDefaults EmployerFigureStore. "Comparer avec mon employeur" stops being a logged
+    stub. :app's pins unedited; Paparazzi at zero tolerance, no baseline regenerated (R135 - stop on a moved
+    pixel with the crop). An iosTest through the shell: figure set -> comparison opened -> the figure shown -> back.
+R1373. FOREGROUND PARITY (iOS Ruling 15 Q3). (a) onForeground also refreshes Aujourd'hui (Android's F8, the midnight
+    case) - an iosTest crossing midnight with the app foregrounded. (b) a willPresent on the delegate shows the
+    reminder while the app is open, as Android does - an iosTest that the delegate answers with a banner
+    presentation. Each test-first, RED shown.
+R1374. THE RESTORE RACE (iOS Ruling 15 Q6). MEASURE, in code and by test, before fixing: (1) does RESOLVING (and so
+    restoreReminder) run on EVERY signed-in cold launch, not only after a sign-in? (2) is a restored OFF ever sent
+    back to the server (reminderOptInBody or any opt-in write path)? If (1) - a launch where /me answers before the
+    centre's first authorization read writes OFF over a persisted ON - it is a DEFECT: fix it iOS-side (the restore
+    waits for the centre's first answer) in preference to editing the common controller, with an iosTest that
+    reproduces the race RED first. If (2), the defect also reaches Android through the account: say so and prove
+    the fix stops it.
+R1375. THE PRESENCE CONTROL R1338 OWED (iOS Ruling 15). IOS-SHELL-2 proved the two threshold-alert entry points
+    ABSENT on iOS; their PRESENCE on Android rests on unchanged call sites and a baseline (previsionCompliant.png)
+    that shows only the top edge of the offer's row. Add a JVM/Android test that renders ParametresScreen and
+    PrevisionScreen with Android's handlers and asserts both entry points are present (R169's corollary), planted.
+R1376. ANDROID UNCHANGED beyond R1371-R1372's moves: the full :app:gate (R391), no baseline moved, test floor >=
+    1568 MINUS the transcribed originals (stated) - :shared's count rises by the same number.
+R1377. iOS: ONE ios-shared.yml run for R1370's plants (RED, listed), and ONE ios-shared.yml plus ONE ios-app.yml run
+    on your pushed CODE tip; ios-shared's count from the JUnit XML against 503, new classes named; ios-app's probe
+    keys all PASS and launch-DEFAULT.png still the sign-in screen (looked at).
+
+THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without it
+Gradle says "SDK location not found" - NO RESULT); test-first; fastCheck per increment; PUSH EVERY INCREMENT (a
+session that dies at its limit is relaunched from your pushed tip); the FULL :app:gate under the heavy lock (node
+C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 8000 --wait-min 600; the operator's applications may hold
+memory - wait, never lower the line, never touch their processes); every Gradle run --no-daemon, NEVER `gradlew
+--stop`; R573; push the branch (DO NOT MERGE); report; push; lock removed last. Sessions do not write parking.md.
+The repository is PUBLIC: no sign-in mail, code, token or server log reaches a log, a commit or an artifact.
+REPORT: SUMMARY / STATUS (R391) / R1370-R1377 with evidence (the case map) / NOTICED BUT NOT TOUCHING /
+DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF IOS-SHELL-3 PROMPT

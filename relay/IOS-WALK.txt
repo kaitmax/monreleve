@@ -2,7 +2,8 @@ IOS-WALK SESSION PROMPT - Mon Releve
 I2: THE iOS APP DRIVEN END TO END ON THE SIMULATOR AGAINST A THROWAWAY SERVER (iOS phase, I2)
 Written by the orchestrating session on 2026-11-22 (iOS Rulings 2, 3, 9, 10, 11 and the overnight plan in
 relay/RULINGS-2026-11-16.txt, whose point 3 sets this prompt's safety requirements). Read first: those rulings
-whole; REPORT-IOS-SHELL-1.txt and REPORT-IOS-SHELL-2.txt (what the app now does); REPORT-IOS-MOVE-SEAM.txt and
+whole; REPORT-IOS-SHELL-1.txt, REPORT-IOS-SHELL-2.txt and REPORT-IOS-SHELL-3.txt (what the app now does);
+REPORT-IOS-MOVE-TABS.txt and REPORT-IOS-MOVE-GRAPH.txt; REPORT-IOS-MOVE-SEAM.txt and
 REPORT-IOS-MOVE-REMINDER.txt (the observables this walk must measure); REPORT-IOS-HOST.txt and
 .github/workflows/ios-app.yml (how the app is built, installed, launched and read back on the macOS runner);
 web/'s own e2e set-up for a scratch database and a local server (gate:clone creates and migrates one - reuse
@@ -47,17 +48,27 @@ R1344. WHAT THE WALK DRIVES (R176, through the real entry points - R204): first 
     manual-only, OPENING the native start-date picker
     (iOS Ruling 13 Q2) and choosing a date -> Aujourd'hui: record today -> the calendar: record
     and change another day -> the dossier/export: the share sheet opens -> Parametres: reminder opt-in on,
-    employer figure set and still there after a relaunch -> sign-out -> relaunch reaches sign-in. Each step
+    the threshold-alert switch ABSENT (iOS Ruling 3 Q4, beside the evening switch PRESENT), one legal link
+    opened (what opened is recorded), employer figure set and still there after a relaunch, the employer
+    comparison opened and showing it -> sign-out -> relaunch reaches sign-in -> SIGN IN AGAIN with the same
+    account: the days recorded before sign-out are back (the year downloads, IOS-SHELL-3 R1371) - then the
+    rest of R1345. If the real app shows a transient notice anywhere on the way, photograph one (iOS Ruling 15
+    Q5: the operator decides its presentation). Each step
     writes a line to the result file with what the screen showed; each screenshot is named in the report.
     THE UI DRIVER: name it (XCUITest from the generated project, or another tool already on the runner) and,
     as the FIRST increment, prove it can find and tap one Compose element by its accessibility label and get
     past the system notification-permission alert, AND open the native UIDatePicker (a UIKit
-    element inside Compose) and read its value - before the rest of the walk is written. A driver that
+    element inside Compose) and read its value, AND send the app to the background and back (a REAL
+    foreground: ON_RESUME is argued from source only, and both the foreground drain and the re-plan depend on
+    it - show the drain and the re-plan happened) - before the rest of the walk is written. A driver that
     needs a new project dependency comes back to the orchestrator.
 R1345. EACH OBSERVABLE IS PROVEN TO HAVE RUN (the overnight plan's point 3), measured on the simulator's real
     notification centre, not a recording one:
     - M4 (iOS Ruling 10): after opt-in, the pending request set - count, the dates, each at 19:00 with no
       zone, today's absent once today is recorded; re-planning on a foreground does not double it.
+    - THE TAP (R1330): MEASURE whether a delivered reminder can be produced and tapped on the simulator (a
+      trigger moved near, or simctl push); if it can, the tap opens Aujourd'hui; if it cannot, say why and it
+      stays on R1347's iPhone list.
     - M3 (iOS Ruling 9): the pending-request count BEFORE sign-out (> 0, else the "after" proves nothing -
       R169's corollary) and AFTER sign-out (0); the same for account deletion on a second @monreleve.test
       account.
@@ -70,7 +81,8 @@ R1346. THE LINK VERSUS THE CODE (iOS Ruling 3 Q2). The mail carries both the htt
     (whether the web callback consumed the token first). This is a FINDING either way, recorded, never
     "fixed" here - a change to the sign-in semantics comes back to the orchestrator.
 R1347. WHAT THE SIMULATOR CANNOT SHOW is listed for the operator's iPhone, with how to check each: message://
-    shown and opening Mail; delivery and tap of a real reminder at 19:00; background sync (PARK-IF1); the
+    shown and opening Mail (the simulator measured canOpenURL=false, so the button is hidden there - the shown
+    state is the iPhone's, iOS Ruling 15 Q4); delivery and tap of a real reminder at 19:00; background sync (PARK-IF1); the
     universal link (needs the Apple account); a RELEASE build logging through IosLogger (no CI run builds Release -
     iOS Ruling 13 Q4) without a crash.
 R1348. ANDROID UNCHANGED. If this session edits nothing under android/, :app:gate is not owed - say so with

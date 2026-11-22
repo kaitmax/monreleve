@@ -1,0 +1,72 @@
+IOS-AUDIT SESSION PROMPT - Mon Releve
+I3: THE iOS RELEASE AUDIT - WHAT SHIPS, WHAT IS TEST-ONLY, WHAT THE OPERATOR OWES (iOS phase, I3, the last)
+Written by the orchestrating session on 2026-11-22 (iOS Rulings 2, 3, 9-14 and the overnight plan in
+relay/RULINGS-2026-11-16.txt; the I3 line of the plan: "the iOS release audit; push, device, TestFlight and App
+Store listed as the operator's"). Read first: those rulings whole; REPORT-IOS-HOST.txt, REPORT-IOS-SHELL-1.txt,
+REPORT-IOS-SHELL-2.txt, REPORT-IOS-SHELL-3.txt, REPORT-IOS-MOVE-TABS.txt and REPORT-IOS-WALK.txt (what the app now is, what the walk
+measured, what it could not); ios/project.yml; ios/MonReleve/Sources/*.swift; .github/workflows/ios-app.yml,
+ios-shared.yml and ios-walk.yml; android/shared/src/iosMain/**; CLAUDE.md R154, R169, R172, R178, R180, R204,
+R205, R206, R246, R268, R349, R391, R573, R574.
+Names: worktree C:/wt/i3-audit, branch i3-audit (NOT ios-*), report REPORT-IOS-AUDIT.txt. Ruling numbers:
+R1350-R1359. YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, new user-facing copy, a
+workflow trigger other than workflow_dispatch, any legal or privacy CLAIM not derived from code, or anything
+needing an Apple account comes back to the orchestrator as a QUESTION - continue with the rest.
+BASE: origin/main as stated in your brief.
+
+R1350. NOTHING PROBE-ONLY SHIPS (iOS Rulings 3 Q3, 10 Q6). Census, by name, every probe/pilot piece: HostProbe.swift
+    and its keys (keychain, bgtask, notification, reminder - M4's step 5, share, firstLaunch, ats, info),
+    IosEveningReminderProbe.kt, FirstLaunchProbeResult.kt, KeychainRoundTripResult.kt, the pilot view controller
+    (pilot/AujourdhuiPilotViewController.kt) and the -probe / -pilotScenario launch paths in MonReleveApp.swift.
+    For each: REMOVED where IOS-WALK now measures the same observable on the real app (say which walk line), or
+    KEPT as Debug-only test harness the ios-app run still needs (say which check) and EXCLUDED from the Release
+    build. The BGTask plist keys go if nothing in the shipped app registers a task (PARK-IF1 stays device-only).
+    Prove it on a RELEASE build: R1353.
+R1351. THE STRUCTURAL TAB FENCE (iOS Ruling 14 Q1). A fence refusing any `AppTab.<X> ->` branch outside MainTabs.kt
+    and AppBottomBar.kt in :app main and :shared iosMain - a renamed copy of the wiring fails, not only a same-named
+    one. Planted (a `when (tab)` with one real `AppTab.<X> ->` branch in an iosMain file), verified landed, seen to fail by name (R180).
+R1352. MainTabs EXERCISED (iOS Ruling 14 Q2). An iosTest that drives MainTabs itself through the shell (R204):
+    each tab selected; Prevision opened, the simulator opened, back; Calendrier and Releve reached. It REPLACES
+    SimulationForecastScreensIosTest's hand-written reductions, with a case map so nothing is dropped (R268).
+R1353. THE RELEASE BUILD, INSPECTED, NEVER LAUNCHED. ios-app.yml gains ONE step (triggers untouched) that builds the
+    RELEASE configuration for the simulator, unsigned, and INSPECTS it without launching it (a launched Release
+    build would talk to production): its Info.plist carries MonReleveApiBaseUrl=https://monreleve.ch and NO ATS
+    exception or local-networking key; no probe launch argument is handled (the probe symbols named in R1350 are
+    absent from the binary - `nm` or `strings`, the command shown); the version keys are present. Each assertion
+    has a positive control (the same check run on the Debug build finds what Release must not have - R169).
+R1354. APP STORE READINESS, BY FILE. Census what a submission needs and whether it exists: the app icon set (none
+    exists today - if it can be DERIVED from Android's launcher icon source by a script with one home, add it;
+    otherwise a QUESTION), the launch screen, PrivacyInfo.xcprivacy (required-reason APIs: declare only the
+    reasons the code's own API uses PROVE - grep shown per API; the data-collection list matched to what the web
+    privacy page discloses (DISCLOSED_RECORDS, R206) - any entry that is a claim rather than a derivation is a
+    QUESTION), Info.plist usage strings (iOS v1 is manual-only: NO location key may exist - asserted by test),
+    ITSAppUsesNonExemptEncryption (the export-compliance answer is the OPERATOR's - list it, do not set it).
+R1355. ACCESSIBILITY ON iOS. An iosTest asserting the four tabs and the primary actions of each screen carry an
+    accessibility label (Compose semantics reach UIAccessibility - MEASURE that they do, from the walk's driver or
+    the probe, do not assume); text scaling measured at the largest Dynamic Type size on the simulator in the
+    ios-app run (a screenshot, looked at, R574 respected). Findings fixed where no new copy is needed; the rest
+    listed. The repository's hig-compliance-auditor skill may be used; its findings are inputs, not rulings.
+R1356. NO FRENCH LITERAL IN iosMain UI. The :app rule that user-facing strings live in the copy objects is extended
+    to :shared iosMain (and the Swift sources): a fence fails on a user-facing literal outside them, planted.
+    R155's accent guard covers whatever copy iOS added.
+R1357. THE OPERATOR'S LIST, ONE FILE. docs/ios-release.md: every step that needs the Apple Developer account or a
+    real iPhone, each with how to do it and what proves it done - team id and signing, the bundle id, TestFlight,
+    the App Store Connect listing and privacy answers, export compliance, the universal link (AASA + Associated
+    Domains; iOS Ruling 3 Q2 keeps code-only until then), APNs if ever, and IOS-WALK R1347's iPhone checks
+    (message://, a real 19:00 reminder, background sync PARK-IF1, the universal link, Release logging - iOS
+    Ruling 14 Q3). No claim that any of it is done.
+R1358. ANDROID UNCHANGED: if android/app is touched, the full :app:gate (R391), floor >= the base's, any :app edit
+    a DEVIATION with its reason. iOS: ONE ios-shared.yml and ONE ios-app.yml run on your pushed code tip
+    (ios-shared counted from the JUnit XML against the base's; ios-app's remaining probe keys PASS and R1353's
+    Release step green); if web/ is touched, gate:changed and gate:clone.
+R1359. NOTHING LEAVES THE RUNNER THAT SHOULD NOT: the Release inspection prints names and keys, never a binary
+    dump; the repository is PUBLIC.
+
+THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without it
+Gradle says "SDK location not found" - NO RESULT); test-first; fastCheck per increment; PUSH EVERY INCREMENT (a
+session that dies at its limit is relaunched from your pushed tip); the FULL :app:gate under the heavy lock (node
+C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 8000 --wait-min 600; the operator's applications may hold
+memory - wait, never lower the line, never touch their processes); every Gradle run --no-daemon, NEVER `gradlew
+--stop`; R573; push the branch (DO NOT MERGE); report; push; lock removed last. Sessions do not write parking.md.
+REPORT: SUMMARY / STATUS (R391) / R1350-R1359 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF IOS-AUDIT PROMPT

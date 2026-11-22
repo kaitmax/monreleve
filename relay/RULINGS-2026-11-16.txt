@@ -3057,3 +3057,48 @@ Q2 (MainTabs has no runtime exercise; SimulationForecastScreensIosTest holds
 Q3 (Release logging): the defect is CLOSED in the test process; R1347's
    iPhone item stays as a CONFIRMATION of the Release build, not an open
    defect.
+
+iOS Ruling 15 - IOS-SHELL-2, 2026-11-22. LANDED: main 68d47e47 (merge of
+s2-shell 8a08b63d; main unmoved at c171c25b, merge tree = gated tree).
+:app:gate on code tip f08425f0: BUILD SUCCESSFUL 1m55s, dirty=0/0,
+GATE_EXIT=0, floor 1568; :app detekt/ktlint UP-TO-DATE is cache-true
+(f08425f0 changed only iosMain/iosTest files over b06ded9d, whose full gate
+ran them green); :shared JVM 328 -> 338. R573: ios-shared 45040631818
+counted by the orchestrator from the JUnit XML: 100 suites, 503 tests, 0
+failures, 0 errors (461 + 42, every new class named in the report); ios-app
+45040634871 success, probe keys PASS, mail.canOpenMessageScheme=false
+MEASURED (the button is hidden on the simulator). web/, .github/ untouched;
+token check 0. THE FLOOR FROM HERE IS 1568; iOS SHARED FROM HERE IS 503.
+Deviations 1-5, 7-10 ACCEPTED (the Toast sites behind the one NoticeSink,
+   same behaviour; the nullable handlers with Android's defaults kept; the
+   rig rewrite; HostProbe step 8 and LSApplicationQueriesSchemes [message];
+   restoreReminder made synchronous again, for the stated reason).
+Deviation 6 (tests that passed first time, never RED): NOT accepted as
+   final. IOS-SHELL-3 R1370 plants one regression per group, in one run,
+   each seen to fail by name, before any new code.
+R1338's PRESENCE half rests on unchanged call sites and a baseline showing
+   only the top edge of the Prevision offer's row - an absence proven
+   without its presence (R169's corollary). IOS-SHELL-3 R1375 owes it.
+Q1 (the employer comparison on iOS): BUILD IT - IOS-SHELL-3 R1372, a slot of
+   the common MainTabs as the forecast overlay is. IOS-WALK drives it.
+Q2 (the year downloads after sign-in): A SHIP BLOCKER, not parity - an
+   existing account's threshold answer on iOS would be wrong and reminders
+   would fire for days recorded elsewhere. IOS-SHELL-3 R1371: pin then move
+   (as 5b), wired through the shell, stopped by IosSessionEndSeam (a download
+   finishing after an ending writes nothing, with a positive control), and
+   atomic on the iOS database by its own iosTest.
+Q3 (foreground refresh of Aujourd'hui; willPresent): YES to both, each
+   test-first - IOS-SHELL-3 R1373.
+Q4 (the mail button's shown state): YES, on IOS-WALK R1347's iPhone list.
+Q5 (the iOS transient notice): IOS-WALK photographs one if the real app
+   produces one on the way; the OPERATOR decides its presentation.
+Q6 (the restore race): MEASURE FIRST - IOS-SHELL-3 R1374. If RESOLVING runs
+   on every signed-in cold launch, the race overwrites a persisted ON on any
+   launch where /me answers first: a DEFECT, fixed iOS-side (the restore
+   waits for the centre's first answer); if a restored OFF reaches the
+   server, it reaches Android too.
+ORDER FROM HERE: IOS-SHELL-3 (R1370-R1377) -> IOS-WALK (R1340-R1348, now
+   also: sign in again and the earlier days are back; a real
+   background-then-foreground in its first increment; a legal link opened;
+   the alert switch absent; the comparison; the reminder tap measured) ->
+   IOS-AUDIT (R1350-R1359, prompt committed with this ruling).
