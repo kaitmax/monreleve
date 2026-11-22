@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import ch.monreleve.app.data.local.EntryKind
 import ch.monreleve.app.data.local.RhythmKind
 import ch.monreleve.app.data.remote.HttpBytesResponse
+import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.repo.RecordCommand
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.data.sync.ENTRIES_PATH
@@ -155,12 +156,14 @@ class IosShellFacilitiesIosTest {
         with(test) {
             setShellContent(this@toTheCodeScreen)
             tap(WelcomeCopy.START)
-            waitFor("the address field") { onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
+            waitFor("the address screen") { shows(SignInCopy.TITLE) }
             onAllNodes(hasSetTextAction()).onFirst().performTextReplacement(SHELL_ADDRESS)
             tap(SignInCopy.SUBMIT)
             waitFor("the code screen") { shows(CodeCopy.TITLE) }
         }
 
+    // The request for a code is ACCEPTED - 202, the only answer AuthApi.requestMagicLink reads as sent (run 1 met the
+    // rig's default 200 here, which the sign-in screen rightly refuses: a harness error, not a product one).
     private fun signedOut(canOpenMail: Boolean) =
         ShellRig(
             marked = true,
@@ -168,6 +171,10 @@ class IosShellFacilitiesIosTest {
             pendingAddress = null,
             account = null,
             settings = null,
+            transport =
+                RecordingTransport { _, path ->
+                    if (path == "/api/v1/auth/magic-link") HttpResponse(202, "") else HttpResponse(400, "{}")
+                },
             canOpenMail = canOpenMail,
         )
 
