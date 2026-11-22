@@ -41,7 +41,9 @@ private val SUBJECT_ROOTS: Map<String, List<FenceRoot>> =
     mapOf(
         "ui" to
             listOf(
-                FenceRoot(File(appSrcRoot, "ui"), pin = "AppBottomBar.kt"),
+                // IOS-MOVE-CORE R1303: AppBottomBar moved to :shared commonMain's ui/ (read by the shared root
+                // here); :app's ui/ keeps the two start-date pickers, so the root stays, pinned by one of them (R460).
+                FenceRoot(File(appSrcRoot, "ui"), pin = "OnboardingStartDatePicker.kt"),
                 // IOS-1b-A R604: Aujourd'hui's screen moved to :shared commonMain.
                 FenceRoot(File(sharedSrcRoot, "ui"), pin = "AujourdhuiScreen.kt"),
             ),

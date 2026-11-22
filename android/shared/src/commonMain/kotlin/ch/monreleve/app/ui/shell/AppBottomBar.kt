@@ -8,9 +8,9 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import ch.monreleve.app.R
+import ch.monreleve.app.design.Glyph
 import ch.monreleve.app.design.LightColors
+import ch.monreleve.app.design.glyphPainter
 import ch.monreleve.app.fr.NavCopy
 
 // AN10. The app's bottom navigation (SPEC 11). Two items - Aujourd'hui and Calendrier - because those
@@ -52,28 +52,28 @@ fun AppBottomBar(
         NavigationBarItem(
             selected = selected == AppTab.AUJOURDHUI,
             onClick = { onSelect(AppTab.AUJOURDHUI) },
-            icon = { Icon(painter = painterResource(R.drawable.ic_sun), contentDescription = null) },
+            icon = { Icon(painter = glyphPainter(Glyph.SUN), contentDescription = null) },
             label = { Text(text = NavCopy.AUJOURDHUI) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == AppTab.CALENDRIER,
             onClick = { onSelect(AppTab.CALENDRIER) },
-            icon = { Icon(painter = painterResource(R.drawable.ic_calendar), contentDescription = null) },
+            icon = { Icon(painter = glyphPainter(Glyph.CALENDAR), contentDescription = null) },
             label = { Text(text = NavCopy.CALENDRIER) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == AppTab.RELEVE,
             onClick = { onSelect(AppTab.RELEVE) },
-            icon = { Icon(painter = painterResource(R.drawable.ic_file_text), contentDescription = null) },
+            icon = { Icon(painter = glyphPainter(Glyph.FILE_TEXT), contentDescription = null) },
             label = { Text(text = NavCopy.RELEVE) },
             colors = colors,
         )
         NavigationBarItem(
             selected = selected == AppTab.PARAMETRES,
             onClick = { onSelect(AppTab.PARAMETRES) },
-            icon = { Icon(painter = painterResource(R.drawable.ic_settings), contentDescription = null) },
+            icon = { Icon(painter = glyphPainter(Glyph.SETTINGS), contentDescription = null) },
             label = { Text(text = NavCopy.PARAMETRES) },
             colors = colors,
         )
