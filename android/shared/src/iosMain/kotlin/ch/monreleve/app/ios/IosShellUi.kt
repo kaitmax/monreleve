@@ -98,8 +98,7 @@ fun IosShellRoot(shell: IosShell) {
 private fun ForegroundEffect(onForeground: () -> Unit) {
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        // RED PLANT P2 (R1332), reverted in the next commit: the root does not act on a foreground.
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_DESTROY) onForeground() }
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) onForeground() }
         owner.lifecycle.addObserver(observer)
         onDispose { owner.lifecycle.removeObserver(observer) }
     }
@@ -267,8 +266,8 @@ internal fun IosMainShell(
         yearDownloadFailed = false,
         onRetryDownload = { shell.notYetOnIos("the year downloads' retry") },
         onCompareEmployer = { shell.notYetOnIos("the employer comparison (EmployerFigureStore)") },
-        // RED PLANT P3 (R1338), reverted in the next commit: a no-op handler, as IOS-SHELL-1 left it.
-        onEnableAlert = {},
+        // R1338 (iOS Ruling 3 Q4): no threshold alert in iOS v1 - no handler, so Prevision draws no offer.
+        onEnableAlert = null,
         parametresTab = { state, onOpenRhythm ->
             ParametresScreen(
                 state = state,
@@ -325,8 +324,8 @@ private fun iosParametresActions(
                 }
             }
         },
-        // RED PLANT P3 (R1338), reverted in the next commit: a no-op handler, as IOS-SHELL-1 left it.
-        onToggleThresholdAlert = {},
+        // R1338 (iOS Ruling 3 Q4): no threshold alert in iOS v1 - no handler, so Parametres draws no switch.
+        onToggleThresholdAlert = null,
         onOpenRhythm = onOpenRhythm,
     )
 
