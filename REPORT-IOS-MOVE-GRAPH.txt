@@ -3,11 +3,11 @@ TASK     relay/IOS-MOVE-GRAPH.txt (iOS Rulings 3, 8, 9, 10, 11 and the overnight
          with relay/IOS-MOVE-CORE.txt's THE WORK. Rulings R1310-R1319: R1310-R1314 used, R1315-R1319 unused.
          `grep -rlE '\bR131[0-9]\b'` over relay/, REPORT-*.txt and CLAUDE.md of this worktree and the main checkout's
          relay/ at the start returned only IOS-MOVE-GRAPH.txt and RULINGS-2026-11-16.txt (the allocation). Re-run after
-         the first report push, over the same places, C:/wt/web-orch/relay and  of origin/main: those two files
-         plus this report, nothing else.
-BASE     origin/main a3b5d65b (5a's merge f5a998ac + a records commit). After the work,  read origin/main
-         still a3b5d65b, so the branch merges onto its own base and the iOS runs cover the commit that would land. :app:gate floor at the base 1577; ios-shared at the
-         base 438 tests (run 45006594277, whose android/ tree is the base's).
+         the first report push, over the same places, C:/wt/web-orch/relay and a `git grep` of origin/main:
+         those two files plus this report, nothing else.
+BASE     origin/main a3b5d65b (5a's merge f5a998ac + a records commit). After the work, `git fetch` read origin/main
+         still a3b5d65b, so the branch merges onto its own base and the iOS runs cover the commit that would land.
+         :app:gate floor at the base 1577; ios-shared at the base 438 tests (run 45006594277, whose android/ tree is the base's).
 BRANCH   m5b-graph. PUSHED, NOT MERGED. Code tip 65534e4a (five commits on the base: 8b2d05b9, 720498d5, a5d85c29,
          41d007b7, 65534e4a). The report tip is the commit carrying this file only.
 WORKTREE C:/wt/m5b-graph, lock .session-lock.json (gitignored, R349), removed last.
@@ -242,7 +242,7 @@ PLANTS (plant.log, on the committed 65534e4a). Each was verified landed by grep 
 R1313 - ANDROID UNCHANGED; THE FLOOR ARITHMETIC; iOS
 ================================================================================
 FLOOR ARITHMETIC (counts.txt; base counts from 5a's gate XML on 84793546, whose android/ tree IS the base's:
- = 0 lines; 1577 :app / 313 :shared):
+`git diff 84793546 a3b5d65b -- android` = 0 lines; 1577 :app / 313 :shared):
   :app   base 1577 - 10 transcribed originals (SessionReconciledTest 8 + MainGraphWiringTest 2) = 1567
          + 1 (the census case kept in :app as JVM-only, MainGraphDayWriterCensusTest) = 1568. Observed 1568/0, 209
          classes. That is >= the prompt's 1567 ("minus the transcribed originals plus nothing"), and the +1 is that one
