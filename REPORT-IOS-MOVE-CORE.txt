@@ -1,0 +1,357 @@
+REPORT-IOS-MOVE-CORE - THE SHELL'S PLATFORM-FREE FILES BECOME COMMON (iOS phase, (c) move 5a)
+TASK     relay/IOS-MOVE-CORE.txt (iOS Rulings 3, 8, 9, 10 and the overnight plan in relay/RULINGS-2026-11-16.txt).
+         Rulings R1300-R1309: R1300-R1304 used, R1305-R1309 unused. Before the push, `grep -rlE '\bR130[0-9]\b'` over
+         relay/, REPORT-*.txt and CLAUDE.md of this worktree and C:/wt/web-orch/relay returned only IOS-MOVE-CORE.txt and
+         RULINGS-2026-11-16.txt (the allocation).
+BASE     origin/main 9b285ea1 (M4's merge f70a89ff + a records commit). Its android/, ios/ and .github/ trees equal M4's
+         gated code tip 301fd376 (`git diff 301fd376 9b285ea1 -- android ios .github` = 0 lines).
+BRANCH   m5a-core. PUSHED, NOT MERGED. Code tip 84793546 (three commits on the base: 5f89aab6, 3ce5cfab, 84793546).
+         The report tip is the commit carrying this file only.
+WORKTREE C:/wt/m5a-core, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/m5a-core/ (not committed):
+         base-xml-{app,shared}/ + base-xml-SOURCE.txt (the before-counts: a copy of M4's gate XML on the identical tree);
+         inc{1,2,3}.log + inc*-xml-*/ + inc*-lock.log + inc*-commit-status.txt (inc1-attempt1* is the red lint run);
+         inc1-blobs.txt, inc2-diffs.txt; mutant.log + mutant-xml/; plantA.log + plantA-xml/; plantB.log + plantB-xml/;
+         failures.txt (every plant failure message); gate.log + gate-xml-{app,shared}/; verify.sh, inc.sh, tools/ (every
+         scripted edit asserted exactly one anchor before writing, R211); counts.txt; ios-expected.txt (written before
+         dispatch); ios-shared-45006594277/ and ios-app-45006597209/ (the runs' own artifacts); ios-shared-count.txt.
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1300: ten files now live in :shared commonMain under their same packages.
+  - Six are PURE moves (git mv, committed blob = base blob): ui/shell/AppRoot.kt, ui/shell/AppTab.kt,
+    ui/shell/ResolvingScreen.kt, detection/LoggingModeRestore.kt, onboarding/ManualOnlyOnboarding.kt and
+    startup/StartupDecider.kt. StartupDecider needed no change once M2's common /me codec landed, so it was moved
+    as a pure move.
+  - Two are ONE-CHANGE moves:
+    - ui/shell/AppBottomBar.kt: R.drawable -> Glyph. Glyph gained SUN, CALENDAR and SETTINGS (appended), and
+      Glyph.ios.kt and glyph_keep.xml follow.
+    - parametres/Site.kt: it reads the host from auth/CallbackLinkHost.kt.
+  - Two are NEW commonMain files split from :app files:
+    - auth/CallbackLinkHost.kt: the host constant. :app's CallbackLink.HOST is now that constant, and the java.net
+      parser stays in :app.
+    - settings/EmployerFigureStore.kt: the interface. :app keeps both stores and the key prefix.
+  - NotificationCopy had already moved in M4. It was skipped.
+  - No file was blocked.
+- R1301: :app's pins are unedited. Every pin class has the same count before and after, all green. commonTest and
+  iosTest gained no case.
+- R1302: verifyPaparazziDebug ran at zero tolerance in increment 2's run and again in the full gate. Neither
+  at-risk baseline moved, and no baseline was regenerated (0 snapshot files changed). A mutant that swaps two
+  glyphs in the moved bar made AppBottomBarScreenshotTest fail.
+- R1303: seven fences were edited: MovedTwinsFenceTest, EdgeToEdgeCensusTest, and the five that pinned :app's ui/
+  root on AppBottomBar.kt. MovedTwinsFenceTest now also reads androidMain and asserts the bridge's exact three
+  overloads. Every edit was planted, each plant verified landed, and each failed its fence by name.
+- R1304, the results:
+  - :app:gate on 84793546: BUILD SUCCESSFUL in 5m 42s, GATE_EXIT=0, test floor 1577 (base 1577).
+  - ios-shared 45006594277: success, 438 tests, 0 failures (base 438). Its per-class list is identical to the base
+    run's.
+  - ios-app 45006597209: success, with all four probe results PASS.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 84793546 in this session, on a clean tree
+(`git status --porcelain --untracked-files=all` = 0 lines before and after; gate.log):
+    GATE HEAD=84793546ff5f1a909fc44d55f62138a1c4a4bfc4 start=2026-11-22T09:20:01Z dirty=0
+    test floor OK: 1577 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 5m 42s
+    GATE_EXIT=0
+    end=2026-11-22T09:25:44Z dirty-after=0
+- It ran under the heavy lock as holder m5a-core-verify, at line 8000 MB, not lowered. The lock was ACQUIRED at
+  09:15:10Z with commitFree=12873 and RELEASED at 09:25:50Z.
+- The same hold ran the mutant and both plant runs first. Each was restored, and the tree read dirty=0 before the
+  gate.
+- Every Gradle run used --no-daemon. `gradlew --stop` was never run.
+- web/ is unchanged (`git diff --name-only 9b285ea1 84793546 -- web` = 0 files), so gate:clone and gate:changed are
+  not owed (R199). That is a decision, not an omission.
+- The report tip changes only this file, so its android/ and ios/ trees are 84793546's.
+
+================================================================================
+R1300 - THE MOVE, FILE BY FILE
+================================================================================
+PURE MOVES. Blobs were read with git rev-parse after each commit, together with `git hash-object` of the working file
+(inc1-blobs.txt). For every file the base blob, the HEAD blob and the working blob are equal, and the file is gone
+from :app at HEAD.
+    file                                   base :app blob   HEAD commonMain blob
+    ui/shell/AppRoot.kt                    9a747668         9a747668
+    ui/shell/AppTab.kt                     4a3f7d64         4a3f7d64
+    ui/shell/ResolvingScreen.kt            8045733a         8045733a
+    detection/LoggingModeRestore.kt        15042338         15042338
+    onboarding/ManualOnlyOnboarding.kt     3f7e9d22         3f7e9d22
+    startup/StartupDecider.kt              f38ee2e6         f38ee2e6
+  Every import of the six already resolved in commonMain:
+    - Compose foundation/material3, design/;
+    - SignInCopy;
+    - the M2 codec's parseMeView/parseMeSettings/isMeAnswer/parseLoggingMode/parseReminderEnabled;
+    - AuthedOutcome, onboardingPlanFor, OnboardingSnapshot, DetectionModeStore and LoggingMode.
+  :shared:compileCommonMainKotlinMetadata and the Kotlin/Native compile in ios-shared both passed.
+ONE-CHANGE MOVES. Each is shown as `git diff 9b285ea1:<app path> HEAD:<commonMain path>` (inc2-diffs.txt).
+  ui/shell/AppBottomBar.kt (HEAD blob 85dc0bbb):
+    - the import of androidx.compose.ui.res.painterResource and of ch.monreleve.app.R became imports of Glyph and
+      glyphPainter;
+    - the four icons changed from painterResource(R.drawable.ic_sun / ic_calendar / ic_file_text / ic_settings) to
+      glyphPainter(Glyph.SUN / CALENDAR / FILE_TEXT / SETTINGS).
+    Nothing else changed: no comment, no colour, no label. painterResource of ui.res is forbidden in commonMain
+    (CommonMainFenceTest), which is why the change is needed.
+  THE N5 CHANGE BESIDE IT:
+    - design/Glyph.kt gained SUN, CALENDAR and SETTINGS, APPENDED after BELL, because iOS's glyphSemanticsId is the
+      ordinal and every earlier constant keeps its own.
+    - iosMain design/Glyph.ios.kt gained three imports and three `when` arms. The `when` is exhaustive, so a missing
+      arm is an iOS compile error. ios-shared and ios-app compiled it.
+    - app res/raw/glyph_keep.xml keeps ic_sun, ic_calendar and ic_settings by name. Once the bar stopped naming
+      R.drawable.ic_calendar and R.drawable.ic_settings, the run-time name became their only reference.
+      GlyphDrawablesExistTest asserts the keep list equals the enum (2/0 in the gate).
+    - Android draws by the same drawable id it drew before: Glyph.android.kt is painterResource(getIdentifier(name)).
+      The pixels are shown under R1302.
+  parametres/Site.kt (HEAD blob 831c1e0a):
+    - the import changed from CallbackLink to CallbackLinkHost;
+    - ORIGIN changed from "https://${CallbackLink.HOST}" to "https://${CallbackLinkHost.HOST}";
+    - the header lines that said where the host lives changed with it (the IOS-2e sentence put in the past tense, plus
+      one IOS-MOVE-CORE line, and "derives from CallbackLinkHost.HOST").
+  THE SPLITS (new commonMain files; the :app side's diff is the removal only):
+  - auth/CallbackLinkHost.kt: `object CallbackLinkHost { const val HOST = "monreleve.ch" }` with a header.
+    - :app auth/CallbackLink.kt: `const val HOST = "monreleve.ch"` became `const val HOST = CallbackLinkHost.HOST`
+      (plus two comment lines). The parser, PATH and Parsed are untouched.
+    - AppSiteLinksTest still asserts "https://${CallbackLink.HOST}" == Site.ORIGIN, unedited, 2/0.
+    - ErasureCensusTest now finds the "monreleve.ch" literal in commonMain rather than :app. It scans both trees and
+      is 3/0.
+    - The file is NOT named CallbackLink.kt, because that name stays in :app and MovedTwinsFenceTest refuses a moved
+      file name there.
+  - settings/EmployerFigureStore.kt: the interface, byte for byte as it was in :app's EmployerFigure.kt (KDoc
+    included), under a three-line header.
+    - :app settings/EmployerFigure.kt lost the interface block and gained two comment lines.
+    - EMPLOYER_KEY_PREFIX, InMemoryEmployerFigureStore and SharedPrefsEmployerFigureStore stay in :app.
+    - The file name is EmployerFigureStore.kt, not EmployerFigure.kt, for the same reason as CallbackLinkHost.kt.
+BLOCKED FILES: none.
+
+================================================================================
+R1301 - THE PINS STAY
+================================================================================
+No :app or :shared test that pins a moved type was edited. The only test files changed are the seven fences
+(R1303); `git diff --name-only 9b285ea1 84793546` over test source sets lists exactly those.
+BEFORE comes from base-xml (M4's gate XML on the identical tree, 1577 :app / 311 :shared). AFTER comes from this
+session's gate XML (counts.txt).
+    class                                          before   after
+    SessionReconciledTest                          8        8
+    startup.ResolveStartTest                       12       12
+    startup.StartupDeciderTest                     15       15
+    startup.MeRouteJoinTest                        3        3
+    detection.LoggingModeRestoreTest               4        4
+    onboarding.ManualOnlyOnboardingTest            5        5
+    parametres.AppSiteLinksTest                    2        2
+    auth.CallbackLinkTest                          6        6
+    release.StoreListingCopyTest                   8        8
+    settings.EmployerFigureStoreTest               3        3
+    dossier.ComparisonR340Test                     1        1
+    account.ErasureCensusTest                      3        3
+    auth.ResolveFlowTest                           5        5
+    auth.ForcedSignOutTest                         27       27
+    releve.ReleveFreshTest                         10       10
+    ui.shell.AppRootScreenshotTest                 1        1
+    ui.shell.AppBottomBarScreenshotTest            1        1
+    fences.GlyphDrawablesExistTest                 2        2
+    fences.PaparazziZeroToleranceTest              2        2
+    shared.GlyphResourceGeneratorTest              2        2
+    (all 0 failures)
+WHOLE SUITES:
+  - :app: 1577/0 before and 1577/0 after, 210 classes each, and no class's count differs.
+  - :shared JVM: 311 before and 313 after. The only class that differs is MovedTwinsFenceTest, 5 -> 7 (R1303).
+COMMONTEST GAINED NO CASE. iOS needs none for this move.
+  - The moved logic is plain Kotlin with no platform call.
+  - Its one platform-sensitive input, the JSON codec, is already pinned on the simulator by MeCodecGoldenTest (M2).
+  - The bar's iOS glyphs are proven by the exhaustive `when` compiling.
+  - A commonTest copy of ResolveStartTest/StartupDeciderTest would be a second assertion set over one fixture
+    (R268).
+  - NO iOS test renders AppBottomBar or AppRoot yet (see Q3).
+
+================================================================================
+R1302 - THE BASELINES, PROVEN AT ZERO TOLERANCE
+================================================================================
+Both rules state maxPercentDifference = 0.0, and fences.PaparazziZeroToleranceTest (2/0) reads that value.
+- INCREMENT 2's run: `:app:testDebugUnitTest --tests ...ui.*` (plus others) and `:app:verifyPaparazziDebug`, on the
+  working tree that became 3ce5cfab.
+  - The log shows `> Task :app:verifyPaparazziDebug`.
+  - AppBottomBarScreenshotTest 1/0 and AppRootScreenshotTest 1/0 (inc2-xml-app).
+  - After the commit: dirty-after=0, so no snapshot file was written.
+- THE GATE on 84793546 ran verifyPaparazziDebug again over every screenshot test. Both classes are 1/0, and the tree
+  was dirty=0 after.
+- `git diff --name-only 9b285ea1 84793546 -- android/app/src/test/snapshots` = 0 files. No baseline was regenerated.
+THE COMPARISON BITES (mutant.log):
+  - In the moved AppBottomBar.kt, glyphPainter(Glyph.SUN) and glyphPainter(Glyph.CALENDAR) were swapped by three
+    anchored replacements. Verified landed: SUN under the Calendrier item = 1, CALENDAR under the Aujourd'hui item = 1,
+    placeholder left = 0.
+  - The run was `:app:testDebugUnitTest --tests 'ch.monreleve.app.ui.shell.*' :app:verifyPaparazziDebug`.
+  - Result: "AppBottomBarScreenshotTest > appBottomBarCalendrierActive FAILED ... AssertionError at
+    AppBottomBarScreenshotTest.kt:30"; 2 tests, 1 failed; MUTANT_EXIT=1.
+  - Restored by copy; `cmp` identical; dirty=0.
+  - So the baseline compares the bar's icons, and the bar's pixels at the tip are the base's.
+
+================================================================================
+R1303 - THE FENCES, EACH PLANTED
+================================================================================
+EDITED:
+  1. shared MovedTwinsFenceTest:
+     - `moved` gained the ten commonMain files.
+     - The containsAll proof gained AppRoot, AppTab, ResolvingScreen, phoneLoggingMode, applyServerLoggingMode,
+       onboardingSeedFor, StartDecision, UnresolvedCause, MeFetch, Resolution, resolveStart,
+       decideStartAfterSignIn, meFetchOf, AppBottomBar, Site, CallbackLinkHost and EmployerFigureStore.
+     - The names stay DERIVED from the files (R246).
+     - New tests, for iOS Ruling 10 Q2:
+       - theAndroidMainBridgeDeclaresExactlyItsThreeJavaTimeOverloads: reminder/JavaTimeFallbackReminder.kt declares
+         exactly {nextFallbackAt, bootFallbackAt, reachedFallbackTime}, private included. Each is a moved common
+         name, and each takes (now: JavaInstant, zone: ZoneId).
+       - noOtherAndroidMainFileDeclaresAMovedName: androidMain is read, pinned on design/Glyph.android.kt.
+     - The header and the messages name R1303.
+     - androidMain/kotlin became a declared input of :shared's test tasks (shared/build.gradle.kts, R283).
+     - 7/0.
+     - Before the edit, a fresh scan for a top-level declaration of any guarded name in app/src, shared iosMain,
+       iosTest, commonTest and androidUnitTest found only the three files then still to move. The derived name
+       `message` (from UnresolvedCause.message()) has no clash.
+  2. :app EdgeToEdgeCensusTest:
+     - WRAPPER_FILE is now ../shared/src/commonMain/.../ui/shell/AppRoot.kt, read by subjectFile.
+     - :app's ui/ screen root is repinned on OnboardingStartDatePicker.kt.
+     - The positive-control comment was corrected.
+     - The fix message now prints $WRAPPER_FILE.
+     - "Nothing outside :app enters commonMain" was replaced by what is enforced: commonMain holds no framework entry
+       point, because manifestActivities resolves every manifest activity under :app's src/main/kotlin through
+       subjectFile.
+     - The census it prints is IDENTICAL to the base's: 18 screens, 18 hosted; the same two roots; the same single
+       NOT-ANDROID entry (AujourdhuiPilot.kt:47). That rules out a vacuous pass by reclassification. 3/0.
+  3-7. CopyReachabilityTest, DayCellGridHasLegendTest, FencesTest (ui/), LogFenceTest (noRawToken) and
+     NoBareThresholdTest: each one's :app ui/ root was pinned on AppBottomBar.kt and is now pinned on
+     OnboardingStartDatePicker.kt, with a two-line comment. Each fence's :shared ui/ root (pinned on
+     AujourdhuiScreen.kt) already reads the moved files.
+PLANTS A, on the committed 84793546 (plantA.log). Each was verified landed by grep before the result was read:
+    app/.../r1303plant/AppBottomBar.kt        a file of a moved name, declaring Site, resolveStart, EmployerFigureStore
+    shared/iosMain/.../ios/R1303PlantIos.kt   internal fun meFetchOf()
+    androidMain/.../JavaTimeFallbackReminder.kt   + fun fourthOverload()
+    androidMain/.../r1303plant/R1303PlantAndroid.kt   internal fun phoneLoggingMode()
+    commonMain/.../ui/shell/AppRoot.kt        default insets reordered: displayCutout.union(systemBars)
+    app/.../ui/screens/R1303PlantUi.kt        "DayCell( DayCell(" literal, 0.4, accessToken, R1303PlantScreen()
+    commonMain/.../ui/shell/R1303PlantShell.kt    the same four, in the moved files' own directory
+  Result: PLANT_A_EXIT=1. Every failure named its plant (failures.txt):
+    - MovedTwinsFenceTest.noCopyOfAMovedFileIsInApp named "a file named AppBottomBar.kt" and declares Site,
+      resolveStart, EmployerFigureStore.
+    - MovedTwinsFenceTest.noCopyOfAMovedFileIsInIosMain named "R1303PlantIos.kt: declares meFetchOf".
+    - MovedTwinsFenceTest.theAndroidMainBridge... reported expected [the three] but was
+      [nextFallbackAt, bootFallbackAt, reachedFallbackTime, fourthOverload].
+    - MovedTwinsFenceTest.noOtherAndroidMainFile... named "r1303plant/R1303PlantAndroid.kt: declares
+      phoneLoggingMode".
+    - EdgeToEdgeCensusTest.theRootWrapperAppliesTheSystemBarInsets: "AppRoot's default insets must be
+      WindowInsets.systemBars united with WindowInsets.displayCutout". The commonMain path is read.
+    - EdgeToEdgeCensusTest.everyScreenIsHostedByTheRootWrapper: "20 screens, 18 hosted ... R1303PlantScreen <- called
+      nowhere ... R1303ShellPlantScreen <- called nowhere".
+    - FencesTest.uiAndDevFilesCarryNoStringLiteral, DayCellGridHasLegendTest.everyDayCellGrid..., and
+      LogFenceTest.noRawTokenReachesTheUiLayer each named BOTH R1303PlantUi.kt (:app ui/) and R1303PlantShell.kt
+      (commonMain ui/shell).
+    - NoBareThresholdTest.noScannedFileCarriesABareForbiddenFraction: "ui/screens/R1303PlantUi.kt: [0.4]" and
+      "ui/shell/R1303PlantShell.kt: [0.4]".
+  No other test failed (MovedTwinsFenceTest 7 run / 4 failed; :app fences 80 run / 6 failed).
+  Restored: the plant files were removed (mine). The bridge and AppRoot were copied back and `cmp` read identical.
+  AFTER RESTORE dirty=0.
+PLANT B (plantB.log): OnboardingStartDatePicker.kt, the new pin, was moved out of :app ui/ to a r1303plantb/
+  directory. Its package was unchanged, so :app compiled. Verified: "pin left in ui/=0".
+  Result: PLANT_B_EXIT=1. All six repinned fences failed with "the root src\main\kotlin\ch\monreleve\app\ui does not
+  hold OnboardingStartDatePicker.kt":
+    - CopyReachabilityTest (3 tests);
+    - DayCellGridHasLegendTest (2);
+    - EdgeToEdgeCensusTest.everyScreenIsHosted;
+    - FencesTest (5 ui/ tests);
+    - LogFenceTest.noRawToken;
+    - NoBareThresholdTest (3).
+  That is 15 of 80. Restored by mv; `cmp` identical; dirty=0. (plantB-xml/ also holds :shared XML left over from plant
+  A, because run B ran :app only; failures.txt lists it under B, and it is not a B result.)
+
+================================================================================
+R1304 - ANDROID UNCHANGED, iOS
+================================================================================
+- :app:gate on 84793546 (STATUS above): GATE_EXIT=0, floor 1577 >= base 1577. assembleDebug, verifyPaparazziDebug,
+  lintDebug and the release checks ran in it.
+- iOS: ONE run each, on the pushed code tip 84793546. ios-expected.txt was written before dispatch:
+  - ios-shared run 45006594277: success, head 84793546, 20 steps.
+    - Its artifact ios-shared-test-results was counted from the JUnit XML: 83 files, 438 tests, 0 failures, 0 errors,
+      0 skipped.
+    - Expected 438 (base run 44964715746 = 438). This branch changes no file under commonTest or iosTest, and the +2
+      in MovedTwinsFenceTest is JVM only.
+    - The per-class (suite, tests) list is IDENTICAL to base run 44964715746's (diff empty).
+  - ios-app run 45006597209: success, head 84793546, 23 steps. ios-host-probe.txt reads keychain.result=PASS,
+    notification.result=PASS, reminder.result=PASS and share.result=PASS.
+- The Kotlin/Native compile of the ten commonMain files and of Glyph.ios.kt's three new arms is proven by both runs.
+  No iOS test exercises them at run time (Q3).
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- AppRoot.kt (now in commonMain, blob unchanged) still says "it lives in :app because the insets are the Android
+  window's. iOS hosts the shared screens in its own view controllers with their own safe areas, and :shared stays
+  unchanged". After this move that sentence is false. R1300 requires a pure move's blob to be unchanged, so it was
+  not edited. See Q1.
+- FencesTest's three "R461: :app ONLY, and correct - ui/ ... is Jetpack Compose, which commonMain cannot hold"
+  comments, and DayCellGridHasLegendTest's header "THIS FENCE READS :app ONLY", were already stale before this task:
+  each fence reads the shared ui/ root, since IOS-1b-A. Only the pin lines were edited.
+- app/build.gradle.kts l.104 names "ui/shell/AppRoot.kt" as the one root. That relative path is still right inside
+  :shared, but the line does not say which module.
+- ErasureCensusTest's exemption reason reads "the App Link host (CallbackLink.HOST)". It is still true (that constant
+  IS the host), and the literal now sits in CallbackLinkHost.kt.
+- InMemoryEmployerFigureStore stays in :app with the SharedPreferences store. iOS has no in-memory fallback in common
+  code. See Q2.
+- An iOS EmployerFigureStore and an iOS Site/legal-link opener do not exist yet. They are the shell's work (5b/I2).
+- PROCESS, mine: during increment 1's first run I edited inc.sh while bash was executing it. A sed replacement
+  mangled one line; I restored the exact original text within the minute, before the Gradle command it was inside had
+  ended. That run then exited on its own lint failure, as its log shows, and nothing it did was committed. Later
+  increments used a separate copy (inc-x.sh).
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. FIVE fences not named in the prompt were edited: CopyReachabilityTest, DayCellGridHasLegendTest, FencesTest,
+   LogFenceTest and NoBareThresholdTest. Each pinned :app's ui/ root on AppBottomBar.kt, which this move takes away.
+   Each edit is the pin line plus a comment, and each was planted (plants A and B). This is under R1303's "any other
+   fence the move touches".
+2. StartupDecider was moved as a PURE move, not as the "one change" the prompt lists. It needed no change, and an
+   unchanged blob is the stricter proof.
+3. Files outside the moved set changed, each because the move requires it:
+   - Glyph.kt (+3 constants) and Glyph.ios.kt (+3 arms): N5.
+   - glyph_keep.xml (+3 names): R8 strict shrinking.
+   - CallbackLink.kt (HOST now derived) and EmployerFigure.kt (interface removed): the :app halves of the two splits.
+   - shared/build.gradle.kts (androidMain declared as a test input): R283 for the new androidMain read.
+4. Site.kt's diff includes the comment lines that said where the host lives, because the change makes them false.
+   AppBottomBar.kt's diff is code only.
+5. Increment 1's first run failed lint (detekt MaxLineLength x3 and ktlint's blank line before a comment, all in my
+   EdgeToEdgeCensusTest edit). Its tests had passed (657 + 311). It was fixed and re-run green before the commit, and
+   the red run is kept as inc1-attempt1.log.
+6. No `gradlew --stop` (every run --no-daemon), as the prompt says.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. AppRoot.kt's header now says it "lives in :app" and that ":shared stays unchanged", both false since this move.
+    R1300's blob rule kept me from editing it. Should 5b (IOS-MOVE-GRAPH) correct that paragraph as its first edit to
+    the file, or should a records-only commit do it?
+Q2. InMemoryEmployerFigureStore stayed in :app because the prompt names only the INTERFACE. It is pure Kotlin, and its
+    tests (EmployerFigureStoreTest, ComparisonR340Test) are in :app. Should it move to commonMain when the iOS store
+    is written, or should iOS write its own (Keychain or NSUserDefaults) store and never use it?
+Q3. Nothing renders AppBottomBar or AppRoot on iOS yet: the moved files are compile-proven, not run. Should 5b or I2
+    add an iosTest (runComposeUiTest) that draws the bar with each tab selected and asserts the four glyphs resolve
+    (glyphSemanticsId = ordinal), or is I2's walkthrough enough?
+Q4. The host's commonMain home is `object CallbackLinkHost { const val HOST }`, and :app's CallbackLink.HOST is that
+    constant. Is the name accepted, or should it be a top-level const in auth/?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code commits, each pushed to origin/m5a-core when it was made (inc*.log "PUSH_EXIT=0 remote=..."):
+  - 5f89aab6 increment 1 (remote 5f89aab68820);
+  - 3ce5cfab increment 2 (remote 3ce5cfab1505);
+  - 84793546 increment 3 (remote 84793546ff5f).
+- The report commit follows; its hash is in the handback.
+- Heavy lock holds:
+  - m5a-core-inc1 (twice: 08:59:31-09:04:08, 09:04:33-09:06:34);
+  - m5a-core-inc2 (09:07:33-09:11:09);
+  - m5a-core-inc3 (09:12:28-09:14:34);
+  - m5a-core-verify (09:15:10-09:25:50).
+  Every one was RELEASED. None is held by this session.
+- Not merged. parking.md not written.
+- C:/wt/m5a-core/.session-lock.json: removed last, after the final push.
