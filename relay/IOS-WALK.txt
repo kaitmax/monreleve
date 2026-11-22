@@ -44,13 +44,15 @@ R1343. NO SERVER OR MAIL LOG LEAVES THE RUNNER. The upload is an EXPLICIT ALLOWL
       output is redirected to an unuploaded file and the bundle is never uploaded.
 R1344. WHAT THE WALK DRIVES (R176, through the real entry points - R204): first launch (the Keychain clear,
     R1321) -> code sign-in (StartupDecider sends a signed-out person to SIGN-IN first) -> onboarding,
-    manual-only -> Aujourd'hui: record today -> the calendar: record
+    manual-only, OPENING the native start-date picker
+    (iOS Ruling 13 Q2) and choosing a date -> Aujourd'hui: record today -> the calendar: record
     and change another day -> the dossier/export: the share sheet opens -> Parametres: reminder opt-in on,
     employer figure set and still there after a relaunch -> sign-out -> relaunch reaches sign-in. Each step
     writes a line to the result file with what the screen showed; each screenshot is named in the report.
     THE UI DRIVER: name it (XCUITest from the generated project, or another tool already on the runner) and,
     as the FIRST increment, prove it can find and tap one Compose element by its accessibility label and get
-    past the system notification-permission alert - before the rest of the walk is written. A driver that
+    past the system notification-permission alert, AND open the native UIDatePicker (a UIKit
+    element inside Compose) and read its value - before the rest of the walk is written. A driver that
     needs a new project dependency comes back to the orchestrator.
 R1345. EACH OBSERVABLE IS PROVEN TO HAVE RUN (the overnight plan's point 3), measured on the simulator's real
     notification centre, not a recording one:
@@ -69,7 +71,8 @@ R1346. THE LINK VERSUS THE CODE (iOS Ruling 3 Q2). The mail carries both the htt
     "fixed" here - a change to the sign-in semantics comes back to the orchestrator.
 R1347. WHAT THE SIMULATOR CANNOT SHOW is listed for the operator's iPhone, with how to check each: message://
     shown and opening Mail; delivery and tap of a real reminder at 19:00; background sync (PARK-IF1); the
-    universal link (needs the Apple account).
+    universal link (needs the Apple account); a RELEASE build logging through IosLogger (no CI run builds Release -
+    iOS Ruling 13 Q4) without a crash.
 R1348. ANDROID UNCHANGED. If this session edits nothing under android/, :app:gate is not owed - say so with
     `git diff --stat` against the base. If it edits android/, the full :app:gate (R391) and R573 apply. If it
     edits web/, `pnpm gate:changed` (R132) and `pnpm gate:clone` (R199) are owed on the pushed tip. The

@@ -2964,3 +2964,59 @@ Q2 (MainGraphDayWriterCensusTest): STAYS in :app for now. Moving it to
    case map.
 Q3 (the JavaTime* factories): STAY as test conveniences; they retire with a
    later transcription of the controllers' specs (not scheduled).
+
+iOS Ruling 13 - IOS-SHELL-1, 2026-11-22. LANDED: main 06ec1c0c (merge of
+s1-shell 2df29cee; main unmoved at f29f6ec9, merge tree = gated tree, diff
+HEAD^2..HEAD empty). :app:gate on code tip e0dae700: BUILD SUCCESSFUL 5m26s,
+dirty=0/0, GATE_EXIT=0, floor 1568 (unchanged); :shared JVM 322 -> 328.
+R573: ios-shared 45021918348 counted by the orchestrator from the JUnit XML:
+90 suites, 459 tests, 0 failures, 0 errors (447 + 12:
+CommonParametresWireGoldenTest 6, SignInScreensIosTest 2->3,
+IosFirstLaunchIosTest 2, IosShellStartupIosTest 1, IosShellSignOutIosTest 1,
+AppRootRenderIosTest 1). ios-app 45021921410 success; probe read by the
+orchestrator: keychain, notification, reminder, share, firstLaunch all PASS;
+ats.refusedByAts=false (measured -1004, no exception added); apiBaseUrl
+http://127.0.0.1:3000 (Debug, production never contacted).
+launch-DEFAULT.png LOOKED AT: the Bienvenue sign-in screen, no code field.
+.github/ diff comment-only; web/ untouched; token check 0.
+THE FLOOR FROM HERE IS 1568; iOS SHARED FROM HERE IS 459.
+Deviations 1, 3, 4, 5, 6, 8, 9 ACCEPTED.
+Deviation 2 (EdgeToEdgeCensusTest routes as hosts): ACCEPTED after reading
+   the diff - it is NOT a loosening by suffix. A discovered route joins the
+   fixed point as a host only if every call site of it is itself hosted,
+   the four route names are asserted found (a discovery that finds nothing
+   fails), and the plant (an unhosted PlantedRoute) was seen to fail.
+Deviation 7 (the evening opt-in in memory on iOS): ACCEPTED as a visible
+   stub; its home is IOS-SHELL-2 R1337 (persisted, rebuilt from stores,
+   cleared on every ending).
+THE RUN-B SIGSEGV - CAUSE NOT ESTABLISHED. Read by the orchestrator from
+   run 45019964025's job log: the child process died with signal 11 while
+   IosShellStartupIosTest was running (NOT one of the two deliberate REDs,
+   which failed first), and the run wrote 0 JUnit suites. Run C differs
+   from B in two ways at once (REDs reverted AND the shell's log sink
+   changed), so its green cannot tell "fixed" from "crashes only on that
+   path". The suspected sink - IosLogger's default NSLog("%@", line) - is
+   the Release reporter's, and no CI run builds Release. Recorded as an
+   open defect, not a fix; IOS-MOVE-TABS R1362 owns it.
+Q1 (IosMainShell repeats MainShell's tab wiring): EXTRACT - but in its own
+   short move session, IOS-MOVE-TABS (R1360-R1365), BEFORE IOS-SHELL-2, under
+   5a's discipline: a common MainTabs both shells call, Android's launchers
+   outside it, :app's pins unedited, baselines unmoved at zero tolerance,
+   fenced and planted. If it cannot move without bending, the file is NAMED,
+   a keep-in-step fence is added, and the session stops there. IOS-SHELL-2's
+   R1336 forbids :app edits, so the extraction cannot live inside it.
+Q2 (the native date picker, never opened): BOTH. IOS-SHELL-2 R1339 measures
+   whether the UIKitView picker can be opened in iosTest at all and tests it
+   if so (naming the reason if not); IOS-WALK opens it regardless (R1344's
+   onboarding step, and its driver-proof first increment).
+Q3 (three ExperimentalTime allowlist entries): ACCEPTED - each is
+   count-asserted at 1 and scoped to one function or property.
+Q4 (IosLogger's NSLog("%@") sink): YES, in IOS-MOVE-TABS R1362, test-first:
+   first REPRODUCE - an iosTest calling the real default sink in the test
+   process, seen to crash (or seen NOT to, which is itself the finding and
+   reopens the cause) - then the fix, then the same test green. The Release
+   build's logging goes on the operator's iPhone list (IOS-WALK R1347).
+Q5 (the threshold alert's two entry points still drawn on iOS): IOS-SHELL-2,
+   as R1330's "hidden, asserted by test", with the two entry points NAMED
+   (R1338): hidden on iOS by a common-screen change, a PRESENCE control that
+   Android still draws both, and Android's baselines unmoved.

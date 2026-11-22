@@ -1,0 +1,56 @@
+IOS-MOVE-TABS SESSION PROMPT - Mon Releve
+THE FOUR-TAB WIRING BECOMES ONE COMMON COMPOSABLE; THE iOS LOG SINK'S CRASH IS REPRODUCED OR CLEARED
+(iOS phase, between shell 1 and shell 2)
+Written by the orchestrating session on 2026-11-22 (iOS Ruling 13 in relay/RULINGS-2026-11-16.txt, Q1 and Q4
+and THE RUN-B SIGSEGV). Read first: iOS Rulings 3, 9-13 whole; REPORT-IOS-SHELL-1.txt (lines ~190-210 name why
+MainShell and OnboardingRoute did not move, and its NOTICED on IosLogger); REPORT-IOS-MOVE-CORE.txt (5a: how a
+move is pinned, fenced and planted - follow it); :app MainActivity.kt MainShell (~l.499) and :shared iosMain
+ios/IosShellUi.kt IosMainShell (~l.208); ios/IosLogger.kt; CLAUDE.md R114, R135, R154, R178, R180, R206, R246,
+R345, R391, R573.
+Names: worktree C:/wt/m6-tabs, branch m6-tabs (NOT ios-*), report REPORT-IOS-MOVE-TABS.txt. Ruling numbers:
+R1360-R1365. YOUR OWN advisor may advise you. A NEW dependency, a workflow trigger change or new copy comes back
+to the orchestrator.
+BASE: origin/main as stated in your brief.
+
+R1360. THE MOVE (iOS Ruling 13 Q1). The platform-free part of MainShell's four-tab wiring - the `when (tab)` over
+    the four tabs and the forecast overlays, as IosMainShell repeats it today - becomes ONE common composable
+    (MainTabs, :shared commonMain, same package as its neighbours) that BOTH MainShell and IosMainShell call.
+    Everything Android-only (activity-result launchers, Toasts, Intents, FileProvider, the push and threshold-alert
+    passes, BackHandler, the update gate, notification extras) stays in :app and reaches MainTabs as PARAMETERS;
+    iOS passes its own (the stubs IOS-SHELL-1 named stay stubs - building them is IOS-SHELL-2's). IosMainShell's
+    copy of the wiring is DELETED, not kept beside the common one (R206).
+    If the wiring cannot move without bending (a behaviour change on Android, a pin edit, a moved pixel), the file is
+    NAMED, a KEEP-IN-STEP fence is added instead (a test that fails when the two `when (tab)` bodies diverge), and
+    the session stops there and reports.
+R1361. THE PINS AND THE PIXELS. :app's pins compile and pass UNEDITED (classes and counts before and after);
+    verifyPaparazziDebug at zero tolerance with no baseline regenerated - if one moves, STOP on that file with the
+    crop (R135). Fences: MovedTwinsFenceTest takes the moved name (derived, R246) and EdgeToEdgeCensusTest still
+    reports every screen hosted; each edited fence gets a verified PLANT seen to fail (R180).
+R1362. THE LOG SINK (iOS Ruling 13 Q4 and THE RUN-B SIGSEGV). TEST-FIRST, in this order, each step pushed:
+    (1) REPRODUCE: an iosTest calls IosLogger's REAL default sink (NSLog("%@", line)) in the test process with an
+        ordinary line and with a line containing '%'. Record what the run shows. If the process dies, that is the
+        RED, with the job-log line quoted. If it does NOT die, say so plainly: the crash's cause is then still
+        open, and the report names what else differs between runs B and C (IosShellStartupIosTest was running when
+        B died) - do not fix a cause that was not reproduced.
+    (2) Only if reproduced: fix the default sink (one home for the console line - the shell's consoleLine and
+        IosLogger's sink become ONE function, R206; the scrub stays before the write, R574), and the same test
+        green. A test-only crash cannot be proven absent in a Release build here: say so - the Release check is on
+        the operator's iPhone list (IOS-WALK R1347).
+R1363. NOTHING SECRET IN A LOG. The test lines are fixed strings with no mail, code or token; the scrub test that
+    exists still passes. The repository is PUBLIC: the job log is a publication.
+R1364. ANDROID UNCHANGED beyond R1360's extraction: the full :app:gate (R391), test floor >= 1568. Any :app edit
+    that is not the extraction is a DEVIATION with its reason; the report shows MainShell's diff and argues each
+    line that is not a move.
+R1365. iOS: ONE ios-shared.yml and ONE ios-app.yml run on your pushed CODE tip (plus R1362's RED run if it is
+    separate - listed). ios-shared's count from the JUnit XML against 459, new classes named; ios-app's probe keys
+    all PASS and launch-DEFAULT.png still shows the sign-in screen (looked at).
+
+THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without it
+Gradle says "SDK location not found" - NO RESULT); test-first; fastCheck per increment; PUSH EVERY INCREMENT (a
+session that dies at its limit is relaunched from your pushed tip); the FULL :app:gate under the heavy lock (node
+C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 8000 --wait-min 600; the operator's applications may hold
+memory - wait, never lower the line, never touch their processes); every Gradle run --no-daemon, NEVER `gradlew
+--stop`; R573; push the branch (DO NOT MERGE); report; push; lock removed last. Sessions do not write parking.md.
+REPORT: SUMMARY / STATUS (R391) / R1360-R1365 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF IOS-MOVE-TABS PROMPT

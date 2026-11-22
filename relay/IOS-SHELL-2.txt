@@ -36,6 +36,23 @@ R1334. THE EMPLOYER FIGURE ON iOS (iOS Ruling 11 Q2). A persistent iOS EmployerF
 R1335. ACCOUNT DELETION ON iOS (Android Ruling 19 Q2): the delete pair's copy moves with the screen if still in
     :app, and deleting through the shell ends the session through M3's seam (zero pending requests after -
     iosTest through the shell).
+R1337. THE EVENING OPT-IN PERSISTS (iOS Ruling 13, IOS-SHELL-1 DEVIATION 7). IOS-SHELL-1 left it IN MEMORY
+    (InMemoryEveningNotificationStore). It becomes a UserDefaults-backed store behind the common interface, with
+    the contract tests the other stores have run against it on iOS; an iosTest REBUILDS the graph from the stores
+    (a new process, as a relaunch is) and the plan still runs with the opt-in on; every ending clears it (through
+    M3's seam, as IosDetectionFile does today). IOS-WALK's relaunch and foreground re-plan checks depend on this.
+R1338. THE THRESHOLD ALERT'S ENTRY POINTS (iOS Ruling 13 Q5). ParametresScreen and PrevisionScreen still DRAW the
+    threshold alert's two entry points on iOS, with no-op stubs behind them. Name both; hide them on iOS by a
+    common-screen change (a nullable handler, as onToggleAutoDetection does) - and prove it both ways: an iosTest
+    that they are absent on iOS, AND a PRESENCE control that Android still draws both (R169's corollary). This
+    edits common screens Android draws: Android's baselines stay unmoved at zero tolerance, and the :app call
+    sites that pass the handlers are a DEVIATION with that reason (R1336).
+R1339. THE NATIVE DATE PICKER (iOS Ruling 13 Q2). IOS-SHELL-1 wired IosStartDatePicker (UIDatePicker through
+    UIKitView in a Dialog) into both startDatePicker slots; nothing has opened it. MEASURE whether a UIKitView can
+    be opened and read in iosTest (runComposeUiTest); if it can, an iosTest opens it from each slot and asserts the
+    chosen date reaches the slot's callback; if it cannot, name the reason - IOS-WALK opens it either way.
+NOTE (iOS Ruling 13): IOS-MOVE-TABS lands BEFORE this session; MainTabs is common, so each tab's facility is wired
+    once. The IosLogger sink is IOS-MOVE-TABS R1362's, not yours.
 R1336. ANDROID UNCHANGED: the full :app:gate (R391), no baseline moved, test floor >= the base's; any :app edit
     is a DEVIATION with its reason. iOS: ONE ios-shared.yml and ONE ios-app.yml run on your pushed code tip;
     ios-shared's count from the JUnit XML against the base's, new classes named; ios-app's probe keys all PASS.
