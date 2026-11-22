@@ -42,4 +42,20 @@ enum L {
     static let todayDomicile = "Domicile" // AujourdhuiCopy.DOMICILE
     static let todayPending = "Enregistré sur le téléphone, en attente d’envoi" // AujourdhuiCopy.PENDING
     static let todaySynced = "Enregistré" // AujourdhuiCopy.SYNCED
+    static let sheetQuestion = "Où avez-vous travaillé ?" // CalendarCopy.SHEET_QUESTION
+    static let sheetSave = "Enregistrer" // CalendarCopy.SHEET_SAVE
+    static let exportPdf = "Exporter en PDF" // ReleveCopy.EXPORT_PDF
+    static let compareEmployer = "Comparer avec mon employeur" // ReleveCopy.COMPARE_EMPLOYER
+    static let comparisonTitle = "Votre employeur a-t-il le même chiffre ?" // ComparisonCopy.TITLE
+    static let eveningLabel = "Me prévenir le soir" // ParametresCopy.EVENING_LABEL
+    static let alertLabel = "M’avertir si j’approche d’un seuil" // ParametresCopy.ALERT_LABEL
+    static let licencesTitle = "Licences" // LicencesCopy.TITLE
+    static let licencesBack = "Retour" // LicencesCopy.BACK
+    static let signOut = "Se déconnecter" // ParametresCopy.SIGN_OUT
+    static let deleteRow = "Supprimer mon compte" // ParametresCopy.DELETE_ROW
+    static let deleteConfirm = "Supprimer définitivement" // ParametresCopy.DELETE_CONFIRM
+    static let deleteDoneTitle = "Compte supprimé" // ParametresCopy.DELETE_DONE_TITLE
+    static let deleteDoneAck = "Terminer" // ParametresCopy.DELETE_DONE_ACK
+    static let reminderTitle = "Où avez-vous travaillé aujourd’hui ?" // NotificationCopy.MANUAL_TITLE
+    static let deleteWord = "SUPPRIMER" // DELETE_CONFIRMATION (parametres/ParametresController.kt; not a copy file)
 }

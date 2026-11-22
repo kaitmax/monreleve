@@ -136,7 +136,10 @@ extension XCUIApplication {
     /// Button (its label is drawn above it as a separate text). So the field is the nearest unlabelled, field-sized
     /// element BELOW the text [label] - found by geometry from the copy's own label, never by an index.
     func field(below label: String, within seconds: TimeInterval = 30) -> XCUIElement? {
-        let anchor = labelled(label)
+        field(belowElement: labelled(label), within: seconds)
+    }
+
+    func field(belowElement anchor: XCUIElement, within seconds: TimeInterval = 30) -> XCUIElement? {
         guard anchor.waitForExistence(timeout: seconds) else { return nil }
         let top = anchor.frame.maxY - 1
         let candidates = descendants(matching: .any).allElementsBoundByIndex.filter { element in
@@ -149,10 +152,54 @@ extension XCUIApplication {
     }
 
     /// Taps [field], waits for the software keyboard, and types [text] (never logged by the walk).
+    ///
+    /// BY THE SOFTWARE KEYBOARD'S KEYS, not typeText: run 45059644071 showed the Compose field focused and the
+    /// keyboard up, but typeText refused ("Neither element nor any descendant has keyboard focus") - Compose's text
+    /// input view is not in the accessibility tree. The keys are UIKit's and are. Returns false (and types nothing
+    /// more) at the first character no key could produce.
     func type(_ text: String, into field: XCUIElement) -> Bool {
         field.tap()
-        let keyboard = keyboards.firstMatch.waitForExistence(timeout: 5)
-        typeText(text)
-        return keyboard
+        let keyboard = keyboards.firstMatch
+        guard keyboard.waitForExistence(timeout: 8) else { return false }
+        let tip = buttons["Continue"]
+        if tip.exists { tip.tap() }
+        for character in text {
+            if !typeKey(String(character), keyboard) { return false }
+        }
+        return true
+    }
+
+    private func key(_ name: String, _ keyboard: XCUIElement) -> XCUIElement? {
+        for candidate in [keyboard.keys[name], keyboard.buttons[name]] where candidate.exists && candidate.isHittable {
+            return candidate
+        }
+        return nil
+    }
+
+    private func typeKey(_ character: String, _ keyboard: XCUIElement) -> Bool {
+        let wanted = character == "," ? [",", "."] : [character]
+        func attempt() -> Bool {
+            for name in wanted {
+                if let found = key(name, keyboard) { found.tap(); return true }
+            }
+            if character.uppercased() == character, character.lowercased() != character,
+               let shift = key("shift", keyboard) {
+                shift.tap()
+                if let found = key(character, keyboard) ?? key(character.lowercased(), keyboard) {
+                    found.tap()
+                    return true
+                }
+            }
+            return false
+        }
+        if attempt() { return true }
+        // Another layer (letters <-> numbers <-> symbols): the layer key is identified "more" whatever its label.
+        for _ in 0..<3 {
+            let more = keyboard.keys.matching(identifier: "more").firstMatch
+            guard more.exists else { break }
+            more.tap()
+            if attempt() { return true }
+        }
+        return false
     }
 }
