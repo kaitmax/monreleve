@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,6 +46,8 @@ import ch.monreleve.app.ui.shell.AppRoot
 import ch.monreleve.app.ui.shell.AppTab
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSCalendarUnitMonth
@@ -90,9 +93,21 @@ fun IosShellRoot(shell: IosShell) {
     AppRoot {
         val scope = rememberCoroutineScope()
         val openMail = remember { shell.mailAction() }
-        IosNoticeHost(shell.notices) { IosRouter(shell, scope, openMail) }
+        // R1374 (iOS Ruling 15 Q6): the router waits for the notification centre's FIRST answer, so RESOLVING's restore
+        // (restoreReminder) reads an answer - never the initial false - and cannot write OFF over the server's ON on a
+        // cold launch where /me answers first. Bounded: a centre that never answered would otherwise hold the app
+        // blank; past the bound the router starts as it did before (the canvas meanwhile is AppRoot's, no text).
+        val ready by
+            produceState(initialValue = shell.authorizationKnown.value) {
+                withTimeoutOrNull(AUTHORIZATION_WAIT_MILLIS) { shell.authorizationKnown.first { it } }
+                value = true
+            }
+        if (ready) IosNoticeHost(shell.notices) { IosRouter(shell, scope, openMail) }
     }
 }
+
+/** R1374: how long the router waits for the centre's first answer before starting regardless. */
+private const val AUTHORIZATION_WAIT_MILLIS = 2_000L
 
 /** ON_RESUME of the composition's lifecycle owner -> [onForeground]: the app came (back) to the foreground. */
 @Composable
@@ -238,6 +253,11 @@ internal fun IosMainShell(
     // R1371 (AN-PULL R485): once per process, the years that are empty on the phone come down. A sign-in download
     // already ran in this process makes this a no-op (YearDownloads.atStart) - MainShell's line, on iOS.
     LaunchedEffect(Unit) { shell.downloadYearsAtStart() }
+    // R1373 (a), Android's F8 (MainShell's ON_RESUME): every foreground recomputes today and the tax year from the
+    // clock, so an app brought back after midnight shows - and records - the new day. Counted by the shell's ONE
+    // foreground seam (onForeground), read here where the controllers are.
+    val foregrounds by shell.foregrounds.collectAsState()
+    LaunchedEffect(foregrounds) { controllers.aujourdhui.refresh() }
     val yearDownloadStatus by shell.yearDownloadStatus.collectAsState()
     // R1330 (R323 / D16 on iOS): a tap on the evening reminder opens Aujourd'hui, refreshed - and records nothing.
     val tapped by shell.taps.openAujourdhui.collectAsState()

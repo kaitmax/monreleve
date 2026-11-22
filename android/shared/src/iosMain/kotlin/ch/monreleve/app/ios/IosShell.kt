@@ -49,6 +49,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -235,15 +236,36 @@ class IosShell internal constructor(
         eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
     }
 
+    private val authorizationAnswered = MutableStateFlow(false)
+
+    /**
+     * IOS-SHELL-3 R1374 (iOS Ruling 15 Q6): true once the centre has answered "may this app notify" at least once -
+     * the first read startIosShell asks, or any later one. Until then [notificationsPermitted] is only its initial
+     * false, not an answer, so IosShellRoot holds the router back until this is true (bounded): RESOLVING's restore
+     * then reads an ANSWER, and cannot write OFF over the server's ON because /me came back first.
+     */
+    val authorizationKnown: StateFlow<Boolean> = authorizationAnswered
+
+    private val foregroundCount = MutableStateFlow(0)
+
+    /** IOS-SHELL-3 R1373 (a): the foregrounds this process has seen - the main shell refreshes Aujourd'hui on each. */
+    val foregrounds: StateFlow<Int> = foregroundCount
+
+    /** One answer from the centre, kept: the permission, and that it has been answered (R1374). */
+    private fun answered(permitted: Boolean) {
+        notificationsPermitted.value = permitted
+        authorizationAnswered.value = true
+    }
+
     /** Re-reads the authorization into [notificationsPermitted]. */
     fun refreshAuthorization() {
-        centre.readAuthorization { notificationsPermitted.value = it }
+        centre.readAuthorization(::answered)
     }
 
     /** The centre's answer to "may this app notify", awaited - and kept in [notificationsPermitted]. */
     private suspend fun readAuthorization(): Boolean {
         val permitted = suspendCoroutine { done -> centre.readAuthorization { done.resume(it) } }
-        notificationsPermitted.value = permitted
+        answered(permitted)
         return permitted
     }
 
@@ -256,18 +278,20 @@ class IosShell internal constructor(
     }
 
     /**
-     * R1330 / R1332: the app came to the foreground. ONE call for both things a foreground does on iOS - the queue
-     * drained (requestDrain; BGTaskScheduler is device-only, PARK-IF1) and the reminders re-planned. Called from ONE
-     * place: IosShellRoot's lifecycle observer (ON_RESUME).
+     * R1330 / R1332: the app came to the foreground. ONE call for what a foreground does on iOS - the queue drained
+     * (requestDrain; BGTaskScheduler is device-only, PARK-IF1), the reminders re-planned and (R1373 a) Aujourd'hui told
+     * to recompute today. Called from ONE place: IosShellRoot's lifecycle observer (ON_RESUME).
      */
     fun onForeground() {
         syncTrigger.requestDrain()
         replanSoon()
+        // R1373 (a), Android's F8: Aujourd'hui recomputes today from the clock - the midnight case (IosMainShell).
+        foregroundCount.update { it + 1 }
     }
 
     /** R1330: the person answered the authorization prompt; a grant re-plans ("authorization granted"). */
     fun onAuthorizationAnswer(granted: Boolean) {
-        notificationsPermitted.value = granted
+        answered(granted)
         if (granted) replanSoon()
     }
 
