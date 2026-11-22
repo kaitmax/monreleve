@@ -6,7 +6,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +16,7 @@ import ch.monreleve.app.calendar.CalendarSnapshot
 import ch.monreleve.app.calendar.SelectionSnapshot
 import ch.monreleve.app.data.local.MonReleveDatabase
 import ch.monreleve.app.data.local.get
+import ch.monreleve.app.data.local.toKotlinClock
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
@@ -26,12 +26,15 @@ import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.forecast.SimulationSnapshot
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
+import ch.monreleve.app.parametres.orgJsonParametresWire
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
 import ch.monreleve.app.settings.SharedPrefsThresholdAlertStore
 import ch.monreleve.app.ui.shell.AppTab
+import kotlinx.datetime.toKotlinTimeZone
 import java.time.Clock
+import kotlin.time.ExperimentalTime
 
 // AN-STATE (R310). The main shell's STATE-HOLDING, moved OUT of the MainShell Composable into named seams -
 // the same move R291 made for the WIRING, now for the state. WHY: the operator's finding was that rotating
@@ -48,51 +51,12 @@ import java.time.Clock
 // R291 PRESERVED. rememberMainControllers still builds through MainGraph.build - the ONE construction site the
 // wiring test also calls - so the DayWriter/requestSync census is unaffected; the seam only decides the state's
 // LIFETIME, not the graph's shape.
-
-// AN-STATE (R310): a destination restored across a rebuild, reconciled against the current session. A saved
-// MAIN restored after a sign-out-while-backgrounded (or an expiry) would land an unsigned shell, so when the
-// recomputed `start` says SIGN_IN (no session) that wins. A restored in-flight RESOLVING is re-decided. A
-// saved ONBOARDING/MAIN is honoured while signed in - so a rotation mid-onboarding stays on onboarding rather
-// than re-running the RESOLVING network round-trip. Pure, so SessionReconciledTest covers it on the JVM.
-internal fun sessionReconciled(
-    saved: Destination,
-    start: Destination,
-): Destination = if (start == Destination.SIGN_IN || saved == Destination.RESOLVING) start else saved
-
-// AN-FORCED-SIGNOUT (R521). THE DESTINATION'S SAVER RECONCILES AS IT RESTORES. sessionReconciled ran only in a
-// LaunchedEffect - AFTER the first frame had composed the restored destination. A MAIN restored with no session then
-// built the shell's controllers for one frame, and ParametresController requires settings (checkNotNull): R521 clears
-// them on a sign-out nobody asked for, so a session the worker ended in the background, then a process death, would
-// restore MAIN onto no settings and crash before the reconcile ran. Reconciled here, the first frame is already right.
-internal fun destinationSaver(start: Destination): Saver<Destination, Destination> =
-    Saver(save = { it }, restore = { sessionReconciled(saved = it, start = start) })
-
-// The destination decided once at launch, from two facts - is there a session, and is this device onboarded. Moved
-// out of MainActivity.onCreate unchanged (AN-FORCED-SIGNOUT, R521) so a JVM test can ask it: PARK-T2's link half was a
-// sign-in by link on a phone whose settings had survived a forced sign-out, which this sent straight to MAIN on them.
-internal fun startDestination(
-    signedIn: Boolean,
-    onboarded: Boolean,
-): Destination =
-    when {
-        !signedIn -> Destination.SIGN_IN
-        onboarded -> Destination.MAIN
-        // R297: signed in but no local settings - a fresh account, or a re-sign-in after a sign-out cleared them.
-        // Consult the server (GET /api/v1/me) before onboarding, so settings the server holds are restored rather
-        // than re-asked.
-        else -> Destination.RESOLVING
-    }
-
-// AN-FORCED-SIGNOUT (R520). WHERE THE PERSON GOES WHEN THE SERVER ENDS THE SESSION WHILE THE APP IS OPEN: to sign-in,
-// from any screen - the shell, onboarding, RESOLVING - never left on a signed-in screen whose only way out was the
-// voluntary sign-out that wipes the days this keeps (PARK-T1). `start` above decides it at launch; this decides it on
-// the process's session-end signal, which arrives while the app is already open. Still signed in by the time the
-// signal is read (a new sign-in saved its pair first) leaves the person where they are. Pure, so
-// SessionReconciledTest's shape covers it on the JVM.
-internal fun destinationAfterSessionEnd(
-    current: Destination,
-    signedIn: Boolean,
-): Destination = if (signedIn) current else Destination.SIGN_IN
+//
+// IOS-MOVE-GRAPH (R1310): THE ANDROID HALF. The shell's pure destination logic that was here (sessionReconciled,
+// destinationSaver, startDestination, destinationAfterSessionEnd) moved to :shared commonMain with Destination, as
+// Destination.kt, and MainGraph moved there too. What stays is Android's: the rememberSaveable seams, the
+// Context-built stores, and the java.time Clock MainActivity holds, split here into the kotlin.time instant source and
+// the device's zone that the common graph takes.
 
 /**
  * The selected bottom-navigation tab. The operator's finding: with `remember` this reset to Aujourd'hui on
@@ -113,6 +77,7 @@ fun rememberShellTab(): MutableState<AppTab> = rememberSaveable { mutableStateOf
  * (calendar, parametres, simulation, the releve's year) adds a seed + a collector here by construction.
  */
 @Suppress("LongParameterList", "LongMethod")
+@OptIn(ExperimentalTime::class) // KMP-DT R590: hands the kotlin.time.Clock seam to MainGraph - on the allowlist.
 @Composable
 fun rememberMainControllers(
     repository: EntryRepository,
@@ -156,9 +121,12 @@ fun rememberMainControllers(
     val context = LocalContext.current
     val controllers =
         remember {
+            // IOS-MOVE-GRAPH (R1310): the java.time Clock split into its instant source and its zone, with the
+            // converters JavaTimeAujourdhui.kt's factory used - the same clock and zone the controllers got before.
             MainGraph.build(
-                repository, rhythmRepository, store, taxYear, clock, scope, requestSync, dossierFetch, dossierStaleCopy,
-                exportBytes, settingsSaver, revokeServer, localStore, authenticatedPost, syncNow,
+                repository, rhythmRepository, store, taxYear, clock.toKotlinClock(), clock.zone.toKotlinTimeZone(),
+                scope, requestSync, dossierFetch, dossierStaleCopy, exportBytes, settingsSaver, revokeServer,
+                localStore, authenticatedPost, syncNow,
                 restoredCalendar = CalendarSnapshot(savedMonth, savedEditingDay, savedSelection),
                 restoredParametres = savedParametres,
                 restoredSimulation = savedSimulation,
@@ -181,6 +149,8 @@ fun rememberMainControllers(
                 // opt-in and the crossing state). The Parametres toggle and Prevision offer read/write it; the
                 // alert evaluation reads it too.
                 thresholdAlertStore = SharedPrefsThresholdAlertStore(context),
+                // IOS-MOVE-GRAPH (R1310): the Parametres wire, the object :app's controller factory always used.
+                parametresWire = orgJsonParametresWire,
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

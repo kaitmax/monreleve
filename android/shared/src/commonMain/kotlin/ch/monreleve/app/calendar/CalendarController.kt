@@ -177,7 +177,7 @@ class CalendarController(
     @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
     private val clock: Clock,
     private val scope: CoroutineScope,
-    // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
+    // R291: a DayWriter, so MainGraphDayWriterCensusTest enumerates this by type and asserts the app's graph
     // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
     override val requestSync: () -> Unit = {},
     // AN-STATE (R310): the state to restore after a rebuild (null = a fresh open). Seeds the visible month and,

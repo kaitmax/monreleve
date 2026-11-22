@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 // AN11 increment 1 (SPEC 11.4). The Releve screen's state, and the controller that fills it from the
 // SERVER's dossier. It lives OUTSIDE ui/ (fence 5): it holds the fetch seam, and the screen reads a plain
 // ReleveState. The fetch is a lambda (suspend (Int) -> DossierResult), the same seam idiom as
-// AujourdhuiController's requestSync - so MainGraphWiringTest can build the graph with a stub and a JVM
+// AujourdhuiController's requestSync - so the MainGraph wiring pins can build the graph with a stub and a JVM
 // test can drive the controller against a scripted fetch without a real session or network.
 //
 // THE DEVICE NEVER RECOMPUTES A FIGURE THE SERVER PROVIDES (FW12). ReleveState.Loaded carries the parsed

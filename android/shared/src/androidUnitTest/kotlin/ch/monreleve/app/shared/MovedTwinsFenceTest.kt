@@ -20,6 +20,9 @@ import java.io.File
  * (auth/CallbackLinkHost.kt, settings/EmployerFigureStore.kt). And, by iOS Ruling 10 Q2, it now READS androidMain: the
  * bridge there may declare EXACTLY its three type-only java.time overloads, by name, and no other androidMain file may
  * declare a moved name at all - so the one place moved names are shared by design cannot grow a fourth unseen.
+ * IOS-MOVE-GRAPH R1312 added the one graph (MainGraph.kt: MainGraph and MainControllers) and the shell's destination
+ * logic (Destination.kt: Destination and the four pure functions split from :app's ShellState.kt, which keeps its
+ * Android half under its own name).
  *
  * Until this task, account/DeviceLocalStore.kt, detection/EveningNotificationDecision.kt and
  * detection/ThresholdAlertDecision.kt lived twice: in :app, and byte-identical in :shared's iosMain (IOS-2f R889/R892),
@@ -83,6 +86,9 @@ class MovedTwinsFenceTest {
             "ch/monreleve/app/parametres/Site.kt",
             "ch/monreleve/app/auth/CallbackLinkHost.kt",
             "ch/monreleve/app/settings/EmployerFigureStore.kt",
+            // IOS-MOVE-GRAPH R1310/R1312: the one graph, and the destination logic split from ShellState.kt.
+            "ch/monreleve/app/MainGraph.kt",
+            "ch/monreleve/app/Destination.kt",
         )
 
     private fun movedFiles(): List<File> = moved.map { File(commonMain, it) }
@@ -137,6 +143,9 @@ class MovedTwinsFenceTest {
                     "decideStartAfterSignIn", "meFetchOf",
                     // IOS-MOVE-CORE R1300: the one-change files and the two split-off contracts.
                     "AppBottomBar", "Site", "CallbackLinkHost", "EmployerFigureStore",
+                    // IOS-MOVE-GRAPH R1312: an object, a class, an enum and four plain funs.
+                    "MainGraph", "MainControllers", "Destination", "sessionReconciled", "destinationSaver",
+                    "startDestination", "destinationAfterSessionEnd",
                 ),
             ),
         )
@@ -189,8 +198,8 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInApp() {
         val found = copiesUnder(appSrc)
         assertTrue(
-            "R1242/R1273/R1283/R1293/R1303: :app declares a name (or holds a file name) of a file moved to :shared " +
-                "commonMain - a second home for it. Delete it; the one home is :shared commonMain.\n" +
+            "R1242/R1273/R1283/R1293/R1303/R1312: :app declares a name (or holds a file name) of a file moved to " +
+                ":shared commonMain - a second home for it. Delete it; the one home is :shared commonMain.\n" +
                 found.joinToString("\n"),
             found.isEmpty(),
         )
@@ -200,7 +209,7 @@ class MovedTwinsFenceTest {
     fun noCopyOfAMovedFileIsInIosMain() {
         val found = copiesUnder(iosMain)
         assertTrue(
-            "R1242/R1273/R1283/R1293/R1303: iosMain declares a name (or holds a file name) of a file moved to " +
+            "R1242/R1273/R1283/R1293/R1303/R1312: iosMain declares a name (or holds a file name) of a file moved to " +
                 ":shared commonMain - a redeclaration only the macOS compilation sees. Delete it; the one home is " +
                 ":shared commonMain.\n" +
                 found.joinToString("\n"),

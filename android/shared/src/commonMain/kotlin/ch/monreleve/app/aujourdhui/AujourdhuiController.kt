@@ -310,12 +310,12 @@ class AujourdhuiController(
     // The zone clientClaimedAt takes its offset from: the device's, as the java.time.Clock this replaced carried it.
     private val deviceZone: TimeZone,
     private val scope: CoroutineScope,
-    // R291: a DayWriter, so MainGraphWiringTest enumerates this by type and asserts the app's graph
+    // R291: a DayWriter, so MainGraphDayWriterCensusTest enumerates this by type and asserts the app's graph
     // builds it with a real requestSync. Default no-op only for the JVM tests that build it directly.
     override val requestSync: () -> Unit = {},
     // AN-AUTO increment 5 (R311-R315). The device's logging-mode cache (the same store Parametres toggles),
     // the day's tally stream (Room's daily_tally, coordinate-free - SPEC 13.1), and the near-border "told
-    // once" flag (R313). All defaulted so the existing JVM tests and MainGraphWiringTest build unchanged;
+    // once" flag (R313). All defaulted so the existing JVM tests and the MainGraph wiring pins build unchanged;
     // the app injects the SharedPreferences store, the DAO flow and the SharedPreferences notice store.
     private val detectionModeStore: DetectionModeStore = InMemoryDetectionModeStore(),
     detectionTallies: Flow<List<TallyEntity>> = emptyFlow(),

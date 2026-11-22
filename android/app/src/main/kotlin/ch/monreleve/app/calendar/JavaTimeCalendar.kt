@@ -22,6 +22,9 @@ import java.time.Instant as JavaInstant
 // calendar's day is always the Paris day), and a java.time Instant becomes the kotlin.time Instant - exactly the
 // conversion bulkConfirmation made on its first line before. Named for what it holds, so its JVM facade class cannot
 // collide with a file of :shared's.
+//
+// IOS-MOVE-GRAPH (R1310): the composition root's graph no longer calls this - MainGraph moved to :shared commonMain
+// and builds the class itself, from the kotlin.time Clock and zone ShellState.kt splits off its java.time Clock.
 
 /** The bulk confirmation, from a java.time.Instant: :app's call into the kotlin.time version. */
 @OptIn(ExperimentalTime::class) // KMP-DT R590: kotlin.time's java.time converter - on the allowlist.

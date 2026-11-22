@@ -1,46 +1,50 @@
 package ch.monreleve.app
 
 import ch.monreleve.app.account.LocalStore
-import ch.monreleve.app.aujourdhui.RecordedKind
-import ch.monreleve.app.aujourdhui.Slot
+import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
-import ch.monreleve.app.calendar.SlotEdit
+import ch.monreleve.app.data.local.toKotlinClock
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.parametres.orgJsonParametresWire
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
-import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
-import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.toKotlinTimeZone
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.reflect.full.memberProperties
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.time.ExperimentalTime
 
-// AN10b increment 2 (R291). The wiring test that the AN10 calendar-never-synced bug proves is needed.
-// That bug lived in MainShell (a Composable), where no JVM test reaches: the CalendarController was
-// built without requestSync, so a saved day recorded to Room but never enqueued the drain (SPEC 13.2),
-// and only the device walkthrough caught it. R291 moved the wiring into MainGraph; this asserts every
-// day-writing controller the graph builds is built WITH requestSync and requests a sync when it writes.
+// IOS-MOVE-GRAPH R1311. MainGraphWiringTest's FIRST case (Kotest), TRANSCRIBED to kotlin.test with its values and
+// expectations unchanged, and KEPT IN :app because it is JVM-ONLY: it enumerates the day-writers off MainControllers'
+// own properties with kotlin.reflect.full, and common Kotlin has no equivalent - a KClass outside the JVM has no
+// members. Replacing the enumeration with a list would be the hand-kept list the census exists to avoid. It still
+// checks the ONE graph: MainGraph.build is the construction site every platform calls, so the property set it
+// enumerates on the JVM is the set iOS gets. The second case is MainGraphWiringPinTest (R1311 moves it to commonTest).
+// Since MainGraph moved to commonMain (R1310) it takes the kotlin.time instant source and the zone, so this test splits
+// its java.time Clock the way the Android call site (ShellState.kt) does; the instant and zone are unchanged.
 //
-// IT CHECKS THE WIRING THE APP ACTUALLY USES, NOT A COPY OF IT: MainShell calls MainGraph.build and so
-// does this test, so an omission planted in MainGraph fails here AND breaks the app. That identity is
-// the whole point - a test against a re-declared graph would pass while the real one stayed broken.
+// The original's header, kept: AN10b increment 2 (R291). The wiring test that the AN10 calendar-never-synced bug
+// proves is needed. R291 moved the wiring into MainGraph; this asserts every day-writing controller the graph builds
+// is built WITH requestSync. IT CHECKS THE WIRING THE APP ACTUALLY USES, NOT A COPY OF IT: the shell calls
+// MainGraph.build and so does this test, so an omission planted in MainGraph fails here AND breaks the app.
 
 private const val TAX_YEAR = 2026
 
-// today is 15 June 2026 in Paris (R28): the calendar opens on June, and 2026-06-10 is a recordable past
-// day the save path can write.
+// today is 15 June 2026 in Paris (R28).
 private val fixedClock = Clock.fixed(Instant.parse("2026-06-15T10:00:00Z"), ZoneId.of("Europe/Paris"))
 
 private fun store(): SettingsStore =
@@ -52,15 +56,13 @@ private fun store(): SettingsStore =
         override fun clear() = Unit
     }
 
-// AN12: a stub /api/v1/me PATCH seam. The Parametres controller is not a DayWriter, so it is outside this
-// test's requestSync census; the saver just has to exist for the graph to build.
+// AN12: stub seams. The Parametres, Releve and forecast controllers are not DayWriters, so they are outside this
+// census; the seams just have to exist for the graph to build.
 private fun saver(): SettingsSaver =
     object : SettingsSaver {
         override suspend fun saveSettings(body: String): PostOutcome = PostOutcome.Ok(200, "{}")
     }
 
-// AN12: a stub device-erasure. Same reason - the graph just has to build; the sign-out/delete scopes are
-// proven in LocalStoreTest and ParametresAccountTest.
 private fun localStore(): LocalStore =
     object : LocalStore {
         override suspend fun clearForSignOut() = Unit
@@ -68,8 +70,6 @@ private fun localStore(): LocalStore =
         override suspend fun clearForDeletion() = Unit
     }
 
-// AN-FORECAST: a stub rhythm store. The ForecastController is not a DayWriter, so it is outside this test's
-// requestSync census; the repository just has to exist for the graph to build.
 private fun rhythmRepository(): RhythmRepository =
     object : RhythmRepository {
         override fun observe(): Flow<WeeklyRhythm> = flowOf(WeeklyRhythm())
@@ -89,8 +89,11 @@ private fun dayWritersOf(controllers: MainControllers): List<DayWriter> =
         .filterIsInstance<DayWriter>()
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class MainGraphWiringTest : FunSpec({
-    test("every day-writing controller in the app's graph is built with requestSync (R291)") {
+class MainGraphDayWriterCensusTest {
+    // "every day-writing controller in the app's graph is built with requestSync (R291)"
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: hands the kotlin.time.Clock seam over - on the allowlist.
+    @Test
+    fun everyDayWritingControllerInTheAppsGraphIsBuiltWithRequestSync() =
         runTest {
             var syncs = 0
             val controllers =
@@ -99,68 +102,33 @@ class MainGraphWiringTest : FunSpec({
                     rhythmRepository = rhythmRepository(),
                     settingsStore = store(),
                     taxYear = TAX_YEAR,
-                    clock = fixedClock,
+                    clock = fixedClock.toKotlinClock(),
+                    deviceZone = fixedClock.zone.toKotlinTimeZone(),
                     scope = this,
                     requestSync = { syncs++ },
                     // The Releve controller is not a DayWriter; stub seams keep this test about the sync wiring.
                     dossierFetch = { DossierResult.NetworkError },
                     dossierStaleCopy = { null },
-                    exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
+                    exportBytes = { BytesOutcome.NetworkError },
                     settingsSaver = saver(),
                     revokeServer = {},
                     localStore = localStore(),
                     authenticatedPost = { _, _ -> PostOutcome.Ok(200, "{}") },
+                    parametresWire = orgJsonParametresWire,
                 )
 
             val writers = dayWritersOf(controllers)
             // The reflection enumeration must actually find both controllers the shell drives (identity):
             // a controller dropped from MainControllers, or one that stops implementing DayWriter, falls
             // out of `writers` and is caught here - the census tripwire.
-            writers shouldContain controllers.aujourdhui
-            writers shouldContain controllers.calendar
-            writers.size shouldBeGreaterThanOrEqual 2
+            assertContains(writers, controllers.aujourdhui)
+            assertContains(writers, controllers.calendar)
+            assertTrue(writers.size >= 2, "expected at least 2 day-writers, found ${writers.size}")
 
             // Each enumerated writer must hold the SHARED requestSync (built WITH it, not the default
             // no-op): invoking each fires the one spy once, so the total equals the writer count. An
             // omission in MainGraph leaves one writer on its default no-op and the total falls short.
             writers.forEach { it.requestSync() }
-            syncs shouldBe writers.size
+            assertEquals(writers.size, syncs)
         }
-    }
-
-    test("each day-writing controller requests a sync when it writes a day (SPEC 13.2, R204)") {
-        runTest {
-            var syncs = 0
-            val dao = FakeEntryDao()
-            val controllers =
-                MainGraph.build(
-                    repository = LocalEntryRepository(dao, fixedClock),
-                    rhythmRepository = rhythmRepository(),
-                    settingsStore = store(),
-                    taxYear = TAX_YEAR,
-                    clock = fixedClock,
-                    scope = this,
-                    requestSync = { syncs++ },
-                    dossierFetch = { DossierResult.NetworkError },
-                    dossierStaleCopy = { null },
-                    exportBytes = { ch.monreleve.app.auth.BytesOutcome.NetworkError },
-                    settingsSaver = saver(),
-                    revokeServer = {},
-                    localStore = localStore(),
-                    authenticatedPost = { _, _ -> PostOutcome.Ok(200, "{}") },
-                )
-            advanceUntilIdle()
-
-            // Aujourd'hui's one-tap record (SPEC 11.2) enqueues the drain.
-            controllers.aujourdhui.record(RecordedKind.SUISSE, Slot.FULL)
-            advanceUntilIdle()
-            syncs shouldBe 1
-
-            // The calendar's Save (SPEC 11.3) must too - the exact path AN10 shipped unwired.
-            controllers.calendar.openDay("2026-06-10")
-            controllers.calendar.save("2026-06-10", listOf(SlotEdit(Slot.FULL, RecordedKind.DOMICILE, null, null)))
-            advanceUntilIdle()
-            syncs shouldBe 2
-        }
-    }
-})
+}

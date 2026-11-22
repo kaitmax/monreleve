@@ -1,0 +1,391 @@
+REPORT-IOS-MOVE-GRAPH - THE ONE GRAPH AND THE ONE DESTINATION LOGIC BECOME COMMON (iOS phase, (c) move 5b)
+TASK     relay/IOS-MOVE-GRAPH.txt (iOS Rulings 3, 8, 9, 10, 11 and the overnight plan in relay/RULINGS-2026-11-16.txt),
+         with relay/IOS-MOVE-CORE.txt's THE WORK. Rulings R1310-R1319: R1310-R1314 used, R1315-R1319 unused.
+         `grep -rlE '\bR131[0-9]\b'` over relay/, REPORT-*.txt and CLAUDE.md of this worktree and the main checkout's
+         relay/ at the start returned only IOS-MOVE-GRAPH.txt and RULINGS-2026-11-16.txt (the allocation). Re-run after
+         the first report push, over the same places, C:/wt/web-orch/relay and a `git grep` of origin/main:
+         those two files plus this report, nothing else.
+BASE     origin/main a3b5d65b (5a's merge f5a998ac + a records commit). After the work, `git fetch` read origin/main
+         still a3b5d65b, so the branch merges onto its own base and the iOS runs cover the commit that would land.
+         :app:gate floor at the base 1577; ios-shared at the base 438 tests (run 45006594277, whose android/ tree is the base's).
+BRANCH   m5b-graph. PUSHED, NOT MERGED. Code tip 65534e4a (five commits on the base: 8b2d05b9, 720498d5, a5d85c29,
+         41d007b7, 65534e4a). The report tip is the commit carrying this file only.
+WORKTREE C:/wt/m5b-graph, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/m5b-graph/ (not committed):
+         inc{0..4}.log + inc*-xml-{app,shared}/ + inc*-lock.log + inc*-commit-status.txt; the red attempts kept as
+         inc2-attempt{1,2}.log and inc3-attempt1.log (+ their XML); msg-inc*.txt; inc.sh, verify.sh, tools/ (every
+         scripted edit asserted its anchor count before writing, R211); diff-*.txt (the diffs quoted below);
+         block-at-base.txt / block-at-tip.txt; mutant.log + mutant-xml/ (M1), mutant-m2.log + mutant-m2-xml/ (M2);
+         plant.log + plant-xml/ + failures.txt + allowlist-plant-diff.txt; gate.log + gate-xml/ + gate-tasks.txt +
+         counts.txt; ios-expected.txt (written before dispatch); ios-base-classes.txt, ios-tip-classes.txt,
+         ios-shared-suites.txt, ios-shared-count.txt; ios-shared-45012299645/ and ios-app-45012302513/ (the runs' own
+         artifacts).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1310: MainGraph.kt (MainGraph and MainControllers) is in :shared commonMain, package ch.monreleve.app, by git mv.
+  It takes `clock: kotlin.time.Clock` and `deviceZone: kotlinx.datetime.TimeZone`, and builds each controller with its
+  class's own constructor and NAMED arguments, as :app's JavaTime* factory bodies did. Destination.kt (new, commonMain)
+  holds the Destination enum (from MainActivity.kt) and ShellState's four pure functions (sessionReconciled,
+  destinationSaver, startDestination, destinationAfterSessionEnd), verbatim but for `internal` and two test names in
+  comments. ShellState.kt keeps the Android half and splits the java.time Clock at the call site.
+  ONE FILE WOULD NOT COMPILE WITH ONLY THE CLOCK CHANGE, AND IT IS NAMED: MainGraph built ParametresController through
+  :app's org.json factory (OrgJsonParametres.kt), which commonMain cannot call. MainGraph.build therefore takes the wire
+  as a required parameter (`parametresWire: ParametresWire`), and Android passes the factory's own object. This was made
+  in place in :app, as its own green increment (a5d85c29), BEFORE the move. DEVIATION 1, Q1.
+- R1311: both tests were transcribed to kotlin.test in :app first (720498d5) and ran green beside the originals
+  (8 = 8; 1 + 1 = 2). SessionReconciledPinTest then moved to commonTest by git mv with its blob UNCHANGED (f8fb5011 at
+  720498d5, a5d85c29 and the tip). MainGraphWiringPinTest moved with the clock types, commonTest's in-memory DAO and a
+  stub wire changed and nothing else. The reflection census case is JVM-only and stays in :app as
+  MainGraphDayWriterCensusTest. The originals are deleted (R268). Case map below: 10 original cases, 10 transcriptions,
+  none dropped.
+- R1312: the ExperimentalTime allowlist takes MainGraph.kt by name, and also ShellState.kt, MainGraphDayWriterCensusTest
+  and MainGraphWiringPinTest (DEVIATION 4). MovedTwinsFenceTest takes the two moved files, their names derived. Every
+  edit was planted, verified landed, and failed by name.
+- R1313:
+  - :app:gate on 65534e4a: BUILD SUCCESSFUL in 6m 30s, GATE_EXIT=0, floor 1568. Floor arithmetic below.
+  - No baseline moved.
+  - ios-shared 45012299645: success, 447 tests, 0 failures. That is 438 + 9, and both transcribed classes are named in
+    the XML.
+  - ios-app 45012302513: success, with all four probe results PASS.
+- R1314: AppRoot.kt's header paragraph was corrected in a comment-only commit of its own (8b2d05b9), diff below.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 65534e4a in this session, on a clean tree (gate.log):
+    GATE HEAD=65534e4a2cf70bf31bf9f3e05e75c49bf545dd09 start=2026-11-22T10:28:19Z dirty=0
+    test floor OK: 1568 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 6m 30s
+    GATE_EXIT=0
+    end=2026-11-22T10:34:51Z dirty-after=0
+- What gate.log shows (gate-tasks.txt):
+  - EXECUTED: :app:testDebugUnitTest, :app:checkTestFloor, :app:verifyPaparazziDebug, :app:assembleDebug,
+    :app:lintDebug, :shared:testDebugUnitTest, :app:checkReleaseCleartext / NoDebugInjection / LocationPermissions /
+    NoDevComponent / PushManifest / VcsInfo / Bundle, :app:checkMinifiedWireContract and :app:gate.
+  - UP-TO-DATE: :app:detekt, :app:ktlintCheck, :shared:detekt, :shared:ktlintCheck and
+    :shared:compileCommonMainKotlinMetadata. They had run green in increment 4's fastCheck on the same sources
+    (65534e4a).
+- It ran under the heavy lock as holder m5b-graph-verify, at line 8000 MB, not lowered: ACQUIRED 10:24:53Z with
+  commitFree=12878, RELEASED 10:34:57Z. The same hold ran mutant M1 and the plants first; each was restored and the tree
+  read dirty=0 before the gate.
+- Every Gradle run used --no-daemon. `gradlew --stop` was never run.
+- web/, ios/ and .github/ are unchanged (`git diff --name-only a3b5d65b 65534e4a -- web ios .github` = 0 files), so
+  gate:clone and gate:changed are not owed (R199). That is a decision, not an omission.
+- The report tip changes only this file, so its android/ tree is 65534e4a's.
+
+================================================================================
+R1310 - THE MOVE
+================================================================================
+MainGraph.kt (`git diff a5d85c29:android/app/.../MainGraph.kt 41d007b7:android/shared/src/commonMain/.../MainGraph.kt`,
+diff-MainGraph.txt). The changes, and nothing else:
+  - imports: java.time.Clock out; kotlinx.datetime.TimeZone, kotlin.time.Clock and kotlin.time.ExperimentalTime in.
+  - build(): `clock: Clock` is kotlin.time's, and `deviceZone: TimeZone` follows it. @OptIn(ExperimentalTime::class) is
+    on build (function scope, R590). "LongMethod" joins "LongParameterList" in its @Suppress: the named arguments
+    lengthen the one expression to 74 lines, and detekt's limit is 60.
+  - aujourdhui / calendar / forecast / simulation: positional calls of :app's JavaTime* factories became the classes'
+    constructors with named arguments, mirroring each factory's own body. Aujourd'hui takes deviceZone, as
+    JavaTimeAujourdhui passed clock.zone.toKotlinTimeZone().
+  - comments: a header paragraph, and the two test names in MainControllers' and build's KDoc.
+  - parametres: already the class constructor with named arguments and `wire = parametresWire`, since a5d85c29.
+  ANDROID'S VALUES ARE THE SAME:
+  - ShellState.rememberMainControllers passes clock.toKotlinClock() and clock.zone.toKotlinTimeZone(). Those are the same
+    converters, on the same java.time Clock, that the factories applied inside MainGraph before.
+  - Calendar, forecast and simulation used only toKotlinClock(); their factories drop the zone, and so does the graph.
+Destination.kt (commonMain, new; diff-Destination-block.txt compares ShellState.kt's block at a5d85c29 with this file's).
+  The four functions and their comments are byte for byte the same, except:
+  - `internal ` removed from the four functions. :shared declares no friend path, so `internal` would hide them from
+    MainActivity, ShellState and ForcedSignOutTest. This is IOS-MOVE-SEAM's precedent.
+  - "SessionReconciledTest covers it on the JVM" became "SessionReconciledPinTest covers it on the JVM and the iOS
+    simulator", twice.
+  - Destination (`internal enum class` in MainActivity.kt) is `enum class` here, with a one-line KDoc.
+  The file is named after its one class, because detekt's MatchingDeclarationName and ktlint's filename rule required
+  it. ShellState.kt stays in :app, and MovedTwinsFenceTest refuses a moved file name there.
+:app's side (diff-inc3-app.txt):
+  - ShellState.kt:
+    - lost the 44-line block and the Saver import;
+    - gained a header paragraph;
+    - gained @OptIn on rememberMainControllers;
+    - its call now passes the split clock.
+  - MainActivity.kt lost the enum line. The KDoc that sat above it documents MainActivity ("The single activity and
+    composition root"), so it now sits directly above `class MainActivity`; ForecastRoute and its comment are above it,
+    unchanged. One R291 comment names the two wiring pins.
+  - ForcedSignOutTest compiles against the moved declarations UNEDITED (`git diff a3b5d65b HEAD` on it is empty) and is
+    27/0 in the gate.
+THE NAMED FILE - MainGraph and ParametresController's org.json factory (increment 2, a5d85c29, diff-inc2.txt):
+  - MainGraph.build gained `parametresWire: ParametresWire`, placed after syncNow. It has NO default (R291). Every
+    positional call site is unaffected, because the parameter follows the last positional argument.
+  - The ParametresController construction became the class's constructor with named arguments, each mapped exactly as
+    OrgJsonParametres.kt's factory body maps them (saver, store, ..., modeStore, ..., restored), plus
+    `wire = parametresWire`.
+  - OrgJsonParametres.kt gained `internal val orgJsonParametresWire: ParametresWire = OrgJsonParametresWire`. The object
+    stays private: making the object itself internal failed detekt's MatchingDeclarationName (inc2-attempt1.log).
+  - ShellState passes `parametresWire = orgJsonParametresWire`, the same object the factory always passed.
+  - The three test call sites (the original MainGraphWiringTest's two, and the two transcriptions) each gained one line
+    naming the wire. Expectations were unchanged, and all ran green: 1587/0 on :app.
+FILES NOT MOVED: none in R1310's scope. What stays in :app is ShellState's Android half (rememberShellTab,
+rememberMainControllers) and the JavaTime* factories, as R1310 says.
+
+================================================================================
+R1311 - PIN THEN MOVE, AND THE CASE MAP
+================================================================================
+STEP 1 (720498d5), in :app, kotlin.test (R457), against the unchanged :app code. Each `actual shouldBe expected` became
+assertEquals(expected, actual), with values unchanged. Run with the originals (inc1-xml-app):
+    SessionReconciledTest 8/0 (Kotest)   SessionReconciledPinTest 8/0
+    MainGraphWiringTest 2/0 (Kotest)     MainGraphWiringPinTest 1/0 + MainGraphDayWriterCensusTest 1/0
+STEP 2 (a5d85c29): the wire seam. All five classes ran green again (1587/0 on :app).
+STEP 3 (41d007b7): the move.
+  - SessionReconciledPinTest: git mv to shared/src/commonTest/kotlin/ch/monreleve/app/, blob f8fb5011 unchanged
+    (`git rev-parse` at 720498d5, a5d85c29 and 41d007b7 all give f8fb501130fa).
+  - MainGraphWiringPinTest: git mv to commonTest. The diff against its green :app blob (diff-WiringPin.txt) changes only:
+    - the clock: java.time Clock.fixed(2026-06-15T10:00:00Z, Europe/Paris) became an object kotlin.time.Clock with the
+      same instant, plus `paris = TimeZone.of("Europe/Paris")`;
+    - the DAO: :app's FakeEntryDao became commonTest's data.sync.InMemoryEntryDao (DownloadRig.kt). It has the same
+      whole-primary-key upsert and the same cold flowOf reads, so runTest completes as it did. The pilot's
+      MutableStateFlow DAO was deliberately not used;
+    - the repository: the class built with dao, clock, deviceZone, reportUnownedWhileSignedIn = { error(it) } and a
+      counter mint, instead of :app's factory with UUID;
+    - the wire: a stub ParametresWire whose every member throws ("not called by this test");
+    - two @OptIn lines, a header paragraph saying exactly this, and the imports.
+    No value, count or assertion changed.
+  - SessionReconciledTest.kt and MainGraphWiringTest.kt were deleted (R268).
+  - MainGraphDayWriterCensusTest stays in :app. Its only edit at the move: the build call passes
+    fixedClock.toKotlinClock() and fixedClock.zone.toKotlinTimeZone() (ShellState's split), with @OptIn on its test
+    function.
+JVM-ONLY, NAMED, WITH ITS REASON: MainGraphWiringTest's first case enumerates the DayWriters off MainControllers'
+properties with kotlin.reflect.full. Common Kotlin has no equivalent, because a KClass outside the JVM has no members. A
+hand-kept list would be the thing the census exists to avoid. It checks the ONE graph: MainGraph.build is common, so the
+property set it enumerates is the set iOS gets.
+THE CASE MAP (original -> transcription; every one ran green in :app before the move, and after it where it lives now):
+  SessionReconciledTest (Kotest, :app) -> SessionReconciledPinTest (commonTest: JVM + iOS simulator)
+    1 "a saved MAIN restored while signed out (start=SIGN_IN) is forced to SIGN_IN - no unsigned shell"
+        -> aSavedMainRestoredWhileSignedOutIsForcedToSignIn
+    2 "a saved MAIN is honoured while still signed in (start=MAIN)" -> aSavedMainIsHonouredWhileStillSignedIn
+    3 "a saved ONBOARDING is honoured while signed-in-not-onboarded - no RESOLVING round-trip"
+        -> aSavedOnboardingIsHonouredWhileSignedInNotOnboarded
+    4 "a restored in-flight RESOLVING is re-decided from start, never left as a stale spinner"
+        -> aRestoredInFlightResolvingIsReDecidedFromStart
+    5 "R520: a session the server ended takes every screen to SIGN_IN" -> r520ASessionTheServerEndedTakesEveryScreenToSignIn
+    6 "R521: a saved MAIN restores as SIGN_IN when there is no session - before the first frame, not after it"
+        -> r521ASavedMainRestoresAsSignInWhenThereIsNoSession
+    7 "R521: with a session, the restore honours what was saved, exactly as sessionReconciled does"
+        -> r521WithASessionTheRestoreHonoursWhatWasSaved
+    8 "R520: still signed in when the signal is read (a new sign-in saved its pair first) - nobody moves"
+        -> r520StillSignedInWhenTheSignalIsReadNobodyMoves
+  MainGraphWiringTest (Kotest, :app)
+    1 "every day-writing controller in the app's graph is built with requestSync (R291)"
+        -> MainGraphDayWriterCensusTest.everyDayWritingControllerInTheAppsGraphIsBuiltWithRequestSync (:app, JVM-only)
+    2 "each day-writing controller requests a sync when it writes a day (SPEC 13.2, R204)"
+        -> MainGraphWiringPinTest.eachDayWritingControllerRequestsASyncWhenItWritesADay (commonTest: JVM + iOS)
+  Each original's name is kept as a comment above its function. Function names are camelCase because the originals
+  contain ':' and '=', which JVM method names refuse.
+THE MOVED PINS STILL BITE:
+  - M1 (mutant.log), the AN10 bug in the moved MainGraph: `requestSync = requestSync,` was removed from the
+    CalendarController construction. Verified landed: 0 in the calendar block, 1 left in total (Aujourd'hui's). Result:
+    - MainGraphWiringPinTest > eachDayWritingControllerRequestsASyncWhenItWritesADay FAILED (commonTest on the JVM);
+    - MainGraphDayWriterCensusTest > everyDayWritingControllerInTheAppsGraphIsBuiltWithRequestSync() FAILED;
+    - MUTANT_EXIT=1.
+    Restored; cmp identical; dirty=0.
+  - M2 (mutant-m2.log), sessionReconciled forgets a restored RESOLVING:
+    `if (start == SIGN_IN || saved == RESOLVING) start else saved` became `if (start == SIGN_IN) start else saved`.
+    Verified landed: mutant=1, original=0. Result:
+    - SessionReconciledPinTest > aRestoredInFlightResolvingIsReDecidedFromStart FAILED (8 run, 1 failed);
+    - MUTANT_EXIT=1.
+    Restored; cmp identical; dirty=0. It ran under its own heavy-lock hold, m5b-graph-m2 (10:35:38Z-10:36:45Z), after
+    the gate.
+    In the verify hold, M2 was NO RESULT: the script still named the file's first name (ShellDestination.kt), so the
+    swap found no file. mutant.log shows the empty landing check, and SessionReconciledPinTest ran 8/0 there, as an
+    unlanded plant would (R180). That is why it was re-run.
+
+================================================================================
+R1312 - THE ALLOWLIST AND THE FENCES, EACH PLANTED
+================================================================================
+EDITED:
+  1. :app fences/ExperimentalTimeOptInAllowlistTest, four exact-count entries:
+       shared/src/commonMain/kotlin/ch/monreleve/app/MainGraph.kt                   1  (build)
+       app/src/main/kotlin/ch/monreleve/app/ShellState.kt                          1  (rememberMainControllers)
+       app/src/test/kotlin/ch/monreleve/app/MainGraphDayWriterCensusTest.kt        1  (its test function)
+       shared/src/commonTest/kotlin/ch/monreleve/app/MainGraphWiringPinTest.kt     2  (its fixed clock, its test function)
+     Every one is function or property scope. 3/0 in the gate.
+  2. :shared MovedTwinsFenceTest:
+     - `moved` gained ch/monreleve/app/MainGraph.kt and ch/monreleve/app/Destination.kt;
+     - the containsAll proof gained MainGraph, MainControllers, Destination, sessionReconciled, destinationSaver,
+       startDestination and destinationAfterSessionEnd. The names stay DERIVED from the files (R246);
+     - the header and the two copy messages name R1312.
+     7/0 in the gate.
+  No other fence pinned MainGraph.kt or ShellState.kt by path; a grep of the fences for both names found none. The
+  fences that walk :app main generically were read by root:
+  - AccountCapture, SettingsCapture, OneSessionPerProcess, NoDebugInjectionInMain, LogFence, RateFloat and FencesTest's
+    brand-tint rule also read ../shared/src/commonMain, so the moved code stays under them.
+  - ApiLevelFenceTest reads :app main and debug only. It guards Android API levels, which commonMain cannot reference
+    (CommonMainFenceTest), so it loses nothing.
+PLANTS (plant.log, on the committed 65534e4a). Each was verified landed by grep before the result was read (R180):
+    app/.../r1312plant/MainGraph.kt                 a file of a moved name; declares MainControllers, sessionReconciled
+    shared/iosMain/.../ios/R1312PlantIos.kt          internal fun destinationSaver()
+    shared/androidMain/.../r1312plant/R1312PlantAndroid.kt   internal enum class Destination
+    MainGraph.kt, ShellState.kt, MainGraphDayWriterCensusTest.kt, MainGraphWiringPinTest.kt
+                                                     + `@OptIn(kotlin.time.ExperimentalTime::class) private fun r1312Plant()`
+  Result: PLANT_EXIT=1. Every failure named its plant (failures.txt, allowlist-plant-diff.txt):
+    - noCopyOfAMovedFileIsInApp: "r1312plant/MainGraph.kt: a file named MainGraph.kt | declares MainControllers |
+      declares sessionReconciled";
+    - noCopyOfAMovedFileIsInIosMain: "ch/monreleve/app/ios/R1312PlantIos.kt: declares destinationSaver";
+    - noOtherAndroidMainFileDeclaresAMovedName: "r1312plant/R1312PlantAndroid.kt: declares Destination";
+    - theOptInAppearsInExactlyTheAllowlistedFilesAndCounts: ShellState.kt expected 1 was 2;
+      MainGraphDayWriterCensusTest.kt 1 -> 2; MainGraph.kt 1 -> 2; MainGraphWiringPinTest.kt 2 -> 3.
+  No other test failed: MovedTwinsFenceTest 7 run / 3 failed; :app fences 80 run / 1 failed.
+  Restored: the plant files were removed (mine), and the four edited files were copied back; each `cmp` read identical.
+  AFTER RESTORE dirty=0.
+
+================================================================================
+R1313 - ANDROID UNCHANGED; THE FLOOR ARITHMETIC; iOS
+================================================================================
+FLOOR ARITHMETIC (counts.txt; base counts from 5a's gate XML on 84793546, whose android/ tree IS the base's:
+`git diff 84793546 a3b5d65b -- android` = 0 lines; 1577 :app / 313 :shared):
+  :app   base 1577 - 10 transcribed originals (SessionReconciledTest 8 + MainGraphWiringTest 2) = 1567
+         + 1 (the census case kept in :app as JVM-only, MainGraphDayWriterCensusTest) = 1568. Observed 1568/0, 209
+         classes. That is >= the prompt's 1567 ("minus the transcribed originals plus nothing"), and the +1 is that one
+         JVM-only case.
+  :shared JVM  base 313 + 9 (SessionReconciledPinTest 8 + MainGraphWiringPinTest 1) = 322. Observed 322/0, 60 classes.
+         So :shared rises by 9, not 10; the tenth case runs in :app.
+  MovedTwinsFenceTest stays 7 and the allowlist test stays 3: no test was added to a fence.
+  PER CLASS (base-all-classes.txt = 5a's gate XML, app + shared; tip-all-classes.txt = this gate's XML): the
+  (class, tests) lists differ ONLY by
+      - ch.monreleve.app.MainGraphWiringTest 2         + ch.monreleve.app.MainGraphDayWriterCensusTest 1
+      - ch.monreleve.app.SessionReconciledTest 8       + ch.monreleve.app.MainGraphWiringPinTest 1
+                                                       + ch.monreleve.app.SessionReconciledPinTest 8
+  so no other class gained or lost a case. In this gate's XML: ForcedSignOutTest 27, MovedTwinsFenceTest 7,
+  ExperimentalTimeOptInAllowlistTest 3, all 0 failures.
+BASELINES: verifyPaparazziDebug executed in the gate, and
+`git diff --name-only a3b5d65b 65534e4a -- android/app/src/test/snapshots` = 0 files. No baseline was regenerated.
+iOS: ONE run each, on the pushed code tip 65534e4a. ios-expected.txt was written before dispatch.
+  - ios-shared run 45012299645: success, head 65534e4a, 20 steps.
+    - Its artifact ios-shared-test-results was counted from the JUnit XML: 85 files, 447 tests, 0 failures, 0 errors,
+      0 skipped.
+    - Expected 447 = base 438 + 9.
+    - The per-class (suite, tests) list differs from base run 45006594277's ONLY by the two new lines
+      (ios-base-classes.txt vs ios-tip-classes.txt):
+          ch.monreleve.app.MainGraphWiringPinTest 1
+          ch.monreleve.app.SessionReconciledPinTest 8
+    - The transcribed cases named in the XML, each suffixed [iosSimulatorArm64]:
+      eachDayWritingControllerRequestsASyncWhenItWritesADay, aSavedMainRestoredWhileSignedOutIsForcedToSignIn,
+      aSavedMainIsHonouredWhileStillSignedIn, aSavedOnboardingIsHonouredWhileSignedInNotOnboarded,
+      aRestoredInFlightResolvingIsReDecidedFromStart, r520ASessionTheServerEndedTakesEveryScreenToSignIn,
+      r521ASavedMainRestoresAsSignInWhenThereIsNoSession, r521WithASessionTheRestoreHonoursWhatWasSaved,
+      r520StillSignedInWhenTheSignalIsReadNobodyMoves.
+  - ios-app run 45012302513: success, head 65534e4a, 23 steps. It has NO test count: it builds and launches the host
+    and runs its probe, with no JUnit output. Its artifact's ios-host-probe.txt reads keychain.result=PASS,
+    notification.result=PASS, reminder.result=PASS and share.result=PASS.
+  - The Kotlin/Native compile of MainGraph.kt and Destination.kt (the Compose Saver included) is proven by both runs.
+    The graph's construction runs on the simulator inside MainGraphWiringPinTest. No iOS production code calls
+    MainGraph.build or the destination functions yet; that is the iOS shell's (IOS-SHELL-1/2).
+
+================================================================================
+R1314 - AppRoot.kt's HEADER (8b2d05b9, comment only, its own commit; diff-R1314.txt)
+================================================================================
+  -// WHY HERE, AT THE ROOT, AND NOT PER CALL SITE OR IN :shared:
+  +// WHY HERE, AT THE ROOT, AND NOT PER CALL SITE:
+  ...
+  -//   - it lives in :app because the insets are the Android window's. iOS hosts the shared screens in its own view
+  -//     controllers with their own safe areas, and :shared stays unchanged.
+  +//   - it lives in :shared commonMain. IOS-MOVE-CORE (R1300) moved it here from :app unchanged, because nothing in it
+  +//     is Android's: WindowInsets.systemBars, displayCutout, union and windowInsetsPadding are Compose Multiplatform's
+  +//     common API, and the file compiles for iOS (R1304's runs). Today only :app's activities call it; no iOS code does
+  +//     yet - the iOS root and its render proof are IOS-SHELL-1's (iOS Ruling 11 Q3). IOS-MOVE-GRAPH R1314 corrected
+  +//     this paragraph, which said the file lived in :app and that :shared stayed unchanged.
+  Every changed line starts with `//` (checked: `git diff` minus comment lines = 0 lines). The commit changes that file
+  only. It is green under fastCheck (inc0.log).
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- :app's JavaTime* factories (AujourdhuiController, CalendarController, ForecastController and SimulationController in
+  JavaTimeAujourdhui/JavaTimeCalendar/JavaTimeForecast.kt) have no caller left in app/src/main after this move. A grep of
+  app/src/main for those constructor calls outside the JavaTime files finds none. Their callers are :app's tests, and
+  possibly androidTest (not checked by name). They stay, as R1310 says. See Q3.
+- AujourdhuiController.kt l.85 says "(so MainGraph and every existing test construct it unedited)". It is a statement
+  about IOS-1b-A's move that was true when written. It is left as history.
+- MainGraphDayWriterCensusTest (:app test) and MainGraphWiringPinTest (commonTest) each carry the same four private stub
+  helpers (store, saver, localStore, rhythmRepository). One home is not available: :app's test source set cannot see
+  :shared's commonTest. See Q2.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. THE PARAMETRES WIRE (Q1). R1310 names one signature change (the clock). MainGraph would not compile in commonMain
+   with only that, because its ParametresController call resolved to :app's org.json factory. The file is NAMED here.
+   - It was not bent inside the move: the seam was added in place in :app, in its own increment (a5d85c29), and the
+     move followed.
+   - The diff: MainGraph.build gains a required `parametresWire`; the controller is built by its class constructor
+     with the factory's own named mapping; `internal val orgJsonParametresWire` exposes the still-private object;
+     ShellState passes it.
+   - The original MainGraphWiringTest's two build calls each gained the line `parametresWire = orgJsonParametresWire`
+     in a5d85c29, its last commit before deletion. Its assertions were untouched, and it ran 2/0 with the seam.
+   - Nothing was moved to make a common wire. Ruling 8 Q2 gives reminderOptInBody and the delete pair to the shell
+     session with the screen.
+2. Destination moved from MainActivity.kt with the four functions, which reference it. It and the four functions lost
+   `internal`; that was needed across modules, as in IOS-MOVE-SEAM. MainActivity's KDoc, which sat above the enum, now
+   sits above `class MainActivity`.
+3. The new commonMain file is Destination.kt. The first name, ShellDestination.kt, failed detekt
+   MatchingDeclarationName and ktlint's filename rule (inc3-attempt1.log).
+4. The allowlist grew by four entries (five opt-ins), not only MainGraph:
+   - ShellState.kt, the call site that converts the clock;
+   - MainGraphDayWriterCensusTest, which builds the graph;
+   - MainGraphWiringPinTest, its clock and its test function.
+   Each is planted above.
+5. MainGraph's @Suppress gained "LongMethod" (74 > 60 lines once the arguments are named). Named arguments were chosen
+   over positional ones so same-typed neighbours cannot swap unseen.
+6. The census case stays in :app as JVM-only, so :app's floor is 1568, one above "minus the originals plus nothing",
+   and :shared and iOS gain 9 rather than 10. The arithmetic is under R1313.
+7. A fifth commit (65534e4a) corrects comments the move made false. Every changed line is a comment (checked by diff).
+   The files are:
+   - JavaTimeAujourdhui/Calendar/Forecast.kt and OrgJsonParametres.kt: each gains a 3-line note that the graph no
+     longer calls the factory;
+   - DayWriter.kt, AujourdhuiController.kt, CalendarController.kt and ReleveController.kt: "MainGraphWiringTest", deleted
+     by R268, is replaced by the test that does what the sentence says.
+8. Red runs, each fixed and re-run green before its commit, with the red log kept:
+   - inc2-attempt1: detekt MatchingDeclarationName, from making the wire object internal;
+   - inc2-attempt2: detekt MaxLineLength on a comment;
+   - inc3-attempt1: ktlint (a KDoc after an EOL comment; the file name), detekt LongMethod and
+     MatchingDeclarationName.
+   Each red run's tests passed: inc2 1587/0; inc3 1568/0 and 322/0.
+9. M2 was NO RESULT in the verify hold (stale file name in my script), and was re-run alone; see R1311.
+10. No `gradlew --stop` (every run --no-daemon), as the prompt says.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. THE WIRE SEAM: MainGraph.build now takes `parametresWire: ParametresWire` (required), and Android passes
+    orgJsonParametresWire. Is the seam accepted as the graph's shape? The alternative is a common ParametresWire, with
+    reminderOptInBody and the delete pair moving under iOS Ruling 8 Q2. Under it, the graph could build the wire for
+    every platform except consentBody, which stays Android's because detection consent stays in :app. That would still
+    leave one platform member, so the seam seems to stay either way. iOS will need its own wire, or a common one, when
+    IOS-SHELL builds the Parametres screen.
+Q2. MainGraphDayWriterCensusTest is JVM-only and, per R1311, stays in :app. It tests a :shared class. Should it live in
+    :shared's androidUnitTest instead, beside the class it pins, where the JVM also runs it and it could share the
+    commonTest pin's stub helpers? Today it cannot share them from :app.
+Q3. The four JavaTime* controller factories in :app now have no production caller, only tests. Should they stay as test
+    conveniences, or retire with a later transcription of the controllers' Kotest specs?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Code commits, each pushed to origin/m5b-graph when it was made (inc*.log "PUSH_EXIT=0 remote=..."):
+  - 8b2d05b9 increment 0, R1314 (remote 8b2d05b9bca0);
+  - 720498d5 increment 1, the pins in :app (remote 720498d5683f);
+  - a5d85c29 increment 2, the wire seam in :app (remote a5d85c295216);
+  - 41d007b7 increment 3, the move (remote 41d007b75ad1);
+  - 65534e4a increment 4, comments (remote 65534e4a2cf7).
+- Report commit: the commit adding this file, on top of 65534e4a; it changes only this file (`git diff --name-only 65534e4a HEAD` = REPORT-IOS-MOVE-GRAPH.txt).
+- Heavy lock holds:
+  - m5b-graph-inc0 (09:53:05-09:55:49);
+  - m5b-graph-inc1;
+  - m5b-graph-inc2 (three attempts);
+  - m5b-graph-inc3 (two attempts);
+  - m5b-graph-inc4;
+  - m5b-graph-verify (10:24:53-10:34:57);
+  - m5b-graph-m2 (10:35:38-10:36:45).
+  Every one was RELEASED (inc*-lock.log, verify-lock.log, m2-lock.log). None is held by this session.
+- Not merged. parking.md not written.
+- C:/wt/m5b-graph/.session-lock.json: to be removed after the final push, as the last act (stated in the handback).

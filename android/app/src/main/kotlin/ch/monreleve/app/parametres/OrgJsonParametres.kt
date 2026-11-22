@@ -29,6 +29,9 @@ import org.json.JSONObject
 // receipt parse moved here from the controller unchanged, line for line (ParametresWirePinTest pins them, on the JVM
 // org.json library - not Android's). IOS-MOVE-ME (R1270): mePatchBody is no longer org.json - it moved to :shared
 // commonMain (settings/MeWire.kt, kotlinx.serialization); the other four sites here still are.
+//
+// IOS-MOVE-GRAPH (R1310): the composition root's graph no longer calls this factory - MainGraph moved to :shared
+// commonMain and builds the class itself, with this file's wire handed in (orgJsonParametresWire, below).
 
 /**
  * The wire sites, Android's implementation: four in org.json, and patchBody through the common mePatchBody
@@ -55,6 +58,13 @@ private object OrgJsonParametresWire : ParametresWire {
         )
     }
 }
+
+/**
+ * IOS-MOVE-GRAPH (R1310): the same object, for the composition root (ShellState.kt), which hands it to
+ * MainGraph.build - the graph builds the controller with it. The object stays private, so this file's one declared
+ * type is still the one its name matches.
+ */
+internal val orgJsonParametresWire: ParametresWire = OrgJsonParametresWire
 
 /**
  * The ParametresController, its wire in org.json. The parameters, their order and their defaults are the class's own
