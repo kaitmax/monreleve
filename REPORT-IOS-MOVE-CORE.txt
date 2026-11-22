@@ -1,8 +1,11 @@
 REPORT-IOS-MOVE-CORE - THE SHELL'S PLATFORM-FREE FILES BECOME COMMON (iOS phase, (c) move 5a)
 TASK     relay/IOS-MOVE-CORE.txt (iOS Rulings 3, 8, 9, 10 and the overnight plan in relay/RULINGS-2026-11-16.txt).
-         Rulings R1300-R1309: R1300-R1304 used, R1305-R1309 unused. Before the push, `grep -rlE '\bR130[0-9]\b'` over
-         relay/, REPORT-*.txt and CLAUDE.md of this worktree and C:/wt/web-orch/relay returned only IOS-MOVE-CORE.txt and
-         RULINGS-2026-11-16.txt (the allocation).
+         Rulings R1300-R1309: R1300-R1304 used, R1305-R1309 unused.
+         `grep -rlE '\bR130[0-9]\b'` was run twice, both times over relay/, REPORT-*.txt and CLAUDE.md of this
+         worktree, C:/wt/web-orch/relay and the main checkout's relay/:
+           - at the start, it returned only IOS-MOVE-CORE.txt and RULINGS-2026-11-16.txt (the allocation);
+           - after the first report push, it returned those two plus this report. The main checkout's relay/ returned
+             nothing.
 BASE     origin/main 9b285ea1 (M4's merge f70a89ff + a records commit). Its android/, ios/ and .github/ trees equal M4's
          gated code tip 301fd376 (`git diff 301fd376 9b285ea1 -- android ios .github` = 0 lines).
 BRANCH   m5a-core. PUSHED, NOT MERGED. Code tip 84793546 (three commits on the base: 5f89aab6, 3ce5cfab, 84793546).
@@ -59,6 +62,13 @@ COMPLETE. The FULL :app:gate ran on the reported code tip 84793546 in this sessi
     BUILD SUCCESSFUL in 5m 42s
     GATE_EXIT=0
     end=2026-11-22T09:25:44Z dirty-after=0
+- What gate.log shows (gate-tasks.txt):
+  - EXECUTED: :app:testDebugUnitTest, :app:checkTestFloor, :app:verifyPaparazziDebug, :app:assembleDebug,
+    :app:lintDebug, :shared:testDebugUnitTest, :app:checkReleaseCleartext / NoDebugInjection / LocationPermissions /
+    NoDevComponent / PushManifest / VcsInfo / Bundle, and :app:gate.
+  - UP-TO-DATE: :app:detekt, :app:ktlintCheck, :shared:detekt, :shared:ktlintCheck and
+    :shared:compileCommonMainKotlinMetadata. They had run green in increment 3's fastCheck on the same sources, which
+    became 84793546.
 - It ran under the heavy lock as holder m5a-core-verify, at line 8000 MB, not lowered. The lock was ACQUIRED at
   09:15:10Z with commitFree=12873 and RELEASED at 09:25:50Z.
 - The same hold ran the mutant and both plant runs first. Each was restored, and the tree read dirty=0 before the
@@ -206,9 +216,12 @@ EDITED:
      - The header and the messages name R1303.
      - androidMain/kotlin became a declared input of :shared's test tasks (shared/build.gradle.kts, R283).
      - 7/0.
-     - Before the edit, a fresh scan for a top-level declaration of any guarded name in app/src, shared iosMain,
-       iosTest, commonTest and androidUnitTest found only the three files then still to move. The derived name
-       `message` (from UnresolvedCause.message()) has no clash.
+     - After the first edit (increment 1's list) and before increment 2, a grep for a top-level declaration of any
+       guarded name ran over app/src and every :shared source set except commonMain.
+       - It found the three declarations still to move: Site, EmployerFigureStore and AppBottomBar.
+       - It also found MeRouteJoinTest's `private fun StartDecision.label()`. The receiver made the grep match, but the
+         declared name is `label`, which is not guarded.
+       - The derived name `message` (from UnresolvedCause.message()) has no clash.
   2. :app EdgeToEdgeCensusTest:
      - WRAPPER_FILE is now ../shared/src/commonMain/.../ui/shell/AppRoot.kt, read by subjectFile.
      - :app's ui/ screen root is repinned on OnboardingStartDatePicker.kt.
@@ -249,6 +262,9 @@ PLANTS A, on the committed 84793546 (plantA.log). Each was verified landed by gr
     - NoBareThresholdTest.noScannedFileCarriesABareForbiddenFraction: "ui/screens/R1303PlantUi.kt: [0.4]" and
       "ui/shell/R1303PlantShell.kt: [0.4]".
   No other test failed (MovedTwinsFenceTest 7 run / 4 failed; :app fences 80 run / 6 failed).
+  NOT PLANTED, stated: the androidMain bridge test's other branches. The missing-bridge branch and the
+  (now: JavaInstant, zone: ZoneId) shape check were not exercised; only the fourth-function case, the one R1303
+  names, was.
   Restored: the plant files were removed (mine). The bridge and AppRoot were copied back and `cmp` read identical.
   AFTER RESTORE dirty=0.
 PLANT B (plantB.log): OnboardingStartDatePicker.kt, the new pin, was moved out of :app ui/ to a r1303plantb/
@@ -276,8 +292,13 @@ R1304 - ANDROID UNCHANGED, iOS
     - Expected 438 (base run 44964715746 = 438). This branch changes no file under commonTest or iosTest, and the +2
       in MovedTwinsFenceTest is JVM only.
     - The per-class (suite, tests) list is IDENTICAL to base run 44964715746's (diff empty).
-  - ios-app run 45006597209: success, head 84793546, 23 steps. ios-host-probe.txt reads keychain.result=PASS,
+  - ios-app run 45006597209: success, head 84793546, 23 steps. It has NO test count: it builds and launches the host
+    and runs its probe, with no JUnit output. Its artifact's ios-host-probe.txt reads keychain.result=PASS,
     notification.result=PASS, reminder.result=PASS and share.result=PASS.
+- THE KEEP LIST HELD IN THE RELEASE APK. The gate built app-release-unsigned.apk at 09:25:41. `aapt2 dump resources`
+  (build-tools 36.0.0) lists drawable/ic_sun, ic_calendar and ic_settings. ic_calendar and ic_settings are now
+  referenced only by name.
+- origin/main was still 9b285ea1 when this report was amended (git fetch), so the branch merges onto its own base.
 - The Kotlin/Native compile of the ten commonMain files and of Glyph.ios.kt's three new arms is proven by both runs.
   No iOS test exercises them at run time (Q3).
 
@@ -346,7 +367,8 @@ PUSH PROOF
   - 5f89aab6 increment 1 (remote 5f89aab68820);
   - 3ce5cfab increment 2 (remote 3ce5cfab1505);
   - 84793546 increment 3 (remote 84793546ff5f).
-- The report commit follows; its hash is in the handback.
+- Report commits: 52b4444f (first), then the amendment carrying this line. Each changes only this file
+  (`git diff --name-only 84793546 HEAD` = REPORT-IOS-MOVE-CORE.txt).
 - Heavy lock holds:
   - m5a-core-inc1 (twice: 08:59:31-09:04:08, 09:04:33-09:06:34);
   - m5a-core-inc2 (09:07:33-09:11:09);
