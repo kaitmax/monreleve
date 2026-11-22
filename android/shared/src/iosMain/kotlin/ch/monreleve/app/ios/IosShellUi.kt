@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import ch.monreleve.app.ForecastRoute
 import ch.monreleve.app.MainTabs
 import ch.monreleve.app.ShellRouter
+import ch.monreleve.app.data.sync.YearDownloadStatus
 import ch.monreleve.app.fr.OnboardingCopy
 import ch.monreleve.app.onboarding.ModeChoice
 import ch.monreleve.app.onboarding.OnboardingController
@@ -71,8 +72,8 @@ import platform.UIKit.UIDatePickerStyle
 //     and passes it in; iOS passes its own (IOS-SHELL-2): the exports to the share sheet (R1331), the legal pages and
 //     the mail app through UIApplication (R1333), a re-plan when the shell opens - a sign-in - and a reminder tap that
 //     opens Aujourd'hui (R1330). The threshold alert is hidden in iOS v1 (iOS Ruling 3 Q4): iOS passes NO handler for
-//     its two entry points - Parametres' switch and Prevision's offer - so neither is drawn (R1338). Still named
-//     stubs: the employer comparison and the year downloads (no ruling builds them here - REPORT-IOS-SHELL-2).
+//     its two entry points - Parametres' switch and Prevision's offer - so neither is drawn (R1338). The year
+//     downloads run as on Android (IOS-SHELL-3 R1371). Still a named stub: the employer comparison.
 //   - THE ROOT (IosShellRoot): one lifecycle observer - a foreground drains the queue and re-plans (R1332, R1330) - and
 //     the notice host every Toast-like message is drawn by (R1331).
 //   - THE DATE PICKER (G7): a native UIDatePicker in the two common startDatePicker slots, presented in its own layer
@@ -128,8 +129,8 @@ private fun IosRouter(
         onOpenMail = openMail,
         restoreMode = shell::restoreMode,
         restoreReminder = shell::restoreReminder,
-        // NAMED STUB: the year downloads (Android's processYearDownloads, AN-PULL) are not built on iOS yet.
-        afterSignIn = { shell.notYetOnIos("the year downloads after a sign-in") },
+        // R1371 (AN-PULL R481): after a sign-in, both tax years come down - the common coordinator, as on Android.
+        afterSignIn = shell::downloadYearsAfterSignIn,
         onboarding = { seed, onDone -> IosOnboardingRoute(shell, scope, seed, onDone) },
         main = { onSignedOut -> IosMainShell(shell, scope, onSignedOut) },
     )
@@ -234,6 +235,10 @@ internal fun IosMainShell(
     // R1330: the signed-in shell opened - after a sign-in, after onboarding, at every launch - so the reminders are
     // planned (Android's FallbackReminderScheduling.ensure, at the same moment).
     LaunchedEffect(Unit) { shell.replanSoon() }
+    // R1371 (AN-PULL R485): once per process, the years that are empty on the phone come down. A sign-in download
+    // already ran in this process makes this a no-op (YearDownloads.atStart) - MainShell's line, on iOS.
+    LaunchedEffect(Unit) { shell.downloadYearsAtStart() }
+    val yearDownloadStatus by shell.yearDownloadStatus.collectAsState()
     // R1330 (R323 / D16 on iOS): a tap on the evening reminder opens Aujourd'hui, refreshed - and records nothing.
     val tapped by shell.taps.openAujourdhui.collectAsState()
     LaunchedEffect(tapped) {
@@ -262,9 +267,9 @@ internal fun IosMainShell(
         onTabChange = { tab = it },
         forecastRoute = forecastRoute,
         onForecastRouteChange = { forecastRoute = it },
-        // NAMED STUB: the year downloads (Android's AN-PULL) are not built on iOS yet - never failed, retry logged.
-        yearDownloadFailed = false,
-        onRetryDownload = { shell.notYetOnIos("the year downloads' retry") },
+        // R1371 (AN-PULL R484): a year that could not come down is said on Aujourd'hui, with the person's retry.
+        yearDownloadFailed = yearDownloadStatus is YearDownloadStatus.Failed,
+        onRetryDownload = shell::retryYearDownloads,
         onCompareEmployer = { shell.notYetOnIos("the employer comparison (EmployerFigureStore)") },
         // R1338 (iOS Ruling 3 Q4): no threshold alert in iOS v1 - no handler, so Prevision draws no offer.
         onEnableAlert = null,

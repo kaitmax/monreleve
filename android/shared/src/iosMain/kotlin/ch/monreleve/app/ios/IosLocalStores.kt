@@ -34,8 +34,9 @@ import ch.monreleve.app.settings.SettingsStore
 //   clearRecord     clearIosRecord(database)           (MonReleveDatabase.clearAllTables())
 //   cancelSync      the IosSyncTrigger's cancel()       (SyncScheduler.cancel - R890)
 //   clearExports    the IosExportFiles directory clear (File(cacheDir, EXPORTS_DIR).deleteRecursively() - R891)
-// Android's clearRecord first stops a year still downloading (AN-PULL, processYearDownloads.stop()); iOS has no year
-// download yet, so there is nothing to stop - the iOS host that adds one owes that line here (PARKED, R893).
+// Android's clearRecord first stops a year still downloading (AN-PULL, processYearDownloads.stop()); iOS stops its year
+// downloads (IOS-SHELL-3 R1371) through the session-end seam instead (iosSessionEndSeam's stopYearDownloads), which
+// the wrapper runs before this clear on every ending path - so clearRecord here stays the record alone.
 //
 // IOS-MOVE-SEAM (R1281, closing I0's FINDING 2). THE STORE IS HANDED OUT THROUGH THE "SESSION ENDED" SEAM, as Android's
 // is: the commonMain wrapper SessionEndingStore (auth/SessionEndSeam.kt) over iOS's seam, iosSessionEndSeam

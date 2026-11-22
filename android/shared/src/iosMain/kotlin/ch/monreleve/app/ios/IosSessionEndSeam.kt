@@ -21,13 +21,25 @@ import platform.UserNotifications.UNUserNotificationCenter
 //
 // IDEMPOTENT, as every attachment must be: removing from an empty list is nothing. The call returns at once and the
 // removal completes asynchronously; the wrapper (SessionEndingStore) runs this first and the clear in a finally.
+//
+// IOS-SHELL-3 R1371: THE YEAR DOWNLOADS STOP HERE TOO. A year still arriving when a session ends must not land in the
+// store the ending empties, nor under the next account to sign in (one account's entries never reach another's
+// database). Android stops them in its clearRecord (account/DeviceLocalStores.kt) before the record is cleared; iOS
+// stops them through this seam, which the wrapper runs BEFORE the clear, on every ending path - the voluntary sign-out,
+// the deletion and a session the server ended. Stopping is a cancel (YearDownloads.stop), so it holds no ending up.
 
 /**
- * The iOS seam: [removePendingRequests] on every ending path. The default is the production call; a test passes its
- * own, because the real one cannot run in the bundle-less test process.
+ * The iOS seam: [stopYearDownloads], then [removePendingRequests], on every ending path. The removal's default is the
+ * production call; a test passes its own, because the real one cannot run in the bundle-less test process. The
+ * downloads' default stops nothing: startIosShell - the one production caller - passes its coordinator's stop.
  */
 fun iosSessionEndSeam(
     removePendingRequests: () -> Unit = {
         UNUserNotificationCenter.currentNotificationCenter().removeAllPendingNotificationRequests()
     },
-): SessionEndSeam = SessionEndSeam { removePendingRequests() }
+    stopYearDownloads: () -> Unit = {},
+): SessionEndSeam =
+    SessionEndSeam {
+        stopYearDownloads()
+        removePendingRequests()
+    }

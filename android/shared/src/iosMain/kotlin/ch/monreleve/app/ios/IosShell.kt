@@ -20,6 +20,9 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.data.repo.RhythmRepository
+import ch.monreleve.app.data.sync.EntriesDownload
+import ch.monreleve.app.data.sync.YearDownloadStatus
+import ch.monreleve.app.data.sync.YearDownloads
 import ch.monreleve.app.detection.applyServerLoggingMode
 import ch.monreleve.app.fr.CodeCopy
 import ch.monreleve.app.fr.ParametresCopy
@@ -44,6 +47,7 @@ import ch.monreleve.app.startDestination
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -89,9 +93,12 @@ import kotlin.time.ExperimentalTime
 //   - R1332: a foreground drains the queue (onForeground - called from ONE place, IosShellRoot's lifecycle observer);
 //   - R1331, R1333: exports go to the share sheet, the legal pages and the mail app open through UIApplication, and
 //     every message Android shows as a Toast goes through the ONE notice seam (notices).
-// NAMED STUBS STILL (no ruling R1330-R1339 builds them; QUESTIONS in REPORT-IOS-SHELL-2): the year downloads (Android's
-// processYearDownloads) and the employer comparison's overlay, whose store now exists (employerStore) with no iOS
-// caller.
+// IOS-SHELL-3 R1371 (iOS Ruling 15 Q2): THE YEAR DOWNLOADS - the common coordinator (YearDownloads, Android's
+// processYearDownloads) over the session's GET, the record and iOS's transaction (IosYearDownloads.kt): after a
+// sign-in both tax years (RESOLVING's afterSignIn), once per process the empty ones (the main shell opening), the
+// person's retry; stopped on every ending through the session-end seam; and every year that lands re-plans the
+// evening reminder, because a day it brings may be today, recorded on another phone.
+// NAMED STUB STILL: the employer comparison's overlay, whose store exists (employerStore) with no iOS caller.
 
 /** Raised if the iOS composition is ever asked for the detection-consent body: detection is not in iOS v1. */
 class DetectionNotInIosV1(
@@ -198,6 +205,11 @@ class IosShell internal constructor(
     val notices: IosNotices,
     /** R1330: a reminder tap waiting for the main shell to open Aujourd'hui. */
     val taps: IosNotificationTaps,
+    /** R1371: the year downloads - the common coordinator - and the download it runs. */
+    private val yearDownloads: YearDownloads,
+    private val entriesDownload: EntriesDownload,
+    /** R28 / R481: the current Paris tax year and the one before it, read from the shell's clock at each call. */
+    private val taxYears: () -> List<Int>,
     private val urlOpener: IosUrlOpener,
     private val exportFiles: IosExportFiles,
     private val presentShare: (path: String) -> Unit,
@@ -307,7 +319,19 @@ class IosShell internal constructor(
         )
     }
 
-    /** NAMED STUB: what no ruling R1330-R1339 builds on iOS (the year downloads, the employer comparison) - logged. */
+    /** R1371 / R484: what the year downloads tell the screen - Aujourd'hui's failure notice and its retry. */
+    val yearDownloadStatus: StateFlow<YearDownloadStatus> get() = yearDownloads.status
+
+    /** R1371 / R481: after a sign-in (RESOLVING's afterSignIn), both tax years, whatever the phone holds. */
+    fun downloadYearsAfterSignIn() = yearDownloads.afterSignIn(entriesDownload, taxYears())
+
+    /** R1371 / R485: the signed-in shell opened - once per process, the years with no row on this phone. */
+    fun downloadYearsAtStart() = yearDownloads.atStart(entriesDownload, taxYears())
+
+    /** R1371 / R484: the person's « Réessayer » - the years that failed, again. */
+    fun retryYearDownloads() = yearDownloads.retry(entriesDownload)
+
+    /** NAMED STUB: what no ruling builds on iOS yet (the employer comparison) - logged. */
     fun notYetOnIos(what: String) {
         log("I/$TAG: not on iOS yet: $what")
     }
@@ -377,6 +401,21 @@ fun startIosShell(
         IosDetectionFile(eraseEvening = eveningFile::erase, eraseEmployerFigures = employerStore::erase)
     val eveningStore = ReplanningEveningStore(eveningFile) { shell?.replanSoon() }
     val endings = SessionEndings()
+    // R1371: the year downloads - the common coordinator (counts and years only in its log, never a day), over the
+    // session's GET, the record and iOS's transaction. Each year that lands re-plans: it may hold today, recorded on
+    // another phone, and the evening reminder must not ask about a day already in the record.
+    val yearDownloads = YearDownloads(scope) { line -> log("I/YearDownload: $line") }
+    val yearTransaction = iosEntriesTransaction(db)
+    val entriesDownload =
+        EntriesDownload(
+            dao = db.entryDao(),
+            get = session::authenticatedGet,
+            currentAccount = { accountStore.current() },
+            inTransaction = { write ->
+                yearTransaction(write)
+                checkNotNull(shell).replanSoon()
+            },
+        )
     val drain = iosSyncDrain(db.entryDao(), session, accountStore, dossierCache)
     val syncTrigger = IosSyncTrigger(scope, drain)
     val files = exportFiles()
@@ -397,6 +436,8 @@ fun startIosShell(
                         endings.ended()
                         centre.removeAllPending()
                     },
+                    // R1371: a year still arriving is stopped BEFORE the record is cleared, on every ending.
+                    stopYearDownloads = yearDownloads::stop,
                 ),
         )
     endingStore = localStore
@@ -484,6 +525,12 @@ fun startIosShell(
         notificationsPermitted = MutableStateFlow(false),
         notices = IosNotices(scope),
         taps = taps,
+        yearDownloads = yearDownloads,
+        entriesDownload = entriesDownload,
+        taxYears = {
+            val year = clock.now().toLocalDateTime(TimeZone.of(PARIS)).year
+            listOf(year, year - 1)
+        },
         urlOpener = urlOpener,
         exportFiles = files,
         presentShare = presentShare,

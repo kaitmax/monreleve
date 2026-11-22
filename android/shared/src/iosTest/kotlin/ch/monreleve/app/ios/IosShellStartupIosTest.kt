@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.runComposeUiTest
 import ch.monreleve.app.Destination
 import ch.monreleve.app.data.remote.ME_PATH
+import ch.monreleve.app.data.sync.ENTRIES_PATH
 import ch.monreleve.app.fr.NavCopy
 import ch.monreleve.app.pilot.waitBounded
 import ch.monreleve.app.update.MINIMUM_VERSION_PATH
@@ -48,10 +49,10 @@ class IosShellStartupIosTest {
                 waitForIdle()
                 val requested = rig.transport.requests.toList()
                 assertTrue("GET $ME_PATH" in requested, "the positive control: the path startup must ask")
-                assertTrue(
-                    rig.logLines.any { "year downloads" in it },
-                    "RESOLVING's year-download stub is named in the log, not silent (R1320): ${rig.logLines}",
-                )
+                // IOS-SHELL-3 R1371: the stub this asserted is gone - RESOLVING now starts the year downloads for real.
+                waitBounded("RESOLVING started the year downloads (R481)", TIMEOUT) {
+                    "GET $ENTRIES_PATH" in rig.transport.requests
+                }
                 assertTrue(
                     requested.none { MINIMUM_VERSION_PATH in it },
                     "the iOS startup must never ask $MINIMUM_VERSION_PATH (iOS Ruling 3 Q3): $requested",
