@@ -128,7 +128,8 @@ internal class IosDetectionFile(
     override fun save(mode: LoggingMode) = this.mode.save(mode)
 
     override fun clear() {
-        clearForSessionEnd() // R1370 PLANT PA5b: a sign-out or a deletion keeps the employer figures
+        clearForSessionEnd()
+        eraseEmployerFigures()
     }
 
     override fun clearForSessionEnd() {
