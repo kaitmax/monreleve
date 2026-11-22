@@ -17,6 +17,8 @@ import ch.monreleve.app.data.remote.HttpBytesResponse
 import ch.monreleve.app.data.remote.HttpRequest
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.remote.HttpTransport
+import ch.monreleve.app.data.sync.ENTRIES_PATH
+import ch.monreleve.app.data.sync.yearBody
 import ch.monreleve.app.pilot.InMemorySettingsStore
 import ch.monreleve.app.settings.Settings
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -222,14 +224,47 @@ internal class RecordingCentre(
 /**
  * Answers every request from [answer] and records "METHOD /path" in order; a binary request (an export) is answered
  * by [bytesAnswer], and FAILS loudly when none is given (HttpTransport's own default).
+ *
+ * IOS-SHELL-3 (R1371, R1372, R1374): [route] sees the WHOLE request first - its query (the year a GET asks for) and its
+ * body - and answers it, or returns null to fall through to [answer]. Its default answers every year's GET
+ * /api/v1/entries with an EMPTY year (6.2), so a shell that opens signed in and runs the year downloads' start check
+ * meets a whole year, never a failure notice. Each request is also kept with its query ([fullRequests]) and its body
+ * ([bodies]).
  */
 internal class RecordingTransport(
     private val bytesAnswer: ((path: String) -> HttpBytesResponse)? = null,
+    private val route: suspend (request: HttpRequest, path: String) -> HttpResponse? = { request, path ->
+        emptyYearAnswer(request, path)
+    },
     private val answer: (method: String, path: String) -> HttpResponse,
 ) : HttpTransport {
     // The drain and the controllers call from background threads while the test reads: both sides hold the lock.
     private val lock = NSLock()
     private val recorded = mutableListOf<String>()
+    private val recordedFull = mutableListOf<String>()
+    private val recordedBodies = mutableListOf<String>()
+
+    /** Every request so far, "METHOD /path?query", in order - a copy taken under the lock. */
+    val fullRequests: List<String>
+        get() {
+            lock.lock()
+            try {
+                return recordedFull.toList()
+            } finally {
+                lock.unlock()
+            }
+        }
+
+    /** Every request that carried a body, "METHOD /path body", in order - a copy taken under the lock. */
+    val bodies: List<String>
+        get() {
+            lock.lock()
+            try {
+                return recordedBodies.toList()
+            } finally {
+                lock.unlock()
+            }
+        }
 
     /** Every request so far, "METHOD /path", in order - a copy taken under the lock. */
     val requests: List<String>
@@ -247,6 +282,8 @@ internal class RecordingTransport(
         lock.lock()
         try {
             recorded += "${request.method} $path"
+            recordedFull += "${request.method} ${request.url.removePrefix(SHELL_BASE_URL)}"
+            request.body?.let { recordedBodies += "${request.method} $path $it" }
         } finally {
             lock.unlock()
         }
@@ -255,13 +292,29 @@ internal class RecordingTransport(
 
     override suspend fun execute(request: HttpRequest): HttpResponse {
         val path = record(request)
-        return answer(request.method.name, path)
+        return route(request, path) ?: answer(request.method.name, path)
     }
 
     override suspend fun executeForBytes(request: HttpRequest): HttpBytesResponse {
         val path = record(request)
         val respond = bytesAnswer ?: throw UnsupportedOperationException("no binary answer in this test")
         return respond(path)
+    }
+}
+
+/** The year a GET asks for, read off its query (the recorded paths drop it). */
+internal fun yearOf(request: HttpRequest): Int? = request.url.substringAfter("?year=", "").toIntOrNull()
+
+/** R1371: a year's GET /api/v1/entries answered with that year, empty (6.2); anything else is not this answer's. */
+internal fun emptyYearAnswer(
+    request: HttpRequest,
+    path: String,
+): HttpResponse? {
+    val year = yearOf(request)
+    return if (request.method.name == "GET" && path == ENTRIES_PATH && year != null) {
+        HttpResponse(200, yearBody(year, emptyList()))
+    } else {
+        null
     }
 }
 
@@ -319,7 +372,11 @@ internal class ShellRig(
     canOpenMail: Boolean = false,
     opensUrls: Boolean = true,
     foreground: Lifecycle.State = Lifecycle.State.RESUMED,
+    now: String = SHELL_NOW,
 ) {
+    /** IOS-SHELL-3 R1373: the instant the shell's clock reads - a test moves it (midnight); read at each call. */
+    var nowIso: String = now
+
     val log = EventLog()
     val tokens = LoggedTokens(log, pair)
     val pending = LoggedPending(log, pendingAddress)
@@ -382,7 +439,7 @@ internal class ShellRig(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + uncaught),
             clock =
                 object : Clock {
-                    override fun now(): Instant = Instant.parse(SHELL_NOW)
+                    override fun now(): Instant = Instant.parse(nowIso)
                 },
             zone = TimeZone.of("Europe/Paris"),
         )

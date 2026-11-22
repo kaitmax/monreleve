@@ -2,7 +2,11 @@ package ch.monreleve.app.ios
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import platform.UserNotifications.UNNotification
 import platform.UserNotifications.UNNotificationDefaultActionIdentifier
+import platform.UserNotifications.UNNotificationPresentationOptionBanner
+import platform.UserNotifications.UNNotificationPresentationOptionList
+import platform.UserNotifications.UNNotificationPresentationOptions
 import platform.UserNotifications.UNNotificationResponse
 import platform.UserNotifications.UNUserNotificationCenter
 import platform.UserNotifications.UNUserNotificationCenterDelegateProtocol
@@ -21,6 +25,8 @@ import platform.darwin.NSObject
 // there is no other action, R1338's sibling) raises [IosNotificationTaps.openAujourdhui]. The shell is usually not
 // built yet when a launching tap arrives, so the flag is process-wide and waits; IosMainShell consumes it when MAIN
 // composes - selects Aujourd'hui, refreshes it, lowers the flag. Any other identifier is ignored.
+// IOS-SHELL-3 R1373 (b): it also answers willPresent - an evening reminder arriving while the app is OPEN is shown (a
+// banner, kept in the list, silent), as Android shows it; without that answer iOS shows nothing in the foreground.
 //
 // The iosTests drive routeNotificationTap (the delegate's whole body) and the shell's reaction
 // (IosNotificationTapIosTest); the delegate's installation and a real tap need the app and a person's finger -
@@ -57,6 +63,22 @@ fun routeNotificationTap(
     return isEveningReminder && isTheTap
 }
 
+/**
+ * IOS-SHELL-3 R1373 (b) (iOS Ruling 15 Q3): how a notification is presented while the app is OPEN - the delegate's
+ * willPresent answers with this. Without a willPresent iOS shows nothing in the foreground; Android shows its evening
+ * reminder whatever the app is doing, so ours shows too: a banner, and kept in the notification list. NO sound - iOS
+ * v1 ships the reminder silent (iOS Ruling 10 Q3), and the foreground does not change that. Anything not ours: nothing.
+ */
+internal fun foregroundPresentation(identifier: String): UNNotificationPresentationOptions =
+    if (identifier.startsWith(EVENING_REMINDER_ID_PREFIX)) {
+        UNNotificationPresentationOptionBanner or UNNotificationPresentationOptionList
+    } else {
+        0uL
+    }
+
+/** The delegate the app installs, as an object a test can ask which selectors it answers (R1373 b). */
+internal fun notificationDelegate(taps: IosNotificationTaps): NSObject = NotificationTapDelegate(taps)
+
 private class NotificationTapDelegate(
     private val taps: IosNotificationTaps,
 ) : NSObject(),
@@ -72,6 +94,15 @@ private class NotificationTapDelegate(
             taps = taps,
         )
         withCompletionHandler()
+    }
+
+    /** R1373 (b): a notification arriving while the app is open - ours is shown (foregroundPresentation). */
+    override fun userNotificationCenter(
+        center: UNUserNotificationCenter,
+        willPresentNotification: UNNotification,
+        withCompletionHandler: (UNNotificationPresentationOptions) -> Unit,
+    ) {
+        withCompletionHandler(foregroundPresentation(willPresentNotification.request.identifier))
     }
 }
 

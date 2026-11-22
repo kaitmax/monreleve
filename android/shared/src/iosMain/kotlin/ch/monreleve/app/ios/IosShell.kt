@@ -20,6 +20,9 @@ import ch.monreleve.app.data.repo.EntryRepository
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.LocalRhythmRepository
 import ch.monreleve.app.data.repo.RhythmRepository
+import ch.monreleve.app.data.sync.EntriesDownload
+import ch.monreleve.app.data.sync.YearDownloadStatus
+import ch.monreleve.app.data.sync.YearDownloads
 import ch.monreleve.app.detection.applyServerLoggingMode
 import ch.monreleve.app.fr.CodeCopy
 import ch.monreleve.app.fr.ParametresCopy
@@ -44,7 +47,9 @@ import ch.monreleve.app.startDestination
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -89,9 +94,13 @@ import kotlin.time.ExperimentalTime
 //   - R1332: a foreground drains the queue (onForeground - called from ONE place, IosShellRoot's lifecycle observer);
 //   - R1331, R1333: exports go to the share sheet, the legal pages and the mail app open through UIApplication, and
 //     every message Android shows as a Toast goes through the ONE notice seam (notices).
-// NAMED STUBS STILL (no ruling R1330-R1339 builds them; QUESTIONS in REPORT-IOS-SHELL-2): the year downloads (Android's
-// processYearDownloads) and the employer comparison's overlay, whose store now exists (employerStore) with no iOS
-// caller.
+// IOS-SHELL-3 R1371 (iOS Ruling 15 Q2): THE YEAR DOWNLOADS - the common coordinator (YearDownloads, Android's
+// processYearDownloads) over the session's GET, the record and iOS's transaction (IosYearDownloads.kt): after a
+// sign-in both tax years (RESOLVING's afterSignIn), once per process the empty ones (the main shell opening), the
+// person's retry; stopped on every ending through the session-end seam; and every year that lands re-plans the
+// evening reminder, because a day it brings may be today, recorded on another phone.
+// IOS-SHELL-3 R1372 (iOS Ruling 15 Q1): the employer comparison is the common overlay MainTabs draws, over
+// employerStore.
 
 /** Raised if the iOS composition is ever asked for the detection-consent body: detection is not in iOS v1. */
 class DetectionNotInIosV1(
@@ -184,7 +193,7 @@ class IosShell internal constructor(
     val detectionModeStore: DetectionModeStore,
     /** The evening opt-in as the shell's writers see it: each write re-plans (ReplanningEveningStore, R1330). */
     val eveningStore: EveningNotificationStore,
-    /** R1334: the employer figures, persistent and account-tagged (no iOS screen reads it yet - QUESTIONS). */
+    /** R1334: the employer figures, persistent and account-tagged - read and written by the comparison (R1372). */
     val employerStore: EmployerFigureStore,
     val centre: IosNotificationCentre,
     val parametresWire: ParametresWire,
@@ -198,13 +207,17 @@ class IosShell internal constructor(
     val notices: IosNotices,
     /** R1330: a reminder tap waiting for the main shell to open Aujourd'hui. */
     val taps: IosNotificationTaps,
+    /** R1371: the year downloads - the common coordinator - and the download it runs. */
+    private val yearDownloads: YearDownloads,
+    private val entriesDownload: EntriesDownload,
+    /** R28 / R481: the current Paris tax year and the one before it, read from the shell's clock at each call. */
+    private val taxYears: () -> List<Int>,
     private val urlOpener: IosUrlOpener,
     private val exportFiles: IosExportFiles,
     private val presentShare: (path: String) -> Unit,
     private val scope: CoroutineScope,
     private val planNow: suspend () -> Unit,
     private val graph: (CoroutineScope) -> MainControllers,
-    private val log: (String) -> Unit,
 ) {
     /** R1162 on iOS: detection is not in v1, so the server's mode always lands as MANUAL, nothing sampled. */
     fun restoreMode(serverMode: LoggingMode) {
@@ -223,15 +236,36 @@ class IosShell internal constructor(
         eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
     }
 
+    private val authorizationAnswered = MutableStateFlow(false)
+
+    /**
+     * IOS-SHELL-3 R1374 (iOS Ruling 15 Q6): true once the centre has answered "may this app notify" at least once -
+     * the first read startIosShell asks, or any later one. Until then [notificationsPermitted] is only its initial
+     * false, not an answer, so IosShellRoot holds the router back until this is true (bounded): RESOLVING's restore
+     * then reads an ANSWER, and cannot write OFF over the server's ON because /me came back first.
+     */
+    val authorizationKnown: StateFlow<Boolean> = authorizationAnswered
+
+    private val foregroundCount = MutableStateFlow(0)
+
+    /** IOS-SHELL-3 R1373 (a): the foregrounds this process has seen - the main shell refreshes Aujourd'hui on each. */
+    val foregrounds: StateFlow<Int> = foregroundCount
+
+    /** One answer from the centre, kept: the permission, and that it has been answered (R1374). */
+    private fun answered(permitted: Boolean) {
+        notificationsPermitted.value = permitted
+        authorizationAnswered.value = true
+    }
+
     /** Re-reads the authorization into [notificationsPermitted]. */
     fun refreshAuthorization() {
-        centre.readAuthorization { notificationsPermitted.value = it }
+        centre.readAuthorization(::answered)
     }
 
     /** The centre's answer to "may this app notify", awaited - and kept in [notificationsPermitted]. */
     private suspend fun readAuthorization(): Boolean {
         val permitted = suspendCoroutine { done -> centre.readAuthorization { done.resume(it) } }
-        notificationsPermitted.value = permitted
+        answered(permitted)
         return permitted
     }
 
@@ -244,18 +278,20 @@ class IosShell internal constructor(
     }
 
     /**
-     * R1330 / R1332: the app came to the foreground. ONE call for both things a foreground does on iOS - the queue
-     * drained (requestDrain; BGTaskScheduler is device-only, PARK-IF1) and the reminders re-planned. Called from ONE
-     * place: IosShellRoot's lifecycle observer (ON_RESUME).
+     * R1330 / R1332: the app came to the foreground. ONE call for what a foreground does on iOS - the queue drained
+     * (requestDrain; BGTaskScheduler is device-only, PARK-IF1), the reminders re-planned and (R1373 a) Aujourd'hui told
+     * to recompute today. Called from ONE place: IosShellRoot's lifecycle observer (ON_RESUME).
      */
     fun onForeground() {
         syncTrigger.requestDrain()
         replanSoon()
+        // R1373 (a), Android's F8: Aujourd'hui recomputes today from the clock - the midnight case (IosMainShell).
+        foregroundCount.update { it + 1 }
     }
 
     /** R1330: the person answered the authorization prompt; a grant re-plans ("authorization granted"). */
     fun onAuthorizationAnswer(granted: Boolean) {
-        notificationsPermitted.value = granted
+        answered(granted)
         if (granted) replanSoon()
     }
 
@@ -307,10 +343,17 @@ class IosShell internal constructor(
         )
     }
 
-    /** NAMED STUB: what no ruling R1330-R1339 builds on iOS (the year downloads, the employer comparison) - logged. */
-    fun notYetOnIos(what: String) {
-        log("I/$TAG: not on iOS yet: $what")
-    }
+    /** R1371 / R484: what the year downloads tell the screen - Aujourd'hui's failure notice and its retry. */
+    val yearDownloadStatus: StateFlow<YearDownloadStatus> get() = yearDownloads.status
+
+    /** R1371 / R481: after a sign-in (RESOLVING's afterSignIn), both tax years, whatever the phone holds. */
+    fun downloadYearsAfterSignIn() = yearDownloads.afterSignIn(entriesDownload, taxYears())
+
+    /** R1371 / R485: the signed-in shell opened - once per process, the years with no row on this phone. */
+    fun downloadYearsAtStart() = yearDownloads.atStart(entriesDownload, taxYears())
+
+    /** R1371 / R484: the person's « Réessayer » - the years that failed, again. */
+    fun retryYearDownloads() = yearDownloads.retry(entriesDownload)
 
     /**
      * THE ONE GRAPH (R291), built through the common MainGraph.build when MAIN composes - the same function Android's
@@ -318,10 +361,6 @@ class IosShell internal constructor(
      * rebuilt on rotation and iOS has no process-death restore (REPORT-IOS-HOST-CENSUS, "rememberSaveable").
      */
     fun buildControllers(scope: CoroutineScope): MainControllers = graph(scope)
-
-    private companion object {
-        const val TAG = "IosShell"
-    }
 }
 
 private const val PARIS = "Europe/Paris"
@@ -377,6 +416,21 @@ fun startIosShell(
         IosDetectionFile(eraseEvening = eveningFile::erase, eraseEmployerFigures = employerStore::erase)
     val eveningStore = ReplanningEveningStore(eveningFile) { shell?.replanSoon() }
     val endings = SessionEndings()
+    // R1371: the year downloads - the common coordinator (counts and years only in its log, never a day), over the
+    // session's GET, the record and iOS's transaction. Each year that lands re-plans: it may hold today, recorded on
+    // another phone, and the evening reminder must not ask about a day already in the record.
+    val yearDownloads = YearDownloads(scope) { line -> log("I/YearDownload: $line") }
+    val yearTransaction = iosEntriesTransaction(db)
+    val entriesDownload =
+        EntriesDownload(
+            dao = db.entryDao(),
+            get = session::authenticatedGet,
+            currentAccount = { accountStore.current() },
+            inTransaction = { write ->
+                yearTransaction(write)
+                checkNotNull(shell).replanSoon()
+            },
+        )
     val drain = iosSyncDrain(db.entryDao(), session, accountStore, dossierCache)
     val syncTrigger = IosSyncTrigger(scope, drain)
     val files = exportFiles()
@@ -397,6 +451,8 @@ fun startIosShell(
                         endings.ended()
                         centre.removeAllPending()
                     },
+                    // R1371: a year still arriving is stopped BEFORE the record is cleared, on every ending.
+                    stopYearDownloads = yearDownloads::stop,
                 ),
         )
     endingStore = localStore
@@ -484,13 +540,18 @@ fun startIosShell(
         notificationsPermitted = MutableStateFlow(false),
         notices = IosNotices(scope),
         taps = taps,
+        yearDownloads = yearDownloads,
+        entriesDownload = entriesDownload,
+        taxYears = {
+            val year = clock.now().toLocalDateTime(TimeZone.of(PARIS)).year
+            listOf(year, year - 1)
+        },
         urlOpener = urlOpener,
         exportFiles = files,
         presentShare = presentShare,
         scope = scope,
         planNow = planNow,
         graph = graph,
-        log = log,
     ).also {
         shell = it
         it.refreshAuthorization()

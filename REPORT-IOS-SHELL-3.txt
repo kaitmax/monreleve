@@ -1,0 +1,447 @@
+REPORT-IOS-SHELL-3 - THE iOS SHELL'S LAST GAPS: YEAR DOWNLOADS, EMPLOYER COMPARISON, FOREGROUND PARITY, THE RESTORE RACE
+TASK     relay/IOS-SHELL-3.txt (iOS Rulings 2, 3, 9-15). Rulings R1370-R1377 as allocated; R1378-R1379 not used.
+BASE     origin/main fa591ec8. :app floor 1568; :shared JVM 338; ios-shared 503 tests / 100 suites (run 45040631818).
+BRANCH   s3-shell. PUSHED, NOT MERGED. Code tip 49b0eb7f (tree identical to e58f05ca; see PUSH PROOF). The report tip
+         is the commit on top of it, carrying this file only.
+WORKTREE C:/wt/s3-shell, lock .session-lock.json (gitignored, R349), removed last.
+EVIDENCE C:/wt/queue-evidence/s3-shell/ (not committed): ios-expected-run1..4 (each written BEFORE its dispatch),
+         ios-shared-<id>/ artifacts + -count.txt + -classes.txt, pin-step1.log/-xml, move-check.log, g1/g2/g3*-check.log,
+         r1375-plant.log/.xml, gate-<sha>.log (+ .lock), diff-pin-move.txt, tools/ (every scripted edit asserted its
+         anchor matched exactly once before writing, R211).
+EVERY SECTION SAYS ONLY WHAT HAS HAPPENED (R334).
+
+================================================================================
+SUMMARY
+================================================================================
+- R1370: IOS-SHELL-2's never-RED tests were planted against in run 45044737295, then reverted (tree == fa591ec8's).
+  Every group failed by name except ONE case: run 1 left IosDetectionFileIosTest's sign-out/deletion case green. That
+  was MY plant's defect, not the test's. PA5 swapped the sweeps, but clear() calls clearForSessionEnd(), which carried
+  the planted erase. PA5b (clear() keeps the figures) was planted alone in run 3 (45048280096). It failed by name, and
+  it was the only failure in the run. DEVIATION 1.
+- R1371 (the SHIP BLOCKER): PIN THEN MOVE, as 5b did.
+  - YearDownloadsTest was transcribed to kotlin.test in :app and seen green beside the 9 originals.
+  - YearDownloads and YearDownloadStatus moved to :shared commonMain (data/sync/YearDownloadCoordinator.kt), with the
+    transcription. The catch is androidx.sqlite.SQLiteException, an actual typealias of android.database.SQLException
+    on Android, so Android catches exactly what it did.
+  - The original was deleted (case map below). The R28 case stays in :app (taxYearsToDownload is java.time).
+  - iOS wires the coordinator in startIosShell over ONE IMMEDIATE transaction (ios/IosYearDownloads.kt). It runs after a
+    sign-in, at the main shell's opening, and on retry. iosSessionEndSeam stops it on every ending. Every year that
+    lands re-plans the evening reminder.
+  - Proven through the shell, after an ending (with its positive control), and atomic on the iOS database.
+- R1372: the comparison overlay moved from MainShell into the common MainTabs, the way the forecast overlay did.
+  - Each shell holds the open year. Each platform supplies its figure store. One overlay back slot replaces
+    forecastBackHandler (renamed overlayBackHandler).
+  - iOS reads and writes R1334's UserDefaults store. "Comparer avec mon employeur" is no longer a logged stub
+    (notYetOnIos is deleted).
+- R1373: (a) every foreground refreshes Aujourd'hui (F8, the midnight case). (b) The tap delegate answers willPresent:
+  an evening reminder that arrives while the app is open shows as a banner and stays in the list, with no sound.
+- R1374, MEASURED in code and by test:
+  - (1) RESOLVING does NOT run on every signed-in cold launch. It runs only on one with no cached settings. In that case
+    the race was REAL, and test-first RED in run 2 proved it.
+  - Fixed iOS-side: the router waits, bounded at 2 s, for the centre's first answer.
+  - (2) A restored OFF is NEVER sent to the server on iOS, by code and by test. It does not reach Android.
+- R1375: ThresholdAlertPresenceTest (:app, JVM) renders both screens on Android's layoutlib through MainShell's own
+  mappings and asserts both entry points by their copy. Planted: both cases failed by name. It reads semantics and
+  keeps no image, so no baseline was created.
+- R1376: the FULL :app:gate passed on 49b0eb7f: BUILD SUCCESSFUL, GATE_EXIT=0, floor 1562, no baseline moved.
+- R1377: ios-shared 45049757851 (106 suites, 523 tests, 0 failures) and ios-app 45049761910 (success, all five
+  probe keys PASS, launch-DEFAULT.png = Bienvenue), both on 49b0eb7f.
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE. The FULL :app:gate ran on the reported code tip 49b0eb7f in this session (gate-49b0eb7f.log):
+    GATE HEAD=49b0eb7f3f171c3579e7ae8863843130e84607ef start=2026-11-22T17:14:30Z dirty=0
+    test floor OK: 1562 unit tests observed (>= 10)
+    BUILD SUCCESSFUL in 8m 52s
+    GATE_EXIT=0
+    end=2026-11-22T17:23:24Z dirty-after=1
+- dirty-after=1 is THIS REPORT FILE. I created it, untracked, while the gate ran. No tracked file changed, and the gate
+  wrote nothing into the tree.
+- Heavy lock s3-shell-gate: ACQUIRED 17:14:30Z commitFree=8522 (line 8000, not lowered), RELEASED 17:23:25Z.
+- EXECUTED: :app:testDebugUnitTest, :app:verifyPaparazziDebug, :app:lintDebug, assembleDebug.
+- UP-TO-DATE, cache-true:
+  - :app:detekt / :app:ktlintCheck and :shared:testDebugUnitTest / ktlint / detekt. All of them EXECUTED green in
+    g3d-check.log (fastCheck) on the same sources.
+  - The only edits after g3d were the R1375 plant (MainActivity restored byte-identical, `cmp`) and the PA5b
+    plant/revert (iosMain; tree equal to e58f05ca).
+- Counts from THIS gate's XML:
+  - :app: 210 classes / 1562 tests / 0 failures.
+  - :shared JVM: 64 / 346 / 0.
+- FLOOR ARITHMETIC (as R1313):
+  - :app: base 1568 - 9 transcribed originals (YearDownloadsTest) = 1559, the prompt's floor. Then +1, the R28 case kept
+    in :app as TaxYearsToDownloadTest (JVM-only, java.time). Then +2, R1375's new ThresholdAlertPresenceTest. Total 1562.
+  - :shared JVM: 338 + 8 (YearDownloadsPinTest) = 346 - :shared rises by the 8 moved cases.
+- No snapshot moved: `git diff --name-only fa591ec8 49b0eb7f -- android/app/src/test/snapshots` = 0 files. web/,
+  ios/ and .github/ are untouched (0 files), so gate:clone and gate:changed are not owed (R199).
+- Every Gradle run used --no-daemon, under the heavy lock, and was released. `gradlew --stop` was never run.
+
+================================================================================
+R1370 - THE PLANTS IOS-SHELL-2 OWED
+================================================================================
+Commit a172493d: 14 plants, each anchored and verified landed (`grep -c "R1370 PLANT"` = 14). Reverted in 11f9bd44:
+`git diff fa591ec8 11f9bd44 -- android` = 0 lines, dirty=0.
+
+The expectation was written before dispatch (ios-expected-run1-plants.txt). Its list holds 20 cases. Its header says
+"21", an arithmetic slip of mine: the list itself is 20.
+
+ios-shared 45044737295 on a172493d: 100 suites, 503 tests, 19 failures. Each one is listed below with its plant and
+the message it failed with:
+  (a) PA1  InMemoryEveningNotificationStore.markNotified keeps only the first day
+      - MemoryEveningNotificationStoreContractTest.theLastNotifiedDayRoundTripsAndIsReplaced ("Expected <2026-11-17>")
+      - InMemoryAlertStoresTest.theEveningStore... ("the latest day replaces"; the collateral I predicted)
+  (a) PA2  MemoryEmployerFigureStore drops the account
+      - MemoryEmployerFigureStoreContractTest.oneAccountNeverReads... ("R303: another account ... sees nothing")
+      - MemoryEmployerFigureStoreContractTest.theAccountIsReadAtEachCall...
+  (a) PA3  UserDefaultsEveningNotificationStore.markNotified keeps only the first day
+      - UserDefaultsEveningNotificationStoreContractTest.theLastNotifiedDay... ("Expected <2026-11-17>")
+  (a) PA4  UserDefaultsEmployerFigureStore drops the account
+      - UserDefaultsEmployerFigureStoreContractTest.oneAccountNeverReads... and .theAccountIsReadAtEachCall...
+  (a) PA5  the sweeps "swapped"
+      - IosDetectionFileIosTest.aServerEndedSessionErases... ("R527: the same person's typed figure is kept")
+      - IosDetectionFileIosTest.aSignOutOrADeletionErases... PASSED. This is a plant defect, not a test finding:
+        clear() calls clearForSessionEnd(), which carried the planted erase, so the plant never regressed that
+        path. Completed by PA5b below.
+  (b) PB   handleExport does nothing
+      - r1331AnAccountExport... ("the share sheet was handed a file")
+      - r1331AFailedExport... ("the failure, said through the notice seam")
+  (c) PC   openLegal does nothing
+      - r1333ALegalRowOpensTheSitesPage ("the privacy page was opened")
+      - r1333ALegalPageNothingCanOpen... ("R299: the address, said instead")
+  (d) PD   the shell's seam removes nothing on DELETED
+      - r1335Deleting... ("AFTER the deletion: no pending reminder")
+  (e) PE1  any action counts as the tap
+      - onlyAnEveningRemindersTapRaisesTheFlag ("a dismissal")
+  (e) PE2  the tap no longer switches the tab
+      - aReminderTapTakesTheShell... ("the tap opened Aujourd'hui")
+  (f) PF1  requestSync no longer re-plans
+      - recordingTodayOnAujourdhui... ("recording today re-plans: today's request is gone")
+  (f) PF2  a grant no longer re-plans
+      - theAuthorizationGrantedReplans ("the GRANT re-plans the week")
+  (f) PF3  the shell's seam removes nothing on ENDED_BY_SERVER
+      - aServerEndedSessionClears... ("M3's seam removed every request")
+  (g) PG   the restore lands 1.5 s after MAIN composed (increment 4's defect)
+      - aSignInRestores... ("the switch reads ON. Expected <1>, actual <0>")
+
+No other test failed. There was no crash, and all 100 suites were written.
+
+Group (a) spans five classes over five implementations, so I planted one regression per CLASS (PA1-PA5): a single
+regression cannot reach all five. Groups (e) and (f) hold tests about different things, so each test got its own plant.
+DEVIATION 2.
+
+PA5b: commit 52276893 (one line, verified landed), reverted in 49b0eb7f (diff vs e58f05ca = 0).
+ios-shared 45048280096: 106 suites, 523 tests, EXACTLY 1 failure (ios-expected-run3-pa5b.txt, written before dispatch):
+    IosDetectionFileIosTest.aSignOutOrADeletionErasesTheOptInTheDayAndEveryEmployerFigure
+    - "R289/R295: the voluntary sign-out and the deletion take the figures. Expected value to be null, but was <41.25>"
+So every test IOS-SHELL-2 listed in its DEVIATION 6 has now been seen RED by name.
+
+================================================================================
+R1371 - THE YEAR DOWNLOADS COME TO iOS
+================================================================================
+PIN (e59d218f): YearDownloadsPinTest (8) and TaxYearsToDownloadTest (1) were written in :app with kotlin.test, against
+:app's unchanged code. They were run beside the originals (pin-step1.log, XML kept): YearDownloadsTest 9/0,
+YearDownloadsPinTest 8/0, TaxYearsToDownloadTest 1/0.
+
+MOVE (59703e11):
+  - The coordinator and its status went to :shared commonMain data/sync/YearDownloadCoordinator.kt, verbatim but for
+    two platform names:
+    - catch android.database.SQLException became androidx.sqlite.SQLiteException. That is common, and on Android it
+      is `actual typealias SQLiteException = android.database.SQLException` (sqlite-android 2.5.1 sources), so the
+      catch is unchanged;
+    - e.javaClass.simpleName became e::class.simpleName (javaClass is the JVM's).
+  - The file name differs from :app's YearDownloads.kt, because MovedTwinsFenceTest refuses a moved FILE NAME in :app.
+  - :app's YearDownloads.kt keeps ShellYearDownload, processYearDownloads (Log), buildEntriesDownload (Room's
+    withTransaction) and taxYearsToDownload (java.time).
+  - YearDownloadsPinTest moved by git mv to commonTest. Its diff against the green :app blob (diff-pin-move.txt):
+    FakeEntryDao became InMemoryEntryDao (the same triple key, upsert and cold flowOf), plus its header comment.
+    Nothing else changed.
+  - YearDownloadsTest.kt was deleted (R268).
+  - MovedTwinsFenceTest gained the file and the names YearDownloads and YearDownloadStatus (MovedTwinsFenceTest 7/0).
+  - fastCheck green, the :app fences green, :shared JVM 346.
+  - The androidTest YearDownloadRoomTransactionInstrumentedTest was not edited: the constructor and the class name are
+    the same.
+  - :app:compileDebugAndroidTestKotlin was run on 49b0eb7f under the heavy lock and was BUILD SUCCESSFUL
+    (androidtest-compile.log). The instrumented tests COMPILE against the moved types. They were NOT RUN: no device or
+    emulator in this session.
+
+THE CASE MAP (original "name" -> where it runs now; each ran green before the move, and after it where it lives):
+  1 "R481: after a sign-in BOTH years come down..." -> YearDownloadsPinTest.r481AfterASignInBothYearsComeDown...
+  2 "R485: on start only the year that is EMPTY..." -> .r485OnStartOnlyTheYearThatIsEmptyOnThePhoneIsFetched
+  3 "R485: with both years on the phone the start check sends nothing at all" -> .r485WithBothYearsOnThePhone...
+  4 "R485: the start check runs once per process, and not after a sign-in download" -> .r485TheStartCheckRunsOnce...
+  5 "R484: a year that fails is shown failed, nothing changes, and the retry..." -> .r484AYearThatFailsIsShownFailed...
+  6 "R484: a session that is gone ends quietly..." -> .r484ASessionThatIsGoneEndsQuietly...
+  7 "R483: a synced row the server lacks is kept, and COUNTED..." -> .r483ASyncedRowTheServerLacksIsKept...
+  8 "sign-out stops a year still in flight..." -> .signOutStopsAYearStillInFlightNothingLandsAfterTheStop
+  Cases 1-8 run in commonTest on the JVM and the simulator. All 8 are named in run 2's and run 3's XML with
+  [iosSimulatorArm64].
+  9 "R28: the tax years are Paris's, whatever zone the phone is in" -> :app TaxYearsToDownloadTest.r28... (JVM-only)
+
+iOS WIRING (840facb0):
+  - startIosShell builds YearDownloads(scope) with the log "I/YearDownload: <counts and years>" (never a day). It
+    builds EntriesDownload over db.entryDao(), session::authenticatedGet, the account read live, and
+    iosEntriesTransaction(db): ensureActive, then useWriterConnection { withTransaction(IMMEDIATE) }.
+  - I read room-runtime 2.7.2's sources before relying on it: performSuspending keeps the ConnectionElement, so DAO
+    calls join that connection.
+  - The inTransaction wrapper re-plans after each year.
+  - The tax years are Paris's, read from the shell's clock.
+  - Triggers: RESOLVING's afterSignIn = shell::downloadYearsAfterSignIn. The main shell's LaunchedEffect calls
+    downloadYearsAtStart. Aujourd'hui gets yearDownloadFailed and its retry.
+  - iosSessionEndSeam gained stopYearDownloads, run BEFORE removePendingRequests. The wrapper runs the seam before the
+    clear on every path.
+
+TESTS:
+  - IosShellYearDownloadsIosTest (4):
+    - a sign-in typed through the shell's own screens brings 2025's two days into the iOS database under the
+      signed-in account's tag, and both years are asked;
+    - a held GET (a NON-cancellable suspension, as an NSURLSession completion) answers AFTER a sign-out through the
+      Parametres tab. It writes nothing, asks no further year, and after the next account signs in through the
+      shell, the old year is still nowhere;
+    - the POSITIVE CONTROL: the same held GET, released with no ending, lands;
+    - a downloaded day for today takes today's reminder off the plan.
+  - IosYearDownloadAtomicityIosTest (2), on the iOS database with startIosShell's exact seam:
+    - write 2 throws SQLiteException, and the store is as it was, with a positive control;
+    - the coordinator turns it into Failed(2026) with the log line, and nothing lands.
+    - Both are bounded by withTimeout.
+  - RED in run 2 (against the stub, and a no-transaction skeleton): all 6 failed by name for their stated reason.
+    GREEN in run 3 and in the final run.
+  - IosShellStartupIosTest's assertion on the retired stub's log line now waits for GET /api/v1/entries. This is the
+    one existing test edited, because the stub it pinned is gone (DEVIATION 4).
+
+================================================================================
+R1372 - THE EMPLOYER COMPARISON ON iOS
+================================================================================
+MainTabs (common) gained the following, and lost onCompareEmployer:
+  - comparisonYear, onComparisonYearChange and employerStore;
+  - forecastBackHandler renamed overlayBackHandler: one system-back slot for both overlays (R206), Android's
+    BackHandler and nothing on iOS.
+The Releve's button now sets the year from the Loaded state.
+
+The overlay's body is MainShell's block moved verbatim. Only three things changed: `BackHandler {..}` became
+overlayBackHandler, `comparisonYear = null` became onComparisonYearChange(null), and `tab = AppTab.CALENDRIER` became
+onTabChange(AppTab.CALENDRIER). It is drawn AFTER the forecast overlay, which is the same stacking as before, with the
+disclosure still above it on Android.
+
+It is INLINE in MainTabs, not a private composable. My first version extracted it, and EdgeToEdgeCensusTest refused
+it: a private function is not a discovered host, so ComparisonScreen read as unhosted. The fence was right, and it was
+left unedited.
+
+:app MainActivity diff, every line argued:
+  - six imports removed, now unused;
+  - `val releveState` removed (its two readers moved);
+  - onCompareEmployer replaced by the three arguments;
+  - forecastBackHandler renamed;
+  - the 45-line overlay block replaced by a two-line comment;
+  - R1375's two lines below.
+
+Pixel neutrality of the move is ARGUED, not proven: no Paparazzi test composes MainShell or MainTabs. verifyPaparazzi
+ran with 0 snapshot files changed, and ComparisonScreen's own baselines are unmoved.
+
+TEST: IosShellComparisonIosTest (1). Through the shell:
+  1. a figure (41.25) saved for 2025 in the UserDefaults store, as an earlier visit would;
+  2. the Releve tab, then the 2025 chip (the fixture dossier served per year, R206), then the chip selected;
+  3. "Comparer avec mon employeur", then the overlay for 2025, showing formatPercent(41.25, 2) (derived, R181);
+  4. a new figure typed, read back as 40.5 through a NEW store instance;
+  5. back, which closes onto the Releve.
+RED in run 2 at "the comparison overlay for 2025" (after the chip, so the harness reached the stub); GREEN in runs
+3/final.
+
+================================================================================
+R1373 - FOREGROUND PARITY
+================================================================================
+(a) IosShell.onForeground counts foregrounds (a StateFlow), and IosMainShell refreshes Aujourd'hui on each. There is
+    still ONE foreground seam, the root's lifecycle observer.
+    Test r1373aAForegroundAfterMidnight...:
+      - 23:30 Paris on Monday shows "Lundi 16 novembre 2026";
+      - the app goes to the background and the clock moves to 00:30 Tuesday;
+      - BEFORE the foreground, the screen still shows Monday;
+      - after the foreground it shows formatDayLong("2026-11-17").
+    The rig's clock became movable (nowIso), and its ExperimentalTime opt-in is still ONE.
+(b) foregroundPresentation(identifier): our evening reminders get Banner | List, and no Sound (iOS Ruling 10 Q3).
+    Anything else gets 0. The delegate overrides userNotificationCenter(willPresentNotification:...). The deployment
+    target is iOS 16, so Banner and List (iOS 14) are available.
+    Test r1373b...: the decision, and the delegate's respondsToSelector(willPresent).
+    NOT RUN: the delegate method receiving a real UNNotification. Tests cannot build one, so that is IOS-WALK's.
+RED for both in run 2 ((a) at the bounded wait; (b) "the evening reminder shows as a banner" against a 0 skeleton).
+GREEN in runs 3/final.
+
+================================================================================
+R1374 - THE RESTORE RACE, MEASURED, THEN FIXED
+================================================================================
+(1) IN CODE:
+    - startDestination is MAIN for a signed-in phone with cached settings, and RESOLVING only without them. GET /me is
+      asked by RESOLVING alone.
+    - So RESOLVING does NOT run on every signed-in cold launch, only on one with no cached settings. That happens in
+      three cases:
+      - a process ended between decideStartAfterSignIn's opt-in write and its settings cache (that order is
+        deliberate);
+      - the same, between onboarding's onReminderSaved and store.save;
+      - an account whose settings stay incomplete.
+      In each case, a persisted ON can exist.
+    BY TEST:
+    - r1374aSignedInOnboardedColdLaunchNeverResolves...: MAIN, no GET /me, a persisted ON stands while the server
+      says OFF. Passed on base and after.
+    - r1374aColdLaunchThroughResolving...: no cached settings, a persisted ON, the server's ON, the centre answering
+      300 ms late. RED in run 2: "R1374: a restore that ran before the centre's first answer wrote OFF over the
+      server's ON". THE DEFECT IS REAL for that case.
+    FIX, iOS-side, with no common edit:
+    - IosShell keeps authorizationKnown (set by the first answer, or by any later one).
+    - IosShellRoot composes the router only once it is true, bounded at 2 s. Past the bound it starts as before, so a
+      silent centre cannot hold the app blank.
+    - Meanwhile the canvas is AppRoot's, with no text.
+    - The restore stays synchronous (SHELL-2 increment 4), and it now reads an ANSWER. GREEN in runs 3/final,
+      including "the switch reads ON".
+(2) IN CODE: two iOS paths write the opt-in to the server, and both send the PERSON's choice:
+    - Parametres' switch (setEveningNotification, the tap's value);
+    - onboarding's save (its RAPPEL answer).
+    Parametres' own save carries no reminder key (mePatchBody()). iOS v1 has no push registration.
+    BY TEST: r1374bARestoredOffIsNeverSentBackToTheServer.
+    - Setup: the server says ON, the phone may not notify, and the phone held ON.
+    - The restore writes OFF; that is the case, asserted present.
+    - Then the tabs, Parametres and a foreground cycle.
+    - Result: no request body carries reminderEnabled, and there is no PATCH /me. It passed on base and after.
+    So (2) is NO, and the defect does not reach Android through the account. Android's PushRegistration does write the
+    PHONE's opt-in, but only FALSE where that phone turned it on, and Android's restore reads
+    areNotificationsEnabled synchronously, so it has no race.
+
+================================================================================
+R1375 - THE PRESENCE CONTROL R1338 OWED
+================================================================================
+:app ThresholdAlertPresenceTest (2):
+  - Paparazzi's layoutlib renders on the JVM, with maxPercentDifference = 0.0 (PaparazziZeroToleranceTest 2/0).
+  - Its snapshot handler keeps NO image (a no-op Proxy FrameHandler, because java.awt is not on the Android unit-test
+    compile classpath). Nothing is compared, recorded or written, so no baseline file was created.
+  - The texts are read off the Compose view's semantics tree (ViewRootForTest.semanticsOwner) after layout.
+  - The presence guards come first (EVENING_LABEL; PrevisionCopy.TITLE).
+  - Parametres is rendered through parametresActions, MainShell's own mapping, made internal: ALERT_LABEL and
+    ALERT_DESCRIPTION are drawn.
+  - Prevision is rendered with thresholdAlertOffer, the handler MainShell now hands MainTabs, extracted unchanged:
+    ALERT_OFFER is drawn.
+  - The launcher-built toggles are recorders: only an Activity has launchers.
+PLANTED (r1375-plant.log/.xml): parametresActions passing null for the alert's toggle, and thresholdAlertOffer
+returning null. Both landed (grep = 2). Both tests FAILED by name ("R1375: Android draws the threshold alert's switch",
+"R1375: Android draws Prevision's threshold alert offer"), with the presence guards passing first. The file was
+restored and `cmp` identical.
+
+================================================================================
+R1376 / R1377 - ANDROID UNCHANGED; iOS RUNS
+================================================================================
+ANDROID: the STATUS section above. The :app edits are R1371's move and R1372/R1375's lines, each argued above.
+
+ios-shared FINAL 45049757851 on 49b0eb7f: success. Counted from the JUnit XML (ios-shared-45049757851-count.txt):
+    suites=106 tests=523 failures=0 errors=0 skipped=0
+  This equals the expectation written before dispatch (ios-expected-run4-final.txt): base 503 + 8 + 12.
+  Wall time 17:29:51Z-17:41:42Z.
+
+Per-class difference from base run 45040631818 (counted from its JUnit XML: 100 / 503 / 0). Only additions:
+    + ch.monreleve.app.data.sync.YearDownloadsPinTest 8
+    + ch.monreleve.app.ios.IosShellComparisonIosTest 1
+    + ch.monreleve.app.ios.IosShellForegroundParityIosTest 2
+    + ch.monreleve.app.ios.IosShellRestoreRaceIosTest 3
+    + ch.monreleve.app.ios.IosShellYearDownloadsIosTest 4
+    + ch.monreleve.app.ios.IosYearDownloadAtomicityIosTest 2
+    (no existing class changed its count; 503 + 20 = 523)
+
+ios-app FINAL 45049761910 on 49b0eb7f: success (17:29:54Z-17:45:40Z). ios-host-probe.txt
+  (nonce run-45049761910-1, probe.done=true):
+    keychain.result=PASS notification.result=PASS reminder.result=PASS share.result=PASS firstLaunch.result=PASS
+    ats.refusedByAts=false  info.apiBaseUrl=http://127.0.0.1:3000 (Debug)  mail.schemeListed=true
+    mail.canOpenMessageScheme=false
+  launch-DEFAULT.png LOOKED AT: the Bienvenue sign-in screen ("Mon Releve", "Vos jours de teletravail, prets pour votre
+  declaration.", the three lines, "Commencer"). There is no code field (R574), and it is NOT blank. That is the R1374 gate
+  passing on the real notification centre: the router started once the centre had answered.
+
+All runs were workflow_dispatch on s3-shell, and no trigger was edited:
+    ios-shared 45044737295  a172493d  R1370 plants       100/503, 19 failures (see R1370)
+    ios-shared 45046184130  c61d97f0  RED, test-first    106/523, exactly the 10 predicted failures
+    ios-shared 45048280096  52276893  PA5b (+ GREEN code) 106/523, exactly 1 failure (PA5b)
+    ios-shared 45049757851  49b0eb7f  FINAL (R573/R1377)  106/523, 0 failures   (11.9 min)
+    ios-app    45049761910  49b0eb7f  FINAL               success, probe keys PASS (15.8 min)
+Two earlier dispatches, issued from the evidence directory (not a git checkout), created no run. I verified that by
+listing, then re-issued them from the worktree. Expectation files: ios-expected-run1..4.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- SimulationForecastScreensIosTest's ComparisonHost is a hand-written reduction of the overlay. That overlay is now
+  common and driven through the shell by IosShellComparisonIosTest. Its replacement with a case map is I3 IOS-AUDIT's
+  (iOS Ruling 14 Q2).
+- MainActivity.kt:655 uses the deprecated androidx.compose.ui LocalLifecycleOwner (a compiler warning, pre-existing).
+- IosShellSignOutIosTest.kt:32 is a 124-character line (pre-existing; the lint runs here passed with it).
+- The router's 2 s bound is a guess at "a centre that never answers"; the real first read is measured nowhere.
+  IOS-WALK can time it.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. R1370 "ALL in ONE ios-shared run": the plants took TWO runs. In run 1, my PA5 did not regress the sign-out/deletion
+   sweep (see R1370). PA5b ran alone in run 3 and failed by name. The test itself needed no fix.
+2. R1370 "ONE regression per group": groups (a), (e) and (f) got one plant per class or per test (14 + PA5b), so that
+   each test failed for ITS reason. A single plant cannot reach five independent implementations.
+3. R1377's run count: four ios-shared runs and one ios-app run, against the stated three.
+   - Run 2 was the RED run that R1373/R1374 demand ("RED shown"). Only the simulator can show it, and it could not
+     ride on run 1: R1370 requires the plants before any new code.
+   - Run 3 was PA5b.
+   - RED skeletons (iosEntriesTransaction without a transaction; foregroundPresentation = 0) existed only between
+     c61d97f0 and 840facb0 / a6d4cee1.
+4. IosShellStartupIosTest edited: one assertion, on the stub log line R1371 removes. It now waits for RESOLVING's GET
+   /api/v1/entries. ShellTestDoubles gained the route (whole request; default = empty years), fullRequests, bodies and
+   the movable clock. The opt-in count is unchanged.
+5. :app edits beyond the moves: parametresActions private -> internal, and thresholdAlertOffer extracted (the identical
+   lambda), both for R1375. MainTabs' forecastBackHandler was renamed overlayBackHandler (R1372), one line on each
+   shell.
+6. iosSessionEndSeam's new parameter stopYearDownloads defaults to {} (the test-only callers, and iosDeviceLocalStore's
+   own default). startIosShell, the one production caller, passes the coordinator's stop.
+   CORRECTION OF MY OWN EARLIER CLAIM: the through-shell test proves the OUTCOME, that nothing lands after an ending.
+   It does NOT isolate the stop. After a sign-out the account is null, so EntriesDownload's re-read inside the
+   transaction writes nothing, and downloadYears then stops on Unauthenticated. The test would therefore pass with the
+   stop unwired. The stop is wired and argued (two guards), not separately pinned.
+8. ios-expected-run3-pa5b.txt named its one expected failure but not the 523/106 count, which the brief wants written
+   before each dispatch. The count was unchanged from run 2 (no iOS test was added between them).
+7. android/local.properties was copied from the main checkout (gitignored, not committed).
+9. A SERVER-ENDED session during a download (ARGUED from code, not tested):
+   - The year's GET can be the call whose refresh is refused. SessionManager.end() then runs onEnded inside
+     withContext(NonCancellable).
+   - So when the seam's stop cancels the download's own job, the clear that follows still completes:
+     clearForSessionEnd is tokens, dossier cache, exports, settings and the detection file; then ends.record().
+   - The cancellation surfaces only when that withContext returns, and it ends the stopped job quietly.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. R1374's fix waits at most 2 s for the centre's first answer before starting the router regardless. Past 2 s, the
+    pre-fix race could recur on that one launch. Keep 2 s, or should IOS-WALK measure the real first read on the
+    simulator and iPhone and set the bound from that?
+Q2. iOS stops a year download on EVERY ending, the server-ended one included: the seam runs on all three paths.
+    Android stops it only in clearRecord, which a server-ended session does not reach, because the record is kept
+    (R521). On Android, a download in flight when the server ends the session still finishes. Its in-transaction
+    account re-read writes only while the tag is unchanged, and R521 keeps that tag, so the year can still land under
+    the same account. Accept the difference (iOS stricter; nothing crosses accounts on either), or align Android in a
+    later Android task?
+Q3. The year downloads re-plan the evening reminder after every year that lands, even when the year changed nothing.
+    That is cheap, and it is what makes "today recorded elsewhere" drop today's request. Android's fallback reminder
+    has no such hook: its 19:00 wake reads the record when it fires. Accept the asymmetry as iOS's (its requests are
+    planned a week ahead), or record it for the operator?
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Commits on s3-shell, each pushed when made:
+    a172493d  R1370 plants (run 1)
+    11f9bd44  plants reverted (android/ == fa591ec8)
+    e59d218f  R1371 pin
+    59703e11  R1371 move
+    c61d97f0  RED tests + skeletons (run 2)
+    840facb0  R1371 GREEN
+    a6d4cee1  R1374 + R1373 GREEN
+    e58f05ca  R1372 + R1375
+    52276893  PA5b plant (run 3)
+    49b0eb7f  PA5b reverted (tree == e58f05ca)  <- CODE TIP: :app:gate, the final ios-shared and the ios-app run.
+  The report tip is the next commit, carrying this file only.
+- Not merged. parking.md was not written.
+- Token check: `git diff fa591ec8 49b0eb7f` for ghp_ / github_pat_ / private-key headers / JWT-shaped strings = 0 hits.
+  No sign-in mail, code, token or server log is in any log, commit or artifact (the iOS tests' code is a fixture).
+- Heavy-lock holds, every one released: s3-shell-pin, -move, -redlint (x2), -g1, -g2, -g3, -g3b, -g3c, -g3d, -plant,
+  -gate, -at.
+- macOS wall time: 14.5 + 14.0 + 11.8 + 11.9 (ios-shared) + 15.8 (ios-app) min.
+- C:/wt/s3-shell/.session-lock.json: removed after the report push, as the last act.

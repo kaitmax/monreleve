@@ -11,14 +11,25 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import ch.monreleve.app.dossier.buildComparison
+import ch.monreleve.app.dossier.parseEmployerRate
 import ch.monreleve.app.forecast.RhythmChoice
+import ch.monreleve.app.fr.text.formatPercent
 import ch.monreleve.app.parametres.ParametresState
 import ch.monreleve.app.releve.ExportKind
+import ch.monreleve.app.releve.ReleveState
+import ch.monreleve.app.settings.EmployerFigureStore
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiActions
 import ch.monreleve.app.ui.screens.aujourdhui.AujourdhuiScreen
 import ch.monreleve.app.ui.screens.calendrier.CalendarActions
 import ch.monreleve.app.ui.screens.calendrier.CalendrierScreen
+import ch.monreleve.app.ui.screens.comparison.ComparisonActions
+import ch.monreleve.app.ui.screens.comparison.ComparisonScreen
 import ch.monreleve.app.ui.screens.prevision.PrevisionActions
 import ch.monreleve.app.ui.screens.prevision.PrevisionScreen
 import ch.monreleve.app.ui.screens.releve.ReleveActions
@@ -42,8 +53,14 @@ import ch.monreleve.app.ui.shell.AppTab
 //     its own actions and the native date picker. The slot is handed the tab's state and the way to the rhythm editor;
 //   - the SYSTEM BACK of the forecast overlay, a slot: Android's BackHandler (there is no common one - iOS Ruling 3);
 //     iOS passes none, as before, and its overlays close through their own back arrows;
-//   - the year-download retry and its failure flag, the employer comparison's opening (an overlay Android keeps in
-//     :app) and the threshold alert's opt-in offer (hidden in iOS v1, iOS Ruling 3 Q4 - iOS passes null, R1338).
+//   - the year-download retry and its failure flag, and the threshold alert's opt-in offer (hidden in iOS v1, iOS
+//     Ruling 3 Q4 - iOS passes null, R1338).
+//
+// IOS-SHELL-3 R1372 (iOS Ruling 15 Q1): THE EMPLOYER COMPARISON'S OVERLAY moved here from :app's MainShell, as the
+// forecast overlay did, so both shells draw it: the open year is the calling shell's state (comparisonYear - Android
+// saves it across a rotation, R310) and the figure store is each platform's (Android's SharedPrefs, iOS's
+// UserDefaults - R342 / R1334). The system back that closes an overlay is ONE slot for both overlays
+// (overlayBackHandler, formerly forecastBackHandler): Android's BackHandler, nothing on iOS.
 //
 // Nothing here is new behaviour: every line below was MainShell's, and the comments that explain them came with them.
 // The forecast route itself is in ForecastRoute.kt, beside this file.
@@ -53,9 +70,9 @@ import ch.monreleve.app.ui.shell.AppTab
 // destination, not tangled logic - MainShell carried the same suppression for the same body.
 
 /**
- * The signed-in shell's tabs: the bottom bar over the four common tabs, and the forecast overlays above them. The
- * calling shell holds [tab] and [forecastRoute] and composes anything of its own (Android's employer comparison and
- * detection disclosure) after this, so those still stack above it.
+ * The signed-in shell's tabs: the bottom bar over the four common tabs, the forecast overlays above them and the
+ * employer comparison above those. The calling shell holds [tab], [forecastRoute] and [comparisonYear] and composes
+ * anything of its own (Android's detection disclosure) after this, so that still stacks above it.
  */
 @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
@@ -67,11 +84,14 @@ fun MainTabs(
     onForecastRouteChange: (ForecastRoute?) -> Unit,
     yearDownloadFailed: Boolean,
     onRetryDownload: () -> Unit,
-    onCompareEmployer: () -> Unit,
+    // IOS-SHELL-3 R1372: the comparison's open year (null = closed), held by the calling shell, and the figure store.
+    comparisonYear: Int?,
+    onComparisonYearChange: (Int?) -> Unit,
+    employerStore: EmployerFigureStore,
     // IOS-SHELL-2 (R1338): null where the threshold alert is not offered (iOS v1) - Prevision then draws no offer.
     onEnableAlert: (() -> Unit)?,
     parametresTab: @Composable (state: ParametresState, onOpenRhythm: () -> Unit) -> Unit,
-    forecastBackHandler: @Composable (onBack: () -> Unit) -> Unit,
+    overlayBackHandler: @Composable (onBack: () -> Unit) -> Unit,
 ) {
     val forecastState by controllers.forecast.state.collectAsState()
     val simulationState by controllers.simulation.state.collectAsState()
@@ -162,7 +182,11 @@ fun MainTabs(
                                 // PARKAN-26: switch the releve to another year the selector offers (R328 read-only).
                                 onSelectYear = controllers.releve::selectYear,
                                 // AN-RECON: open the comparison overlay for the year on screen.
-                                onCompareEmployer = onCompareEmployer,
+                                onCompareEmployer = {
+                                    (releveState as? ReleveState.Loaded)?.let {
+                                        onComparisonYearChange(it.selectedYear)
+                                    }
+                                },
                             ),
                     )
                 }
@@ -181,7 +205,7 @@ fun MainTabs(
         // AN-SIM: system back from the simulator returns to Prevision (the on-screen arrow and "Revenir a ma
         // prevision" both do too), since the simulator is a sub-screen of Prevision; the other routes close to
         // the tab beneath.
-        forecastBackHandler {
+        overlayBackHandler {
             onForecastRouteChange(if (route == ForecastRoute.SIMULATION) ForecastRoute.PREVISION else null)
         }
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -236,6 +260,55 @@ fun MainTabs(
                                 onBack = { onForecastRouteChange(ForecastRoute.PREVISION) },
                             ),
                     )
+            }
+        }
+    }
+
+    // AN-RECON: the employer comparison, a full-screen overlay over the releve. It reads the releve's current
+    // Loaded document for the year it holds (R287: the server's figure, never a phone-side calc) and the
+    // employer figure from the phone store (R342). Computing the gap writes nothing (R340); only the person's
+    // typed figure is persisted, to the account-scoped phone store. Back closes it; a cause or "voir mes
+    // journees" opens the day-by-day record.
+    // MainShell's block, moved whole (IOS-SHELL-3 R1372) - inline, so its screen stays under MainTabs, the hosted route
+    // (fences/EdgeToEdgeCensusTest); BackHandler became the overlay slot, the two state writes the caller's setters.
+    comparisonYear?.let { year ->
+        val loaded = releveState as? ReleveState.Loaded
+        overlayBackHandler { onComparisonYearChange(null) }
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            if (loaded != null) {
+                var employerInput by
+                    rememberSaveable(year) {
+                        mutableStateOf(employerStore.figureFor(year)?.let { formatPercent(it, 2) } ?: "")
+                    }
+                val employerRate = parseEmployerRate(employerInput)
+                val view =
+                    remember(loaded.document, loaded.pendingCount, loaded.isCurrentYear, employerRate) {
+                        buildComparison(
+                            document = loaded.document,
+                            isCurrentYear = loaded.isCurrentYear,
+                            daysUnsynced = loaded.pendingCount,
+                            missionCap = loaded.rules.missionCapDays,
+                            simplifiedBasisDays = loaded.rules.simplifiedBasisDays,
+                            employerRate = employerRate,
+                        )
+                    }
+                ComparisonScreen(
+                    view = view,
+                    employerInput = employerInput,
+                    employerRate = employerRate,
+                    actions =
+                        ComparisonActions(
+                            onInputChange = { text ->
+                                employerInput = text
+                                parseEmployerRate(text)?.let { employerStore.save(year, it) }
+                            },
+                            onViewDays = {
+                                onComparisonYearChange(null)
+                                onTabChange(AppTab.CALENDRIER)
+                            },
+                            onBack = { onComparisonYearChange(null) },
+                        ),
+                )
             }
         }
     }
