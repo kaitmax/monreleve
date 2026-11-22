@@ -1,0 +1,36 @@
+name: ios-walk
+
+# ===========================================================================
+# IOS-WALK (I2), INCREMENT 0: THE INERT WORKFLOW.
+# ===========================================================================
+#
+# GitHub dispatches only a workflow whose file is on the DEFAULT branch. This
+# file exists so that ios-walk.yml can land on main ALONE, before anything it
+# will later do is written; a dispatch with --ref i2-walk then runs the
+# branch's version of it.
+#
+# WHAT IT DOES: prints the commit it ran on. Nothing else.
+# No checkout, no secret, no server, no database, no build, no artifact.
+#
+# TRIGGERS: workflow_dispatch ONLY. No push, no pull_request, no schedule:
+# on a PUBLIC repository a pull_request trigger would run for anyone's fork.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-walk:
+    name: ios-walk
+    # macos-15 pinned, as in ios-app.yml and ios-shared.yml.
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - name: Print the commit
+        env:
+          WALK_SHA: ${{ github.sha }}
+          WALK_REF: ${{ github.ref }}
+        run: |
+          echo "ios-walk inert: ref=${WALK_REF} sha=${WALK_SHA}"
