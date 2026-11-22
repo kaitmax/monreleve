@@ -57,6 +57,13 @@ private object OrgJsonParametresWire : ParametresWire {
 }
 
 /**
+ * IOS-MOVE-GRAPH (R1310): the same object, for the composition root (ShellState.kt), which hands it to
+ * MainGraph.build - the graph builds the controller with it. The object stays private, so this file's one declared
+ * type is still the one its name matches.
+ */
+internal val orgJsonParametresWire: ParametresWire = OrgJsonParametresWire
+
+/**
  * The ParametresController, its wire in org.json. The parameters, their order and their defaults are the class's own
  * before IOS-2e - every default copied from it, NoOpLocalStore included - so a call that compiled against the class
  * compiles against this unchanged and builds the same controller.

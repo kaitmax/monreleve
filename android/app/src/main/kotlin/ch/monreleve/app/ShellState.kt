@@ -26,6 +26,7 @@ import ch.monreleve.app.dossier.DossierDocument
 import ch.monreleve.app.forecast.SimulationSnapshot
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresSnapshot
+import ch.monreleve.app.parametres.orgJsonParametresWire
 import ch.monreleve.app.settings.SettingsStore
 import ch.monreleve.app.settings.SharedPrefsDetectionModeStore
 import ch.monreleve.app.settings.SharedPrefsEveningNotificationStore
@@ -181,6 +182,8 @@ fun rememberMainControllers(
                 // opt-in and the crossing state). The Parametres toggle and Prevision offer read/write it; the
                 // alert evaluation reads it too.
                 thresholdAlertStore = SharedPrefsThresholdAlertStore(context),
+                // IOS-MOVE-GRAPH (R1310): the Parametres wire, the object :app's controller factory always used.
+                parametresWire = orgJsonParametresWire,
             )
         }
     // Keep the saved snapshots current from the controllers' observed state, so the LATEST month, open sheet,

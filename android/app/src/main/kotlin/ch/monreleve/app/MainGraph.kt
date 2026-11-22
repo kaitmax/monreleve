@@ -19,6 +19,7 @@ import ch.monreleve.app.forecast.SimulationSnapshot
 import ch.monreleve.app.onboarding.SettingsSaver
 import ch.monreleve.app.parametres.ParametresController
 import ch.monreleve.app.parametres.ParametresSnapshot
+import ch.monreleve.app.parametres.ParametresWire
 import ch.monreleve.app.releve.ReleveController
 import ch.monreleve.app.settings.DetectionModeStore
 import ch.monreleve.app.settings.EveningNotificationStore
@@ -103,6 +104,12 @@ object MainGraph {
         // no-op so the wiring and controller tests need not name it; the app injects SyncWorker's own
         // buildSyncEngine, which is the one construction site for the drain (R206).
         syncNow: suspend () -> Unit = {},
+        // IOS-MOVE-GRAPH (R1310): the Parametres controller's wire (ParametresWire - the PATCH, consent, reminder and
+        // delete bodies and the delete receipt's parse). It was supplied by :app's org.json factory of the controller,
+        // which a common graph cannot call, so the composition root passes it: Android hands in that factory's own
+        // object (orgJsonParametresWire), so the controller is built exactly as before. No default (R291): a graph
+        // built without a wire would be the PARK-X5 shape again - a seam forgotten where no test looks.
+        parametresWire: ParametresWire,
         // AN-STATE (R310): the restorable state seeds, held by the composition root in rememberSaveable and
         // passed here so the ONE construction site (R291) also decides each controller's restore. Defaulted to
         // null (a fresh build) so the wiring test and the controller tests need not name them.
@@ -155,24 +162,27 @@ object MainGraph {
                     restoredSelectedYear,
                     staleCopy = dossierStaleCopy,
                 ),
+            // IOS-MOVE-GRAPH (R1310): the class's own constructor, named argument for named argument as :app's
+            // OrgJsonParametres.kt factory built it, with the wire passed in rather than taken from that factory.
             parametres =
                 ParametresController(
-                    settingsSaver,
-                    settingsStore,
-                    repository,
-                    taxYear,
-                    scope,
-                    exportBytes,
-                    revokeServer,
-                    syncNow,
-                    localStore,
-                    authenticatedPost,
-                    detectionModeStore,
-                    startSampling,
-                    stopSampling,
-                    eveningNotificationStore,
-                    thresholdAlertStore,
-                    restoredParametres,
+                    saver = settingsSaver,
+                    store = settingsStore,
+                    repository = repository,
+                    taxYear = taxYear,
+                    scope = scope,
+                    exportBytes = exportBytes,
+                    revokeServer = revokeServer,
+                    syncNow = syncNow,
+                    localStore = localStore,
+                    authenticatedPost = authenticatedPost,
+                    modeStore = detectionModeStore,
+                    startSampling = startSampling,
+                    stopSampling = stopSampling,
+                    eveningNotificationStore = eveningNotificationStore,
+                    thresholdAlertStore = thresholdAlertStore,
+                    restored = restoredParametres,
+                    wire = parametresWire,
                 ),
             forecast = ForecastController(rhythmRepository, repository, settingsStore, taxYear, clock, scope),
             // AN-SIM: shares the rhythm (the repo flow) and the record with the forecast; computes in memory,

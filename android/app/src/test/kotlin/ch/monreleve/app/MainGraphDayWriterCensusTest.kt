@@ -9,6 +9,7 @@ import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.data.repo.RhythmRepository
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.onboarding.SettingsSaver
+import ch.monreleve.app.parametres.orgJsonParametresWire
 import ch.monreleve.app.settings.Settings
 import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -106,6 +107,7 @@ class MainGraphDayWriterCensusTest {
                     revokeServer = {},
                     localStore = localStore(),
                     authenticatedPost = { _, _ -> PostOutcome.Ok(200, "{}") },
+                    parametresWire = orgJsonParametresWire,
                 )
 
             val writers = dayWritersOf(controllers)
