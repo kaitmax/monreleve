@@ -172,6 +172,10 @@ import java.time.Clock
 import java.time.Year
 import java.time.ZoneId
 
+// AN-FORECAST: the forecast screens reached from within the shell (not bottom-nav tabs) - a small overlay
+// route beside the AppTab state, null when a tab is showing. AN-SIM adds the simulator, reached from Prevision.
+internal enum class ForecastRoute { RYTHME, PREVISION, SIMULATION }
+
 /**
  * The single activity and composition root (SPEC 11). It may wire data/remote (fence 5 governs ui/,
  * not this file): it builds the AuthApi, the session, and the settings store, and routes to the one
@@ -186,12 +190,6 @@ import java.time.ZoneId
  * tabs neither recomputes nor leaks a collector on lifecycleScope. Releve and Parametres join the shell
  * when AN11/AN12 build them (R282: no tab for a screen that does not exist).
  */
-internal enum class Destination { SIGN_IN, RESOLVING, ONBOARDING, MAIN }
-
-// AN-FORECAST: the forecast screens reached from within the shell (not bottom-nav tabs) - a small overlay
-// route beside the AppTab state, null when a tab is showing. AN-SIM adds the simulator, reached from Prevision.
-internal enum class ForecastRoute { RYTHME, PREVISION, SIMULATION }
-
 class MainActivity : ComponentActivity() {
     // LongMethod suppressed as MainShell is: this is the composition root - store/seam construction and the
     // one-screen router - not tangled logic. AN-ONBOARD's sign-in flow added the WELCOME/EMAIL/CODE branch.
@@ -704,11 +702,12 @@ internal fun MainShell(
     yearDownload: ShellYearDownload,
     onSignedOut: () -> Unit,
 ) {
-    // R291: the controllers are built by MainGraph, the ONE construction site MainGraphWiringTest also
-    // calls - so the graph the JVM test checks is the graph the app uses. SPEC 13.2: both day-writers are
-    // built with requestSync, and the test fails if either is not (the AN10 calendar-never-synced bug,
-    // which hid because this wiring lived inside a Composable no JVM test reaches, R176/R204). AN11 adds
-    // the Releve controller; AN12 adds the Parametres controller with the PATCH, export and erasure seams.
+    // R291: the controllers are built by MainGraph, the ONE construction site the wiring pins also call
+    // (MainGraphWiringPinTest, MainGraphDayWriterCensusTest) - so the graph the JVM tests check is the graph the app
+    // uses. SPEC 13.2: both day-writers are built with requestSync, and the tests fail if either is not (the AN10
+    // calendar-never-synced bug, which hid because this wiring lived inside a Composable no JVM test reaches,
+    // R176/R204). AN11 adds the Releve controller; AN12 adds the Parametres controller with the PATCH, export and
+    // erasure seams.
     // AN-STATE (R310): the controllers and the selected tab are held by named seams (ShellState.kt) whose
     // lifetime a test can drive, instead of inline `remember` that died with each rebuild and dropped the
     // person back on Aujourd'hui. rememberMainControllers still builds through MainGraph.build (R291).

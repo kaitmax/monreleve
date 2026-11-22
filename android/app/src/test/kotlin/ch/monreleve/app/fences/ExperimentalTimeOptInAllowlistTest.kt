@@ -84,6 +84,14 @@ class ExperimentalTimeOptInAllowlistTest {
             // IOS-2d R813: :app's JavaTimeForecast.kt holds the two java.time factories of the forecast's controllers
             // (one each); the controllers' own seam sites moved to :shared with them (R814, below).
             "app/src/main/kotlin/ch/monreleve/app/forecast/JavaTimeForecast.kt" to 2,
+            // IOS-MOVE-GRAPH R1312: MainGraph moved to commonMain on the kotlin.time.Clock seam (build, one); the
+            // Android call site that splits the java.time Clock for it (rememberMainControllers, one); the two wiring
+            // pins that build it - the JVM-only census in :app (its test function, one) and the commonTest pin (its
+            // fixed clock and its test function, two).
+            "app/src/main/kotlin/ch/monreleve/app/ShellState.kt" to 1,
+            "app/src/test/kotlin/ch/monreleve/app/MainGraphDayWriterCensusTest.kt" to 1,
+            "shared/src/commonMain/kotlin/ch/monreleve/app/MainGraph.kt" to 1,
+            "shared/src/commonTest/kotlin/ch/monreleve/app/MainGraphWiringPinTest.kt" to 2,
             "app/src/test/kotlin/ch/monreleve/app/dossier/LatenessConformanceTest.kt" to 1,
             // IOS-MOVE-REMINDER R1290: :shared androidMain's java.time overloads of the ported 19:00 fallback, one
             // per function (nextFallbackAt, bootFallbackAt, reachedFallbackTime), converting types only.

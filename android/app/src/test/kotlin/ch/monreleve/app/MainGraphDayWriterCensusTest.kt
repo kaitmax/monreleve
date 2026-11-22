@@ -3,6 +3,7 @@ package ch.monreleve.app
 import ch.monreleve.app.account.LocalStore
 import ch.monreleve.app.auth.BytesOutcome
 import ch.monreleve.app.auth.PostOutcome
+import ch.monreleve.app.data.local.toKotlinClock
 import ch.monreleve.app.data.remote.DossierResult
 import ch.monreleve.app.data.repo.FakeEntryDao
 import ch.monreleve.app.data.repo.LocalEntryRepository
@@ -16,6 +17,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.toKotlinTimeZone
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -24,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.ExperimentalTime
 
 // IOS-MOVE-GRAPH R1311. MainGraphWiringTest's FIRST case (Kotest), TRANSCRIBED to kotlin.test with its values and
 // expectations unchanged, and KEPT IN :app because it is JVM-ONLY: it enumerates the day-writers off MainControllers'
@@ -31,6 +34,8 @@ import kotlin.test.assertTrue
 // members. Replacing the enumeration with a list would be the hand-kept list the census exists to avoid. It still
 // checks the ONE graph: MainGraph.build is the construction site every platform calls, so the property set it
 // enumerates on the JVM is the set iOS gets. The second case is MainGraphWiringPinTest (R1311 moves it to commonTest).
+// Since MainGraph moved to commonMain (R1310) it takes the kotlin.time instant source and the zone, so this test splits
+// its java.time Clock the way the Android call site (ShellState.kt) does; the instant and zone are unchanged.
 //
 // The original's header, kept: AN10b increment 2 (R291). The wiring test that the AN10 calendar-never-synced bug
 // proves is needed. R291 moved the wiring into MainGraph; this asserts every day-writing controller the graph builds
@@ -86,6 +91,7 @@ private fun dayWritersOf(controllers: MainControllers): List<DayWriter> =
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainGraphDayWriterCensusTest {
     // "every day-writing controller in the app's graph is built with requestSync (R291)"
+    @OptIn(ExperimentalTime::class) // KMP-DT R590: hands the kotlin.time.Clock seam over - on the allowlist.
     @Test
     fun everyDayWritingControllerInTheAppsGraphIsBuiltWithRequestSync() =
         runTest {
@@ -96,7 +102,8 @@ class MainGraphDayWriterCensusTest {
                     rhythmRepository = rhythmRepository(),
                     settingsStore = store(),
                     taxYear = TAX_YEAR,
-                    clock = fixedClock,
+                    clock = fixedClock.toKotlinClock(),
+                    deviceZone = fixedClock.zone.toKotlinTimeZone(),
                     scope = this,
                     requestSync = { syncs++ },
                     // The Releve controller is not a DayWriter; stub seams keep this test about the sync wiring.
