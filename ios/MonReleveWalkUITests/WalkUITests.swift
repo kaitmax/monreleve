@@ -33,9 +33,16 @@ final class WalkUITests: XCTestCase {
             return
         }
         // Run 45075605782: an element below the fold exists with an EMPTY frame and is not hittable - scroll it in.
-        for _ in 0..<6 where !element.isHittable {
-            app.swipeUp(velocity: .slow)
-            Thread.sleep(forTimeInterval: 0.8)
+        // Run 45078149756: a fling scrolled PAST it. So: back to the top, then short drags (no inertia), one at a time.
+        if !element.isHittable {
+            for _ in 0..<4 { app.swipeDown(velocity: .fast) }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        for _ in 0..<14 where !element.isHittable {
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62))
+            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldFor: 0.3)
+            Thread.sleep(forTimeInterval: 0.6)
         }
         guard element.isHittable else {
             Walk.tree("unhittable-\(step)", app)
