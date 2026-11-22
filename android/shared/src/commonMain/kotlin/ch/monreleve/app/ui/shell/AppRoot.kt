@@ -21,13 +21,16 @@ import ch.monreleve.app.design.FrontierTheme
 // sign-in, onboarding, the detection disclosure, Prevision, Comparaison - put its main button under the navigation
 // bar, and on a 3-button phone a tap on Prevision's button opened Recents (REPORT-AN-API36-PASS N1).
 //
-// WHY HERE, AT THE ROOT, AND NOT PER CALL SITE OR IN :shared:
+// WHY HERE, AT THE ROOT, AND NOT PER CALL SITE:
 //   - one wrapper hosts every destination, so a screen added tomorrow is covered by being reachable, not by somebody
 //     remembering a modifier - fences/EdgeToEdgeCensusTest fails on any screen that is not hosted by it;
 //   - windowInsetsPadding both PADS and CONSUMES: everything beneath it sees the insets as already used, so MainShell's
 //     Scaffold and its NavigationBar (which subtract consumed insets) add nothing - no screen pads twice;
-//   - it lives in :app because the insets are the Android window's. iOS hosts the shared screens in its own view
-//     controllers with their own safe areas, and :shared stays unchanged.
+//   - it lives in :shared commonMain. IOS-MOVE-CORE (R1300) moved it here from :app unchanged, because nothing in it
+//     is Android's: WindowInsets.systemBars, displayCutout, union and windowInsetsPadding are Compose Multiplatform's
+//     common API, and the file compiles for iOS (R1304's runs). Today only :app's activities call it; no iOS code does
+//     yet - the iOS root and its render proof are IOS-SHELL-1's (iOS Ruling 11 Q3). IOS-MOVE-GRAPH R1314 corrected
+//     this paragraph, which said the file lived in :app and that :shared stayed unchanged.
 //
 // THE SET: the system bars and the display cutout (a landscape phone's camera notch). NOT the IME - the keyboard
 // covering a bottom button is older behaviour than N1 and is recorded, not changed, by this task.
