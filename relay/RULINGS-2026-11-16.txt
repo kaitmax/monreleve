@@ -2914,3 +2914,25 @@ Q5 (HORIZON): SEVEN 19:00s, as built. Ruling 2 and R1291 agree on it;
 Q6 (PROBE): KEEP step (5) and IosEveningReminderProbe.kt until I2's
    walkthrough measures the same observable; I3 removes them with the other
    probe keys (added to I3's prompt when it is written).
+
+iOS Ruling 11 - IOS-MOVE-CORE (5a), 2026-11-22. LANDED: main f5a998ac
+(merge of m5a-core c5e8afc6; main unmoved at 9b285ea1, merge tree = gated
+tree, `git diff HEAD^2 HEAD` empty). :app:gate on 84793546: BUILD
+SUCCESSFUL 5m42s, dirty=0, floor 1577, GATE_EXIT=0. R573: ios-shared
+45006594277 counted by the orchestrator from the JUnit XML: 83 suites, 438
+tests, 0 failures, 0 errors (base 438); ios-app 45006597209 success. Token
+check 0. Deviations 1-6 ACCEPTED as reported (each repinned fence planted;
+the files outside the moved set are the ones the move needs).
+Q1 (AppRoot.kt's false header): 5b corrects it - one comment-only edit, its
+   own commit, added to IOS-MOVE-GRAPH as R1314. The blob rule was right to
+   stop 5a; a records commit does not touch code.
+Q2 (InMemoryEmployerFigureStore): STAYS in :app as Android's test double.
+   iOS writes its own persistent store (NSUserDefaults-backed, behind the
+   common interface) in IOS-SHELL-2; an in-memory store would lose the
+   figure on every launch, so iOS never uses it.
+Q3 (nothing renders the moved bar on iOS): YES, a render proof is owed, and
+   it belongs to IOS-SHELL-1 - the session that builds the iOS root - as an
+   iosTest (runComposeUiTest) drawing AppRoot with the bar, each tab
+   selected, asserting the four glyphs resolve. 5b moves logic, not UI, so
+   it does not carry it; I2's walkthrough is not a substitute for a test.
+Q4 (CallbackLinkHost): the name is ACCEPTED.

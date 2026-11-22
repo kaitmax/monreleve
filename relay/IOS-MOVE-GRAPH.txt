@@ -28,11 +28,14 @@ R1313. ANDROID UNCHANGED: the full :app:gate, no baseline moved, test floor >= t
     transcribed originals PLUS nothing (state the arithmetic: the cases now run in :shared's JVM tests
     instead, so :shared's count rises by the same number). iOS: ONE ios-shared.yml and ONE ios-app.yml run
     on your pushed code tip; the TEST COUNT read from the JUnit XML, and the transcribed cases named in it.
+R1314. AppRoot.kt's HEADER (iOS Ruling 11 Q1): since 5a, AppRoot.kt lives in :shared commonMain, and its
+    header paragraph still says it "lives in :app" and that ":shared stays unchanged". Correct that paragraph
+    to state where the file lives and why, as a COMMENT-ONLY edit in its own commit (diff shown in the report).
 
 THE WORK: as IOS-MOVE-CORE's THE WORK, word for word (worktree + lock; local.properties copied; fastCheck
 per increment; PUSH EVERY INCREMENT; full :app:gate under the heavy lock with --min-free 8000 --wait-min
 600, never lowering the line or touching the operator's processes; --no-daemon; R573; push the branch, DO
 NOT MERGE; report; push; lock removed last; no parking.md; nothing secret in a public log).
-REPORT: SUMMARY / STATUS (R391) / R1310-R1313 with evidence (the case map) / NOTICED BUT NOT TOUCHING /
+REPORT: SUMMARY / STATUS (R391) / R1310-R1314 with evidence (the case map) / NOTICED BUT NOT TOUCHING /
 DEVIATIONS / QUESTIONS / PUSH PROOF
 END OF IOS-MOVE-GRAPH PROMPT
