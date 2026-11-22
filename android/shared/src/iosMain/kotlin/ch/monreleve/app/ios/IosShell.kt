@@ -372,7 +372,11 @@ fun startIosShell(
     val employerStore = UserDefaultsEmployerFigureStore(detectionDefaults) { accountStore.current() }
     val detectionModeStore =
         IosDetectionFile(eraseEvening = eveningFile::erase, eraseEmployerFigures = employerStore::erase)
-    val eveningStore = ReplanningEveningStore(eveningFile) { shell?.replanSoon() }
+    // RED PLANT P1 (R1337), reverted in the next commit: the opt-in held IN MEMORY, as IOS-SHELL-1 left it.
+    val eveningStore =
+        ReplanningEveningStore(ch.monreleve.app.settings.InMemoryEveningNotificationStore(eveningFile.isEnabled())) {
+            shell?.replanSoon()
+        }
     val endings = SessionEndings()
     val drain = iosSyncDrain(db.entryDao(), session, accountStore, dossierCache)
     val syncTrigger = IosSyncTrigger(scope, drain)
