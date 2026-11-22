@@ -1,0 +1,50 @@
+IOS-SHELL-2 SESSION PROMPT - Mon Releve
+THE iOS MAIN SHELL'S FACILITIES: REMINDERS IN THE RUNNING APP, SHARE, SYNC, LINKS, MAIL, EMPLOYER FIGURE
+(iOS phase, shell 2 of 2)
+Written by the orchestrating session on 2026-11-22 (iOS Rulings 2, 3, 10, 11 and the overnight plan in
+relay/RULINGS-2026-11-16.txt). Read first: those rulings whole; REPORT-IOS-HOST-CENSUS.txt R1202 G4-G7 and
+R1200 A (the Toast sites); REPORT-IOS-SHELL-1.txt (what the iOS root now is, and what it stubbed for you);
+REPORT-IOS-MOVE-REMINDER.txt R1292 (the trigger list and the observable); the other move reports;
+android/shared/src/iosMain/.../ios/*.kt; :app's runtime for each facility as the behaviour to match; CLAUDE.md
+R154, R169, R178, R180, R204, R206, R246, R299, R391, R573.
+Names: worktree C:/wt/s2-shell, branch s2-shell (NOT ios-*), report REPORT-IOS-SHELL-2.txt. Ruling numbers:
+R1330-R1339. YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, a workflow trigger change,
+new copy, or anything needing an Apple account comes back to the orchestrator.
+BASE: origin/main as stated in your brief.
+
+R1330. THE REMINDER IN THE RUNNING APP (G4, iOS Ruling 10). The shell calls M4's plan on EVERY trigger in
+    R1292's list (every foreground; every entry recorded, changed or removed on the phone; an opt-in change,
+    including the one restored at sign-in; a sign-in; authorization granted). A tap on the reminder opens
+    Aujourd'hui through a UNUserNotificationCenterDelegate. iOS v1 keeps the threshold alert and notification
+    actions HIDDEN (iOS Ruling 3 Q4) - asserted by test, not by absence of code. reminderOptInBody moves with
+    the screen that needs it (Android Ruling 19 Q2) if it is still in :app, fenced (R206). Prove each trigger
+    with an iosTest through the shell's entry point (R204), not by calling the plan directly.
+R1331. THE SHARE SHEET (G5, PARK-IF2). The two exports present a UIActivityViewController from the scene's root
+    view controller with the file URL IosExportFiles.write returns. The export failures, and every other Toast
+    site R1200 A lists that iOS reaches, get a non-Toast presentation through ONE common seam (Android keeps its
+    Toast behind it, unchanged); no new copy.
+R1332. FOREGROUND SYNC (G6). requestDrain on every foreground, from ONE place (common LocalLifecycleOwner or
+    Swift scenePhase - choose, and say why). BGTaskScheduler stays out (the simulator refuses it; PARK-IF1 stays
+    device-only). An iosTest proves a foreground drains a queued write.
+R1333. LEGAL LINKS AND MAIL (G7, iOS Ruling 3 Q5). Legal links open in SFSafariViewController or
+    UIApplication.open, with R299's no-handler fallback. "Ouvrir ma messagerie" uses message:// and is HIDDEN
+    when canOpenURL says it cannot open. MEASURE what the simulator answers (do not assume it cannot) and
+    test whichever state it gives; the other state is listed for the operator's iPhone. LSApplicationQueriesSchemes lists message - nothing else is added.
+R1334. THE EMPLOYER FIGURE ON iOS (iOS Ruling 11 Q2). A persistent iOS EmployerFigureStore behind the common
+    interface (UserDefaults-backed, like UserDefaultsSettingsStore), with the contract tests the other stores
+    already have run against it on iOS. InMemoryEmployerFigureStore stays in :app as Android's test double.
+R1335. ACCOUNT DELETION ON iOS (Android Ruling 19 Q2): the delete pair's copy moves with the screen if still in
+    :app, and deleting through the shell ends the session through M3's seam (zero pending requests after -
+    iosTest through the shell).
+R1336. ANDROID UNCHANGED: the full :app:gate (R391), no baseline moved, test floor >= the base's; any :app edit
+    is a DEVIATION with its reason. iOS: ONE ios-shared.yml and ONE ios-app.yml run on your pushed code tip;
+    ios-shared's count from the JUnit XML against the base's, new classes named; ios-app's probe keys all PASS.
+
+THE WORK: as IOS-SHELL-1's THE WORK, word for word (worktree + lock; local.properties copied; test-first;
+fastCheck per increment; PUSH EVERY INCREMENT; full :app:gate under the heavy lock with --min-free 8000
+--wait-min 600, never lowering the line or touching the operator's processes; --no-daemon, never `gradlew
+--stop`; R573; push the branch, DO NOT MERGE; report; push; lock removed last; no parking.md; the repository is
+PUBLIC - nothing secret reaches a log, commit or artifact).
+REPORT: SUMMARY / STATUS (R391) / R1330-R1336 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-SHELL-2 PROMPT

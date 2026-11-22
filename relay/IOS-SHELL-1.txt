@@ -1,0 +1,108 @@
+IOS-SHELL-1 SESSION PROMPT - Mon Releve
+THE iOS APP STARTS THE REAL SHELL: SCENE, FIRST-LAUNCH CLEAR, CODE SIGN-IN, ONBOARDING (iOS phase, shell 1 of 2)
+Written by the orchestrating session on 2026-11-22 (iOS Rulings 2, 3, 9, 10, 11 and the overnight plan in
+relay/RULINGS-2026-11-16.txt). Read first: those rulings whole; REPORT-IOS-HOST-CENSUS.txt R1200, R1202 (G1-G7)
+and R1203 (the build shape); REPORT-IOS-HOST.txt (how the host and its probe were built and run on the macOS
+runner); the six move reports REPORT-IOS-MOVE-*.txt (what is now common, and the iOS seams that exist);
+ios/MonReleve/Sources/*.swift; android/shared/src/iosMain/.../ios/*.kt; :app's MainActivity, its startup path
+and the onboarding/sign-in routes as the behaviour to match; CLAUDE.md R154, R169, R178, R180, R204, R206,
+R246, R349, R391, R573, R574.
+Names: worktree C:/wt/s1-shell, branch s1-shell (NOT ios-*: the iOS workflows have no pull_request trigger
+and the repository is PUBLIC), report REPORT-IOS-SHELL-1.txt. Ruling numbers: R1320-R1329. YOUR OWN advisor
+may advise you. A NEW dependency, a new entitlement, a change to a workflow's triggers, or anything needing
+an Apple account comes back to the orchestrator.
+BASE: origin/main as stated in your brief.
+
+R1320. THE SCENE (G1). The SwiftUI App hosts ONE ComposeUIViewController whose content is the COMMON AppRoot
+    (moved in 5a) driven by the common graph (moved in 5b), .ignoresSafeArea() so AppRoot owns the insets
+    (R1170). The pilot view controller stops being the app's content; it stays only where the probe or a
+    test needs it (named in the report), and I3 removes what is left. Info.plist carries
+    CADisableMinimumFrameDurationOnPhone, the scene manifest, UILaunchScreen, the version keys that feed
+    ParametresCopy.version (R894), and the API base URL as ONE build setting (never a literal in code, R206).
+    The -probe launch path keeps working unchanged (M4's step 5 included).
+    THE BASE URL ALREADY EXISTS: ios/project.yml sets MONRELEVE_API_BASE_URL (Debug http://127.0.0.1:3000,
+    Release https://monreleve.ch) into Info.plist's MonReleveApiBaseUrl. ios-app.yml builds DEBUG; this
+    session's workflow runs build Debug only and NEVER contact production - state it in the report with the
+    xcodebuild line. If iOS's App Transport Security refuses plain http to 127.0.0.1, MEASURE it first; any
+    exception is Debug-only and a step asserts it absent from the Release Info.plist.
+    THE PILOT LAUNCHES: the workflow's normal launches pass -pilotScenario to the pilot. Once the pilot is not
+    the content, say what each becomes (a launch of the real app, or a probe-only path) - never silently
+    dead launch arguments.
+R1321. THE FIRST-LAUNCH CLEAR (G3, iOS Ruling 2 C8 Q2). A UserDefaults marker; when absent, the three Keychain
+    stores are cleared and THEN the marker is set - all BEFORE the session is built or anything reads
+    isSignedIn(). Test-first (RED with the reason): an iosTest seeds each store, runs the start path with no
+    marker, and asserts all three empty and the marker set; a second run with the marker present clears
+    nothing. The ordering is asserted, not argued. M4 found the iosTest process has no app bundle and cannot
+    reach every real service: the ORDERING is proven in iosTest with doubles, and the REAL Keychain clear is
+    measured by a new probe key in the ios-app run (M4's pattern; I3 removes probe keys).
+R1322. CODE-ONLY SIGN-IN (G2, iOS Ruling 3 Q2). On iOS the sign-in flow ends at the six-digit code screen
+    (CodeController / CodeScreen, common); no universal link, no custom URL scheme in the shipped app. The
+    common routes take the commonMain PendingSignInStore, not :app's concrete SharedPrefs store (census N3) -
+    if that needs a signature change, it is the smallest one, :app's call sites pass the same object, and
+    :app's pins stay unedited. R574: the code field is masked before any capture this session takes.
+R1323. THE SESSION AND THE ENDINGS. The iOS graph is built once per process from the iOS stores (Keychain,
+    UserDefaults, the iOS database) with M3's IosSessionEndSeam wired, so every ending path (sign-out,
+    deletion, a server-ended session) clears what Android's seam clears AND removes the pending reminder
+    requests M4 plans. State which composition function builds it and prove with an iosTest that signing out
+    through the shell (not by calling the seam directly - R204) leaves zero pending requests (a recording
+    centre in iosTest, as M4 did; the real centre's count is I2's to measure). The "before" count is asserted
+    > 0 first, or the zero proves nothing (R169's corollary).
+R1324. THE UPDATE GATE IS OUT ON iOS (iOS Ruling 3 Q3), BY TEST: the iOS composition never calls
+    /api/v1/android/minimum-version. An iosTest drives startup through the iOS composition against a
+    recording transport and asserts that path is never requested - and, so the absence means something
+    (R169's corollary), asserts that a path it MUST request at startup (name it) WAS requested.
+R1325. ONBOARDING, MANUAL-ONLY (iOS Ruling 2). The common ManualOnlyOnboarding runs on iOS; detection consent
+    does not exist on iOS (detectionConsentBody stays in :app, Android Ruling 19 Q2). The onboarding's
+    reminder "Oui" requests notification authorization and then re-plans (M4's trigger list, iOS Ruling 10);
+    a refusal leaves the opt-in off and says so with the existing copy. The native date picker for the two
+    startDatePicker slots (G7) is an iOS UIDatePicker (or SwiftUI DatePicker) behind the existing common slot
+    - no new copy.
+R1326. THE RENDER PROOF (iOS Ruling 11 Q3). An iosTest (runComposeUiTest) draws AppRoot with the bottom bar,
+    each tab selected in turn, and asserts the four glyphs resolve (glyphSemanticsId = ordinal) and the
+    selected tab is the one marked selected. RED first against a deliberately wrong expectation, with the
+    reason. runComposeUiTest is NOT a new dependency: iosTest already uses it (pilot/AujourdhuiPilotIosTest).
+R1328. THE ROUTES ARE PRIVATE IN MainActivity - EXTRACTING THEM IS IN SCOPE. SignInRoute (MainActivity.kt
+    ~l.388), CodeRoute (~l.443) and the composable switch over StartDecision (SignIn / Resolving / Onboard /
+    Main) are private functions of :app's MainActivity. Their platform-free part moves to :shared commonMain
+    under 5a's discipline: Android behaviour unchanged, :app's pins unedited, baselines unmoved at zero
+    tolerance, the moved names fenced (MovedTwinsFenceTest, derived) and a plant seen to fail. What is
+    Android-only (the Activity, Intents, CallbackActivity's link handling, the update gate) stays in :app
+    behind parameters. This MainActivity edit is THE TASK, not a deviation: the report shows its diff and
+    argues each line that is not a move. SignInScreensIosTest's hand-written reduction of SignInRoute is
+    replaced by tests of the real extracted route (R268), with a case map. A file or function that cannot
+    move without bending it is NAMED and iOS writes its own, with the reason. 5b (REPORT-IOS-MOVE-GRAPH.txt)
+    already moved MainGraph, ShellState's pure half, and Destination with its four functions
+    (commonMain Destination.kt) - read it first; nothing it moved is moved again.
+R1329. iOS's ParametresWire (iOS Ruling 12 Q1). MainGraph.build now REQUIRES a ParametresWire, so the iOS
+    graph needs one. The wire's members whose bodies are platform-free are implemented ONCE in commonMain on
+    M2's /me codec, byte-equal to the bodies Android's pins expect (a golden test over the same inputs, on
+    the JVM and iOS); reminderOptInBody and the account-delete pair move to common with them (Android Ruling
+    19 Q2). Android keeps passing its org.json wire unless the common one is proven byte-equal on every pin -
+    then Android may switch, :app's pins unedited, as its own increment. The detection-consent member stays
+    Android's: on iOS it is unreachable in v1, and a test proves the iOS composition never calls it.
+    A signed-out first launch reaches SIGN-IN (StartupDecider: SignIn before Onboard); onboarding follows
+    sign-in.
+R1327. ANDROID UNCHANGED: the full :app:gate (R391), no baseline moved, test floor >= the base's; any :app
+    edit beyond R1328's extraction is a DEVIATION with its reason. iOS: ONE ios-shared.yml and ONE ios-app.yml run on your pushed code
+    tip; ios-shared's count read from the JUnit XML against the base's, the new classes named; ios-app's
+    probe file read (every existing key still PASS) and a launch WITHOUT -probe shown to reach the sign-in
+    screen (a screenshot of the first screen is allowed - it carries no code - and goes in the artifact
+    allowlist the workflow already uses; if a workflow edit is needed to capture it, it is the smallest one,
+    triggers untouched).
+
+OUT OF THIS SESSION (IOS-SHELL-2): the main tabs' iOS facilities - the reminder plan's triggers in the running
+app beyond onboarding, the notification tap to Aujourd'hui, the share sheet (G5), foreground sync (G6), legal
+links and message:// (G7), the EmployerFigureStore for iOS (iOS Ruling 11 Q2). If one of them is needed to make
+this session's flow run, name it and stub it visibly; do not build it here.
+
+THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without
+it Gradle says "SDK location not found" - NO RESULT); test-first; fastCheck per increment; PUSH EVERY
+INCREMENT (a session that dies at its limit is relaunched from your pushed tip); the FULL :app:gate under the
+heavy lock (node C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 8000 --wait-min 600; the operator's
+applications may hold memory - wait, never lower the line, never touch their processes); every Gradle run
+--no-daemon, NEVER `gradlew --stop`; R573; push the branch (DO NOT MERGE); report; push; lock removed last.
+Sessions do not write parking.md. The repository is PUBLIC: no sign-in mail, code, token or server log
+reaches a log, a commit or an artifact.
+REPORT: SUMMARY / STATUS (R391) / R1320-R1329 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-SHELL-1 PROMPT

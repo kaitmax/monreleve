@@ -1,0 +1,86 @@
+IOS-WALK SESSION PROMPT - Mon Releve
+I2: THE iOS APP DRIVEN END TO END ON THE SIMULATOR AGAINST A THROWAWAY SERVER (iOS phase, I2)
+Written by the orchestrating session on 2026-11-22 (iOS Rulings 2, 3, 9, 10, 11 and the overnight plan in
+relay/RULINGS-2026-11-16.txt, whose point 3 sets this prompt's safety requirements). Read first: those rulings
+whole; REPORT-IOS-SHELL-1.txt and REPORT-IOS-SHELL-2.txt (what the app now does); REPORT-IOS-MOVE-SEAM.txt and
+REPORT-IOS-MOVE-REMINDER.txt (the observables this walk must measure); REPORT-IOS-HOST.txt and
+.github/workflows/ios-app.yml (how the app is built, installed, launched and read back on the macOS runner);
+web/'s own e2e set-up for a scratch database and a local server (gate:clone creates and migrates one - reuse
+its mechanism, never a second one, R206); CLAUDE.md R169, R176, R204, R245, R391, R573, R574.
+Names: worktree C:/wt/i2-walk, branch i2-walk (NOT ios-*), report REPORT-IOS-WALK.txt. Ruling numbers:
+R1340-R1349. YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, any workflow trigger other
+than workflow_dispatch, or anything needing an Apple account comes back to the orchestrator.
+BASE: origin/main as stated in your brief.
+
+R1340. THE SERVER IS THE RUNNER'S OWN, NEVER PRODUCTION. The walk runs this repository's web/ server ON THE
+    macOS RUNNER against a THROWAWAY Postgres created and migrated on the runner for that run, and destroyed
+    with it. No production URL, host, database, Coolify resource or credential appears anywhere in the
+    workflow, the app's build settings for this run, or the logs. The app's API base URL for the walk build
+    is the runner-local server (one build setting, R1320). Before driving the app, the workflow asserts
+    /api/health on that server NAMES this product (R169) - a 200 alone is not enough.
+    POSTGRES ON THE RUNNER: confirm how it exists on macos-15 (preinstalled, Homebrew, or a service) and
+    whether gate:clone's create-and-migrate mechanism runs there unchanged; a tool installed on the runner
+    only for this run is NOT a project dependency (it is in no package.json, gradle file or lockfile) - say
+    which, and if the project's own mechanism needs a change, that change comes back to the orchestrator.
+    Plain http to the local server: R1320's ATS measurement applies; any exception is walk-build/Debug only.
+R1341. SECRETS ARE BORN ON THE RUNNER. Every secret the server needs (auth secrets, the database password,
+    any signing key) is generated on the runner for that run (e.g. openssl rand), never a repository or
+    environment secret, never echoed, and masked with ::add-mask:: before any step that might print it.
+R1342. THE SIGN-IN CODE IS READ, NEVER ECHOED. Mail goes to the server's own development outbox (the e2e
+    suites' fake outbox or its file equivalent - name which). The walk reads the six-digit code from it inside
+    the driving step, types it into the app, and never prints, logs or uploads it. The account is
+    @monreleve.test only. R574: every capture is taken AFTER sign-in completes or with the code field masked
+    first; a capture of the code screen with a digit in it is a defect, not a finding.
+R1343. NO SERVER OR MAIL LOG LEAVES THE RUNNER. The upload is an EXPLICIT ALLOWLIST of named files (the
+    walk's result file, the screenshots the report names, the app's own log after a grep for the code and for
+    the token prefix returns nothing). Server logs, mail files, the database and the environment are NEVER in
+    the artifact - asserted by a step that lists the artifact directory and fails on any name outside the
+    allowlist. The repository is PUBLIC: an artifact is a publication - AND SO IS THE JOB LOG:
+    - the server's stdout/stderr go to a file on the runner that no step ever prints, INCLUDING on failure
+      (no `cat` of it in an if: failure() step);
+    - the code is ::add-mask::ed the moment it is read, before anything else touches it;
+    - the callback link carries a token: it is masked the same way and never echoed (R1346);
+    - find out whether the UI driver logs typed text or keeps it in a result bundle; if it does, its console
+      output is redirected to an unuploaded file and the bundle is never uploaded.
+R1344. WHAT THE WALK DRIVES (R176, through the real entry points - R204): first launch (the Keychain clear,
+    R1321) -> code sign-in (StartupDecider sends a signed-out person to SIGN-IN first) -> onboarding,
+    manual-only -> Aujourd'hui: record today -> the calendar: record
+    and change another day -> the dossier/export: the share sheet opens -> Parametres: reminder opt-in on,
+    employer figure set and still there after a relaunch -> sign-out -> relaunch reaches sign-in. Each step
+    writes a line to the result file with what the screen showed; each screenshot is named in the report.
+    THE UI DRIVER: name it (XCUITest from the generated project, or another tool already on the runner) and,
+    as the FIRST increment, prove it can find and tap one Compose element by its accessibility label and get
+    past the system notification-permission alert - before the rest of the walk is written. A driver that
+    needs a new project dependency comes back to the orchestrator.
+R1345. EACH OBSERVABLE IS PROVEN TO HAVE RUN (the overnight plan's point 3), measured on the simulator's real
+    notification centre, not a recording one:
+    - M4 (iOS Ruling 10): after opt-in, the pending request set - count, the dates, each at 19:00 with no
+      zone, today's absent once today is recorded; re-planning on a foreground does not double it.
+    - M3 (iOS Ruling 9): the pending-request count BEFORE sign-out (> 0, else the "after" proves nothing -
+      R169's corollary) and AFTER sign-out (0); the same for account deletion on a second @monreleve.test
+      account.
+    - The server side of the walk: the entries recorded on the phone are on the throwaway server, with
+      server-assigned timestamps (read through the API, not the database).
+R1346. THE LINK VERSUS THE CODE (iOS Ruling 3 Q2). The mail carries both the https link and the six-digit code.
+    It runs AFTER R1344's walk, on its OWN fresh sign-in (a third @monreleve.test account), so a consumed
+    token cannot turn the main walk into NO RESULT. The walk requests the link through the runner (an HTTP GET of the callback, as a mail client opening it
+    would - no universal link exists) and THEN types the code: state whether the code still works afterwards
+    (whether the web callback consumed the token first). This is a FINDING either way, recorded, never
+    "fixed" here - a change to the sign-in semantics comes back to the orchestrator.
+R1347. WHAT THE SIMULATOR CANNOT SHOW is listed for the operator's iPhone, with how to check each: message://
+    shown and opening Mail; delivery and tap of a real reminder at 19:00; background sync (PARK-IF1); the
+    universal link (needs the Apple account).
+R1348. ANDROID UNCHANGED. If this session edits nothing under android/, :app:gate is not owed - say so with
+    `git diff --stat` against the base. If it edits android/, the full :app:gate (R391) and R573 apply. If it
+    edits web/, `pnpm gate:changed` (R132) and `pnpm gate:clone` (R199) are owed on the pushed tip. The
+    walk's workflow run id and the ios-shared run (if owed) are reported with what was read from each.
+
+THE WORK: worktree + lock (R349); prefer a NEW workflow file (ios-walk.yml, workflow_dispatch ONLY) over
+editing ios-app.yml, so the existing probe run stays as it is; PUSH EVERY INCREMENT; heavy lock with
+--min-free 8000 --wait-min 600 for any local Gradle run (--no-daemon, never `gradlew --stop`); push the branch
+(DO NOT MERGE); report; push; lock removed last. Sessions do not write parking.md. Before the FIRST dispatch,
+the orchestrator-facing report draft lists the allowlist and the masking steps, and the session re-reads the
+workflow file for any secret, URL or log path that should not be there.
+REPORT: SUMMARY / STATUS (R391) / R1340-R1348 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+QUESTIONS / PUSH PROOF
+END OF IOS-WALK PROMPT

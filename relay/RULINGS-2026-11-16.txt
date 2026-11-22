@@ -2936,3 +2936,31 @@ Q3 (nothing renders the moved bar on iOS): YES, a render proof is owed, and
    selected, asserting the four glyphs resolve. 5b moves logic, not UI, so
    it does not carry it; I2's walkthrough is not a substitute for a test.
 Q4 (CallbackLinkHost): the name is ACCEPTED.
+
+iOS Ruling 12 - IOS-MOVE-GRAPH (5b), 2026-11-22. LANDED: main 42229742
+(merge of m5b-graph 73fa5287; main unmoved at a3b5d65b, merge tree = gated
+tree). :app:gate on 65534e4a: BUILD SUCCESSFUL 6m30s, dirty=0, GATE_EXIT=0,
+floor 1568 = 1577 - 10 transcribed originals + 1 JVM-only census kept in
+:app - R1313's arithmetic, so the lower floor is the stated one, not a loss;
+:shared JVM 313 -> 322. R573: ios-shared 45012299645 counted by the
+orchestrator from the JUnit XML: 85 suites, 447 tests, 0 failures, 0 errors
+(438 + 9: SessionReconciledPinTest 8, MainGraphWiringPinTest 1); ios-app
+45012302513 success, probe keys PASS. No web/, ios/, .github/ or snapshot
+file changed. Token check 0. THE FLOOR FROM HERE IS 1568.
+Deviations 1-10 ACCEPTED (the ParametresWire seam built green in :app
+before the move, the named file not bent; Destination and its four
+functions public as IOS-MOVE-SEAM's precedent; the comment-only commit).
+Q1 (THE WIRE SEAM): ACCEPTED as the graph's shape - one platform member
+   (detection consent) stays Android's either way. iOS needs a wire NOW,
+   because MainGraph.build requires one: IOS-SHELL-1 builds it (R1329) -
+   the members whose bodies are platform-free implemented ONCE in common on
+   M2's codec, byte-equal to Android's pinned bodies (golden test), with
+   reminderOptInBody and the delete pair moving under Android Ruling 19 Q2;
+   the detection-consent member is unreachable on iOS v1 and a test proves
+   iOS never calls it.
+Q2 (MainGraphDayWriterCensusTest): STAYS in :app for now. Moving it to
+   :shared androidUnitTest is tidier, not safer, and costs a gate; the
+   first session that edits :shared's JVM tests near it may move it with a
+   case map.
+Q3 (the JavaTime* factories): STAY as test conveniences; they retire with a
+   later transcription of the controllers' specs (not scheduled).
