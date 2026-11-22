@@ -41,7 +41,7 @@ final class WalkUITests: XCTestCase {
         for _ in 0..<14 where !element.isHittable {
             let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62))
             let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
-            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldFor: 0.3)
+            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
             Thread.sleep(forTimeInterval: 0.6)
         }
         guard element.isHittable else {
