@@ -2,8 +2,11 @@ REPORT-IOS-MOVE-GRAPH - THE ONE GRAPH AND THE ONE DESTINATION LOGIC BECOME COMMO
 TASK     relay/IOS-MOVE-GRAPH.txt (iOS Rulings 3, 8, 9, 10, 11 and the overnight plan in relay/RULINGS-2026-11-16.txt),
          with relay/IOS-MOVE-CORE.txt's THE WORK. Rulings R1310-R1319: R1310-R1314 used, R1315-R1319 unused.
          `grep -rlE '\bR131[0-9]\b'` over relay/, REPORT-*.txt and CLAUDE.md of this worktree and the main checkout's
-         relay/ at the start returned only IOS-MOVE-GRAPH.txt and RULINGS-2026-11-16.txt (the allocation).
-BASE     origin/main a3b5d65b (5a's merge f5a998ac + a records commit). :app:gate floor at the base 1577; ios-shared at the
+         relay/ at the start returned only IOS-MOVE-GRAPH.txt and RULINGS-2026-11-16.txt (the allocation). Re-run after
+         the first report push, over the same places, C:/wt/web-orch/relay and  of origin/main: those two files
+         plus this report, nothing else.
+BASE     origin/main a3b5d65b (5a's merge f5a998ac + a records commit). After the work,  read origin/main
+         still a3b5d65b, so the branch merges onto its own base and the iOS runs cover the commit that would land. :app:gate floor at the base 1577; ios-shared at the
          base 438 tests (run 45006594277, whose android/ tree is the base's).
 BRANCH   m5b-graph. PUSHED, NOT MERGED. Code tip 65534e4a (five commits on the base: 8b2d05b9, 720498d5, a5d85c29,
          41d007b7, 65534e4a). The report tip is the commit carrying this file only.
@@ -238,7 +241,8 @@ PLANTS (plant.log, on the committed 65534e4a). Each was verified landed by grep 
 ================================================================================
 R1313 - ANDROID UNCHANGED; THE FLOOR ARITHMETIC; iOS
 ================================================================================
-FLOOR ARITHMETIC (counts.txt; base counts from 5a's gate on the same android/ tree: 1577 :app / 313 :shared):
+FLOOR ARITHMETIC (counts.txt; base counts from 5a's gate XML on 84793546, whose android/ tree IS the base's:
+ = 0 lines; 1577 :app / 313 :shared):
   :app   base 1577 - 10 transcribed originals (SessionReconciledTest 8 + MainGraphWiringTest 2) = 1567
          + 1 (the census case kept in :app as JVM-only, MainGraphDayWriterCensusTest) = 1568. Observed 1568/0, 209
          classes. That is >= the prompt's 1567 ("minus the transcribed originals plus nothing"), and the +1 is that one
@@ -246,6 +250,13 @@ FLOOR ARITHMETIC (counts.txt; base counts from 5a's gate on the same android/ tr
   :shared JVM  base 313 + 9 (SessionReconciledPinTest 8 + MainGraphWiringPinTest 1) = 322. Observed 322/0, 60 classes.
          So :shared rises by 9, not 10; the tenth case runs in :app.
   MovedTwinsFenceTest stays 7 and the allowlist test stays 3: no test was added to a fence.
+  PER CLASS (base-all-classes.txt = 5a's gate XML, app + shared; tip-all-classes.txt = this gate's XML): the
+  (class, tests) lists differ ONLY by
+      - ch.monreleve.app.MainGraphWiringTest 2         + ch.monreleve.app.MainGraphDayWriterCensusTest 1
+      - ch.monreleve.app.SessionReconciledTest 8       + ch.monreleve.app.MainGraphWiringPinTest 1
+                                                       + ch.monreleve.app.SessionReconciledPinTest 8
+  so no other class gained or lost a case. In this gate's XML: ForcedSignOutTest 27, MovedTwinsFenceTest 7,
+  ExperimentalTimeOptInAllowlistTest 3, all 0 failures.
 BASELINES: verifyPaparazziDebug executed in the gate, and
 `git diff --name-only a3b5d65b 65534e4a -- android/app/src/test/snapshots` = 0 files. No baseline was regenerated.
 iOS: ONE run each, on the pushed code tip 65534e4a. ios-expected.txt was written before dispatch.
@@ -377,4 +388,4 @@ PUSH PROOF
   - m5b-graph-m2 (10:35:38-10:36:45).
   Every one was RELEASED (inc*-lock.log, verify-lock.log, m2-lock.log). None is held by this session.
 - Not merged. parking.md not written.
-- C:/wt/m5b-graph/.session-lock.json: removed last, after the final push.
+- C:/wt/m5b-graph/.session-lock.json: to be removed after the final push, as the last act (stated in the handback).
