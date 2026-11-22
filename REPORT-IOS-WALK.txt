@@ -1,7 +1,30 @@
 REPORT-IOS-WALK - I2: THE iOS APP DRIVEN END TO END ON THE SIMULATOR AGAINST A THROWAWAY SERVER
 DRAFT (written before the first real dispatch, as the prompt requires; completed at the end of the session)
 
-STATUS: DRAFT - nothing measured yet beyond increment 0's inert run 45053771464.
+STATUS: PARTIAL (in progress). No gate owed so far: nothing under android/ or web/ changed
+(git diff --stat ecc879c9..HEAD -- android web is empty). FULL GATE NOT RUN (none owed).
+
+RUNS SO FAR (each read by this session from its job log and artifact; evidence in C:/wt/queue-evidence/i2-walk/)
+  45053771464 (0015cd54, inert): printed ref=refs/heads/i2-walk sha=0015cd54 - the dispatch mechanism works.
+  45055507141 (c503d8b4): infrastructure all green - PostgreSQL ABSENT on macos-15 (and no docker), so
+      postgresql@16 is brew-installed for the run (16.16); scratch database monreleve_ios_walk_<run> created by
+      gate-clone-parts' administer() and migrated by db:deploy (17 migrations found); pnpm dev answered
+      /api/health naming 'monreleve' (R169, expected read from web/identity.json); TEST BUILD SUCCEEDED;
+      MonReleveApiBaseUrl=http://127.0.0.1:3310 asserted; the label check 31/31.
+      THE WALK: the XCUITest tree under the app window was EMPTY - no Compose element visible.
+      CAUSE (read in Compose Multiplatform 1.7.3's own source, Accessibility.uikit.kt): the default
+      AccessibilitySyncOptions.WhenRequiredByAccessibilityServices syncs the semantics tree to UIAccessibility
+      only while UIAccessibilityIsVoiceOverRunning() is true. XCUITest is not VoiceOver.
+      FIRST ANSWER (cold launch): notDetermined, 132 ms after didFinishLaunching, 3 724 ms after process start.
+  45057577050 (a4d5a41c): the simulator's com.apple.Accessibility VoiceOverTouchEnabled set before the walk;
+      the app read voiceOverRunning=true and the tree appeared. DRIVER PROOF (a) PASSED: "Commencer" found by its
+      accessibility label and tapped. No product code changed for it. Next blocker: Compose's OutlinedTextField
+      is exposed as an UNLABELLED Button below its label text.
+      FIRST ANSWER: 83 ms after didFinishLaunching (2 768 ms after process start).
+  45059644071 (f147faa0): the field found below its label and focused, the keyboard up - but typeText refused
+      ("Neither element nor any descendant has keyboard focus": Compose's text-input view is not in the AX tree).
+      FIRST ANSWER: 112 ms after didFinishLaunching (5 166 ms after process start).
+  45073103807 (ff5a1154): typing through the keyboard's own keys - pending.
 
 BEFORE THE FIRST REAL DISPATCH - THE ALLOWLIST AND THE MASKING STEPS (R1343)
 Re-read of .github/workflows/ios-walk.yml before the first dispatch: no repository or environment secret is read;
