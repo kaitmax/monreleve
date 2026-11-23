@@ -33,9 +33,6 @@ CONTROL ROUTES (--control-port, GET unless stated):
   /probe                 the app's walk-probe file (WalkProbe.swift), read from its data container with simctl
   /entries?year=Y&n=K    GET /api/v1/entries?year=Y upstream with the app's own bearer; saved to
                          --out/server-entries-K.json and returned
-  POST /pbcopy           IOS-WALK-2 (R1382): the body put on the simulator's pasteboard (simctl pbcopy) so a field can be
-                         PASTED rather than typed key by key. Refused for anything carrying a known secret or shaped like
-                         a code: the sign-in code never goes on the pasteboard (R574).
   /seed?to=A&slot=N&reminder=0|1&name=T
                          IOS-WALK-2 (R1383): account A made "on another phone" THROUGH THE API - sign-in requested, the
                          code read from the outbox and exchanged at /api/v1/auth/code, the onboarding settings written by
@@ -306,16 +303,6 @@ class Control(BaseHTTPRequestHandler):
             with open(os.path.join(ARGS.out, "trees", name + ".txt"), "w", encoding="utf-8") as handle:
                 handle.write(body)
             return self._answer(200, {"ok": True})
-        if path == "/pbcopy":
-            if carries_secret(body) or re.search(r"\b\d{6}\b", body):
-                self._note("REFUSED pbcopy: a secret or a code-shaped string never goes on the pasteboard")
-                return self._answer(409, {"error": "refused"})
-            try:
-                done = subprocess.run(["xcrun", "simctl", "pbcopy", ARGS.udid], input=body, capture_output=True,
-                                      text=True, timeout=60)
-            except (OSError, subprocess.SubprocessError) as error:
-                return self._answer(500, {"error": type(error).__name__})
-            return self._answer(200 if done.returncode == 0 else 500, {"ok": done.returncode == 0})
         return self._answer(404, {"error": "no such route"})
 
     def _note(self, line):

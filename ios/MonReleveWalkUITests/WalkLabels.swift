@@ -30,6 +30,7 @@ enum L {
     static let onbGranularityDay = "Journées entières" // OnboardingCopy.GRANULARITY_DAY
     static let onbPeriodTitle = "Avez-vous travaillé toute l’année chez cet employeur ?" // OnboardingCopy.PERIOD_TITLE
     static let onbPeriodPart = "Non, j’ai commencé en cours d’année" // OnboardingCopy.PERIOD_PART_TITLE
+    static let onbPeriodStart = "Date de début" // OnboardingCopy.PERIOD_START_LABEL
     static let onbPeriodAll = "Oui, depuis le 1ᵉʳ janvier" // OnboardingCopy.PERIOD_ALL_TITLE
     static let onbModeTitle = "Comment enregistrer vos journées ?" // OnboardingCopy.MODE_TITLE
     static let onbModeManual = "Manuellement" // OnboardingCopy.MODE_MANUAL_TITLE

@@ -3,8 +3,9 @@
 // IOS-WALK (I2) R1344, IOS-WALK-2 R1382-R1385. THE WALK, DRIVEN THROUGH THE REAL APP ON THE SIMULATOR (XCUITest)
 // AGAINST THE RUNNER'S OWN THROWAWAY SERVER. TWO TRACKS, TWO xcodebuild INVOCATIONS (ios-walk.yml), the app uninstalled
 // and reinstalled between them so each starts from a first launch:
-//   TRACK 1 - THE NEW ACCOUNT (test01, test02, test03): sign-in, onboarding's name, and at the canton step R1382's ONE
-//             diagnostic (the visible set and a screenshot, ONE drag, both again). It stops there by design.
+//   TRACK 1 - THE NEW ACCOUNT (test01, test02, test03): sign-in and the whole onboarding. Run 45095829204 was R1382's
+//             ONE diagnostic at the canton step (the visible set and a screenshot, ONE drag, both again); its finding
+//             is the scrolling in reveal() below.
 //   TRACK 2 - THE EXISTING ACCOUNT (test01, test21-test34): account A was made through the API by the helper (settings
 //             by PATCH /api/v1/me, a prior-year and a current-year day by POST /api/v1/entries); the app signs in as A
 //             and must resolve straight to the main shell (StartupDecider: a complete /me is Main), then walks R1344's
@@ -14,8 +15,8 @@
 // helper; every screenshot is the real simulator screen (simctl), named in the result file.
 //
 // R1342 / R574: the code screen is NEVER photographed and NEVER dumped once a digit has been typed into it; the code
-// itself is fetched from the helper (which has already masked it in the job log), goes only into the keys, and is
-// never put on the pasteboard (the helper refuses a code-shaped string).
+// itself is fetched from the helper (which has already masked it in the job log) and goes only into the keys; its boxes
+// are never read back.
 
 import XCTest
 
@@ -33,8 +34,13 @@ final class WalkUITests: XCTestCase {
         if app.state != .runningForeground { app.activate() }
     }
 
-    /// Brings [element] on screen and hittable, or records why not. The scrolling is IOS-WALK's, UNCHANGED until R1382's
-    /// diagnosis is read (IOS-WALK-2): back to the top, then short drags, one at a time.
+    /// Brings [element] on screen and hittable, or records why not.
+    ///
+    /// R1382's DIAGNOSIS (run 45095829204): an off-viewport row reports a ZERO frame, and ONE slow drag from 70 % to 40 %
+    /// of the window put Geneve mid-screen with a real frame, hittable at +1.5 s and unchanged at +5 s. So the tree is
+    /// neither stale (c) nor unscrolled (a), and the row is on this screen (b does not hold): IOS-WALK's own loop was the
+    /// fault - four fast swipes first, then shorter drags re-checked after 0.6 s. This is the diagnosed gesture: that same
+    /// drag, a 1.5 s settle before each check, down the page first, then back up for a row above the viewport.
     @discardableResult
     private func reveal(_ element: XCUIElement, _ label: String, _ step: String,
                         within seconds: TimeInterval = 20) -> Bool {
@@ -44,16 +50,19 @@ final class WalkUITests: XCTestCase {
             XCTFail("no element labelled \(label)")
             return false
         }
-        if !element.isHittable {
-            for _ in 0..<4 { app.swipeDown(velocity: .fast) }
-            Thread.sleep(forTimeInterval: 1)
+        let low = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
+        let high = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.40))
+        var drags = 0
+        for pass in 0..<20 where !element.isHittable {
+            if pass < 9 {
+                low.press(forDuration: 0.05, thenDragTo: high, withVelocity: .slow, thenHoldForDuration: 0.3)
+            } else {
+                high.press(forDuration: 0.05, thenDragTo: low, withVelocity: .slow, thenHoldForDuration: 0.3)
+            }
+            drags += 1
+            Thread.sleep(forTimeInterval: 1.5)
         }
-        for _ in 0..<14 where !element.isHittable {
-            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62))
-            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
-            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
-            Thread.sleep(forTimeInterval: 0.6)
-        }
+        if drags > 0 { Walk.note("\(step): \"\(label)\" brought on screen after \(drags) drag(s)=\(element.isHittable)") }
         guard element.isHittable else {
             Walk.tree("unhittable-\(step)", app)
             Walk.shot("unhittable-\(step)")
@@ -64,9 +73,17 @@ final class WalkUITests: XCTestCase {
         return true
     }
 
+    /// Taps the element labelled exactly [label] - or, when there is none, the one whose label BEGINS with it: a
+    /// selectable ChoiceCard merges its title and description into one label (ChoiceCardText.kt), so the copy's title
+    /// is the start of the card's label, not all of it.
     private func tapLabel(_ label: String, _ step: String, within seconds: TimeInterval = 20) {
-        let element = app.labelled(label)
-        if reveal(element, label, step, within: seconds) { element.tap() }
+        var element = app.labelled(label)
+        if !element.waitForExistence(timeout: min(seconds, 5)) {
+            let starting = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+            if starting.waitForExistence(timeout: seconds) { element = starting }
+        }
+        if reveal(element, label, step, within: 1) { element.tap() }
     }
 
     // MARK: - 01 first launch (R1321's Keychain clear is the app's own first-launch path) - BOTH tracks
@@ -95,25 +112,33 @@ final class WalkUITests: XCTestCase {
 
     // MARK: - code sign-in (iOS Ruling 3 Q2)
 
-    /// Enters [text] into [field]: by PASTE when [paste] (verified by reading the field's label back), by the keyboard's
-    /// keys otherwise - and by keys after a paste ONLY when the field is verifiably empty (run 11's retype on top of a
-    /// half-typed address is what made typing worse). Never used for the code.
-    private func enter(_ text: String, into field: XCUIElement, _ step: String, paste: Bool) {
-        if paste {
-            let how = app.paste(text, into: field)
-            if app.labelled(text).waitForExistence(timeout: 3) {
-                Walk.note("\(step) entered by PASTE (\(how)); the field reads it back")
-                return
+    /// Enters [text] into [field] by the keyboard's keys and READS IT BACK (a Compose field's label is its text, F3) before
+    /// anything is submitted. On a mismatch the field is emptied with the delete key and typed again - at most twice -
+    /// never typed on top (run 45088845825). Run 45095829204 measured why: the field took "v" + the address, and the
+    /// sign-in went to that address. PASTE IS NOT AVAILABLE: the same run found no Paste item after one tap, a second tap
+    /// and a long press on an empty Compose field. Never used for the code (its boxes are never read back - R574).
+    @discardableResult
+    private func enter(_ text: String, into field: XCUIElement, _ step: String) -> Bool {
+        for attempt in 1...3 {
+            if attempt > 1 {
+                app.clear(field, count: max(field.label.count, text.count) + 4)
+                Thread.sleep(forTimeInterval: 0.5)
             }
-            let empty = field.exists && field.label.isEmpty
-            Walk.note("\(step) the paste did not land (\(how)); the field is empty=\(empty)")
-            guard empty else { return }
+            let typed = app.type(text, into: field)
+            Thread.sleep(forTimeInterval: 0.5)
+            let read = field.label
+            if read == text || app.labelled(text).exists {
+                Walk.note("\(step): typed by the keys (attempt \(attempt)) and read back exactly")
+                return true
+            }
+            Walk.note("\(step): attempt \(attempt) read back \"\(read)\" (typed=\(typed)) - cleared and typed again")
         }
-        let typed = app.type(text, into: field)
-        Walk.note("\(step) entered by the KEYS=\(typed)")
+        Walk.note("FAIL \(step): three attempts, the field never read back the text - NOT submitted")
+        XCTFail("typing never read back")
+        return false
     }
 
-    private func signIn(_ address: String, step: String, paste: Bool) {
+    private func signIn(_ address: String, step: String) {
         guard let email = app.field(below: L.emailLabel) else {
             Walk.tree("\(step)-no-email-field", app)
             XCTFail("no e-mail field")
@@ -122,7 +147,7 @@ final class WalkUITests: XCTestCase {
         Walk.tree("\(step)-signin", app)
         Walk.shot("\(step)-signin")
         let before = Walk.mailCount(address)
-        enter(address, into: email, "\(step) sign-in e-mail", paste: paste)
+        guard enter(address, into: email, "\(step) sign-in e-mail") else { return }
         dismissKeyboard()
         if app.labelled(L.signInSubmit).exists && !app.labelled(L.codeTitle).exists {
             app.labelled(L.signInSubmit).tap()
@@ -179,68 +204,128 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1)
     }
 
-    // MARK: - TRACK 1: 02 the new account signs in (keys, as in the three passing runs); 03 onboarding to the diagnostic
+    // MARK: - TRACK 1: the new account - 02 sign-in, 03 the whole onboarding (manual-only), its picker and its alert
 
     func test02_signInNew() {
         foreground()
-        signIn(Walk.accountN, step: "02", paste: false)
+        signIn(Walk.accountN, step: "02")
     }
 
-    func test03_onboardingDiagnostic() {
+    /// Onboarding, screen by screen, through the real wizard (R1344): the native start-date picker OPENED from the period
+    /// step (iOS Ruling 13 Q2, DRIVER PROOF (c)) and the system alert from the reminder step (DRIVER PROOF (b)). The
+    /// canton row is brought on screen by R1382's diagnosed gesture (reveal), its frame recorded before and after.
+    func test03_onboarding() {
         foreground()
         var seen: [String] = []
-        for round in 0..<6 {
+        var unknown = 0
+        for round in 0..<20 {
+            if unknown >= 4 { break }
             Thread.sleep(forTimeInterval: 1.5)
+            if app.labelled(L.tabParametres).exists && app.labelled(L.tabCalendrier).exists {
+                Walk.note("03 onboarding done after \(round) screen(s): \(seen.joined(separator: " > "))")
+                Walk.tree("03-main", app)
+                Walk.shot("03-main")
+                Walk.notePending("03 M4 after onboarding (opted in at the reminder step)")
+                return
+            }
             if app.labelled(L.onbNameTitle).exists {
                 seen.append("name")
                 if let field = app.field(below: L.onbNameLabel, within: 5) {
-                    _ = app.type("Camille Simulateur", into: field)
+                    enter("Camille Simulateur", into: field, "03 name")
                     dismissKeyboard()
                 } else {
                     Walk.note("03 name: no field below \"\(L.onbNameLabel)\"")
                 }
-                Walk.tree("03-name", app)
-                Walk.shot("03-name")
-                tapLabel(L.onbContinue, "03-name-continue")
+                shotAndContinue("03-name")
             } else if app.labelled(L.onbCantonTitle).exists {
                 seen.append("canton")
-                cantonDiagnostic()
-                Walk.note("03 TRACK 1 STOPPED at the canton step after R1382's diagnostic (by design: no workaround "
-                    + "before the diagnosis is read). Screens: \(seen.joined(separator: " > "))")
-                return
+                let geneve = app.labelled(L.cantonGeneve)
+                Walk.note("03 canton: \"\(L.cantonGeneve)\" frame before=\(geneve.exists ? "\(geneve.frame)" : "-")")
+                tapLabel(L.cantonGeneve, "03-canton")
+                Walk.note("03 canton: \"\(L.cantonGeneve)\" tapped at frame=\(geneve.exists ? "\(geneve.frame)" : "-")")
+                shotAndContinue("03-canton")
+            } else if app.labelled(L.onbRateTitle).exists {
+                seen.append("rate")
+                tapLabel(L.onbRate100, "03-rate")
+                shotAndContinue("03-rate")
+            } else if app.labelled(L.onbMethodTitle).exists {
+                seen.append("method")
+                tapLabel(L.onbMethodSimplified, "03-method")
+                shotAndContinue("03-method")
+            } else if app.labelled(L.onbGranularityTitle).exists {
+                seen.append("granularity")
+                tapLabel(L.onbGranularityDay, "03-granularity")
+                shotAndContinue("03-granularity")
+            } else if app.labelled(L.onbPeriodTitle).exists {
+                seen.append("period")
+                tapLabel(L.onbPeriodPart, "03-period")
+                Thread.sleep(forTimeInterval: 1)
+                if let start = app.field(below: L.onbPeriodStart, within: 5) {
+                    start.tap()
+                    Thread.sleep(forTimeInterval: 2)
+                    pickDate("03")
+                } else {
+                    Walk.tree("03-no-start-field", app)
+                    Walk.note("FAIL 03 period: no start-date box below \"\(L.onbPeriodStart)\"")
+                }
+                shotAndContinue("03-period")
+            } else if app.labelled(L.onbModeTitle).exists {
+                seen.append("mode")
+                tapLabel(L.onbModeManual, "03-mode")
+                shotAndContinue("03-mode")
+            } else if app.labelled(L.onbReminderTitle).exists {
+                seen.append("reminder")
+                Walk.shot("03-reminder")
+                tapLabel(L.onbReminderYes, "03-reminder")
+                notificationAlert("03")
+            } else if app.labelled(L.onbReadyTitle).exists {
+                seen.append("ready")
+                shotAndContinue("03-ready")
             } else {
                 Walk.tree("03-unknown-\(round)", app)
                 Walk.shot("03-unknown-\(round)")
+                unknown += 1
                 Walk.note("03 onboarding: round \(round) shows no known screen (tree 03-unknown-\(round))")
             }
         }
-        Walk.note("FAIL 03 the canton step was not reached: \(seen.joined(separator: " > "))")
-        XCTFail("canton step not reached")
+        Walk.note("FAIL 03 onboarding did not reach the tabs: \(seen.joined(separator: " > "))")
+        XCTFail("onboarding did not finish")
     }
 
-    /// R1382: the labels of every element with a NON-ZERO frame and a screenshot (the trees carry every frame; no code
-    /// is on this screen); ONE drag inside the list, sized to bring Geneve mid-screen; both again at about +1.5 s and
-    /// +5 s with NO second drag. One note line per record with Geneve's exists / frame / hittable and the keyboards.
-    private func cantonDiagnostic() {
-        let geneve = app.labelled(L.cantonGeneve)
-        func record(_ tag: String) {
-            let exists = geneve.exists
-            let frame = exists ? "\(geneve.frame)" : "-"
-            let hittable = exists ? "\(geneve.isHittable)" : "-"
-            Walk.note("03 R1382 \(tag): \"\(L.cantonGeneve)\" exists=\(exists) frame=\(frame) hittable=\(hittable) "
-                + "keyboards=\(app.keyboards.count) (tree and shot 03-r1382-\(tag))")
-            Walk.tree("03-r1382-\(tag)", app)
-            Walk.shot("03-r1382-\(tag)")
+    private func shotAndContinue(_ name: String) {
+        Walk.tree(name, app)
+        Walk.shot(name)
+        tapLabel(L.onbContinue, name + "-continue")
+    }
+
+    /// DRIVER PROOF (c): the native UIDatePicker (UIKit inside Compose, IosStartDatePicker's dialog) found, its value read,
+    /// a day chosen, the value read again, and the dialog confirmed with its "Continuer". Used by onboarding and Parametres.
+    @discardableResult
+    private func pickDate(_ step: String) -> Bool {
+        let picker = app.datePickers.firstMatch
+        guard picker.waitForExistence(timeout: 10) else {
+            Walk.tree("\(step)-no-datepicker", app)
+            Walk.shot("\(step)-no-datepicker")
+            Walk.note("FAIL \(step) DRIVER PROOF (c): no UIDatePicker in the tree")
+            return false
         }
-        record("before")
-        let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
-        let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.40))
-        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
-        Walk.note("03 R1382: ONE drag, slow, from 70 % to 40 % of the window height (no inertia)")
+        let days = picker.buttons.allElementsBoundByIndex.filter {
+            $0.isEnabled && $0.label.rangeOfCharacter(from: .decimalDigits) != nil
+                && !$0.label.contains("Month") && !$0.label.lowercased().contains("mois")
+        }
+        Walk.note("\(step) DRIVER PROOF (c): UIDatePicker found; value before=\"\(picker.value ?? "nil")\"; "
+            + "\(days.count) day button(s), e.g. \(days.prefix(3).map { $0.label })")
+        Walk.tree("\(step)-datepicker-open", app)
+        Walk.shot("\(step)-datepicker-open")
+        if days.count > 2 {
+            Walk.note("\(step) date picker: choosing \"\(days[2].label)\"")
+            days[2].tap()
+            Thread.sleep(forTimeInterval: 1)
+        }
+        Walk.note("\(step) DRIVER PROOF (c): value after=\"\(app.datePickers.firstMatch.value ?? "nil")\"")
+        if let confirm = lastLabelled(L.onbContinue) { confirm.tap() }
         Thread.sleep(forTimeInterval: 1.5)
-        record("after-1")
-        Thread.sleep(forTimeInterval: 3.5)
-        record("after-5")
+        return true
     }
 
     // MARK: - TRACK 2: 21 the existing account signs in and must go straight to the main shell (R1383)
@@ -273,7 +358,7 @@ final class WalkUITests: XCTestCase {
 
     func test21_signInExisting() {
         foreground()
-        signIn(Walk.accountA, step: "21", paste: true)
+        signIn(Walk.accountA, step: "21")
         XCTAssertTrue(expectMainWithoutOnboarding("21"))
     }
 
@@ -505,30 +590,10 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
         tapLabel(L.startDatePick, "28-pick")
         Thread.sleep(forTimeInterval: 2)
-        let picker = app.datePickers.firstMatch
-        guard picker.waitForExistence(timeout: 10) else {
-            Walk.tree("28-no-datepicker", app)
-            Walk.shot("28-no-datepicker")
-            Walk.note("FAIL 28 DRIVER PROOF (c): no UIDatePicker in the tree after \"\(L.startDatePick)\"")
+        guard pickDate("28") else {
             XCTFail("no date picker")
             return
         }
-        let days = picker.buttons.allElementsBoundByIndex.filter {
-            $0.isEnabled && $0.label.rangeOfCharacter(from: .decimalDigits) != nil
-                && !$0.label.contains("Month") && !$0.label.lowercased().contains("mois")
-        }
-        Walk.note("28 DRIVER PROOF (c): UIDatePicker found; value before=\"\(picker.value ?? "nil")\"; "
-            + "\(days.count) day button(s), e.g. \(days.prefix(3).map { $0.label })")
-        Walk.tree("28-datepicker-open", app)
-        Walk.shot("28-datepicker-open")
-        if days.count > 2 {
-            Walk.note("28 date picker: choosing \"\(days[2].label)\"")
-            days[2].tap()
-            Thread.sleep(forTimeInterval: 1)
-        }
-        Walk.note("28 DRIVER PROOF (c): value after=\"\(app.datePickers.firstMatch.value ?? "nil")\"")
-        if let confirm = lastLabelled(L.onbContinue) { confirm.tap() }
-        Thread.sleep(forTimeInterval: 1.5)
         Walk.tree("28-sheet-after-pick", app)
         Walk.shot("28-sheet-after-pick")
         // NOT SAVED: the account's period stays whole-year, so nothing later in the walk depends on this step.
@@ -637,7 +702,7 @@ final class WalkUITests: XCTestCase {
     func test32_signInAgain() {
         foreground()
         if app.labelled(L.welcomeStart).exists { app.labelled(L.welcomeStart).tap() }
-        signIn(Walk.accountA, step: "32", paste: true)
+        signIn(Walk.accountA, step: "32")
         _ = expectMainWithoutOnboarding("32")
         Thread.sleep(forTimeInterval: 8)
         Walk.call("/phonedb?label=32-phone")
@@ -687,7 +752,7 @@ final class WalkUITests: XCTestCase {
         foreground()
         signOutHere("34a")
         if app.labelled(L.welcomeStart).exists { app.labelled(L.welcomeStart).tap() }
-        signIn(Walk.accountB, step: "34", paste: true)
+        signIn(Walk.accountB, step: "34")
         _ = expectMainWithoutOnboarding("34")
         Thread.sleep(forTimeInterval: 5)
         Walk.notePending("34 M3 BEFORE deletion (B's reminder is ON on the server)")
@@ -697,7 +762,7 @@ final class WalkUITests: XCTestCase {
         Walk.tree("34-delete", app)
         let prompt = app.containing(L.deleteWord)
         if let field = app.field(belowElement: prompt, within: 5) {
-            enter(L.deleteWord, into: field, "34 confirmation word", paste: true)
+            enter(L.deleteWord, into: field, "34 confirmation word")
             dismissKeyboard()
         } else {
             Walk.note("FAIL 34 no confirmation field")
