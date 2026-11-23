@@ -1,0 +1,251 @@
+REPORT-IOS-WALK-DB - Mon Releve
+RE-LAND THE iOS WALK GREEN: ITS DATABASE STEP BECOMES A PACKAGE SCRIPT THE GUARDS CAN SEE (R1394-R1398)
+Session prompt: relay/IOS-WALK-DB.txt on origin/main 9c3a65b0; iOS Ruling 18 (relay/RULINGS-2026-11-16.txt).
+Worktree C:/wt/walk-db (lock .session-lock.json, gitignored), branch walk-db. NOT MERGED. Pending merge.
+Evidence: C:/wt/queue-evidence/walk-db/.
+
+================================================================================
+SUMMARY
+================================================================================
+The walk is back on branch walk-db byte for byte (R1394), and green under the guards that refused it:
+ios-walk.yml no longer names any postgres connection string; its database step calls
+web/scripts/ios-walk-database.mjs, which builds the admin URL from environment variables, names the database
+through scratchDatabaseName() and creates it through administer() in gate-clone.mjs's own CREATE shape - so
+R877's resolver resolves the site FROM THE HOME (scripts/ios-walk-database.mjs:85). A new census block, R1396,
+covers a workflow with no postgres service by PRESENCE: it must call a package script R877 resolves from the
+home, and must not CREATE DATABASE inline. Each of the three R1397 plants failed by name and was reverted.
+gate:changed and gate:clone passed on the code tip c7b80233 and their verdicts were read before the commit and
+before the push. ONE ios-walk dispatch on c7b80233 (run 45141116842): the database step, the R169 health check
+and the existing-account sign-ins passed; the job's conclusion is failure on the same steps that failed in
+run 18 (known, recorded in iOS Ruling 18), none of them in what this task changed. Leak scan: 0 hits.
+
+Commits on walk-db (origin/main 9c3a65b0 + ):
+  8f39e806  R1394: the walk back, unchanged - git revert b276b71f
+  c7b80233  R1395/R1396: the walk's database step becomes a package script the guards can see   <- CODE TIP
+  (this report's commit)                                                                         <- REPORT TIP
+
+================================================================================
+STATUS (R391)
+================================================================================
+WEB GATES GREEN ON c7b80233; ios-walk 45141116842 CONCLUDED FAILURE (the same 17 test-case outcomes as run 18,
+in the same order); the owed lines (database, R169, existing-account sign-in) PASSED - see Q1.
+gate:changed ("GATE PASSED for the paths changed.", exit 0) and gate:clone
+("GATE:CLONE PASSED", exit 0) both ran FULL, in this session, on the code tip c7b80233 (the tree gate:changed
+saw is byte-identical to c7b80233: the gate ran with HEAD soft-reset to origin/main so the whole delta was
+"not yet in HEAD", then HEAD was set back to the same commits - see DEVIATIONS D2). No :app:gate owed: nothing
+under android/ changed. ios-app 45125808971 STANDS: `git diff 558384e4 c7b80233 -- ios` is 0 bytes.
+The ios-walk dispatch 45141116842 concluded FAILURE overall, as run 18 did; the lines this task owes passed
+(below). The gates cover c7b80233; the report tip differs from it by REPORT-IOS-WALK-DB.txt only (a root .txt
+that no gate ran on; register-coverage was run on it separately before its commit).
+
+================================================================================
+R1394 - THE WALK BACK, UNCHANGED
+================================================================================
+`git revert --no-edit b276b71f` as the branch's first commit (8f39e806; message reworded, content untouched).
+  git diff d0509a4f 8f39e806 -- . ':!relay'   -> 0 bytes (empty).
+8f39e806 alone is RED under R879 by construction (ios-walk.yml:138's connection string) - it was never pushed
+alone; see D1.
+
+================================================================================
+R1395 - THE DATABASE STEP AS A PACKAGE SCRIPT
+================================================================================
+web/scripts/ios-walk-database.mjs (new):
+  - reads WALK_PG_HOST, WALK_PG_PORT, WALK_PG_USER, WALK_DB_PASSWORD, GITHUB_RUN_ID, WALK_DATABASE_URL_FILE;
+    each is REQUIRED and a missing one is refused by name with no value printed (an unset GITHUB_RUN_ID would
+    otherwise make monreleve_ios_walk_undefined, which the pattern admits); GITHUB_RUN_ID and the port must be
+    decimal; a URL that will not parse is refused with a fixed message (node's error would print the input);
+  - builds postgresql://<host>:<port>/postgres with the URL setters for user and password (percent-encoded)
+    and ?schema=public, so the scratch URL handed to db:deploy and `pnpm dev` is what the inline step handed;
+  - const scratchDatabase = scratchDatabaseName(`ios_walk_${GITHUB_RUN_ID}`)  (imported from
+    ../lib/db/scratch-database.mjs);
+  - administer(server, [`DROP DATABASE IF EXISTS "${scratchDatabase}" WITH (FORCE)`,
+    `CREATE DATABASE "${scratchDatabase}"`]) - gate-clone.mjs:733-736's shape, character for character;
+  - writes scratchDatabaseUrl(server, scratchDatabase) to WALK_DATABASE_URL_FILE (mode 0600); prints only the
+    name and adminTarget() (credentials masked).
+.github/workflows/ios-walk.yml: the step's 11 inline lines become one call:
+    WALK_DATABASE_URL_FILE="$PRIVATE/database-url" node scripts/ios-walk-database.mjs
+  with WALK_PG_HOST: 127.0.0.1 and WALK_PG_USER: walk in the step's env (WALK_PG_PORT is the job's env,
+  WALK_DB_PASSWORD is the masked GITHUB_ENV value from the secrets step, unchanged). db:deploy and every later
+  step unchanged. `grep 'postgres(ql)?://' ios-walk.yml` -> nothing.
+THE CENSUS'S OWN VERDICT FOR THE NEW SITE (vitest --reporter=verbose, green-census.log):
+  PASS ... R877: every CREATE DATABASE site in the package names a scratch database > scripts/ios-walk-database.mjs:85
+  and R1396's "ios-walk.yml calls a package script whose CREATE DATABASE R877 resolves from the home" passes only
+  when that site resolves with how === 'home'.
+Local proof before the one dispatch: run against this project's own PostgreSQL (frontalier-postgres, :5436):
+  "scratch database created: monreleve_ios_walk_1394", admin "postgresql://<credentials>@127.0.0.1:5436/postgres";
+  judgeTestDatabase(the written URL) -> {"admitted":true,"database":"monreleve_ios_walk_1394"}; dropped after.
+  With no environment: "ios-walk-database REFUSED: WALK_PG_HOST, ... not set (the values are never printed)."
+  exit 1. Against a closed port with a planted password: ECONNREFUSED, exit 1, password 0 times in the output.
+
+================================================================================
+R1396 - R879 COVERS THE WALK BY PRESENCE
+================================================================================
+web/tests/unit/meta/scratch-database-census.test.ts gains a third describe block; the R877 and R879 blocks are
+untouched (nothing they accept changed). Derived, not listed (R181): every workflow whose non-comment lines use a
+database (DATABASE_URL, db:deploy, initdb, pg_ctl) and carry no POSTGRES_DB service. Today: ios-walk.yml only
+(ci.yml has its service and stays under R879). Three tests:
+  - found at least one such workflow (presence, so nothing passes vacuously);
+  - "<file> calls a package script whose CREATE DATABASE R877 resolves from the home" - a non-comment
+    `node [web/]scripts/<x>.mjs` call whose path is an R877 SITE with how === 'home';
+  - "<file> creates no database inline, where R877 cannot see it" - no non-comment CREATE DATABASE line.
+TEST-FIRST: written before the script; RED run (red-r1396.log): "Tests  4 failed | 26 passed (30)" -
+  R879 x2 (ios-walk.yml:138 connection string; every connection string names a database a service ... creates)
+  and R1396 x2 ("ios-walk.yml calls a package script ..." with "ios-walk.yml calls []"; "ios-walk.yml creates
+  no database inline ..."). GREEN after the script and the workflow edit: "Tests  30 passed (30)".
+
+================================================================================
+R1397 - THE PLANTS, EACH VERIFIED LANDED (R180), EACH REVERTED AND THE REVERT VERIFIED
+================================================================================
+Planted on the committed green tree by a script that refuses unless its anchor occurs exactly once (R211); the
+landed hunk shown by `git diff -U0`; reverted by `git checkout -- <file>`; `git diff --exit-code` 0 after each.
+(a) ios-walk.yml: the literal connection string put back -
+      +          export BASE="postgresql://walk:${WALK_DB_PASSWORD}@127.0.0.1:${WALK_PG_PORT}/postgres?schema=public"
+    landed at line 144. "Tests  2 failed | 29 passed (31)":
+      FAIL ... R879: every database a CI workflow names is a scratch database > ios-walk.yml:144 connection string
+      FAIL ... R879: every database a CI workflow names is a scratch database > every connection string names a
+               database a service in the same workflow creates
+(b) ios-walk-database.mjs line 81: scratchDatabaseName(`ios_walk_${GITHUB_RUN_ID}`) -> 'walk_scratch'.
+    "Tests  2 failed | 28 passed (30)":
+      FAIL ... R877: every CREATE DATABASE site in the package names a scratch database > scripts/ios-walk-database.mjs:85
+           "walk_scratch is outside ^monreleve_[a-z0-9_]{1,53}$"
+      FAIL ... R1396: ... > ios-walk.yml calls a package script whose CREATE DATABASE R877 resolves from the home
+           (the call is still there, but its site no longer resolves from the home)
+(c) ios-walk.yml line 144: the call `WALK_DATABASE_URL_FILE=... node scripts/ios-walk-database.mjs` removed.
+    "Tests  1 failed | 29 passed (30)":
+      FAIL ... R1396: a workflow with no postgres service creates its database through a site R877 resolves >
+               ios-walk.yml calls a package script whose CREATE DATABASE R877 resolves from the home
+           "ios-walk.yml calls []"
+After all three: census "Tests  30 passed (30)"; git status clean. Logs plant-{a,b,c}.log, diffs plant-{a,b,c}.diff.
+
+================================================================================
+R1398 - GATES AND THE RUNNER
+================================================================================
+gate:changed (FRONTALIER_PORT=3910, heavy lock walk-db, ACQUIRED 08:13:37Z commitFree=12706, RELEASED 08:23:32Z),
+on the whole delta from origin/main (the tree of c7b80233). Verdict lines, ANSI-stripped, read before the commit:
+    gate selection (R132):
+      no path matched the selector - base chain only
+      suites: typecheck, lint, test, build
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 4294 passed
+      build: exit 0 (no count to check)
+     Test Files  253 passed (253)
+          Tests  4294 passed (4294)
+    GATE PASSED for the paths changed.
+  "GATE FAILED" occurrences: 0. 4294 = main's 4290 + 4 (R877's new site, R1396's three).
+gate:clone (FRONTALIER_PORT=3910, DATABASE_URL host from web/.env for the server only, heavy lock ACQUIRED
+08:24:02Z commitFree=12774, RELEASED 08:44:35Z), before the push, verdict read before the push:
+    GATE:CLONE PASSED
+      commit  c7b80233c46a48afa2fa2099423f1076f728037d
+      claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test
+              (4294 of 4294 tests passed, 253 files), build, size (24 routes measured), db:deploy, test:db (911 of
+              939 tests passed, 28 skipped, 66 files), test:container:write (10 checks passed) from a clean
+              checkout - a machine with no .env, no prior node_modules and no generated file this run did not
+              produce itself.
+  "GATE:CLONE FAILED" / "GATE FAILED" occurrences: 0. Scratch database monreleve_gate_clone_c7b80233; clone removed.
+THE ONE DISPATCH: ios-walk.yml --ref walk-db, run 45141116842, headSha c7b80233, 08:44:53Z-09:32:32Z,
+conclusion FAILURE (as run 18, 45125804130, was). Steps 1-21 and 23-26 success; step 22 "The walk (XCUITest)"
+failure. The lines this task owes, from the job log:
+  DATABASE (step 10, the new script):
+    scratch database created: monreleve_ios_walk_45141116842
+      admin     postgresql://<credentials>@127.0.0.1:55432/postgres (R957: the server's postgres database, credentials masked)
+    17 migrations found in prisma/migrations
+    (db:deploy exit 0; the step passed. Every one of the 21 "WALK_DB_PASSWORD:" lines in the job log's env
+    groups reads "WALK_DB_PASSWORD: ***"; the only other mention is the secrets step's source line.)
+  HEALTH (step 11):
+    R169: /api/health names 'monreleve' (expected 'monreleve', read from web/identity.json)
+  EXISTING-ACCOUNT SIGN-IN (track 2):
+    Test Case '-[MonReleveWalkUITests.WalkUITests test21_signInExisting]' passed (57.228 seconds).
+    09:06:12 21 R1383: the main shell reached=true; an onboarding screen shown on the way=false (StartupDecider:
+             a complete GET /api/v1/me resolves to Main)
+    and again after sign-out (test32_signInAgain passed; 32-phone: 4 entries, {'2025': 1, '2026': 3}, all
+    SYNCED serverStamp=True) and for account B (test34_accountDeletion passed; "Compte supprim<e-acute>" shown; M3 5 -> 0).
+  WHAT FAILED, all the known stopped steps of iOS Ruling 18, none in what this task changed:
+    track 1: test02_signInNew failed ("FAIL 02 sign-in e-mail: three attempts, the field never read back the
+      text - NOT submitted"), test03_onboarding failed after it - run 18's track 1 also "failed earlier at the
+      e-mail";
+    track 2: test26_export, test27_comparison, test30_licences ("exists but never came on screen", F5/R1387),
+      test33_reminderTap ("STOPPED (R1387) ... no third run").
+    MEASURED AGAINST RUN 18: the 18 "Test Case '...' passed|failed" lines of this log, diffed in order against
+    C:/wt/queue-evidence/i2-walk/run18-45125804130.log's - identical (diff exit 0).
+    Passed in track 2: test01, 21, 22, 23, 24, 25, 28, 29, 31, 32, 34. R1385 reproduced unchanged (control 200;
+    GET 200; the code after the GET 400 invalid_code) - F8 stays the operator's.
+LEAK SCAN (the R1388 scanner, C:/wt/queue-evidence/i2-walk/leakscan.py, unchanged, run with `py -3 -I`;
+production host monreleve.ch read from web/identity.json). Proven to fire first on a planted control file:
+bearer 1, token-shaped 1, callback 1, six-digit 1, prod 1.
+                        files   bearer  token-shaped(43 b64url)  callback?token=  six-digit  prod host
+    job log             1       0       0                        0                0          0          (47 *** masks)
+    artifacts (text)    51      0       0                        0                0          0
+  Plus literal greps over the log and every non-PNG artifact: "auth/callback" 0/0, "Bearer" 0/0, "token=" 0/0,
+  "accessToken" 0/0, "refreshToken" 0/0, "monreleve.ch" 0/0. The tokens carry no fixed prefix in lib/auth
+  (TOKEN_BYTES = 32, 43 base64url characters), so "token prefix" is scanned as the token's shape.
+  IN-RUN CHECKS (the workflow's own, against every code and token prefix the helper wrote to the masks file):
+    step 23: "app log: 2925126 lines; 43 code/token pattern(s) searched; lines carrying one: 0"
+    step 24: "files carrying a code or token: 0" / "upload directory: 103 file(s)"
+  103 artifact files: 52 PNG (not text-scanned), 51 text. Of the seven sign-in shots, LOOKED AT: 21-after-signin,
+  32-after-signin, 34-after-signin (the Aujourd'hui screen, no code anywhere) and 32-signin (the e-mail screen,
+  empty field); 02-signin, 21-signin and 34-signin judged by name only (the e-mail screen), not looked at. The three code-empty trees hold "Chiffre N sur 6" with no value and
+  no digit label (R574). No phone database file in the artifact.
+ios-app 45125808971: `git diff 558384e4 c7b80233 -- ios` is 0 bytes, so it STILL STANDS; no ios-app run made.
+`git diff d0509a4f c7b80233 --name-only`:
+    .github/workflows/ios-walk.yml
+    relay/IOS-AUDIT.txt
+    relay/IOS-WALK-2.txt
+    relay/IOS-WALK-DB.txt
+    relay/QUEUE-STATE.md
+    relay/RULINGS-2026-11-16.txt
+    web/scripts/ios-walk-database.mjs
+    web/tests/unit/meta/scratch-database-census.test.ts
+  plus REPORT-IOS-WALK-DB.txt at the report tip. The five relay/ paths are main's records written since d0509a4f
+  (`git diff origin/main c7b80233 -- relay` is 0 bytes): this session did not touch them. See D3.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+N1. ios-walk.yml's db:deploy grep 'migrations? (have been|has been) applied|No pending migrations|migrations
+    found' printed only "17 migrations found" - Prisma's success line is "All migrations have been successfully
+    applied.", which the first alternative does not match ("successfully" sits between). Pre-existing (the line
+    is unchanged from d0509a4f); the step's pass rests on db:deploy's exit code. Not this task's scope.
+N2. R877's header comment states its walk does not see workflows' YAML; R1396 now covers that gap for workflows
+    without a service only. A workflow WITH a service that also ran an inline CREATE DATABASE would still be
+    seen by neither (none exists today: ci.yml's two CREATE DATABASE mentions are comments).
+N3. R1396's "uses a database" signal is a fixed set (DATABASE_URL, db:deploy, initdb, pg_ctl). A future
+    workflow that makes a database by another tool (e.g. createdb, psql -c) would not be found by it.
+
+================================================================================
+DEVIATIONS
+================================================================================
+D1. "Push every increment": 8f39e806 (R1394) was not pushed on its own. It is RED under R879 by construction,
+    and R132/R199 forbid pushing without gate:clone green on what is pushed; it went up together with c7b80233
+    in one push after gate:clone passed on c7b80233. The first commit of the branch is still the revert, as
+    R1394 requires.
+D2. gate:changed counts "everything not yet in HEAD", so it was run with HEAD soft-reset to origin/main (my own
+    two unpushed commits; nothing else's), the whole delta staged, then HEAD set back to the same commits with
+    `git reset --soft` (status clean, cached diff empty). The second commit's message was then amended (before
+    any push) to carry the R132 selection: dc25ea29 became c7b80233, same tree.
+D3. `git diff d0509a4f <tip> --name-only` lists five relay/ files beyond the four the prompt names. They are
+    origin/main's own records (the orchestrator's commits after d0509a4f), identical to main; this branch does
+    not change them. The prompt's own R1394 check excludes relay/ for the same reason.
+D4. R1396 carries one assertion beyond "calls the script": no inline CREATE DATABASE in a serviceless workflow.
+    It TIGHTENS what is accepted (nothing R877 or R879 accepted before is accepted differently).
+D5. The local positive run of the script created and dropped monreleve_ios_walk_1394 on this project's own
+    PostgreSQL container (frontalier-postgres); the drop was a psql DROP DATABASE ... WITH (FORCE).
+D6. The dispatch's job conclusion is FAILURE. It is the ONE dispatch (not repeated): the owed lines passed, and
+    the failing test cases are the same known ones as run 18.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. The ONE dispatch concluded FAILURE because of the known R1387/F5 stops and track 1's e-mail field (same set as
+    run 18). The database step, R169 and the existing-account sign-ins passed. Is that enough for the merge, as it
+    was for run 18 under iOS Ruling 18? I did not re-dispatch.
+Q2. No change to what R877/R879 accept, no new dependency, no new copy, no trigger change: none to raise.
+
+================================================================================
+PUSH PROOF
+================================================================================
+code tip   c7b80233c46a48afa2fa2099423f1076f728037d  pushed to origin/walk-db after GATE:CLONE PASSED on it
+           (`git rev-parse origin/walk-db` -> c7b80233c46a48afa2fa2099423f1076f728037d)
+report tip see the hand-back (this commit; pushed to origin/walk-db; changes only this file)
+NOT MERGED. parking.md not written.
