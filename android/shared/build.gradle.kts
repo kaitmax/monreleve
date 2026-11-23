@@ -203,6 +203,8 @@ kotlin {
         // set, because it reads the commonMain source files as TEXT (java.io.File), which commonTest cannot do
         // portably. kotlin.test is declared here explicitly rather than relied on transitively from commonTest.
         // IOS-1b-A R606: the shared screen is composed and tapped on the simulator (pilot/AujourdhuiPilotIosTest).
+        // IOS-POLISH R1402: the composable it taps, pilot/AujourdhuiPilot.kt, lives in iosTest itself, and its
+        // fixture, pilot/PilotFixture.kt, in commonTest - neither is in commonMain or the shipped framework.
         iosTest.dependencies {
             implementation(libs.cmp.ui.test)
         }
