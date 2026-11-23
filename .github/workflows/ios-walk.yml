@@ -130,22 +130,18 @@ jobs:
           pnpm install --frozen-lockfile > "$PRIVATE/pnpm-install.log" 2>&1 || { tail -30 "$PRIVATE/pnpm-install.log"; exit 1; }
           tail -3 "$PRIVATE/pnpm-install.log"
 
-      # gate:clone's own mechanism, called directly (R206): the name from scratch-database.mjs, the CREATE through
-      # administer() on the server's `postgres` database, the URL from scratchDatabaseUrl, the schema by db:deploy.
+      # gate:clone's own mechanism, as a package script (R1395, iOS Ruling 18): scripts/ios-walk-database.mjs builds
+      # the administrative URL from the variables below, takes the name from scratch-database.mjs, CREATEs through
+      # administer() on the server's `postgres` database and writes the scratch URL to $PRIVATE/database-url; the
+      # schema by db:deploy. NO connection string is written here: R879 has no service to check it against, and
+      # R1396 asserts this workflow calls the script instead.
       - name: The throwaway database (created and migrated by the project's mechanism)
         working-directory: web
+        env:
+          WALK_PG_HOST: 127.0.0.1
+          WALK_PG_USER: walk
         run: |
-          export BASE="postgresql://walk:${WALK_DB_PASSWORD}@127.0.0.1:${WALK_PG_PORT}/postgres?schema=public"
-          node --input-type=module -e "
-            import { administer, scratchDatabaseUrl } from './scripts/gate-clone-parts.mjs';
-            import { scratchDatabaseName } from './lib/db/scratch-database.mjs';
-            import { writeFileSync } from 'node:fs';
-            const name = scratchDatabaseName('ios_walk_' + process.env.GITHUB_RUN_ID);
-            await administer(process.env.BASE, ['DROP DATABASE IF EXISTS \"' + name + '\" WITH (FORCE)', 'CREATE DATABASE \"' + name + '\"']);
-            writeFileSync(process.env.PRIVATE + '/database-url', scratchDatabaseUrl(process.env.BASE, name));
-            console.log('scratch database created: ' + name);
-          "
-          unset BASE
+          WALK_DATABASE_URL_FILE="$PRIVATE/database-url" node scripts/ios-walk-database.mjs
           set +e
           DATABASE_URL="$(cat "$PRIVATE/database-url")" pnpm db:deploy > "$PRIVATE/db-deploy.log" 2>&1
           deploy=$?
