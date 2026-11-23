@@ -814,10 +814,19 @@ final class WalkUITests: XCTestCase {
         let banner = WalkUITests.springboard.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", L.reminderTitle)).firstMatch
         let delivered = banner.waitForExistence(timeout: 30)
-        Walk.note("33 banner with \"\(L.reminderTitle)\" delivered on the simulator=\(delivered)")
-        Walk.shot("33-banner")
-        guard delivered else { app.activate(); return }
-        banner.tap()
+        // Run 45114019354: the banner WAS delivered, and had gone by the time the note and the screenshot had been
+        // taken ("No matches found" on the tap). The tap is now made the moment the banner exists; recorded after.
+        var tapped = false
+        if delivered && banner.exists {
+            banner.tap()
+            tapped = true
+        }
+        Walk.note("33 banner with \"\(L.reminderTitle)\" delivered on the simulator=\(delivered); tapped at once=\(tapped)")
+        guard tapped else {
+            Walk.shot("33-banner")
+            app.activate()
+            return
+        }
         let opened = app.wait(for: .runningForeground, timeout: 15)
         Thread.sleep(forTimeInterval: 3)
         let onToday = app.labelled(L.todaySynced).exists || app.labelled(L.todayQuestion).exists
@@ -838,6 +847,11 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 5)
         Walk.notePending("34 M3 BEFORE deletion (B's reminder is ON on the server)")
         tapLabel(L.tabParametres, "34-tab")
+        // Run 45114019354: twenty drags begun the moment the tab was tapped left this row at a zero frame, where the
+        // sign-out row a little above it came on screen after ONE drag begun 1.5 s after its tab. The screen is now
+        // let settle (3 s and a dump) before the first drag, as it was in every reveal that worked.
+        Thread.sleep(forTimeInterval: 3)
+        Walk.tree("34-parametres", app)
         tapLabel(L.deleteRow, "34-delete-row")
         Thread.sleep(forTimeInterval: 1.5)
         Walk.tree("34-delete", app)
