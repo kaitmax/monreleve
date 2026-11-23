@@ -516,7 +516,7 @@ final class WalkUITests: XCTestCase {
             licences.tap()
             Thread.sleep(forTimeInterval: 2)
             Walk.note("09 legal page opened IN THE APP: \"\(L.licencesTitle)\" "
-                + "(the monreleve.ch legal rows are NOT tapped: they open the production site in Safari)")
+                + "(the legal rows that open the production site in Safari are NOT tapped)")
             Walk.tree("09-licences", app)
             Walk.shot("09-licences")
             if let back = lastLabelled(L.licencesBack) { back.tap() }
