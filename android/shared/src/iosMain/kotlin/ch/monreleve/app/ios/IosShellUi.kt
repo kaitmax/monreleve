@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.window.Dialog
@@ -371,14 +372,8 @@ internal fun IosStartDatePicker(
     onPicked: (isoDay: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val picker =
-        remember {
-            UIDatePicker().apply {
-                datePickerMode = UIDatePickerMode.UIDatePickerModeDate
-                preferredDatePickerStyle = UIDatePickerStyle.UIDatePickerStyleInline
-                initialIsoDay?.let(::nsDateOf)?.let { date = it }
-            }
-        }
+    val background = MaterialTheme.colorScheme.background
+    val picker = remember { startDatePickerView(initialIsoDay, background) }
     Dialog(onDismissRequest = onDismiss) {
         Surface(color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -396,6 +391,31 @@ internal fun IosStartDatePicker(
 }
 
 private const val PICKER_HEIGHT = 360
+
+/**
+ * IOS-AUDIT R1389: the language the native picker draws its months and weekdays in - the app's own (every word of its
+ * copy is French, and the site declares lang="fr"), never the device's, which drew an English calendar inside a French
+ * app (iOS Ruling 18, F6). A language, not a region: the picker shows no number format, and the chosen day is read back
+ * through the calendar's components (isoDayOf), not through a formatter.
+ */
+internal const val PICKER_LANGUAGE = "fr"
+
+/**
+ * IOS-AUDIT R1389: the native picker the slot shows, built in ONE place so an iosTest can read what it is set to
+ * (the composed picker cannot be opened in an iosTest - IosStartDatePickerCanaryIosTest). [background] is the dialog
+ * surface's own colour, from the theme.
+ */
+@Suppress("UnusedParameter") // R1389: [background] is the fix's input; the RED commit builds the picker unchanged.
+@OptIn(ExperimentalForeignApi::class)
+internal fun startDatePickerView(
+    initialIsoDay: String?,
+    background: Color,
+): UIDatePicker =
+    UIDatePicker().apply {
+        datePickerMode = UIDatePickerMode.UIDatePickerModeDate
+        preferredDatePickerStyle = UIDatePickerStyle.UIDatePickerStyleInline
+        initialIsoDay?.let(::nsDateOf)?.let { date = it }
+    }
 
 /** The picker's day in the device's calendar, as an ISO day (yyyy-MM-dd). */
 private fun isoDayOf(picker: UIDatePicker): String {

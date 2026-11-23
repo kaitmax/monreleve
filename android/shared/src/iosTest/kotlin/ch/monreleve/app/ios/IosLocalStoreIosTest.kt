@@ -77,7 +77,9 @@ private class R889Device {
             dossierCache = cache,
             pendingSignIn = pending,
             accountStore = account,
-            sessionEndSeam = iosSessionEndSeam(removePendingRequests = { pendingRemovals += 1 }),
+            // R1381: this store runs no year download, so its seam stops none - stated, now that nothing defaults it.
+            sessionEndSeam =
+                iosSessionEndSeam(removePendingRequests = { pendingRemovals += 1 }, stopYearDownloads = {}),
         )
     var exportPath = ""
     var drainJob: Job? = null

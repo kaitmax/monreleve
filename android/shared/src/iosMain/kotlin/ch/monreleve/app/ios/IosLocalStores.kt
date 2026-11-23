@@ -63,7 +63,8 @@ fun iosDeviceLocalStore(
     dossierCache: DossierCache = FileDossierCache(),
     pendingSignIn: PendingSignInStore = KeychainPendingSignInStore(),
     accountStore: AccountStore = KeychainAccountStore(),
-    sessionEndSeam: SessionEndSeam = iosSessionEndSeam(),
+    // IOS-AUDIT R1381: no default - a store over a seam that stops nothing must be stated, never defaulted into.
+    sessionEndSeam: SessionEndSeam,
 ): SessionEndingStore =
     SessionEndingStore(
         DeviceLocalStore(

@@ -369,7 +369,7 @@ private const val PARIS = "Europe/Paris"
  * THE iOS COMPOSITION FUNCTION (R1323): builds the process's shell in the header's order. Every parameter after the two
  * Swift passes is a production default a test replaces.
  */
-@Suppress("LongParameterList", "LongMethod")
+@Suppress("LongParameterList", "LongMethod", "UnusedParameter") // PLANT R1381 (reverted next): the stop unused.
 @OptIn(ExperimentalTime::class) // KMP-DT R590: the kotlin.time.Clock seam - on the allowlist.
 fun startIosShell(
     apiBaseUrl: String,
@@ -393,6 +393,9 @@ fun startIosShell(
     reportUnowned: (String) -> Unit = { IosUnownedReporter().report(it) },
     log: (String) -> Unit = ::consoleLine,
     sessionEnds: SessionEnds = processSessionEnds,
+    // IOS-AUDIT R1381: the session-end seam stops the year downloads THROUGH this - production runs the stop as is; a
+    // test passes a recorder that runs it too, so the wire from the seam to the coordinator is observable.
+    yearDownloadStop: (stop: () -> Unit) -> Unit = { it() },
     scope: CoroutineScope = MainScope(),
     clock: Clock = Clock.System,
     zone: TimeZone = TimeZone.currentSystemDefault(),
@@ -452,7 +455,8 @@ fun startIosShell(
                         centre.removeAllPending()
                     },
                     // R1371: a year still arriving is stopped BEFORE the record is cleared, on every ending.
-                    stopYearDownloads = yearDownloads::stop,
+                    // PLANT R1381 (IOS-AUDIT, reverted in the next commit): THE WIRE DROPPED.
+                    stopYearDownloads = {},
                 ),
         )
     endingStore = localStore

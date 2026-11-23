@@ -21,6 +21,7 @@ import ch.monreleve.app.data.sync.ENTRIES_PATH
 import ch.monreleve.app.data.sync.yearBody
 import ch.monreleve.app.pilot.InMemorySettingsStore
 import ch.monreleve.app.settings.Settings
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -148,10 +149,13 @@ internal class LoggedMarker(
  * A centre that HOLDS the pending set as the system would, so a test reads it before and after (R1323), and keeps the
  * requests themselves (R1330: their category). [grants] answers both the prompt and the read; with [late], the read is
  * answered after LATE_MILLIS on another thread, as the system answers on a queue of its own (R1330's fresh read).
+ * IOS-AUDIT R1380: with [answerGate], every read waits for the gate on another thread - a centre that has NOT answered
+ * yet, for as long as the test keeps the gate shut (past IosShellRoot's bound, which no fixed delay can promise).
  */
 internal class RecordingCentre(
     var grants: Boolean = true,
     private val late: Boolean = false,
+    private val answerGate: CompletableDeferred<Unit>? = null,
 ) : IosNotificationCentre {
     // The plans run on the rig's background scope while the test reads on its own thread: every access holds the lock.
     private val lock = NSLock()
@@ -204,7 +208,13 @@ internal class RecordingCentre(
 
     override fun readAuthorization(onAnswer: (permitted: Boolean) -> Unit) {
         val answer = grants
-        if (late) {
+        val gate = answerGate
+        if (gate != null) {
+            CoroutineScope(Dispatchers.Default).launch {
+                gate.await()
+                onAnswer(grants)
+            }
+        } else if (late) {
             CoroutineScope(Dispatchers.Default).launch {
                 delay(LATE_MILLIS)
                 onAnswer(answer)
@@ -394,6 +404,19 @@ internal class ShellRig(
     val taps = IosNotificationTaps()
     val lifecycle = TestLifecycleOwner(foreground)
 
+    /** IOS-AUDIT R1381: each time the session-end seam stopped the year downloads, through startIosShell's wire. */
+    private val stopLock = NSLock()
+    private val stops = mutableListOf<String>()
+
+    fun yearDownloadStops(): Int {
+        stopLock.lock()
+        try {
+            return stops.size
+        } finally {
+            stopLock.unlock()
+        }
+    }
+
     /** The detection file's storage, read as a relaunch reads it: a NEW NSUserDefaults over the test's own suite. */
     fun defaults(): NSUserDefaults = NSUserDefaults(suiteName = suite)
 
@@ -434,6 +457,15 @@ internal class ShellRig(
             reportUnowned = {},
             log = { logLines += it },
             sessionEnds = SessionEnds(),
+            yearDownloadStop = { stop ->
+                stopLock.lock()
+                try {
+                    stops += "stop"
+                } finally {
+                    stopLock.unlock()
+                }
+                stop()
+            },
             // A stray failure in a launched plan is LOGGED, never left to end the test process (Kotlin/Native ends it
             // on an unhandled coroutine exception - every later test would be lost, as run B's SIGSEGV lost them).
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + uncaught),

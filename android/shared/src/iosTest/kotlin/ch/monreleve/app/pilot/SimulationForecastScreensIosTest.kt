@@ -1,12 +1,5 @@
 package ch.monreleve.app.pilot
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -14,6 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelected
@@ -25,16 +19,8 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import ch.monreleve.app.calc.ruleSetFor
-import ch.monreleve.app.data.local.EntryEntity
-import ch.monreleve.app.data.local.EntryKind
-import ch.monreleve.app.data.local.Portion
-import ch.monreleve.app.data.local.Provenance
 import ch.monreleve.app.data.local.RhythmKind
-import ch.monreleve.app.data.local.SyncState
-import ch.monreleve.app.data.repo.EntryRepository
-import ch.monreleve.app.data.repo.RecordCommand
-import ch.monreleve.app.data.repo.RecordResult
-import ch.monreleve.app.data.repo.RhythmRepository
+import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.data.repo.WeeklyRhythm
 import ch.monreleve.app.design.FrontierTheme
 import ch.monreleve.app.dossier.ComparisonView
@@ -42,29 +28,35 @@ import ch.monreleve.app.dossier.buildComparison
 import ch.monreleve.app.dossier.parseDossier
 import ch.monreleve.app.dossier.parseEmployerRate
 import ch.monreleve.app.forecast.ForecastController
-import ch.monreleve.app.forecast.RhythmChoice
-import ch.monreleve.app.forecast.SimScenario
-import ch.monreleve.app.forecast.SimulationController
+import ch.monreleve.app.fr.AujourdhuiCopy
+import ch.monreleve.app.fr.CalendarCopy
 import ch.monreleve.app.fr.ComparisonCopy
 import ch.monreleve.app.fr.DisclosureCopy
+import ch.monreleve.app.fr.LicencesCopy
+import ch.monreleve.app.fr.NavCopy
+import ch.monreleve.app.fr.ParametresCopy
 import ch.monreleve.app.fr.PrevisionCopy
+import ch.monreleve.app.fr.ReleveCopy
 import ch.monreleve.app.fr.RythmeCopy
 import ch.monreleve.app.fr.SimulationCopy
 import ch.monreleve.app.fr.text.formatDeclarableRate
-import ch.monreleve.app.settings.Settings
-import ch.monreleve.app.ui.screens.comparison.ComparisonActions
-import ch.monreleve.app.ui.screens.comparison.ComparisonScreen
+import ch.monreleve.app.ios.RecordingTransport
+import ch.monreleve.app.ios.SHELL_COMPLETE_ME
+import ch.monreleve.app.ios.SHELL_COMPLETE_SETTINGS
+import ch.monreleve.app.ios.SHELL_NOW
+import ch.monreleve.app.ios.SHELL_PAIR
+import ch.monreleve.app.ios.ShellRig
+import ch.monreleve.app.ios.emptyYearAnswer
+import ch.monreleve.app.ios.setShellContent
+import ch.monreleve.app.ios.yearOf
 import ch.monreleve.app.ui.screens.disclosure.DisclosureScreen
-import ch.monreleve.app.ui.screens.prevision.PrevisionActions
-import ch.monreleve.app.ui.screens.prevision.PrevisionScreen
-import ch.monreleve.app.ui.screens.rythme.RythmeActions
-import ch.monreleve.app.ui.screens.rythme.RythmeScreen
-import ch.monreleve.app.ui.screens.simulation.SimulationActions
-import ch.monreleve.app.ui.screens.simulation.SimulationScreen
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DayOfWeek
 import platform.darwin.DISPATCH_TIME_NOW
 import platform.darwin.NSEC_PER_SEC
@@ -76,200 +68,107 @@ import platform.posix.stdout
 import kotlin.system.exitProcess
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-// IOS-2d R818/R820. THE SHARED DISCLOSURE, COMPARISON, RYTHME, PREVISION AND SIMULATION SCREENS, COMPOSED AND DRIVEN
-// ON THE iOS SIMULATOR, OVER FAKES - the five screens IOS-2d moved to :shared commonMain.
+// IOS-2d R818/R820. THE SHARED DISCLOSURE, COMPARISON, RYTHME, PREVISION AND SIMULATION SCREENS, DRIVEN ON THE iOS
+// SIMULATOR.
 //
-// Each screen is hosted the way MainActivity hosts it: the REAL shared ForecastController / SimulationController over
-// an in-memory rhythm (which records every save) and a record whose record() throws (R340: a projection is never a
-// record), a fixed kotlin.time Clock, InMemorySettingsStore; the Comparison built by the shared buildComparison from
-// the Releve test's fixture dossier, as MainActivity builds it from the Releve's loaded document. No server, no
-// account, no address. Strings come from fr/ and expected values from the shared code (R181), never retyped.
+// IOS-AUDIT R1352 (iOS Ruling 14 Q2): THE HAND-WRITTEN REDUCTIONS ARE GONE. Until this task the comparison, the rhythm,
+// the forecast and the simulator were each composed by a host that copied MainActivity's wiring "reduced to its calls"
+// (ComparisonHost, RythmeHost, PrevisionHost, SimulationHost) - so the iOS run never exercised the wiring the app runs.
+// That wiring is now ONE common function, MainTabs (IOS-MOVE-TABS R1360), and every step below except the disclosure
+// drives it through the REAL iOS shell (IosShellRoot over startIosShell, ShellRig's doubles - R204): the person's taps
+// on the bottom bar, Paramètres' rhythm row, the Rythme screen's « Voir ma prévision », Prévision's « Tester un
+// changement », the overlays' back arrows. What the reductions read from a controller they held is read where the
+// shell keeps it - the iOS database's rhythm, the record - or derived from the shared code over the same inputs (R181).
 //
-// R818 - USED, NOT ONLY COMPOSED (R624: the date picker compiled and threw only when run; R791 (2) made the same point
-// for the sheet). The one Material3 container no shared screen used before is the Simulation's weekday DropdownMenu
-// with its DropdownMenuItems: step5 OPENS it (a pointer tap on the field), asserts its items, and PICKS one - and the
-// choice must reach the controller and close the menu. In step5 the pick is the item's own OnClick semantics action
-// (the one VoiceOver offers; IOS-2c-FIX's path for the sheet's handle and scrim). That was decided BEFORE IOS-2d's
-// run, on a CONCERN - that inside a Popup layer boundsInRoot might be local to the menu while boundsInWindow is
-// absolute, so that R806's tap-point-in-window guard could fail on a correctly placed item. IOS-2e R836 corrects this
-// comment to what the run MEASURED: on the simulator (run 42934860637) the Friday item's boundsInRoot EQUALS its
-// boundsInWindow, Rect.fromLTRB(24.0, 368.0, 136.0, 416.0), positionInWindow Offset(24.0, 368.0) - the popup layer's
-// root sits at the window origin, so the guard reads the same there as for the sheet's Dialog layer. step5 keeps the
-// OnClick pick as it was; step6 (R836) picks the same item by a POINTER TAP behind R806's guard, a separate test whose
-// every failure names itself.
-// The new modifiers run as composed: PrevisionRail's offset and fillMaxHeight (step4, a projection drawn) and
-// Comparison's rotate (step2, the chevron of the tapped cause row). Every text field touched is typed into, every
-// toggle and chip tapped.
+// THE CASE MAP (R268) - every check of the reduced steps, and where it lives now:
+//   step1 disclosure   UNCHANGED: the disclosure is the detection flow's, which iOS v1 does not have (manual only,
+//                      iOS Ruling 2), so MainTabs never draws it; it stays composed directly.
+//   step2 comparison   -> step2 below, through the shell: Relevé, the year before, « Comparer avec mon employeur »,
+//                      the field's label, a typed figure giving the derived gap, the missions cause row, and the cause
+//                      tapped - which on the real wiring closes the overlay onto the CALENDRIER (the reduction only
+//                      counted the tap). IosShellComparisonIosTest keeps the stored figure and the back arrow.
+//   step3 rythme       -> step3: the seeded rhythm shown (2 home toggles selected, the helper line), Monday tapped,
+//                      Monday's field saved - read back from the iOS database - the helper line and the selected
+//                      count following, nothing recorded (R340).
+//   step4 prevision    -> step4: the title, both figures (derived from a ForecastController over the shell's own
+//                      stores and clock), the projection chip, the R340 lock line, « Tester un changement » opening
+//                      the simulator, nothing written. The ALERT OFFER's tap is NOT reachable on iOS (hidden, iOS
+//                      Ruling 3 Q4): its absence on iOS is IosShellFacilitiesIosTest r1338's, and Android's offer is
+//                      ThresholdAlertPresenceTest's (:app, R1375).
+//   step5 simulation   -> step5: the DropdownMenu opened from Monday, its items (Monday twice, Wednesday, no home
+//                      day), Friday PICKED by its OnClick action, the menu closed; « Adopter ce rythme » - which on
+//                      the real wiring writes Friday at home and returns to Prévision (the reduction only counted it);
+//                      the rate chip selected, its field shown, « 80 » typed into it; nothing recorded.
+//   step6 R836         -> step6: the same Friday item picked by a POINTER TAP behind R806's in-window guard, the menu
+//                      closed, nothing adopted, nothing written.
+//   NEW, R1352         step0: each of the four tabs selected and its own screen shown; the forecast opened, the
+//                      simulator opened, back, back; Calendrier and Relevé reached again.
 //
-// R807/R809's DISCIPLINE: EVERY WAIT goes through waitBounded (BoundedWait.kt), so a condition that stays false fails
-// at TIMEOUT naming itself; a MARK on both sides of every call that can wait without a bound; each test armed with the
-// R793-shaped 120 s watchdog. This file is NOT on IosTestRawWaitUntilFenceTest's allowlist: it calls no raw wait.
+// R807/R809's DISCIPLINE, kept: EVERY WAIT goes through waitBounded (BoundedWait.kt), a MARK on both sides of every
+// call that can wait without a bound, each test armed with the R793-shaped 120 s watchdog. This file is NOT on
+// IosTestRawWaitUntilFenceTest's allowlist: it calls no raw wait.
 //
-// NAMED TO SORT AFTER EVERY OTHER PILOT CLASS, and its tests step1..step5 from the least to the most at risk
-// (Disclosure: Buttons; Comparison: a text field; Rythme: toggles; Prevision: the rail and glyphs; Simulation: the
-// popup), so that if anything here ever hangs, every other class of the run has already been reached.
+// NAMED TO SORT AFTER EVERY OTHER PILOT CLASS, so that if anything here ever hangs, every other class of the run has
+// already been reached.
 
-private const val TAX_YEAR = 2026
-private const val TIMEOUT = 10_000L
-private const val NOW = "2026-06-15T10:00:00Z"
+private const val TIMEOUT = 20_000L
 private const val EMPLOYER_RATE_TYPED = "41,25"
 private const val TARGET_RATE_TYPED = "80"
-private val SETTINGS = Settings("GE", 100, "SIMPLIFIED240", null, "DAY", null)
+private const val ACCOUNT = "this-install"
+private const val COMPARED_YEAR = 2025
 
 /** Tuesday and Thursday at home, the other weekdays in Switzerland. */
 private val TUE_THU_HOME =
     WeeklyRhythm(RhythmKind.SUISSE, RhythmKind.DOMICILE, RhythmKind.SUISSE, RhythmKind.DOMICILE, RhythmKind.SUISSE)
 
-/** The rhythm in memory: every save recorded, in order; it re-emits what it saved, as Room does. */
-private class RecordingRhythms(initial: WeeklyRhythm) : RhythmRepository {
-    val source = MutableStateFlow(initial)
-    val saved = mutableListOf<WeeklyRhythm>()
-
-    override fun observe(): Flow<WeeklyRhythm> = source
-
-    override suspend fun save(rhythm: WeeklyRhythm) {
-        saved += rhythm
-        source.value = rhythm
-    }
-
-    override suspend fun clear() = Unit
-}
-
-/** The record in memory, read-only: the forecast reads it; a write would throw (R340). */
-private class ReadOnlyRecord(seed: List<EntryEntity>) : EntryRepository {
-    val rows = MutableStateFlow(seed)
-    var records = 0
-
-    override suspend fun record(command: RecordCommand): RecordResult {
-        records++
-        throw UnsupportedOperationException("a projection never records a day (R340)")
-    }
-
-    override fun observePending(): Flow<List<EntryEntity>> = MutableStateFlow(emptyList())
-
-    override fun observeAll(): Flow<List<EntryEntity>> = rows
-}
-
-/** What the hosts hand the screens' callbacks, counted. */
-private class Taps {
-    var allow = 0
-    var stayManual = 0
-    var viewDays = 0
-    var alert = 0
-    var testChange = 0
-    var adopt = 0
-}
-
-/** The controllers a host built, held so the test can read their state. */
-private class Held {
-    var forecast: ForecastController? = null
-    var simulation: SimulationController? = null
-}
-
-private fun homeRow(day: String) =
-    EntryEntity(
-        clientMutationId = "ios-$day",
-        dayDate = day,
-        portion = Portion.FULL,
-        kind = EntryKind.HOME,
-        absenceReason = null,
-        note = null,
-        provenance = Provenance.MANUAL,
-        detectedKind = null,
-        detectedAt = null,
-        clientClaimedAt = null,
-        serverId = null,
-        firstRecordedAt = null,
-        lastModifiedAt = null,
-        syncState = SyncState.SYNCED,
+/** The pilot's dossier, served for whichever year is asked (IosShellComparisonIosTest's server, R206). */
+private fun dossierServer() =
+    RecordingTransport(
+        route = { request, path ->
+            val year = yearOf(request)
+            if (request.method.name == "GET" && path == "/api/v1/dossier" && year != null) {
+                HttpResponse(200, FIXTURE_DOSSIER.replace("2026", year.toString()))
+            } else {
+                emptyYearAnswer(request, path)
+            }
+        },
+        answer = { method, path ->
+            when {
+                method == "GET" && path == "/api/v1/me" -> HttpResponse(200, SHELL_COMPLETE_ME)
+                else -> HttpResponse(200, "{}")
+            }
+        },
     )
 
-private val RECORDED = listOf("2026-01-05", "2026-01-06", "2026-02-02", "2026-03-02", "2026-04-07").map(::homeRow)
-
-/** The two shared forecast controllers over the fakes, on a fixed kotlin.time Clock at NOW - the one opt-in site. */
-@OptIn(ExperimentalTime::class) // KMP-DT R590: a fixed kotlin.time Clock for the controllers - on the allowlist.
-private fun controllers(
-    rhythms: RecordingRhythms,
-    record: ReadOnlyRecord,
-    scope: CoroutineScope,
-): Pair<ForecastController, SimulationController> {
-    val at = Instant.parse(NOW)
-    val clock =
-        object : Clock {
-            override fun now(): Instant = at
-        }
-    val store = InMemorySettingsStore(SETTINGS)
-    val forecast = ForecastController(rhythms, record, store, TAX_YEAR, clock, scope)
-    val simulation = SimulationController(rhythms, record, store, TAX_YEAR, clock, scope)
-    return forecast to simulation
-}
-
-/** MainActivity's ForecastRoute.RYTHME branch, reduced to its calls. */
-@Composable
-private fun RythmeHost(
-    rhythms: RecordingRhythms,
-    record: ReadOnlyRecord,
-    held: Held,
-) {
-    val scope = rememberCoroutineScope()
-    val forecast = remember { controllers(rhythms, record, scope).first.also { held.forecast = it } }
-    val state by forecast.state.collectAsState()
-    FrontierTheme { RythmeScreen(state = state, actions = RythmeActions(onSetDay = forecast::setDay)) }
-}
-
-/** MainActivity's ForecastRoute.PREVISION branch, reduced: the alert offer shown (the alert is off). */
-@Composable
-private fun PrevisionHost(
-    rhythms: RecordingRhythms,
-    record: ReadOnlyRecord,
-    held: Held,
-    taps: Taps,
-) {
-    val scope = rememberCoroutineScope()
-    val forecast = remember { controllers(rhythms, record, scope).first.also { held.forecast = it } }
-    val state by forecast.state.collectAsState()
-    FrontierTheme {
-        PrevisionScreen(
-            state = state,
-            actions = PrevisionActions(onTestChange = { taps.testChange++ }, onEnableAlert = { taps.alert++ }),
-            alertEnabled = false,
+/** A signed-in, onboarded phone over the dossier server, its rhythm seeded Tuesday and Thursday at home. */
+private fun signedInWithRhythm(): ShellRig {
+    val rig =
+        ShellRig(
+            marked = true,
+            pair = SHELL_PAIR,
+            pendingAddress = null,
+            account = ACCOUNT,
+            settings = SHELL_COMPLETE_SETTINGS,
+            transport = dossierServer(),
         )
-    }
+    runBlocking { rig.shell.rhythmRepository.save(TUE_THU_HOME) }
+    return rig
 }
 
-/** MainActivity's ForecastRoute.SIMULATION branch, reduced: the scenario and the inputs go to the controller. */
-@Composable
-private fun SimulationHost(
-    rhythms: RecordingRhythms,
-    record: ReadOnlyRecord,
-    held: Held,
-    taps: Taps,
-) {
-    val scope = rememberCoroutineScope()
-    val simulation = remember { controllers(rhythms, record, scope).second.also { held.simulation = it } }
-    val state by simulation.state.collectAsState()
-    FrontierTheme {
-        SimulationScreen(
-            state = state,
-            actions =
-                SimulationActions(
-                    onSelectScenario = simulation::selectScenario,
-                    onInputsChange = simulation::updateInputs,
-                    onAdopt = { taps.adopt++ },
-                ),
-        )
-    }
-}
+private fun ShellRig.rhythmNow(): WeeklyRhythm = runBlocking { shell.rhythmRepository.observe().first() }
 
-/** The comparison as MainActivity builds it from the Releve's loaded document - a completed year, a typed figure. */
+private fun ShellRig.recordedDays(): Int = runBlocking { database.entryDao().all() }.size
+
+/** The comparison as MainTabs builds it from the Relevé's loaded document for [COMPARED_YEAR] (R181: derived). */
 private fun comparisonFor(employerRate: Double?): ComparisonView {
-    val document = parseDossier(FIXTURE_DOSSIER)
+    val document = parseDossier(FIXTURE_DOSSIER.replace("2026", COMPARED_YEAR.toString()))
     val rules = ruleSetFor(document.taxYear)
     return buildComparison(
         document = document,
@@ -281,20 +180,22 @@ private fun comparisonFor(employerRate: Double?): ComparisonView {
     )
 }
 
-/** MainActivity's comparison overlay, reduced: the typed figure held, parsed, and the comparison rebuilt from it. */
-@Composable
-private fun ComparisonHost(taps: Taps) {
-    var employerInput by remember { mutableStateOf("") }
-    val employerRate = parseEmployerRate(employerInput)
-    val view = remember(employerRate) { comparisonFor(employerRate) }
-    FrontierTheme {
-        ComparisonScreen(
-            view = view,
-            employerInput = employerInput,
-            employerRate = employerRate,
-            actions = ComparisonActions(onInputChange = { employerInput = it }, onViewDays = { taps.viewDays++ }),
-        )
-    }
+/**
+ * The forecast the shell's own controller computes, derived by the SAME shared controller over the shell's stores, at
+ * the shell's clock (R181: the figures are never typed) - the one ExperimentalTime opt-in site of this file.
+ */
+@OptIn(ExperimentalTime::class) // KMP-DT R590: the shell's fixed kotlin.time Clock, for the derived forecast.
+private fun derivedForecast(
+    rig: ShellRig,
+    scope: CoroutineScope,
+): ForecastController {
+    val at = Instant.parse(SHELL_NOW)
+    val clock =
+        object : Clock {
+            override fun now(): Instant = at
+        }
+    val shell = rig.shell
+    return ForecastController(shell.rhythmRepository, shell.repository, rig.settings, shell.taxYear, clock, scope)
 }
 
 /** The watchdog's view of the test (R793's shape). Not "Progress": a class name is the package's, private or not. */
@@ -387,6 +288,40 @@ class SimulationForecastScreensIosTest {
         mark("tap $what: performClick - returned")
     }
 
+    /** A bottom-bar tab, waited for and tapped. */
+    private fun ComposeUiTest.selectTab(label: String) {
+        waitMarked("the bottom bar's $label") { count(hasText(label) and hasClickAction()) > 0 }
+        tapMarked("the tab $label", hasText(label) and hasClickAction())
+    }
+
+    /** An overlay's on-screen back arrow (the forecast screens and the comparison carry LicencesCopy.BACK). */
+    private fun SemanticsNodeInteractionsProvider.backMarked(what: String) =
+        tapMarked(what, hasContentDescription(LicencesCopy.BACK) and hasClickAction())
+
+    /** Paramètres -> « Votre rythme habituel » -> the Rythme overlay, through the shell. */
+    private fun ComposeUiTest.openRythme() {
+        selectTab(NavCopy.PARAMETRES)
+        waitMarked("Paramètres' rhythm row") { count(hasText(RythmeCopy.TITLE) and hasClickAction()) > 0 }
+        tapMarked("the rhythm row", hasText(RythmeCopy.TITLE) and hasClickAction())
+        waitMarked("the Rythme overlay") { shows(RythmeCopy.weeklyDomicile(2)) }
+    }
+
+    /** ... -> « Voir ma prévision » -> Prévision, with a projection drawn. */
+    private fun ComposeUiTest.openPrevision() {
+        openRythme()
+        tapMarked("Voir ma prévision", hasText(RythmeCopy.VIEW_FORECAST) and hasClickAction())
+        waitMarked("Prévision, a projection drawn") { shows(PrevisionCopy.TITLE) }
+    }
+
+    /** ... -> « Tester un changement » -> the simulator. */
+    private fun ComposeUiTest.openSimulation() {
+        openPrevision()
+        tapMarked("Tester un changement", hasText(PrevisionCopy.TEST_CHANGE) and hasClickAction())
+        waitMarked("the simulator") {
+            shows(SimulationCopy.TITLE) && shows(RythmeCopy.DAYS[DayOfWeek.MONDAY.ordinal])
+        }
+    }
+
     /**
      * A popup item PICKED by its own OnClick semantics action (see the header): its geometry recorded in a mark, its
      * having area in the window asserted, then the action - which runs the item's onClick, the one VoiceOver offers.
@@ -438,46 +373,102 @@ class SimulationForecastScreensIosTest {
         mark("type $what: performTextReplacement - returned")
     }
 
+    private fun SemanticsNodeInteractionsProvider.calendarShown(): Boolean =
+        count(hasContentDescription(CalendarCopy.PREVIOUS_MONTH)) > 0
+
+    private fun SemanticsNodeInteractionsProvider.parametresShown(): Boolean =
+        count(hasText(ParametresCopy.SIGN_OUT) and hasClickAction()) > 0
+
+    @Test
+    fun step0EachTabThenTheForecastTheSimulatorBackAndBackThroughMainTabs() =
+        watched("R1352 tabs") {
+            runComposeUiTest {
+                val rig = signedInWithRhythm()
+                try {
+                    setShellContent(rig)
+                    waitMarked("R1352: Aujourd'hui, where a signed-in launch opens") { shows(AujourdhuiCopy.QUESTION) }
+                    selectTab(NavCopy.CALENDRIER)
+                    waitMarked("R1352: Calendrier selected - its month arrows") { calendarShown() }
+                    selectTab(NavCopy.RELEVE)
+                    waitMarked("R1352: Relevé selected - the document's title") { shows(ReleveCopy.TITLE) }
+                    selectTab(NavCopy.PARAMETRES)
+                    waitMarked("R1352: Paramètres selected - its sign-out row") { parametresShown() }
+                    selectTab(NavCopy.AUJOURDHUI)
+                    waitMarked("R1352: back on Aujourd'hui") { shows(AujourdhuiCopy.QUESTION) }
+
+                    openSimulation()
+                    backMarked("the simulator's back arrow")
+                    waitMarked("R1352: back from the simulator is Prévision (AN-SIM)") {
+                        shows(PrevisionCopy.TITLE) && !shows(SimulationCopy.TITLE)
+                    }
+                    backMarked("Prévision's back arrow")
+                    waitMarked("R1352: back from Prévision closes the overlay onto the tab beneath (Paramètres)") {
+                        !shows(PrevisionCopy.TITLE) && parametresShown()
+                    }
+                    selectTab(NavCopy.CALENDRIER)
+                    waitMarked("R1352: Calendrier reached after the overlays") { calendarShown() }
+                    selectTab(NavCopy.RELEVE)
+                    waitMarked("R1352: Relevé reached after the overlays") { shows(ReleveCopy.TITLE) }
+                    assertEquals(0, rig.recordedDays(), "moving between tabs and overlays records nothing (R340)")
+                } finally {
+                    rig.close()
+                }
+            }
+        }
+
     @Test
     fun step1TheDisclosureShowsItsTwoEqualChoicesAndEachAnswers() =
         watched("disclosure") {
             runComposeUiTest {
-                val taps = Taps()
+                var allow = 0
+                var stayManual = 0
                 mark("setContent - calling")
                 setContent {
                     FrontierTheme {
-                        DisclosureScreen(onAllow = { taps.allow++ }, onStayManual = { taps.stayManual++ })
+                        DisclosureScreen(onAllow = { allow++ }, onStayManual = { stayManual++ })
                     }
                 }
                 mark("setContent - returned")
                 waitMarked("the disclosure shown") { shows(DisclosureCopy.TITLE) }
                 assertTrue(shows(DisclosureCopy.WHAT_IS_KEPT), "the disclosure says what is kept")
                 tapMarked("ALLOW", hasText(DisclosureCopy.ALLOW) and hasClickAction())
-                waitMarked("allow answered") { taps.allow == 1 }
+                waitMarked("allow answered") { allow == 1 }
                 tapMarked("STAY MANUAL", hasText(DisclosureCopy.STAY_MANUAL) and hasClickAction())
-                waitMarked("stay manual answered") { taps.stayManual == 1 }
-                assertEquals(1 to 1, taps.allow to taps.stayManual)
+                waitMarked("stay manual answered") { stayManual == 1 }
+                assertEquals(1 to 1, allow to stayManual)
             }
         }
 
     @Test
-    fun step2TheComparisonTakesATypedFigureShowsTheGapAndACauseOpensTheDays() =
+    fun step2TheComparisonThroughTheShellTakesATypedFigureShowsTheGapAndACauseOpensTheCalendar() =
         watched("comparison") {
             runComposeUiTest {
-                val taps = Taps()
-                mark("setContent - calling")
-                setContent { ComparisonHost(taps) }
-                mark("setContent - returned")
-                waitMarked("the comparison shown") { shows(ComparisonCopy.TITLE) }
-                val before = comparisonFor(null)
-                assertTrue(shows(ComparisonCopy.employerRateLabel(before.year)), "the attestation field's label")
-                typeMarked("the employer's figure", EMPLOYER_RATE_TYPED)
-                val gap = assertNotNull(comparisonFor(parseEmployerRate(EMPLOYER_RATE_TYPED)).gap, "a gap")
-                waitMarked("the gap shown") { shows(ComparisonCopy.gapHeadline(gap.points)) }
-                mark("the typed figure gave the gap")
-                assertTrue(shows(ComparisonCopy.CAUSE_MISSIONS_TITLE), "the fixture logs missions: a cause row")
-                tapMarked("the missions cause", hasText(ComparisonCopy.CAUSE_MISSIONS_TITLE) and hasClickAction())
-                waitMarked("the cause opened the days") { taps.viewDays == 1 }
+                val rig = signedInWithRhythm()
+                try {
+                    setShellContent(rig)
+                    selectTab(NavCopy.RELEVE)
+                    val year = ReleveCopy.yearLabel(COMPARED_YEAR)
+                    waitMarked("the Relevé offers $COMPARED_YEAR") { count(hasText(year) and hasClickAction()) > 0 }
+                    tapMarked("the year $COMPARED_YEAR", hasText(year) and hasClickAction())
+                    waitMarked("the Relevé shows $COMPARED_YEAR") { count(hasText(year) and isSelected()) > 0 }
+                    waitForIdle()
+                    tapMarked("Comparer avec mon employeur", hasText(ReleveCopy.COMPARE_EMPLOYER) and hasClickAction())
+                    waitMarked("the comparison shown") { shows(ComparisonCopy.TITLE) }
+                    assertTrue(
+                        shows(ComparisonCopy.employerRateLabel(COMPARED_YEAR)),
+                        "the attestation field's label",
+                    )
+                    typeMarked("the employer's figure", EMPLOYER_RATE_TYPED)
+                    val gap = assertNotNull(comparisonFor(parseEmployerRate(EMPLOYER_RATE_TYPED)).gap, "a gap")
+                    waitMarked("the gap shown") { shows(ComparisonCopy.gapHeadline(gap.points)) }
+                    assertTrue(shows(ComparisonCopy.CAUSE_MISSIONS_TITLE), "the fixture logs missions: a cause row")
+                    tapMarked("the missions cause", hasText(ComparisonCopy.CAUSE_MISSIONS_TITLE) and hasClickAction())
+                    waitMarked("the cause closed the comparison onto the Calendrier (MainTabs' onViewDays)") {
+                        !shows(ComparisonCopy.TITLE) && calendarShown()
+                    }
+                } finally {
+                    rig.close()
+                }
             }
         }
 
@@ -485,133 +476,118 @@ class SimulationForecastScreensIosTest {
     fun step3TheRythmeShowsTheRhythmAndATapStoresTheDay() =
         watched("rythme") {
             runComposeUiTest {
-                val rhythms = RecordingRhythms(TUE_THU_HOME)
-                val record = ReadOnlyRecord(RECORDED)
-                val held = Held()
-                mark("setContent - calling")
-                setContent { RythmeHost(rhythms, record, held) }
-                mark("setContent - returned")
-                waitMarked("the rhythm shown") { shows(RythmeCopy.TITLE) && shows(RythmeCopy.weeklyDomicile(2)) }
-                val homeToggle = hasText(RythmeCopy.DOMICILE) and hasClickAction()
-                assertEquals(2, count(homeToggle and isSelected()), "Tuesday and Thursday shown at home")
-                tapMarked("Lundi: Domicile", homeToggle)
-                waitMarked("Monday stored at home") { rhythms.saved.size == 1 }
-                val monday = TUE_THU_HOME.copy(monday = RhythmKind.DOMICILE)
-                assertEquals(listOf(monday), rhythms.saved, "one save, Monday's field")
-                waitMarked("the helper line follows") { shows(RythmeCopy.weeklyDomicile(3)) }
-                assertEquals(3, count(homeToggle and isSelected()))
-                assertEquals(0, record.records, "nothing recorded (R340)")
-                val forecast = assertNotNull(held.forecast)
-                assertEquals(
-                    listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.THURSDAY),
-                    forecast.state.value.rhythmDays.filterValues { it == RhythmChoice.DOMICILE }.keys
-                        .sorted(),
-                )
+                val rig = signedInWithRhythm()
+                try {
+                    setShellContent(rig)
+                    openRythme()
+                    assertTrue(shows(RythmeCopy.TITLE), "the Rythme overlay's title")
+                    val homeToggle = hasText(RythmeCopy.DOMICILE) and hasClickAction()
+                    assertEquals(2, count(homeToggle and isSelected()), "Tuesday and Thursday shown at home")
+                    tapMarked("Lundi: Domicile", homeToggle)
+                    val monday = TUE_THU_HOME.copy(monday = RhythmKind.DOMICILE)
+                    waitMarked("Monday stored at home, in the iOS database") { rig.rhythmNow() == monday }
+                    waitMarked("the helper line follows") { shows(RythmeCopy.weeklyDomicile(3)) }
+                    assertEquals(3, count(homeToggle and isSelected()))
+                    assertEquals(0, rig.recordedDays(), "nothing recorded (R340)")
+                } finally {
+                    rig.close()
+                }
             }
         }
 
     @Test
-    fun step4ThePrevisionShowsTheFixtureForecastAndItsTwoActionsAnswer() =
+    fun step4ThePrevisionShowsTheDerivedForecastAndOpensTheSimulator() =
         watched("prevision") {
             runComposeUiTest {
-                val rhythms = RecordingRhythms(TUE_THU_HOME)
-                val record = ReadOnlyRecord(RECORDED)
-                val held = Held()
-                val taps = Taps()
-                mark("setContent - calling")
-                setContent { PrevisionHost(rhythms, record, held, taps) }
-                mark("setContent - returned")
-                waitMarked("the projection shown") {
-                    shows(PrevisionCopy.TITLE) && held.forecast?.state?.value?.projection != null
+                val rig = signedInWithRhythm()
+                val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+                try {
+                    val derived = derivedForecast(rig, scope)
+                    setShellContent(rig)
+                    openPrevision()
+                    waitMarked("the derived forecast computed") { derived.state.value.projection != null }
+                    val projection = assertNotNull(derived.state.value.projection)
+                    waitMarked("the two figures shown") {
+                        shows(formatDeclarableRate(projection.projectedRate)) &&
+                            shows(formatDeclarableRate(projection.currentRate))
+                    }
+                    mark("the forecast shown: ${formatDeclarableRate(projection.projectedRate)}")
+                    assertTrue(shows(PrevisionCopy.PROJECTION_BADGE), "the projection chip")
+                    assertTrue(shows(PrevisionCopy.R340_NOTE), "the lock line (Glyph.LOCK)")
+                    assertFalse(shows(PrevisionCopy.ALERT_OFFER), "iOS Ruling 3 Q4: no alert offer on iOS")
+                    tapMarked("Tester un changement", hasText(PrevisionCopy.TEST_CHANGE) and hasClickAction())
+                    waitMarked("the simulator opened") { shows(SimulationCopy.TITLE) }
+                    assertEquals(TUE_THU_HOME to 0, rig.rhythmNow() to rig.recordedDays(), "showing writes nothing")
+                } finally {
+                    scope.cancel()
+                    rig.close()
                 }
-                val projection = assertNotNull(assertNotNull(held.forecast).state.value.projection)
-                waitMarked("the two figures shown") {
-                    shows(formatDeclarableRate(projection.projectedRate)) &&
-                        shows(formatDeclarableRate(projection.currentRate))
-                }
-                mark("the fixture forecast shown: ${formatDeclarableRate(projection.projectedRate)}")
-                assertTrue(shows(PrevisionCopy.PROJECTION_BADGE), "the projection chip")
-                assertTrue(shows(PrevisionCopy.R340_NOTE), "the lock line (Glyph.LOCK)")
-                tapMarked("the alert offer", hasText(PrevisionCopy.ALERT_OFFER) and hasClickAction())
-                waitMarked("the alert offer answered") { taps.alert == 1 }
-                tapMarked("Tester un changement", hasText(PrevisionCopy.TEST_CHANGE) and hasClickAction())
-                waitMarked("the simulator asked for") { taps.testChange == 1 }
-                assertEquals(0 to 0, rhythms.saved.size to record.records, "showing a projection writes nothing")
             }
         }
 
     @Test
-    fun step5TheSimulationsDropdownOpensAWeekdayIsPickedAndTheRateIsTyped() =
+    fun step5TheSimulationsDropdownOpensAWeekdayIsPickedAdoptedAndTheRateIsTyped() =
         watched("simulation") {
             runComposeUiTest {
-                val rhythms = RecordingRhythms(TUE_THU_HOME)
-                val record = ReadOnlyRecord(RECORDED)
-                val held = Held()
-                val taps = Taps()
-                mark("setContent - calling")
-                setContent { SimulationHost(rhythms, record, held, taps) }
-                mark("setContent - returned")
-                waitMarked("the simulator shown") {
-                    shows(SimulationCopy.TITLE) && held.simulation?.state?.value?.view != null
+                val rig = signedInWithRhythm()
+                try {
+                    setShellContent(rig)
+                    openSimulation()
+                    pickFriday()
+                    tapMarked("ADOPT", hasText(SimulationCopy.ADOPT) and hasClickAction())
+                    val friday = TUE_THU_HOME.copy(friday = RhythmKind.DOMICILE)
+                    waitMarked("adopted: Friday at home in the iOS database, and back on Prévision (AN-SIM)") {
+                        rig.rhythmNow() == friday && shows(PrevisionCopy.TITLE) && !shows(SimulationCopy.TITLE)
+                    }
+                    tapMarked("Tester un changement", hasText(PrevisionCopy.TEST_CHANGE) and hasClickAction())
+                    waitMarked("the simulator again") { shows(SimulationCopy.TITLE) }
+                    tapMarked("the rate chip", hasText(SimulationCopy.SCENARIO_RATE) and hasClickAction())
+                    waitMarked("the rate scenario shown") { shows(SimulationCopy.RATE_LABEL) }
+                    assertEquals(1, count(hasText(SimulationCopy.SCENARIO_RATE) and isSelected()), "the chip selected")
+                    typeMarked("the new rate", TARGET_RATE_TYPED)
+                    waitMarked("the rate reached the field") {
+                        count(hasSetTextAction() and hasText(TARGET_RATE_TYPED)) > 0
+                    }
+                    assertEquals(0, rig.recordedDays(), "simulating records nothing (R340)")
+                } finally {
+                    rig.close()
                 }
-                val simulation = assertNotNull(held.simulation)
-                assertEquals(DayOfWeek.MONDAY, simulation.state.value.inputs.extraWeekday, "seeded: Monday")
-                pickFriday(simulation)
-                tapMarked("ADOPT", hasText(SimulationCopy.ADOPT) and hasClickAction())
-                waitMarked("adopt answered") { taps.adopt == 1 }
-                tapMarked("the rate chip", hasText(SimulationCopy.SCENARIO_RATE) and hasClickAction())
-                waitMarked("the rate scenario shown") {
-                    simulation.state.value.scenario == SimScenario.RATE && shows(SimulationCopy.RATE_LABEL)
-                }
-                assertEquals(1, count(hasText(SimulationCopy.SCENARIO_RATE) and isSelected()), "the chip selected")
-                typeMarked("the new rate", TARGET_RATE_TYPED)
-                waitMarked("the rate reached the controller") {
-                    simulation.state.value.inputs.targetRate == TARGET_RATE_TYPED
-                }
-                assertNotNull(simulation.state.value.view, "the simulated view")
-                assertEquals(0 to 0, rhythms.saved.size to record.records, "simulating writes nothing (R340)")
             }
         }
 
     /**
-     * IOS-2e R836: the same DropdownMenu, its Friday item picked by a POINTER TAP behind R806's in-window guard (the
-     * geometry IOS-2d measured makes this likely to land; that is what this run shows or refutes). step5's OnClick
-     * pick is unchanged. Every assertion and every wait names R836, so a red run is readable from its first line.
+     * IOS-2e R836: the same DropdownMenu, its Friday item picked by a POINTER TAP behind R806's in-window guard, now
+     * inside the real shell. Every assertion and every wait names R836, so a red run is readable from its first line.
      */
     @Test
     fun step6TheSimulationsDropdownItemIsPickedByAPointerTap() =
         watched("R836-pointer-tap") {
             runComposeUiTest {
-                val rhythms = RecordingRhythms(TUE_THU_HOME)
-                val record = ReadOnlyRecord(RECORDED)
-                val held = Held()
-                val taps = Taps()
-                mark("setContent - calling")
-                setContent { SimulationHost(rhythms, record, held, taps) }
-                mark("setContent - returned")
-                waitMarked("$R836: the simulator shown") {
-                    shows(SimulationCopy.TITLE) && held.simulation?.state?.value?.view != null
+                val rig = signedInWithRhythm()
+                try {
+                    setShellContent(rig)
+                    openSimulation()
+                    val monday = RythmeCopy.DAYS[DayOfWeek.MONDAY.ordinal]
+                    val wednesday = RythmeCopy.DAYS[DayOfWeek.WEDNESDAY.ordinal]
+                    val friday = RythmeCopy.DAYS[DayOfWeek.FRIDAY.ordinal]
+                    tapMarked("the weekday field", hasText(monday) and hasClickAction())
+                    waitMarked("$R836: the DropdownMenu open") { count(hasText(friday) and hasClickAction()) == 1 }
+                    pointerTapMarked("the Friday item", hasText(friday) and hasClickAction())
+                    waitMarked("$R836: Friday chosen by the pointer tap and the menu closed") {
+                        !shows(wednesday) && count(hasText(friday) and hasClickAction()) == 1 &&
+                            count(hasText(monday) and hasClickAction()) == 0
+                    }
+                    mark("$R836: the DropdownMenuItem PICKED by a pointer tap: Friday")
+                    assertEquals(TUE_THU_HOME, rig.rhythmNow(), "$R836: nothing adopted")
+                    assertEquals(0, rig.recordedDays(), "$R836: nothing written (R340)")
+                } finally {
+                    rig.close()
                 }
-                val simulation = assertNotNull(held.simulation, "$R836: the controller")
-                assertEquals(DayOfWeek.MONDAY, simulation.state.value.inputs.extraWeekday, "$R836: seeded Monday")
-                val monday = RythmeCopy.DAYS[DayOfWeek.MONDAY.ordinal]
-                val wednesday = RythmeCopy.DAYS[DayOfWeek.WEDNESDAY.ordinal]
-                val friday = RythmeCopy.DAYS[DayOfWeek.FRIDAY.ordinal]
-                tapMarked("the weekday field", hasText(monday) and hasClickAction())
-                waitMarked("$R836: the DropdownMenu open") { count(hasText(friday) and hasClickAction()) == 1 }
-                pointerTapMarked("the Friday item", hasText(friday) and hasClickAction())
-                waitMarked("$R836: Friday chosen by the pointer tap and the menu closed") {
-                    simulation.state.value.inputs.extraWeekday == DayOfWeek.FRIDAY && !shows(wednesday)
-                }
-                mark("$R836: the DropdownMenuItem PICKED by a pointer tap: Friday")
-                assertEquals(DayOfWeek.FRIDAY, simulation.state.value.inputs.extraWeekday, "$R836: the pick landed")
-                assertEquals(0, taps.adopt, "$R836: nothing adopted")
-                assertEquals(0 to 0, rhythms.saved.size to record.records, "$R836: nothing written (R340)")
             }
         }
 
     /** R818: the DropdownMenu OPENED, its items asserted, one PICKED by its OnClick action, the choice reaching it. */
-    private fun ComposeUiTest.pickFriday(simulation: SimulationController) {
+    private fun ComposeUiTest.pickFriday() {
         val monday = RythmeCopy.DAYS[DayOfWeek.MONDAY.ordinal]
         val wednesday = RythmeCopy.DAYS[DayOfWeek.WEDNESDAY.ordinal]
         val friday = RythmeCopy.DAYS[DayOfWeek.FRIDAY.ordinal]
@@ -625,9 +601,9 @@ class SimulationForecastScreensIosTest {
         assertTrue(home.none { count(hasText(it) and hasClickAction()) > 0 }, "a home day is never offered")
         pickMarked("the Friday item", hasText(friday) and hasClickAction())
         waitMarked("Friday chosen and the menu closed") {
-            simulation.state.value.inputs.extraWeekday == DayOfWeek.FRIDAY && !shows(wednesday)
+            !shows(wednesday) && count(hasText(friday) and hasClickAction()) == 1 &&
+                count(hasText(monday) and hasClickAction()) == 0
         }
         mark("the DropdownMenuItem PICKED: Friday")
-        assertTrue(simulation.state.value.canAdopt, "an extra weekday can be adopted")
     }
 }
