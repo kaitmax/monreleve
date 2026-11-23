@@ -33,6 +33,13 @@ options:
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
+  # IOS-POLISH R1403 (REPORT-IOS-AUDIT Q5). THE BUNDLE'S REGION IS FRENCH, SET HERE ONCE (R206). XcodeGen writes this as
+  # the project's developmentRegion; Xcode resolves the generated Info.plist's CFBundleDevelopmentRegion,
+  # "$(DEVELOPMENT_LANGUAGE)", from it. Left unset it was XcodeGen's default, "en" (ios-app run 45243674835), and the
+  # share sheet the app presents rendered in English. The bundle has no .lproj, so this is the language the system
+  # falls back to (REPORT-IOS-POLISH.txt R1403/R1404). ios-app.yml's R1353 step refuses any other value, Debug and
+  # Release; project-walk.yml includes this file whole, so the walk's build inherits it.
+  developmentLanguage: fr
 
 settings:
   base:
