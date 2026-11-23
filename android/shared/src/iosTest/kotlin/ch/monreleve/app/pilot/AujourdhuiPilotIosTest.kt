@@ -90,9 +90,10 @@ class AujourdhuiPilotIosTest {
     @OptIn(ExperimentalForeignApi::class)
     @Test
     fun theScreenComposesInsideAViewControllerInAWindow() {
-        // A test binary has no Info.plist, so this hosts the composable with Compose's strict check off. IOS-AUDIT R1350:
-        // the pilot's own view controller (Part B's entry point) is deleted - nothing probe-only ships - so it is no
-        // longer referenced here; what this test proves (the screen composes in a UIViewController in a window) stays.
+        // A test binary has no Info.plist, so this hosts the composable with Compose's strict check off.
+        // IOS-AUDIT R1350: the pilot's own view controller (Part B's entry point) is deleted - nothing
+        // probe-only ships - so it is no longer referenced here; what this test proves (the screen composes
+        // in a UIViewController in a window) stays.
         var composed = false
         val controller =
             ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
