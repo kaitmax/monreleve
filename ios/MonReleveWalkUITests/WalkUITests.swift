@@ -3,9 +3,9 @@
 // IOS-WALK (I2) R1344, IOS-WALK-2 R1382-R1385. THE WALK, DRIVEN THROUGH THE REAL APP ON THE SIMULATOR (XCUITest)
 // AGAINST THE RUNNER'S OWN THROWAWAY SERVER. TWO TRACKS, TWO xcodebuild INVOCATIONS (ios-walk.yml), the app uninstalled
 // and reinstalled between them so each starts from a first launch:
-//   TRACK 1 - THE NEW ACCOUNT (test01, test02, test03): sign-in and the whole onboarding. Run 45095829204 was R1382's
-//             ONE diagnostic at the canton step (the visible set and a screenshot, ONE drag, both again); its finding
-//             is the scrolling in reveal() below.
+//   TRACK 1 - THE NEW ACCOUNT (test01, test02, test03): sign-in and onboarding to the canton step, where it is STOPPED
+//             under R1387 (runs 45099570712 and 45104554339 failed it identically). Run 45095829204 was R1382's ONE
+//             diagnostic there (the visible set and a screenshot, ONE drag, both again); its finding is reveal()'s gesture.
 //   TRACK 2 - THE EXISTING ACCOUNT (test01, test21-test34): account A was made through the API by the helper (settings
 //             by PATCH /api/v1/me, a prior-year and a current-year day by POST /api/v1/entries); the app signs in as A
 //             and must resolve straight to the main shell (StartupDecider: a complete /me is Main), then walks R1344's
@@ -32,6 +32,19 @@ final class WalkUITests: XCTestCase {
 
     private func foreground() {
         if app.state != .runningForeground { app.activate() }
+        closeLeftoverSheet()
+    }
+
+    /// Run 45104554339: a calendar sheet left open by a failed step hid every later screen (a modal sheet is the whole
+    /// accessibility tree while it is up), and six steps read "no element". A step now starts by closing one: the
+    /// sheet's own "Annuler", brought on screen first.
+    private func closeLeftoverSheet() {
+        guard app.labelled(L.sheetQuestion).exists else { return }
+        Walk.note("a sheet was left open (\"\(L.sheetQuestion)\"): closed with \"\(L.sheetCancel)\" before this step")
+        if let cancel = lastLabelled(L.sheetCancel), reveal(cancel, L.sheetCancel, "close-sheet", within: 2) {
+            press(cancel)
+        }
+        Thread.sleep(forTimeInterval: 1.5)
     }
 
     /// Whether [element] is ON SCREEN: XCUITest calls it hittable, or it reports a real frame of its own. Compose clips a
@@ -277,11 +290,16 @@ final class WalkUITests: XCTestCase {
                 shotAndContinue("03-name")
             } else if app.labelled(L.onbCantonTitle).exists {
                 seen.append("canton")
+                // R1387: STOPPED. Runs 45099570712 and 45104554339 failed this step identically - twenty diagnosed drags,
+                // Geneve at a zero frame after every one - so no third run drags here. Recorded, never retried.
                 let geneve = app.labelled(L.cantonGeneve)
-                Walk.note("03 canton: \"\(L.cantonGeneve)\" frame before=\(geneve.exists ? "\(geneve.frame)" : "-")")
-                tapLabel(L.cantonGeneve, "03-canton")
-                Walk.note("03 canton: \"\(L.cantonGeneve)\" tapped at frame=\(geneve.exists ? "\(geneve.frame)" : "-")")
-                shotAndContinue("03-canton")
+                Walk.note("03 canton: \"\(L.cantonGeneve)\" frame=\(geneve.exists ? "\(geneve.frame)" : "-")")
+                Walk.tree("03-canton-stopped", app)
+                Walk.shot("03-canton-stopped")
+                Walk.note("03 TRACK 1 STOPPED at the canton step (R1387: two identical failures, runs 45099570712 and "
+                    + "45104554339; no third). Screens: \(seen.joined(separator: " > "))")
+                XCTFail("R1387: stopped at the canton step")
+                return
             } else if app.labelled(L.onbRateTitle).exists {
                 seen.append("rate")
                 tapLabel(L.onbRate100, "03-rate")
@@ -527,7 +545,11 @@ final class WalkUITests: XCTestCase {
             }
             press(option)
             Thread.sleep(forTimeInterval: 0.5)
-            if let save = lastLabelled(L.sheetSave) { press(save) }
+            // Run 45104554339: the sheet opens half-expanded and its "Enregistrer" is below the screen at a zero frame;
+            // the diagnosed drag, started inside the sheet, brings it on screen.
+            if let save = lastLabelled(L.sheetSave), reveal(save, L.sheetSave, "24-save-\(pass)", within: 2) {
+                press(save)
+            }
             Thread.sleep(forTimeInterval: 2.5)
             Walk.note("24 pass \(pass): chose \"\(choice)\"; day \(day) after: \"\(dayCell(day).label)\"")
             Walk.shot("24-after-\(pass)")
@@ -722,9 +744,33 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
         Walk.tree("\(step)-signout-dialog", app)
         Walk.shot("\(step)-signout-dialog")
-        if let confirm = lastLabelled(L.signOut) { press(confirm) }
-        let out = app.labelled(L.welcomeStart).waitForExistence(timeout: 30)
-            || app.labelled(L.signInSubmit).waitForExistence(timeout: 5)
+        // The dialog's confirm comes AFTER the row in the tree (run 45104554339: {{192,510},{145,40}}).
+        if let confirm = lastLabelled(L.signOut) {
+            Walk.note("\(step) the dialog's \"\(L.signOut)\" at \(confirm.frame), hittable=\(confirm.isHittable)")
+            press(confirm)
+        }
+        var out = false
+        for second in 0..<35 {
+            if app.labelled(L.welcomeStart).exists || app.labelled(L.signInSubmit).exists { out = true; break }
+            // Run 45104554339 reached neither in 35 s and recorded nothing after the tap: now what shows is recorded.
+            if second == 6 {
+                Walk.tree("\(step)-signout-after", app)
+                Walk.shot("\(step)-signout-after")
+                Walk.note("\(step) 6 s after the confirm: dialog still up=\(app.labelled(L.signOutTitle).exists) "
+                    + "\"\(L.signOutSending)\"=\(app.labelled(L.signOutSending).exists) "
+                    + "\"\(L.signOutAnyway)\"=\(app.labelled(L.signOutAnyway).exists)")
+                if app.labelled(L.signOutAnyway).exists {
+                    // R440's path: the pending days could not be sent; leaving with that cost is the person's choice.
+                    press(app.labelled(L.signOutAnyway))
+                } else if app.labelled(L.signOutTitle).exists, let again = lastLabelled(L.signOut) {
+                    let frame = again.frame
+                    Walk.note("\(step) the dialog is still up: a tap at its confirm's own frame centre")
+                    app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+                        .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+                }
+            }
+            Thread.sleep(forTimeInterval: 1)
+        }
         Walk.note("\(step) signed out: sign-in reached=\(out)")
         Walk.notePending("\(step) M3 AFTER sign-out")
     }

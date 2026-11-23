@@ -59,6 +59,9 @@ enum L {
     static let licencesTitle = "Licences" // LicencesCopy.TITLE
     static let licencesBack = "Retour" // LicencesCopy.BACK
     static let signOut = "Se déconnecter" // ParametresCopy.SIGN_OUT
+    static let signOutTitle = "Se déconnecter ?" // ParametresCopy.SIGN_OUT_CONFIRM_TITLE
+    static let signOutSending = "Envoi des journées en attente…" // ParametresCopy.SIGN_OUT_SENDING
+    static let signOutAnyway = "Se déconnecter quand même" // ParametresCopy.SIGN_OUT_ANYWAY
     static let deleteRow = "Supprimer mon compte" // ParametresCopy.DELETE_ROW
     static let deleteConfirm = "Supprimer définitivement" // ParametresCopy.DELETE_CONFIRM
     static let deleteDoneTitle = "Compte supprimé" // ParametresCopy.DELETE_DONE_TITLE
