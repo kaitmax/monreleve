@@ -1,5 +1,14 @@
 # QUEUE-STATE - the no-phone queue (relay/ORCH-NO-PHONE-QUEUE.txt)
 
+**FINDING, NOT AN INCIDENT, RECORDED 2026-11-23 (iOS Ruling 18, F8): THE SIGN-IN LINK VOIDS THE CODE,
+AND A FETCH OF THE LINK RECEIVES A SESSION.** The sign-in e-mail's link is the API callback itself; its GET
+consumes the one row that holds both the link and the six-digit code, and answers a token pair as JSON to
+whoever fetched it. On iOS (no universal link) a person who taps the link sees JSON in Safari and their code is
+dead; a mail-security scanner or preview that fetches the link ends the person's sign-in and holds a valid
+session. No evidence of misuse; nothing was tested against production. Android's own exchange is a bare GET, so
+no server-only change keeps the contract. **The operator decides** among the options in iOS Ruling 18
+(relay/RULINGS-2026-11-16.txt). Until then it is a SHIP BLOCKER for iOS.
+
 **SECURITY INCIDENT, MEASURED 2026-11-17 ~12:15Z (P2 item 1's baseline; the known condition of
 REPORT-FW-SECRETS.txt, now counted).** The image serving production until the 12:23Z promotion,
 pkptabevr1nhtyygrq0mc8qx:52caca8, carries in its `docker history` RESEND_API_KEY (4 lines) and

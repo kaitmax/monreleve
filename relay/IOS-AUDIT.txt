@@ -8,7 +8,7 @@ measured, what it could not); ios/project.yml; ios/MonReleve/Sources/*.swift; .g
 ios-shared.yml and ios-walk.yml; android/shared/src/iosMain/**; CLAUDE.md R154, R169, R172, R178, R180, R204,
 R205, R206, R246, R268, R349, R391, R573, R574.
 Names: worktree C:/wt/i3-audit, branch i3-audit (NOT ios-*), report REPORT-IOS-AUDIT.txt. Ruling numbers:
-R1350-R1359 and R1380-R1381 (iOS Ruling 16). YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, new user-facing copy, a
+R1350-R1359, R1380-R1381 (iOS Ruling 16) and R1389-R1393 (iOS Ruling 18). YOUR OWN advisor may advise you. A NEW dependency, a new entitlement, new user-facing copy, a
 workflow trigger other than workflow_dispatch, any legal or privacy CLAIM not derived from code, or anything
 needing an Apple account comes back to the orchestrator as a QUESTION - continue with the rest.
 BASE: origin/main as stated in your brief.
@@ -79,6 +79,32 @@ R1380. A RESTORE WITH NO ANSWER WRITES NOTHING (iOS Ruling 16 Q1). Past IosShell
 R1381. THE YEAR-DOWNLOAD STOP IS PINNED (iOS Ruling 16, IOS-SHELL-3 DEVIATION 6). iosSessionEndSeam's
     stopYearDownloads loses its default {}; an iosTest with a RECORDING stop asserts it is called on each of the
     three endings, PLANTED (the wire dropped in startIosShell, verified landed, seen to fail by name - R180).
+R1389. THE NATIVE DATE PICKER (iOS Ruling 18, F6). Run 15's screenshot shows it drawn with NO background (the
+    Parametres rows show through its calendar) and in ENGLISH ("November 2026", SUN..SAT) inside a French app,
+    and absent from the accessibility tree. Test-first: an iosTest (or the ios-app run's screenshot, looked at)
+    asserting the picker's locale is French and its container opaque - RED - then the fix in iosMain's picker
+    slot, no new copy ("Continuer" exists). Its accessibility measured after the fix (R1355). A fix that needs a
+    Compose upgrade or a new dependency is a QUESTION.
+R1390. ROWS BELOW THE FOLD (iOS Ruling 18, F5). First DIAGNOSE: run 18's screenshots show the Releve page moved
+    by the first drag and back at its top when the export was declared unreachable. Measure, once, whether the
+    APP resets that scroll (a recomposition, a refresh, a key change) or the walker scrolled back. If the app:
+    a DEFECT, RED first (a test that scrolls, triggers what reset it, and asserts the position kept), fixed.
+    Then reach "Exporter en PDF", "Comparer avec mon employeur" and "Licences" ONCE each with (i) a settled
+    reveal, (ii) for the onboarding canton the screen's own search field, (iii) XCUITest's swipeUp on the
+    scroll container - in the ios-walk run (workflow_dispatch, its safety rules unchanged). (iv) test tags or
+    a scroll-to semantics ONLY if the app is shown at fault. What stays unreached goes on docs/ios-release.md's
+    iPhone list.
+R1391. RESOLVING'S "Connexion impossible" (iOS Ruling 18, F9). In run 17 the second sign-in stalled on RESOLVING
+    for 100+ s with the walk's relay UP. Measure, once, what GET /api/v1/me answered at that moment (status and
+    the named refusal, never a body with a credential) - the throwaway server's per-address limits are one
+    candidate, since every app request comes from one address. A defect in the app is RED first and fixed; a
+    walk artefact is said so.
+R1392. F8 IS NOT THIS SESSION'S (iOS Ruling 18): the sign-in link voiding the code is the operator's decision.
+    docs/ios-release.md lists it FIRST, as a ship blocker for iOS, with the options from Ruling 18 named, not
+    chosen. No change to the sign-in semantics here.
+R1393. THE iPHONE LIST GROWS (iOS Ruling 18): new-account onboarding past the name step (a check BEFORE
+    TestFlight); the reminder TAP; the export's share sheet, the comparison and Licences if R1390 cannot reach
+    them; and, for Android's S9 list, back from the employer comparison (iOS Ruling 16).
 
 THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without it
 Gradle says "SDK location not found" - NO RESULT); test-first; fastCheck per increment; PUSH EVERY INCREMENT (a

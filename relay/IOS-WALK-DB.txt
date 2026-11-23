@@ -1,0 +1,47 @@
+IOS-WALK-DB SESSION PROMPT - Mon Releve
+RE-LAND THE iOS WALK GREEN: ITS DATABASE STEP BECOMES A PACKAGE SCRIPT THE GUARDS CAN SEE (iOS phase, I2 close)
+Written by the orchestrating session on 2026-11-23 (iOS Ruling 18 in relay/RULINGS-2026-11-16.txt - read it whole,
+first: the walk was merged RED and reverted, and why). Read first: REPORT-IOS-WALK.txt on origin/i2-walk;
+web/tests/unit/meta/scratch-database-census.test.ts whole (R877 walks the package's CREATE DATABASE sites; R879
+walks the workflows' connection strings and requires each database to be created by a services: block in the
+same workflow); web/lib/db/scratch-database.mjs; web/scripts/gate-clone.mjs and gate-clone-parts.mjs (how
+gate:clone names, creates and addresses its scratch database - follow its shape); i2-walk's
+.github/workflows/ios-walk.yml (the step "The throwaway database", ~l.135); CLAUDE.md R132, R178, R180, R181,
+R199, R206, R267, R349, R391.
+Names: worktree C:/wt/walk-db, branch walk-db (NOT ios-*), report REPORT-IOS-WALK-DB.txt. Ruling numbers:
+R1394-R1398. YOUR OWN advisor may advise you. A new dependency, a change to what R877 or R879 accept (an
+exemption, a loosened pattern, a skipped workflow), new copy, or a trigger other than workflow_dispatch comes back
+to the orchestrator as a QUESTION.
+BASE: origin/main as stated in your brief (the revert of the walk's merge is on it).
+
+R1394. THE WALK BACK, UNCHANGED. The branch's FIRST commit is `git revert <the revert's sha>` (the brief names
+    it): the walk's files return byte for byte as i2-walk d0509a4f left them. Re-merging i2-walk would bring
+    nothing back. Show `git diff d0509a4f <that commit> -- . ':!relay'` empty.
+R1395. THE DATABASE STEP AS A PACKAGE SCRIPT. ios-walk.yml carries NO postgres connection string. A committed
+    script under web/scripts builds the administrative URL from host, port, user and password (environment
+    variables the step sets; the password born and masked on the runner as today, R1341), creates the scratch
+    database through gate-clone-parts' administer() with its name from scratchDatabaseName() imported from
+    lib/db/scratch-database.mjs, and writes the scratch URL to the private file the later steps read. Write the
+    CREATE line in the shape gate-clone.mjs uses, so R877's resolver RESOLVES it (show the census's own
+    verdict for the new site). This is not evasion (R181): the inline CREATE DATABASE in the YAML is invisible
+    to R877 today; the move brings it under that guard.
+R1396. R879 COVERS THE WALK BY PRESENCE, NOT BY ABSENCE. A workflow with no postgres service names no connection
+    string and is covered by asserting it CALLS that script - a positive assertion added to the census (R169's
+    corollary: "no connection string" alone is satisfied by a workflow that makes no database at all).
+R1397. PLANTED, EACH VERIFIED LANDED (R180): (a) the literal connection string put back in ios-walk.yml fails
+    R879 BY NAME; (b) a name outside SCRATCH_DATABASE_PATTERN in the new script fails R877 BY NAME; (c) the
+    workflow's call to the script removed fails R1396's assertion BY NAME. Each reverted, the revert verified.
+R1398. GATES AND THE RUNNER. gate:changed on the tip (web/ changed) with its verdict line quoted, and gate:clone
+    before the push (R199), its claim line quoted. ONE ios-walk dispatch on the tip (the inert file on main is
+    enough to dispatch with --ref walk-db): the database step, the /api/health check naming the product, and
+    the existing-account sign-in still pass - quote those lines; the job log and artifacts scanned (token
+    prefix, bearer, callback, production host, six-digit numbers) with the counts. If `git diff 558384e4 <tip>
+    -- ios` is empty, ios-app 45125808971 still stands - say so; otherwise ONE ios-app run. Before hand-back,
+    `git diff d0509a4f <tip> --name-only` lists only the workflow, the new script, the census test and your
+    report.
+
+THE WORK: worktree + lock (R349); test-first (the census assertion RED before the script exists); push every
+increment; do not merge; sessions do not write parking.md; lock removed last. The repository is PUBLIC.
+REPORT: SUMMARY / STATUS (R391) / R1394-R1398 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF IOS-WALK-DB PROMPT

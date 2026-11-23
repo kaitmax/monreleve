@@ -3191,3 +3191,108 @@ R1380 STANDS: the measured first answer (68-132 ms after didFinishLaunching)
    does not retire it; a timeout must still write nothing.
 NEXT: IOS-WALK-2 (relay/IOS-WALK-2.txt, R1382-R1388) on i2-walk from
    2e19cc88, then the merge, then IOS-AUDIT.
+
+iOS Ruling 18 - IOS-WALK (parts 1 and 2), 2026-11-23. NOT ON MAIN.
+WHAT HAPPENED, STATED PLAINLY: the orchestrator merged i2-walk d0509a4f as
+89eea7c3 RED. gate:changed on the staged merge ended "Tests 2 failed | 4289
+passed (4291) / GATE FAILED at pnpm test" - R879
+(tests/unit/meta/scratch-database-census.test.ts) refused ios-walk.yml:138's
+connection string - and the commit ran in the same command that printed the
+tail, so the verdict was not read; 89eea7c3's message claims a pass it did
+not have. Reverted by b276b71f (gate:changed 4290 passed, GATE PASSED, read
+before the commit; the tree equals 300f8acb exactly). Nothing deploys from
+main, so nothing live was touched. From here the orchestrator's commit chain
+greps the ANSI-stripped log for GATE PASSED, and for no GATE FAILED, BEFORE
+git commit. THE FIX (IOS-WALK-DB, relay/IOS-WALK-DB.txt, R1394-R1398): R879
+requires every connection string a workflow names to be created by a
+services: block in that workflow; the macOS runner has no docker, so the walk
+carries NO connection string - its database step becomes a package script
+that R877 can resolve - rather than the census learning an exception.
+THE WALK'S RESULT (unchanged by the above): nothing under android/ or web/
+changed (merge base 0015cd54); the app change is WalkProbe.swift, started
+only under -walkProbe YES. ios-app 45125808971 on 558384e4 (the
+final code tip): keychain/notification/reminder/share/firstLaunch PASS,
+launch-DEFAULT.png looked at by the orchestrator: Bienvenue, no code field.
+READ BY THE ORCHESTRATOR (run 18, 45125804130, walk-result.txt and test
+cases; artifacts downloaded and scanned):
+- M4: after the opt-in 4 pending (2026-11-24..27), each 19:00, tz=nil,
+  repeats=false, today ABSENT (recorded); after a real background/foreground
+  still 4 - no doubling.
+- M3: sign-out 4 -> 0; account B's deletion 5 -> 0.
+- Years and the plan: after the second sign-in the phone holds 2025 + 2026
+  (4 days, SYNCED, server-stamped), and 4 pending with today ABSENT.
+- Offline record then a real foreground drain: POST /api/v1/entries 200;
+  firstRecordedAt server-assigned (R1345).
+- First answer: 67-76 ms after didFinishLaunching in run 18 (68-174 ms over
+  the session's runs); far under IosShellRoot's 2 s bound.
+- R1385: the link GET VOIDED THE CODE (control 200; GET 200; code after the
+  GET 400 invalid_code) - F8 below.
+LEAKS (R1388), scanned by the orchestrator itself: run 18's job log and
+artifacts and ios-app 45125808971's (65 files): token prefix 0, bearer 0,
+unmasked callback 0, production host 0; the six-digit and token-shaped hits
+are a build-result hash, an audit-session id, memory addresses, network
+statistics and Xcode module names. ACROSS runs 1-18's saved artifacts: 157
+code-screen snapshots, NONE with a digit-labelled element (F3's risk); no
+phone database file in any artifact.
+WHAT THE WALK PROVED (R1344 through D6's existing-account track - Q5 YES, it
+counts): code sign-in; StartupDecider to Main for a complete /me; R1371 (the
+prior-year day on the phone, in the UI and the database); the offline record
+and its drain; the calendar (recorded and changed); the notification alert;
+the native date picker opened and its value read; the evening switch PRESENT
+and the threshold-alert switch ABSENT; sign-out, relaunch to sign-in, sign in
+again with every day back; account deletion.
+NOT REACHED, so on the operator's iPhone list (R1347): the export's share
+sheet, the employer comparison, Licences (F5 - IOS-AUDIT R1390 tries once
+more), the reminder TAP (delivered on the simulator, gone before the tap -
+my status lines that called it passed were wrong), and new-account
+onboarding past the name step (a check BEFORE TestFlight).
+DEVIATIONS D1-D14 accepted for the walk (D14 read, not stretched: each stopped
+step has two clean failures, Licences one).
+FINDINGS:
+- F8 (the link voids the code) - A SHIP BLOCKER FOR iOS, the OPERATOR'S
+  DECISION, not a task's. Read by the orchestrator: the e-mail's link is
+  https://<site>/api/v1/auth/callback?token&email (lib/auth/request.ts); one
+  VerificationToken row carries both the link token and the code; the
+  callback's GET deletes it and answers a token pair as JSON; consumeCode's
+  header states the reverse by design ("so the link in the same email no
+  longer works either"). It needs NO scanner: iOS has no universal link, so
+  a person who taps the link lands in Safari on a JSON token pair and their
+  code is dead. A fetcher of the link (a mail-security scanner, a preview)
+  ends the person's sign-in and receives a valid session. Android's own
+  exchange (AuthApi.exchangeCallback) is a BARE GET with no header a browser
+  would not send, so the server cannot tell the app from anything else - no
+  server-only fix keeps the callback contract. No evidence of misuse; nothing
+  was tested against production. Recorded at the top of relay/QUEUE-STATE.md.
+  OPTIONS FOR THE OPERATOR (none taken):
+  (A) a code-only mail for iOS: the request carries the client, iOS gets a
+      mail with no link (new mail copy; server + iOS; Android untouched);
+  (B) the app's exchange sends a header the server requires for the JSON
+      answer, every other GET gets a page that consumes nothing (new page
+      copy; an Android release first, the server accepting both for a window,
+      then the bare GET refused);
+  (C) the link and the code consumed independently (each single-use alone):
+      the person's code survives a fetch, but a fetcher still gets a session,
+      and the mail's "only once" copy needs rereading;
+  (D) keep it, and make the iOS code screen say not to open the link.
+- F6 (the native date picker): CONFIRMED by the orchestrator on run 15's
+  screenshot - drawn with no background (the Parametres rows show through
+  its calendar), and in ENGLISH ("November 2026", SUN..SAT) in a French app;
+  absent from the accessibility tree. IOS-AUDIT R1389.
+- F5 (rows below the fold): NOT diagnosed. Run 18's screenshots show the
+  Releve page moving on the first drag (08:04) and back at its TOP when the
+  export was declared unreachable (08:06) - either the walker scrolled back
+  or the app reset the scroll. IOS-AUDIT R1390 decides which, RED first if
+  the app.
+- F9 (RESOLVING on "Connexion impossible" after a sign-in): REAL, cause open.
+  Read by the orchestrator in run 17's result: the relay was DOWN only
+  06:09:15-06:09:33 (the offline step); the stall began 06:15:56 with it UP.
+  IOS-AUDIT R1391 measures what /me answered.
+- F1-F3 stay with IOS-AUDIT R1355 (iOS Ruling 17); F7 (an on-screen element
+  refused as not hittable) joins them.
+Q1: NO FURTHER WALK SESSION. (i)-(iii) are allowed ONCE each inside IOS-AUDIT
+   R1390; (iv), an app change, only if R1390 shows the app at fault.
+Q2: F8 above - the operator's.  Q3: F6 - IOS-AUDIT R1389.  Q4: F9 -
+   IOS-AUDIT R1391.  Q5: YES.
+NEXT: IOS-WALK-DB (R1394-R1398) re-lands the walk green; THEN IOS-AUDIT
+   (R1350-R1359, R1380-R1381, R1389-R1393), whose read-first files are the
+   walk's.
