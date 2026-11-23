@@ -28,9 +28,12 @@ Run 17's second sign-in stopped on RESOLVING's "Connexion impossible" (F9); run 
 R1385: THE GET VOIDS THE CODE. In 6 runs out of 6: the control's code (no GET) -> 200; C's link GET -> 200; C's code
 afterwards -> 400 invalid_code. A DEFECT for a code-only app (mail scanners prefetch links): recorded, not fixed.
 
-Stopped under R1387 (two identical failures each): the canton step; "Exporter en PDF" (the share sheet); the
-employer comparison; "Licences". All four are the same symptom - a row below the fold that never reached a real
-frame through twenty drags - while other rows came on screen after ONE drag (F5).
+Stopped under R1387: the canton step; "Exporter en PDF" (the share sheet); the employer comparison;
+"Licences"; the reminder tap. The four rows share one symptom - a row below the fold that never reached a real
+frame through twenty drags - while other rows came on screen after ONE drag (F5). The evidence for "two
+identical failures" is WEAKER than the phrase, and the R1387 section says exactly how: two of the four were
+judged by a different criterion the first time, Licences never had an attempt free of a leftover sheet, and no
+stopped row was ever tried after the screen had settled - which is what made the delete row work (F5).
 
 NEW FINDINGS: F5 (scrolling to a row below the fold is unreliable under XCUITest), F6 (the native date picker is
 drawn WITHOUT a background: the page behind shows through it; and it is absent from the accessibility tree),
@@ -168,8 +171,8 @@ R1384 - R1345's OBSERVABLES ON THE EXISTING-ACCOUNT TRACK (the real notification
   banner "Ou avez-vous travaille aujourd'hui ?" (run 16). The tap: NOT PROVEN - delivered in runs 16 and 17, gone before the tap both times
   (run 16: "No matches found" on the tap after a note and a screenshot; run 17: tapped the moment it existed, and it
   no longer existed). STOPPED (R1387); it stays on R1347's iPhone list.
-- THE FIRST ANSWER (iOS Ruling 16 Q1), ms after didFinishLaunching, cold first launches, runs 12-16 (both tracks):
-  124, 92, 120, 67, 112, 83, 174, 82, 88, 95. All far below the 2 000 ms bound (R1380 stands, as ruled).
+- THE FIRST ANSWER (iOS Ruling 16 Q1), ms after didFinishLaunching, cold first launches, runs 12-17 (both tracks):
+  124, 92 | 120, 67 | 112, 83 | 174, 82 | 132, 76 | 88, 95. All far below the 2 000 ms bound (R1380 stands, as ruled).
 DRIVER PROOFS:
   (a) a Compose element by its label: PASSED every run (both tracks).
   (b) the system notification alert: PASSED (run 16: "'Mon Releve' Would Like to Send You Notifications",
@@ -208,11 +211,16 @@ targets; the legal links stay on the operator's iPhone list (R1347).
 ================================================================================
 R1387 - BOUNDED
 ================================================================================
-Stopped after two identical failures, never run a third time:
-  canton (track 1)   runs 45099570712, 45104554339 - zero frame after each of twenty drags
-  export PDF         runs 45099570712, 45109219799
-  comparison         runs 45099570712, 45109219799
-  Licences           runs 45099570712, 45109219799
+Stopped, never run a third time the same way - with the evidence for each stated exactly:
+  canton (track 1)   run 45099570712 (judged by isHittable) and run 45104554339 (judged by the element's frame:
+                     zero after each of twenty drags). BOTH began dragging the moment the screen appeared; the
+                     diagnostic, which worked, dragged after ~6 s of dump and screenshot. Never tried settled.
+  export PDF         run 45099570712 (isHittable criterion) and run 45109219799 (frame criterion, a clean
+                     attempt: zero frame after each of twenty drags). ONE clean failure.
+  comparison         as export: ONE clean failure (run 45109219799).
+  Licences           run 45099570712 (isHittable criterion) and run 45109219799 - which began with the
+                     start-date sheet still up (screenshot 29-evening-on, seconds before; nothing closed it in
+                     that run). NO clean attempt.
   the reminder TAP   runs 45114019354, 45119005695 - delivered, gone before the tap
 Fixed after one failure with a measured cause (so the next run was not identical): run 12's mistyped e-mail
 (read-back), run 13's "Domicile" refused (F7: frame-centre tap), run 14's sheet left up (save brought on screen,
@@ -239,9 +247,13 @@ host). Every job log AND every downloaded artifact:
   each log, 6 in each xcodebuild.log) are Xcode ModuleCache / .build file names; the only six-digit numbers are a
   launchd PID line in app-system.log. ios-app runs no server and no sign-in.
   * the one six-digit number in run 12's log is the app log's own line count ("app log: 509709 lines").
-R574: every code-screen dump in runs 12-17 (14 dumps) shows six empty boxes ("Chiffre N sur 6", no digit label); no
-screenshot of a code screen was taken; no capture after sign-in carries a code box. The masks file held every code,
-link token and bearer of the run before anything else touched it (the job logs show "***" only).
+R574: every tree in runs 12-17 that shows the code screen - 26, the 16 "code-empty" dumps and run 12's ten
+failure dumps taken while the code was never typed - holds six boxes labelled exactly "Chiffre N sur 6", no value
+and no digit label. No screenshot of a code screen was taken; no capture after sign-in carries a code box.
+THE SCANNER IS PROVEN TO FIRE: TOKEN_BYTES = 32 in lib/auth/tokens.ts and lib/auth/magic-link.ts (43 base64url
+characters); a planted control file with a real-shaped bearer, a callback link with a token, a bare token and a
+six-digit line scored bearer 1, token-shaped 3, callback 1, six-digit 1. The scanner is kept beside the
+evidence (C:/wt/queue-evidence/i2-walk/leakscan.py).
 
 ================================================================================
 R1340-R1348 - UPDATED
@@ -275,8 +287,9 @@ F5. SCROLLING A COMPOSE verticalScroll PAGE UNDER XCUITest IS UNRELIABLE. The sa
     export x2, comparison x2, Licences x2, the delete row once). Not explained. One pattern fits most cases: every
     reveal that worked began >= 1.5 s after the screen appeared (and after a dump); the canton and delete-row
     failures began at once. Run 17 tested it on the delete row: after a 3 s settle and a dump it came on screen
-    after ONE drag (y 702), where run 16's twenty drags begun at once never moved it from a zero frame. But
-    Licences and the export failed after a 2-3 s wait too, so the settle is a strong lead, not an explanation. Whether VoiceOver's own
+    after ONE drag (y 702), where run 16's twenty drags begun at once never moved it from a zero frame. The
+    export's one clean failure (run 15) began after a 3 s wait and a dump - the one case against; Licences'
+    run-15 attempt was under a leftover sheet and does not count. A strong lead, not an explanation. Whether VoiceOver's own
     scrolling reaches these rows is R1355's question (F2's companion).
 F6. THE NATIVE DATE PICKER (IosStartDatePicker, a UIKitView in a Compose Dialog) IS DRAWN WITHOUT A BACKGROUND OF ITS
     OWN: in Parametres the page's rows ("Taux d'activite", "Methode de decompte", ...) show THROUGH the calendar,
@@ -284,7 +297,8 @@ F6. THE NATIVE DATE PICKER (IosStartDatePicker, a UIKitView in a Compose Dialog)
     accessibility tree (only the dialog's Continuer is in it), so VoiceOver may not reach it - R1355. A visible
     defect: an app change, so a QUESTION (Q3), not touched.
 F7. XCUITest REFUSES SOME ON-SCREEN COMPOSE ELEMENTS as "not hittable" (run 13: "Domicile" {{100.7,563.7},{53,33.3}};
-    every dialog button reported hittable=false). The walk taps those at their own frame centre (D8).
+    the sign-out dialog's confirm {{192,510},{145,40}} reported hittable=false in runs 16 and 17). The walk taps
+    those at their own frame centre (D8).
 F8 (R1385). A GET of the sign-in link voids the code (above). A DEFECT for a code-only app.
 F9. RUN 17's SECOND SIGN-IN STOPPED ON RESOLVING: the code was accepted, then RESOLVING showed "Connexion
     impossible. Verifiez votre connexion, puis reessayez." with "Reessayer" for 100+ s (R1161's Unresolved,
