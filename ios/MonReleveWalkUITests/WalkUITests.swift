@@ -177,6 +177,17 @@ final class WalkUITests: XCTestCase {
             let begins = starting(label)
             if begins.waitForExistence(timeout: seconds) { element = begins }
         }
+        // IOS-AUDIT (runner-side, DEVIATION): a BOTTOM-BAR tab is never scrolled - it is always drawn - but run
+        // 45178578142 measured its accessibility frame at 0/0 once the page above had been scrolled (31-tab-drag-last.png:
+        // the bar drawn, "Paramètres" selected; its frame zero). Dragging cannot fix a stale frame, so a tab whose own frame
+        // is zero is tapped at the bar's own slot (four equal slots, the bar's centre line at 91.5 % of the window -
+        // measured on that screenshot), and the fallback is recorded.
+        let tabs = [L.tabAujourdhui, L.tabCalendrier, L.tabReleve, L.tabParametres]
+        if let slot = tabs.firstIndex(of: label), element.exists, !onScreen(element) {
+            Walk.note("\(step): the tab \"\(label)\" reports frame \(element.frame) - tapped at its bar slot \(slot + 1)/4")
+            app.coordinate(withNormalizedOffset: CGVector(dx: (Double(slot) + 0.5) / 4.0, dy: 0.915)).tap()
+            return
+        }
         if reveal(element, label, step, within: 1) { press(element) }
     }
 

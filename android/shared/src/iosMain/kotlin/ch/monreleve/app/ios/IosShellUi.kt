@@ -50,6 +50,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
+import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSCalendarUnitMonth
@@ -57,12 +58,12 @@ import platform.Foundation.NSCalendarUnitYear
 import platform.Foundation.NSDateComponents
 import platform.Foundation.NSLocale
 import platform.UIKit.UIColor
-import platform.UIKit.UIView
-import platform.UIKit.UIViewAutoresizingFlexibleHeight
-import platform.UIKit.UIViewAutoresizingFlexibleWidth
 import platform.UIKit.UIDatePicker
 import platform.UIKit.UIDatePickerMode
 import platform.UIKit.UIDatePickerStyle
+import platform.UIKit.UIView
+import platform.UIKit.UIViewAutoresizingFlexibleHeight
+import platform.UIKit.UIViewAutoresizingFlexibleWidth
 
 // IOS-SHELL-1 (R1320, R1325). THE iOS SHELL'S COMPOSABLES: the root the scene hosts, and iOS's own ONBOARDING and MAIN
 // routes in the common router's two slots.
@@ -447,6 +448,10 @@ internal fun startDatePickerView(
     val picker = pickerOf(initialIsoDay, opaque)
     val container = UIView()
     container.backgroundColor = opaque
+    // The picker FILLS the container: its own default frame is zeroed first, then it grows with the container
+    // (flexible width and height). Without the zeroing, autoresizing ADDED the container's size to the picker's default
+    // frame (walk run 45178578142, 28-datepicker-open.png: the calendar drawn oversized and clipped).
+    picker.setFrame(CGRectMake(0.0, 0.0, 0.0, 0.0))
     picker.autoresizingMask = UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
     container.addSubview(picker)
     return StartDatePickerHost(container, picker)
