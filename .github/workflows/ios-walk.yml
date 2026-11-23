@@ -282,23 +282,51 @@ jobs:
           xcrun simctl spawn "$udid" defaults write com.apple.keyboard.preferences DidShowGestureKeyboardIntroduction -bool true
           echo "simulator VoiceOverTouchEnabled: $(xcrun simctl spawn "$udid" defaults read com.apple.Accessibility VoiceOverTouchEnabled 2>&1)"
           xctestrun=$(ls "$RUNNER_TEMP/dd/Build/Products/"*.xctestrun | head -1)
+          app="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/MonReleve.app"
+          control="http://127.0.0.1:$WALK_CONTROL_PORT"
+          suite="MonReleveWalkUITests/WalkUITests"
+          export TEST_RUNNER_WALK_CONTROL="$control"
+          export TEST_RUNNER_WALK_ACCOUNT_A="walk-a-${GITHUB_RUN_ID}@monreleve.test"
+          export TEST_RUNNER_WALK_ACCOUNT_B="walk-b-${GITHUB_RUN_ID}@monreleve.test"
+          export TEST_RUNNER_WALK_ACCOUNT_N="walk-n-${GITHUB_RUN_ID}@monreleve.test"
+          # IOS-WALK-2: TWO TRACKS, TWO INVOCATIONS, so one step cannot turn the rest into NO RESULT (R1383). Each
+          # xcodebuild's output stays private (it records typed keys); only its test-case lines are printed below.
+          walk() {
+            name=$1; shift
+            xcodebuild test-without-building -xctestrun "$xctestrun" -destination "id=$udid" "$@" \
+              -resultBundlePath "$PRIVATE/walk-$name.xcresult" > "$PRIVATE/xctest-$name.log" 2>&1
+          }
           set +e
-          TEST_RUNNER_WALK_CONTROL="http://127.0.0.1:$WALK_CONTROL_PORT" \
-          TEST_RUNNER_WALK_ACCOUNT_A="walk-a-${GITHUB_RUN_ID}@monreleve.test" \
-          TEST_RUNNER_WALK_ACCOUNT_B="walk-b-${GITHUB_RUN_ID}@monreleve.test" \
-          TEST_RUNNER_WALK_ACCOUNT_C="walk-c-${GITHUB_RUN_ID}@monreleve.test" \
-          xcodebuild test-without-building -xctestrun "$xctestrun" -destination "id=$udid" \
-            -resultBundlePath "$PRIVATE/walk.xcresult" > "$PRIVATE/xctest.log" 2>&1
-          status=$?
+          echo "=== TRACK 1: the new account to R1382's diagnostic at the canton step"
+          walk new -only-testing:$suite/test01_firstLaunch -only-testing:$suite/test02_signInNew \
+            -only-testing:$suite/test03_onboardingDiagnostic
+          status_new=$?
+          # BETWEEN THE TRACKS, THROUGH THE API (no keyboard): R1385 (account C, and D as its control), then accounts A
+          # and B made "on another phone" (R1383). The helper writes statuses to the result file and masks every code
+          # and token before it uses them; curl's own output goes nowhere.
+          echo "=== R1385 at the API, and accounts A and B made through the API"
+          curl -s -o /dev/null --max-time 600 "$control/r1385?to=walk-c-${GITHUB_RUN_ID}%40monreleve.test&control=walk-d-${GITHUB_RUN_ID}%40monreleve.test"
+          curl -s -o /dev/null --max-time 400 "$control/seed?to=walk-a-${GITHUB_RUN_ID}%40monreleve.test&slot=1&reminder=0&name=Camille%20Existant"
+          curl -s -o /dev/null --max-time 400 "$control/seed?to=walk-b-${GITHUB_RUN_ID}%40monreleve.test&slot=2&reminder=1&name=Dominique%20Supprime"
+          # A FRESH INSTALL for track 2, so it starts at a first launch (the app's own first-launch Keychain clear).
+          xcrun simctl terminate "$udid" ch.monreleve.app > /dev/null 2>&1
+          xcrun simctl uninstall "$udid" ch.monreleve.app
+          xcrun simctl install "$udid" "$app"
+          echo "the app uninstalled and installed again: $?"
+          echo "=== TRACK 2: the existing account"
+          walk existing -skip-testing:$suite/test02_signInNew -skip-testing:$suite/test03_onboardingDiagnostic
+          status_existing=$?
           sleep 2
           kill "$masker" 2>/dev/null
-          echo "--- test cases (from the private xcodebuild log; typed text is never printed):"
-          grep -E "^Test Case '.*' (passed|failed)" "$PRIVATE/xctest.log" || echo "(no test case line - NO RESULT)"
-          grep -E "error: -\[|\*\* TEST" "$PRIVATE/xctest.log" | sed -E 's/^.*(error: -\[)/\1/' | cut -c1-300
+          for name in new existing; do
+            echo "--- track '$name' test cases (from the private xcodebuild log; typed text is never printed):"
+            grep -E "^Test Case '.*' (passed|failed)" "$PRIVATE/xctest-$name.log" || echo "(no test case line - NO RESULT)"
+            grep -E "error: -\[|\*\* TEST" "$PRIVATE/xctest-$name.log" | sed -E 's/^.*(error: -\[)/\1/' | cut -c1-300
+          done
           echo "--- the walk's result file:"
           cat "$OUT/walk-result.txt" 2>/dev/null || echo "(no result file)"
-          echo "xcodebuild test exit: $status"
-          exit $status
+          echo "xcodebuild test exit: new=$status_new existing=$status_existing"
+          [ "$status_new" = "0" ] && [ "$status_existing" = "0" ]
 
       - name: The app's own log, uploaded only if no code or token is in it
         if: always()

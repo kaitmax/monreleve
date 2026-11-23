@@ -15,6 +15,8 @@ enum Walk {
     static let accountA = env["WALK_ACCOUNT_A"] ?? "walk-a@monreleve.test"
     static let accountB = env["WALK_ACCOUNT_B"] ?? "walk-b@monreleve.test"
     static let accountC = env["WALK_ACCOUNT_C"] ?? "walk-c@monreleve.test"
+    // IOS-WALK-2: the NEW account of the onboarding track (R1382's diagnostic); A and B are made through the API first.
+    static let accountN = env["WALK_ACCOUNT_N"] ?? "walk-n@monreleve.test"
     static let bundle = "ch.monreleve.app"
 
     /// A synchronous request to the helper. Never logs the answer.
@@ -167,6 +169,48 @@ extension XCUIApplication {
             if !typeKey(String(character), keyboard) { return false }
         }
         return true
+    }
+
+    /// IOS-WALK-2 (R1382): [text] put on the simulator's pasteboard by the helper (simctl pbcopy), then the field's own
+    /// Paste - one action instead of one tap per key, so no key tap can be lost. Only for non-secret text: the helper
+    /// refuses anything carrying a known secret or shaped like a code, so the sign-in code is never on the pasteboard
+    /// (R574). Returns how far it got; the CALLER verifies by reading the field's label back.
+    func paste(_ text: String, into field: XCUIElement) -> String {
+        let (status, _) = Walk.call("/pbcopy", method: "POST", body: Data(text.utf8))
+        guard status == 200 else { return "pbcopy answered \(status)" }
+        field.tap()
+        _ = keyboards.firstMatch.waitForExistence(timeout: 8)
+        let tip = buttons["Continue"]
+        if tip.exists { tip.tap() }
+        let item = descendants(matching: .any).matching(NSPredicate(format: "label IN %@", ["Paste", "Coller"])).firstMatch
+        var route = "one tap"
+        if !item.waitForExistence(timeout: 1.5) {
+            route = "a second tap"
+            field.tap()
+            if !item.waitForExistence(timeout: 2) {
+                route = "a long press"
+                field.press(forDuration: 1.2)
+                _ = item.waitForExistence(timeout: 3)
+            }
+        }
+        guard item.exists else { return "no Paste item after \(route)" }
+        item.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = NSPredicate(format: "label IN %@", ["Allow Paste", "Autoriser le collage"])
+        for _ in 0..<6 {
+            let inApp = descendants(matching: .any).matching(allow).firstMatch
+            if inApp.exists {
+                inApp.tap()
+                return "Paste after \(route); the paste prompt allowed (in the app)"
+            }
+            let onBoard = springboard.descendants(matching: .any).matching(allow).firstMatch
+            if onBoard.exists {
+                onBoard.tap()
+                return "Paste after \(route); the paste prompt allowed (SpringBoard)"
+            }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return "Paste after \(route); no paste prompt"
     }
 
     private func key(_ name: String, _ keyboard: XCUIElement) -> XCUIElement? {

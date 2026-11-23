@@ -52,6 +52,9 @@ enum L {
     static let comparisonTitle = "Votre employeur a-t-il le même chiffre ?" // ComparisonCopy.TITLE
     static let eveningLabel = "Me prévenir le soir" // ParametresCopy.EVENING_LABEL
     static let alertLabel = "M’avertir si j’approche d’un seuil" // ParametresCopy.ALERT_LABEL
+    static let startDateRow = "Début d’activité (facultatif)" // OnboardingCopy.START_DATE_LABEL
+    static let startDatePick = "Choisir une date" // ParametresCopy.START_DATE_PICK
+    static let sheetCancel = "Annuler" // CalendarCopy.SHEET_CANCEL
     static let licencesTitle = "Licences" // LicencesCopy.TITLE
     static let licencesBack = "Retour" // LicencesCopy.BACK
     static let signOut = "Se déconnecter" // ParametresCopy.SIGN_OUT
