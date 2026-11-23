@@ -35,16 +35,34 @@ final class WalkUITests: XCTestCase {
         closeLeftoverSheet()
     }
 
-    /// Run 45104554339: a calendar sheet left open by a failed step hid every later screen (a modal sheet is the whole
-    /// accessibility tree while it is up), and six steps read "no element". A step now starts by closing one: the
-    /// sheet's own "Annuler", brought on screen first.
+    /// Runs 45104554339 and 45109219799: a sheet left open by a failed step hid or shadowed every later screen (the
+    /// calendar's day sheet; Parametres' start-date sheet, under which the evening row was "found" and the tap landed on
+    /// the sheet). Material 3's modal sheet puts a full-window scrim in the tree labelled "Close sheet" (Material's own
+    /// string, not the app's copy); a step now starts by tapping that scrim at the top of the window, which dismisses the
+    /// sheet WITHOUT saving it.
     private func closeLeftoverSheet() {
-        guard app.labelled(L.sheetQuestion).exists else { return }
-        Walk.note("a sheet was left open (\"\(L.sheetQuestion)\"): closed with \"\(L.sheetCancel)\" before this step")
-        if let cancel = lastLabelled(L.sheetCancel), reveal(cancel, L.sheetCancel, "close-sheet", within: 2) {
-            press(cancel)
+        for _ in 0..<2 {
+            let scrim = app.labelled("Close sheet")
+            guard scrim.exists else { return }
+            Walk.note("a sheet was left open: closed by its scrim (not saved) before this step")
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+            Thread.sleep(forTimeInterval: 1.5)
         }
-        Thread.sleep(forTimeInterval: 1.5)
+    }
+
+    /// The NARROWEST element labelled [label]: run 45109219799's sign-out dialog shares its confirm's label with the row
+    /// that opened it, and the tree order put the row last - the dialog's button is the narrow one ({{192,510},{145,40}}
+    /// against the row's 362 wide).
+    private func narrowest(_ label: String) -> XCUIElement? {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).allElementsBoundByIndex
+            .filter { $0.frame.width > 0 }
+            .min { $0.frame.width < $1.frame.width }
+    }
+
+    /// R1387: a step stopped after two identical failures - recorded, never run a third time.
+    private func stopped(_ step: String, _ what: String, _ runs: String) {
+        Walk.note("\(step) STOPPED (R1387): \(what) - two identical failures, runs \(runs); no third run")
+        XCTFail("R1387: stopped - \(what)")
     }
 
     /// Whether [element] is ON SCREEN: XCUITest calls it hittable, or it reports a real frame of its own. Compose clips a
@@ -362,8 +380,27 @@ final class WalkUITests: XCTestCase {
         guard picker.waitForExistence(timeout: 10) else {
             Walk.tree("\(step)-no-datepicker", app)
             Walk.shot("\(step)-no-datepicker")
-            Walk.note("FAIL \(step) DRIVER PROOF (c): no UIDatePicker in the tree")
-            return false
+            // Run 45109219799: the dialog was open and the UIDatePicker DRAWN (screenshot 28-no-datepicker), but it is
+            // NOT in the accessibility tree - only its dialog's "Continuer" is ({{41,611},{320,40}}). The picker is the
+            // 360-pt UIKitView directly above that Continuer (IosShellUi.kt PICKER_HEIGHT); on that screenshot the first
+            // week's row is 108.6 pt below the picker's top and Monday's column 69 pt right of the Continuer's left edge.
+            Walk.note("\(step) DRIVER PROOF (c): the picker's dialog is open but NO UIDatePicker is in the accessibility "
+                + "tree (screenshot \(step)-no-datepicker)")
+            guard let confirm = lastLabelled(L.onbContinue), confirm.frame.width > 0 else {
+                Walk.note("FAIL \(step) DRIVER PROOF (c): no dialog \"\(L.onbContinue)\" either")
+                return false
+            }
+            let frame = confirm.frame
+            let x = frame.minX + 69
+            let y = frame.minY - 360 + 108.6
+            Walk.note("\(step) DRIVER PROOF (c): a tap at the first week's Monday (\(Int(x)), \(Int(y))) - a DEVIATION: "
+                + "a coordinate, because the picker is not in the tree")
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0)).withOffset(CGVector(dx: x, dy: y)).tap()
+            Thread.sleep(forTimeInterval: 1)
+            Walk.shot("\(step)-datepicker-tapped")
+            press(confirm)
+            Thread.sleep(forTimeInterval: 1.5)
+            return true
         }
         let days = picker.buttons.allElementsBoundByIndex.filter {
             $0.isEnabled && $0.label.rangeOfCharacter(from: .decimalDigits) != nil
@@ -537,19 +574,30 @@ final class WalkUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 1.5)
             Walk.tree("24-sheet-\(pass)", app)
             Walk.shot("24-sheet-\(pass)")
-            guard app.labelled(L.sheetQuestion).waitForExistence(timeout: 5),
-                  let option = lastLabelled(choice) else {
-                Walk.note("FAIL 24 pass \(pass): no sheet \"\(L.sheetQuestion)\" with \"\(choice)\"")
+            guard app.labelled(L.sheetQuestion).waitForExistence(timeout: 5) else {
+                Walk.note("FAIL 24 pass \(pass): no sheet \"\(L.sheetQuestion)\"")
                 XCTFail("no sheet")
+                return
+            }
+            // Run 45104554339: the sheet opens half-expanded and its "Enregistrer" is below the screen at a zero frame;
+            // the diagnosed drag, started inside the sheet, brings it on screen. Run 45109219799: done AFTER the choice,
+            // that drag began on "En Suisse" and chose it - pass 1 read "Suisse" after choosing "Domicile". So the sheet
+            // is expanded FIRST, and the option is chosen in the expanded sheet.
+            guard let save = lastLabelled(L.sheetSave), reveal(save, L.sheetSave, "24-save-\(pass)", within: 2) else {
+                return
+            }
+            // The calendar's legend behind the sheet reads "Domicile" too (53 wide); the sheet's option is 362 wide.
+            let options = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", choice))
+                .allElementsBoundByIndex.filter { $0.frame.width > 0 }
+            guard let option = options.max(by: { $0.frame.width < $1.frame.width }) else {
+                Walk.note("FAIL 24 pass \(pass): no \"\(choice)\" in the sheet")
+                XCTFail("no option")
                 return
             }
             press(option)
             Thread.sleep(forTimeInterval: 0.5)
-            // Run 45104554339: the sheet opens half-expanded and its "Enregistrer" is below the screen at a zero frame;
-            // the diagnosed drag, started inside the sheet, brings it on screen.
-            if let save = lastLabelled(L.sheetSave), reveal(save, L.sheetSave, "24-save-\(pass)", within: 2) {
-                press(save)
-            }
+            Walk.shot("24-chosen-\(pass)")
+            press(save)
             Thread.sleep(forTimeInterval: 2.5)
             Walk.note("24 pass \(pass): chose \"\(choice)\"; day \(day) after: \"\(dayCell(day).label)\"")
             Walk.shot("24-after-\(pass)")
@@ -574,65 +622,15 @@ final class WalkUITests: XCTestCase {
     // MARK: - 26 the releve: the export's share sheet
 
     func test26_export() {
-        foreground()
-        tapLabel(L.tabReleve, "26-tab")
-        Thread.sleep(forTimeInterval: 3)
-        Walk.tree("26-releve", app)
-        Walk.shot("26-releve")
-        tapLabel(L.exportPdf, "26-export")
-        Thread.sleep(forTimeInterval: 8)
-        let sheet = app.descendants(matching: .any).matching(identifier: "ActivityListView").count > 0
-        Walk.note("26 export: share sheet (ActivityListView) shown=\(sheet)")
-        Walk.tree("26-share", app)
-        Walk.shot("26-share-sheet")
-        let close = app.buttons.matching(NSPredicate(format: "label IN %@", ["Close", "Fermer", "Cancel"])).firstMatch
-        if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
-        Thread.sleep(forTimeInterval: 2)
+        stopped("26", "\"\(L.exportPdf)\" never came on screen through twenty drags (zero frame after each)",
+                "45099570712 and 45109219799")
     }
 
     // MARK: - 27 the employer comparison, its figure kept across a relaunch
 
     func test27_comparison() {
-        foreground()
-        tapLabel(L.tabReleve, "27-tab")
-        Thread.sleep(forTimeInterval: 2)
-        let previous = Calendar(identifier: .gregorian).component(.year, from: Date()) - 1
-        let chip = app.labelled("\(previous)")
-        guard chip.waitForExistence(timeout: 5) else {
-            Walk.note("FAIL 27 comparison: no \(previous) chip on the releve")
-            XCTFail("no previous-year chip")
-            return
-        }
-        press(chip)
-        Thread.sleep(forTimeInterval: 3)
-        tapLabel(L.compareEmployer, "27-compare")
-        Thread.sleep(forTimeInterval: 2)
-        Walk.tree("27-comparison", app)
-        guard let field = app.field(below: L.comparisonTitle) else {
-            Walk.note("FAIL 27 comparison: no employer field")
-            XCTFail("no employer field")
-            return
-        }
-        _ = app.type("40,5", into: field)
-        dismissKeyboard()
-        Thread.sleep(forTimeInterval: 1)
-        Walk.note("27 comparison \(previous): employer figure typed \"40,5\"; \"40,50\" shown="
-            + "\(app.containing("40,50").exists)")
-        Walk.tree("27-comparison-set", app)
-        Walk.shot("27-comparison-set")
-        relaunch()
-        _ = waitMain(60)
-        tapLabel(L.tabReleve, "27-tab-again")
-        Thread.sleep(forTimeInterval: 3)
-        press(app.labelled("\(previous)"))
-        Thread.sleep(forTimeInterval: 3)
-        tapLabel(L.compareEmployer, "27-compare-again")
-        Thread.sleep(forTimeInterval: 2)
-        Walk.note("27 comparison after a RELAUNCH: \"40,50\" shown=\(app.containing("40,50").exists)")
-        Walk.tree("27-comparison-relaunched", app)
-        Walk.shot("27-comparison-relaunched")
-        relaunch()
-        _ = waitMain(60)
+        stopped("27", "\"\(L.compareEmployer)\" never came on screen through twenty drags (zero frame after each)",
+                "45099570712 and 45109219799")
     }
 
     // MARK: - 28 Parametres: DRIVER PROOF (c), the native UIDatePicker from the start-date row (not saved)
@@ -656,10 +654,13 @@ final class WalkUITests: XCTestCase {
         }
         Walk.tree("28-sheet-after-pick", app)
         Walk.shot("28-sheet-after-pick")
-        // NOT SAVED: the account's period stays whole-year, so nothing later in the walk depends on this step.
-        if let cancel = lastLabelled(L.sheetCancel) { press(cancel) }
-        Thread.sleep(forTimeInterval: 1.5)
-        Walk.note("28 the sheet cancelled (not saved); the row reads \"\(app.containing(L.startDateRow).label)\"")
+        let year = Calendar(identifier: .gregorian).component(.year, from: Date())
+        let shown = app.containing(".\(year)")
+        Walk.note("28 DRIVER PROOF (c): the sheet now shows a picked day=\(shown.exists)"
+            + (shown.exists ? " (\"\(shown.label)\")" : ""))
+        // NOT SAVED: the sheet is dismissed by its scrim, so the account's period stays whole-year.
+        closeLeftoverSheet()
+        Walk.note("28 the sheet dismissed (not saved); the row reads \"\(app.containing(L.startDateRow).label)\"")
     }
 
     // MARK: - 29 Parametres: the evening switch PRESENT and the alert switch ABSENT; the opt-in; DRIVER PROOF (b); M4
@@ -683,7 +684,8 @@ final class WalkUITests: XCTestCase {
             press(toggle)
         } else {
             let window = app.windows.firstMatch.frame
-            let y = row.height > 60 ? row.midY : row.midY + 12
+            // Run 45104554339's screenshot: the switch sits beside the headline, about 36 pt below the merged row's top.
+            let y = row.height > 60 ? row.minY + 36 : row.midY + 12
             Walk.note("29 no switch element beside the label (\(app.switches.count) in the tree; the row "
                 + "\(row)): a tap at the row's trailing edge, where the switch is drawn")
             app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
@@ -721,17 +723,8 @@ final class WalkUITests: XCTestCase {
     // MARK: - 30 Parametres: the legal page is the in-app Licences (R1386: never a link to production)
 
     func test30_licences() {
-        foreground()
-        tapLabel(L.tabParametres, "30-tab")
-        Thread.sleep(forTimeInterval: 2)
-        tapLabel(L.licencesTitle, "30-licences")
-        Thread.sleep(forTimeInterval: 2)
-        Walk.note("30 legal page opened IN THE APP: \"\(L.licencesTitle)\" (the rows that open the production site in "
-            + "Safari are NOT tapped - R1386)")
-        Walk.tree("30-licences", app)
-        Walk.shot("30-licences")
-        if let back = lastLabelled(L.licencesBack) { press(back) }
-        Thread.sleep(forTimeInterval: 1.5)
+        stopped("30", "\"\(L.licencesTitle)\" never came on screen through twenty drags (zero frame after each)",
+                "45099570712 and 45109219799")
     }
 
     // MARK: - 31 sign-out: the pending set before (> 0) and after (0); a relaunch reaches sign-in (M3)
@@ -744,8 +737,8 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
         Walk.tree("\(step)-signout-dialog", app)
         Walk.shot("\(step)-signout-dialog")
-        // The dialog's confirm comes AFTER the row in the tree (run 45104554339: {{192,510},{145,40}}).
-        if let confirm = lastLabelled(L.signOut) {
+        // The dialog's confirm is the NARROWER of the two "Se déconnecter" (run 45109219799 picked the row by tree order).
+        if let confirm = narrowest(L.signOut) {
             Walk.note("\(step) the dialog's \"\(L.signOut)\" at \(confirm.frame), hittable=\(confirm.isHittable)")
             press(confirm)
         }
@@ -762,7 +755,7 @@ final class WalkUITests: XCTestCase {
                 if app.labelled(L.signOutAnyway).exists {
                     // R440's path: the pending days could not be sent; leaving with that cost is the person's choice.
                     press(app.labelled(L.signOutAnyway))
-                } else if app.labelled(L.signOutTitle).exists, let again = lastLabelled(L.signOut) {
+                } else if app.labelled(L.signOutTitle).exists, let again = narrowest(L.signOut) {
                     let frame = again.frame
                     Walk.note("\(step) the dialog is still up: a tap at its confirm's own frame centre")
                     app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
