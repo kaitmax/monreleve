@@ -75,8 +75,17 @@ still accepted after a GET of the link. For (D), the code screen's copy on the w
 - **The privacy answers** must match what the web privacy page discloses (`DISCLOSED_RECORDS`, R206). The mapping of
   each record to Apple's data types is the operator's (QUESTION in REPORT-IOS-AUDIT.txt, R1354). The app has no third-party
   SDK, no analytics, no advertising identifier and no tracking.
+- **The privacy manifest** is `ios/MonReleve/Resources/PrivacyInfo.xcprivacy` (R1354). It declares no tracking and
+  one required-reason category, UserDefaults with reason CA92.1, which is the only one the app's OWN code calls (a
+  grep for each API shows it).
+  - The Release binary also IMPORTS `stat`, `fstat` and `lstat` (file timestamp) and `statfs` and `fstatfs` (disk
+    space). This was measured by ios-app.yml's R1353 step, and the app's own code calls none of them, so they come
+    from the linked libraries (bundled SQLite, the Kotlin/Native runtime).
+  - Whether they need a declaration, and with which reason, is a QUESTION. Apple's upload check reports a missing
+    one, so the first TestFlight upload answers it.
+  - `NSPrivacyCollectedDataTypes` is not declared (see the privacy answers above).
 - **Proof:** the App Privacy section in App Store Connect is filled in and "Published", and each answer is traceable to a
-  `DISCLOSED_RECORDS` entry.
+  `DISCLOSED_RECORDS` entry. The first upload passes without a privacy-manifest warning.
 
 ## 5. Export compliance - `ITSAppUsesNonExemptEncryption`
 
@@ -125,12 +134,24 @@ Each check has a step and the record that proves it. Do them on a TestFlight bui
    *Proof:* the PDF arrives and opens.
 8. **The employer comparison.** Use "Comparer avec mon employeur", type a figure, see the gap, and go back.
 9. **Licences.** Open Paramètres, then Licences, and come back.
-10. **Accessibility** (R1355). VoiceOver ON: go through each tab, including the off-screen rows of a long list (the
-    onboarding cantons, the Relevé's export). VoiceOver OFF, with Voice Control and then Switch Control on: check
-    whether the app's controls are reachable at all (F1, a SHIP QUESTION in REPORT-IOS-AUDIT.txt). Largest Dynamic
-    Type: every screen readable.
-11. **The native date picker** (R1389). Open it from Paramètres, then "Début d'activité". It must be French, opaque and
-    reachable by VoiceOver.
+10. **Accessibility** (R1355). The simulator measured three things a person on an iPhone must confirm:
+    - Compose 1.7.3 syncs its tree to UIAccessibility ONLY while VoiceOver runs (F1).
+    - Rows that were below the fold keep a ZERO accessibility frame after they are scrolled into view. In walk run
+      45178578142 even the always-drawn bottom bar read 0/0 once the page had scrolled.
+    - The labels are present: every control on every screen carries one (IosAccessibilityLabelsIosTest).
+    *Checks:*
+    - With VoiceOver ON: swipe through each tab to its last row (the onboarding cantons, the Relevé's "Exporter en
+      PDF", Paramètres' "Licences"). Then touch-explore those rows after scrolling: does VoiceOver land on the row
+      under the finger?
+    - With VoiceOver OFF, and Voice Control on, then Switch Control on: are the app's controls reachable at all? This
+      is F1, a SHIP QUESTION in REPORT-IOS-AUDIT.txt.
+    - Largest Dynamic Type: every screen readable. Bienvenue scales and scrolls (ios-app's launch-AX5.png).
+11. **The native date picker** (R1389). Open it from Paramètres, then "Début d'activité". It must be French, opaque,
+    fully drawn and reachable by VoiceOver. On the simulator the walk saw it French, opaque and in the tree. Its day
+    buttons are spoken in the SYSTEM language: on the runner, "Sunday, November 1".
+12. **A second sign-in that stalls on "Connexion impossible"** (F9, R1391). If it is ever seen, note the time. That
+    message means no HTTP answer reached the app, or a token refresh the server could not answer. A refusal by the
+    server shows a different message.
 
 ### For Android's S9 list (iOS Ruling 16)
 

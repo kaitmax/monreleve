@@ -1,0 +1,16 @@
+REPORT-IOS-AUDIT - I3, THE iOS RELEASE AUDIT (R1350-R1359, R1380-R1381, R1389-R1393)
+PARTIAL - IN PROGRESS. Written as the session goes; the STATUS line below is the current truth.
+
+================================================================================
+STATUS (R391)
+================================================================================
+IN PROGRESS. Increments green under fast check. FULL GATE NOT RUN on the current tip.
+
+================================================================================
+INCREMENTS SO FAR
+================================================================================
+ac7129a3  A: the R1351 and R1356 fences (planted locally, each failing by name), the R1350 removals, the R1353 Release
+          step, the R1355 Dynamic Type shot, the R1390/R1391 walker lines, and a draft of docs/ios-release.md
+7d23d3b8  B: RED and PLANTS - the R1380 and R1389 REDs, the R1381 and R1352 plants, R1352's rewrite, and the R1355
+          labels test. Expectation written before the run: C:/wt/queue-evidence/i3-audit/expect-red-run.txt
+          Dispatched: ios-shared 45163161279, ios-app 45163167768.
