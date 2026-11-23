@@ -16,7 +16,8 @@ BASE: origin/main as stated in your brief.
 R1350. NOTHING PROBE-ONLY SHIPS (iOS Rulings 3 Q3, 10 Q6). Census, by name, every probe/pilot piece: HostProbe.swift
     and its keys (keychain, bgtask, notification, reminder - M4's step 5, share, firstLaunch, ats, info),
     IosEveningReminderProbe.kt, FirstLaunchProbeResult.kt, KeychainRoundTripResult.kt, the pilot view controller
-    (pilot/AujourdhuiPilotViewController.kt) and the -probe / -pilotScenario launch paths in MonReleveApp.swift.
+    (pilot/AujourdhuiPilotViewController.kt), the -probe / -pilotScenario launch paths in MonReleveApp.swift, and
+    IOS-WALK's WalkProbe.swift with its -walkProbe / -walkNearTap launch paths (iOS Ruling 17, D4).
     For each: REMOVED where IOS-WALK now measures the same observable on the real app (say which walk line), or
     KEPT as Debug-only test harness the ios-app run still needs (say which check) and EXCLUDED from the Release
     build. The BGTask plist keys go if nothing in the shipped app registers a task (PARK-IF1 stays device-only).
@@ -33,6 +34,7 @@ R1353. THE RELEASE BUILD, INSPECTED, NEVER LAUNCHED. ios-app.yml gains ONE step 
     exception or local-networking key; no probe launch argument is handled (the probe symbols named in R1350 are
     absent from the binary - `nm` or `strings`, the command shown); the version keys are present. Each assertion
     has a positive control (the same check run on the Debug build finds what Release must not have - R169).
+    WalkProbe's symbols are among those Release must not carry.
 R1354. APP STORE READINESS, BY FILE. Census what a submission needs and whether it exists: the app icon set (none
     exists today - if it can be DERIVED from Android's launcher icon source by a script with one home, add it;
     otherwise a QUESTION), the launch screen, PrivacyInfo.xcprivacy (required-reason APIs: declare only the
@@ -45,6 +47,13 @@ R1355. ACCESSIBILITY ON iOS. An iosTest asserting the four tabs and the primary 
     the probe, do not assume); text scaling measured at the largest Dynamic Type size on the simulator in the
     ios-app run (a screenshot, looked at, R574 respected). Findings fixed where no new copy is needed; the rest
     listed. The repository's hig-compliance-auditor skill may be used; its findings are inputs, not rulings.
+    IOS-WALK's findings come here (iOS Ruling 17): F1 - Compose Multiplatform exposes its tree only while an
+    assistive service is reported running; state FROM THE COMPOSE SOURCE which services switch it on. If it is
+    VoiceOver alone, Voice Control and Switch Control users may meet an empty app: a SHIP QUESTION for the
+    orchestrator, with the always-on sync option as the candidate fix, RED first. F2 - off-viewport rows reach
+    UIAccessibility at frame {{0,0},{0,0}}: measure whether VoiceOver's own navigation reaches such a row (the
+    onboarding canton list). F3 - a Compose text field is an unlabelled Button whose label becomes its text:
+    the code boxes' labels carry their digits, so R574 covers the accessibility tree as well as the pixels.
 R1356. NO FRENCH LITERAL IN iosMain UI. The :app rule that user-facing strings live in the copy objects is extended
     to :shared iosMain (and the Swift sources): a fence fails on a user-facing literal outside them, planted.
     R155's accent guard covers whatever copy iOS added.
@@ -64,8 +73,9 @@ R1380. A RESTORE WITH NO ANSWER WRITES NOTHING (iOS Ruling 16 Q1). Past IosShell
     restoreReminder writes OFF over the server's ON, and because the settings are then cached nothing restores it
     until the next sign-in. Test-first: an iosTest whose centre never answers within the bound, /me ON, a
     persisted ON - RED (the store reads OFF) - then the fix: a restore before the centre's first answer leaves the
-    store as it was and applies the server's value when the answer comes. Use IOS-WALK's measured first-answer
-    time if it changes the bound, and say so.
+    store as it was and applies the server's value when the answer comes. IOS-WALK measured the first answer at
+    68-132 ms after didFinishLaunching (2.7-5.2 s after process start): say which clock the 2 s bound starts
+    on; the measurement does not retire this item.
 R1381. THE YEAR-DOWNLOAD STOP IS PINNED (iOS Ruling 16, IOS-SHELL-3 DEVIATION 6). iosSessionEndSeam's
     stopYearDownloads loses its default {}; an iosTest with a RECORDING stop asserts it is called on each of the
     three endings, PLANTED (the wire dropped in startIosShell, verified landed, seen to fail by name - R180).

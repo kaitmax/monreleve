@@ -1,0 +1,57 @@
+IOS-WALK-2 SESSION PROMPT - Mon Releve
+I2, CONTINUED: DIAGNOSE THE ONBOARDING STEP, THEN WALK THE REST THROUGH AN EXISTING ACCOUNT (iOS phase, I2 part 2)
+Written by the orchestrating session on 2026-11-23 (iOS Ruling 17 (interim) in relay/RULINGS-2026-11-16.txt).
+Read first: relay/IOS-WALK.txt whole (R1340-R1348 still bind, every safety rule in them unchanged); iOS
+Rulings 15, 16 and 17; REPORT-IOS-WALK.txt on i2-walk (runs 1-11, F1-F4, D1-D5); the branch's
+.github/workflows/ios-walk.yml, .github/scripts/ios-walk-helper.py and ios/MonReleveWalkUITests/*; web/'s
+/api/v1/me route (its write) and /api/v1/auth/code; CLAUDE.md R169, R176, R204, R391, R573, R574.
+Names: worktree C:/wt/i2-walk (it exists, clean, unlocked - write YOUR lock), branch i2-walk (it exists; no -b),
+report: REPORT-IOS-WALK.txt is UPDATED in place, its earlier runs kept. Ruling numbers: R1382-R1388. YOUR OWN
+advisor may advise you. A new dependency, new entitlement, new copy, ANY APP CHANGE (android/ or
+ios/MonReleve/Sources beyond WalkProbe), a trigger other than workflow_dispatch, or anything needing an Apple
+account comes back to the orchestrator as a QUESTION - continue with the rest.
+BASE: i2-walk at 2e19cc88 (main is 65f11786 plus records; do not rebase unless main touched your files).
+
+R1382. ONE DIAGNOSTIC RUN BEFORE ANY NEW WORKAROUND. At the canton step: record the labels of every element with
+    a NON-ZERO frame and take a screenshot (no code is on that screen); do ONE drag on the list; record both
+    again. Read it to separate three causes, and say which held:
+    (a) the visible set does not change - the drag is not scrolling (wrong target, the keyboard still up from the
+        name step, a parent consuming it);
+    (b) no canton row is visible at all - the matched "Geneve" belongs to a step that is not on screen;
+    (c) rows change but Geneve stays at frame zero - a stale tree; only then is the search field or a
+        coordinate tap (a DEVIATION with its reason) justified.
+    Fix the cause that held, runner-side. Paste typing (xcrun simctl pbcopy, then the field's Paste) replaces
+    lost key taps if typing is still the weak point.
+R1383. AN EXISTING-ACCOUNT TRACK, SO ONE STEP CANNOT TURN THE REST INTO NO RESULT. A SECOND track signs account A
+    in through the API from the helper, writes the onboarding settings through /api/v1/me's own write, and
+    records one PRIOR-year and one CURRENT-year day through /api/v1/entries; THEN the app signs in as A and
+    must resolve straight to the main shell (check first that it does - StartupDecider - and say so). From
+    there it walks R1344's rest: Aujourd'hui, the calendar, the export's share sheet, Parametres (reminder
+    opt-in on, the threshold-alert switch ABSENT beside the evening switch PRESENT, the in-app Licences page as
+    the legal page, the employer figure set and still there after a relaunch, the comparison showing it),
+    sign-out, sign in again with the earlier days back. It is a real user path (an account made on another
+    phone) and it tests R1371 directly: the prior-year day must appear on the phone. Record it as a DEVIATION
+    from R1344's single track; the new-account onboarding track stays as its own track.
+R1384. R1345's OBSERVABLES on the existing-account track: M4 (pending requests after opt-in - count, dates, 19:00,
+    today absent once recorded, no doubling on a foreground), M3 (count > 0 before sign-out, 0 after; account
+    deletion on account B the same way), the years and the plan (iOS Ruling 16 Q3), the server timestamps of a
+    day recorded on the phone (read through the API), the reminder tap if producible. Driver proofs (b)-(d) of
+    R1344 (the notification alert, the native date picker - reachable from the calendar or Parametres if not
+    from onboarding, a real background and foreground) are run where the track reaches them.
+R1385. R1346 AT THE API, NO KEYBOARD. For account C: request sign-in, GET the callback link from the runner, THEN
+    submit the code to the endpoint the app uses (/api/v1/auth/code). Record whether the GET voided the code.
+    If it did, that is a DEFECT for a code-only app (mail scanners prefetch links) - recorded, never fixed here.
+R1386. THE LEGAL PAGE (iOS Ruling 17 Q2): never tap a link to production; Licences is the walk's legal page.
+R1387. BOUNDED. Two identical failures at ANY step: stop that step, record it, and continue with the other
+    track; never a third identical run. Your own compile errors are NO RESULT and counted. When both tracks
+    are done or stopped: report, push, hand back.
+R1388. OWED BEFORE MERGE: ONE ios-app.yml run on your final code tip (ios/MonReleve/Sources changed) - every probe
+    key PASS and launch-DEFAULT.png looked at; the job logs AND the uploaded artifacts of every run you make
+    scanned for the code, the token prefix and bearer-shaped strings, the counts in the report.
+
+THE WORK: R1340-R1343's safety rules unchanged (the runner's own server and throwaway database, secrets born
+and masked on the runner, the code and the callback masked the moment they are read, the artifact allowlist,
+no server or mail log ever printed); D1-D5 stand. Push every increment; do not merge; sessions do not write
+parking.md; lock removed last. REPORT: SUMMARY / STATUS (R391) / R1382-R1388 with evidence, and R1340-R1348
+updated / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF IOS-WALK-2 PROMPT

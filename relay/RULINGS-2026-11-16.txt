@@ -3154,3 +3154,40 @@ Q3 (re-plan after each landed year): ACCEPTED as iOS's own (its requests are
 ORDER FROM HERE: IOS-WALK (R1340-R1348; its increment 0 is an inert
    ios-walk.yml the orchestrator merges alone so it can be dispatched) ->
    IOS-AUDIT (R1350-R1359 and R1380-R1381).
+
+iOS Ruling 17 (interim) - IOS-WALK partial, 2026-11-23. NOT MERGED: i2-walk
+report tip 2e19cc88, code tip 9b1400ed, proven through code sign-in only
+(test01, test02 three times, test07's API channel with no day recorded).
+Checked by the orchestrator: the branch's workflow names no production host
+and reads no repository secret, triggers workflow_dispatch only; the job logs
+of runs 45057577050, 45073103807, 45075605782, 45078149756, 45081978093
+scanned (token prefix 0, production host 0, unmasked callback 0, the only
+standalone six-digit number a line count); the ARTIFACT copies in
+queue-evidence/i2-walk scanned too (186 text files: token prefix 0, bearer 0,
+token-shaped strings 0; the only non-test address is run 9's mistyped
+throwaway @mnreleve.testo, dev outbox only); all 39 captured trees of the
+code screen show empty boxes ("Chiffre N sur 6", no digit) and the run 11
+code-screen screenshot was looked at: empty. The helper keeps the app's
+bearer in memory only.
+Q1 (the onboarding blocker): NOT ANSWERED AS ASKED - the zero-frame cause is
+   not diagnosed (flings, short drags and scroll-into-view failed alike, which
+   fits "the drag is not scrolling" as well as the off-viewport theory). NO APP
+   CHANGE in the walk. IOS-WALK-2 R1382 runs ONE diagnostic first; runner-side
+   unblocks only (paste typing through simctl pbcopy is a runner tool, allowed).
+Q2 (a legal link): the walk NEVER taps a link to production. The in-app
+   Licences page is the walk's legal page; the link's target stays proven by
+   IosShellFacilitiesIosTest r1333 and goes on the operator's iPhone list.
+Q3 (D1, the simulator VoiceOver preference): ACCEPTED for the walk. F1 itself
+   (the tree exists only while an assistive service is reported running) goes
+   to IOS-AUDIT R1355 as a ship question.
+F2 (off-viewport rows at frame zero) and F3 (a Compose text field is an
+   unlabelled Button whose label becomes its text) go to IOS-AUDIT R1355.
+D2-D5 accepted for the walk; D4's WalkProbe.swift and its launch paths join
+   IOS-AUDIT R1350's census and R1353's Release check.
+OWED BEFORE i2-walk MERGES: ONE ios-app.yml run on the final code tip
+   (ios/MonReleve/Sources changed: WalkProbe.swift, MonReleveApp.swift) -
+   probe keys PASS, launch-DEFAULT looked at.
+R1380 STANDS: the measured first answer (68-132 ms after didFinishLaunching)
+   does not retire it; a timeout must still write nothing.
+NEXT: IOS-WALK-2 (relay/IOS-WALK-2.txt, R1382-R1388) on i2-walk from
+   2e19cc88, then the merge, then IOS-AUDIT.
