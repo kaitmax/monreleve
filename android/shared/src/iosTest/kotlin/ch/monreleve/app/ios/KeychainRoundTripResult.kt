@@ -3,11 +3,16 @@ package ch.monreleve.app.ios
 import ch.monreleve.app.auth.TokenPair
 import ch.monreleve.app.auth.TokenStore
 
-// IOS-HOST R1212 (1). THE KEYCHAIN ROUND-TRIP THE APP HOST'S -probe LAUNCH RUNS, INSIDE THE APP BUNDLE.
+// IOS-HOST R1212 (1). THE KEYCHAIN ROUND-TRIP THE APP HOST'S -probe LAUNCH RAN, INSIDE THE APP BUNDLE.
+//
+// IOS-AUDIT R1350: MOVED FROM iosMain TO iosTest (git mv, body unchanged) - nothing probe-only ships. The app's probe
+// no longer calls it: the walk now measures the real session store in the real app (saved at sign-in, read back on
+// every authenticated request, cleared at sign-out - REPORT-IOS-AUDIT R1350). KeychainRoundTripIosTest keeps
+// exercising it, against the REAL Keychain of the simulator test process.
 //
 // The simulator TEST binary proved KeychainTokenStore with entitlements the linker wrote into its own Mach-O section
-// (IOS-1a R565). An APP is signed another way - ad hoc, identity "-", entitlements processed by Xcode - so whether the
-// same store works there is the host's question, and this is the one function its probe calls to answer it.
+// (IOS-1a R565). An APP is signed another way - ad hoc, identity "-", entitlements processed by Xcode - so whether
+// the same store works there is the host's question, and this is the one function its probe calls to answer it.
 //
 // WHY KOTLIN, NOT SWIFT: KeychainTokenStore.save THROWS KeychainException on a refused write, and a Kotlin exception
 // that reaches Swift through a function with no @Throws ends the process - the probe would lose every later result

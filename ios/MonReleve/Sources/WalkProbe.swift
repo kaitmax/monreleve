@@ -19,7 +19,11 @@
 //   pending.*          every pending request: identifier, hour, minute, the trigger's time zone, repeats, next fire.
 //   delivered.count    the delivered list's size.
 //
-// I3 (IOS-AUDIT) removes this file with the other probe keys (iOS Ruling 10 Q6), once the walk has measured.
+// IOS-AUDIT R1350: KEPT, DEBUG ONLY. The walk (.github/workflows/ios-walk.yml) still needs it - IOS-AUDIT R1390/R1391
+// dispatch it again - so the whole file is compiled only when DEBUG is defined (ios/project.yml: the Debug configuration
+// alone). A Release build carries none of it; R1353 checks the built Release binary for its names.
+
+#if DEBUG
 
 import Foundation
 import Shared
@@ -166,3 +170,5 @@ final class WalkProbe {
         return Date(timeIntervalSince1970: TimeInterval(start.tv_sec) + TimeInterval(start.tv_usec) / 1_000_000)
     }
 }
+
+#endif

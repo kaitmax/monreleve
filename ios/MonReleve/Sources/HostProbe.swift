@@ -2,59 +2,50 @@
 //
 // IOS-HOST R1212. THE HOST PROBE: WHAT AN AD-HOC-SIGNED SIMULATOR BUNDLE CAN DO, ONE POSITIVE SIGNAL EACH (R133).
 //
+// DEBUG ONLY (IOS-AUDIT R1350, iOS Rulings 3 Q3 and 10 Q6): the whole file is compiled only when DEBUG is defined
+// (ios/project.yml sets it for the Debug configuration alone), so the Release build carries none of it - R1353 proves
+// that on the built Release binary, with this file's symbols as the positive control on Debug.
+//
 // Runs ONLY on a launch with `-probe YES` (LaunchArguments); a normal launch never reaches this file. It writes
 // key=value lines to Documents/ios-host-probe.txt in the app's data container, which the workflow reads back with
 // `simctl get_app_container`. Each line is written (and synced) the moment it is known, so a crash in one check
 // leaves every earlier result readable, and a missing key reads as NO RESULT - never as a pass.
 //
-//   (1) keychain      a FAKE token pair through KeychainTokenStore, saved, read back equal, cleared - via the
-//                     Kotlin keychainRoundTrip (KeychainRoundTripResult.kt), which returns a refusal's OSStatus instead of
-//                     letting a Kotlin exception end the process.
-//   (2) notification  a local notification scheduled 2 s ahead and found in the DELIVERED list. Authorization is
-//                     PROVISIONAL: it is granted without a prompt, and nobody can tap an alert on the runner.
-//   (3) share         a UIActivityViewController presented over the pilot; the workflow screenshots it after
-//                     share.result is written.
-//   (4) bgtask        BGTaskScheduler.submit's answer as returned (or thrown, with its domain and code).
-//   (5) reminder      IOS-MOVE-REMINDER R1292: the evening reminder's production glue over the REAL centre - the
-//                     plan held, re-planned (replaced, not doubled), then signed out (removed) - each read back
-//                     from the PENDING list. Runs after (2), whose provisional authorization it relies on.
-//   (6) firstLaunch   IOS-SHELL-1 R1321: the first-launch clear over the REAL Keychain stores and a REAL UserDefaults
-//                     marker (probe names - the app's own items are never touched): cleared when unmarked, kept after.
-//   (7) ats           IOS-SHELL-1 R1320: whether App Transport Security refuses plain http to the Debug base URL,
-//                     told apart by the error code against a port where nothing listens.
+// WHAT IS LEFT, AND WHY (R1350's census, in REPORT-IOS-AUDIT.txt with the walk line for each removal):
+//   (3) share         a UIActivityViewController presented over the app's own root view controller; the workflow
+//                     screenshots it after share.result is written. KEPT: the walk never reached the export's share
+//                     sheet (iOS Ruling 18), so this is still the one run that presents one.
 //   (8) mail          IOS-SHELL-2 R1333: a MEASUREMENT, not a check - whether this phone can open the Mail app's
 //                     scheme (message://), asked through the shell's own function (canOpenMailApp), which decides
-//                     whether the code screen shows "Ouvrir ma messagerie". It opens nothing.
+//                     whether the code screen shows its mail button. It opens nothing. KEPT: the walk does not read it.
+// REMOVED, each because the walk now measures the same observable on the REAL app (iOS Ruling 18, run 45125804130):
+//   (1) keychain - the session's own Keychain store saves at sign-in, is read back on every authenticated request
+//       (SessionManager reads the store each attempt) and is cleared at sign-out ("31 relaunch after sign-out reaches
+//       sign-in=true"); its Kotlin helper moved to iosTest, where it still runs against the real Keychain.
+//   (2) notification - the real evening reminder delivered on the simulator (runs 16 and 17) after the real alert.
+//   (4) bgtask - nothing in the shipped app registers a task (PARK-IF1 stays device-only); its plist keys went too.
+//   (5) reminder - M4 and M3 on the real centre (run 18: 4 pending at 19:00 after the opt-in, still 4 after a real
+//       background/foreground, 0 after sign-out).
+//   (6) firstLaunch - its Kotlin helper moved to iosTest and runs there over the real Keychain and UserDefaults.
+//   (7) ats - the Debug app's plain-http requests to the walk's runner-local relay answered (run 18: "POST
+//       /api/v1/entries 200"); and R1353 asserts the Release Info.plist carries no ATS key at all.
+//   info.* - R1353 reads both configurations' Info.plist directly.
+// The pilot view controller the probe used to run over is gone (R1350): the probe now runs over the real app.
 //
-// NOTHING SECRET: no server, no sign-in, no real token. The fake pair's values are never written out - only whether
-// they came back equal. The repository is public, and so are the run's logs and artifacts.
+// NOTHING SECRET: no server, no sign-in, no token. The repository is public, and so are the run's logs and artifacts.
 
-import BackgroundTasks
+#if DEBUG
+
 import Foundation
-import Security
 import Shared
 import UIKit
-import UserNotifications
 
 @MainActor
 final class HostProbe {
     static let shared = HostProbe()
     static let resultFileName = "ios-host-probe.txt"
-    static let backgroundTaskIdentifier = "ch.monreleve.app.probe.refresh"
-    private static var backgroundTaskRegistered = false
 
     private var started = false
-    private let notificationDelegate = ProbeNotificationDelegate()
-
-    /// Called from didFinishLaunching, before launch ends, as BGTaskScheduler requires.
-    static func registerBackgroundTask() {
-        backgroundTaskRegistered = BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: backgroundTaskIdentifier,
-            using: nil
-        ) { task in
-            task.setTaskCompleted(success: false)
-        }
-    }
 
     func start() {
         guard !started else { return }
@@ -67,244 +58,9 @@ final class HostProbe {
     private func run() async {
         let log = ProbeLog(fileName: HostProbe.resultFileName)
         log.line("probe.nonce", LaunchArguments.probeNonce)
-        bundleFacts(log)
-        keychain(log)
-        await backgroundTask(log)
-        await notification(log)
-        await reminder(log)
         await share(log)
-        firstLaunch(log)
-        await transportSecurity(log)
         mailApp(log)
         log.line("probe.done", "true")
-    }
-
-    // MARK: - what the bundle carries
-
-    private func bundleFacts(_ log: ProbeLog) {
-        let bundle = Bundle.main
-        log.line("info.bundleIdentifier", bundle.bundleIdentifier ?? "nil")
-        let short = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "nil"
-        let build = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "nil"
-        log.line("info.version", "\(short) (\(build))")
-        log.line("info.apiBaseUrl", bundle.object(forInfoDictionaryKey: "MonReleveApiBaseUrl") as? String ?? "nil")
-        log.line("info.composeResources", composeResources())
-    }
-
-    private func composeResources() -> String {
-        guard let root = Bundle.main.resourceURL?.appendingPathComponent("compose-resources"),
-              let walker = FileManager.default.enumerator(atPath: root.path)
-        else { return "absent" }
-        var glyphs = 0
-        while let name = walker.nextObject() as? String {
-            let file = (name as NSString).lastPathComponent
-            if file.hasPrefix("ic_") && file.hasSuffix(".xml") { glyphs += 1 }
-        }
-        return "icXml=\(glyphs)"
-    }
-
-    // MARK: - (1) the Keychain, through KeychainTokenStore
-
-    private func keychain(_ log: ProbeLog) {
-        log.line("keychain.accessGroup", keychainAccessGroup())
-        let store = KeychainTokenStore(service: "ch.monreleve.app.probe", account: "fake-pair")
-        let fake = TokenPair(
-            accessToken: "fake-access-not-a-token",
-            refreshToken: "fake-refresh-not-a-token",
-            accessExpiresAt: "2000-01-01T00:00:00Z",
-            refreshExpiresAt: "2000-01-02T00:00:00Z"
-        )
-        let result = KeychainRoundTripResultKt.keychainRoundTrip(store: store, fake: fake)
-        log.line("keychain.saveStatus", "\(result.saveStatus)")
-        log.line("keychain.loadedEqual", "\(result.loadedEqual)")
-        log.line("keychain.clearedToNull", "\(result.clearedToNull)")
-        log.line("keychain.result", result.passed ? "PASS" : "FAIL")
-    }
-
-    /// Which access group the system files a new item under - the entitlement as the Keychain actually sees it.
-    private func keychainAccessGroup() -> String {
-        let identity: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "ch.monreleve.app.probe.group",
-            kSecAttrAccount as String: "fake",
-        ]
-        SecItemDelete(identity as CFDictionary)
-        var add = identity
-        add[kSecValueData as String] = Data("fake".utf8)
-        add[kSecReturnAttributes as String] = true
-        var attributes: CFTypeRef?
-        let status = SecItemAdd(add as CFDictionary, &attributes)
-        SecItemDelete(identity as CFDictionary)
-        guard status == errSecSuccess else { return "addStatus=\(status)" }
-        let group = (attributes as? [String: Any])?[kSecAttrAccessGroup as String] as? String
-        return group ?? "none"
-    }
-
-    // MARK: - (4) BGTaskScheduler.submit
-
-    private func backgroundTask(_ log: ProbeLog) async {
-        let listed = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String] ?? []
-        log.line("bgtask.permittedInPlist", "\(listed.contains(HostProbe.backgroundTaskIdentifier))")
-        log.line("bgtask.registered", "\(HostProbe.backgroundTaskRegistered)")
-        let request = BGAppRefreshTaskRequest(identifier: HostProbe.backgroundTaskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
-        do {
-            try BGTaskScheduler.shared.submit(request)
-            log.line("bgtask.submit", "returned")
-        } catch {
-            let refusal = error as NSError
-            log.line(
-                "bgtask.submit",
-                "threw domain=\(refusal.domain) code=\(refusal.code) description=\(refusal.localizedDescription)"
-            )
-        }
-        let pending = await BGTaskScheduler.shared.pendingTaskRequests()
-        log.line("bgtask.pendingAfterSubmit", "\(pending.count)")
-        BGTaskScheduler.shared.cancelAllTaskRequests()
-    }
-
-    // MARK: - (2) a local notification, delivered
-
-    private func notification(_ log: ProbeLog) async {
-        let center = UNUserNotificationCenter.current()
-        center.delegate = notificationDelegate
-        do {
-            let granted = try await center.requestAuthorization(options: [.alert, .sound, .provisional])
-            log.line("notification.granted", "\(granted)")
-        } catch {
-            log.line("notification.authorizationError", "\((error as NSError).domain) \((error as NSError).code)")
-        }
-        let settings = await center.notificationSettings()
-        log.line("notification.authorizationStatus", statusName(settings.authorizationStatus))
-
-        let identifier = "ios-host-probe-" + UUID().uuidString
-        let content = UNMutableNotificationContent()
-        content.title = "IOS-HOST probe"
-        content.body = "A local notification from the simulator probe."
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
-        do {
-            try await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
-            log.line("notification.added", "true")
-        } catch {
-            log.line("notification.added", "threw \((error as NSError).domain) \((error as NSError).code)")
-        }
-        let pending = await center.pendingNotificationRequests()
-        log.line("notification.pendingAfterAdd", "\(pending.contains { $0.identifier == identifier })")
-
-        var delivered = false
-        for _ in 0..<30 where !delivered {
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            let list = await center.deliveredNotifications()
-            delivered = list.contains { $0.request.identifier == identifier }
-        }
-        log.line("notification.willPresentCalled", "\(notificationDelegate.presented(identifier))")
-        log.line("notification.delivered", "\(delivered)")
-        log.line("notification.result", delivered ? "PASS" : "FAIL")
-    }
-
-    private func statusName(_ status: UNAuthorizationStatus) -> String {
-        switch status {
-        case .notDetermined: return "notDetermined"
-        case .denied: return "denied"
-        case .authorized: return "authorized"
-        case .provisional: return "provisional"
-        case .ephemeral: return "ephemeral"
-        @unknown default: return "unknown(\(status.rawValue))"
-        }
-    }
-
-    // MARK: - (5) the evening reminder's re-plan, on the real centre (IOS-MOVE-REMINDER R1292)
-
-    /// The production glue (replanEveningReminders over the SYSTEM centre, via the Kotlin eveningReminderProbeReplan)
-    /// three times: planned, planned again (a re-plan must REPLACE by identifier, never duplicate), then signed out
-    /// (every planned request removed). After each, this app's evening-reminder requests in the PENDING list are
-    /// polled until they equal what was planned, for at most 5 s (the centre applies removals and additions
-    /// asynchronously). Runs after (2), so the provisional authorization is already granted. Cleaned up at the end.
-    private func reminder(_ log: ProbeLog) async {
-        let center = UNUserNotificationCenter.current()
-        let planned = Set(IosEveningReminderProbeKt.eveningReminderProbeReplan(signedIn: true))
-        log.line("reminder.planned", planned.sorted().joined(separator: ","))
-        let afterPlan = await pendingReminders(center, expecting: planned)
-        log.line("reminder.pendingAfterPlan", afterPlan.sorted().joined(separator: ","))
-        if let first = await firstReminderTrigger(center) { log.line("reminder.firstTrigger", first) }
-        let again = Set(IosEveningReminderProbeKt.eveningReminderProbeReplan(signedIn: true))
-        let afterReplan = await pendingReminders(center, expecting: again)
-        log.line("reminder.pendingAfterReplanCount", "\(afterReplan.count)")
-        _ = IosEveningReminderProbeKt.eveningReminderProbeReplan(signedIn: false)
-        let afterSignedOut = await pendingReminders(center, expecting: [])
-        log.line("reminder.pendingAfterSignedOutCount", "\(afterSignedOut.count)")
-        let pass = !planned.isEmpty && afterPlan == planned && afterReplan == again && again == planned
-            && afterSignedOut.isEmpty
-        log.line("reminder.result", pass ? "PASS" : "FAIL")
-        center.removeAllPendingNotificationRequests()
-    }
-
-    /// This app's evening-reminder identifiers in the pending list, polled until they equal [expecting] or 5 s pass.
-    private func pendingReminders(_ center: UNUserNotificationCenter, expecting: Set<String>) async -> Set<String> {
-        var seen: Set<String> = []
-        for _ in 0..<20 {
-            let pending = await center.pendingNotificationRequests()
-            seen = Set(pending.map { $0.identifier }.filter { $0.hasPrefix(IosEveningRemindersKt.EVENING_REMINDER_ID_PREFIX) })
-            if seen == expecting { break }
-            try? await Task.sleep(nanoseconds: 250_000_000)
-        }
-        return seen
-    }
-
-    /// The earliest pending evening reminder's trigger, as the system holds it: its components and next fire date.
-    private func firstReminderTrigger(_ center: UNUserNotificationCenter) async -> String? {
-        let pending = await center.pendingNotificationRequests()
-            .filter { $0.identifier.hasPrefix(IosEveningRemindersKt.EVENING_REMINDER_ID_PREFIX) }
-            .sorted { $0.identifier < $1.identifier }
-        guard let request = pending.first, let trigger = request.trigger as? UNCalendarNotificationTrigger else {
-            return nil
-        }
-        let parts = trigger.dateComponents
-        let next = trigger.nextTriggerDate().map { ISO8601DateFormatter().string(from: $0) } ?? "nil"
-        return "\(request.identifier) hour=\(parts.hour ?? -1) minute=\(parts.minute ?? -1) "
-            + "timeZone=\(parts.timeZone?.identifier ?? "nil") repeats=\(trigger.repeats) next=\(next) "
-            + "titleIsManual=\(request.content.title == NotificationCopy.shared.MANUAL_TITLE)"
-    }
-
-    // MARK: - (6) the first-launch clear, on the real Keychain (IOS-SHELL-1 R1321)
-
-    /// The production clearKeychainOnFirstLaunch over the three REAL Keychain stores and a REAL UserDefaults marker,
-    /// each on a probe name (FirstLaunchProbeResult.kt): no marker -> all three cleared and the marker set; marker set ->
-    /// nothing cleared. The ORDER inside the app's start path is IosFirstLaunchIosTest's (doubles, no bundle there).
-    private func firstLaunch(_ log: ProbeLog) {
-        let result = FirstLaunchProbeResultKt.firstLaunchProbe()
-        log.line("firstLaunch.firstCleared", "\(result.firstCleared)")
-        log.line("firstLaunch.firstLeftAllEmpty", "\(result.firstLeftAllEmpty)")
-        log.line("firstLaunch.firstSetTheMarker", "\(result.firstSetTheMarker)")
-        log.line("firstLaunch.secondCleared", "\(result.secondCleared)")
-        log.line("firstLaunch.secondKeptAll", "\(result.secondKeptAll)")
-        if let failure = result.failure { log.line("firstLaunch.failure", failure) }
-        log.line("firstLaunch.result", result.passed ? "PASS" : "FAIL")
-    }
-
-    // MARK: - (7) App Transport Security and the Debug base URL (IOS-SHELL-1 R1320)
-
-    /// R1320: MEASURE whether iOS refuses plain http to the Debug base URL (http://127.0.0.1:3000) before any exception
-    /// is added. Nothing listens there on the runner, so the answer is told apart by its error code: -1022
-    /// (NSURLErrorAppTransportSecurityRequiresSecureConnection) is ATS refusing; -1004 (cannot connect) is ATS letting
-    /// the request through to a closed port. The request carries nothing and reaches no server.
-    private func transportSecurity(_ log: ProbeLog) async {
-        guard let base = Bundle.main.object(forInfoDictionaryKey: "MonReleveApiBaseUrl") as? String,
-              let url = URL(string: base + "/api/health")
-        else {
-            log.line("ats.result", "NO RESULT no base URL in Info.plist")
-            return
-        }
-        log.line("ats.scheme", url.scheme ?? "nil")
-        do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            log.line("ats.answer", "status \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-            log.line("ats.refusedByAts", "false")
-        } catch {
-            let failure = error as NSError
-            log.line("ats.answer", "\(failure.domain) \(failure.code)")
-            log.line("ats.refusedByAts", "\(failure.code == NSURLErrorAppTransportSecurityRequiresSecureConnection)")
-        }
     }
 
     // MARK: - (8) the Mail app's scheme (IOS-SHELL-2 R1333)
@@ -322,11 +78,17 @@ final class HostProbe {
     private func share(_ log: ProbeLog) async {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("ios-host-probe-share.txt")
         do {
-            try "IOS-HOST probe: a fake file to share, not a releve.\n".write(to: file, atomically: true, encoding: .utf8)
+            try "IOS-HOST probe: a fake file to share.\n".write(to: file, atomically: true, encoding: .utf8)
         } catch {
             log.line("share.fileError", "\((error as NSError).domain) \((error as NSError).code)")
         }
-        guard let root = rootViewController() else {
+        // The app's root view controller may still be appearing when the probe starts: wait for it, bounded.
+        var root = rootViewController()
+        for _ in 0..<20 where root == nil {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            root = rootViewController()
+        }
+        guard let root = root else {
             log.line("share.result", "FAIL no root view controller")
             return
         }
@@ -347,30 +109,6 @@ final class HostProbe {
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
         return (windows.first { $0.isKeyWindow } ?? windows.first)?.rootViewController
-    }
-}
-
-/// Records which notifications reached willPresent, and asks for them to be listed (a foreground app's notification
-/// is otherwise silenced).
-final class ProbeNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    private let lock = NSLock()
-    private var identifiers: [String] = []
-
-    func presented(_ identifier: String) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return identifiers.contains(identifier)
-    }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        lock.lock()
-        identifiers.append(notification.request.identifier)
-        lock.unlock()
-        completionHandler([.banner, .list])
     }
 }
 
@@ -395,3 +133,5 @@ final class ProbeLog {
         try? handle.close()
     }
 }
+
+#endif

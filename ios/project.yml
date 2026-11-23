@@ -8,9 +8,10 @@
 # WHAT THE APP IS, TODAY (IOS-SHELL-1 R1320): a SwiftUI window hosting ONE ComposeUIViewController - the COMMON AppRoot
 # around the common router, over the process's shell (:shared iosMain ios/MonReleveViewController.kt, IosShell.kt):
 # sign-in by code, RESOLVING, the manual-only onboarding and the four tabs. It reads MonReleveApiBaseUrl and the version
-# keys below from Info.plist. A launch with `-probe YES` or `-pilotScenario <NAME>` shows the PILOT view controller
-# instead (the probe's and the glyph screenshot's only - MonReleveApp.swift); `-probe YES` also runs the host probe
-# (MonReleve/Sources/HostProbe.swift, R1212). A normal launch never does either.
+# keys below from Info.plist. IOS-AUDIT R1350: every launch is the real app - the pilot is gone - and the runner's probes
+# (MonReleve/Sources/HostProbe.swift under `-probe YES`, WalkProbe.swift under `-walkProbe YES`) are compiled ONLY in
+# the Debug configuration (SWIFT_ACTIVE_COMPILATION_CONDITIONS below), so the Release build carries none of them (R1353
+# inspects the built Release binary for their names).
 #
 # THE BUILD SHAPE (REPORT-IOS-HOST-CENSUS R1203):
 #   - :shared is a STATIC framework, baseName "Shared" (android/shared/build.gradle.kts), linked into the app binary.
@@ -67,11 +68,17 @@ targets:
         # The API base URL (Android: BuildConfig.API_BASE_URL). Debug reaches a server on the simulator's own host
         # loopback (Android's debug default is the emulator's 10.0.2.2:3000); Release is the site. IOS-SHELL-1 R1320:
         # the app's AuthApi reads it (MonReleveViewController.kt) - the ONE home, never a literal in code (R206). The
-        # workflow builds Debug only, so no run of it ever contacts production.
+        # workflow LAUNCHES Debug only, so no run of it ever contacts production; IOS-AUDIT R1353 builds Release too, and
+        # only reads it (ios-app.yml's Release step never installs or launches it).
+        #
+        # IOS-AUDIT R1350: DEBUG is defined for the Debug configuration ALONE, stated rather than inherited from a preset
+        # (R345: a default is a setting nobody chose) - every probe file and launch argument sits under `#if DEBUG`.
         Debug:
           MONRELEVE_API_BASE_URL: "http://127.0.0.1:3000"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
         Release:
           MONRELEVE_API_BASE_URL: "https://monreleve.ch"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
     info:
       path: MonReleve/Info.plist
       properties:
@@ -91,14 +98,9 @@ targets:
         # is listed.
         LSApplicationQueriesSchemes:
           - message
-        # R1212 (4). BGTaskScheduler refuses an identifier the Info.plist does not list (notPermitted), and an app
-        # refresh task needs the fetch background mode - both are declared so that what submit returns on the
-        # simulator measures the SIMULATOR, not a missing key. The identifier names the probe; the real background
-        # sync is PARK-IF1's and replaces it.
-        BGTaskSchedulerPermittedIdentifiers:
-          - ch.monreleve.app.probe.refresh
-        UIBackgroundModes:
-          - fetch
+        # IOS-AUDIT R1350: NO BGTaskSchedulerPermittedIdentifiers and NO UIBackgroundModes. They were declared for the host
+        # probe's bgtask check only (R1212 (4)); nothing in the shipped app registers a task, so they went with it. The
+        # real background sync is PARK-IF1's, device-only, and declares its own when it exists.
     entitlements:
       path: MonReleve/MonReleve.entitlements
       properties:

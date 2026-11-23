@@ -142,8 +142,8 @@ class ExperimentalTimeOptInAllowlistTest {
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/CalendrierReleveScreensIosTest.kt" to 1,
             // IOS-2d R820: the iOS UI test's one builder hands the shared forecast controllers a fixed Clock.
             "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/SimulationForecastScreensIosTest.kt" to 1,
-            // IOS-MOVE-REMINDER R1292: the host probe's one call reads the device clock; the glue test's one plan.
-            "shared/src/iosMain/kotlin/ch/monreleve/app/ios/IosEveningReminderProbe.kt" to 1,
+            // IOS-MOVE-REMINDER R1292: the glue test's one plan. (Its host-probe twin, iosMain
+            // IosEveningReminderProbe.kt, was deleted by IOS-AUDIT R1350 - the walk measures the real app's plan.)
             "shared/src/iosTest/kotlin/ch/monreleve/app/ios/IosEveningRemindersIosTest.kt" to 1,
             // IOS-SHELL-1 (R1323): the iOS composition root hands MainGraph and the reminder plan a kotlin.time.Clock -
             // every use is inside startIosShell, one function-scope opt-in (ShellState.kt's role on Android); and the

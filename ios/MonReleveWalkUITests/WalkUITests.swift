@@ -101,20 +101,37 @@ final class WalkUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 3)
             Walk.tree("\(step)-settled", app)
         }
+        // IOS-AUDIT R1390 (i): a SETTLED reveal that only ever drags UP. IOS-WALK's loop dragged up for passes 0-8 and
+        // back DOWN for 9-19, which is why run 18's last screenshot showed the Relevé at its top again - the walker
+        // scrolled it back, not the app. With no reverse drag, a page found at its top after the last drag would be the
+        // APP resetting its scroll: the last pass is photographed for that reading.
         var seen: [String] = []
-        for pass in 0..<20 where !onScreen(element) {
-            if pass < 9 {
-                low.press(forDuration: 0.05, thenDragTo: high, withVelocity: .slow, thenHoldForDuration: 0.3)
-            } else {
-                high.press(forDuration: 0.05, thenDragTo: low, withVelocity: .slow, thenHoldForDuration: 0.3)
-            }
+        var drags = 0
+        for pass in 0..<12 where !onScreen(element) {
+            low.press(forDuration: 0.05, thenDragTo: high, withVelocity: .slow, thenHoldForDuration: 0.3)
+            drags += 1
             Thread.sleep(forTimeInterval: 1.5)
             if pass == 0 { Walk.shot("\(step)-drag-1") }
             seen.append(element.exists ? "\(Int(element.frame.minY))/\(Int(element.frame.height))" : "gone")
         }
-        if !seen.isEmpty {
-            Walk.note("\(step): \"\(label)\" after \(seen.count) drag(s): on screen=\(onScreen(element)); "
-                + "y/height after each: \(seen.joined(separator: " "))")
+        if drags > 0 {
+            Walk.shot("\(step)-drag-last")
+            Walk.note("R1390(i) \(step): \"\(label)\" after \(drags) upward drag(s): on screen=\(onScreen(element)); "
+                + "y/height after each: \(seen.joined(separator: " ")) (shot \(step)-drag-last: where the page stopped)")
+        }
+        // IOS-AUDIT R1390 (iii): XCUITest's own swipeUp on the scroll container (the first scroll view the tree offers,
+        // else the window), ONCE per step, only if the settled drags did not bring the row on screen.
+        if !onScreen(element) {
+            let container = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.windows.firstMatch
+            var swiped: [String] = []
+            for _ in 0..<8 where !onScreen(element) {
+                container.swipeUp(velocity: .slow)
+                Thread.sleep(forTimeInterval: 1.5)
+                swiped.append(element.exists ? "\(Int(element.frame.minY))/\(Int(element.frame.height))" : "gone")
+            }
+            Walk.shot("\(step)-swipe-last")
+            Walk.note("R1390(iii) \(step): swipeUp on \(app.scrollViews.firstMatch.exists ? "a scroll view" : "the window") "
+                + "x\(swiped.count): on screen=\(onScreen(element)); y/height after each: \(swiped.joined(separator: " "))")
         }
         guard onScreen(element) else {
             Walk.tree("unhittable-\(step)", app)
@@ -455,8 +472,13 @@ final class WalkUITests: XCTestCase {
 
     func test21_signInExisting() {
         foreground()
+        // IOS-AUDIT R1391: every request the app made through the relay during this sign-in and RESOLVING - method, path,
+        // status, never a body - so a RESOLVING that ends on "Connexion impossible" (F9) says what GET /api/v1/me answered.
+        let started = Date().timeIntervalSince1970
         signIn(Walk.accountA, step: "21")
-        XCTAssertTrue(expectMainWithoutOnboarding("21"))
+        let main = expectMainWithoutOnboarding("21")
+        Walk.noteRequestsSince(started, "R1391 21 sign-in and RESOLVING")
+        XCTAssertTrue(main)
     }
 
     // MARK: - 22 the years landed (R1371): the prior-year day on the phone
@@ -846,8 +868,11 @@ final class WalkUITests: XCTestCase {
     func test32_signInAgain() {
         foreground()
         if app.labelled(L.welcomeStart).exists { press(app.labelled(L.welcomeStart)) }
+        // IOS-AUDIT R1391: run 17's F9 happened on THIS second sign-in - the relay's requests (method, path, status) of it.
+        let started = Date().timeIntervalSince1970
         signIn(Walk.accountA, step: "32")
         _ = expectMainWithoutOnboarding("32")
+        Walk.noteRequestsSince(started, "R1391 32 sign-in and RESOLVING")
         Thread.sleep(forTimeInterval: 8)
         Walk.call("/phonedb?label=32-phone")
         tapLabel(L.tabAujourdhui, "32-tab")
