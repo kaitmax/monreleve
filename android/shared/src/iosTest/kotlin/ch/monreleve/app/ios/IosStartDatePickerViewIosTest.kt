@@ -8,23 +8,29 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-// IOS-AUDIT R1389 (iOS Ruling 18, F6). THE NATIVE DATE PICKER SPEAKS FRENCH AND IS OPAQUE. IOS-WALK's run 15 screenshot
-// showed it in ENGLISH ("November 2026", SUN..SAT) inside a French app, and drawn with NO background - the Paramètres
-// rows showed through its calendar. The composed picker cannot be opened in an iosTest (no interop container -
-// IosStartDatePickerCanaryIosTest), so this reads the picker the slot builds (startDatePickerView, the one place it is
-// configured) - the same object IosStartDatePicker hands to UIKitView. The simulator test process's own locale is the
-// runner's (English), which is exactly the condition that drew the English calendar. The look itself is confirmed on
-// the walk's screenshot of the opened picker.
+// IOS-AUDIT R1389 (iOS Ruling 18, F6). THE NATIVE DATE PICKER SPEAKS FRENCH AND IS OPAQUE. IOS-WALK's run 15
+// screenshot showed it in ENGLISH ("November 2026", SUN..SAT) inside a French app, and drawn with NO background - the
+// Paramètres rows showed through its calendar. The composed picker cannot be opened in an iosTest (no interop
+// container - IosStartDatePickerCanaryIosTest), so this reads the picker the slot builds (startDatePickerView, the
+// one place it is configured) - the same object IosStartDatePicker hands to UIKitView. The simulator test process's
+// own locale is the runner's (English), which is exactly the condition that drew the English calendar. The look
+// itself is confirmed on the walk's screenshot of the opened picker.
 
 class IosStartDatePickerViewIosTest {
     @OptIn(ExperimentalForeignApi::class)
     @Test
     fun r1389ThePickerIsFrenchAndOpaqueWhateverTheDevicesLanguage() {
-        val picker = startDatePickerView("2026-03-01", Color.White)
+        val host = startDatePickerView("2026-03-01", Color.White)
+        val picker = host.picker
 
         val locale = picker.locale?.localeIdentifier
         assertTrue(locale?.startsWith(PICKER_LANGUAGE) == true, "R1389: the picker's locale is French, read $locale")
-        val alpha = CGColorGetAlpha(picker.backgroundColor?.CGColor)
-        assertEquals(1.0, alpha, "R1389: the picker draws its own, opaque background")
+        // Run 45175730795: the picker itself read back alpha 0.0 although an opaque colour was set on it - the
+        // opacity is its container's, the view UIKitView hosts, and the picker must be inside it.
+        val own = picker.backgroundColor
+        println("R1389: the picker's own background null=${own == null} alpha=${CGColorGetAlpha(own?.CGColor)}")
+        val alpha = CGColorGetAlpha(host.container.backgroundColor?.CGColor)
+        assertEquals(1.0, alpha, "R1389: the view the slot hosts is opaque")
+        assertTrue(picker.superview == host.container, "R1389: the picker sits in that opaque view")
     }
 }

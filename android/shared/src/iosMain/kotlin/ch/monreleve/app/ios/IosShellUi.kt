@@ -57,6 +57,9 @@ import platform.Foundation.NSCalendarUnitYear
 import platform.Foundation.NSDateComponents
 import platform.Foundation.NSLocale
 import platform.UIKit.UIColor
+import platform.UIKit.UIView
+import platform.UIKit.UIViewAutoresizingFlexibleHeight
+import platform.UIKit.UIViewAutoresizingFlexibleWidth
 import platform.UIKit.UIDatePicker
 import platform.UIKit.UIDatePickerMode
 import platform.UIKit.UIDatePickerStyle
@@ -382,7 +385,7 @@ internal fun IosStartDatePicker(
     onDismiss: () -> Unit,
 ) {
     val background = MaterialTheme.colorScheme.background
-    val picker = remember { startDatePickerView(initialIsoDay, background) }
+    val host = remember { startDatePickerView(initialIsoDay, background) }
     Dialog(onDismissRequest = onDismiss) {
         Surface(color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -390,14 +393,14 @@ internal fun IosStartDatePicker(
                 // UIKitInteropProperties.isNativeAccessibilityEnabled = false, which IOS-WALK saw as the picker missing
                 // from the tree). The picker is the only native view here, so the one-per-merged-tree limit holds.
                 UIKitView(
-                    factory = { picker },
+                    factory = { host.container },
                     modifier = Modifier.fillMaxWidth().height(PICKER_HEIGHT.dp),
                     properties = UIKitInteropProperties(isInteractive = true, isNativeAccessibilityEnabled = true),
                 )
                 TertiaryButton(
                     label = OnboardingCopy.CONTINUE,
                     onClick = {
-                        onPicked(isoDayOf(picker))
+                        onPicked(isoDayOf(host.picker))
                         onDismiss()
                     },
                 )
@@ -416,15 +419,43 @@ private const val PICKER_HEIGHT = 360
  */
 internal const val PICKER_LANGUAGE = "fr"
 
+/** R1389: the native picker and the opaque view that holds it - the view UIKitView hosts. */
+internal class StartDatePickerHost(
+    val container: UIView,
+    val picker: UIDatePicker,
+)
+
 /**
  * IOS-AUDIT R1389: the native picker the slot shows, built in ONE place so an iosTest can read what it is set to
  * (the composed picker cannot be opened in an iosTest - IosStartDatePickerCanaryIosTest). [background] is the dialog
- * surface's own colour, from the theme.
+ * surface's own colour, from the theme. The picker sits in an OPAQUE container that fills the slot: run 45175730795
+ * measured that a UIDatePicker does not keep a background colour set on it (alpha read back 0.0), so the opacity is
+ * the container's, which nothing overrides.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal fun startDatePickerView(
     initialIsoDay: String?,
     background: Color,
+): StartDatePickerHost {
+    val opaque =
+        UIColor(
+            red = background.red.toDouble(),
+            green = background.green.toDouble(),
+            blue = background.blue.toDouble(),
+            alpha = 1.0,
+        )
+    val picker = pickerOf(initialIsoDay, opaque)
+    val container = UIView()
+    container.backgroundColor = opaque
+    picker.autoresizingMask = UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
+    container.addSubview(picker)
+    return StartDatePickerHost(container, picker)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun pickerOf(
+    initialIsoDay: String?,
+    opaque: UIColor,
 ): UIDatePicker =
     UIDatePicker().apply {
         datePickerMode = UIDatePickerMode.UIDatePickerModeDate
@@ -432,15 +463,9 @@ internal fun startDatePickerView(
         initialIsoDay?.let(::nsDateOf)?.let { date = it }
         // R1389: French months and weekdays whatever the device's language (F6 drew "November 2026", SUN..SAT).
         locale = NSLocale(localeIdentifier = PICKER_LANGUAGE)
-        // R1389: its own opaque background - the dialog surface's colour, from the theme - so the page beneath can
-        // never show through the calendar (F6: the Paramètres rows drawn text over text through it).
-        backgroundColor =
-            UIColor(
-                red = background.red.toDouble(),
-                green = background.green.toDouble(),
-                blue = background.blue.toDouble(),
-                alpha = 1.0,
-            )
+        // R1389: asked for an opaque background too (the container is what guarantees it - see above), so the page
+        // beneath can never show through the calendar (F6: the Paramètres rows drawn text over text through it).
+        backgroundColor = opaque
     }
 
 /** The picker's day in the device's calendar, as an ISO day (yyyy-MM-dd). */

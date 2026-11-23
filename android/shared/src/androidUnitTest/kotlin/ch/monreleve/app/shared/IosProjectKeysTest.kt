@@ -8,8 +8,8 @@ import java.io.File
 /**
  * IOS-AUDIT R1354 / R1350. THE iOS APP DECLARES NO KEY IT DOES NOT USE, AND NONE THAT IS THE OPERATOR'S TO SET.
  *
- * ios/project.yml is the one home of every Info.plist key and entitlement (R206 - the plist is generated from it), so the
- * key set is read HERE, on every :app:gate, rather than only on a macOS run:
+ * ios/project.yml is the one home of every Info.plist key and entitlement (R206 - the plist is generated from it),
+ * so the key set is read HERE, on every :app:gate, rather than only on a macOS run:
  *   - NO LOCATION KEY. iOS v1 is manual-only (iOS Ruling 2): an NSLocation*UsageDescription would be a permission the
  *     app never asks for, and App Review reads it as one it might.
  *   - NO ATS EXCEPTION and NO LOCAL-NETWORKING key: the Release build talks to https://monreleve.ch only (R1353
@@ -33,7 +33,9 @@ class IosProjectKeysTest {
 
     @Test
     fun theKeysTheAppDeclaresAreFound() {
-        for (key in PRESENT) assertTrue("$TEST: the presence control - $key not found in ios/project.yml", declared(key))
+        for (key in PRESENT) {
+            assertTrue("$TEST: the presence control - $key not found in ios/project.yml", declared(key))
+        }
     }
 
     @Test
@@ -58,7 +60,12 @@ class IosProjectKeysTest {
         const val TEST = "IosProjectKeysTest (R1354)"
         const val BASE_URL_SETTING = "MONRELEVE_API_BASE_URL"
         val PRESENT =
-            listOf("MonReleveApiBaseUrl", "CFBundleShortVersionString", "CFBundleVersion", "LSApplicationQueriesSchemes")
+            listOf(
+                "MonReleveApiBaseUrl",
+                "CFBundleShortVersionString",
+                "CFBundleVersion",
+                "LSApplicationQueriesSchemes",
+            )
         val FORBIDDEN =
             listOf(
                 "NSLocation",

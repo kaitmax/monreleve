@@ -265,8 +265,9 @@ class IosShell internal constructor(
     private val lateRestoreCount = MutableStateFlow(0)
 
     /**
-     * R1380: how many held restores the first answer applied. The Paramètres controller reads the opt-in ONCE when it is
-     * built, so a restore applied after it shows the switch nothing; the main shell mirrors the store into it on each.
+     * R1380: how many held restores the first answer applied. The Paramètres controller reads the opt-in ONCE when
+     * it is built, so a restore applied after it shows the switch nothing; the main shell mirrors the store into it on
+     * each.
      */
     val lateRestores: StateFlow<Int> = lateRestoreCount
 
