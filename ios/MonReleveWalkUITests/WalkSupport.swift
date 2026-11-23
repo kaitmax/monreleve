@@ -165,8 +165,27 @@ extension XCUIApplication {
         if tip.exists { tip.tap() }
         for character in text {
             if !typeKey(String(character), keyboard) { return false }
+            Thread.sleep(forTimeInterval: 0.12)
         }
         return true
+    }
+
+    /// [type], then READ BACK: Compose puts a field's text in its accessibility label, so the field is checked and
+    /// cleared and retyped (up to 3 times) when a key tap was lost or landed late. Run 45084504474 sent the sign-in to
+    /// a mistyped address ('o' lost after 'm', landing at the end). Used for the e-mail only: the walk never reads a
+    /// code box back into anything that is written down.
+    func typeChecked(_ text: String, into field: XCUIElement) -> (typed: Bool, attempts: Int) {
+        for attempt in 1...3 {
+            guard type(text, into: field) else { return (false, attempt) }
+            if field.label == text { return (true, attempt) }
+            let keyboard = keyboards.firstMatch
+            for _ in 0..<(field.label.count + 4) {
+                let delete = keyboard.keys["delete"]
+                guard delete.exists else { break }
+                delete.tap()
+            }
+        }
+        return (false, 3)
     }
 
     private func key(_ name: String, _ keyboard: XCUIElement) -> XCUIElement? {
