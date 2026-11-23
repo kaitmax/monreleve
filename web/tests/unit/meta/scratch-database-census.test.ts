@@ -331,3 +331,84 @@ describe('R879: every database a CI workflow names is a scratch database', () =>
     }
   });
 });
+
+// ============================================================================
+// R1396: A WORKFLOW WITH NO POSTGRES SERVICE MAKES ITS DATABASE THROUGH A SITE
+// R877 RESOLVES - ASSERTED BY PRESENCE, NOT BY ABSENCE
+// ============================================================================
+//
+// R879 judges every connection string a workflow names and requires a
+// `services:` block in the same workflow to create its database. ios-walk.yml
+// runs on macOS, where there is no docker and so no service: it starts its own
+// PostgreSQL. It therefore names NO connection string - and "no connection
+// string" alone is satisfied by a workflow that makes no database at all
+// (R169's presence corollary). So the workflow is covered by what it DOES:
+//
+//   - every workflow that uses a database (DATABASE_URL, db:deploy, initdb,
+//     pg_ctl on a non-comment line) with no POSTGRES_DB service is found here,
+//     derived rather than listed (R181), and at least one must be found;
+//   - each CALLS, on a non-comment line, a package script that R877's walk
+//     finds as a CREATE DATABASE site resolved FROM THE HOME
+//     (scratchDatabaseName() from lib/db/scratch-database.mjs) - so the name
+//     it creates is one test:db admits, by the same resolver as every other
+//     creator in the package;
+//   - none creates a database inline: a CREATE DATABASE in a workflow's YAML is
+//     invisible to R877's walk, which reads the package's code (iOS Ruling 18:
+//     the walk's first database step did exactly that).
+
+const USES_A_DATABASE = /\bDATABASE_URL\b|\bdb:deploy\b|\binitdb\b|\bpg_ctl\b/u;
+const SCRIPT_CALL = /\bnode\s+(?:web\/)?(scripts\/[\w.-]+\.m?js)\b/gu;
+
+interface ServicelessWorkflow {
+  readonly file: string;
+  /** The package scripts the workflow runs with `node`, on non-comment lines. */
+  readonly calls: readonly string[];
+  /** Non-comment lines that create a database inline, as file:line. */
+  readonly inlineCreates: readonly string[];
+}
+
+function servicelessDatabaseWorkflows(): ServicelessWorkflow[] {
+  const found: ServicelessWorkflow[] = [];
+
+  for (const file of readdirSync(WORKFLOWS).filter((name) => /\.ya?ml$/u.test(name))) {
+    const lines = readFileSync(join(WORKFLOWS, file), 'utf8').split('\n');
+    const code = lines.map((text, index) => ({ text, line: index + 1 })).filter(({ text }) => !/^\s*#/u.test(text));
+
+    if (code.some(({ text }) => /\bPOSTGRES_DB:/u.test(text))) continue;
+    if (!code.some(({ text }) => USES_A_DATABASE.test(text))) continue;
+
+    found.push({
+      file,
+      calls: code.flatMap(({ text }) => [...text.matchAll(SCRIPT_CALL)].map((match) => match[1] ?? '')),
+      inlineCreates: code.filter(({ text }) => CREATE.test(text)).map(({ line }) => `${file}:${line}`),
+    });
+  }
+
+  return found;
+}
+
+const SERVICELESS = servicelessDatabaseWorkflows();
+
+describe('R1396: a workflow with no postgres service creates its database through a site R877 resolves', () => {
+  it('found the workflows that make a database without a service, so nothing below passes vacuously', () => {
+    expect(SERVICELESS.length).toBeGreaterThan(0);
+  });
+
+  it.each(SERVICELESS.map((workflow) => [workflow.file, workflow] as const))(
+    '%s calls a package script whose CREATE DATABASE R877 resolves from the home',
+    (_file, workflow) => {
+      const creators = workflow.calls.filter((call) =>
+        SITES.some((site) => site.file === call && site.how === 'home'),
+      );
+
+      expect(creators, `${workflow.file} calls ${JSON.stringify(workflow.calls)}`).not.toEqual([]);
+    },
+  );
+
+  it.each(SERVICELESS.map((workflow) => [workflow.file, workflow] as const))(
+    '%s creates no database inline, where R877 cannot see it',
+    (_file, workflow) => {
+      expect(workflow.inlineCreates).toEqual([]);
+    },
+  );
+});
