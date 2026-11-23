@@ -1,0 +1,678 @@
+REPORT-IOS-WALK - I2: THE iOS APP DRIVEN END TO END ON THE SIMULATOR AGAINST A THROWAWAY SERVER
+PART 2 (IOS-WALK-2, R1382-R1388) on top; PART 1 (IOS-WALK, runs 1-11, F1-F4, D1-D5) below it, unchanged.
+
+################################################################################
+PART 2 - IOS-WALK-2
+################################################################################
+
+================================================================================
+SUMMARY
+================================================================================
+R1382: ONE diagnostic run (45095829204) at the canton step. Before the drag, Geneve sat just below the viewport
+with a ZERO frame. ONE slow drag (70 % -> 40 % of the window) put it mid-screen at {{24,539},{354,72}}, hittable at
++1.5 s and unchanged at +5 s. So NONE of (a), (b) or (c) held: the drag scrolled, the row was on that screen, and the
+tree followed the scroll. IOS-WALK's own loop (four fast swipes, then short drags re-checked after 0.6 s) was the
+fault named by the diagnosis. Its replacement - the diagnosed drag with a 1.5 s settle - then failed the canton step
+twice (runs 45099570712, 45104554339: twenty drags begun the moment the screen appeared, Geneve at a zero frame).
+Run 45125804130 was to try it once SETTLED (3 s and a dump before the first drag); track 1 failed earlier that time
+(the e-mail field read back empty three times, nothing submitted), so the canton was NEVER tried settled. Track 1
+(the new account) stops at the canton step.
+
+R1383: track 2 (account A made through the API) WORKS END TO END for most of R1344's rest. In runs 45114019354 and 45119005695 the app
+signed A in and went STRAIGHT to the main shell (StartupDecider, checked in source and observed), the prior-year
+day appeared on the phone (R1371), today was recorded offline and drained on a real foreground, the calendar
+recorded and changed a day, the server returned the timestamps, the native date picker opened, the system alert was
+allowed, M4 and M3 were measured on the real centre, sign-out and a second sign-in brought every day back with
+today's reminder absent (run 16), and account B's deletion emptied the pending set (run 17). The reminder was
+DELIVERED on the simulator in runs 16 and 17 but had gone before the tap both times: the tap is STOPPED (R1387).
+Run 17's second sign-in stopped on RESOLVING's "Connexion impossible" (F9); run 16 is the run that proves it.
+
+R1385: THE GET VOIDS THE CODE. In 7 runs out of 7: the control's code (no GET) -> 200; C's link GET -> 200; C's code
+afterwards -> 400 invalid_code. A DEFECT for a code-only app (mail scanners prefetch links): recorded, not fixed.
+
+Not reached, and stopped: the canton step; "Exporter en PDF" (the share sheet); the employer comparison;
+"Licences"; the reminder tap. The four rows share one symptom - a row below the fold that never reached a real
+frame through twenty drags - while rows within one drag of the viewport came on screen after ONE drag (F5). The
+R1387 section states the evidence exactly: export and comparison have two clean failures (one SETTLED, run
+45125804130), Licences one (settled), the canton two begun at once and none settled (track 1 failed earlier in
+the settled run).
+
+NEW FINDINGS: F5 (scrolling to a row below the fold is unreliable under XCUITest), F6 (the native date picker is
+drawn WITHOUT a background: the page behind shows through it; and it is absent from the accessibility tree),
+F7 (an on-screen Compose element can be refused by XCUITest as "not hittable"), and the R1385 defect.
+
+================================================================================
+STATUS (R391)
+================================================================================
+PARTIAL. Track 1 stopped at the canton step. Track 2 walked most of R1344's rest (R1383 below), proven twice
+(runs 45114019354 and 45125804130) and in part a third time (45119005695); NOT reached: the export's share sheet,
+the employer comparison, Licences (F5) and the reminder TAP (delivered, never tapped). Nothing under android/, web/ or
+ios/MonReleve/Sources changed in this session: `git diff --stat 2e19cc88..HEAD -- android web ios/MonReleve/Sources`
+is empty. So :app:gate, gate:changed, gate:clone and R573 are NOT owed (R1348), and FULL GATE NOT RUN (none owed).
+R1388's ios-app.yml run on the final code tip 558384e4: 45125808971 success - keychain, notification,
+reminder, share, firstLaunch all PASS; launch-DEFAULT.png looked at (the Bienvenue screen, no code field).
+
+================================================================================
+RUNS (IOS-WALK-2; each read from its job log and artifact; evidence in C:/wt/queue-evidence/i2-walk/runNN/)
+================================================================================
+  run12 45095829204  90046ddf  R1382's ONE DIAGNOSTIC (below). R1385 answered. Seeds A and B 200/200/200. Track 2
+                                stopped at sign-in: the keys typed "v" + A's address (the code screen named
+                                "vwalk-a-..."), so no mail reached A - NO RESULT for the rest. Paste: no Paste item
+                                after a tap, a second tap and a long press (paste is NOT available).
+  run13 45099570712  bf113753  Typing read back (attempt 1 everywhere). Track 1: canton, twenty drags, isHittable
+                                never true [canton failure 1]. Track 2: R1383 straight to Main; years (phone DB 2025 +
+                                2026 SYNCED; the 2025 releve "Jours en Suisse 1"); today offline + real
+                                background/foreground drain; server timestamps. Calendar: "Domicile" had a real frame
+                                {{100.7,563.7},{53,33.3}} and XCUITest refused it (F7). Export, comparison,
+                                start-date row, Licences, sign-out: never hittable after twenty drags.
+  run14 45104554339  7dbc151f  On screen judged by the element's own frame. Track 1: canton, zero frame after every
+                                one of twenty drags [canton failure 2 - identical: STOPPED]. Track 2 as run 13 to the
+                                calendar; the sheet's "Enregistrer" was below the screen at a zero frame, the sheet
+                                stayed up, and as a modal it hid six later steps ("no element"). After a relaunch the
+                                sign-out row came on screen after ONE drag; the dialog opened (screenshot); sign-in not
+                                reached.
+  ios-app 45109223543 20146df0 success, five probe keys PASS, launch-DEFAULT = Bienvenue.
+  run15 45109219799  20146df0  Track 1 stopped at the canton without dragging (R1387). Calendar saved (Enregistrer on
+                                screen after one drag) but both passes read "Suisse" (the expanding drag began on "En
+                                Suisse"). Export, comparison, Licences: zero frame after each of twenty drags
+                                [failure 2 each - identical: STOPPED]. The date picker OPENED and was DRAWN but is not
+                                in the tree (F6). The start-date sheet was left up; the evening row was "found" under
+                                it. Sign-out: the confirm lookup returned the ROW, not the dialog's button.
+  ios-app 45114022823 937d6c07 success, five probe keys PASS.
+  run16 45114019354  937d6c07  Track 2 through: R1383; years; drain; calendar recorded (Domicile) AND changed
+                                (Suisse); DRIVER PROOF (c) by the dialog ("02.11.2026", not saved); (b) the system
+                                alert, Allow; M4; M3 on sign-out (4 -> 0); the second sign-in with every day back and
+                                today absent; the near reminder DELIVERED (the tap missed: the banner had gone);
+                                account B signed in, 5 pending, the delete row never came on screen.
+  ios-app 45119009582 39e5ccd6 success, five probe keys PASS, launch-DEFAULT = Bienvenue (looked at).
+  run17 45119005695  39e5ccd6  Track 1 stopped (R1387). Track 2 as run 16 through M3 on sign-out (4 -> 0). The
+                                second sign-in stopped on RESOLVING's "Connexion impossible. Verifiez votre
+                                connexion, puis reessayez." + "Reessayer" for 100+ s, with only the 2025 year on the
+                                phone (F9). The near reminder DELIVERED again and gone before the tap [tap failure 2:
+                                STOPPED]. Account B: 5 pending; the delete row on screen after ONE drag once the
+                                page had settled 3 s; "SUPPRIMER" read back; "Compte supprime"; pending 0.
+  ios-app 45125808971 558384e4 success, five probe keys PASS, launch-DEFAULT = Bienvenue (looked at).
+  run18 45125804130  558384e4  reveal() SETTLES 3 s and dumps before its first drag, and photographs after it.
+                                Track 1: the e-mail typed by keys read back EMPTY three times (typed=true each
+                                time) - not submitted, so the canton was not reached. Track 2: everything run 16
+                                proved, again (R1383, years, drain, calendar recorded and changed, (c), (b), M4,
+                                M3 on sign-out 4 -> 0, the second sign-in with every day back and today absent,
+                                B's deletion 5 -> 0). Export, comparison, Licences, SETTLED: the page moved on the
+                                first drag (screenshot 30-licences-drag-1: sign-out and delete rows now on screen)
+                                yet the targets stayed at a zero frame through twenty drags. Tap: stopped.
+Runs 12-18 cost no compile failure (D5 unchanged: 2, both in part 1).
+
+================================================================================
+R1382 - THE ONE DIAGNOSTIC (run 45095829204), AND WHICH CAUSE HELD
+================================================================================
+Recorded at the canton step, no search typing, no swipe before (trees and shots 03-r1382-before/-after-1/-after-5):
+  before   : Geneve exists, frame {{0,0},{0,0}}, hittable=false, keyboards=0. Non-zero labelled rows: Argovie (287)
+             ... Bale-Ville (647), Fribourg (719, 33 high - cut by the viewport's bottom at 752).
+  ONE drag : slow, from 70 % to 40 % of the window height, inside the list.
+  after-1  : (+1.5 s) Geneve {{24,539},{354,72}}, hittable=true, keyboards=0. Rows now Appenzell RI (110) ... Grisons
+             (683). The list moved 252 pt.
+  after-5  : (+5 s, no second drag) identical to after-1.
+WHICH HELD: NONE of the three.
+  (a) the visible set CHANGED;
+  (b) canton rows WERE visible, and Geneve was the next one below the fold;
+  (c) Geneve did NOT stay at frame zero - the tree followed the scroll within 1.5 s.
+What the diagnosis named: IOS-WALK's walker (fast swipes, then 149 pt drags re-checked 0.6 s after each).
+THE FIX MADE (runner-side, reveal()): the diagnosed drag, a 1.5 s settle before each check, down then up, and later
+"on screen" judged by the element's own frame (Compose clips a frame to the viewport: zero off it, real on it).
+WHAT HAPPENED NEXT: the fix FAILED the canton step twice identically (runs 13 and 14: twenty drags, Geneve at a zero
+frame after every drag) - while the same drag, the same way, brought the sign-out row on screen after one drag
+(runs 14-16), the sheet's Enregistrer after one (runs 15-16), and Geneve in the diagnostic. STOPPED under R1387; no
+third run dragged there. The search field and a coordinate tap were NOT used (R1382: only for (c), which did not
+hold). Not fixed; see F5 and Q1.
+Paste typing (allowed by R1382): NOT AVAILABLE - run 12 found no Paste item after a tap, a second tap and a long
+press on an empty Compose field. Instead the walk reads each typed field back (a Compose field's label is its
+text, F3) BEFORE submitting, and clears-and-retypes on a mismatch: every e-mail and the name read back exactly on
+attempt 1 in runs 13-17 (14 sign-in e-mails, 0 retries) and in run 18's track 2 (4 more); run 12's "v" + address
+is why the read-back exists. Run 18's TRACK 1 read the e-mail field back EMPTY three times although every key was
+typed (typed=true): the read-back refused to submit, as designed - a typing failure caught, not a wrong address
+sent. Not diagnosed (one occurrence).
+
+================================================================================
+R1383 - THE EXISTING-ACCOUNT TRACK (DEVIATION from R1344's single track, as ruled)
+================================================================================
+CHECKED FIRST, IN SOURCE: StartupDecider.resolveStart -> onboardingPlanFor(view): an account whose GET /api/v1/me has
+name, canton, rate, method and granularity (period rides on canton) is OnboardingPlan.Complete -> StartDecision.Main.
+iOS reaches it through the common ResolvingRoute (ShellRoutes.kt) -> decideStartAfterSignIn. So a complete account
+goes straight to Main. OBSERVED: "the main shell reached=true; an onboarding screen shown on the way=false" on every
+sign-in of A and B in runs 13-17 (A twice per run from run 16, B once).
+HOW A IS MADE (the helper, through the API only; the same calls an app on another phone makes):
+  POST /api/v1/auth/magic-link -> 202; the code read from the dev outbox (masked first) -> POST /api/v1/auth/code
+  -> 200 (tokens masked, never written); PATCH /api/v1/me (name, canton GE, 100, SIMPLIFIED240, DAY, whole year,
+  19:00, reminderEnabled false for A / true for B, MANUAL) -> 200; POST /api/v1/entries with 2025-06-10 CH and
+  2026-11-04 HOME -> 200 written=2. Every run 12-17: 200/200/200 for A and B.
+  The helper's own calls carry an X-Forwarded-For of their own (10.99.0.<n>): lib/alerts/rate-limit.ts keys the
+  per-IP sign-in bucket on that header (TRUSTED_PROXY_HOPS defaults to 1); the app's requests have none and share the
+  bucket 'unknown' (5 per 10 minutes) - so the helper never spends the app's budget. Runner-side only.
+WHAT TRACK 2 PROVED (run 16 unless stated; run 17 the same to the first sign-out, then F9, then B's deletion):
+  - sign-in by code, straight to Main (above);
+  - R1371, THE PRIOR-YEAR DAY ON THE PHONE: the 2025 releve shows "Jours en Suisse 1" (tree 22-releve-previous), and
+    the app's own database (read from its container by the helper, supplementary) holds 2025-06-10 CH and 2026-11-04
+    HOME, both SYNCED with a server stamp. The calendar shows "Jour 4, Domicile, enregistre en retard, saisie
+    manuelle." for the seeded current-year day;
+  - Aujourd'hui: today recorded with the relay DOWN ("Enregistre sur le telephone, en attente d'envoi" shown); Home;
+    0 requests while in the background; activate -> POST /api/v1/entries 200 and "Enregistre" shown (THE DRAIN);
+  - the calendar: day 20 recorded "Domicile", then changed to "Suisse" (run 16; run 15 recorded only);
+  - the server side: GET /api/v1/entries (through the API, the app's own bearer) returns the phone's days with
+    server-assigned firstRecordedAt (today 05:19:46.064Z, client 05:19:30.897Z) and, for the changed day,
+    lastModifiedAt 05:21:30.535Z;
+  - Parametres: the evening switch PRESENT, the threshold-alert switch ABSENT (matched by BEGINSWITH, which the
+    evening row's merged label proves able to see a merged row);
+  - the in-app legal page: STOPPED (Licences never on screen, R1387); R1386 kept - no link to production tapped;
+  - the employer figure and the comparison: STOPPED (R1387);
+  - the export's share sheet: STOPPED (R1387);
+  - sign-out, relaunch reaches sign-in, sign in again: every day back (phone DB 4 entries: 2025-06-10, 2026-11-04,
+    -20, -23, all SYNCED), Aujourd'hui "Enregistre", day 20 "Suisse".
+
+================================================================================
+R1384 - R1345's OBSERVABLES ON THE EXISTING-ACCOUNT TRACK (the real notification centre, WalkProbe)
+================================================================================
+- M4 (run 16): opt-in from Parametres -> the system alert -> Allow -> authorization=authorized, pending=4:
+      ch.monreleve.app.reminder.evening.2026-11-24 .. -27, each hour=19 minute=0 tz=nil repeats=false
+  TODAY (2026-11-23, recorded at 05:19) ABSENT. 28-29 Nov are a weekend; the plan reaches the week ahead.
+  After a real Home + activate (foregrounds 2 -> 3): pending=4, the SAME four - no doubling.
+- M3, sign-out (run 16): BEFORE 4 (> 0, so the "after" means something), AFTER 0.
+- M3, account deletion (account B): BEFORE 5 (B has no entry today, so 2026-11-23 is PRESENT - the
+  complement of A's absence), AFTER 0, "Compte supprime" shown (run 17).
+- THE YEARS AND THE PLAN (iOS Ruling 16 Q3): after the SECOND sign-in, years landed (phone DB above): pending=4,
+  24-27 - TODAY ABSENT (it was recorded before the sign-out).
+- SERVER TIMESTAMPS of a day recorded on the phone: above (firstRecordedAt server-assigned; clientClaimedAt kept
+  apart).
+- THE TAP (R1330): a near copy of the 24 Nov request (WalkProbe -walkNearTap) WAS DELIVERED on the simulator as a
+  banner "Ou avez-vous travaille aujourd'hui ?" (run 16). The tap: NOT PROVEN - delivered in runs 16 and 17, gone before the tap both times
+  (run 16: "No matches found" on the tap after a note and a screenshot; run 17: tapped the moment it existed, and it
+  no longer existed). STOPPED (R1387); it stays on R1347's iPhone list.
+- THE FIRST ANSWER (iOS Ruling 16 Q1), ms after didFinishLaunching, cold first launches, runs 12-18 (both tracks):
+  124, 92 | 120, 67 | 112, 83 | 174, 82 | 132, 76 | 88, 95 | 76, 67. All far below the 2 000 ms bound (R1380 stands, as ruled).
+DRIVER PROOFS:
+  (a) a Compose element by its label: PASSED every run (both tracks).
+  (b) the system notification alert: PASSED (run 16: "'Mon Releve' Would Like to Send You Notifications",
+      buttons Don't Allow / Allow; Allow tapped; authorization authorized).
+  (c) the native UIDatePicker: OPENED from Parametres' start-date row (onboarding's period step is behind the
+      stopped canton step). It is DRAWN but NOT in the accessibility tree (F6), so its value cannot be read from
+      it: a coordinate tap at the first week's Monday, measured from its dialog's own "Continuer" (DEVIATION D9),
+      then that Continuer -> the sheet showed "02.11.2026" (the value read back through the app). Not saved.
+  (d) a real background/foreground: PASSED - the drain and the re-plan above; WalkProbe's willEnterForeground count
+      rose by one each time. XCUITest read app.state=4 (foreground) 4 s after Home in runs 13-16 although the drain
+      happened only after activate: state is not the evidence here, the counter and the drain are.
+A transient notice (iOS Ruling 15 Q5): none seen on the way; none photographed.
+
+================================================================================
+R1385 - THE LINK VERSUS THE CODE, AT THE API (no keyboard)
+================================================================================
+Account C: sign-in requested -> the runner GETs the callback link of C's mail (asserted localhost:3311 first) ->
+THEN C's code to POST /api/v1/auth/code. Account D, the CONTROL: its code submitted with no GET.
+  run12 45095829204: control 200; GET 200; code after GET 400 invalid_code
+  run13 45099570712: control 200; GET 200; code after GET 400 invalid_code
+  run14 45104554339: control 200; GET 200; code after GET 400 invalid_code
+  run15 45109219799: control 200; GET 200; code after GET 400 invalid_code
+  run16 45114019354: control 200; GET 200; code after GET 400 invalid_code
+  run17 45119005695: control 200; GET 200; code after GET 400 invalid_code
+  run18 45125804130: control 200; GET 200; code after GET 400 invalid_code
+ANSWER: YES, THE GET VOIDED THE CODE. A DEFECT for a code-only app (a mail scanner that prefetches the link makes the
+code fail with "invalid_code"), recorded and NOT fixed. Source reading (not a measurement): the callback's
+consumeMagicLink deletes the verificationToken row that consumeCode then looks up.
+
+================================================================================
+R1386 - THE LEGAL PAGE
+================================================================================
+No link to production was tapped in any run. Licences, the walk's legal page, was STOPPED under R1387 (it never came
+on screen): no legal page was opened in this session. IosShellFacilitiesIosTest r1333 still proves the link
+targets; the legal links stay on the operator's iPhone list (R1347).
+
+================================================================================
+R1387 - BOUNDED
+================================================================================
+Stopped, never run a third time the same way - with the evidence for each stated exactly:
+  canton (track 1)   run 45099570712 (judged by isHittable) and run 45104554339 (judged by the element's frame:
+                     zero after each of twenty drags). BOTH began dragging the moment the screen appeared; the
+                     diagnostic, which worked, dragged after ~6 s of dump and screenshot. Never tried settled
+                     (run 45125804130 meant to; track 1 failed at the e-mail first).
+  export PDF         run 45099570712 (isHittable criterion) and run 45109219799 (frame criterion, a clean
+                     attempt: zero frame after each of twenty drags) and run 45125804130 (SETTLED 3 s, the
+                     page seen to move on the first drag, zero frame after each of twenty). Two clean failures.
+  comparison         as export: two clean failures (runs 45109219799 and 45125804130, the second settled).
+  Licences           run 45099570712 (isHittable criterion) and run 45109219799 - which began with the
+                     start-date sheet still up (screenshot 29-evening-on, seconds before; nothing closed it in
+                     that run), and run 45125804130 (SETTLED, clean: zero frame after each of twenty drags).
+                     ONE clean failure.
+  the reminder TAP   runs 45114019354, 45119005695 - delivered, gone before the tap
+Fixed after one failure with a measured cause (so the next run was not identical): run 12's mistyped e-mail
+(read-back), run 13's "Domicile" refused (F7: frame-centre tap), run 14's sheet left up (save brought on screen,
+leftover sheets closed), run 15's both-passes-Suisse (expand first), run 15's sign-out lookup returning the row
+(narrowest), run 16's delete row (settle first - it then worked). Run 16's banner gone before the tap was
+answered by tapping first, and failed the same way in run 17: stopped.
+Compile errors: none in this session (part 1's two stand).
+
+================================================================================
+R1388 - OWED BEFORE MERGE, AND THE LEAK SCAN
+================================================================================
+ios-app.yml on the final code tip 558384e4: run 45125808971 - see STATUS.
+THE SCAN (C:/wt/queue-evidence/i2-walk; scanner: bearer-shaped "Bearer <16+>", 43-char base64url token shapes with a
+digit and both cases, "auth/callback?...token=", standalone six-digit numbers each read in context, the production
+host). Every job log AND every downloaded artifact:
+  run   job log (bearer/token/callback/six/prod)   artifact files  (bearer/token/callback/six/prod)  in-run checks
+  12    0/0/0/1*/0                                 26              0/0/0/0/0                          app log 33 patterns 0 hits; 0 files
+  13    0/0/0/0/0                                  31              0/0/0/0/0                          38 patterns 0; 0 files
+  14    0/0/0/0/0                                  31              0/0/0/0/0                          38 patterns 0; 0 files
+  15    0/0/0/0/0                                  35              0/0/0/0/0                          38 patterns 0; 0 files
+  16    0/0/0/0/0                                  38              0/0/0/0/0                          48 patterns 0; 0 files
+  17    0/0/0/0/0                                 39              0/0/0/0/0                          48 patterns 0; 0 files
+  18    0/0/0/0/0                                 51              0/0/0/0/0                          43 patterns 0; 0 files
+  ios-app 45109223543, 45114022823, 45119009582, 45125808971: bearer 0, callback 0, prod 0; the only token-shaped strings (6 in
+  each log, 6 in each xcodebuild.log) are Xcode ModuleCache / .build file names; the only six-digit numbers are a
+  launchd PID line in app-system.log. ios-app runs no server and no sign-in.
+  * the one six-digit number in run 12's log is the app log's own line count ("app log: 509709 lines").
+R574: every tree in runs 12-18 that shows the code screen - 29, the 19 "code-empty" dumps and run 12's ten
+failure dumps taken while the code was never typed - holds six boxes labelled exactly "Chiffre N sur 6", no value
+and no digit label. No screenshot of a code screen was taken; no capture after sign-in carries a code box.
+THE SCANNER IS PROVEN TO FIRE: TOKEN_BYTES = 32 in lib/auth/tokens.ts and lib/auth/magic-link.ts (43 base64url
+characters); a planted control file with a real-shaped bearer, a callback link with a token, a bare token and a
+six-digit line scored bearer 1, token-shaped 3, callback 1, six-digit 1. The scanner is kept beside the
+evidence (C:/wt/queue-evidence/i2-walk/leakscan.py).
+
+================================================================================
+R1340-R1348 - UPDATED
+================================================================================
+R1340  unchanged (runner-local PostgreSQL, the project's own create-and-migrate, `pnpm dev` asserted by name, the
+       relay as the build's only API base URL). Added: the helper's own API client (seed, R1385) talks to the same
+       runner-local server only.
+R1341  unchanged.
+R1342  unchanged; the code is typed by keys only and never read back; the e-mail and name are read back (not
+       secrets). Paste was attempted for the e-mail in run 12 only (no Paste item); the helper refused code-shaped
+       strings for the pasteboard while that route existed; it is removed.
+R1343  unchanged allowlist; two xcodebuild invocations now, both logs private; scan above.
+R1344  track 2 (R1383) carried the walk: see R1383. Not reached: onboarding past the canton (track 1 stopped), the
+       employer figure / comparison, the export's share sheet, the in-app legal page (all R1387).
+R1345  see R1384. THE TAP: delivered, not tapped (R1387). Account deletion's M3: 5 -> 0 (run 17).
+R1346  replaced by R1385 at the API: answered (YES, voided).
+R1347  for the operator's iPhone, add: the export's share sheet, the employer comparison and its figure across a
+       relaunch, the Licences page, and onboarding's canton -> ready path including the period step's picker (all
+       unreached here); the date picker's appearance (F6); the reminder TAP (delivered on the simulator, gone before
+       the walk could tap it).
+R1348  `git diff --stat 2e19cc88..HEAD -- android web ios/MonReleve/Sources` empty: no gate owed. Changed this
+       session: .github/workflows/ios-walk.yml, .github/scripts/ios-walk-helper.py,
+       ios/MonReleveWalkUITests/{WalkUITests,WalkSupport,WalkLabels}.swift. ios-app.yml owed and run (R1388).
+
+================================================================================
+NEW FINDINGS (for IOS-AUDIT R1355 unless stated)
+================================================================================
+F5. SCROLLING A COMPOSE verticalScroll PAGE UNDER XCUITest IS UNRELIABLE. The same slow drag brought a row below the
+    fold on screen after ONE drag in some steps (the canton diagnostic; the sign-out row, three runs; the calendar
+    sheet's Enregistrer, two runs) and left the target at a ZERO frame through twenty drags in others (canton x2,
+    export x3, comparison x3, Licences x3, the delete row once). Not explained. One pattern fits most cases: every
+    reveal that worked began >= 1.5 s after the screen appeared (and after a dump); the canton and delete-row
+    failures began at once. Run 17 tested it on the delete row: after a 3 s settle and a dump it came on screen
+    after ONE drag (y 702), where run 16's twenty drags begun at once never moved it from a zero frame. The
+    export's one clean failure (run 15) began after a 3 s wait and a dump - the one case against; Licences'
+    run-15 attempt was under a leftover sheet and does not count. Run 45125804130 SETTLED every reveal: the
+    sign-out and delete rows (within one drag of the viewport) came on screen after ONE drag; the export, the
+    comparison and Licences (further down) did not, although the first drag visibly moved the page
+    (30-licences-drag-1.png). So the settle is not the explanation: rows within one drag of the viewport come on
+    screen, rows further down never report a real frame. Whether the later drags still scroll, or the frames of
+    those rows stop updating, is not separated. Whether VoiceOver's own
+    scrolling reaches these rows is R1355's question (F2's companion).
+F6. THE NATIVE DATE PICKER (IosStartDatePicker, a UIKitView in a Compose Dialog) IS DRAWN WITHOUT A BACKGROUND OF ITS
+    OWN: in Parametres the page's rows ("Taux d'activite", "Methode de decompte", ...) show THROUGH the calendar,
+    text over text, undimmed (screenshot run15/shots/28-no-datepicker.png). It is also ABSENT from the
+    accessibility tree (only the dialog's Continuer is in it), so VoiceOver may not reach it - R1355. A visible
+    defect: an app change, so a QUESTION (Q3), not touched.
+F7. XCUITest REFUSES SOME ON-SCREEN COMPOSE ELEMENTS as "not hittable" (run 13: "Domicile" {{100.7,563.7},{53,33.3}};
+    the sign-out dialog's confirm {{192,510},{145,40}} reported hittable=false in runs 16 and 17). The walk taps
+    those at their own frame centre (D8).
+F8 (R1385). A GET of the sign-in link voids the code (above). A DEFECT for a code-only app.
+F9. RUN 17's SECOND SIGN-IN STOPPED ON RESOLVING: the code was accepted, then RESOLVING showed "Connexion
+    impossible. Verifiez votre connexion, puis reessayez." with "Reessayer" for 100+ s (R1161's Unresolved,
+    UNREACHABLE), with the 2025 year already written to the phone and 2026 not. The server and relay were
+    runner-local and served the rest of the run. Once in three second sign-ins (runs 16, 17, 18; it passed in 16
+    and 18).
+    Not diagnosed (the relay's request list was not captured at that moment); the walk did not tap Reessayer.
+    It is R1161 behaving as designed (no guess, a retry offered) - what made /me unreachable is the question.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- The plan after opt-in reaches 27 Nov (4 weekday requests) on Monday 23 Nov: "a week ahead" ends on the weekend.
+- The simulator's locale is English (the picker read "November 2026"; the alert "Would Like to Send You
+  Notifications"). The app's copy is French regardless; the walk matches the copy's own text.
+- XCUITest's app.state reads 4 (foreground) 4 s after Home (R1384 (d)).
+- The app log keeps growing (509k - 2.3M lines per run); still never carrying a code (0 hits every run). Part 1's
+  suggestion to narrow the predicate stands.
+
+================================================================================
+DEVIATIONS (part 2; part 1's D1-D5 stand)
+================================================================================
+D6. R1383's second track, as ruled: accounts A and B made through the API by the helper (PATCH /api/v1/me's own
+    write, POST /api/v1/entries), the app signing in to them. Two xcodebuild invocations with the app uninstalled and
+    reinstalled between them, so each track starts at a first launch.
+D7. The helper's own API calls carry their own X-Forwarded-For (10.99.0.<n>) so they never spend the app's per-IP
+    sign-in budget on the throwaway server. Runner-side; nothing in web/ changed.
+D8. A tap at an element's OWN reported frame centre when XCUITest calls an on-screen Compose element not hittable
+    (F7); and an element counts as on screen when its own frame is real (Compose clips frames to the viewport).
+D9. DRIVER PROOF (c) by a coordinate: the picker is not in the tree (F6), so the first week's Monday is tapped at a
+    point measured from its dialog's own "Continuer" (run 15's screenshot geometry), and the value is read back from
+    the app's sheet ("02.11.2026"). The sheet is dismissed by its scrim, unsaved.
+D10. The calendar sheet is expanded before the choice, and the choice is the widest element with that label (the
+    legend behind the sheet carries the same word); the sign-out confirm is the narrowest "Se deconnecter".
+D11. A sheet left up by a failed step is dismissed by Material's "Close sheet" scrim at the start of the next step.
+D12. The evening switch is not an element of its own in the tree (0 switches): it is tapped beside its headline,
+    at the merged row's top + 36 pt (run 14's screenshot geometry).
+D14. R1387 READ, NOT STRETCHED: the rows stopped after two failures that were not clean (a different criterion,
+    a leftover sheet, never settled) were run ONCE more under the one untested variable - a 3 s settle and a dump
+    before reveal()'s first drag (run 45125804130). That run is not either earlier one repeated. After it, nothing
+    is retried: export and comparison have two clean failures, Licences one, the reminder tap two.
+D13. Test numbering and order changed (01-03 track 1; 01, 21-34 track 2); the in-app R1346 test was replaced by
+    the helper's API route (R1385). The phone database is read from the app's container as supplementary evidence
+    (day, portion, kind, sync state - never the account tag, a mutation id or a server id).
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. The rows of F5 more than one drag below the viewport cannot be reached by the walk's drag, settled or not
+    (export, comparison, Licences); the canton was never tried settled. R1382's (c) did not hold, so the search
+    field and a coordinate tap were not used. For the next walk, in this order: (i) one settled canton attempt
+    (the only lead left untested there); then may the walk use (ii) the canton search field (type "gen", then the
+    one remaining row), (iii) XCUITest's own scroll (swipeUp on the scroll container) in place of the drag, or
+    (iv) an app-side change (test tags / a scroll-to semantics - an android/ edit with its gates)?
+Q2. R1385: the link GET voids the code. Is this a ship question for the sign-in semantics (e.g. the callback
+    leaving the code valid, or the code consuming independently), and which task owns it?
+Q3. F6: the date picker is drawn over the page with no background and is absent from the accessibility tree. An
+    app change (iosMain IosStartDatePicker): may IOS-AUDIT or a follow-up own it?
+Q4. F9: is RESOLVING's "Connexion impossible" after a sign-in on a reachable server worth its own measurement
+    (IOS-AUDIT), or is it accepted as R1161 working?
+Q5. Does the walk's existing-account track (D6) count toward R1344 for the merge, with the R1387-stopped
+    steps going to the operator's iPhone list (R1347 above)?
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch i2-walk. Code tip: 558384e4. Report tip: the commit carrying this file. NOT merged. The session lock is
+removed after the push.
+
+################################################################################
+PART 1 - IOS-WALK (runs 1-11), UNCHANGED RECORD
+################################################################################
+PARTIAL REPORT, written on the orchestrator's ruling of 23:45Z ("stop iterating ... write a partial report ...
+push and hand back").
+
+================================================================================
+SUMMARY
+================================================================================
+The walk's whole infrastructure works on the macOS runner and has never leaked: a throwaway PostgreSQL and scratch
+database made by the project's own mechanism, web/'s dev server asserted by name, secrets born and masked on the
+runner, a Debug build pointed only at a runner-local relay, an upload allowlist and a secret scan that passed on
+every run, and an app log uploaded only after a grep for every code and token returned 0 lines.
+
+The XCUITest driver reaches the Compose UI only because the simulator's VoiceOver preference is set: Compose
+Multiplatform 1.7.3 syncs its semantics tree to UIAccessibility ONLY while VoiceOver reports running. With that,
+DRIVER PROOF (a) passed (a Compose element found by its accessibility label and tapped), and a CODE SIGN-IN
+passed end to end three times (runs 45075605782, 45078149756, 45081978093).
+
+THE WALK STOPS at onboarding's second screen. The canton "Geneve", below the fold, reaches UIAccessibility with a
+ZERO frame {{0,0},{0,0}} and is never hittable. Three runs failed there: 45075605782, 45078149756 and 45081978093.
+Run 45084504474 tried the screen's own search field but failed EARLIER, at sign-in: a key tap was lost. Run
+45088845825 tried a read-back of the typed e-mail and made typing worse. It was reverted. The code tip is the run-8
+driver plus the search-field step.
+
+DRIVER PROOFS (b), the notification alert, (c), the native date picker, and the background/foreground were NOT
+reached. Nor was anything after onboarding: M4, M3, the tap, the years and the plan, the export, Parametres, or a
+recorded day on the server.
+
+================================================================================
+STATUS (R391)
+================================================================================
+PARTIAL. Walk proven through sign-in only. No gate owed: nothing under android/ or web/ changed.
+`git diff --stat ecc879c9..HEAD -- android web` is empty, so :app:gate, gate:changed, gate:clone and R573 are
+not owed (R1348).
+FULL GATE NOT RUN (none owed). Every run below is a workflow run of ios-walk.yml on branch i2-walk.
+
+================================================================================
+RUNS (each read by this session from its job log and its artifact; evidence in C:/wt/queue-evidence/i2-walk/)
+================================================================================
+  45053771464  0015cd54  inert: printed ref=refs/heads/i2-walk sha=0015cd54 - the dispatch mechanism works.
+  45055507141  c503d8b4  infrastructure GREEN. The XCUITest tree under the app window EMPTY.
+  45057577050  a4d5a41c  VoiceOver preference set -> tree visible; DRIVER PROOF (a) PASSED; text field = an
+                         unlabelled Button below its label.
+  45059644071  f147faa0  field focused, keyboard up; XCUITest typeText refused ("Neither element nor any descendant
+                         has keyboard focus").
+  45073103807  ff5a1154  typing by the keyboard's own keys: e-mail typed, code screen reached; the code is six
+                         boxes "Chiffre N sur 6".
+  45075605782  01afa45e  SIGN-IN PASSED (e-mail + code by key, code screen left); onboarding name PASSED;
+                         canton: "not hittable: Geneve" ({{0,0},{0,0}}).                     [test03 fail 1]
+  45078149756  215e3ea2  sign-in PASSED; scroll by flings: still not hittable (scrolled past). [test03 fail 2]
+  45080869893  12e408fd  did not compile (my argument label) - NO RESULT.
+  45081978093  832ae3df  sign-in PASSED; scroll back to top + short drags: still not hittable. [test03 fail 3]
+  45084504474  d30d0e80  the canton search field: NOT REACHED - test02 failed, a key tap was lost and the sign-in
+                         went to a mistyped address ("...@mnreleve.testo"; dev outbox only, nothing sent).
+  45087263557  0bb2bd74  did not compile (a duplicate local name) - NO RESULT.
+  45088845825  2848b93c  e-mail read back and retyped: worse - the field ended with the address three times,
+                         ".test" never typed after the dot. Reverted (d9ebced2, 11400896).
+
+================================================================================
+R1340 - THE SERVER IS THE RUNNER'S OWN
+================================================================================
+- POSTGRES ON macos-15: MEASURED ABSENT. initdb, pg_ctl, psql and postgres are not on PATH, there is no Homebrew
+  postgresql keg and no docker (run 45055507141, step "Directories and runner facts"). The workflow runs
+  `brew install postgresql@16` (16.16) FOR THE RUN ONLY. That is a runner tool, in no package.json, gradle file
+  or lockfile.
+  initdb uses scram-sha-256 and a generated password; the server listens on 127.0.0.1:55432; its log is never
+  printed; its data directory is deleted at the end.
+- THE PROJECT'S OWN MECHANISM, UNCHANGED (R206): gate-clone-parts.mjs's administer() (DROP/CREATE through the
+  server's `postgres` database), scratch-database.mjs's scratchDatabaseName('ios_walk_<run>'),
+  scratchDatabaseUrl(), then `pnpm db:deploy` ("17 migrations found"). Nothing in web/ was changed.
+- THE SERVER: `pnpm dev` (NODE_ENV=development, FRONTALIER_RUNTIME unset) on 127.0.0.1:3311, its stdout and stderr
+  to a private file. R169: /api/health answered service 'monreleve', the expected value read from
+  web/identity.json, on every run, both direct and through the relay.
+- THE BUILD: MONRELEVE_API_BASE_URL overridden on the xcodebuild command line with http://127.0.0.1:3310 (the
+  relay). The built Info.plist is asserted to carry it, and asserted NOT to name the production domain (read from
+  identity.json at run time, so the workflow file never types it). ATS: none added; loopback http works, as R1320
+  measured.
+- No production URL, host, database, Coolify resource or credential is in ios-walk.yml, the helper, the test
+  sources or the logs. A grep for the production host over every file this session added finds 0 (one test note
+  that named it was reworded before this report).
+
+================================================================================
+R1341 - SECRETS BORN ON THE RUNNER
+================================================================================
+The database password (openssl rand -hex 24) and AUTH_SECRET (openssl rand -hex 32) are ::add-mask::ed on the line
+after they are generated and passed to later steps through $GITHUB_ENV. They are never echoed. No repository or
+environment secret is read.
+
+================================================================================
+R1342 / R1343 - THE CODE, THE TOKENS, THE UPLOAD
+================================================================================
+- OUTBOX: the dev server's PRINTED mail (lib/alerts/mailer.ts, NODE_ENV=development, no RESEND_API_KEY), in its
+  stdout file, is the file equivalent of the fake outbox.
+  The helper (.github/scripts/ios-walk-helper.py) reads one address's code from it. BEFORE answering, it writes the
+  code and the link's token to the private masks file and waits 1.5 s. The driving step turns each line of that
+  file into ::add-mask::. The relay does the same with the app's bearer tokens.
+- XCUITest LOGS TYPED TEXT: its xcodebuild output and .xcresult bundle record each key it taps. Both live under
+  $RUNNER_TEMP/private: never printed, never uploaded, deleted by the last step. The job log prints only
+  "Test Case ... passed/failed" lines, the "error:" lines and the walk's own result file.
+- COMPOSE PUTS A FIELD'S TYPED TEXT INTO ITS ACCESSIBILITY LABEL. Measured: the name field read 'Camille
+  Simulateur' after typing. So each code box carries one digit once typed. The walk therefore never dumps, never
+  photographs and never notes the code screen after the first digit (R574). The helper's own guard, which refuses
+  a note or a dump carrying a known secret, cannot see a code split across six boxes, so the walk's order is what
+  protects it.
+- EVERY RUN: the allowlist step passed ("files carrying a code or token: 0"). App log grep: run 4 found 0 lines
+  for 6 patterns; runs 5, 6 and 8 found 0 for 5 patterns each; run 9 found 0 for 3. The app log was uploaded only
+  in those runs.
+- NOTICED: the app log is large (390k-515k lines per run, every unified-log line of the MonReleve process). Nothing
+  secret was found in it, but the next session should consider narrowing the predicate to the app's own subsystem
+  lines.
+
+================================================================================
+R1344 - WHAT THE WALK DROVE
+================================================================================
+THE DRIVER: XCUITest, from a UI-test target generated by XcodeGen from ios/project-walk.yml. That file includes
+project.yml unchanged, so ios-app.yml still builds as before. XCTest ships with Xcode, so there is no new
+dependency.
+Labels: the walk matches the common copy's own text. .github/scripts/ios-walk-labels.py refuses to run unless each
+literal in WalkLabels.swift appears, quoted byte for byte, in its fr/<File>.kt (49/49). A plant ("Continuer!") was
+seen to fail.
+
+DRIVER PROOF, as R1344 asks for it in the first increment:
+  (a) one Compose element found by its accessibility label and tapped: PASSED ("Commencer", every run since
+      45057577050).
+  (b) past the system notification alert: NOT REACHED (onboarding's reminder step).
+  (c) the native UIDatePicker opened and read: NOT REACHED (onboarding's period step).
+  (d) a real background/foreground, with the drain and the re-plan shown: NOT REACHED.
+
+PROVEN STEPS:
+  test01 FIRST LAUNCH: the Welcome screen, on a fresh install.
+  test02 CODE SIGN-IN: the e-mail and the six-digit code typed through the UIKit keyboard's keys; the code screen
+         left (runs 45075605782, 45078149756, 45081978093).
+  test07 THE SERVER CHANNEL: GET /api/v1/entries?year=2026 THROUGH THE API with the app's own bearer token (captured
+         in the relay's memory) returned 200 {"status":"ok","year":2026,"entries":[]}. Proven: the channel and the
+         session. NOT proven: a recorded day with its server timestamp, because no day was recorded.
+  The onboarding's NAME step: typed and continued.
+
+A transient notice (iOS Ruling 15 Q5): none photographed - none was reached.
+
+================================================================================
+R1345 - THE OBSERVABLES
+================================================================================
+- THE FIRST ANSWER (iOS Ruling 16 Q1), MEASURED on 11 cold first launches. WalkProbe.swift asks the REAL centre
+  getNotificationSettings at didFinishLaunching (the moment startIosShell asks it):
+      ms after didFinishLaunching: 132, 83, 112, 83, 69, 68, 94, 114, 116 (and two more in the same range)
+      ms after process start:      2 768 - 5 166
+      status: notDetermined (fresh install)
+  All are far below IosShellRoot's 2 000 ms bound, which starts after didFinishLaunching. On this runner the bound
+  is not reached on a cold launch.
+- M4, M3, THE TAP, THE YEARS AND THE PLAN, and the server-side timestamps: NOT MEASURED (behind onboarding).
+  WalkProbe.swift is in place to read the real centre's pending set every second (identifier, y/m/d, 19:00, zone,
+  repeats, next fire), and to add the near copy for the tap (-walkNearTap). Tests 04, 06 and 08-14 are written and
+  waiting behind the onboarding step.
+
+================================================================================
+R1346 - THE LINK VERSUS THE CODE
+================================================================================
+NO RESULT. In runs 45073103807 and 45084504474 the runner's GET of account C's callback link answered 200. The
+helper asserts host localhost and port 3311 before requesting; anything else is refused unrequested.
+In run 9 the code typed afterwards was refused: "Ce code n'est pas valable ...". BUT run 9 also lost a key tap on
+an e-mail, so a mistyped code cannot be excluded. The answer to "does the code still work after the link?" is
+therefore NOT established. It is not recorded as a finding until a run types the code reliably.
+
+================================================================================
+R1347 - WHAT THE SIMULATOR CANNOT SHOW (for the operator's iPhone)
+================================================================================
+- message:// shown and opening Mail. The simulator measured canOpenURL=false, so the button is hidden there.
+  Check: on the iPhone, the code screen shows "Ouvrir ma messagerie" and it opens Mail.
+- A real reminder delivered at 19:00 and tapped. Check: opt in, leave a working day unrecorded, wait for 19:00,
+  tap the notification; Aujourd'hui opens.
+- Background sync (PARK-IF1). BGTaskScheduler is unavailable on the simulator. Check on the iPhone after the
+  account exists.
+- The universal link (needs the Apple account).
+- A RELEASE build logging through IosLogger without a crash. No CI run builds Release (iOS Ruling 13 Q4). Check: a
+  Release install on the iPhone, through sign-in.
+- Also listed by this walk: VoiceOver itself. The walk ran with the simulator's VoiceOver PREFERENCE on, not
+  VoiceOver, so what a VoiceOver user hears is not shown here.
+
+================================================================================
+R1348 - ANDROID UNCHANGED
+================================================================================
+`git diff --stat ecc879c9..HEAD -- android web`: empty. No :app:gate, no gate:changed or gate:clone, no R573 run
+owed. Changed: .github/workflows/ios-walk.yml, .github/scripts/ios-walk-helper.py, .github/scripts/ios-walk-labels.py,
+ios/project-walk.yml, ios/MonReleveWalkUITests/*, ios/MonReleve/Sources/WalkProbe.swift (new), and
+ios/MonReleve/Sources/MonReleveApp.swift (4 lines: WalkProbe started only under `-walkProbe YES`).
+
+================================================================================
+FINDINGS
+================================================================================
+F1. COMPOSE'S TREE IS INVISIBLE TO ANY ACCESSIBILITY CLIENT EXCEPT VOICEOVER. The cause is Compose Multiplatform
+    1.7.3's default AccessibilitySyncOptions.WhenRequiredByAccessibilityServices, which reads only
+    UIAccessibilityIsVoiceOverRunning(). XCUITest saw an EMPTY window (run 45055507141). The same holds, by the
+    same code path, for Voice Control and Switch Control: it is inferred from the source, not measured. For
+    IOS-AUDIT.
+F2. THE ZERO-FRAME BUTTON (the orchestrator asked for it as a FINDING, not a test defect; nothing here shows the
+    driver at fault):
+    - In the canton list, every canton outside the viewport reaches UIAccessibility as a Button with frame
+      {{0.0, 0.0}, {0.0, 0.0}}. In run 45078149756's tree, Geneve..Soleure are zero after scrolling, while the
+      rows on screen (Schwytz..Zurich) carry real frames.
+    - XCUITest's tap needs a hittable element, and it cannot scroll an element to a position it is told is
+      nowhere. Flings, and short drags from the top, never produced a hittable Geneve in the snapshots taken
+      between drags.
+    - DIAGNOSIS (argued, not proven): Compose reports an off-viewport node's AX frame as zero rather than its
+      off-screen position. The snapshot did not show Geneve with a frame at any point the walk looked, including
+      on the way back up.
+    - Whether VoiceOver's own scrolling reaches such a row is exactly IOS-AUDIT R1355's measurement.
+F3. A COMPOSE TEXT FIELD is an unlabelled Button whose label becomes the TYPED TEXT, and XCUITest's typeText is
+    refused on it. Typing works only through the keyboard's keys, and it is not reliable: 1 lost tap in run 9, and
+    in run 11 a sequence never registered. This bears on R574: a code box's label holds its digit.
+F4. PostgreSQL is not on the macos-15 image (and docker is absent).
+
+================================================================================
+WHAT WOULD UNBLOCK THE ONBOARDING STEP (named, as ruled)
+================================================================================
+  - A CHANGE TO THE APP (QUESTION Q1). Two variants:
+      - AccessibilitySyncOptions.Always for a walk launch only, in MonReleveViewController.kt: this does not
+        obviously fix the zero frames, which are about off-screen nodes, not sync;
+      - test tags with a scroll-to semantics.
+    Either is an android/ edit, so :app:gate and R573 would be owed.
+  - A COORDINATE TAP (DEVIATION, if allowed). Type "gen" in the canton search field, which filters the list so
+    Geneve renders at the top with a real frame, or tap the visible row's coordinates. The search step is
+    already on the code tip and was never exercised, because of F3.
+  - SOMETHING ELSE, for F3: paste instead of keys. `xcrun simctl pbcopy` from the runner, then the field's Paste
+    menu. That avoids lost key taps. It puts the code in the simulator pasteboard; it never reaches a log.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- The sign-in screen's consent links ("Conditions d'utilisation", "Politique de confidentialite") and Parametres'
+  legal rows open the production site in Safari. The walk is written NOT to tap them, and test09 opens the in-app
+  "Licences" page instead (QUESTION Q2).
+- The helper decodes the dev-printed mail by its block layout (to:/link/six-digit line). A change to
+  lib/alerts/mailer.ts's print format would make /code answer NO RESULT, not a wrong code.
+
+================================================================================
+DEVIATIONS
+================================================================================
+D1. The simulator's com.apple.Accessibility VoiceOverTouchEnabled preference is set before the walk (F1). Without
+    it, XCUITest sees nothing. The app is unchanged; WalkProbe records what the app read (voiceOverRunning=true).
+D2. The runner's time zone is set to Europe/Paris before the simulator boots (sudo systemsetup). The recorded days
+    are Paris days and the reminder fires at 19:00 device-local; the probe read timeZone=Europe/Paris.
+D3. The keyboard's one-time slide-to-type tip is marked as shown in the simulator's keyboard preferences: it
+    covered the keys.
+D4. WalkProbe.swift is new APP code. It is Swift under ios/, not Kotlin. It runs only under `-walkProbe YES`, reads
+    the real centre, and adds ONE near copy of a reminder only under `-walkNearTap YES`. It is for I3 to remove
+    with the other probe keys.
+D5. Two runs did not compile because of my edits (45080869893, 45087263557). Both are NO RESULT and are counted
+    above.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. The onboarding blocker: which unblock does the orchestrator allow? An app change (sync option or test tags; an
+    android/ edit with its gates), a coordinate or search-field tap as a deviation, or paste-based typing?
+Q2. "One legal link opened": every legal link in the app opens the production site. May the walk tap one, which
+    sends the simulator's Safari to production, or is the in-app Licences page the walk's legal page?
+Q3. D1: is setting the simulator's VoiceOver preference an acceptable basis for the walk? It is what makes the
+    driver work at all with Compose 1.7.3.
+
+================================================================================
+THE ALLOWLIST AND THE MASKING STEPS (written before the first real dispatch, as required)
+================================================================================
+Re-read of .github/workflows/ios-walk.yml before the first dispatch:
+  - no repository or environment secret is read;
+  - no production host appears in it;
+  - no step prints a server, PostgreSQL, helper, masks or xcodebuild-test file;
+  - there is no failure-only step.
+THE ARTIFACT ALLOWLIST: walk-result.txt, app.log (only after a 0-hit grep), simulator.txt,
+  server-entries-<N>.json, shots/<[a-z0-9-]>.png and trees/<[a-z0-9-]>.txt. Any other name fails the step, and so
+  does any text file carrying a recorded secret. The upload runs only if that step passed.
+THE MASKING STEPS:
+  1. Generated secrets are masked on the next line.
+  2. Codes and link tokens go to the masks file before the helper answers; bearer tokens are added when first seen.
+  3. Every log that could carry one stays private.
+  4. The upload is scanned.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch i2-walk. Code tip: the commit before this report's (the run-8 driver plus the canton search field; the 1i
+typing change reverted; one test note reworded so no file names the production host). Report tip: the commit
+carrying this file. NOT merged. Session lock removed after the push.
