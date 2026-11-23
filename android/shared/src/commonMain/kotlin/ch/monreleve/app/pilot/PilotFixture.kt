@@ -10,7 +10,6 @@ import ch.monreleve.app.data.local.SyncState
 import ch.monreleve.app.data.local.todayInParis
 import ch.monreleve.app.data.repo.LocalEntryRepository
 import ch.monreleve.app.settings.Settings
-import ch.monreleve.app.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,19 +98,6 @@ class InMemoryEntryDao(seed: List<EntryEntity> = emptyList()) : EntryDao {
         rows.map { all -> all.filter { it.syncState == SyncState.PENDING } }
 
     override fun observeAll(): Flow<List<EntryEntity>> = rows
-}
-
-/** Settings held in memory: the pilot's one frontalier, Geneva, full time, the simplified 240-day year. */
-class InMemorySettingsStore(private var settings: Settings?) : SettingsStore {
-    override fun load(): Settings? = settings
-
-    override fun save(settings: Settings) {
-        this.settings = settings
-    }
-
-    override fun clear() {
-        settings = null
-    }
 }
 
 object PilotFixture {
