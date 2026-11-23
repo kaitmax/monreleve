@@ -32,7 +32,7 @@ READ THIS FIRST (two lines)
   the year downloads, every session ending clearing the device). Proven on the macOS simulator by unit
   runs (ios-shared), an app-level probe run (ios-app) and an end-to-end walk against a throwaway server
   (ios-walk). It CANNOT SHIP yet: F8, the accessibility question Q1, the app icon, the privacy answers,
-  your Apple account (sections 3-4; docs/ios-release.md once IOS-AUDIT merges).
+  your Apple account (sections 3-4; docs/ios-release.md, on main).
 
 2. THE iOS PHASE IN THIS RUN (all on main unless marked)
    IOS-SHELL-1  06ec1c0c  the real shell: scene, first-launch Keychain clear, code-only sign-in, onboarding
@@ -45,14 +45,18 @@ READ THIS FIRST (two lines)
                           drain, calendar, date picker, evening switch, sign-out and back, account deletion,
                           the reminder plan (4 pending at 19:00, today absent, no doubling; 0 after sign-out and
                           after deletion)
-   IOS-AUDIT    NOT MERGED  branch i3-audit, report tip 6393aa79, code tip 4c027bf7. Verified by the
+   IOS-AUDIT    43170a09  MERGED (iOS Ruling 20) after the orchestrator's lint fix b3cec346 - its own
+                          Android gates had been RED on two detekt issues and one ktlint issue; green on
+                          b3cec346 (GATE_EXIT=0, floor 1562, :shared 358), ios-shared 45243668348 534/0,
+                          ios-app 45243674835. The audit as it handed back: branch i3-audit, report tip
+                          6393aa79, code tip 4c027bf7. Verified by the
                           orchestrator on the iOS side: ios-shared 45186593108 = 110 suites / 534 tests / 0
                           failures (523 + 11), ios-app 45186600948 success with "R1353: RELEASE INSPECTION
                           PASSED - every check and every control", leak scans clean. WAITING: its Android
                           fastCheck and :app:gate (it changes android/app and android/shared), which need 8000
                           MB free under the heavy lock; this machine has stayed at 5.4-6.5 GB since the
                           afternoon because of your own applications, which the orchestrator does not touch.
-                          The run is queued in C:/wt/i3-gate and starts by itself when memory allows.
+                          (Memory freed at 18:43; the gates then ran - see iOS Ruling 20.)
    What the audit delivers once merged: probe and walk code excluded from Release (two layers), BGTask keys
    gone, a privacy manifest declaring only what the code proves (UserDefaults CA92.1), the date picker in
    French and opaque, the unlabelled Parametres switch labelled (Android gains the label too), the reminder
@@ -100,10 +104,10 @@ READ THIS FIRST (two lines)
    always-on accessibility sync experiment for Q1.
 
 6. HOUSEKEEPING LEFT
-- C:/wt/i3-gate (the orchestrator's gate checkout for IOS-AUDIT, with its lock) - removed after the merge.
+- C:/wt/i3-gate (the orchestrator's gate checkout for IOS-AUDIT) - removed after the merge.
 - C:/wt/walk-db/web (untracked leftover of a removed worktree).
 - The :3900 dev server - restarted for you at the end.
 
-Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-19, Ruling 20 for the audit when it merges),
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-20),
 relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the repository root, evidence under C:/wt/queue-evidence/.
 END OF FINAL REPORT

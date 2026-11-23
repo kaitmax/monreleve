@@ -3337,3 +3337,58 @@ NOTICED, recorded: N1 the workflow's db:deploy grep never matches Prisma's
    C:/wt/walk-db/web (untracked, git unregistered the worktree) - the
    orchestrator's to clear.
 NEXT: IOS-AUDIT (relay/IOS-AUDIT.txt: R1350-R1359, R1380-R1381, R1389-R1393).
+
+iOS Ruling 20 - IOS-AUDIT (I3), 2026-11-23. LANDED: main 43170a09 (merge of
+i3-fix b3cec346 = the audit's report tip 6393aa79 + the orchestrator's lint
+fix). THE AUDIT HANDED BACK PARTIAL: its increments C-F were pushed without
+their fast check (the 8000 MB line unmet 11:14-16:07; deviation 4). The
+orchestrator ran fastCheck and :app:gate on 6393aa79: BOTH RED - :shared:detekt
+(TooManyFunctions, IosShellUi.kt with eleven; MaxLineLength,
+AujourdhuiPilotIosTest.kt:93) and, once cleared, :shared:ktlint
+(import-ordering, ParametresListRows.kt). Fixed by the orchestrator as
+b3cec346: the five date-picker functions moved verbatim to
+IosStartDatePicker.kt with exactly the imports their code uses (a script
+asserting it), one comment re-wrapped, one import reordered. No behaviour
+change.
+VERDICTS ON b3cec346, EACH READ BY THE ORCHESTRATOR:
+- fastCheck --continue: FASTCHECK_EXIT=0, BUILD SUCCESSFUL in 1m 51s;
+- :app:gate: GATE HEAD=b3cec346 dirty=0, "test floor OK: 1562 unit tests
+  observed", BUILD SUCCESSFUL in 5m 42s, GATE_EXIT=0, dirty-after=0; :shared
+  JVM 358 / 0 failures from the XML (346 + 12), IosProjectKeysTest 4/0 - its
+  first execution in Gradle;
+- ios-shared 45243668348: 110 suites / 534 tests / 0 failures / 0 errors from
+  the JUnit XML (523 + 11), both date-picker tests green on the moved code;
+- ios-app 45243674835: see the merge commit (probe share PASS, the R1353 OUTPUT
+  line "RELEASE INSPECTION PASSED - every check and every control",
+  launch-DEFAULT looked at);
+- gate:changed on the staged merge: see the merge commit.
+THE FLOOR STAYS 1562; :shared JVM 358; iOS SHARED 534.
+READ BY THE ORCHESTRATOR in the branch: the privacy manifest declares only
+UserDefaults CA92.1 and OMITS NSPrivacyCollectedDataTypes on purpose (its own
+comment and docs/ios-release.md name it the operator's Q4 - it must be
+answered before any submission); each removed probe key maps to a measurement
+that ran (walk run 18's lines, KeychainRoundTripIosTest,
+FirstLaunchRealKeychainIosTest); ios-app.yml's triggers unchanged; leak scans
+of 45186600948 and 45197427698 clean (the production host only in R1353's
+Release-URL lines); the last walk's onboarding passed the canton and did not
+finish.
+RULINGS ACCEPTED: R1350-R1359, R1380 (dropped-on-ending ARGUED, not tested),
+R1381, R1389, R1390 (the WALKER scrolled back; the app does not reset), R1391
+(not reproduced; no app defect), R1392, R1393. Deviations 1-7 accepted;
+deviation 4 is why this ruling exists.
+QUESTIONS:
+- Q1 (Compose 1.7.3 keeps the accessibility tree in sync only while VoiceOver
+  runs): A SECOND iOS SHIP BLOCKER beside F8, the operator's - the always-on
+  sync option (experimental, RED first, the walk's export/comparison/Licences
+  rows as its test) or a Compose upgrade; real VoiceOver on an iPhone settles
+  whether users are affected.
+- Q2 (the icon), Q4 (the collected data types and the App Privacy answers),
+  Q6 (export compliance): the OPERATOR's.
+- Q3 (the libraries' stat/statfs imports): declare nothing the app's code does
+  not prove; the measured imports are listed for the first upload.
+- Q5 (CFBundleDevelopmentRegion fr) and Q7 (delete the commonMain pilot):
+  IOS-POLISH, proposed in relay/FINAL-REPORT-2026-11-23.txt.
+- SwitchRow's new contentDescription reaches Android too: TalkBack on a
+  Parametres switch row goes on the S9 list (argued: the row does not merge).
+THE iOS PHASE IS COMPLETE AS PLANNED (I1-I3). iOS cannot ship until F8, Q1 and
+the operator's Apple items are settled (relay/FINAL-REPORT-2026-11-23.txt).
