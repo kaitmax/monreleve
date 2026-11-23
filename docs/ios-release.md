@@ -138,7 +138,9 @@ Each check has a step and the record that proves it. Do them on a TestFlight bui
     - Compose 1.7.3 syncs its tree to UIAccessibility ONLY while VoiceOver runs (F1).
     - Rows that were below the fold keep a ZERO accessibility frame after they are scrolled into view. In walk run
       45178578142 even the always-drawn bottom bar read 0/0 once the page had scrolled.
-    - The labels are present: every control on every screen carries one (IosAccessibilityLabelsIosTest).
+    - The labels are present on Bienvenue, the four tabs, Rythme, Prévision, Simulation and the comparison
+      (IosAccessibilityLabelsIosTest). The address and code screens, onboarding, Licences, the sheets and the dialogs
+      were NOT covered by that test, so check them here too.
     *Checks:*
     - With VoiceOver ON: swipe through each tab to its last row (the onboarding cantons, the Relevé's "Exporter en
       PDF", Paramètres' "Licences"). Then touch-explore those rows after scrolling: does VoiceOver land on the row

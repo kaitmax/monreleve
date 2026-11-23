@@ -24,7 +24,35 @@ SUMMARY
 ================================================================================
 STATUS (R391)
 ================================================================================
-PENDING - filled in at the end of the session.
+PARTIAL. FAST CHECK last green on 7d23d3b8 (the plant tree, fastcheck-4: "BUILD SUCCESSFUL in 2m 49s"). FAST CHECK
+NOT RUN on increments C-F. FULL GATE NOT RUN on 4c027bf7 (the code tip). The heavy lock's 8000 MB memory line was
+unmet from 11:14 to 16:07 (readings 1861-6911 MB free). The line was not lowered, no process was touched, and the
+queued acquire was stopped and verified dead (lock FREE).
+OWED BEFORE ANY MERGE (the orchestrator's, or a relaunch from this tip):
+  1. ./gradlew fastCheck --no-daemon, then ./gradlew :app:gate --no-daemon on 4c027bf7.
+  2. Expected from the gate:
+     - floor >= 1562 (no :app test was added or removed; ExperimentalTimeOptInAllowlistTest changed one entry);
+     - :shared JVM = 346 + 12 (TabWiringFenceTest 4, IosNoInlineCopyFenceTest 4, IosProjectKeysTest 4);
+     - BUILD SUCCESSFUL and GATE_EXIT=0.
+  3. What C-F changed that only the gate checks: ktlint and detekt on the iosMain/iosTest/commonMain edits, and
+     the :app JVM tests that read commonMain. ThresholdAlertPresenceTest reads Parametres' drawn texts; it collects a
+     SET, and the switch's new content description repeats an existing label.
+  4. IosProjectKeysTest has NEVER EXECUTED in Gradle. Its predicates were dry-run in node against the real
+     ios/project.yml: the 4 presence keys found, 0 forbidden keys, the Release URL matched, and a planted
+     NSLocation key caught.
+iOS, ON THE CODE TIP 4c027bf7 (android/, ios/ and .github are unchanged since: git diff --stat 4c027bf7..HEAD --
+android ios .github is empty):
+  - ios-shared 45186593108: SUCCESS. Counted from the JUnit XML: "suites 110 tests 534 failures 0 errors 0
+    skipped 0", against the base's 523 (+11, by class in R1358).
+  - ios-app 45186600948: SUCCESS. Probe keys: share.result=PASS (the remaining asserted key);
+    mail.canOpenMessageScheme=false (a measurement). keychain, notification, reminder, firstLaunch, bgtask, ats and
+    info are REMOVED (R1350 census). launch-DEFAULT.png looked at: Bienvenue, no code field. R1353 Release step:
+    "R1353: RELEASE INSPECTION PASSED - every check and every control" (RELEASE BUILT in 1427 s).
+  - Leak scans of every run: 0 codes, 0 real bearers (only the fixture "acc"), 0 token prefixes. The production host
+    appears only in R1353's own lines (4 per ios-app run).
+web/: NOT touched, so gate:changed and gate:clone are not owed. The workflow's database patterns are ARGUED FROM
+GREP, NOT RUN: ios-app.yml counts 0 each of DATABASE_URL, db:deploy, initdb, pg_ctl, postgres, CREATE DATABASE and
+POSTGRES_DB:. ci.yml, ios-walk.yml, ios-shared.yml and .github/scripts are untouched.
 
 ================================================================================
 R1350 - NOTHING PROBE-ONLY SHIPS: THE CENSUS
@@ -155,7 +183,10 @@ R1354 - APP STORE READINESS, BY FILE
 R1355 - ACCESSIBILITY ON iOS
 ================================================================================
 - IosAccessibilityLabelsIosTest (3 tests): every clickable node in the MERGED tree carries a label, on Bienvenue, the
-  four tabs, Rythme, Prevision, Simulation and the comparison. The four tabs are clickable by their own labels.
+  four tabs, Rythme, Prevision, Simulation and the comparison. NOT covered: the address and code screens, onboarding,
+  Licences, sheets and dialogs (on the iPhone list, docs 7.10). The test's own header says "on every screen iOS
+  draws", which is broader than what it covers: NOTICED, and left as is so that the tested tip stays the tested tip.
+  The four tabs are clickable by their own labels.
   First run 45172998443 FOUND ONE: "R1355 Parametres: controls with no accessibility label: [role=Switch at
   Rect.fromLTRB(936.0, 586.0, 988.0, 618.0)]". That is the evening switch (IOS-WALK D12). FIXED with no new copy:
   SwitchRow's Switch takes its row's label as its content description (commonMain ParametresListRows.kt). Green in
@@ -263,7 +294,17 @@ Leak scans (scratchpad leakscan.js and by hand) of every downloaded job log and 
   - bearer 0, token prefix 0, production host 0;
   - callback 2: R1385 note lines;
   - code boxes 'Chiffre N sur 6' only.
-- ios-shared 45186593108 (tip): the wire fixtures only, the same classes as 45172998443.
+- ios-shared 45175730795 and 45186593108 (tip), 256 text files each:
+  - six-digit 7: CSS colours;
+  - bearer 7: all "Bearer acc", the fixture;
+  - callback 17: test names and the fixture;
+  - production host 0.
+- ios-app 45175739188:
+  - six-digit 0, bearer 0, callback 0;
+  - production host 4, R1353's lines.
+- The superseded 45185054945 (ios-shared, 14 steps run) and 45185062036 (ios-app, 13 steps run), job logs only:
+  - six-digit 1: a cache-key hash;
+  - bearer 0, callback 0, production host 0.
 No screenshot shows a code (R574).
 
 ================================================================================
@@ -429,6 +470,8 @@ DEVIATIONS
    stayed unmet (1861-6911 MB free) from 11:14. The line was not lowered and no process was touched.
 5. The walker taps a bottom-bar tab at its slot when Compose reports its frame as zero (runner-side, measured on
    31-tab-drag-last.png, and noted on each use).
+7. R1390 (ii), the canton through the screen's own search field, was NOT ATTEMPTED. (i) brought Geneve on screen
+   first, so the field was never needed; track 1 then stopped at the period step.
 6. Run 45170805390 was a compile failure of my own (a category property needs an explicit import, and a reference
    my grep missed). NO RESULT, counted.
 
@@ -457,9 +500,15 @@ Q5 (the bundle's region). CFBundleDevelopmentRegion is "en", with no French .lpr
    language effects.
 Q6 (export compliance). ITSAppUsesNonExemptEncryption is the operator's. The app uses only system HTTPS and the
    Keychain.
+Q7 (the commonMain pilot). AujourdhuiPilot, PilotFixture and PilotScenario now have NO production caller on either
+   platform. The iOS view controller was the only one, and R1350 deleted it. They still ship, public, in the Release
+   framework, and only their tests use them. Delete them (PilotFixtureTest, AujourdhuiPilotIosTest and
+   LaunchSpeechIosTest re-homed or dropped by a case map), or make them internal? Not done: R1350 did not name them.
 F8 is NOT a question of this session (R1392). It is docs/ios-release.md section 0, with options (A)-(D) unchosen.
 
 ================================================================================
 PUSH PROOF
 ================================================================================
-(filled at the end)
+Code tip 4c027bf7, pushed to origin/i3-audit, as were every commit before it (ac7129a3, 7d23d3b8, 1bc246a9, 93e7f591,
+3121f186, 58ad5c51) and the report and docs commits after it (71251ffe, 83e6fc7c, de99bed6). The report tip is the commit
+carrying this text; its sha and `git ls-remote origin i3-audit` are in the handback. NOT MERGED.
