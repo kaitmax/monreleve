@@ -3,6 +3,7 @@ package ch.monreleve.app.ios
 import androidx.compose.ui.graphics.Color
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.CoreGraphics.CGColorGetAlpha
+import platform.Foundation.localeIdentifier
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
