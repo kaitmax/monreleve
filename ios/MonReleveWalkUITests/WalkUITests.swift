@@ -94,8 +94,8 @@ final class WalkUITests: XCTestCase {
         Walk.tree("\(step)-signin", app)
         Walk.shot("\(step)-signin")
         let before = Walk.mailCount(address)
-        let typed = app.typeChecked(address, into: email)
-        Walk.note("\(step) sign-in: e-mail typed and read back equal=\(typed.typed) after \(typed.attempts) attempt(s)")
+        let typedEmail = app.typeChecked(address, into: email)
+        Walk.note("\(step) sign-in: e-mail typed and read back equal=\(typedEmail.typed) after \(typedEmail.attempts) attempt(s)")
         dismissKeyboard()
         if app.labelled(L.signInSubmit).exists && !app.labelled(L.codeTitle).exists {
             app.labelled(L.signInSubmit).tap()
