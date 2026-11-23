@@ -17,6 +17,8 @@
 //   -pilotScenario <NAME>   show the PILOT in this state (PilotScenario's names) - a probe/test path, not the product.
 //   -probe YES              show the pilot and run the host probe (HostProbe.swift, R1212). A normal launch never does.
 //   -probeNonce <TEXT>      written first into the probe's result file, so a reader can tell THIS launch's file.
+//   -walkProbe YES          IOS-WALK only: the REAL app, plus WalkProbe.swift's read-only file of the centre's state.
+//   -walkNearTap YES        IOS-WALK only, with -walkProbe: one near copy of the first pending reminder (R1345's tap).
 
 import Shared
 import SwiftUI
@@ -57,6 +59,11 @@ final class HostAppDelegate: NSObject, UIApplicationDelegate {
         // ends for a tap that LAUNCHES the app to reach it. Not for the pilot or the probe (the probe sets its own).
         if !LaunchArguments.pilotLaunch {
             IosNotificationTapsKt.installNotificationTapDelegate()
+        }
+        // IOS-WALK R1345: the walk's read-only window onto the real centre - ONLY with `-walkProbe YES`
+        // (WalkProbe.swift). A person's launch never starts it.
+        if WalkProbe.enabled && !LaunchArguments.pilotLaunch {
+            WalkProbe.shared.start()
         }
         return true
     }
