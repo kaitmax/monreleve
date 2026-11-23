@@ -3296,3 +3296,44 @@ Q2: F8 above - the operator's.  Q3: F6 - IOS-AUDIT R1389.  Q4: F9 -
 NEXT: IOS-WALK-DB (R1394-R1398) re-lands the walk green; THEN IOS-AUDIT
    (R1350-R1359, R1380-R1381, R1389-R1393), whose read-first files are the
    walk's.
+
+iOS Ruling 19 - IOS-WALK-DB, 2026-11-23. LANDED GREEN: main 985c37f5 (merge
+of walk-db 8defa5ce; code tip c7b80233; main unmoved at 9c3a65b0). The walk
+is back on main: its files byte for byte as i2-walk d0509a4f left them
+(8f39e806 reverts b276b71f), plus the database step as
+web/scripts/ios-walk-database.mjs (R877 resolves it from the home), the
+workflow carrying no connection string, and R1396 in the census (a
+serviceless workflow covered by PRESENCE - it calls a script R877 resolves -
+and carries no inline CREATE DATABASE). The census diff only ADDS lines:
+R877 and R879 accept exactly what they accepted.
+VERDICTS, EACH READ BY THE ORCHESTRATOR BEFORE ITS STEP:
+- the session's gate:changed on c7b80233: "Tests 4294 passed (4294)" /
+  "GATE PASSED for the paths changed"; its gate:clone on c7b80233:
+  "GATE:CLONE PASSED", commit c7b80233, the claim line (4294 tests; test:db
+  911 passed, 28 skipped);
+- the orchestrator's gate:changed on the staged merge: "Tests 4294 passed
+  (4294)" / "GATE PASSED" - read, then the commit;
+- the orchestrator's gate:clone on 985c37f5: "GATE:CLONE PASSED", commit
+  985c37f5 - read, then the push. Token check 0.
+PLANTS (R1397), each failing by name in the session's logs, read: (a) the
+literal connection string back -> R879 x2; (b) a non-scratch name -> R877
+and R1396; (c) the call removed -> R1396.
+THE RUNNER: ios-walk 45141116842 on c7b80233 - "scratch database created:
+monreleve_ios_walk_45141116842", the admin URL printed with its credentials
+replaced, R169 naming the product, the existing-account sign-ins passed;
+its test-case outcomes equal run 18's (the known stops). Job log scanned by
+the orchestrator: token prefix 0, production host 0, unmasked connection
+string 0. ios-app 45125808971 stands (no ios/ change since 558384e4).
+THE FLOOR STAYS 1562; iOS SHARED 523; WEB gate:changed 4294.
+Q1 (the dispatch's FAILURE conclusion): ENOUGH - the lines this task owed
+   passed, and the failures are iOS Ruling 18's known set.
+Deviations D1-D6 ACCEPTED (D1: the RED revert commit pushed only with its fix,
+   after gate:clone - the right reading of R132/R199; D5: the session's
+   local check ran on this project's own frontalier-postgres container).
+NOTICED, recorded: N1 the workflow's db:deploy grep never matches Prisma's
+   success line (the step rests on the exit code); N2 a workflow WITH a
+   service AND an inline CREATE DATABASE would be seen by neither guard (none
+   exists); N3 R1396's "uses a database" signals are a fixed list. Left:
+   C:/wt/walk-db/web (untracked, git unregistered the worktree) - the
+   orchestrator's to clear.
+NEXT: IOS-AUDIT (relay/IOS-AUDIT.txt: R1350-R1359, R1380-R1381, R1389-R1393).

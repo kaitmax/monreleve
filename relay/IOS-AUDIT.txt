@@ -3,7 +3,7 @@ I3: THE iOS RELEASE AUDIT - WHAT SHIPS, WHAT IS TEST-ONLY, WHAT THE OPERATOR OWE
 Written by the orchestrating session on 2026-11-22 (iOS Rulings 2, 3, 9-14 and the overnight plan in
 relay/RULINGS-2026-11-16.txt; the I3 line of the plan: "the iOS release audit; push, device, TestFlight and App
 Store listed as the operator's"). Read first: those rulings whole; REPORT-IOS-HOST.txt, REPORT-IOS-SHELL-1.txt,
-REPORT-IOS-SHELL-2.txt, REPORT-IOS-SHELL-3.txt, REPORT-IOS-MOVE-TABS.txt and REPORT-IOS-WALK.txt (what the app now is, what the walk
+REPORT-IOS-SHELL-2.txt, REPORT-IOS-SHELL-3.txt, REPORT-IOS-MOVE-TABS.txt, REPORT-IOS-WALK.txt and REPORT-IOS-WALK-DB.txt (what the app now is, what the walk
 measured, what it could not); ios/project.yml; ios/MonReleve/Sources/*.swift; .github/workflows/ios-app.yml,
 ios-shared.yml and ios-walk.yml; android/shared/src/iosMain/**; CLAUDE.md R154, R169, R172, R178, R180, R204,
 R205, R206, R246, R268, R349, R391, R573, R574.
