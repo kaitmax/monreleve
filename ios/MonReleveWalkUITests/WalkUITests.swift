@@ -34,13 +34,24 @@ final class WalkUITests: XCTestCase {
         if app.state != .runningForeground { app.activate() }
     }
 
-    /// Brings [element] on screen and hittable, or records why not.
+    /// Whether [element] is ON SCREEN: XCUITest calls it hittable, or it reports a real frame of its own. Compose clips a
+    /// row's frame to the scroll viewport (zero when wholly outside it, partial at its edge - R1382's trees), so a real
+    /// frame IS an on-screen frame. XCUITest's hittability alone is not enough: run 45099570712 had "Domicile" at
+    /// {{100.7, 563.7}, {53, 33.3}} refused as not hittable, and Geneve never called hittable through 20 drags.
+    private func onScreen(_ element: XCUIElement) -> Bool {
+        guard element.exists else { return false }
+        if element.isHittable { return true }
+        let frame = element.frame
+        return frame.width > 0 && frame.height >= 16
+    }
+
+    /// Brings [element] on screen, or records why not.
     ///
     /// R1382's DIAGNOSIS (run 45095829204): an off-viewport row reports a ZERO frame, and ONE slow drag from 70 % to 40 %
-    /// of the window put Geneve mid-screen with a real frame, hittable at +1.5 s and unchanged at +5 s. So the tree is
-    /// neither stale (c) nor unscrolled (a), and the row is on this screen (b does not hold): IOS-WALK's own loop was the
-    /// fault - four fast swipes first, then shorter drags re-checked after 0.6 s. This is the diagnosed gesture: that same
-    /// drag, a 1.5 s settle before each check, down the page first, then back up for a row above the viewport.
+    /// of the window put Geneve mid-screen with a real frame at +1.5 s, unchanged at +5 s. So the tree is neither stale
+    /// (c) nor unscrolled (a), and the row is on this screen (b does not hold): IOS-WALK's own loop was the fault. This is
+    /// the diagnosed gesture with a 1.5 s settle, down the page first, then back up; ON SCREEN is judged by the element's
+    /// own frame (onScreen), and each frame seen on the way is recorded.
     @discardableResult
     private func reveal(_ element: XCUIElement, _ label: String, _ step: String,
                         within seconds: TimeInterval = 20) -> Bool {
@@ -52,25 +63,53 @@ final class WalkUITests: XCTestCase {
         }
         let low = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
         let high = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.40))
-        var drags = 0
-        for pass in 0..<20 where !element.isHittable {
+        var seen: [String] = []
+        for pass in 0..<20 where !onScreen(element) {
             if pass < 9 {
                 low.press(forDuration: 0.05, thenDragTo: high, withVelocity: .slow, thenHoldForDuration: 0.3)
             } else {
                 high.press(forDuration: 0.05, thenDragTo: low, withVelocity: .slow, thenHoldForDuration: 0.3)
             }
-            drags += 1
             Thread.sleep(forTimeInterval: 1.5)
+            seen.append(element.exists ? "\(Int(element.frame.minY))/\(Int(element.frame.height))" : "gone")
         }
-        if drags > 0 { Walk.note("\(step): \"\(label)\" brought on screen after \(drags) drag(s)=\(element.isHittable)") }
-        guard element.isHittable else {
+        if !seen.isEmpty {
+            Walk.note("\(step): \"\(label)\" after \(seen.count) drag(s): on screen=\(onScreen(element)); "
+                + "y/height after each: \(seen.joined(separator: " "))")
+        }
+        guard onScreen(element) else {
             Walk.tree("unhittable-\(step)", app)
             Walk.shot("unhittable-\(step)")
-            Walk.note("FAIL \(step): \"\(label)\" exists but is not hittable after scrolling (tree unhittable-\(step))")
-            XCTFail("not hittable: \(label)")
+            Walk.note("FAIL \(step): \"\(label)\" exists but never came on screen (tree unhittable-\(step))")
+            XCTFail("not on screen: \(label)")
             return false
         }
         return true
+    }
+
+    /// Taps [element]: XCUITest's own tap when it calls the element hittable; otherwise a tap at the centre of the
+    /// element's OWN reported frame (DEVIATION, IOS-WALK-2: XCUITest refuses on-screen Compose elements - onScreen).
+    private func press(_ element: XCUIElement) {
+        if element.exists && element.isHittable {
+            element.tap()
+            return
+        }
+        guard element.exists else {
+            element.tap()
+            return
+        }
+        let frame = element.frame
+        guard frame.width > 0, frame.height > 0 else {
+            element.tap()
+            return
+        }
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+    }
+
+    /// The first element whose label is [label] or BEGINS with it (a merged row: headline + supporting text).
+    private func starting(_ label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
     }
 
     /// Taps the element labelled exactly [label] - or, when there is none, the one whose label BEGINS with it: a
@@ -79,11 +118,10 @@ final class WalkUITests: XCTestCase {
     private func tapLabel(_ label: String, _ step: String, within seconds: TimeInterval = 20) {
         var element = app.labelled(label)
         if !element.waitForExistence(timeout: min(seconds, 5)) {
-            let starting = app.descendants(matching: .any)
-                .matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
-            if starting.waitForExistence(timeout: seconds) { element = starting }
+            let begins = starting(label)
+            if begins.waitForExistence(timeout: seconds) { element = begins }
         }
-        if reveal(element, label, step, within: 1) { element.tap() }
+        if reveal(element, label, step, within: 1) { press(element) }
     }
 
     // MARK: - 01 first launch (R1321's Keychain clear is the app's own first-launch path) - BOTH tracks
@@ -150,7 +188,7 @@ final class WalkUITests: XCTestCase {
         guard enter(address, into: email, "\(step) sign-in e-mail") else { return }
         dismissKeyboard()
         if app.labelled(L.signInSubmit).exists && !app.labelled(L.codeTitle).exists {
-            app.labelled(L.signInSubmit).tap()
+            press(app.labelled(L.signInSubmit))
         }
         let codeScreen = app.shows(L.codeTitle, within: 60)
         Walk.note("\(step) sign-in: code screen shown=\(codeScreen) (mails to the account before: \(before))")
@@ -176,7 +214,7 @@ final class WalkUITests: XCTestCase {
         Walk.note("\(step) sign-in: the code typed by its keys=\(typed) (the code itself is never logged)")
         dismissKeyboard()
         let submit = app.labelled(L.codeSubmit)
-        if submit.exists { submit.tap() }
+        if submit.exists { press(submit) }
         var left = false
         for _ in 0..<60 {
             if !app.labelled(L.codeTitle).exists { left = true; break }
@@ -261,7 +299,7 @@ final class WalkUITests: XCTestCase {
                 tapLabel(L.onbPeriodPart, "03-period")
                 Thread.sleep(forTimeInterval: 1)
                 if let start = app.field(below: L.onbPeriodStart, within: 5) {
-                    start.tap()
+                    press(start)
                     Thread.sleep(forTimeInterval: 2)
                     pickDate("03")
                 } else {
@@ -319,11 +357,11 @@ final class WalkUITests: XCTestCase {
         Walk.shot("\(step)-datepicker-open")
         if days.count > 2 {
             Walk.note("\(step) date picker: choosing \"\(days[2].label)\"")
-            days[2].tap()
+            press(days[2])
             Thread.sleep(forTimeInterval: 1)
         }
         Walk.note("\(step) DRIVER PROOF (c): value after=\"\(app.datePickers.firstMatch.value ?? "nil")\"")
-        if let confirm = lastLabelled(L.onbContinue) { confirm.tap() }
+        if let confirm = lastLabelled(L.onbContinue) { press(confirm) }
         Thread.sleep(forTimeInterval: 1.5)
         return true
     }
@@ -379,7 +417,7 @@ final class WalkUITests: XCTestCase {
             XCTFail("no previous-year chip")
             return
         }
-        chip.tap()
+        press(chip)
         Thread.sleep(forTimeInterval: 3)
         Walk.note("22 the releve for \(previous) opened (tree and shot 22-releve-previous: the prior-year day seeded "
             + "through the API must show there)")
@@ -477,7 +515,7 @@ final class WalkUITests: XCTestCase {
                 return
             }
             Walk.note("24 pass \(pass): day \(day) before: \"\(cell.label)\"")
-            cell.tap()
+            press(cell)
             Thread.sleep(forTimeInterval: 1.5)
             Walk.tree("24-sheet-\(pass)", app)
             Walk.shot("24-sheet-\(pass)")
@@ -487,9 +525,9 @@ final class WalkUITests: XCTestCase {
                 XCTFail("no sheet")
                 return
             }
-            option.tap()
+            press(option)
             Thread.sleep(forTimeInterval: 0.5)
-            if let save = lastLabelled(L.sheetSave) { save.tap() }
+            if let save = lastLabelled(L.sheetSave) { press(save) }
             Thread.sleep(forTimeInterval: 2.5)
             Walk.note("24 pass \(pass): chose \"\(choice)\"; day \(day) after: \"\(dayCell(day).label)\"")
             Walk.shot("24-after-\(pass)")
@@ -543,7 +581,7 @@ final class WalkUITests: XCTestCase {
             XCTFail("no previous-year chip")
             return
         }
-        chip.tap()
+        press(chip)
         Thread.sleep(forTimeInterval: 3)
         tapLabel(L.compareEmployer, "27-compare")
         Thread.sleep(forTimeInterval: 2)
@@ -564,7 +602,7 @@ final class WalkUITests: XCTestCase {
         _ = waitMain(60)
         tapLabel(L.tabReleve, "27-tab-again")
         Thread.sleep(forTimeInterval: 3)
-        app.labelled("\(previous)").tap()
+        press(app.labelled("\(previous)"))
         Thread.sleep(forTimeInterval: 3)
         tapLabel(L.compareEmployer, "27-compare-again")
         Thread.sleep(forTimeInterval: 2)
@@ -586,7 +624,7 @@ final class WalkUITests: XCTestCase {
         let row = app.containing(L.startDateRow)
         guard reveal(row, L.startDateRow, "28-row") else { return }
         Walk.note("28 start-date row: \"\(row.label)\"")
-        row.tap()
+        press(row)
         Thread.sleep(forTimeInterval: 1.5)
         tapLabel(L.startDatePick, "28-pick")
         Thread.sleep(forTimeInterval: 2)
@@ -597,7 +635,7 @@ final class WalkUITests: XCTestCase {
         Walk.tree("28-sheet-after-pick", app)
         Walk.shot("28-sheet-after-pick")
         // NOT SAVED: the account's period stays whole-year, so nothing later in the walk depends on this step.
-        if let cancel = lastLabelled(L.sheetCancel) { cancel.tap() }
+        if let cancel = lastLabelled(L.sheetCancel) { press(cancel) }
         Thread.sleep(forTimeInterval: 1.5)
         Walk.note("28 the sheet cancelled (not saved); the row reads \"\(app.containing(L.startDateRow).label)\"")
     }
@@ -608,22 +646,26 @@ final class WalkUITests: XCTestCase {
         foreground()
         tapLabel(L.tabParametres, "29-tab")
         Thread.sleep(forTimeInterval: 2)
-        let label = app.labelled(L.eveningLabel)
+        // Run 45099570712: the switch row is ONE merged element whose label BEGINS with the evening label (headline and
+        // supporting text), so both rows are matched by BEGINSWITH - the absence check too, or it could not see a
+        // merged alert row any more than the exact match saw the evening one (R169's corollary).
+        let label = starting(L.eveningLabel)
         guard reveal(label, L.eveningLabel, "29-evening") else { return }
-        Walk.note("29 parametres: \"\(L.eveningLabel)\" PRESENT=true; \"\(L.alertLabel)\" PRESENT="
-            + "\(app.labelled(L.alertLabel).exists) (iOS Ruling 3 Q4: must be ABSENT)")
+        Walk.note("29 parametres: \"\(L.eveningLabel)\" PRESENT=true (\"\(label.label)\"); \"\(L.alertLabel)\" PRESENT="
+            + "\(starting(L.alertLabel).exists) (iOS Ruling 3 Q4: must be ABSENT)")
         Walk.notePending("29 BEFORE the opt-in")
         let row = label.frame
         let near = app.switches.allElementsBoundByIndex.filter { abs($0.frame.midY - row.midY) < 60 && $0.frame.width > 0 }
         if let toggle = near.first {
             Walk.note("29 the evening switch: value before=\"\(toggle.value ?? "nil")\"; tapped")
-            toggle.tap()
+            press(toggle)
         } else {
             let window = app.windows.firstMatch.frame
-            Walk.note("29 no switch element beside the label (\(app.switches.count) in the tree): a tap at the row's "
-                + "trailing edge")
+            let y = row.height > 60 ? row.midY : row.midY + 12
+            Walk.note("29 no switch element beside the label (\(app.switches.count) in the tree; the row "
+                + "\(row)): a tap at the row's trailing edge, where the switch is drawn")
             app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
-                .withOffset(CGVector(dx: window.width - 62, dy: row.midY + 12)).tap()
+                .withOffset(CGVector(dx: window.width - 62, dy: y)).tap()
         }
         notificationAlert("29")
         let after = app.switches.allElementsBoundByIndex.filter { abs($0.frame.midY - row.midY) < 60 && $0.frame.width > 0 }
@@ -666,7 +708,7 @@ final class WalkUITests: XCTestCase {
             + "Safari are NOT tapped - R1386)")
         Walk.tree("30-licences", app)
         Walk.shot("30-licences")
-        if let back = lastLabelled(L.licencesBack) { back.tap() }
+        if let back = lastLabelled(L.licencesBack) { press(back) }
         Thread.sleep(forTimeInterval: 1.5)
     }
 
@@ -680,7 +722,7 @@ final class WalkUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.5)
         Walk.tree("\(step)-signout-dialog", app)
         Walk.shot("\(step)-signout-dialog")
-        if let confirm = lastLabelled(L.signOut) { confirm.tap() }
+        if let confirm = lastLabelled(L.signOut) { press(confirm) }
         let out = app.labelled(L.welcomeStart).waitForExistence(timeout: 30)
             || app.labelled(L.signInSubmit).waitForExistence(timeout: 5)
         Walk.note("\(step) signed out: sign-in reached=\(out)")
@@ -701,7 +743,7 @@ final class WalkUITests: XCTestCase {
 
     func test32_signInAgain() {
         foreground()
-        if app.labelled(L.welcomeStart).exists { app.labelled(L.welcomeStart).tap() }
+        if app.labelled(L.welcomeStart).exists { press(app.labelled(L.welcomeStart)) }
         signIn(Walk.accountA, step: "32")
         _ = expectMainWithoutOnboarding("32")
         Thread.sleep(forTimeInterval: 8)
@@ -751,7 +793,7 @@ final class WalkUITests: XCTestCase {
     func test34_accountDeletion() {
         foreground()
         signOutHere("34a")
-        if app.labelled(L.welcomeStart).exists { app.labelled(L.welcomeStart).tap() }
+        if app.labelled(L.welcomeStart).exists { press(app.labelled(L.welcomeStart)) }
         signIn(Walk.accountB, step: "34")
         _ = expectMainWithoutOnboarding("34")
         Thread.sleep(forTimeInterval: 5)
@@ -772,7 +814,7 @@ final class WalkUITests: XCTestCase {
         let done = app.labelled(L.deleteDoneTitle).waitForExistence(timeout: 30)
         Walk.note("34 account deleted: \"\(L.deleteDoneTitle)\" shown=\(done)")
         Walk.shot("34-deleted")
-        if let ack = lastLabelled(L.deleteDoneAck) { ack.tap() }
+        if let ack = lastLabelled(L.deleteDoneAck) { press(ack) }
         Thread.sleep(forTimeInterval: 2)
         Walk.notePending("34 M3 AFTER deletion")
     }
