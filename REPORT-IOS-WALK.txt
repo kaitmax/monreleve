@@ -1,69 +1,281 @@
 REPORT-IOS-WALK - I2: THE iOS APP DRIVEN END TO END ON THE SIMULATOR AGAINST A THROWAWAY SERVER
-DRAFT (written before the first real dispatch, as the prompt requires; completed at the end of the session)
+PARTIAL REPORT, written on the orchestrator's ruling of 23:45Z ("stop iterating ... write a partial report ...
+push and hand back").
 
-STATUS: PARTIAL (in progress). No gate owed so far: nothing under android/ or web/ changed
-(git diff --stat ecc879c9..HEAD -- android web is empty). FULL GATE NOT RUN (none owed).
+================================================================================
+SUMMARY
+================================================================================
+The walk's whole infrastructure works on the macOS runner and has never leaked: a throwaway PostgreSQL and scratch
+database made by the project's own mechanism, web/'s dev server asserted by name, secrets born and masked on the
+runner, a Debug build pointed only at a runner-local relay, an upload allowlist and a secret scan that passed on
+every run, and an app log uploaded only after a grep for every code and token returned 0 lines.
 
-RUNS SO FAR (each read by this session from its job log and artifact; evidence in C:/wt/queue-evidence/i2-walk/)
-  45053771464 (0015cd54, inert): printed ref=refs/heads/i2-walk sha=0015cd54 - the dispatch mechanism works.
-  45055507141 (c503d8b4): infrastructure all green - PostgreSQL ABSENT on macos-15 (and no docker), so
-      postgresql@16 is brew-installed for the run (16.16); scratch database monreleve_ios_walk_<run> created by
-      gate-clone-parts' administer() and migrated by db:deploy (17 migrations found); pnpm dev answered
-      /api/health naming 'monreleve' (R169, expected read from web/identity.json); TEST BUILD SUCCEEDED;
-      MonReleveApiBaseUrl=http://127.0.0.1:3310 asserted; the label check 31/31.
-      THE WALK: the XCUITest tree under the app window was EMPTY - no Compose element visible.
-      CAUSE (read in Compose Multiplatform 1.7.3's own source, Accessibility.uikit.kt): the default
-      AccessibilitySyncOptions.WhenRequiredByAccessibilityServices syncs the semantics tree to UIAccessibility
-      only while UIAccessibilityIsVoiceOverRunning() is true. XCUITest is not VoiceOver.
-      FIRST ANSWER (cold launch): notDetermined, 132 ms after didFinishLaunching, 3 724 ms after process start.
-  45057577050 (a4d5a41c): the simulator's com.apple.Accessibility VoiceOverTouchEnabled set before the walk;
-      the app read voiceOverRunning=true and the tree appeared. DRIVER PROOF (a) PASSED: "Commencer" found by its
-      accessibility label and tapped. No product code changed for it. Next blocker: Compose's OutlinedTextField
-      is exposed as an UNLABELLED Button below its label text.
-      FIRST ANSWER: 83 ms after didFinishLaunching (2 768 ms after process start).
-  45059644071 (f147faa0): the field found below its label and focused, the keyboard up - but typeText refused
-      ("Neither element nor any descendant has keyboard focus": Compose's text-input view is not in the AX tree).
-      FIRST ANSWER: 112 ms after didFinishLaunching (5 166 ms after process start).
-  45073103807 (ff5a1154): typing by the keyboard's own keys WORKS: the e-mail typed, the code screen reached.
-      The code is six boxes labelled "Chiffre N sur 6" (CodeCopy.digitLabel), not one field.
-      R1346 side-result (account C, before the code step failed): the runner's GET of the callback link answered 200.
-  45075605782 (01afa45e): SIGN-IN PASSED END TO END - e-mail and code typed by key, the code screen left, the
-      first onboarding step (name) done. NOTE: Compose puts a field's TYPED TEXT into its accessibility label
-      (the name field read 'Camille Simulateur'), so each code box carries one digit once typed: the walk never
-      dumps, photographs or notes the code screen after typing (R574), and test14 drops any 'Chiffre' label.
-      Next blocker: the canton Genève below the fold, empty AX frame, not hittable.
-  45078149756 (215e3ea2): flings scrolled past it. 45080869893 (12e408fd): did not compile (my argument label).
-  45081978093 (832ae3df): short drags - the same failure (2nd time): approach changed, not repeated.
-  45084504474 (d30d0e80): the canton screen's own search field ("gen") - pending.
-FIRST ANSWER across cold launches (iOS Ruling 16 Q1; the centre's answer to getNotificationSettings asked at
-didFinishLaunching, as startIosShell asks it): 132, 83, 112, 83, 69, 68, 94 ms after didFinishLaunching - all far
-under IosShellRoot's 2 000 ms bound; process start to didFinishLaunching was 2.7-5.1 s on this runner.
+The XCUITest driver reaches the Compose UI only because the simulator's VoiceOver preference is set: Compose
+Multiplatform 1.7.3 syncs its semantics tree to UIAccessibility ONLY while VoiceOver reports running. With that,
+DRIVER PROOF (a) passed (a Compose element found by its accessibility label and tapped), and a CODE SIGN-IN
+passed end to end three times (runs 45075605782, 45078149756, 45081978093).
 
-BEFORE THE FIRST REAL DISPATCH - THE ALLOWLIST AND THE MASKING STEPS (R1343)
-Re-read of .github/workflows/ios-walk.yml before the first dispatch: no repository or environment secret is read;
-no production host appears in it (the one place the production host is needed - to assert the build does NOT name
-it - reads it from web/identity.json's `domain` at run time); no step prints a server, PostgreSQL, helper,
-masks or xcodebuild-test file; there is no failure-only step.
+THE WALK STOPS at onboarding's second screen. The canton "Geneve", below the fold, reaches UIAccessibility with a
+ZERO frame {{0,0},{0,0}} and is never hittable. Three runs failed there: 45075605782, 45078149756 and 45081978093.
+Run 45084504474 tried the screen's own search field but failed EARLIER, at sign-in: a key tap was lost. Run
+45088845825 tried a read-back of the typed e-mail and made typing worse. It was reverted. The code tip is the run-8
+driver plus the search-field step.
 
-THE ARTIFACT ALLOWLIST (step "Allowlist and secret scan of the upload directory"; the upload runs only if it passed):
-  walk-result.txt          the walk's result lines (written through the helper, which refuses a line carrying a
-                           code or token it has seen)
-  app.log                  the app's unified-log lines, copied ONLY after a grep for every code and every token's
-                           first 12 characters returned 0 lines
-  simulator.txt            the device line
-  server-entries-<N>.json  /api/v1/entries read back through the API with the app's own bearer
-  shots/<name>.png         simctl screenshots, names [a-z0-9-] only, never of the code screen
-  trees/<name>.txt         XCUITest accessibility dumps, names [a-z0-9-] only (the helper refuses one carrying a
-                           secret; the code screen is dumped only BEFORE a digit is typed)
-  Any other name fails the step; any .txt/.json/.log in the directory carrying a code or a token fails it too.
+DRIVER PROOFS (b), the notification alert, (c), the native date picker, and the background/foreground were NOT
+reached. Nor was anything after onboarding: M4, M3, the tap, the years and the plan, the export, Parametres, or a
+recorded day on the server.
 
+================================================================================
+STATUS (R391)
+================================================================================
+PARTIAL. Walk proven through sign-in only. No gate owed: nothing under android/ or web/ changed.
+`git diff --stat ecc879c9..HEAD -- android web` is empty, so :app:gate, gate:changed, gate:clone and R573 are
+not owed (R1348).
+FULL GATE NOT RUN (none owed). Every run below is a workflow run of ios-walk.yml on branch i2-walk.
+
+================================================================================
+RUNS (each read by this session from its job log and its artifact; evidence in C:/wt/queue-evidence/i2-walk/)
+================================================================================
+  45053771464  0015cd54  inert: printed ref=refs/heads/i2-walk sha=0015cd54 - the dispatch mechanism works.
+  45055507141  c503d8b4  infrastructure GREEN. The XCUITest tree under the app window EMPTY.
+  45057577050  a4d5a41c  VoiceOver preference set -> tree visible; DRIVER PROOF (a) PASSED; text field = an
+                         unlabelled Button below its label.
+  45059644071  f147faa0  field focused, keyboard up; XCUITest typeText refused ("Neither element nor any descendant
+                         has keyboard focus").
+  45073103807  ff5a1154  typing by the keyboard's own keys: e-mail typed, code screen reached; the code is six
+                         boxes "Chiffre N sur 6".
+  45075605782  01afa45e  SIGN-IN PASSED (e-mail + code by key, code screen left); onboarding name PASSED;
+                         canton: "not hittable: Geneve" ({{0,0},{0,0}}).                     [test03 fail 1]
+  45078149756  215e3ea2  sign-in PASSED; scroll by flings: still not hittable (scrolled past). [test03 fail 2]
+  45080869893  12e408fd  did not compile (my argument label) - NO RESULT.
+  45081978093  832ae3df  sign-in PASSED; scroll back to top + short drags: still not hittable. [test03 fail 3]
+  45084504474  d30d0e80  the canton search field: NOT REACHED - test02 failed, a key tap was lost and the sign-in
+                         went to a mistyped address ("...@mnreleve.testo"; dev outbox only, nothing sent).
+  45087263557  0bb2bd74  did not compile (a duplicate local name) - NO RESULT.
+  45088845825  2848b93c  e-mail read back and retyped: worse - the field ended with the address three times,
+                         ".test" never typed after the dot. Reverted (d9ebced2, 11400896).
+
+================================================================================
+R1340 - THE SERVER IS THE RUNNER'S OWN
+================================================================================
+- POSTGRES ON macos-15: MEASURED ABSENT. initdb, pg_ctl, psql and postgres are not on PATH, there is no Homebrew
+  postgresql keg and no docker (run 45055507141, step "Directories and runner facts"). The workflow runs
+  `brew install postgresql@16` (16.16) FOR THE RUN ONLY. That is a runner tool, in no package.json, gradle file
+  or lockfile.
+  initdb uses scram-sha-256 and a generated password; the server listens on 127.0.0.1:55432; its log is never
+  printed; its data directory is deleted at the end.
+- THE PROJECT'S OWN MECHANISM, UNCHANGED (R206): gate-clone-parts.mjs's administer() (DROP/CREATE through the
+  server's `postgres` database), scratch-database.mjs's scratchDatabaseName('ios_walk_<run>'),
+  scratchDatabaseUrl(), then `pnpm db:deploy` ("17 migrations found"). Nothing in web/ was changed.
+- THE SERVER: `pnpm dev` (NODE_ENV=development, FRONTALIER_RUNTIME unset) on 127.0.0.1:3311, its stdout and stderr
+  to a private file. R169: /api/health answered service 'monreleve', the expected value read from
+  web/identity.json, on every run, both direct and through the relay.
+- THE BUILD: MONRELEVE_API_BASE_URL overridden on the xcodebuild command line with http://127.0.0.1:3310 (the
+  relay). The built Info.plist is asserted to carry it, and asserted NOT to name the production domain (read from
+  identity.json at run time, so the workflow file never types it). ATS: none added; loopback http works, as R1320
+  measured.
+- No production URL, host, database, Coolify resource or credential is in ios-walk.yml, the helper, the test
+  sources or the logs. A grep for the production host over every file this session added finds 0 (one test note
+  that named it was reworded before this report).
+
+================================================================================
+R1341 - SECRETS BORN ON THE RUNNER
+================================================================================
+The database password (openssl rand -hex 24) and AUTH_SECRET (openssl rand -hex 32) are ::add-mask::ed on the line
+after they are generated and passed to later steps through $GITHUB_ENV. They are never echoed. No repository or
+environment secret is read.
+
+================================================================================
+R1342 / R1343 - THE CODE, THE TOKENS, THE UPLOAD
+================================================================================
+- OUTBOX: the dev server's PRINTED mail (lib/alerts/mailer.ts, NODE_ENV=development, no RESEND_API_KEY), in its
+  stdout file, is the file equivalent of the fake outbox.
+  The helper (.github/scripts/ios-walk-helper.py) reads one address's code from it. BEFORE answering, it writes the
+  code and the link's token to the private masks file and waits 1.5 s. The driving step turns each line of that
+  file into ::add-mask::. The relay does the same with the app's bearer tokens.
+- XCUITest LOGS TYPED TEXT: its xcodebuild output and .xcresult bundle record each key it taps. Both live under
+  $RUNNER_TEMP/private: never printed, never uploaded, deleted by the last step. The job log prints only
+  "Test Case ... passed/failed" lines, the "error:" lines and the walk's own result file.
+- COMPOSE PUTS A FIELD'S TYPED TEXT INTO ITS ACCESSIBILITY LABEL. Measured: the name field read 'Camille
+  Simulateur' after typing. So each code box carries one digit once typed. The walk therefore never dumps, never
+  photographs and never notes the code screen after the first digit (R574). The helper's own guard, which refuses
+  a note or a dump carrying a known secret, cannot see a code split across six boxes, so the walk's order is what
+  protects it.
+- EVERY RUN: the allowlist step passed ("files carrying a code or token: 0"). App log grep: run 4 found 0 lines
+  for 6 patterns; runs 5, 6 and 8 found 0 for 5 patterns each; run 9 found 0 for 3. The app log was uploaded only
+  in those runs.
+- NOTICED: the app log is large (390k-515k lines per run, every unified-log line of the MonReleve process). Nothing
+  secret was found in it, but the next session should consider narrowing the predicate to the app's own subsystem
+  lines.
+
+================================================================================
+R1344 - WHAT THE WALK DROVE
+================================================================================
+THE DRIVER: XCUITest, from a UI-test target generated by XcodeGen from ios/project-walk.yml. That file includes
+project.yml unchanged, so ios-app.yml still builds as before. XCTest ships with Xcode, so there is no new
+dependency.
+Labels: the walk matches the common copy's own text. .github/scripts/ios-walk-labels.py refuses to run unless each
+literal in WalkLabels.swift appears, quoted byte for byte, in its fr/<File>.kt (49/49). A plant ("Continuer!") was
+seen to fail.
+
+DRIVER PROOF, as R1344 asks for it in the first increment:
+  (a) one Compose element found by its accessibility label and tapped: PASSED ("Commencer", every run since
+      45057577050).
+  (b) past the system notification alert: NOT REACHED (onboarding's reminder step).
+  (c) the native UIDatePicker opened and read: NOT REACHED (onboarding's period step).
+  (d) a real background/foreground, with the drain and the re-plan shown: NOT REACHED.
+
+PROVEN STEPS:
+  test01 FIRST LAUNCH: the Welcome screen, on a fresh install.
+  test02 CODE SIGN-IN: the e-mail and the six-digit code typed through the UIKit keyboard's keys; the code screen
+         left (runs 45075605782, 45078149756, 45081978093).
+  test07 THE SERVER CHANNEL: GET /api/v1/entries?year=2026 THROUGH THE API with the app's own bearer token (captured
+         in the relay's memory) returned 200 {"status":"ok","year":2026,"entries":[]}. Proven: the channel and the
+         session. NOT proven: a recorded day with its server timestamp, because no day was recorded.
+  The onboarding's NAME step: typed and continued.
+
+A transient notice (iOS Ruling 15 Q5): none photographed - none was reached.
+
+================================================================================
+R1345 - THE OBSERVABLES
+================================================================================
+- THE FIRST ANSWER (iOS Ruling 16 Q1), MEASURED on 11 cold first launches. WalkProbe.swift asks the REAL centre
+  getNotificationSettings at didFinishLaunching (the moment startIosShell asks it):
+      ms after didFinishLaunching: 132, 83, 112, 83, 69, 68, 94, 114, 116 (and two more in the same range)
+      ms after process start:      2 768 - 5 166
+      status: notDetermined (fresh install)
+  All are far below IosShellRoot's 2 000 ms bound, which starts after didFinishLaunching. On this runner the bound
+  is not reached on a cold launch.
+- M4, M3, THE TAP, THE YEARS AND THE PLAN, and the server-side timestamps: NOT MEASURED (behind onboarding).
+  WalkProbe.swift is in place to read the real centre's pending set every second (identifier, y/m/d, 19:00, zone,
+  repeats, next fire), and to add the near copy for the tap (-walkNearTap). Tests 04, 06 and 08-14 are written and
+  waiting behind the onboarding step.
+
+================================================================================
+R1346 - THE LINK VERSUS THE CODE
+================================================================================
+NO RESULT. In runs 45073103807 and 45084504474 the runner's GET of account C's callback link answered 200. The
+helper asserts host localhost and port 3311 before requesting; anything else is refused unrequested.
+In run 9 the code typed afterwards was refused: "Ce code n'est pas valable ...". BUT run 9 also lost a key tap on
+an e-mail, so a mistyped code cannot be excluded. The answer to "does the code still work after the link?" is
+therefore NOT established. It is not recorded as a finding until a run types the code reliably.
+
+================================================================================
+R1347 - WHAT THE SIMULATOR CANNOT SHOW (for the operator's iPhone)
+================================================================================
+- message:// shown and opening Mail. The simulator measured canOpenURL=false, so the button is hidden there.
+  Check: on the iPhone, the code screen shows "Ouvrir ma messagerie" and it opens Mail.
+- A real reminder delivered at 19:00 and tapped. Check: opt in, leave a working day unrecorded, wait for 19:00,
+  tap the notification; Aujourd'hui opens.
+- Background sync (PARK-IF1). BGTaskScheduler is unavailable on the simulator. Check on the iPhone after the
+  account exists.
+- The universal link (needs the Apple account).
+- A RELEASE build logging through IosLogger without a crash. No CI run builds Release (iOS Ruling 13 Q4). Check: a
+  Release install on the iPhone, through sign-in.
+- Also listed by this walk: VoiceOver itself. The walk ran with the simulator's VoiceOver PREFERENCE on, not
+  VoiceOver, so what a VoiceOver user hears is not shown here.
+
+================================================================================
+R1348 - ANDROID UNCHANGED
+================================================================================
+`git diff --stat ecc879c9..HEAD -- android web`: empty. No :app:gate, no gate:changed or gate:clone, no R573 run
+owed. Changed: .github/workflows/ios-walk.yml, .github/scripts/ios-walk-helper.py, .github/scripts/ios-walk-labels.py,
+ios/project-walk.yml, ios/MonReleveWalkUITests/*, ios/MonReleve/Sources/WalkProbe.swift (new), and
+ios/MonReleve/Sources/MonReleveApp.swift (4 lines: WalkProbe started only under `-walkProbe YES`).
+
+================================================================================
+FINDINGS
+================================================================================
+F1. COMPOSE'S TREE IS INVISIBLE TO ANY ACCESSIBILITY CLIENT EXCEPT VOICEOVER. The cause is Compose Multiplatform
+    1.7.3's default AccessibilitySyncOptions.WhenRequiredByAccessibilityServices, which reads only
+    UIAccessibilityIsVoiceOverRunning(). XCUITest saw an EMPTY window (run 45055507141). The same holds, by the
+    same code path, for Voice Control and Switch Control: it is inferred from the source, not measured. For
+    IOS-AUDIT.
+F2. THE ZERO-FRAME BUTTON (the orchestrator asked for it as a FINDING, not a test defect; nothing here shows the
+    driver at fault):
+    - In the canton list, every canton outside the viewport reaches UIAccessibility as a Button with frame
+      {{0.0, 0.0}, {0.0, 0.0}}. In run 45078149756's tree, Geneve..Soleure are zero after scrolling, while the
+      rows on screen (Schwytz..Zurich) carry real frames.
+    - XCUITest's tap needs a hittable element, and it cannot scroll an element to a position it is told is
+      nowhere. Flings, and short drags from the top, never produced a hittable Geneve in the snapshots taken
+      between drags.
+    - DIAGNOSIS (argued, not proven): Compose reports an off-viewport node's AX frame as zero rather than its
+      off-screen position. The snapshot did not show Geneve with a frame at any point the walk looked, including
+      on the way back up.
+    - Whether VoiceOver's own scrolling reaches such a row is exactly IOS-AUDIT R1355's measurement.
+F3. A COMPOSE TEXT FIELD is an unlabelled Button whose label becomes the TYPED TEXT, and XCUITest's typeText is
+    refused on it. Typing works only through the keyboard's keys, and it is not reliable: 1 lost tap in run 9, and
+    in run 11 a sequence never registered. This bears on R574: a code box's label holds its digit.
+F4. PostgreSQL is not on the macos-15 image (and docker is absent).
+
+================================================================================
+WHAT WOULD UNBLOCK THE ONBOARDING STEP (named, as ruled)
+================================================================================
+  - A CHANGE TO THE APP (QUESTION Q1). Two variants:
+      - AccessibilitySyncOptions.Always for a walk launch only, in MonReleveViewController.kt: this does not
+        obviously fix the zero frames, which are about off-screen nodes, not sync;
+      - test tags with a scroll-to semantics.
+    Either is an android/ edit, so :app:gate and R573 would be owed.
+  - A COORDINATE TAP (DEVIATION, if allowed). Type "gen" in the canton search field, which filters the list so
+    Geneve renders at the top with a real frame, or tap the visible row's coordinates. The search step is
+    already on the code tip and was never exercised, because of F3.
+  - SOMETHING ELSE, for F3: paste instead of keys. `xcrun simctl pbcopy` from the runner, then the field's Paste
+    menu. That avoids lost key taps. It puts the code in the simulator pasteboard; it never reaches a log.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- The sign-in screen's consent links ("Conditions d'utilisation", "Politique de confidentialite") and Parametres'
+  legal rows open the production site in Safari. The walk is written NOT to tap them, and test09 opens the in-app
+  "Licences" page instead (QUESTION Q2).
+- The helper decodes the dev-printed mail by its block layout (to:/link/six-digit line). A change to
+  lib/alerts/mailer.ts's print format would make /code answer NO RESULT, not a wrong code.
+
+================================================================================
+DEVIATIONS
+================================================================================
+D1. The simulator's com.apple.Accessibility VoiceOverTouchEnabled preference is set before the walk (F1). Without
+    it, XCUITest sees nothing. The app is unchanged; WalkProbe records what the app read (voiceOverRunning=true).
+D2. The runner's time zone is set to Europe/Paris before the simulator boots (sudo systemsetup). The recorded days
+    are Paris days and the reminder fires at 19:00 device-local; the probe read timeZone=Europe/Paris.
+D3. The keyboard's one-time slide-to-type tip is marked as shown in the simulator's keyboard preferences: it
+    covered the keys.
+D4. WalkProbe.swift is new APP code. It is Swift under ios/, not Kotlin. It runs only under `-walkProbe YES`, reads
+    the real centre, and adds ONE near copy of a reminder only under `-walkNearTap YES`. It is for I3 to remove
+    with the other probe keys.
+D5. Two runs did not compile because of my edits (45080869893, 45087263557). Both are NO RESULT and are counted
+    above.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. The onboarding blocker: which unblock does the orchestrator allow? An app change (sync option or test tags; an
+    android/ edit with its gates), a coordinate or search-field tap as a deviation, or paste-based typing?
+Q2. "One legal link opened": every legal link in the app opens the production site. May the walk tap one, which
+    sends the simulator's Safari to production, or is the in-app Licences page the walk's legal page?
+Q3. D1: is setting the simulator's VoiceOver preference an acceptable basis for the walk? It is what makes the
+    driver work at all with Compose 1.7.3.
+
+================================================================================
+THE ALLOWLIST AND THE MASKING STEPS (written before the first real dispatch, as required)
+================================================================================
+Re-read of .github/workflows/ios-walk.yml before the first dispatch:
+  - no repository or environment secret is read;
+  - no production host appears in it;
+  - no step prints a server, PostgreSQL, helper, masks or xcodebuild-test file;
+  - there is no failure-only step.
+THE ARTIFACT ALLOWLIST: walk-result.txt, app.log (only after a 0-hit grep), simulator.txt,
+  server-entries-<N>.json, shots/<[a-z0-9-]>.png and trees/<[a-z0-9-]>.txt. Any other name fails the step, and so
+  does any text file carrying a recorded secret. The upload runs only if that step passed.
 THE MASKING STEPS:
-  1. The database password and AUTH_SECRET: openssl rand on the runner, ::add-mask:: on the next line, before any
-     other use; passed to later steps through $GITHUB_ENV; never echoed.
-  2. Every sign-in code and every link token: the helper (ios-walk-helper.py) appends it to the private masks file
-     and waits 1.5 s BEFORE answering the walk; the driving step's background reader turns each line into
-     ::add-mask::. The app's bearer tokens, seen by the relay, go the same way the first time each is seen.
-  3. Nothing prints them anyway: server stdout (the outbox), helper output, xcodebuild's test output (which shows
-     typed text) and the .xcresult bundle are files under $RUNNER_TEMP/private, never printed, never uploaded,
-     deleted by the last step.
-  4. The upload: the allowlist above, plus a grep of every text file for every recorded secret.
+  1. Generated secrets are masked on the next line.
+  2. Codes and link tokens go to the masks file before the helper answers; bearer tokens are added when first seen.
+  3. Every log that could carry one stays private.
+  4. The upload is scanned.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Branch i2-walk. Code tip: the commit before this report's (the run-8 driver plus the canton search field; the 1i
+typing change reverted; one test note reworded so no file names the production host). Report tip: the commit
+carrying this file. NOT merged. Session lock removed after the push.
