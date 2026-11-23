@@ -94,6 +94,13 @@ final class WalkUITests: XCTestCase {
         }
         let low = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70))
         let high = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.40))
+        // F5's lead (run 45119005695): the delete row, at a zero frame through twenty drags begun at once in run
+        // 45114019354, came on screen after ONE drag once the page had settled 3 s and been dumped. Every reveal that
+        // worked had that pause. So: settle and dump first, and photograph after the first drag (did the page move?).
+        if !onScreen(element) {
+            Thread.sleep(forTimeInterval: 3)
+            Walk.tree("\(step)-settled", app)
+        }
         var seen: [String] = []
         for pass in 0..<20 where !onScreen(element) {
             if pass < 9 {
@@ -102,6 +109,7 @@ final class WalkUITests: XCTestCase {
                 high.press(forDuration: 0.05, thenDragTo: low, withVelocity: .slow, thenHoldForDuration: 0.3)
             }
             Thread.sleep(forTimeInterval: 1.5)
+            if pass == 0 { Walk.shot("\(step)-drag-1") }
             seen.append(element.exists ? "\(Int(element.frame.minY))/\(Int(element.frame.height))" : "gone")
         }
         if !seen.isEmpty {
@@ -308,16 +316,12 @@ final class WalkUITests: XCTestCase {
                 shotAndContinue("03-name")
             } else if app.labelled(L.onbCantonTitle).exists {
                 seen.append("canton")
-                // R1387: STOPPED. Runs 45099570712 and 45104554339 failed this step identically - twenty diagnosed drags,
-                // Geneve at a zero frame after every one - so no third run drags here. Recorded, never retried.
+                // IOS-WALK-2 run 18: tried ONCE SETTLED (reveal() now waits 3 s and dumps before its first drag) -
+                // not the two stopped runs' way, which dragged the moment the screen appeared.
                 let geneve = app.labelled(L.cantonGeneve)
-                Walk.note("03 canton: \"\(L.cantonGeneve)\" frame=\(geneve.exists ? "\(geneve.frame)" : "-")")
-                Walk.tree("03-canton-stopped", app)
-                Walk.shot("03-canton-stopped")
-                Walk.note("03 TRACK 1 STOPPED at the canton step (R1387: two identical failures, runs 45099570712 and "
-                    + "45104554339; no third). Screens: \(seen.joined(separator: " > "))")
-                XCTFail("R1387: stopped at the canton step")
-                return
+                Walk.note("03 canton: \"\(L.cantonGeneve)\" frame before=\(geneve.exists ? "\(geneve.frame)" : "-")")
+                tapLabel(L.cantonGeneve, "03-canton")
+                shotAndContinue("03-canton")
             } else if app.labelled(L.onbRateTitle).exists {
                 seen.append("rate")
                 tapLabel(L.onbRate100, "03-rate")
@@ -386,7 +390,7 @@ final class WalkUITests: XCTestCase {
             // week's row is 108.6 pt below the picker's top and Monday's column 69 pt right of the Continuer's left edge.
             Walk.note("\(step) DRIVER PROOF (c): the picker's dialog is open but NO UIDatePicker is in the accessibility "
                 + "tree (screenshot \(step)-no-datepicker)")
-            guard let confirm = lastLabelled(L.onbContinue), confirm.frame.width > 0 else {
+            guard let confirm = narrowest(L.onbContinue), confirm.frame.width > 0 else {
                 Walk.note("FAIL \(step) DRIVER PROOF (c): no dialog \"\(L.onbContinue)\" either")
                 return false
             }
@@ -416,7 +420,7 @@ final class WalkUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 1)
         }
         Walk.note("\(step) DRIVER PROOF (c): value after=\"\(app.datePickers.firstMatch.value ?? "nil")\"")
-        if let confirm = lastLabelled(L.onbContinue) { press(confirm) }
+        if let confirm = narrowest(L.onbContinue) { press(confirm) }
         Thread.sleep(forTimeInterval: 1.5)
         return true
     }
@@ -622,15 +626,65 @@ final class WalkUITests: XCTestCase {
     // MARK: - 26 the releve: the export's share sheet
 
     func test26_export() {
-        stopped("26", "\"\(L.exportPdf)\" never came on screen through twenty drags (zero frame after each)",
-                "45099570712 and 45109219799")
+        foreground()
+        tapLabel(L.tabReleve, "26-tab")
+        Thread.sleep(forTimeInterval: 3)
+        Walk.tree("26-releve", app)
+        Walk.shot("26-releve")
+        tapLabel(L.exportPdf, "26-export")
+        Thread.sleep(forTimeInterval: 8)
+        let sheet = app.descendants(matching: .any).matching(identifier: "ActivityListView").count > 0
+        Walk.note("26 export: share sheet (ActivityListView) shown=\(sheet)")
+        Walk.tree("26-share", app)
+        Walk.shot("26-share-sheet")
+        let close = app.buttons.matching(NSPredicate(format: "label IN %@", ["Close", "Fermer", "Cancel"])).firstMatch
+        if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
+        Thread.sleep(forTimeInterval: 2)
     }
 
     // MARK: - 27 the employer comparison, its figure kept across a relaunch
 
     func test27_comparison() {
-        stopped("27", "\"\(L.compareEmployer)\" never came on screen through twenty drags (zero frame after each)",
-                "45099570712 and 45109219799")
+        foreground()
+        tapLabel(L.tabReleve, "27-tab")
+        Thread.sleep(forTimeInterval: 2)
+        let previous = Calendar(identifier: .gregorian).component(.year, from: Date()) - 1
+        let chip = app.labelled("\(previous)")
+        guard chip.waitForExistence(timeout: 5) else {
+            Walk.note("FAIL 27 comparison: no \(previous) chip on the releve")
+            XCTFail("no previous-year chip")
+            return
+        }
+        press(chip)
+        Thread.sleep(forTimeInterval: 3)
+        tapLabel(L.compareEmployer, "27-compare")
+        Thread.sleep(forTimeInterval: 2)
+        Walk.tree("27-comparison", app)
+        guard let field = app.field(below: L.comparisonTitle) else {
+            Walk.note("FAIL 27 comparison: no employer field")
+            XCTFail("no employer field")
+            return
+        }
+        _ = app.type("40,5", into: field)
+        dismissKeyboard()
+        Thread.sleep(forTimeInterval: 1)
+        Walk.note("27 comparison \(previous): employer figure typed \"40,5\"; \"40,50\" shown="
+            + "\(app.containing("40,50").exists)")
+        Walk.tree("27-comparison-set", app)
+        Walk.shot("27-comparison-set")
+        relaunch()
+        _ = waitMain(60)
+        tapLabel(L.tabReleve, "27-tab-again")
+        Thread.sleep(forTimeInterval: 3)
+        press(app.labelled("\(previous)"))
+        Thread.sleep(forTimeInterval: 3)
+        tapLabel(L.compareEmployer, "27-compare-again")
+        Thread.sleep(forTimeInterval: 2)
+        Walk.note("27 comparison after a RELAUNCH: \"40,50\" shown=\(app.containing("40,50").exists)")
+        Walk.tree("27-comparison-relaunched", app)
+        Walk.shot("27-comparison-relaunched")
+        relaunch()
+        _ = waitMain(60)
     }
 
     // MARK: - 28 Parametres: DRIVER PROOF (c), the native UIDatePicker from the start-date row (not saved)
@@ -723,8 +777,17 @@ final class WalkUITests: XCTestCase {
     // MARK: - 30 Parametres: the legal page is the in-app Licences (R1386: never a link to production)
 
     func test30_licences() {
-        stopped("30", "\"\(L.licencesTitle)\" never came on screen through twenty drags (zero frame after each)",
-                "45099570712 and 45109219799")
+        foreground()
+        tapLabel(L.tabParametres, "30-tab")
+        Thread.sleep(forTimeInterval: 2)
+        tapLabel(L.licencesTitle, "30-licences")
+        Thread.sleep(forTimeInterval: 2)
+        Walk.note("30 legal page opened IN THE APP: \"\(L.licencesTitle)\" (the rows that open the production site in "
+            + "Safari are NOT tapped - R1386)")
+        Walk.tree("30-licences", app)
+        Walk.shot("30-licences")
+        if let back = lastLabelled(L.licencesBack) { press(back) }
+        Thread.sleep(forTimeInterval: 1.5)
     }
 
     // MARK: - 31 sign-out: the pending set before (> 0) and after (0); a relaunch reaches sign-in (M3)
@@ -804,6 +867,13 @@ final class WalkUITests: XCTestCase {
     // MARK: - 33 THE TAP: a delivered reminder, tapped, opens Aujourd'hui (R1330)
 
     func test33_reminderTap() {
+        // R1387: runs 45114019354 and 45119005695 both had the banner DELIVERED and gone before the tap - stopped, not
+        // run a third time. (The body below stays for the record of what those two runs did.)
+        stopped("33", "the reminder banner was delivered and gone before the tap", "45114019354 and 45119005695")
+        return
+    }
+
+    func reminderTapAsRunInRuns16And17() {
         relaunch(["-walkNearTap", "YES"])
         _ = waitMain(60)
         tapLabel(L.tabParametres, "33-tab")
