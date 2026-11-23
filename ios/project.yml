@@ -51,6 +51,9 @@ targets:
     platform: iOS
     sources:
       - path: MonReleve/Sources
+      # IOS-AUDIT R1354: the privacy manifest, copied into the bundle as a resource (R1353's Release step asserts it is).
+      - path: MonReleve/Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: MonReleve

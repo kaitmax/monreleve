@@ -17,6 +17,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import ch.monreleve.app.design.FrontierType
 import ch.monreleve.app.design.LightColors
@@ -103,7 +105,17 @@ internal fun SwitchRow(
     ListItem(
         headlineContent = { Text(text = label, style = FrontierType.bodyM) },
         supportingContent = { Text(text = summary, style = FrontierType.body) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = onToggle, enabled = enabled) },
+        // IOS-AUDIT R1355: the switch carries its row's own label. The ListItem does not merge the headline into the
+        // trailing Switch, so an assistive service met a bare "switch, on" (IosAccessibilityLabelsIosTest, run
+        // 45172998443: Paramètres' role=Switch with no label; IOS-WALK D12). The label is the row's existing copy.
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onToggle,
+                enabled = enabled,
+                modifier = Modifier.semantics { contentDescription = label },
+            )
+        },
         colors = transparentListColors(),
         modifier = Modifier.fillMaxWidth(),
     )

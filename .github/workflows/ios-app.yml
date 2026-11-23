@@ -70,8 +70,10 @@ jobs:
     # an arm64 Mac; macos-15 pinned rather than a moving label; a STANDARD runner.
     runs-on: macos-15
     # A cold run provisions Kotlin/Native and links two frameworks before Xcode
-    # starts; this bounds a hang, not a normal run.
-    timeout-minutes: 60
+    # starts; this bounds a hang, not a normal run. IOS-AUDIT R1353: 60 -> 100, because the Release step links the
+    # RELEASE Kotlin framework inside xcodebuild - measured 1494 s in run 45163167768, which ended its whole job at
+    # 51 minutes, too close to the old bound to say "a hang" when it trips.
+    timeout-minutes: 100
     env:
       # THE XCODE - ios-shared.yml's (KMP-UP2 R547): Kotlin 2.2.21's documented
       # Xcode is 26.0, and macos-15's default is still 16.4. Job level, so xcrun,
@@ -292,9 +294,11 @@ jobs:
           if [ ! -d "$release_app" ]; then echo "NO RESULT: $release_app was not produced"; exit 1; fi
 
           # --- THE CHECKS (one definition each, run on both sides) ---
-          plist_value() { plutil -extract "$2" raw -o - "$1" 2>/dev/null; }
+          # plutil prints "Could not extract value" on STDOUT and exits non-zero (run 45163167768): only its exit code
+          # is read, and a missing key yields NOTHING.
+          plist_value() { local v; v=$(plutil -extract "$2" raw -o - "$1" 2>/dev/null) || return 0; printf '%s' "$v"; }
           FORBIDDEN_KEYS="NSAppTransportSecurity NSAllowsLocalNetworking NSLocalNetworkUsageDescription NSBonjourServices NSLocationWhenInUseUsageDescription NSLocationAlwaysAndWhenInUseUsageDescription NSLocationAlwaysUsageDescription NSLocationUsageDescription NSLocationTemporaryUsageDescriptionDictionary BGTaskSchedulerPermittedIdentifiers UIBackgroundModes"
-          forbidden_keys_in() { for k in $FORBIDDEN_KEYS; do plutil -extract "$k" xml1 -o /dev/null "$1" 2>/dev/null && echo "$k"; done; true; }
+          forbidden_keys_in() { for k in $FORBIDDEN_KEYS; do plutil -extract "$k" xml1 -o /dev/null "$1" >/dev/null 2>&1 && echo "$k"; done; true; }
           missing_versions_in() { for k in CFBundleShortVersionString CFBundleVersion; do [ -n "$(plist_value "$1" "$k")" ] || echo "$k"; done; true; }
           machos_of() { find "$1" -type f | while read -r f; do file -b "$f" | grep -q '^Mach-O' && echo "$f"; done; }
           PROBE_NAMES="HostProbe WalkProbe ProbeLog ProbeNotificationDelegate LaunchArguments probeNonce walkProbe walkNearTap pilotScenario ios-host-probe.txt walk-probe.txt keychainRoundTrip firstLaunchProbe eveningReminderProbeReplan aujourdhuiPilotViewController KeychainRoundTripResult FirstLaunchProbeResult"
@@ -345,6 +349,15 @@ jobs:
           # (4) no probe name and no -probe key in the Release binaries; control: Debug carries the Swift probe's.
           hits=$(probe_hits "$release_app" | tr '\n' ' ')
           [ -z "$hits" ] && verdict "Release binaries carry none of: $PROBE_NAMES" ok || verdict "Release binaries carry: $hits" no
+          # A Release hit is NAMED, not dumped: for each name found, the symbol or string lines that matched (at most 5
+          # each - names and paths only, R1359), so the report can say what it is.
+          for h in $hits; do
+            n=${h%%=*}
+            for b in $(machos_of "$release_app"); do
+              echo "  $n in $(basename "$b") - nm -a:"; nm -a "$b" 2>/dev/null | grep -F -- "$n" | sed 's/^[0-9a-f]* //' | head -5
+              echo "  $n in $(basename "$b") - strings:"; strings -a "$b" | grep -F -- "$n" | head -5
+            done
+          done
           hits=$(probe_hits "$debug_app" | tr '\n' ' ')
           echo "Debug binaries carry: $hits"
           for n in HostProbe WalkProbe ProbeLog LaunchArguments probeNonce walkProbe ios-host-probe.txt walk-probe.txt; do
@@ -353,6 +366,25 @@ jobs:
           rk=$(probe_key_count "$release_app"); dk=$(probe_key_count "$debug_app")
           [ "$rk" -eq 0 ] && verdict "Release: the -probe key appears $rk times" ok || verdict "Release: the -probe key appears $rk times" no
           [ "$dk" -gt 0 ] && verdict "CONTROL: Debug's -probe key appears $dk times" ok || verdict "CONTROL: Debug -probe key count $dk" no
+
+          # (5) IOS-AUDIT R1354: the privacy manifest is in the bundle; control: the check fails on a copy without it.
+          has_manifest() { [ -f "$1/PrivacyInfo.xcprivacy" ] && plutil -lint "$1/PrivacyInfo.xcprivacy" >/dev/null; }
+          has_manifest "$release_app" && verdict "Release carries PrivacyInfo.xcprivacy (lint OK)" ok || verdict "Release has no valid PrivacyInfo.xcprivacy" no
+          mkdir -p "$RUNNER_TEMP/plant/NoManifest.app"
+          has_manifest "$RUNNER_TEMP/plant/NoManifest.app" && verdict "CONTROL manifest check" no || verdict "CONTROL: the check fails on a bundle without the manifest" ok
+          echo "--- the manifest's accessed-API categories:"; plutil -extract NSPrivacyAccessedAPITypes json -o - "$release_app/PrivacyInfo.xcprivacy"; echo
+
+          # R1354 MEASUREMENT (not a verdict): the required-reason APIs the Release binaries IMPORT, whoever calls them
+          # (the app's own code, bundled SQLite, the Kotlin/Native runtime). Counts only.
+          echo "--- required-reason symbols imported by the Release binaries (nm -u), and selector names (strings):"
+          for s in _stat _fstat _fstatat _lstat _getattrlist _getattrlistbulk _fgetattrlist _getattrlistat _mach_absolute_time _statfs _statvfs _fstatfs _fstatvfs _NSFileModificationDate _NSFileCreationDate _NSFileSystemFreeSize _NSFileSystemSize _NSURLContentModificationDateKey _NSURLCreationDateKey _NSURLVolumeAvailableCapacityKey _NSURLVolumeTotalCapacityKey '_OBJC_CLASS_$_NSUserDefaults' '_OBJC_CLASS_$_UIDocument'; do
+            c=0; for b in $(machos_of "$release_app"); do c=$(( c + $(nm -u "$b" 2>/dev/null | grep -c -x -F -- "$s") )); done
+            echo "  import $s: $c"
+          done
+          for sel in systemUptime activeInputModes fileModificationDate; do
+            c=0; for b in $(machos_of "$release_app"); do c=$(( c + $(strings -a "$b" | grep -c -x -F -- "$sel") )); done
+            echo "  selector $sel: $c"
+          done
 
           if [ "$fail" -ne 0 ]; then echo "R1353: RELEASE INSPECTION FAILED"; exit 1; fi
           echo "R1353: RELEASE INSPECTION PASSED - every check and every control"

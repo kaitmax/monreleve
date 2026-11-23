@@ -257,8 +257,7 @@ fun MainTabs(
                                     onTabChange(AppTab.PARAMETRES)
                                 },
                                 onReturn = { onForecastRouteChange(ForecastRoute.PREVISION) },
-                                // PLANT R1352 (IOS-AUDIT, reverted in the next commit): back closes everything.
-                                onBack = { onForecastRouteChange(null) },
+                                onBack = { onForecastRouteChange(ForecastRoute.PREVISION) },
                             ),
                     )
             }

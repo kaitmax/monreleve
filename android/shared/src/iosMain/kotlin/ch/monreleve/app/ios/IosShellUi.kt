@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
@@ -54,6 +55,8 @@ import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSCalendarUnitMonth
 import platform.Foundation.NSCalendarUnitYear
 import platform.Foundation.NSDateComponents
+import platform.Foundation.NSLocale
+import platform.UIKit.UIColor
 import platform.UIKit.UIDatePicker
 import platform.UIKit.UIDatePickerMode
 import platform.UIKit.UIDatePickerStyle
@@ -261,6 +264,12 @@ internal fun IosMainShell(
     // foreground seam (onForeground), read here where the controllers are.
     val foregrounds by shell.foregrounds.collectAsState()
     LaunchedEffect(foregrounds) { controllers.aujourdhui.refresh() }
+    // IOS-AUDIT R1380: a sign-in restore the centre's first answer applied after this shell opened - the Paramètres
+    // switch is shown what the store now holds (it read the store once, when built). Sends nothing.
+    val lateRestores by shell.lateRestores.collectAsState()
+    LaunchedEffect(lateRestores) {
+        if (lateRestores > 0) controllers.parametres.reflectEveningOptIn(shell.eveningStore.isEnabled())
+    }
     val yearDownloadStatus by shell.yearDownloadStatus.collectAsState()
     // R1330 (R323 / D16 on iOS): a tap on the evening reminder opens Aujourd'hui, refreshed - and records nothing.
     val tapped by shell.taps.openAujourdhui.collectAsState()
@@ -377,7 +386,14 @@ internal fun IosStartDatePicker(
     Dialog(onDismissRequest = onDismiss) {
         Surface(color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                UIKitView(factory = { picker }, modifier = Modifier.fillMaxWidth().height(PICKER_HEIGHT.dp))
+                // IOS-AUDIT R1389: the native view reaches VoiceOver itself (CMP 1.7.3's interop default hides it -
+                // UIKitInteropProperties.isNativeAccessibilityEnabled = false, which IOS-WALK saw as the picker missing
+                // from the tree). The picker is the only native view here, so the one-per-merged-tree limit holds.
+                UIKitView(
+                    factory = { picker },
+                    modifier = Modifier.fillMaxWidth().height(PICKER_HEIGHT.dp),
+                    properties = UIKitInteropProperties(isInteractive = true, isNativeAccessibilityEnabled = true),
+                )
                 TertiaryButton(
                     label = OnboardingCopy.CONTINUE,
                     onClick = {
@@ -405,7 +421,6 @@ internal const val PICKER_LANGUAGE = "fr"
  * (the composed picker cannot be opened in an iosTest - IosStartDatePickerCanaryIosTest). [background] is the dialog
  * surface's own colour, from the theme.
  */
-@Suppress("UnusedParameter") // R1389: [background] is the fix's input; the RED commit builds the picker unchanged.
 @OptIn(ExperimentalForeignApi::class)
 internal fun startDatePickerView(
     initialIsoDay: String?,
@@ -415,6 +430,17 @@ internal fun startDatePickerView(
         datePickerMode = UIDatePickerMode.UIDatePickerModeDate
         preferredDatePickerStyle = UIDatePickerStyle.UIDatePickerStyleInline
         initialIsoDay?.let(::nsDateOf)?.let { date = it }
+        // R1389: French months and weekdays whatever the device's language (F6 drew "November 2026", SUN..SAT).
+        locale = NSLocale(localeIdentifier = PICKER_LANGUAGE)
+        // R1389: its own opaque background - the dialog surface's colour, from the theme - so the page beneath can
+        // never show through the calendar (F6: the Paramètres rows drawn text over text through it).
+        backgroundColor =
+            UIColor(
+                red = background.red.toDouble(),
+                green = background.green.toDouble(),
+                blue = background.blue.toDouble(),
+                alpha = 1.0,
+            )
     }
 
 /** The picker's day in the device's calendar, as an ISO day (yyyy-MM-dd). */
