@@ -122,8 +122,9 @@ Checks, each also run against something that must fail it:
 - PrivacyInfo.xcprivacy present and linted. Control: a bundle without it fails.
 - R1354's required-reason symbol census, a measurement.
 Run 45175739188 (93e7f591): every check and control PASS except "Release binaries carry: HostProbe=2", named as the
-stabs above, which increment E excluded. RELEASE BUILT in 1988 s (1494 s on the first run). The tip run is under
-STATUS.
+stabs above, which increment E excluded. RELEASE BUILT in 1988 s (1494 s on the first run).
+CODE TIP, ios-app 45186600948 on 4c027bf7: every PASS line above, plus "Release binaries carry none of: HostProbe
+WalkProbe ProbeLog ..." and "R1353: RELEASE INSPECTION PASSED - every check and every control". RELEASE BUILT in 1427 s.
 
 ================================================================================
 R1354 - APP STORE READINESS, BY FILE
@@ -254,7 +255,15 @@ Leak scans (scratchpad leakscan.js and by hand) of every downloaded job log and 
   - six-digit 3: throughput numbers;
   - bearer 0, token prefix 0, production host 0;
   - code boxes clean.
-- The tip runs: see STATUS.
+- ios-app 45186600948 (tip):
+  - six-digit 0, bearer 0, callback 0;
+  - production host 4, the R1353 step's two echo lines and its two output lines (by design).
+- ios-walk 45197427698:
+  - six-digit 3: throughput numbers;
+  - bearer 0, token prefix 0, production host 0;
+  - callback 2: R1385 note lines;
+  - code boxes 'Chiffre N sur 6' only.
+- ios-shared 45186593108 (tip): the wire fixtures only, the same classes as 45172998443.
 No screenshot shows a code (R574).
 
 ================================================================================
@@ -312,7 +321,10 @@ Walk 45178578142, 28-datepicker-open.png LOOKED AT:
 - IN THE TREE ("UIDatePicker found ... 30 day button(s)"), where IOS-WALK found it absent. The day buttons are spoken
   in the SYSTEM language ("Sunday, November 1" on the English runner).
 That shot showed a regression of MY container: the calendar oversized and clipped. Increment F zeroes the picker's
-default frame before autoresizing. The on-screen check of F is under STATUS.
+default frame before autoresizing.
+Walk 45197427698 (83e6fc7c, the same code as 4c027bf7), 28-datepicker-open.png LOOKED AT: FRENCH, OPAQUE, FULLY
+DRAWN (the whole month, 1-30, today 23 marked, both arrows) and IN THE TREE ("UIDatePicker found ... 30 day
+button(s)"). The week starts on SUNDAY: the picker's calendar is the device's (en_US region on the runner) - NOTICED.
 
 ================================================================================
 R1390 - ROWS BELOW THE FOLD
@@ -378,8 +390,14 @@ RUNS (each read; queue-evidence/i3-audit/runs.txt)
 - ios-app 45163167768 (7d23d3b8): Debug, probe and AX5 PASS; R1353 failed on my plutil defect.
 - ios-app 45175739188 (93e7f591): R1353 all PASS but the stab.
 - ios-app 45185062036 (58ad5c51): superseded.
-- ios-app 45186600948 (4c027bf7): STATUS.
-- ios-walk 45178578142 (3121f186), 45186609061 (4c027bf7), 45194588957 (4c027bf7): above and STATUS.
+- ios-app 45186600948 (4c027bf7, CODE TIP): SUCCESS. Probe share.result=PASS, mail.canOpenMessageScheme=false.
+  launch-DEFAULT.png looked at: Bienvenue, no code field. R1353 "RELEASE INSPECTION PASSED - every check and every
+  control".
+- ios-walk 45178578142 (3121f186): track 1 past the canton; F2 measured; the picker French and opaque but clipped.
+- ios-walk 45186609061 (4c027bf7): the F3 typing flake; test 32 R1391 all 2xx.
+- ios-walk 45194588957 (4c027bf7): NO RESULT, no runner acquired (capacity), 0 steps.
+- ios-walk 45197427698 (83e6fc7c = code 4c027bf7): the picker fully drawn; R1391 test 21 all 2xx; R1385 voided again;
+  F2 again (the sign-out row unreached after the slot tap).
 
 ================================================================================
 NOTICED BUT NOT TOUCHING
@@ -389,6 +407,10 @@ NOTICED BUT NOT TOUCHING
 - isoDayOf and nsDateOf use NSCalendar.currentCalendar. On a phone set to a non-Gregorian calendar the picked day's
   year would not be the ISO year.
 - The walk's e-mail typing flake (F3) failed track 1 and track 2's first sign-in in 45186609061 (runner-side).
+- The native picker's week starts on Sunday on an en_US-region device (DIM. first). Its calendar is the device's
+  current one. A French-region iPhone starts on Monday. Setting the calendar is a product choice, not done here.
+- Track 1 now stops at onboarding's PERIOD step: "no start-date box below "Date de debut"", x15 in two runs. It goes
+  on the iPhone list (docs 7.1). The walker's field lookup was not diagnosed.
 
 ================================================================================
 DEVIATIONS
