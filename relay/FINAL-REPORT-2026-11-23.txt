@@ -1,0 +1,109 @@
+FINAL REPORT - Mon Releve: web, Android, iOS - 2026-11-23
+Written by the orchestrating session for the operator. Pure ASCII by transport (R168); every French
+quotation lives in the files it names. Every claim below was read by the orchestrator, not recalled;
+where something is argued rather than tested, it says so.
+
+READ THIS FIRST (two lines)
+1. F8, A FINDING THAT AFFECTS THE LIVE PRODUCT: the sign-in e-mail's link IS the API callback. A GET of
+   it consumes the one database row that holds both the link and the six-digit code, and answers a valid
+   token pair as JSON to whoever fetched it. So a person who taps the link on iOS sees JSON in Safari and
+   their code is dead; a mail scanner or preview that fetches the link ends the person's sign-in and holds
+   a session. No evidence of misuse; nothing was tested against production. It is YOUR decision (options
+   A-D below) and a ship blocker for iOS. Recorded at the top of relay/QUEUE-STATE.md.
+2. A RED MERGE WENT TO main AND WAS REVERTED: the orchestrator merged the iOS walk as 89eea7c3 while its
+   gate:changed had failed (R879, two tests) - the commit ran in the same command that printed the log
+   tail, so the verdict was not read, and 89eea7c3's message claims a pass it did not have. Reverted by
+   b276b71f (tree equal to the last green state); re-landed green as 985c37f5 through IOS-WALK-DB. Nothing
+   deploys from main, so nothing live was touched. Since then every commit chain greps the log for
+   "GATE PASSED" (and no "GATE FAILED") BEFORE committing (iOS Rulings 18-19).
+
+1. WHERE EACH PLATFORM STANDS
+- WEB. Complete per the plan; main carries web work that is NOT LIVE. Production serves e73c846d
+  (2026-11-19). main is 211 commits ahead, 28 files under web/ - among them the privacy and terms pages
+  (lib/fr/confidentialite.ts, lib/fr/cgu.ts and their baselines), the dossier copy, the Android
+  minimum-version route, the FCM push client, the account export. Promotion is yours, after the copy
+  approvals listed in section 4. Coolify deploys from the production branch only.
+- ANDROID. Complete per the plan; the full :app:gate is the standing proof (floor 1562 on main since
+  IOS-SHELL-3: 1568 - 9 tests moved to :shared + 1 kept + 2 new). The Play release needs your account and
+  release key (section 4).
+- iOS. The app is built: the real shell on SwiftUI hosting the common Compose UI (sign-in by six-digit code,
+  manual onboarding, the four tabs, the calendar, the releve and its export, Parametres, the employer
+  comparison, the evening reminder planned a week ahead on the real notification centre, foreground sync,
+  the year downloads, every session ending clearing the device). Proven on the macOS simulator by unit
+  runs (ios-shared), an app-level probe run (ios-app) and an end-to-end walk against a throwaway server
+  (ios-walk). It CANNOT SHIP yet: F8, the accessibility question Q1, the app icon, the privacy answers,
+  your Apple account (sections 3-4; docs/ios-release.md once IOS-AUDIT merges).
+
+2. THE iOS PHASE IN THIS RUN (all on main unless marked)
+   IOS-SHELL-1  06ec1c0c  the real shell: scene, first-launch Keychain clear, code-only sign-in, onboarding
+   IOS-MOVE-TABS f2f230bb one common MainTabs; the iOS log-sink crash (NSLog "%@") reproduced and fixed
+   IOS-SHELL-2  68d47e47  reminders in the running app, share sheet, foreground sync, legal links
+   IOS-SHELL-3  de4ac091  year downloads on iOS (a ship blocker closed), employer comparison, foreground
+                          parity, the reminder restore race fixed iOS-side
+   IOS-WALK     985c37f5  (after the red 89eea7c3 and its revert) the end-to-end walk, PARTIAL: proven through
+                          an account made on the server - sign-in, the year downloads, offline record and
+                          drain, calendar, date picker, evening switch, sign-out and back, account deletion,
+                          the reminder plan (4 pending at 19:00, today absent, no doubling; 0 after sign-out and
+                          after deletion)
+   IOS-AUDIT    NOT MERGED  branch i3-audit, report tip 6393aa79, code tip 4c027bf7. Verified by the
+                          orchestrator on the iOS side: ios-shared 45186593108 = 110 suites / 534 tests / 0
+                          failures (523 + 11), ios-app 45186600948 success with "R1353: RELEASE INSPECTION
+                          PASSED - every check and every control", leak scans clean. WAITING: its Android
+                          fastCheck and :app:gate (it changes android/app and android/shared), which need 8000
+                          MB free under the heavy lock; this machine has stayed at 5.4-6.5 GB since the
+                          afternoon because of your own applications, which the orchestrator does not touch.
+                          The run is queued in C:/wt/i3-gate and starts by itself when memory allows.
+   What the audit delivers once merged: probe and walk code excluded from Release (two layers), BGTask keys
+   gone, a privacy manifest declaring only what the code proves (UserDefaults CA92.1), the date picker in
+   French and opaque, the unlabelled Parametres switch labelled (Android gains the label too), the reminder
+   restore that can no longer write OFF over ON, the year-download stop pinned by test, the tab-wiring and
+   no-inline-French fences, docs/ios-release.md.
+
+3. SHIP BLOCKERS AND QUESTIONS THAT ARE YOURS
+- F8 (above). Options, none taken: (A) a code-only mail for iOS (the request names the client; new mail
+  copy); (B) the app's exchange sends a header the server requires for the JSON answer and every other GET
+  gets a page that consumes nothing (an Android release first, a window accepting both, new page copy);
+  (C) link and code consumed independently (the code survives a fetch, a fetcher still gets a session);
+  (D) keep it and tell iOS users not to open the link.
+- Q1, ACCESSIBILITY ON iOS (IOS-AUDIT, from the Compose 1.7.3 source): the accessibility tree is kept in
+  sync only while VoiceOver runs, so Voice Control, Switch Control and keyboard users may meet an empty app,
+  and rows scrolled into view keep zero frames (the walk could not reach "Exporter en PDF", the comparison
+  or Licences). Candidates: the experimental always-on sync option (RED first) or a Compose upgrade (a
+  dependency change). Only real VoiceOver on an iPhone settles whether users are affected.
+- The app icon (none exists; a 1024 px PNG from you, or allow a rasteriser tool), the App Store privacy
+  answers and NSPrivacyCollectedDataTypes (mapping the privacy page's records to Apple's categories is a
+  claim, not a derivation), export compliance (ITSAppUsesNonExemptEncryption), the Release binary's
+  library imports of stat/statfs (declare reasons or let the first upload's check say).
+
+4. WHAT YOU OWE (unchanged items carried from earlier rulings, plus this run's)
+- Copy approvals A4, A5, A13-A16, then the production promotion of main's web work.
+- Play: the developer account and the release signing key (R250: none exists here); assetlinks.json.
+- Firebase: the iOS/Android config and the key rotations; RESEND_API_KEY and FCM_PRIVATE_KEY rotation and
+  revocation (the 2026-11-17 incident, top of relay/QUEUE-STATE.md); the Coolify token revocation.
+- Apple: the developer account, team id and signing, the bundle id, TestFlight, the App Store Connect
+  listing, the universal link (AASA + Associated Domains), export compliance.
+- The expert reviewer (Checkpoint E); the client-IP logs answer; CLAUDE.md R248 (it still says CI is off
+  and the repository private - the repository is PUBLIC since 2026-11-20).
+- parking.md closures PARK-D3 and PARK-IF4; SPEC l.887 and the two entries comments (schema.prisma l.337,
+  lib/entries/schema.ts l.128), still unassigned.
+- On your Galaxy S9: back from the employer comparison (argued from composition order); TalkBack on a
+  Parametres switch row once IOS-AUDIT merges (the switch now carries its row's label - argued, not heard).
+- On an iPhone (docs/ios-release.md): message:// shown and opening Mail; a real 19:00 reminder delivered and
+  TAPPED (delivered on the simulator, never tapped); background sync (PARK-IF1); the universal link; a
+  Release build logging without a crash; new-account onboarding to the end (the walk reached the canton
+  step but not the end) - BEFORE TestFlight; the export's share sheet, the comparison and Licences (not
+  reachable by the walk, Q1); the iOS lock-screen text and sound; the transient-notice presentation.
+
+5. NEXT TASK, PROPOSED (no prompt written yet): IOS-POLISH - CFBundleDevelopmentRegion "fr" (system alerts and pickers
+   in French; project.yml only, verified by one ios-app launch in French), delete the commonMain pilot with
+   no production caller (AujourdhuiPilot, PilotFixture, PilotScenario), and, if you choose it, the
+   always-on accessibility sync experiment for Q1.
+
+6. HOUSEKEEPING LEFT
+- C:/wt/i3-gate (the orchestrator's gate checkout for IOS-AUDIT, with its lock) - removed after the merge.
+- C:/wt/walk-db/web (untracked leftover of a removed worktree).
+- The :3900 dev server - restarted for you at the end.
+
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-19, Ruling 20 for the audit when it merges),
+relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the repository root, evidence under C:/wt/queue-evidence/.
+END OF FINAL REPORT
