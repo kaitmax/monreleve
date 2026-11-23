@@ -13,11 +13,18 @@ name: ios-app
 #      allowed) with the Kotlin framework and Compose's resources inside it.
 #   4. The .app carries compose-resources/ic_*.xml - refused if it does not, since
 #      every icon the shared screens draw is read from there (R1203 item 4).
-#   5. A NORMAL launch (twice: the app itself - IOS-SHELL-1's AppRoot, on its
-#      sign-in screen - then the pilot in a state that draws icons) is
-#      photographed, and leaves NO probe file behind.
+#   5. A NORMAL launch (the app itself - IOS-SHELL-1's AppRoot, on its sign-in
+#      screen) is photographed, and leaves NO probe file behind; then the same
+#      launch at the LARGEST Dynamic Type size (IOS-AUDIT R1355).
 #   6. A -probe launch writes its result file; the step reads it back with simctl
 #      and refuses a file without this run's nonce or without its last line.
+#   7. IOS-AUDIT R1353: the RELEASE configuration, built unsigned for the
+#      simulator and INSPECTED WITHOUT BEING LAUNCHED (a launched Release build
+#      would talk to production): its Info.plist and its binaries, each check
+#      with a positive control on the Debug build. Names and counts only.
+#
+# IOS-AUDIT R1350: the pilot view controller and its -pilotScenario launch are
+# gone (nothing probe-only ships); the probe runs over the real app, Debug only.
 #
 # WHAT A GREEN RUN DOES NOT MEAN. Green says the app built, launched, and the
 # probe produced a COMPLETE result for THIS launch. Each probe line is a
@@ -63,8 +70,10 @@ jobs:
     # an arm64 Mac; macos-15 pinned rather than a moving label; a STANDARD runner.
     runs-on: macos-15
     # A cold run provisions Kotlin/Native and links two frameworks before Xcode
-    # starts; this bounds a hang, not a normal run.
-    timeout-minutes: 60
+    # starts; this bounds a hang, not a normal run. IOS-AUDIT R1353: 60 -> 100, because the Release step links the
+    # RELEASE Kotlin framework inside xcodebuild - measured 1494 s in run 45163167768, which ended its whole job at
+    # 51 minutes, too close to the old bound to say "a hang" when it trips.
+    timeout-minutes: 100
     env:
       # THE XCODE - ios-shared.yml's (KMP-UP2 R547): Kotlin 2.2.21's documented
       # Xcode is 26.0, and macos-15's default is still 16.4. Job level, so xcrun,
@@ -201,24 +210,25 @@ jobs:
           xcrun simctl uninstall "$udid" ch.monreleve.app || true
           xcrun simctl install "$udid" "$(cat "$RUNNER_TEMP/app.path")"
 
-      # R1211/R1214, IOS-SHELL-1 R1320. TWO NORMAL LAUNCHES. DEFAULT (no argument) is THE APP ITSELF since IOS-SHELL-1:
+      # R1211/R1214, IOS-SHELL-1 R1320. THE NORMAL LAUNCH. DEFAULT (no argument) is THE APP ITSELF since IOS-SHELL-1:
       # the common AppRoot and router, signed out on a fresh install, so its screenshot is the first sign-in screen
-      # (Bienvenue - no code is on it, R574). ANSWERED_WHOLE passes -pilotScenario, which now opens the PILOT (a
-      # probe/test-only path, MonReleveApp.swift) on today ANSWERED_WHOLE, whose answer and status lines are glyphs -
-      # the screenshot that shows an icon rendered from compose-resources. Each must still be running when
-      # photographed, and neither may leave a probe file: absence is meaningful only beside the presence the probe
-      # launch shows next (R169's corollary).
-      - name: Normal launches (screenshots; no probe file)
+      # (Bienvenue - no code is on it, R574). IOS-AUDIT R1350: the second launch, the PILOT on -pilotScenario (the glyph
+      # screenshot), is gone with the pilot - the real app's glyphs are on the walk's screenshots of the four tabs. It
+      # must still be running when photographed, and must not leave a probe file: absence is meaningful only beside the
+      # presence the probe launch shows next (R169's corollary). IOS-AUDIT R1355: then the same launch at the LARGEST
+      # Dynamic Type size, photographed beside it (DEFAULT is its default-size control), and the size put back.
+      - name: Normal launch (screenshot; no probe file) and the largest Dynamic Type
         run: |
           udid=$(cat "$RUNNER_TEMP/sim.udid")
           data=$(xcrun simctl get_app_container "$udid" ch.monreleve.app data)
           rm -f "$data/Documents/ios-host-probe.txt"
-          for scenario in DEFAULT ANSWERED_WHOLE; do
-            if [ "$scenario" = DEFAULT ]; then
-              out=$(xcrun simctl launch "$udid" ch.monreleve.app)
-            else
-              out=$(xcrun simctl launch "$udid" ch.monreleve.app -pilotScenario "$scenario")
+          echo "--- simctl ui (what this Xcode offers):"; xcrun simctl ui 2>&1 | head -20 || true
+          for scenario in DEFAULT AX5; do
+            if [ "$scenario" = AX5 ]; then
+              xcrun simctl ui "$udid" content_size accessibility-extra-extra-extra-large
+              echo "CONTENT SIZE NOW: $(xcrun simctl ui "$udid" content_size)"
             fi
+            out=$(xcrun simctl launch "$udid" ch.monreleve.app)
             echo "LAUNCH $scenario: $out"
             pid=$(echo "$out" | awk -F': ' '{print $2}')
             sleep 15
@@ -229,6 +239,8 @@ jobs:
             xcrun simctl terminate "$udid" ch.monreleve.app || true
             sleep 2
           done
+          xcrun simctl ui "$udid" content_size large
+          echo "CONTENT SIZE PUT BACK: $(xcrun simctl ui "$udid" content_size)"
 
       # R1212. THE PROBE LAUNCH. The nonce is this run's id and attempt: a file without it is not this launch's.
       - name: Probe launch (results read back with simctl)
@@ -237,7 +249,7 @@ jobs:
           data=$(xcrun simctl get_app_container "$udid" ch.monreleve.app data)
           file="$data/Documents/ios-host-probe.txt"
           nonce="run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          xcrun simctl launch "$udid" ch.monreleve.app -probe YES -probeNonce "$nonce" -pilotScenario ANSWERED_WHOLE
+          xcrun simctl launch "$udid" ch.monreleve.app -probe YES -probeNonce "$nonce"
           for i in $(seq 1 90); do
             if grep -q '^probe.done=true$' "$file" 2>/dev/null; then break; fi
             sleep 1
@@ -249,8 +261,133 @@ jobs:
           echo "--- the probe file:"; cat "$file"
           if ! grep -qx "probe.nonce=$nonce" "$file"; then echo "NO RESULT: the file does not carry this launch's nonce"; exit 1; fi
           if ! grep -qx 'probe.done=true' "$file"; then echo "NO RESULT: the probe did not finish (the last line written is the last check that returned)"; exit 1; fi
-          echo "--- the four results:"; grep -E '^(keychain|notification|share|bgtask)\.(result|submit)=' "$file"
+          echo "--- the results (IOS-AUDIT R1350: the share sheet and the mail measurement remain):"
+          grep -E '^(share\.result|mail\.)' "$file"
           xcrun simctl terminate "$udid" ch.monreleve.app || true
+
+      # IOS-AUDIT R1353 (R1359). THE RELEASE BUILD, INSPECTED, NEVER LAUNCHED. The Release configuration is built for the
+      # simulator, UNSIGNED, into its own derived-data directory (never under OUT: nothing of it is uploaded), and is
+      # NEVER installed or launched - its MonReleveApiBaseUrl is the production site. It is read, and each check is a
+      # function run on the Release .app AND, as its positive control (R169), on something that must fail it: the Debug
+      # .app (the base URL, the probe names), or a planted copy of the Debug Info.plist (an ATS / location / background
+      # key, a missing version key - Debug carries none of those, so only a plant can show the check can see one).
+      # Only names, keys and counts are printed (R1359); the Info.plist is printed key by key, which by design includes
+      # the production host once. Placed after the probe steps, so a slow Release link cannot void them.
+      - name: Release build, inspected, never launched (R1353)
+        run: |
+          # Not -e: a grep that counts zero exits 1, and every verdict below is collected in $fail instead.
+          set +e
+          debug_app="$(cat "$RUNNER_TEMP/app.path")"
+          start=$(date +%s)
+          if ! xcodebuild build \
+            -project ios/MonReleve.xcodeproj -scheme MonReleve -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd-release" \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO JAVA_HOME="$JAVA_HOME" > "$RUNNER_TEMP/xcodebuild-release-raw.log" 2>&1; then
+            echo "RELEASE BUILD FAILED - its last lines, environment lines removed:"
+            grep -v -E '^[[:space:]]*export ' "$RUNNER_TEMP/xcodebuild-release-raw.log" | tail -60
+            exit 1
+          fi
+          echo "RELEASE BUILT in $(( $(date +%s) - start )) s (unsigned, simulator, never launched)"
+          grep -v -E '^[[:space:]]*export ' "$RUNNER_TEMP/xcodebuild-release-raw.log" > "$OUT/xcodebuild-release.log"
+          release_app="$RUNNER_TEMP/dd-release/Build/Products/Release-iphonesimulator/MonReleve.app"
+          if [ ! -d "$release_app" ]; then echo "NO RESULT: $release_app was not produced"; exit 1; fi
+
+          # --- THE CHECKS (one definition each, run on both sides) ---
+          # plutil prints "Could not extract value" on STDOUT and exits non-zero (run 45163167768): only its exit code
+          # is read, and a missing key yields NOTHING.
+          plist_value() { local v; v=$(plutil -extract "$2" raw -o - "$1" 2>/dev/null) || return 0; printf '%s' "$v"; }
+          FORBIDDEN_KEYS="NSAppTransportSecurity NSAllowsLocalNetworking NSLocalNetworkUsageDescription NSBonjourServices NSLocationWhenInUseUsageDescription NSLocationAlwaysAndWhenInUseUsageDescription NSLocationAlwaysUsageDescription NSLocationUsageDescription NSLocationTemporaryUsageDescriptionDictionary BGTaskSchedulerPermittedIdentifiers UIBackgroundModes"
+          forbidden_keys_in() { for k in $FORBIDDEN_KEYS; do plutil -extract "$k" xml1 -o /dev/null "$1" >/dev/null 2>&1 && echo "$k"; done; true; }
+          missing_versions_in() { for k in CFBundleShortVersionString CFBundleVersion; do [ -n "$(plist_value "$1" "$k")" ] || echo "$k"; done; true; }
+          machos_of() { find "$1" -type f | while read -r f; do file -b "$f" | grep -q '^Mach-O' && echo "$f"; done; }
+          PROBE_NAMES="HostProbe WalkProbe ProbeLog ProbeNotificationDelegate LaunchArguments probeNonce walkProbe walkNearTap pilotScenario ios-host-probe.txt walk-probe.txt keychainRoundTrip firstLaunchProbe eveningReminderProbeReplan aujourdhuiPilotViewController KeychainRoundTripResult FirstLaunchProbeResult"
+          # Each name counted in the strings (survive stripping: Swift type metadata, literals) AND the symbol table.
+          probe_hits() {
+            for n in $PROBE_NAMES; do
+              c=0
+              for b in $(machos_of "$1"); do
+                c=$(( c + $(strings -a "$b" | grep -c -F -- "$n") + $(nm -a "$b" 2>/dev/null | grep -c -F -- "$n") ))
+              done
+              [ "$c" -gt 0 ] && echo "$n=$c"
+            done
+            true
+          }
+          # The -probe argument's own key: the exact string "probe".
+          probe_key_count() { c=0; for b in $(machos_of "$1"); do c=$(( c + $(strings -a "$b" | grep -c -x probe) )); done; echo "$c"; }
+
+          fail=0
+          verdict() { if [ "$2" = ok ]; then echo "PASS  $1"; else echo "FAIL  $1"; fail=1; fi; }
+
+          echo "--- the Release Info.plist (keys and values):"; plutil -p "$release_app/Info.plist"
+          echo "--- Mach-O files read, Release: $(machos_of "$release_app" | sed "s|$release_app/||" | tr '\n' ' ')"
+          echo "--- Mach-O files read, Debug:   $(machos_of "$debug_app" | sed "s|$debug_app/||" | tr '\n' ' ')"
+
+          # (1) MonReleveApiBaseUrl is the site; control: Debug's is not.
+          r=$(plist_value "$release_app/Info.plist" MonReleveApiBaseUrl); d=$(plist_value "$debug_app/Info.plist" MonReleveApiBaseUrl)
+          [ "$r" = "https://monreleve.ch" ] && verdict "Release MonReleveApiBaseUrl = $r" ok || verdict "Release MonReleveApiBaseUrl = $r" no
+          [ "$d" != "https://monreleve.ch" ] && verdict "CONTROL: the same check reads Debug's as not the site ($d)" ok || verdict "CONTROL Debug base URL" no
+
+          # (2) no ATS, local-networking, location or background key; control: a planted Debug copy carrying two.
+          found=$(forbidden_keys_in "$release_app/Info.plist" | tr '\n' ' ')
+          [ -z "$found" ] && verdict "Release carries none of: $FORBIDDEN_KEYS" ok || verdict "Release carries forbidden keys: $found" no
+          found=$(forbidden_keys_in "$debug_app/Info.plist" | tr '\n' ' ')
+          [ -z "$found" ] && verdict "Debug carries none of them either (manual-only, no probe keys)" ok || verdict "Debug carries: $found" no
+          mkdir -p "$RUNNER_TEMP/plant"; cp "$debug_app/Info.plist" "$RUNNER_TEMP/plant/Info.plist"
+          plutil -insert NSAppTransportSecurity -dictionary "$RUNNER_TEMP/plant/Info.plist"
+          plutil -insert NSLocationWhenInUseUsageDescription -string planted "$RUNNER_TEMP/plant/Info.plist"
+          found=$(forbidden_keys_in "$RUNNER_TEMP/plant/Info.plist" | tr '\n' ' ')
+          [ "$found" = "NSAppTransportSecurity NSLocationWhenInUseUsageDescription " ] && verdict "CONTROL: the check finds the two planted keys ($found)" ok || verdict "CONTROL plant read as: $found" no
+
+          # (3) the version keys present; control: a planted copy without CFBundleVersion.
+          missing=$(missing_versions_in "$release_app/Info.plist" | tr '\n' ' ')
+          [ -z "$missing" ] && verdict "Release version: $(plist_value "$release_app/Info.plist" CFBundleShortVersionString) ($(plist_value "$release_app/Info.plist" CFBundleVersion))" ok || verdict "Release misses: $missing" no
+          plutil -remove CFBundleVersion "$RUNNER_TEMP/plant/Info.plist"
+          missing=$(missing_versions_in "$RUNNER_TEMP/plant/Info.plist" | tr '\n' ' ')
+          [ "$missing" = "CFBundleVersion " ] && verdict "CONTROL: the check finds the planted missing CFBundleVersion" ok || verdict "CONTROL missing read as: $missing" no
+
+          # (4) no probe name and no -probe key in the Release binaries; control: Debug carries the Swift probe's.
+          hits=$(probe_hits "$release_app" | tr '\n' ' ')
+          [ -z "$hits" ] && verdict "Release binaries carry none of: $PROBE_NAMES" ok || verdict "Release binaries carry: $hits" no
+          # A Release hit is NAMED, not dumped: for each name found, the symbol or string lines that matched (at most 5
+          # each - names and paths only, R1359), so the report can say what it is.
+          for h in $hits; do
+            n=${h%%=*}
+            for b in $(machos_of "$release_app"); do
+              echo "  $n in $(basename "$b") - nm -a:"; nm -a "$b" 2>/dev/null | grep -F -- "$n" | sed 's/^[0-9a-f]* //' | head -5
+              echo "  $n in $(basename "$b") - strings:"; strings -a "$b" | grep -F -- "$n" | head -5
+            done
+          done
+          hits=$(probe_hits "$debug_app" | tr '\n' ' ')
+          echo "Debug binaries carry: $hits"
+          for n in HostProbe WalkProbe ProbeLog LaunchArguments probeNonce walkProbe ios-host-probe.txt walk-probe.txt; do
+            echo "$hits" | grep -q -F -- "$n=" && verdict "CONTROL: the check finds $n in Debug" ok || verdict "CONTROL: $n not found in Debug" no
+          done
+          rk=$(probe_key_count "$release_app"); dk=$(probe_key_count "$debug_app")
+          [ "$rk" -eq 0 ] && verdict "Release: the -probe key appears $rk times" ok || verdict "Release: the -probe key appears $rk times" no
+          [ "$dk" -gt 0 ] && verdict "CONTROL: Debug's -probe key appears $dk times" ok || verdict "CONTROL: Debug -probe key count $dk" no
+
+          # (5) IOS-AUDIT R1354: the privacy manifest is in the bundle; control: the check fails on a copy without it.
+          has_manifest() { [ -f "$1/PrivacyInfo.xcprivacy" ] && plutil -lint "$1/PrivacyInfo.xcprivacy" >/dev/null; }
+          has_manifest "$release_app" && verdict "Release carries PrivacyInfo.xcprivacy (lint OK)" ok || verdict "Release has no valid PrivacyInfo.xcprivacy" no
+          mkdir -p "$RUNNER_TEMP/plant/NoManifest.app"
+          has_manifest "$RUNNER_TEMP/plant/NoManifest.app" && verdict "CONTROL manifest check" no || verdict "CONTROL: the check fails on a bundle without the manifest" ok
+          echo "--- the manifest's accessed-API categories:"; plutil -extract NSPrivacyAccessedAPITypes json -o - "$release_app/PrivacyInfo.xcprivacy"; echo
+
+          # R1354 MEASUREMENT (not a verdict): the required-reason APIs the Release binaries IMPORT, whoever calls them
+          # (the app's own code, bundled SQLite, the Kotlin/Native runtime). Counts only.
+          echo "--- required-reason symbols imported by the Release binaries (nm -u), and selector names (strings):"
+          for s in _stat _fstat _fstatat _lstat _getattrlist _getattrlistbulk _fgetattrlist _getattrlistat _mach_absolute_time _statfs _statvfs _fstatfs _fstatvfs _NSFileModificationDate _NSFileCreationDate _NSFileSystemFreeSize _NSFileSystemSize _NSURLContentModificationDateKey _NSURLCreationDateKey _NSURLVolumeAvailableCapacityKey _NSURLVolumeTotalCapacityKey '_OBJC_CLASS_$_NSUserDefaults' '_OBJC_CLASS_$_UIDocument'; do
+            c=0; for b in $(machos_of "$release_app"); do c=$(( c + $(nm -u "$b" 2>/dev/null | grep -c -x -F -- "$s") )); done
+            echo "  import $s: $c"
+          done
+          for sel in systemUptime activeInputModes fileModificationDate; do
+            c=0; for b in $(machos_of "$release_app"); do c=$(( c + $(strings -a "$b" | grep -c -x -F -- "$sel") )); done
+            echo "  selector $sel: $c"
+          done
+
+          if [ "$fail" -ne 0 ]; then echo "R1353: RELEASE INSPECTION FAILED"; exit 1; fi
+          echo "R1353: RELEASE INSPECTION PASSED - every check and every control"
 
       - name: Logs (app, crashes, the build log without its environment)
         if: always()

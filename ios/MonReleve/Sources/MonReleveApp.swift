@@ -8,16 +8,16 @@
 //
 // .ignoresSafeArea(): AppRoot owns the insets, as on Android (R1170).
 //
-// THE PILOT STAYS, FOR THE PROBE AND THE GLYPH SCREENSHOT ONLY (named in REPORT-IOS-SHELL-1; IOS-AUDIT I3 removes it):
-// a launch that carries -pilotScenario or -probe shows the pilot view controller (pilot/AujourdhuiPilotViewController.kt
-// - the shared Aujourd'hui screen over an in-memory fixture, no server, no account), exactly as before this task, so the
-// probe launch is unchanged. A launch with NEITHER - the one a person makes - is the real app.
+// IOS-AUDIT R1350: NOTHING PROBE-ONLY SHIPS. Every launch shows the real app. The pilot view controller and its
+// -pilotScenario path are gone (the walk photographs the real app's glyphs). What remains for the runner's checks - the
+// host probe (HostProbe.swift) and the walk's centre reader (WalkProbe.swift) - is compiled ONLY in the Debug
+// configuration (`#if DEBUG`; ios/project.yml defines DEBUG for Debug alone), and so are the launch arguments that start
+// them: a Release build cannot handle one, and R1353 checks the built Release binary for their names.
 //
-// LAUNCH ARGUMENTS (read from the argument domain, never persisted):
-//   -pilotScenario <NAME>   show the PILOT in this state (PilotScenario's names) - a probe/test path, not the product.
-//   -probe YES              show the pilot and run the host probe (HostProbe.swift, R1212). A normal launch never does.
+// LAUNCH ARGUMENTS (Debug builds only; read from the argument domain, never persisted):
+//   -probe YES              run the host probe over the real app (HostProbe.swift, R1212).
 //   -probeNonce <TEXT>      written first into the probe's result file, so a reader can tell THIS launch's file.
-//   -walkProbe YES          IOS-WALK only: the REAL app, plus WalkProbe.swift's read-only file of the centre's state.
+//   -walkProbe YES          IOS-WALK only: WalkProbe.swift's read-only file of the centre's state.
 //   -walkNearTap YES        IOS-WALK only, with -walkProbe: one near copy of the first pending reminder (R1345's tap).
 
 import Shared
@@ -29,19 +29,15 @@ struct MonReleveApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if LaunchArguments.pilotLaunch {
-                    PilotScreen(scenario: LaunchArguments.pilotScenario)
-                } else {
-                    AppScreen()
+            AppScreen()
+                .ignoresSafeArea()
+                .onAppear {
+                    #if DEBUG
+                    if LaunchArguments.probe {
+                        HostProbe.shared.start()
+                    }
+                    #endif
                 }
-            }
-            .ignoresSafeArea()
-            .onAppear {
-                if LaunchArguments.probe {
-                    HostProbe.shared.start()
-                }
-            }
         }
     }
 }
@@ -51,20 +47,16 @@ final class HostAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // BGTaskScheduler requires every launch handler to be registered before launch finishes.
-        if LaunchArguments.probe {
-            HostProbe.registerBackgroundTask()
-        }
         // IOS-SHELL-2 R1330: a tap on the evening reminder opens Aujourd'hui. The delegate must be set before launch
-        // ends for a tap that LAUNCHES the app to reach it. Not for the pilot or the probe (the probe sets its own).
-        if !LaunchArguments.pilotLaunch {
-            IosNotificationTapsKt.installNotificationTapDelegate()
-        }
+        // ends for a tap that LAUNCHES the app to reach it.
+        IosNotificationTapsKt.installNotificationTapDelegate()
+        #if DEBUG
         // IOS-WALK R1345: the walk's read-only window onto the real centre - ONLY with `-walkProbe YES`
-        // (WalkProbe.swift). A person's launch never starts it.
-        if WalkProbe.enabled && !LaunchArguments.pilotLaunch {
+        // (WalkProbe.swift). A person's launch never starts it, and a Release build does not contain it.
+        if WalkProbe.enabled {
             WalkProbe.shared.start()
         }
+        #endif
         return true
     }
 }
@@ -78,33 +70,11 @@ struct AppScreen: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
 
-/// The pilot view controller from the Kotlin framework, as a SwiftUI view - the probe's and the glyph screenshot's only.
-struct PilotScreen: UIViewControllerRepresentable {
-    let scenario: PilotScenario
-
-    func makeUIViewController(context: Context) -> UIViewController {
-        AujourdhuiPilotViewControllerKt.aujourdhuiPilotViewController(scenario: scenario)
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
-}
-
+#if DEBUG
+/// The runner's launch arguments - Debug builds only (R1350).
 enum LaunchArguments {
     static var probe: Bool { UserDefaults.standard.bool(forKey: "probe") }
 
     static var probeNonce: String { UserDefaults.standard.string(forKey: "probeNonce") ?? "none" }
-
-    /// The pilot is shown only for a probe launch or one that names a pilot state - never for a person's launch.
-    static var pilotLaunch: Bool { probe || UserDefaults.standard.string(forKey: "pilotScenario") != nil }
-
-    static var pilotScenario: PilotScenario {
-        switch UserDefaults.standard.string(forKey: "pilotScenario") {
-        case "UNANSWERED_HALF_DAY": return .unansweredHalfDay
-        case "ANSWERED_WHOLE": return .answeredWhole
-        case "ANSWERED_HALVES": return .answeredHalves
-        case "PENDING": return .pending
-        case "REFUSED": return .refused
-        default: return .unanswered
-        }
-    }
 }
+#endif

@@ -56,6 +56,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import platform.Foundation.NSLock
 import platform.Foundation.NSUserDefaults
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -218,6 +219,8 @@ class IosShell internal constructor(
     private val scope: CoroutineScope,
     private val planNow: suspend () -> Unit,
     private val graph: (CoroutineScope) -> MainControllers,
+    /** IOS-AUDIT R1380: the session endings this process has seen - a restore held across one is dropped. */
+    private val endingsSeen: () -> Int,
 ) {
     /** R1162 on iOS: detection is not in v1, so the server's mode always lands as MANUAL, nothing sampled. */
     fun restoreMode(serverMode: LoggingMode) {
@@ -233,8 +236,40 @@ class IosShell internal constructor(
      * afresh.
      */
     fun restoreReminder(serverOn: Boolean) {
-        eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
+        // IOS-AUDIT R1380 (iOS Ruling 16 Q1): A RESTORE WITH NO ANSWER WRITES NOTHING. Before the centre has answered
+        // "may this app notify" even once, notificationsPermitted is only its initial false - not an answer - and
+        // IosShellRoot starts the router past its bound regardless. Reading that false wrote OFF over the server's ON
+        // and, the settings then cached, nothing restored it before the next sign-in. So the restore is HELD - the
+        // store left as it was - and applied by the first answer (answered), unless a session ended in between.
+        restoreLock.lock()
+        val answeredYet =
+            try {
+                if (!answeredOnce) heldRestore = HeldRestore(serverOn, endingsSeen())
+                answeredOnce
+            } finally {
+                restoreLock.unlock()
+            }
+        if (answeredYet) eveningStore.setEnabled(restoredEveningOptIn(serverOn, notificationsPermitted.value))
     }
+
+    /** R1380: a restore that came before the centre's first answer, and the endings count when it came. */
+    private class HeldRestore(
+        val serverOn: Boolean,
+        val endingsAtRestore: Int,
+    )
+
+    // R1380: the centre answers on its own queue and RESOLVING restores on the main thread - one lock for the two.
+    private val restoreLock = NSLock()
+    private var answeredOnce = false
+    private var heldRestore: HeldRestore? = null
+    private val lateRestoreCount = MutableStateFlow(0)
+
+    /**
+     * R1380: how many held restores the first answer applied. The Paramètres controller reads the opt-in ONCE when
+     * it is built, so a restore applied after it shows the switch nothing; the main shell mirrors the store into it on
+     * each.
+     */
+    val lateRestores: StateFlow<Int> = lateRestoreCount
 
     private val authorizationAnswered = MutableStateFlow(false)
 
@@ -254,6 +289,19 @@ class IosShell internal constructor(
     /** One answer from the centre, kept: the permission, and that it has been answered (R1374). */
     private fun answered(permitted: Boolean) {
         notificationsPermitted.value = permitted
+        restoreLock.lock()
+        val held =
+            try {
+                answeredOnce = true
+                heldRestore.also { heldRestore = null }
+            } finally {
+                restoreLock.unlock()
+            }
+        // R1380: the held restore lands now, with this ANSWER - unless a session ended since (it was the old one's).
+        if (held != null && held.endingsAtRestore == endingsSeen()) {
+            eveningStore.setEnabled(restoredEveningOptIn(held.serverOn, permitted))
+            lateRestoreCount.update { it + 1 }
+        }
         authorizationAnswered.value = true
     }
 
@@ -393,6 +441,9 @@ fun startIosShell(
     reportUnowned: (String) -> Unit = { IosUnownedReporter().report(it) },
     log: (String) -> Unit = ::consoleLine,
     sessionEnds: SessionEnds = processSessionEnds,
+    // IOS-AUDIT R1381: the session-end seam stops the year downloads THROUGH this - production runs the stop as is; a
+    // test passes a recorder that runs it too, so the wire from the seam to the coordinator is observable.
+    yearDownloadStop: (stop: () -> Unit) -> Unit = { it() },
     scope: CoroutineScope = MainScope(),
     clock: Clock = Clock.System,
     zone: TimeZone = TimeZone.currentSystemDefault(),
@@ -452,7 +503,8 @@ fun startIosShell(
                         centre.removeAllPending()
                     },
                     // R1371: a year still arriving is stopped BEFORE the record is cleared, on every ending.
-                    stopYearDownloads = yearDownloads::stop,
+                    // IOS-AUDIT R1381: through yearDownloadStop, which production runs as is and a test records.
+                    stopYearDownloads = { yearDownloadStop(yearDownloads::stop) },
                 ),
         )
     endingStore = localStore
@@ -552,6 +604,7 @@ fun startIosShell(
         scope = scope,
         planNow = planNow,
         graph = graph,
+        endingsSeen = { endings.count },
     ).also {
         shell = it
         it.refreshAuthorization()

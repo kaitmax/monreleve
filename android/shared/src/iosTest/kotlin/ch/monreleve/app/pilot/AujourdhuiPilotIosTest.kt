@@ -17,7 +17,6 @@ import platform.Foundation.NSRunLoop
 import platform.Foundation.dateWithTimeIntervalSinceNow
 import platform.Foundation.runUntilDate
 import platform.UIKit.UIScreen
-import platform.UIKit.UIViewController
 import platform.UIKit.UIWindow
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -91,9 +90,10 @@ class AujourdhuiPilotIosTest {
     @OptIn(ExperimentalForeignApi::class)
     @Test
     fun theScreenComposesInsideAViewControllerInAWindow() {
-        // Part B's entry point keeps Compose's strict Info.plist check ON; a test binary has no Info.plist, so this
-        // hosts the same composable with the check off. The entry point itself is referenced so it must compile.
-        val entryPoint: (PilotScenario) -> UIViewController = ::aujourdhuiPilotViewController
+        // A test binary has no Info.plist, so this hosts the composable with Compose's strict check off.
+        // IOS-AUDIT R1350: the pilot's own view controller (Part B's entry point) is deleted - nothing
+        // probe-only ships - so it is no longer referenced here; what this test proves (the screen composes
+        // in a UIViewController in a window) stays.
         var composed = false
         val controller =
             ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
@@ -108,7 +108,7 @@ class AujourdhuiPilotIosTest {
             NSRunLoop.mainRunLoop.runUntilDate(NSDate.dateWithTimeIntervalSinceNow(SPIN_SECONDS))
             spins++
         }
-        println("IOS-1b-A R606: AujourdhuiPilot composed=$composed after $spins spins; entry point $entryPoint")
+        println("IOS-1b-A R606: AujourdhuiPilot composed=$composed after $spins spins")
         assertTrue(composed, "the pilot never composed inside a UIViewController")
     }
 

@@ -702,6 +702,16 @@ class ParametresController(
     }
 
     /**
+     * IOS-AUDIT R1380: the opt-in changed on THIS phone without the person's tap, after this controller was built -
+     * iOS's sign-in restore, applied when the notification centre first answered - so the switch shows what the phone
+     * now holds. NOTHING IS SENT: the person did not choose it, and a restored value never goes back to the server
+     * (R1374 (2)). Android never calls it (its restore is synchronous, before the controller exists).
+     */
+    fun reflectEveningOptIn(enabled: Boolean) {
+        mutableState.update { it.copy(eveningNotificationEnabled = enabled) }
+    }
+
+    /**
      * R323 / PARKAN-36: opt into or out of the evening reminder (separate from automatic detection, OFF by default).
      * The OS POST_NOTIFICATIONS prompt that must precede an ENABLE on Android 13+ is the screen's concern
      * (MainActivity, the same disclosure-first discipline as detection).

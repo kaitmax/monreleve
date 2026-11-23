@@ -9,6 +9,7 @@ import ch.monreleve.app.Destination
 import ch.monreleve.app.data.remote.HttpResponse
 import ch.monreleve.app.fr.NavCopy
 import ch.monreleve.app.fr.ParametresCopy
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
@@ -146,6 +147,98 @@ class IosShellRestoreRaceIosTest {
                     "no PATCH /me at all without the person's tap: ${rig.transport.requests}",
                 )
             } finally {
+                rig.close()
+            }
+        }
+
+    // IOS-AUDIT R1380 (iOS Ruling 16 Q1). A RESTORE WITH NO ANSWER WRITES NOTHING. IosShellRoot holds the router for
+    // the centre's first answer for at most AUTHORIZATION_WAIT_MILLIS, counted from the root's FIRST COMPOSITION (its
+    // produceState starts when IosShellRoot first composes in the ComposeUIViewController - after startIosShell has
+    // already asked the centre, which it does as it returns). Past that bound the router starts regardless, and
+    // RESOLVING's restoreReminder used to read notificationsPermitted's initial false as an answer: it wrote OFF over
+    // the server's ON and the person's persisted ON, and since RESOLVING then caches the settings, nothing restored it
+    // before the next sign-in. Here the centre has NOT answered at all (its gate stays shut past the bound): the store
+    // must be left as it was, and the server's value applied when the answer comes - ON if the phone may notify, OFF if
+    // it may not (R1147, the second test - the direction a fix that never wrote would get wrong). The Paramètres switch
+    // must show what the store holds once the answer came (it was built before it).
+
+    @Test
+    fun r1380aARestoreBeforeTheCentresFirstAnswerWritesNothingThenAppliesTheServersOn() =
+        runComposeUiTest {
+            val gate = CompletableDeferred<Unit>()
+            val rig =
+                ShellRig(
+                    marked = true,
+                    pair = SHELL_PAIR,
+                    pendingAddress = null,
+                    account = "this-install",
+                    settings = null,
+                    transport = meSays(reminderEnabled = true),
+                    centre = RecordingCentre(grants = true, answerGate = gate),
+                    eveningOptedIn = true,
+                )
+            try {
+                setShellContent(rig)
+                waitFor("past the bound, RESOLVING reached the tabs with the centre still silent") {
+                    clickable(NavCopy.PARAMETRES)
+                }
+                assertTrue("GET /api/v1/me" in rig.transport.requests, "RESOLVING asked /me (the restore ran)")
+                assertTrue(
+                    rig.evening.isEnabled(),
+                    "R1380: a restore with no answer from the centre wrote OFF over the persisted ON",
+                )
+                gate.complete(Unit)
+                waitFor("the answer came (granted): the server's ON applied, and the week planned") {
+                    rig.evening.isEnabled() && rig.centre.pendingNow() == week
+                }
+                openParametres()
+                waitFor("the Paramètres tab's evening switch") { shows(ParametresCopy.EVENING_LABEL) }
+                waitFor("R1380: the switch shows ON") {
+                    onAllNodes(isToggleable() and isOn()).fetchSemanticsNodes().size == 1
+                }
+            } finally {
+                gate.complete(Unit)
+                rig.close()
+            }
+        }
+
+    @Test
+    fun r1380bWhenTheLateAnswerIsNoTheServersOnLandsAsOffAndTheSwitchSaysSo() =
+        runComposeUiTest {
+            val gate = CompletableDeferred<Unit>()
+            val rig =
+                ShellRig(
+                    marked = true,
+                    pair = SHELL_PAIR,
+                    pendingAddress = null,
+                    account = "this-install",
+                    settings = null,
+                    transport = meSays(reminderEnabled = true),
+                    centre = RecordingCentre(grants = false, answerGate = gate),
+                    eveningOptedIn = true,
+                )
+            try {
+                setShellContent(rig)
+                waitFor("past the bound, RESOLVING reached the tabs with the centre still silent") {
+                    clickable(NavCopy.PARAMETRES)
+                }
+                assertTrue(rig.evening.isEnabled(), "R1380: no answer yet - the persisted ON left as it was")
+                openParametres()
+                waitFor("the Paramètres tab's evening switch") { shows(ParametresCopy.EVENING_LABEL) }
+                gate.complete(Unit)
+                waitFor("R1147: the answer came (this phone may NOT notify) - the restore lands as OFF") {
+                    !rig.evening.isEnabled()
+                }
+                waitFor("R1380: and the switch, built before the answer, now shows OFF") {
+                    onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty() &&
+                        onAllNodes(isToggleable() and isOn()).fetchSemanticsNodes().isEmpty()
+                }
+                assertFalse(
+                    rig.transport.requests.any { it == "PATCH /api/v1/me" },
+                    "R1374 (2): a restored OFF is never sent back: ${rig.transport.requests}",
+                )
+            } finally {
+                gate.complete(Unit)
                 rig.close()
             }
         }

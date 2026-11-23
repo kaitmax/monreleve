@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ios/MonReleve/Resources/PrivacyInfo.xcprivacy - IOS-AUDIT R1354. THE APP'S PRIVACY MANIFEST: ONLY WHAT THE CODE PROVES.
+
+  NSPrivacyTracking false and no tracking domain: the app links no SDK and no network service beyond its own API
+  (MonReleveApiBaseUrl), uses no advertising identifier (no AdSupport, no AppTrackingTransparency in ios/ or in :shared).
+
+  NSPrivacyAccessedAPITypes - one entry per required-reason category THE APP'S OWN CODE calls, each with the grep
+  that proves it (REPORT-IOS-AUDIT R1354):
+    UserDefaults (NSPrivacyAccessedAPICategoryUserDefaults), reason CA92.1 ("read and write information that is only
+    accessible to the app itself"): NSUserDefaults.standardUserDefaults in :shared iosMain - UserDefaultsSettingsStore,
+    IosDetectionStores, IosFirstLaunch - the app's own keys, never another app's or an App Group's.
+  File timestamp, system boot time and disk space APIs: NOT called by the app's own code (grep: 0 each). Whether the
+  linked libraries (bundled SQLite, the Kotlin/Native runtime) import them is measured on the Release binary by
+  ios-app.yml's R1353 step; any category found there and its reason are the operator's QUESTION, never guessed here.
+
+  NSPrivacyCollectedDataTypes is NOT declared: mapping the records the web privacy page discloses (DISCLOSED_RECORDS)
+  to Apple's data-type categories is a claim, not a derivation - the operator's QUESTION (docs/ios-release.md 4).
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

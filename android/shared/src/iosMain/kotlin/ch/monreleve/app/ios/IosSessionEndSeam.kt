@@ -30,14 +30,17 @@ import platform.UserNotifications.UNUserNotificationCenter
 
 /**
  * The iOS seam: [stopYearDownloads], then [removePendingRequests], on every ending path. The removal's default is the
- * production call; a test passes its own, because the real one cannot run in the bundle-less test process. The
- * downloads' default stops nothing: startIosShell - the one production caller - passes its coordinator's stop.
+ * production call; a test passes its own, because the real one cannot run in the bundle-less test process.
+ *
+ * IOS-AUDIT R1381 (iOS Ruling 16, IOS-SHELL-3 DEVIATION 6): [stopYearDownloads] HAS NO DEFAULT. It used to default to
+ * {}, so a caller that forgot it built a seam that stopped nothing and compiled; every caller now states what it stops
+ * (startIosShell its coordinator's stop - IosShellEndingsStopIosTest records it on each of the three endings).
  */
 fun iosSessionEndSeam(
     removePendingRequests: () -> Unit = {
         UNUserNotificationCenter.currentNotificationCenter().removeAllPendingNotificationRequests()
     },
-    stopYearDownloads: () -> Unit = {},
+    stopYearDownloads: () -> Unit,
 ): SessionEndSeam =
     SessionEndSeam {
         stopYearDownloads()

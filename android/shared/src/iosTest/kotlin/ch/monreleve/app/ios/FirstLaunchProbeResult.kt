@@ -3,6 +3,10 @@ package ch.monreleve.app.ios
 import ch.monreleve.app.auth.TokenPair
 import platform.Foundation.NSUserDefaults
 
+// IOS-AUDIT R1350: MOVED FROM iosMain TO iosTest (git mv) - nothing probe-only ships. It now runs in
+// FirstLaunchRealKeychainIosTest, inside the simulator test process, whose Keychain is real (IOS-1a R565) - the same
+// measurement, outside the shipped framework. What follows is its original header.
+//
 // IOS-SHELL-1 R1321. THE HOST PROBE'S FIRST-LAUNCH CHECK (HostProbe.swift step (6), run only on a `-probe YES` launch
 // of the ad-hoc simulator app - never by the product). IosFirstLaunchIosTest proves the ORDER with doubles, because the
 // test binary has no app bundle; this measures the REAL clear: the production clearKeychainOnFirstLaunch over the three

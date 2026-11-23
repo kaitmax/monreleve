@@ -8,7 +8,7 @@ import kotlin.test.fail
 
 // IOS-SHELL-2 (R1339, iOS Ruling 13 Q2). CAN THE NATIVE DATE PICKER BE OPENED IN AN iosTest? MEASURED HERE, A CANARY.
 //
-// IosStartDatePicker (IosShellUi.kt) is a UIDatePicker inside androidx.compose.ui.viewinterop.UIKitView, in a Dialog.
+// IosStartDatePicker is a UIDatePicker inside androidx.compose.ui.viewinterop.UIKitView, in a Dialog.
 // CMP 1.7.3's UIKitView reads LocalInteropContainer (ui-1.7.3-sources: uikitMain viewinterop/UIKitView.uikit.kt:56),
 // whose default is `error("LocalInteropContainer not provided")` (skikoMain viewinterop/InteropContainer.skiko.kt:37).
 // Only a ComposeUIViewController's own scene provides one; runComposeUiTest's scene (CanvasLayersComposeScene over a
