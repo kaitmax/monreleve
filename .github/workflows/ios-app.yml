@@ -163,6 +163,9 @@ jobs:
           xcodegen generate --spec project.yml
           echo "--- generated Info.plist:"; plutil -p MonReleve/Info.plist
           echo "--- generated entitlements:"; plutil -p MonReleve/MonReleve.entitlements
+          # IOS-POLISH R1403: where the bundle's region comes from. The Info.plist above carries $(DEVELOPMENT_LANGUAGE),
+          # which Xcode resolves from the project's developmentRegion - XcodeGen's options.developmentLanguage.
+          echo "--- the project's development region:"; grep -E 'developmentRegion|knownRegions' -A3 MonReleve.xcodeproj/project.pbxproj | head -8
 
       # The same device rule as ios-shared.yml's (the first device under the LAST iOS runtime), so both workflows
       # name the same simulator. The app is built for the generic simulator platform and installed with simctl.
@@ -249,6 +252,11 @@ jobs:
           data=$(xcrun simctl get_app_container "$udid" ch.monreleve.app data)
           file="$data/Documents/ios-host-probe.txt"
           nonce="run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          # IOS-POLISH R1403(b): the share sheet photographed below is system UI; its language is judged against the
+          # SIMULATOR's, read back here (a French simulator would make a French sheet prove nothing).
+          langs=$(xcrun simctl spawn "$udid" defaults read -g AppleLanguages 2>&1 | tr -d ' \n')
+          echo "SIMULATOR LANGUAGE (read back): AppleLanguages=$langs AppleLocale=$(xcrun simctl spawn "$udid" defaults read -g AppleLocale 2>&1)"
+          case "$langs" in '(fr'*|'("fr'*) echo "NOTE: the simulator's first language is French - the share-sheet capture is NOT R1403(b)'s measurement";; esac
           xcrun simctl launch "$udid" ch.monreleve.app -probe YES -probeNonce "$nonce"
           for i in $(seq 1 90); do
             if grep -q '^probe.done=true$' "$file" 2>/dev/null; then break; fi
@@ -385,6 +393,35 @@ jobs:
             c=0; for b in $(machos_of "$release_app"); do c=$(( c + $(strings -a "$b" | grep -c -x -F -- "$sel") )); done
             echo "  selector $sel: $c"
           done
+
+          # (6) IOS-POLISH R1401: the commonMain pilot is test-only, so the RELEASE Kotlin framework (and the app it links
+          # into) carries none of its names. Control: a production symbol of the same kind, PRESENT through the SAME scan
+          # of the same files, so an empty scan cannot pass (R154, R169's corollary). The framework is a static archive,
+          # which `file` does not call Mach-O, so it is named here and asserted found.
+          release_fw=$(find -L "$GITHUB_WORKSPACE/android/shared/build/xcode-frameworks/Release" -path '*/Shared.framework/Shared' -type f 2>/dev/null | head -1)
+          if [ -z "$release_fw" ]; then verdict "R1401: the Release Shared.framework was not found under xcode-frameworks/Release" no; fi
+          pilot_subjects="$release_fw $(machos_of "$release_app" | tr '\n' ' ')"
+          echo "--- R1401 subjects: $(echo "$pilot_subjects" | sed -e "s|$GITHUB_WORKSPACE/||g" -e "s|$release_app/||g")"
+          name_count() { local c=0; for b in $pilot_subjects; do c=$(( c + $(strings -a "$b" | grep -c -F -- "$1") + $(nm -a "$b" 2>/dev/null | grep -c -F -- "$1") )); done; echo "$c"; }
+          for n in AujourdhuiPilot PilotFixture PilotScenario ch.monreleve.app.pilot.InMemoryEntryDao; do
+            c=$(name_count "$n")
+            [ "$c" -eq 0 ] && verdict "R1401: the Release framework and app carry no $n" ok || verdict "R1401: the Release framework and app carry $n ($c)" no
+          done
+          for n in AujourdhuiController ch.monreleve.app.aujourdhui.AujourdhuiController; do
+            c=$(name_count "$n")
+            [ "$c" -gt 0 ] && verdict "CONTROL (R1401): the same scan finds $n ($c)" ok || verdict "CONTROL (R1401): the same scan finds no $n" no
+          done
+
+          # (7) IOS-POLISH R1403(a): the bundle's development region is French, Debug and Release. Control: a planted copy
+          # of the Debug Info.plist reading "en" fails the same check.
+          for side in Release Debug; do
+            [ "$side" = Release ] && p="$release_app/Info.plist" || p="$debug_app/Info.plist"
+            v=$(plist_value "$p" CFBundleDevelopmentRegion)
+            [ "$v" = fr ] && verdict "R1403: $side CFBundleDevelopmentRegion = $v" ok || verdict "R1403: $side CFBundleDevelopmentRegion = '$v', not fr" no
+          done
+          plutil -replace CFBundleDevelopmentRegion -string en "$RUNNER_TEMP/plant/Info.plist"
+          v=$(plist_value "$RUNNER_TEMP/plant/Info.plist" CFBundleDevelopmentRegion)
+          [ "$v" != fr ] && verdict "CONTROL (R1403): the check reads the planted copy as '$v', not fr" ok || verdict "CONTROL (R1403): plant read as fr" no
 
           if [ "$fail" -ne 0 ]; then echo "R1353: RELEASE INSPECTION FAILED"; exit 1; fi
           echo "R1353: RELEASE INSPECTION PASSED - every check and every control"
