@@ -407,7 +407,10 @@ jobs:
             c=$(name_count "$n")
             [ "$c" -eq 0 ] && verdict "R1401: the Release framework and app carry no $n" ok || verdict "R1401: the Release framework and app carry $n ($c)" no
           done
-          for n in AujourdhuiController ch.monreleve.app.aujourdhui.AujourdhuiController; do
+          # AujourdhuiScreen is AujourdhuiPilot's kind (a top-level @Composable function): the RED run on the base
+          # (45274815756) counted AujourdhuiPilot 0 while the other three pilot names counted 138, 83 and 216, so this
+          # control says whether the scan can see a composable function's name at all.
+          for n in AujourdhuiController ch.monreleve.app.aujourdhui.AujourdhuiController AujourdhuiScreen; do
             c=$(name_count "$n")
             [ "$c" -gt 0 ] && verdict "CONTROL (R1401): the same scan finds $n ($c)" ok || verdict "CONTROL (R1401): the same scan finds no $n" no
           done
