@@ -79,8 +79,14 @@ targets:
         Debug:
           MONRELEVE_API_BASE_URL: "http://127.0.0.1:3000"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
+        # And Release does not COMPILE the two probe files at all: run 45175739188 found their names in the Release binary
+        # as debug-map stabs (OSO .../HostProbe.o, SO HostProbe.swift) - an empty object from the `#if DEBUG` file, no
+        # code and no strings, but a name R1353 must not find. Excluded, there is no object to name.
         Release:
           MONRELEVE_API_BASE_URL: "https://monreleve.ch"
+          EXCLUDED_SOURCE_FILE_NAMES:
+            - HostProbe.swift
+            - WalkProbe.swift
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
     info:
       path: MonReleve/Info.plist
