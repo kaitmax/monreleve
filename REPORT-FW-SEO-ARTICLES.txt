@@ -1,0 +1,195 @@
+REPORT-FW-SEO-ARTICLES - two health-insurance guides, merged and promoted
+
+Session: FW-SEO-ARTICLES. Worktree C:/wt/fw-seo-articles, branch
+fw-seo-articles, cut from origin/main 17674bb3. Code commit d8db62c5. No relay
+prompt: the operator gave the task in conversation on 24.11.2026 ("merge it
+and write the new articles and tool", then "merge it and promote to
+production").
+
+STATUS
+  MERGED AND PROMOTED. main and production both name d8db62c5 (ls-remote,
+  after the pushes). Production serves it: one container, image
+  pkptabevr1nhtyygrq0mc8qx:d8db62c5a227..., Docker "healthy", first seen
+  17:28:09Z. gate:changed and gate:clone both PASSED on d8db62c5 in this
+  session (lines below). This report is a later commit on main only; it
+  changes no code and is not on production.
+  The earlier branch fw-seo-titles (17674bb3) was fast-forwarded to main on
+  the operator's "merge it" before this task began; d8db62c5 contains it, so
+  this promotion put both on production.
+
+WHAT WAS ASKED, AND WHAT WAS NOT BUILT
+  The proposal the operator approved listed six items. It was written from a
+  main checkout 354 commits behind origin/main, and two of its three "tools"
+  already existed:
+    - a droit d'option deadline calculator: lib/lamal/deadline.ts and
+      lib/rappel already ship it on the comparator, and row L17 records that
+      how the three months are counted was NOT FOUND. NOT BUILT.
+    - a CMU contribution calculator: lib/lamal/compare.ts french() already
+      computes it on the comparator. A second route would compete with it.
+      NOT BUILT. In its place the CMU guide carries a server-rendered table
+      computed by the same function, with no script, and links the
+      comparator. The operator was told this before the work started.
+  NOT WRITTEN, for want of verified rows: taxation at source canton by
+  canton, the canton pages, the A1 how-to.
+
+WHAT CHANGED
+  1. web/content/guides/cotisation-cmu-frontalier.mdx (new). The formula, the
+     income it is levied on, the ceiling year by year, one worked example, a
+     table by income, the prorata, the household. Claim keys:
+     cmuContributionFormula, cmuIncomeBase, cmuProrata, cmuRounding,
+     cmuHousehold, pass2026, pass2027.
+  2. web/content/guides/cout-lamal-frontalier.mdx (new). The published
+     premiums by age class - lowest, median, highest - without and with
+     accident cover, the OFSP attribution with its link, priminfo for
+     choosing an insurer. Claim keys: lamalPremiumData, lamalPremiumMonthly,
+     lamalPremiumByState, lamalAgeClasses, lamalAccidentCover.
+  3. web/lib/guides/scope.ts: a health half (healthScope). EVERY figure on
+     both pages is an expression fed from lib/lamal/years.ts, compare.ts and
+     the generated OFSP tables. Nothing is typed in prose.
+  4. web/lib/fr/guides-sante.ts (new): the row labels (age classes, ceiling
+     status).
+  5. The pillar and the droit d'option guide each link both new guides;
+     `related` is declared on every side; the droit d'option guide's
+     lastReviewed moved to 2026-11-24 (R676: a sentence was added).
+  6. web/lib/content/routes.ts: two live routes. routes.test.ts and
+     singletons.test.tsx: their hardcoded lists follow.
+  7. web/tests/unit/guides/scope-health.test.tsx (new, 12 tests).
+  8. 124 visual baselines regenerated.
+  No new source id, no schema change, no dependency, no client script, no
+  migration.
+
+THE RULINGS THE LAMAL PAGE HAD TO OBEY, AND HOW
+  R668 three figures a row, never one. R673 no insurer named, no verdict.
+  R664 author, title and link under the figures. R672 nothing converted:
+  every premium stays in CHF. R671 one year, named; the CMU page's year table
+  labels the 2027 ceiling as announced. R669 the zero below the allowance is
+  shown as this site's display choice, in an Avertissement that links
+  /sources.
+  SANITY CHECK AGAINST THE RECORD: R668 quotes "adult, 2027: 225 to 885 CHF a
+  month". The page's adult row WITH accident cover reads 225,00 CHF and
+  885,00 CHF.
+
+A REVERSAL, ON THE OPERATOR'S WORD
+  The droit d'option guide says a cost "se calcule pour votre foyer plutot
+  qu'il ne se lit dans un article" and carries no amount. That guide is
+  unchanged on this point. The LAMal page now prints the published per-person
+  premium range, and the CMU page prints the formula applied to sample
+  incomes. Neither prints a household's cost or a comparison.
+
+RED RUN (test-first)
+  scope-health.test.tsx before the scope existed: 12 failed of 12 ("expected
+  undefined to be '2027'", "cmuRate is not defined" from the MDX compile).
+  After: 12 passed. The test recomputes the contribution independently of
+  lib/lamal/compare, and its last block reads the figures off compiled MDX
+  (R154).
+
+WHAT THE GUARDS CAUGHT BEFORE THE GATE
+  - tsc: the scope must be a type alias, not an interface, to be passed to
+    the MDX compiler.
+  - mesh: the pillar must link every cluster guide. It now does.
+  - routes.test and singletons.test: hardcoded route lists.
+  - search-titles.test (FW-SEO-TITLES): one description at 163 then 161
+    characters against 160. Shortened.
+  One sentence was removed by hand before any test: a general statement
+  about premiums varying by canton for Swiss residents, which no row covers.
+
+BASELINES (R135, R207)
+  Run 1 of test:visual: 124 failed, 52 passed. Each failure was explained
+  BEFORE regenerating:
+    114  full pages that render the site footer, which lists every guide and
+         gained two links (calculateur 28 + resultat 4, comparateur 34,
+         guides 14, page-* 34);
+      3  composants-shell-desktop, -shell-mobile, -shell-mobile-open: the
+         specimens that contain the footer;
+      7  composants-home-* (excerpt, counter x3, phone x2, faq-pair): they
+         sit BELOW the shell specimen on /dev/composants, which grew by two
+         footer rows. The diff images were opened: home-excerpt shows a
+         handful of antialiasing pixels at the corners and no content change;
+         shell-desktop shows the footer column and what follows it moved.
+         R733 records this same effect on this page.
+  pnpm test:visual:update: "176 passed", "124 baseline(s) written BY THIS RUN
+  (0 new, 124 re-generated)".
+  LOOKED AT after regeneration: guides-hub-desktop (both new cards, the
+  footer's two new links). The other 123 were not opened one by one.
+  THE TWO NEW PAGES HAVE NO BASELINE OF THEIR OWN: guides.visual.spec.ts
+  photographs a fixed list of guides and they are not in it.
+
+GATES ON d8db62c5
+  pnpm gate:changed: GATE PASSED for the paths changed.
+    suites: typecheck, lint, test, build, test:visual, test:e2e, test:db, test:late
+    test: 4337 passed . test:visual: 176 passed . test:e2e: 447 passed
+    test:db: 911 passed . test:late: 10 passed . EXIT 0
+  pnpm gate:clone, run 1: GATE:CLONE FAILED - pnpm test:db exited 1.
+    tests/db/one-click-unsubscribe.test.ts, "finds the senders by scanning":
+    "Test timed out in 10000ms". 1 failed, 910 passed. A source-scanning test
+    this change does not touch; it passed in both gate:changed runs.
+    Nothing was pushed on this result.
+  pnpm gate:clone, run 2, alone, same commit: GATE:CLONE PASSED. EXIT 0
+    ran register-coverage, fixture-coverage, install, typecheck, lint, test
+    (4337 of 4337 tests passed, 256 files), build, size (24 routes measured),
+    db:deploy, test:db (911 of 939 tests passed, 28 skipped, 66 files),
+    test:container:write (10 checks passed).
+  THE TIMEOUT IS NOT EXPLAINED. One run in two failed on it. Recorded as a
+  flake under load, which is a guess.
+
+WALKTHROUGH (R176, pnpm dev on port 3172, before the gate)
+  Both new pages fetched and read as text, top to bottom: headings, the "En
+  bref" block, both tables, the worked example (60 000 EUR -> 47 775 EUR ->
+  3 822 EUR at 8 %), the attribution line, and the two external links
+  (opendata.swiss dataset, priminfo). The dev server was stopped by its
+  listening PID and the port answered nothing afterwards.
+
+THE PROMOTION (docs/deploy.md 10.1)
+  0  PREVIOUS 89ea2f63: one container, healthy, image tag = production's SHA.
+  1  gate:clone on NEW d8db62c5: above; the `ran` line names db:deploy,
+     test:db and test:container:write.
+  2  Chromium: Dockerfile pins 156.0.8078.108-1~deb12u1; today's madison
+     list offers it.
+  3  git diff PREVIOUS NEW -- web/prisma/migrations: empty. No migration.
+  4  17:24:41Z, fast-forward pushes, never forced: d8db62c5 -> main, then
+     d8db62c5 -> production. ls-remote shows both at d8db62c5.
+  5  FOLLOWED BY docker ps OVER SSH, NOT BY THE COOLIFY LOG. The API token
+     file exists but this session did not find the Coolify address in the
+     repository's records, so the deployment's own log lines ("Rolling update
+     started." ... "completed.") were NOT READ. What was read: the old
+     container alone until 17:25:37Z, then exactly one container on the new
+     image, "(healthy)", at 17:28:09Z. No deploy or restart endpoint was
+     called.
+  6  1 /api/health 200, "service":"monreleve", origin https://monreleve.ch.
+     2 /api/ready HTTP 200, "ready":true (site-origin, database).
+     3 one container, image ...:d8db62c5a2270d48c0ef38402ae2d0c43c95322f.
+     4 healthcheck as section 3 gives it (interval 10 s, timeout 5 s, start
+       period 60 s, start interval 2 s, retries 3), "healthy".
+     5 /api/ready from inside the container: 200.
+     6 NOT APPLICABLE: the diff touches none of web/Dockerfile, lib/export,
+       lib/dossier, app/releve/print.
+     Live pages, all 200 with the new <title>: /, /guides, both new guides,
+     the droit d'option guide, the pillar, both calculators, /application,
+     /sources. /sitemap.xml lists both new guides.
+
+NOTICED BUT NOT TOUCHING
+  - http://monreleve.ch/ answers 302 to https, not 301. Search Console lists
+    the http URL as its own page.
+  - The age bounds of the three premium classes are bare numbers inside
+    lib/lamal/compare.ts (ageClassFor). The LAMal guide names the classes and
+    does not print the bounds, to avoid a second copy.
+  - Rows L15, L19 and L20 (cost-sharing caps, how the contribution is paid,
+    a late declaration) are verified in docs/regulatory-sources.md and have
+    no source id, so neither guide states them.
+  - The pillar gained one sentence and two links; its lastReviewed was not
+    moved (QUESTION 1 of REPORT-FW-SEO-TITLES is still open and covers it).
+  - Left in place, created by this session: databases
+    monreleve_fw_seo_titles and monreleve_fw_seo_articles on localhost:5436;
+    worktrees C:/wt/fw-seo-titles and C:/wt/fw-seo-articles with their
+    untracked logs; both branches on origin.
+
+OPEN QUESTIONS
+  1. lastReviewed on the guides whose title or links changed (carried over).
+  2. Should the two new guides join guides.visual.spec.ts, so they have
+     baselines?
+  3. Should L15, L19 and L20 get source ids, so the guides can state the
+     franchise and quote-part, the payment rhythm and the late-declaration
+     rule?
+  4. The comparator's h1 still opens on the droit d'option (carried over).
+  5. Where is the Coolify address recorded, so the next promotion can read
+     the deployment log as the runbook asks?
