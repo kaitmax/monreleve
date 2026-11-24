@@ -97,8 +97,16 @@ export const LAMAL_COPY = {
    * R675 (the operator's Q6, 28.10.2026): about 60 characters, the
    * operator's own example, taken from relay/FW-COMPARATEUR-RULINGS-2026-10-28.txt
    * with the product's typography (U+2019, U+00A0 before : and ?).
+   *
+   * FW-SEO-TITLES (the operator, 24.11.2026) REPLACES THE WORDING, not the
+   * length: this title and the droit d'option guide's both opened on the same
+   * phrase, so two pages stood for one query, and Search Console showed the
+   * guide near position 45 and this page near 70. The guide keeps the right's
+   * NAME; this page takes what it DOES, in the words its own queries use -
+   * "simulateur lamal cmu", "simulation lamal frontalier".
+   * tests/unit/pages/search-titles.test.ts holds the split.
    */
-  metaTitle: 'Droit d’option frontalier' + n(':') + ' LAMal ou CMU, quel coût' + n('?'),
+  metaTitle: 'Simulateur LAMal ou CMU frontalier' + n(':') + ' comparez le coût',
 
   metaDescription: (years: string): string =>
     'Avant d’exercer le droit d’option, comparez sur une année le coût de ' +

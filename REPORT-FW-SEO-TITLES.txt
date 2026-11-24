@@ -1,0 +1,144 @@
+REPORT-FW-SEO-TITLES - search titles and descriptions, from the Search Console export
+
+Session: FW-SEO-TITLES. Worktree C:/wt/fw-seo-titles, branch fw-seo-titles,
+cut from origin/main 5e70fa7f. Code commit acfda473. No relay prompt: the
+operator gave the task in conversation on 24.11.2026 ("go", on a proposal to
+do "the title and description batch plus the comparator/guide split, as one
+task").
+
+STATUS
+  COMPLETE on the branch. pending merge - not merged, not on main, not on
+  production. gate:changed and gate:clone both ran on acfda473 in this
+  session and both passed (lines below). This report is a later commit on top
+  of acfda473 and changes no code.
+
+WHY
+  Search Console, 06.10.2026 to 22.11.2026, web search: 6 clicks on 480
+  impressions. Titles did not carry the words the queries carry; /application
+  was listed under its section label; the comparator's title and the droit
+  d'option guide's title led with the same phrase, so two pages stood for one
+  query (guide near position 45, comparator near 70).
+
+WHAT CHANGED (the accented strings are in the files, never retyped here)
+  1. web/content/guides/*.mdx, the seven published guides: lines 2 and 3,
+     title and description. Each title now names the frontalier and is at
+     most 62 characters; each description is at most 160 and opens on the
+     subject. THE TITLE IS ALSO THE h1 and the text of the hub card and of
+     the "guides lies" links, so those changed on the page too.
+  2. web/lib/fr/calculateur.ts, web/lib/fr/application.ts: a new metaTitle.
+     The two pages' metadata read it; `title` (the h1, the JSON-LD name) is
+     unchanged.
+  3. web/lib/fr/lamal.ts: metaTitle reworded. It no longer names the droit
+     d'option; it names what the page does, in the words of its own queries.
+  4. web/tests/unit/pages/search-titles.test.ts: new, 14 tests.
+  5. ten visual baselines regenerated (list below).
+
+RED RUN (test-first)
+  Before any edit: 12 failed, 2 passed (14). The failures, by reason:
+    - four guide titles did not match /frontalier/;
+    - three guide descriptions were 165, 181 and 176 characters against 160;
+    - calculateur and application had no metaTitle ("expected 'undefined' to
+      be 'string'") and their metadata carried the h1;
+    - two titles named the droit d'option ("expected [ ...(2) ] to have a
+      length of 1 but got 2").
+  After the edits: 14 passed.
+
+WHAT THE GATE CAUGHT ON THE WAY (three red runs before the green one)
+  Run 1, pnpm test, 2 failed:
+    - identity.test.ts (R188): the application metaTitle put the noun
+      directly after "Application", which is the shape of the product's OLD
+      name. Reworded; the guard was right.
+    - french-literals.test.ts (R126): the new test typed a French phrase in a
+      test name. Fixed by deriving the phrase from the guide's own title
+      (R181), not by escaping it.
+  Run 2, pnpm test:e2e, 4 failed (rappel-delai x3, rappel-suppression x1):
+    NOT this change. The worktree's .env had been copied from the main
+    checkout and pointed at the shared dev database "frontalier", which
+    `prisma migrate status` showed three migrations behind
+    (entry_granularity_exclusion, deadline_reminder, web_session). The
+    worktree now has its own database, monreleve_fw_seo_titles, on the same
+    server, migrated with pnpm db:deploy. The shared database was not
+    touched.
+  Run 3, pnpm test:visual: 10 failed, 166 passed - the ten expected.
+
+BASELINES (R135, R207)
+  Stated BEFORE the regeneration, and equal to what it produced:
+    guides-hub-{desktop,mobile}              titles and descriptions on the cards
+    guides-pilier-{desktop,mobile}           h1, and the related-guide titles
+    guides-cluster-missions-{desktop,mobile} h1, and the related-guide titles
+    guides-attestation-{desktop,mobile}      h1, and the related-guide titles
+    guides-geneve-{desktop,mobile}           h1, and the related-guide titles
+  pnpm test:visual:update: "176 passed", "10 baseline(s) written BY THIS RUN
+  (0 new, 10 re-generated)". The four fixture baselines (guides-article-*)
+  did not change, as expected: the fixture relates to no guide.
+  LOOKED AT: guides-cluster-missions-mobile (the longest title, 62),
+  guides-hub-mobile, guides-pilier-desktop. Headings wrap on whole words, the
+  hub cards hold the new text, nothing overflows. The other seven were not
+  opened.
+
+GATES ON acfda473
+  pnpm gate:changed:
+    GATE PASSED for the paths changed.
+    suites: typecheck, lint, test, build, test:visual, test:e2e, test:db, test:late
+    test: 4321 passed . test:visual: 176 passed . test:e2e: 429 passed
+    test:db: 911 passed . test:late: 10 passed . EXIT 0
+  pnpm gate:clone:
+    GATE:CLONE PASSED
+    ran register-coverage, fixture-coverage, install, typecheck, lint, test
+    (4321 of 4321 tests passed, 255 files), build, size (24 routes measured),
+    db:deploy, test:db (911 of 939 tests passed, 28 skipped, 66 files),
+    test:container:write (10 checks passed). EXIT 0
+    Named as not run in a clone, by the script: the browser suites,
+    test:runtime, lighthouse, parity:check, test:container.
+
+WALKTHROUGH (R176, pnpm dev on port 3171, /api/health named "monreleve")
+  Fetched the ten changed pages and read <title>, <h1> and the description:
+    - seven guides: <title> is the new title plus the site suffix; the h1 is
+      the same new title; the description is the new one.
+    - /calculateur-lamal-cmu, /calculateur-teletravail-frontalier,
+      /application: <title> is the new metaTitle plus the suffix; the h1 is
+      unchanged.
+  The dev server was stopped by its listening PID with its tree, and the port
+  answered nothing afterwards.
+
+DEVIATIONS AND DECISIONS
+  - R675's wording replaced. The comparator's metaTitle was the operator's
+    own example of 28.10.2026. Replaced on the operator's word of 24.11.2026;
+    the length rule is kept. The comment in lamal.ts records both.
+  - Guide `title` was changed rather than adding a separate search title to
+    the frontmatter. Reason: typed-numbers.test.ts exempts only `title` and
+    `slug` from R147 and says a third exempt field "is a ruling, not an edit
+    here"; two of the titles carry the rule's public name with its figure.
+    Cost: the h1 changed and ten baselines were regenerated.
+  - Two titles proposed in conversation were NOT used as proposed:
+      the 40 % guide dropped "en jours" - the article has no table of days;
+      the declaration guide dropped the impot-a-la-source wording - the
+      article's two regimes are the 1983 accord and the others, and it does
+      not treat taxation at source as a subject.
+  - lastReviewed was NOT moved on the seven guides. R676 says it moves when
+    content changes; the date renders as "Derniere verification", and no
+    regulatory statement was re-verified here. QUESTION 1 below.
+
+NOTICED BUT NOT TOUCHING
+  - The comparator's h1 still opens on the droit d'option. Only its <title>
+    was split from the guide; the h1 is page copy and was out of scope.
+  - With the site suffix every <title> is 13 characters longer than the
+    figure the test caps, so a result may cut the suffix. The cap is on the
+    part that carries the query.
+  - The main checkout (Downloads/frontier work) is on a local main 354
+    commits behind origin/main. Its web/.env points at the shared dev
+    database, which is three migrations behind.
+  - http://monreleve.ch/ appears as its own row in the Search Console page
+    export: worth confirming it redirects to https.
+  - Left in place, all created by this session: the database
+    monreleve_fw_seo_titles on localhost:5436; the worktree and its
+    untracked logs (.gate-changed-1..4.log, .gate-clone.log,
+    .visual-update.log, .dev-3171.log).
+
+OPEN QUESTIONS
+  1. Should lastReviewed move to 2026-11-24 on the seven guides (R676), given
+     that only the title and description changed?
+  2. Should the comparator's h1 also stop opening on the droit d'option?
+  3. The follow-up content tasks proposed in conversation (a days table in
+     the 40 % guide, the CMU contribution article and calculator, the LAMal
+     cost article, the deadline calculator) are not started.

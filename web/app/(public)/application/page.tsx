@@ -32,7 +32,7 @@ import { Container } from '@/lib/ui/react/Container/Container';
 import styles from './application.module.scss';
 
 export const metadata: Metadata = {
-  title: COPY.title,
+  title: COPY.metaTitle,
   description: COPY.description(PRODUCT_STATE),
 };
 
