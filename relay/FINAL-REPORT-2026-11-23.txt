@@ -18,11 +18,10 @@ READ THIS FIRST (two lines)
    "GATE PASSED" (and no "GATE FAILED") BEFORE committing (iOS Rulings 18-19).
 
 1. WHERE EACH PLATFORM STANDS
-- WEB. Complete per the plan; main carries web work that is NOT LIVE. Production serves e73c846d
-  (2026-11-19). main is 211 commits ahead, 28 files under web/ - among them the privacy and terms pages
-  (lib/fr/confidentialite.ts, lib/fr/cgu.ts and their baselines), the dossier copy, the Android
-  minimum-version route, the FCM push client, the account export. Promotion is yours, after the copy
-  approvals listed in section 4. Coolify deploys from the production branch only.
+- WEB. Complete per the plan, and LIVE: production was promoted from e73c846d to 89ea2f63 on
+  2026-11-24 on your word (iOS Ruling 23) - the privacy and terms pages, the dossier copy, the Android
+  minimum-version route, the FCM push client, the account export and the calculator redesign.
+  Coolify deploys from the production branch only.
 - ANDROID. Complete per the plan; the full :app:gate is the standing proof (floor 1562 on main since
   IOS-SHELL-3: 1568 - 9 tests moved to :shared + 1 kept + 2 new). The Play release needs your account and
   release key (section 4).
@@ -80,7 +79,7 @@ READ THIS FIRST (two lines)
   library imports of stat/statfs (declare reasons or let the first upload's check say).
 
 4. WHAT YOU OWE (unchanged items carried from earlier rulings, plus this run's)
-- Copy approvals A4, A5, A13-A16, then the production promotion of main's web work.
+- (DONE 2026-11-24: you shipped the web texts as on main and production was promoted to 89ea2f63.)
 - Play: the developer account and the release signing key (R250: none exists here); assetlinks.json.
 - Firebase: the iOS/Android config and the key rotations; RESEND_API_KEY and FCM_PRIVATE_KEY rotation and
   revocation (the 2026-11-17 incident, top of relay/QUEUE-STATE.md); the Coolify token revocation.
@@ -108,7 +107,8 @@ READ THIS FIRST (two lines)
 6. THE CALCULATOR REDESIGN - DONE, merged as c8557183 (iOS Ruling 22, 2026-11-24): both calculator
    pages with a sticky verdict rail and the explanations in accordions, existing tokens and copy only; the LAMal
    page at 390 px went from about 10 000 px to about 4 800 px. Landed on the Chromium pin bump 057306d7
-   (FW-CHROMIUM-PIN-3, the third in three weeks - its cadence is your question). Not live: promotion is yours.
+   (FW-CHROMIUM-PIN-3, the third in three weeks - its cadence is your question). LIVE since 2026-11-24 10:35Z: production promoted to 89ea2f63 on
+   your word (iOS Ruling 23), all after-deploy checks passed.
    Open: at 768 px the rail does not stick (question A1).
 
 7. HOUSEKEEPING LEFT
@@ -116,6 +116,6 @@ READ THIS FIRST (two lines)
 - C:/wt/walk-db/web (untracked leftover of a removed worktree).
 - The :3900 dev server - restarted for you at the end.
 
-Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-22),
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-23),
 relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the repository root, evidence under C:/wt/queue-evidence/.
 END OF FINAL REPORT

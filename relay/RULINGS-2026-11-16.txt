@@ -3470,3 +3470,36 @@ OPEN, THE OPERATOR'S: QUESTION A1 - at 768 px the rail does not stick (392 px co
 recommendation: leave it. Empty directories left by the session under
 C:\c\wt\queue-evidence\fw-calc-redesign\baseline-crops\ are safe to delete (yours).
 Nothing deployed; production promotion stays the operator's.
+
+iOS Ruling 23 - PRODUCTION PROMOTED TO 89ea2f63, 2026-11-24 (web)
+THE OPERATOR, 2026-11-24: "now commit push deploy"; asked before the push, the
+operator answered: public texts "Ship as on main" (this deploy is the approval of
+every text on main - the owed copy approvals A4, A5, A13-A16 are thereby given for
+the web texts); rollback "API rollback, I run it"; EMAIL_FROM "Keep it".
+docs/deploy.md 10.1, in order:
+0. PREVIOUS e73c846d: one container, pkptabevr1nhtyygrq0mc8qx:e73c846d (all 40),
+   "Up 4 days (healthy)"; production named e73c846d (10:33:39Z). Its image is on
+   the server (rollback possible), with 455c7e67's.
+1. gate:clone PASSED on 89ea2f63 (iOS Ruling 22), its claim naming db:deploy,
+   test:db and test:container:write.
+2. madison, same day: 156.0.8078.108-1~deb12u1 offered; NEW pins it.
+3. git diff --name-only e73c846d 89ea2f63 -- web/prisma/migrations: EMPTY.
+4. The push e73c846d..89ea2f63 to production, a fast-forward, 10:34:36Z.
+5. Followed by GET only: deployment 7solsfbmaciriupksh3i5vzg, one deployment for
+   the commit; "Image not found ... Building new image", "Rolling update started",
+   start period 60 s, "Attempt 1 of 3 | Healthcheck status: healthy", "Rolling
+   update completed", status finished.
+6. Checks at 10:40Z: /api/health 200 naming monreleve; /api/ready 200 ready true
+   (site-origin, database); one container, image pkptabevr1nhtyygrq0mc8qx:89ea2f63
+   (all 40), healthy, the HEALTHCHECK with StartPeriod 60 s, StartInterval 2 s,
+   Retries 3; ready from inside 200; chromium 156.0.8078.108-1~deb12u1; baked origin
+   https://monreleve.ch; MONRELEVE_VERIFICATION_ORIGIN set (by name). 6.6, the
+   production PDF: NOT RUN, as at the last promotion (no @monreleve.test account in
+   production; creating one writes outside the product's flow); the image's PDF was
+   proven the same day by FW-CHROMIUM-PIN-3's test:container:e2e (both image PDF
+   tests by name, 9 pages). Image history: every secret name 0,
+   NEXT_PUBLIC_SITE_URL 6 (the control). Pages /, both calculators, /confidentialite,
+   /cgu, /sources, /mon-releve/connexion: 200; the LAMal page serves 8 <details>,
+   as the local main build does.
+No rollback needed. No variable changed. Still the operator's: P2 item 5 (rotate
+RESEND_API_KEY and FCM_PRIVATE_KEY, revoke the old ones), then item 4 (old images).
