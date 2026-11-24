@@ -85,8 +85,28 @@ test.describe('R1408: a fragment into a closed accordion opens it', () => {
       await expect(details).toHaveJSProperty('open', true);
       await expect(target).toBeVisible();
       await expect(target).toBeInViewport();
+      // The title it sits under lands in view too, not cut off above the window.
+      await expect(details.locator(':scope > summary')).toBeInViewport({ ratio: 1 });
     });
   }
+
+  // On a phone the longest summaries wrap to three lines; the walkthrough
+  // measured their titles cut off above the window with the anchor's own
+  // margin, so the narrowest width is asserted too.
+  test.describe('at 320 px', () => {
+    test.use({ viewport: { width: 320, height: 800 } });
+
+    for (const id of FOLD_IDS) {
+      test(`#${id}: its title lands whole in view`, async ({ page }) => {
+        await open(page, `${COMPARATOR_PATH}#${id}`);
+
+        const details = page.locator(`[id="${id}"]`).locator('xpath=ancestor::details[1]');
+
+        await expect(details).toHaveJSProperty('open', true);
+        await expect(details.locator(':scope > summary')).toBeInViewport({ ratio: 1 });
+      });
+    }
+  });
 
   test('and the accordions are closed when no fragment names them', async ({ page }) => {
     await open(page, COMPARATOR_PATH);

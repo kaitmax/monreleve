@@ -665,6 +665,16 @@
   @include shell.fold-body;
 }
 
+// A fragment names the CONTENT (the browser opens a closed <details> only for
+// that), so the jump keeps room above it for the summary it sits under: the
+// summary is one to three h3 lines plus its padding - 60 px on a wide
+// screen, about 116 px for the longest at 320 (measured in the walkthrough) -
+// and the 24 px anchor margin alone left the title cut off. 144 px clears
+// three lines. Heavier than the anchor rule, so it wins whatever the order.
+.a2 [data-a2="fold-body"][data-a2-anchor] {
+  scroll-margin-top: calc(var(--space-20) + var(--space-16));
+}
+
 .a2 [data-a2="fold-body"] [data-a2="card"] {
   background: var(--colour-canvas);
 }

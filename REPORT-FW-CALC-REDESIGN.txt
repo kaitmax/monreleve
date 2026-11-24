@@ -1,0 +1,446 @@
+REPORT-FW-CALC-REDESIGN
+=======================
+
+Session FW-CALC-REDESIGN, prompt relay/FW-CALC-REDESIGN.txt (read whole from
+the orchestrator's checkout C:/wt/web-orch, never copied into this branch),
+rulings R1406-R1414, the operator's decisions D-a..D-e (the scope).
+- Worktree C:/wt/fw-calc-redesign, branch fw-calc-redesign, cut from
+  origin/main 8098a51117912426df0f3393e4675a2148e3eb02.
+- .session-lock.json written 2026-11-23T23:46:43Z (gitignored, .gitignore:62).
+  Removal: PENDING at the time of writing (it is removed last, after the push).
+- A second worktree of my own, C:/wt/fcr-red (detached at 8098a511, its own
+  lock and web/.env, plus an untracked copy of the new e2e spec), served the
+  BASE for the RED e2e run, the base hydration probe and the base text-node
+  dump. Removal: PENDING (after the push).
+- web/.env copied from the main checkout, never staged. From gate run 4 it
+  points at a scratch database of my own, monreleve_fw_calc_redesign on
+  frontalier-postgres (DEVIATIONS 2). Dropping it and removing web/.env:
+  PENDING (after the push).
+- Port 3950 for pnpm dev and every e2e webServer. 3900 (the orchestrator's),
+  3000/3100/3200 and every other project's container untouched.
+- Every heavy run under `node C:/wt/.run-tools/heavy-lock.mjs acquire
+  fw-calc-redesign --min-free 5000 --wait-min 600`, released after; the line
+  was never lowered. My first RED e2e chain was waiting while ios-polish held
+  the lock (status at 00:05:09Z: held since 23:58:04Z); I stopped that
+  waiting chain of mine (it had not acquired) and ran the RED run from the
+  base worktree later. orch-r21 / orch-r21-clone held it once (01:31Z-01:46Z+);
+  my run waited.
+- Evidence: C:/wt/queue-evidence/fw-calc-redesign/ - every log named below,
+  the RED runs, the generators (inventory-generator.test.tsx.txt,
+  textnodes-gen.test.tsx.txt), walkthrough/ (the final run, 51 screenshots +
+  notes.txt), walkthrough-pre-tip/ and walkthrough-tip-94215c3/ (earlier
+  trees), baseline-crops/, size-before.txt, size-after.txt, the R207 lists.
+
+SUMMARY
+-------
+Both calculator pages now share one skeleton, ONE Sass partial of mixins
+(web/lib/ui/core/styles/_calc-shell.scss): head (eyebrow pill, hero h1,
+lead), two columns from $breakpoint-md, the result in a rail held by CSS
+position: sticky (no JS), native <details> accordions as cards, the family
+card. A partial of mixins rather than a stylesheet with classes because a CSS
+module's class map ships in the client chunk: the telework page gained no
+class name and its first-load JS is unchanged (124.0 KiB before and after).
+
+/calculateur-lamal-cmu: the chips are gone; the seven explanation sections are
+closed accordions (summary = the section's existing h2, the id on the content
+so a fragment opens it, a scroll margin that keeps the title in view); the
+reminder landings moved OUTSIDE the accordions (a :target reveal inside a
+closed <details> would show nothing); "Sources" stays open after them. The
+rail: France and Suisse panels (France first, ONE figure; Suisse lowest /
+median / highest) in the country tokens (a dot before the name, the name in
+the country text colour, the figures on the soft fill), ONE range bar (the
+Swiss band lowest->highest, the French figure marked, the dot chart's own text
+alternative, the rate and its date under it), the case sentence (R674), then
+the insurers' chart, "beaucoup de soins" and "si le franc varie" as
+accordions inside the rail, then the attribution, priminfo and legal lines.
+The page is about half as tall: comparateur-vide 1440x5815 -> 1440x3599,
+390x10003 -> 390x4793; comparateur-rempli 390x12687 -> 390x6703.
+
+/calculateur-teletravail-frontalier: the head and the two columns from the
+partial, the result column's sticky from the partial's rail (it was already
+sticky), the two "jours restants" tiles lead (H1 figures) and the two
+"imposes" follow (H3 figures on the canvas), "Les deux seuils" as two cards on
+the canvas band, the FAQ questions as accordion cards (page-scoped: the Faq
+component's stylesheet, shared with the home page and the guides, is
+untouched). Calculation, copy, share link, URL state untouched.
+/calculateur-teletravail-frontalier/resultat changed too, through the shared
+ResultPanel tiles (QUESTIONS 9).
+
+No token added, no lib/fr string added or changed, no dependency, no budget
+raised, no calculation, figure or source line changed. Two R1410 asks NOT done
+(they need a token or contradict DESIGN-SYSTEM.md, QUESTIONS 1-2); R1411 NOT
+built (QUESTIONS 5).
+
+STATUS (R391)
+-------------
+COMPLETE for the code: both commits passed the FULL gate:changed in this
+session (verdicts below, read inside the committing chain). gate:clone PASSED
+on the first code commit 94215c3 in this session (claim below). The final
+commit (this report plus the fragment scroll margin and its tests) carries its
+own gate:clone before the push; a report cannot carry its own commit's
+gate:clone verdict, so that line is in the handback.
+R1413's "every regenerated image cropped and LOOKED AT" is PARTIAL: 12 of the
+65 opened (BASELINES REGENERATED lists them); the rest were verified by the
+exact-list checks, their dimensions and the gate's 176/176 compare only.
+
+gate:changed, commit 1 (gate-changed-4.log, 00:58:34Z-01:08:45Z, on the tree
+that became 94215c3af2717b573a4d82afa7ba5f3972061c4c):
+    GATE PASSED for the paths changed.
+      measured:
+        typecheck: exit 0 (no count to check)
+        lint: exit 0 (no count to check)
+        test: 4307 passed
+        build: exit 0 (no count to check)
+        test:visual: 176 passed
+        test:e2e: 421 passed
+        test:late: 10 passed
+    GATE_EXIT=0
+    COMMITTED 94215c3af2717b573a4d82afa7ba5f3972061c4c
+  Earlier runs, none committed: run 1 failed typecheck (TS2339 `.open` on an
+  Element in my new test; fixed with querySelector<HTMLDetailsElement>); run 2
+  failed test (tests/unit/meta/no-js-coverage.test.ts: three new no-JS
+  surfaces unclassified; classified, see R1413); run 3 failed test:e2e on 4
+  reminder tests (rappel-delai.spec.ts:223 x2 and :316,
+  rappel-suppression.nojs.spec.ts) because the shared local database
+  `frontalier` lacks the migrations 20261112120000_deadline_reminder and
+  20261117220000_web_session - environmental: run 4 passed all four on a
+  scratch database migrated to the repository's 17 migrations, with no code
+  change between runs 3 and 4.
+
+gate:changed, commit 2:
+  (gate-changed-5.log, on the working tree of 94215c3 + commit 2, before the
+  commit was made inside the same chain; no baseline moved):
+    start 2026-11-24T01:51:39Z
+    GATE PASSED for the paths changed.
+      measured:
+        typecheck: exit 0 (no count to check)
+        lint: exit 0 (no count to check)
+        test: 4307 passed
+        build: exit 0 (no count to check)
+        test:e2e: 428 passed
+        test:visual: 176 passed
+        test:late: 10 passed
+    GATE_EXIT=0
+    end 2026-11-24T02:02:10Z
+
+gate:clone on 94215c3 (gate-clone-1.log):
+    HEAD 94215c3af2717b573a4d82afa7ba5f3972061c4c start 2026-11-24T01:12:02Z
+    GATE:CLONE PASSED
+      ran     register-coverage, fixture-coverage, install, typecheck, lint, test (4307 of 4307 tests passed, 254 files), build, size (24 routes measured), db:deploy, test:db (911 of 939 tests passed, 28 skipped, 66 files), test:container:write (10 checks passed)
+      claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (4307 of 4307 tests passed, 254 files), build, size (24 routes measured), db:deploy, test:db (911 of 939 tests passed, 28 skipped, 66 files), test:container:write (10 checks passed) from a clean checkout -
+    CLONE_EXIT=0
+  Named in its output as not run (R133): the export-pdf, web-round-trip and
+  verification-qr render steps - "no server answered
+  http://localhost:3950/api/health".
+
+GATE A / GATE B (R2), clean clones (`git clone --local`, pnpm install
+--frozen-lockfile, pnpm build, node scripts/check-budgets.mjs; size-before.txt
+on 8098a511, size-after.txt on 94215c3), KiB gzip-9, GATE A <= 125.0, GATE B
+delta <= 25.0 over the 100.6 floor:
+    route                                         before                       after (94215c3)
+    /calculateur-teletravail-frontalier           124.0 (A 1.0, B 1.6 spare)   124.0 (A 1.0, B 1.6 spare)
+    /calculateur-lamal-cmu                        122.3 (A 2.7, B 3.3 spare)   122.5 (A 2.5, B 3.1 spare)
+    /calculateur-teletravail-frontalier/resultat  104.5                        104.5
+    css (reported, never gated)                   15.5                         15.9
+  The comparator's +0.2 KiB is not attributed component by component (not
+  measured). Commit 2 changes one CSS declaration and tests only, no script;
+  it was not size-measured separately (gate:clone's size step runs on it).
+
+R1406-R1414 WITH EVIDENCE
+-------------------------
+R1406 THE SHARED SKELETON. web/lib/ui/core/styles/_calc-shell.scss: mixins
+  eyebrow, title, lead, columns($form, $rail), rail, card, stack, fold($h),
+  fold-summary($h), fold-body. Both pages' stylesheets @include them into
+  classes and hooks they already had (calculateur.module.scss,
+  CalculatorForm.module.scss, ResultPanel.module.scss, comparateur.module.scss,
+  Comparison.module.scss) - one partial, not two copies (R206). Breakpoint:
+  $breakpoint-md only. Sticky: CSS only. Accordions: native <details>, text in
+  the served HTML (the inventory and text-node checks read it from the render
+  with every accordion closed). Phone: one column, form -> result -> the rest
+  (walkthrough: rail static at 320 and 390, sticky at 768 and 1280).
+  e2e/calc-redesign.spec.ts asserts sticky at 1280 on both pages and static at
+  390 on the comparator.
+R1407 THE BANNER. Unchanged component, still the error-style block directly
+  under the head and before the form. Not shortened: "irrevocable" is in its
+  first sentence but the three-month window is in its SECOND, and a disclosure
+  needs a summary label that does not exist (QUESTIONS 4). Asserted on the
+  rendered page (calc-redesign.test.tsx "R1407"): the text outside any closed
+  <details> contains "irrevocable" and "trois mois", and the banner holds the
+  whole body. It passed on base (the banner already complied), so a VERIFIED
+  PLANT shows it can fail: the body wrapped in a closed <details> (grep count
+  1 after the edit) -> "expected 'Ce choix ne se reprend pas Ce choix n...' to
+  contain 'irrevocable'"; restored (git diff empty).
+R1408 THE RAIL. lib/ui/react/Comparison/ComparisonPanel.tsx. [data-panels]
+  holds [data-side="france"] (one dd) then [data-side="switzerland"] (three
+  dd) - R751's hooks unchanged. Country tokens --colour-france/-soft/-text and
+  --colour-switzerland/-soft/-text; the dot is --size-dot-lg. On the soft
+  fills the text is primary or the side's text colour: computed with the WCAG
+  formula from the hex values, secondary grey reads 4,38:1 on france-soft and
+  4,35:1 on switzerland-soft (under 4,5), france-text 7,77:1, switzerland-text
+  5,61:1. The panels sit side by side whenever two fit in the rail
+  (minmax(min(100%, var(--layout-public)/5), 1fr)): side by side at 1280, one
+  under the other at 768/390/320 (walkthrough notes).
+  THE RANGE BAR replaces nothing. What an assistive technology gets from the
+  dot chart today is its role="img" label, COPY.result.chart.label(count,
+  lowest, highest, French figure, counting sentence). The bar carries THAT
+  label, so a reader who never opens the chart hears the same; the dot chart
+  is KEPT, inside an accordion in the rail, because its intro says "Chaque
+  point est..." (R165), and its counting sentence stays visible inside it.
+  Asserted: one [data-range] role="img" with exactly that label; the chart's
+  accordion inside the result region; comparateur-features.test.tsx asserts
+  both pictures carry the label.
+  R672: rateSentence() in the Swiss panel ([data-conversion], unchanged) and
+  under the bar. R674: [data-case-sentence] once, no badge. Care and franc:
+  each ResultCard holds a <details> whose summary is the card's h3, closed by
+  default; the franc slider works inside it (walkthrough: the lowest Swiss
+  figure 2 718 EUR -> 2 854 EUR at +5 steps, every width).
+  The chips are removed. Every SECTION_ID still resolves once
+  (calc-redesign.test.tsx, comparateur-a2-page.test.tsx). MEASURED on
+  Chromium: a fragment to an id INSIDE a closed <details>' content opens it
+  (the browser's ancestor-details revealing), so the ids sit on the content.
+  The first tip (94215c3) landed with the TITLE CUT OFF above the window
+  (walkthrough-tip-94215c3 notes: summary top -37/-9 px at 320/390 for the
+  wrapped summaries; walkthrough-pre-tip/lamal-390-7-fragment-definitif.png
+  shows it) - the smallest fix, in commit 2: `.a2 [data-a2="fold-body"]
+  [data-a2-anchor] { scroll-margin-top: calc(var(--space-20) +
+  var(--space-16)) }`. Final walkthrough: summary top 27-83 px at 320/390 and
+  75 px at 768/1280, every fold open and in view; e2e asserts the summary
+  wholly in view (ratio 1) at 1280 and, new in commit 2, at 320.
+  comparateur.nojs.spec.ts does the same with scripting off (#definitif).
+  Nothing in web/ or content/ links to a section id other than the removed
+  chips (grep: only landingFragment's rappel-* fragments, kept outside the
+  accordions).
+R1409 WHAT IS COLLAPSED. The seven sections named, each
+  <section aria-labelledby><details><summary><h2>{existing heading}</h2>
+  </summary><div id=...> (ComparatorSections.tsx Fold; page.tsx for the delay
+  and the limits), closed by default; the delay's helper works inside it
+  (walkthrough: 30.11.2026 -> 2027-02-28). Asserted: closed, summary text =
+  the heading string from lib/fr, Sources not in a <details>.
+  NO TEXT REMOVED, two checks:
+  (a) tests/unit/pages/calc-pages-inventory.json is DERIVED, not typed (R181):
+  a throwaway vitest file rendered the BASE pages (8098a511) - LAMal empty and
+  with a result, telework empty - and recorded every lib/fr STRING LEAF they
+  served, as key paths (109 / 134 / 144), from the copy modules each page
+  imports. calc-redesign.test.tsx resolves each key to its CURRENT value and
+  asserts it is in the served text or attributes. Exempt, asserted EXACT (4):
+  LAMAL_PAGE_COPY.chips.compare / .france / .switzerland and .onThisPage - the
+  chips R1408 removes (QUESTIONS 3). Verified plant: PAGE.final.lead removed
+  from the render -> "lamal-empty: lamal-page:LAMAL_PAGE_COPY.final.lead:
+  expected false to be true"; restored. The leaves do not cover
+  FUNCTION-valued copy (the limits items, the source lines, the chart
+  heading), so:
+  (b) a one-off text-node diff (textnodes-diff.txt): every non-empty rendered
+  text node of base and tip, same three states. Gone: exactly "Comparer les
+  couts", "Si vous choisissez la France", "Si vous restez en Suisse" (the
+  chips) in both LAMal states; nothing gone on the telework page; nothing
+  added as a new string anywhere.
+R1410 TELEWORK. Sticky (the partial's rail); tiles: `.tiles >
+  :nth-child(-n+2) > p:last-child` at H1, `:nth-child(n+3)` on the canvas with
+  H3 figures (no class added; MetricTile untouched; the DOM order
+  result-panel-order.test.tsx pins unchanged); app card and capture below the
+  result (order unchanged); "Les deux seuils": each threshold a card on a
+  canvas band; FAQ: accordion cards, page-scoped (.page [data-faq] > details).
+  NOT DONE: "the percentage figure larger" (RateDisplay is already
+  --type-display, the largest step) and "the threshold bar thicker"
+  (DESIGN-SYSTEM.md "PROGRESS: 8 px tall ... never taller"; the rail mirrors
+  --size-progress-height) - QUESTIONS 1-2.
+R1411 THE PHONE SUMMARY - NOT BUILT. Every version needs words the copy does
+  not have: a line at the top of the phone layout must say it is a summary and
+  point at the result below (link text of the "voir le resultat" kind), and
+  composing existing strings with separators puts literals in JSX
+  (react/jsx-no-literals) or needs a new composed string. Measured headroom on
+  94215c3: the calculator 1.0 KiB under GATE A, the comparator 2.5 KiB
+  (QUESTIONS 5).
+R1412 INVARIANTS. Tokens only: stylelint and the token / radius / contrast /
+  var-reference suites green inside `test` (4307 passed); radii from the set
+  (pill, md, lg). No horizontal scroll at 320 and 390 with the result shown and
+  every accordion open, both pages (calc-redesign.spec.ts; walkthrough sideways
+  0 in all 24 states). Every anchor styled with everything open (same spec;
+  e2e/anchors.spec.ts in the gate). Reduced motion: no transition or animation
+  added (asserted transition-duration 0s under reducedMotion, both pages).
+  Keyboard: every comparator summary focused and toggled by Enter then Space -
+  the COMPARATOR only; the telework FAQ is the existing Faq component, not
+  re-driven here. DOM order form -> result -> accordions asserted. The rail
+  folds' summaries are 46 px (12 + 22 + 12) over the 44 px target.
+R1413 TESTS AND BASELINES. New: tests/unit/pages/calc-redesign.test.tsx
+  (12 tests; RED on base: 6 failed, red-unit-calc-redesign.log - France after
+  Suisse, no [data-range], no rail accordions, the chips present, no
+  accordions) and e2e/calc-redesign.spec.ts (19 tests RED-run on base: 14
+  failed, 5 passed - invariants base already held: telework 320/390, telework
+  sticky, the phone rail static, telework reduced motion;
+  red-e2e-calc-redesign.log; commit 2 adds 7 tests at 320, which assert the
+  fix of a defect found on my own tip, not base behaviour). Specs that read
+  text now inside an accordion OPEN IT FIRST, nothing weakened:
+  rappel-delai.spec.ts (openDeadline clicks the summary and asserts open;
+  works before hydration), comparateur.nojs.spec.ts (the delay; the chips test
+  became the fragment test), comparateur.visual.spec.ts (openFold for
+  points-*, soins, franc-deplace, delai-*; soins' toHaveCount(1) became
+  toBeVisible), comparateur-a2-page.test.tsx (headings read from the summary),
+  comparateur-features.test.tsx (two pictures, both labelled).
+  tests/unit/meta/no-js-coverage.test.ts: page.tsx and ComparatorSections.tsx
+  -> comparateur.nojs.spec.ts; ComparisonPanel.tsx exempt with its reason (its
+  accordions exist only inside a result, which needs the island, R658).
+  A grep of e2e/ by copy key found no other assertion on text that now sits in
+  a closed accordion except rappel-delai.spec.ts:332, which reads the helper's
+  warning with textContent (a by-key check, not a visibility one) on purpose.
+R1414 GATES AND WALKTHROUGH: above and below.
+
+WALKTHROUGH (R176)
+------------------
+pnpm dev on 3950, on the FINAL tree (94215c3 + commit 2's working changes,
+"tree 94215c3a dirty 2" in probe-tip.log), driven by a Playwright script (not
+committed) after /api/health answered service "monreleve". Screenshots and
+notes.txt in C:/wt/queue-evidence/fw-calc-redesign/walkthrough/.
+- Both pages at 320, 390, 768 and 1280: empty, calculated, every accordion
+  open - sideways 0 in all 24 states. LAMal: 7 accordions, all closed on
+  arrival; 10 with a result.
+- Opened and looked at (earlier trees, same layout but for commit 2's
+  margin): lamal-1280-2-calculated (form left; the rail right - France
+  3 822 EUR beside Suisse 2 718 / 6 355 / 10 691 EUR, the bar with "France :
+  3 822 EUR" between the band's ends, the rate line, the case sentence, three
+  closed cards, the source lines; below, the seven accordion cards and
+  Sources), lamal-390-2-calculated (one column; 390x6577), telework-1280-2-
+  calculated (60,00 %, the two remaining-day tiles large, the taxed tiles on
+  the canvas, app card and capture below, the thresholds as cards, the FAQ as
+  accordion cards), lamal-390-7-fragment-definitif (pre-fix: the title cut
+  off - the defect fixed in commit 2). The final run's screenshots were not
+  opened; its numbers are in notes.txt.
+- Fragments #delai #definitif #famille #couverture #france #suisse #limites:
+  open, content in view, summary top 27-83 px (320/390), 75 px (768/1280).
+- The franc slider (+5 steps) moved the lowest Swiss figure 2 718 -> 2 854 EUR
+  inside its accordion at every width; the deadline tool gave 2027-02-28 for
+  2026-11-30 inside its accordion.
+- THE RAIL IS TALLER THAN THE WINDOW for a one-adult comparison: 1280 wide,
+  cards closed, 644x1174 px against a 900 px window; scrolled 700 px, its top
+  was at -97 px. Sticky holds it only while the FORM column is taller (a
+  larger household, the joint return, a dated affiliation); otherwise the
+  rail scrolls with the page - by design, no inner scroll area (the rail
+  mixin's comment). At 768: 392x1672. Telework: the result column sticky at
+  768 and 1280, as before. QUESTIONS 8.
+- Console: a FRESH load of either page logs 0 errors on base and on the final
+  tree (probe-base.log, probe-tip.log). In the walkthrough's own sequence -
+  the telework page loaded in a tab that had just used the comparator - React
+  logged "A tree hydrated but some attributes of the server rendered HTML
+  didn't match the client properties" at every width (the Next dev overlay's
+  "1 issue"). Cause NOT ESTABLISHED; the same sequence was not run on base,
+  and the telework page's JSX is unchanged by this task (NOTICED 5).
+
+BASELINES REGENERATED (R135, R184, R207)
+----------------------------------------
+EXPECTATION STATED BEFORE THE RUN (baseline-expectation.txt, 65 files): every
+comparateur-* (17 states x 2) - the page's layout changed throughout; every
+calculateur-* (14 x 2) - the columns' gap at md (space-6 -> space-8), the
+band's cards and the FAQ's cards are in every full-page capture;
+resultat-resultat-desktop/-mobile - /resultat renders ResultPanel (tiles);
+composants-comparison-panel.png - the workbench renders ComparisonPanel.
+NOT expected and not changed: composants-comparison-banner (the banner is
+untouched), composants-comparison-refusal (no rule it uses changed),
+resultat-invalide-* (no panel), the home page and the guides (MetricTile and
+Faq untouched; the overrides are page-scoped).
+Run 1 (visual-update-1.log): "photographed: 8098a511 plus 18 uncommitted
+path(s)", 176 passed; `git status` listed EXACTLY the 65 (diff against the
+list empty). Cropping showed the rail's closed card summaries sitting at the
+top of a taller card; fixed (summary padding-block space-3, card
+padding-block space-1). Run 2 expectation (baseline-expectation-2.txt, 25):
+the 12 comparator states with a result x 2 + composants-comparison-panel; run
+2 ("8098a511 plus 83 uncommitted path(s)", 176 passed) changed exactly those
+25 by hash. Committed set against 8098a511: the same 65, in commit 94215c3.
+Commit 2 expected NO baseline to move (the scroll margin applies only on a
+fragment jump; no state jumps to a fold) - its gate:changed compares 176.
+Dimensions old -> new for all 65: baseline-dimensions.txt (comparator pages
+roughly halve; calculator pages grow 134-138 px desktop and 212-220 px mobile -
+the thresholds' and the FAQ's card padding; resultat +4/+8; the panel
+specimen 1232x1388 -> 1232x1040).
+OPENED AND LOOKED AT (12 of 65): crops (baseline-crops/) of
+comparateur-points-entre-desktop (panels, bar, open dot chart with its
+counting sentence), comparateur-franc-deplace-desktop run 1 and run 2
+(centred summaries, the slider at +5 %, the hypothesis line under the bar),
+comparateur-soins-mobile (stacked panels, bar, open care card),
+comparateur-delai-sans-s3-desktop (the open delay, the helper and the reminder
+form, the closed folds below), calculateur-rempli-desktop (39,16 %, the lead
+tiles 2 / 25,5 at H1, the taxed tiles on the canvas); whole images of
+comparateur-rappel-confirme-desktop (the outcome above the accordions),
+comparateur-superieur-desktop (the French mark at the bar's right end, its
+label inside the card), calculateur-faq-ouverte-mobile (threshold cards, FAQ
+cards open; downscaled), composants-comparison-panel (France / Suisse panels,
+the bar, the sentence, two closed cards - the workbench passes no slider).
+Not opened: the other 53 (STATUS).
+
+NOTICED BUT NOT TOUCHING
+------------------------
+1. The shared local database `frontalier` on frontalier-postgres is two
+   migrations behind the repository (no deadline_reminder, no web_session);
+   every reminder e2e test fails against a server pointed at it. Not
+   migrated: not mine.
+2. LAMAL_PAGE_COPY.chips.* and .onThisPage stay in lib/fr, now unused
+   (QUESTIONS 3).
+3. With the insurers' accordion open, two pictures carry the same text
+   alternative (QUESTIONS 6).
+4. My crop helper's first run wrote five PNGs under C:\c\wt\queue-evidence\
+   fw-calc-redesign\baseline-crops\ (a POSIX path handed to node). The files
+   were moved into the evidence folder; the EMPTY directories under C:\c\wt
+   remain - created by me, safe to delete; removing them needed a person's
+   approval, which the safety check did not get.
+5. The hydration message of the WALKTHROUGH bullet: on the telework page, only
+   after the comparator was used in the same tab; cause not established.
+
+DEVIATIONS
+----------
+1. R1407, R1410 (two asks) and R1411 not built as worded - reasons above.
+2. A scratch database (monreleve_fw_calc_redesign, created by me, migrated with
+   `pnpm db:deploy`) replaced the shared `frontalier` in my own web/.env from
+   gate run 4, because the shared one lacks two migrations.
+3. R1413's look is partial: 12 of 65 regenerated images opened (STATUS).
+4. The first dev-server e2e run is NO RESULT: the dev server answered 500 (a
+   CSS-modules purity error in my first range-bar selector, fixed) and
+   Playwright's webServer fell back to `next build` in my worktree;
+   attempt1-noresult/.
+5. Commit 2 exists because the advisor's review of my first tip found the
+   fragment landing with the title cut off, which my first e2e assertion
+   (content in view) could not see.
+
+QUESTIONS
+---------
+1. R1410 "the percentage figure larger": RateDisplay already sets the rate at
+   --type-display (48/56/600), the scale's largest step; larger needs a new
+   type token (D-d). Add one, or keep the rate at Display?
+2. R1410 "the threshold bar thicker": DESIGN-SYSTEM.md section 1 says
+   "PROGRESS: 8 px tall, radius 999, never taller", and the rail mirrors
+   --size-progress-height (TRACK_HEIGHT = 8). Keep 8 px, or rule an exception
+   (R48's shape for the social card)?
+3. The chips' strings - LAMAL_PAGE_COPY.chips.compare ("Comparer les couts"),
+   .france ("Si vous choisissez la France"), .switzerland ("Si vous restez en
+   Suisse"), .onThisPage - are no longer rendered. The prompt names the France
+   and Suisse sections by those chip strings; I used the sections' h2 strings
+   (R1409: "EXISTING heading string"). Delete them from lib/fr, keep them, or
+   use the two short strings as those summaries?
+4. R1407: the banner is whole, not shortened. "Title and first sentence
+   visible" cannot include "trois mois" (sentence two), and a disclosure needs
+   a summary string that does not exist. Is the whole banner right, or should
+   a visible part plus a "lire la suite"-type summary (new copy) be written?
+5. R1411: build the phone summary with new copy (spending some of the
+   calculator's 1.0 KiB), or drop it?
+6. The range bar and the dot chart carry the same role="img" label; with the
+   chart's accordion open a screen reader meets it twice. Acceptable, or make
+   the bar aria-hidden and put the counting sentence visibly beside it?
+7. Fragment-opens-accordion is measured on Chromium only (the e2e browser);
+   a browser without ancestor-details revealing lands on the closed
+   accordion's summary. Acceptable, or a script fallback (bytes)?
+8. The comparator's rail is taller than a 900 px window for a one-adult
+   comparison, so it scrolls with the page rather than sticking. Acceptable,
+   or should the attribution / priminfo / legal lines leave the rail?
+9. /calculateur-teletravail-frontalier/resultat changed with the shared
+   ResultPanel (the lead / secondary tiles); D-a names two pages. Keep it
+   (one panel, one look), or scope the tile rules to the calculator page?
+
+PUSH PROOF
+----------
+- Commit 1, 94215c3af2717b573a4d82afa7ba5f3972061c4c, pushed to
+  origin/fw-calc-redesign (new branch) after gate:clone PASSED on it and the
+  secret scan, both read inside the pushing chain:
+    SECRET SCAN: outgoing diff 8098a51117912426df0f3393e4675a2148e3eb02..94215c3a, hits=0, control=1
+    git ls-remote origin fw-calc-redesign -> 94215c3af2717b573a4d82afa7ba5f3972061c4c
+- Commit 2 (this report, the fold scroll margin, the 320 px fragment tests)
+  is pushed only after its own gate:changed (above), gate:clone and the same
+  scan; the handback carries that gate:clone line and the final tip.
+- Not merged, main untouched, nothing deployed.
