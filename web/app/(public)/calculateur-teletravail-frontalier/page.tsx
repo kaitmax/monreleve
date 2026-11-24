@@ -112,7 +112,7 @@ export function generateMetadata(): Metadata {
   const robots = gateRobotsDirective();
 
   return {
-    title: COPY.title,
+    title: COPY.metaTitle,
     // SPEC 14: the title and description name the threshold and the year.
     description: COPY.description(ceiling(rules.fiscalCeiling), year),
 

@@ -37,6 +37,13 @@ export const CALCULATEUR_COPY = {
   title: 'Calculateur de télétravail frontalier',
 
   /**
+   * FW-SEO-TITLES: what a search result prints, which is not the h1's job.
+   * `title` stays the page's name - the h1, the JSON-LD name, the no-script
+   * check - and this names the country and the answer a searcher wants.
+   */
+  metaTitle: 'Calculateur télétravail frontalier suisse' + n(':') + ' jours restants',
+
+  /**
    * The intro, and the thresholds reach it formatted. FD1:43 words it with
    * the two figures inline, which is why this is a function.
    */

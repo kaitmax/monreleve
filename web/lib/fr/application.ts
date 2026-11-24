@@ -89,6 +89,15 @@ export interface LoggingMode {
 export const APPLICATION_COPY = {
   title: 'L’application',
 
+  /**
+   * FW-SEO-TITLES: what a search result prints. The h1 above is a section
+   * label, and as a <title> it listed this page as "L’application" under
+   * every query. A NOUN PHRASE ON PURPOSE: it names what the application is
+   * for and claims nothing about whether it exists - that sentence is the
+   * description's, and it follows PRODUCT_STATE (R172).
+   */
+  metaTitle: 'Application pour frontaliers' + n(':') + ' suivre ses jours de télétravail',
+
   description: (state: ProductState): string =>
     state.appExists
       ? 'Enregistrez vos journées et exportez un relevé daté' +
