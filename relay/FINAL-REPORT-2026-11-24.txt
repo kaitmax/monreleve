@@ -139,6 +139,18 @@ READ THIS FIRST (three lines)
 - The shared local database `frontalier` is two migrations behind (reported by FW-CALC-REDESIGN) (deadline_reminder, web_session); the
   gates use their own databases.
 
-Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-23), relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the
+7. THE AFTERNOON (iOS Ruling 24)
+- MERGED: fw-wt-cleanup (the worktree-cleanup script, web/scripts/wt-cleanup.mjs), on main as 47642963.
+- PARKED, your choice: fw-lighthouse-calc. Its slow-4G check on the calculator passes on a quiet PC (about
+  2330 ms against 2500) and fails when this PC is busy (2695-2808 ms); the redesign is not the cause.
+  FW-CALC-LCP found no allowed change worth making (the ceilings, no web font or no calculator script,
+  only reach about 2130-2160 ms). Its report is on main.
+- PRODUCTION MOVED: another conversation of yours merged FW-SEO-TITLES and FW-SEO-ARTICLES to main and
+  promoted production to d8db62c5 (healthy, checked read-only). Production is therefore d8db62c5, not
+  89ea2f63 as section 1 says; it contains everything in section 2.
+- Candidate small task: tests/db/fw14-era-migration.test.ts uses a fixed scratch database name, so two
+  database runs at once collide.
+
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-24), relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the
 repository root, evidence under C:/wt/queue-evidence/.
 END OF FINAL REPORT

@@ -3503,3 +3503,37 @@ docs/deploy.md 10.1, in order:
    as the local main build does.
 No rollback needed. No variable changed. Still the operator's: P2 item 5 (rotate
 RESEND_API_KEY and FCM_PRIVATE_KEY, revoke the old ones), then item 4 (old images).
+
+iOS Ruling 24 - THE AFTERNOON OF 2026-11-24: fw-wt-cleanup MERGED; fw-lighthouse-calc PARKED;
+FW-CALC-LCP; main and production moved by another conversation (web)
+THE OPERATOR: "merge fw-lighthouse-calc and fw-wt-cleanup"; then, asked, "Better sample, then
+merge", "Find the cause first", "Park it + a page-speed task", "launch the page-speed task now",
+"the other saisssion finished", "Keep it parked".
+FW-WT-CLEANUP (97fefbf9, R1036-R1040; its session W16 never wrote a report; its lock stays in
+C:/wt/fw-wt-cleanup, untouched): read before merging - Web Ruling 21's five amendments are each
+tested (junction sentinel, --apply recomputes, MIN_AGE_MINUTES 60, lock and dirty refusals, never
+--force). Merged fe204974; its first gate timed out one scan test under memory pressure (passed
+alone, 14/14 in 6.3 s), the re-run passed 4336. main then moved twice under it (below), so it was
+re-merged as 943eafdc and 47642963; gate:clone on 943eafdc failed twice on load/collision (a race
+test timed out; fw14-era-migration's FIXED scratch database name collided with a concurrent db run)
+and passed the third time; gate:clone PASSED on 47642963 (test 4366, test:db 911). Pushed
+f8277fdb..47642963.
+FW-LIGHTHOUSE-CALC (5482b800, R950-R954; its report uncommitted in C:/wt/fw-lighthouse-calc with
+STATUS and PUSH PROOF unfilled; its W5 lock stays): NOT MERGED, PARKED. The merge gate failed R952:
+median 2526.7 ms (3 runs); with NUMBER_OF_RUNS 7 (test-first) 2695.1 ms. Back to back, main
+before the redesign 2751.7 ms and after it 2808.1 ms - the redesign is not the cause; the host's load
+moves the figure by hundreds of ms. FW-CALC-LCP (relay/FW-CALC-LCP.txt, R1425-R1430; report merged
+here, branch 7c4c1c44, report-only): on a QUIET host the unchanged page reads 2332.8 and 2323.3 ms (7
+runs each, same sitting); the LCP element is the server-rendered h1, 81 % of the simulated LCP is
+render delay counted from every script and the font finished before the paint; ceilings no shippable
+change reaches: no web font 2129.6, no calculator island 2156.9; no product change made. The
+operator: keep fw-lighthouse-calc parked (a blocking check that flips with this PC's load). The 7-run
+patch and every log: C:/wt/queue-evidence/fw-lighthouse-calc-merge/ and fw-calc-lcp/.
+MAIN AND PRODUCTION MOVED BY ANOTHER CONVERSATION: FW-SEO-TITLES (acfda473, report 17674bb3 reading
+"pending merge" while on main) and FW-SEO-ARTICLES (d8db62c5, report f8277fdb: "merged and promoted
+at d8db62c5"). Production is d8db62c5: read-only, one container on it, "healthy", /api/health 200
+naming monreleve, /api/ready 200. Not verified by the orchestrator beyond that.
+NOTICED: tests/db/fw14-era-migration.test.ts uses a fixed scratch database name
+(scratchDatabaseName('fw14_era_probe')), so two db runs at once on this machine collide - a
+candidate small task (a per-run suffix). Disclosed by FW-CALC-LCP: it wrote harness.patch into the
+orchestrator's scratchpad root without checking first; nothing of the orchestrator's was there.

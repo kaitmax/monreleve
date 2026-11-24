@@ -1,0 +1,50 @@
+FW-CALC-LCP SESSION PROMPT - Mon Releve
+THE CALCULATOR'S MOBILE LCP UNDER 2.5 s ON SLOW 4G, WITH MARGIN (web)
+Written by the orchestrating session on 2026-11-24 on the operator's choice "Park it + a page-speed task"
+(iOS Ruling 24 in relay/RULINGS-2026-11-16.txt). SPEC-frontalier-web.md l.992 and l.1082 (SPEC 21): "LCP <
+2.5s on simulated slow 4G for the calculator". The branch fw-lighthouse-calc (5482b800, R950-R954) asserts it
+in gate:changed and is PARKED until this task makes it pass with margin.
+
+WHAT WAS MEASURED (C:/wt/queue-evidence/fw-lighthouse-calc-merge/; the branch's harness with NUMBER_OF_RUNS
+7, seven-runs.patch there): /calculateur-teletravail-frontalier, mobile, Lighthouse simulated throttling
+(rttMs 150, 1.6 Mbit/s, cpuSlowdownMultiplier 4), median of 7 -
+  main before the calculator redesign (057306d7): 2751.7 ms, performance 76-83;
+  main with it (fe204974), right after:           2808.1 ms, performance 74-79;
+  the same code two hours earlier, lighter load:  2695.1 ms, performance 88-93.
+So the redesign is NOT the cause, the page misses the criterion, and the host's load moves the figure by
+hundreds of ms (simulated throttling scales from this machine's CPU). Desktop: 100 on every route when idle.
+
+Read first: SPEC 21 and 17 (budgets); DESIGN-SYSTEM.md; web/app/(public)/calculateur-teletravail-frontalier/
+whole and what it imports; web/app/layout.tsx and the font set-up; CLAUDE.md R2 (budgets), R169, R174,
+R177, R179, R206, R349, R391; REPORT-FW-LIGHTHOUSE-CALC.txt (in C:/wt/fw-lighthouse-calc, uncommitted -
+read it there, never write in that worktree: it holds a W5 lock) QUESTIONS 1-3.
+Names: worktree C:/wt/fw-calc-lcp, branch fw-calc-lcp from origin/main, report REPORT-FW-CALC-LCP.txt.
+Rulings R1425-R1430. YOUR OWN advisor may advise you. Port 3950 (3000/3100/3200 another project's, 3900
+the orchestrator's). Heavy lock --min-free 5000. COMES BACK AS A QUESTION: a new dependency, a new token or
+French string, raising a budget, removing content from the page, any third-party script, a change to the
+calculation or to what the page says.
+
+R1425. THE INSTRUMENT FIRST. Bring the branch's harness into your worktree WITHOUT merging it to main
+    (git merge --no-commit origin/fw-lighthouse-calc, then apply seven-runs.patch; never commit the harness
+    on your branch). Every measurement: 7 runs, median, all samples printed; the host's free memory and the
+    other processes' CPU read and printed beside it; and a CONTROL measured in the same sitting - the
+    unchanged base of your branch, back to back with your change (A then B, then A again). A comparison
+    without its control is NO RESULT.
+R1426. FIND THE LCP ELEMENT AND WHAT DELAYS IT, MEASURED. From the Lighthouse JSON: the LCP element, its
+    phases (TTFB, load delay, load time, render delay), the render-blocking requests, the bytes before first
+    paint (HTML, CSS, fonts, JS). State which phase dominates before changing anything.
+R1427. THE CHANGE, SMALLEST FIRST, TEST-FIRST WHERE A GUARD CAN SEE IT. Candidates to evaluate, not a list
+    to apply: render-blocking CSS, font loading (preload, display, subset already in place?), client JS
+    that delays the result card or the heading, hydration of what could be server-rendered. No visual
+    change unless measured necessary; any baseline that moves follows R207 (list before, looked at after).
+R1428. THE TARGET IS MARGIN, NOT A PASS. The median of 7 at or below 2300 ms, in a sitting where the control
+    also runs; report both. A change that passes by less is reported with its numbers, not merged on luck.
+R1429. NOTHING ELSE MOVES: GATE A/B in a clean clone (before/after), the desktop floor 100 on the six
+    routes, no horizontal scroll at 320 px, R173 anchors, every existing suite green.
+R1430. GATES AND HANDBACK: gate:changed on the tip (verdict read inside the committing chain), gate:clone
+    before each push; push the branch, DO NOT MERGE, never production. The secret check before each push
+    (first 12 characters of C:/Users/KAMXKAM/AppData/Local/Temp/cf/tok, never printed). Report: SUMMARY /
+    STATUS (R391) / R1425-R1430 with evidence (every median with its samples and its control) /
+    WALKTHROUGH / BASELINES / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF. Lock removed
+    last. Sessions do not write parking.md. The repository is PUBLIC.
+END OF FW-CALC-LCP PROMPT
