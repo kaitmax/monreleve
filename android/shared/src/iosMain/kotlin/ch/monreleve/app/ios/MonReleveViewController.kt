@@ -1,5 +1,7 @@
 package ch.monreleve.app.ios
 
+import androidx.compose.runtime.ExperimentalComposeApi
+import androidx.compose.ui.uikit.ComposeUIViewControllerConfiguration
 import androidx.compose.ui.window.ComposeUIViewController
 import ch.monreleve.app.fr.ParametresCopy
 import platform.Foundation.NSBundle
@@ -18,12 +20,18 @@ import kotlin.time.ExperimentalTime
 
 private var processShell: IosShell? = null
 
+// IOS-A11Y-SYNC R1431/R1432. THE CONFIGURATION THE APP'S ONE ComposeUIViewController IS BUILT WITH - one home, passed
+// as `configure` below and read by IosAccessibilitySyncIosTest from this value (R154: the object, not the source).
+@OptIn(ExperimentalComposeApi::class) // R1431: the configuration's accessibility sync option (CMP 1.7.3).
+internal val monReleveControllerConfiguration: ComposeUIViewControllerConfiguration.() -> Unit = {}
+
 /** The app's view controller - what MonReleveApp.swift hosts with .ignoresSafeArea() (R1170). */
 @OptIn(ExperimentalTime::class) // KMP-DT R590: startIosShell's signature names kotlin.time.Clock - on the allowlist.
 fun monReleveViewController(): UIViewController {
     val shell = processShell ?: startIosShell(apiBaseUrl(), appVersion()).also { processShell = it }
     // IOS-SHELL-2 (R1331): the share sheet is presented from this controller (IosShareSheet.kt).
-    return ComposeUIViewController { IosShellRoot(shell) }.also { hostViewController = it }
+    return ComposeUIViewController(configure = monReleveControllerConfiguration) { IosShellRoot(shell) }
+        .also { hostViewController = it }
 }
 
 private fun infoString(key: String): String? = NSBundle.mainBundle.objectForInfoDictionaryKey(key) as? String
