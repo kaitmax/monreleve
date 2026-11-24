@@ -117,8 +117,9 @@ class ExperimentalTimeOptInAllowlistTest {
             // AN-FR-TEXT R622: moved from iosMain/ios/IosInstantFormat.kt (3 there), function scope, same 3.
             "shared/src/commonMain/kotlin/ch/monreleve/app/fr/text/FrInstants.kt" to 3,
             // IOS-1b-A R608: the pilot fixture hands the controller its clock; the pilot screen reads the system clock.
-            "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt" to 1,
-            "shared/src/commonMain/kotlin/ch/monreleve/app/pilot/PilotFixture.kt" to 1,
+            // IOS-POLISH R1402: both left commonMain, unedited, for the test source sets their only users compile in.
+            "shared/src/iosTest/kotlin/ch/monreleve/app/pilot/AujourdhuiPilot.kt" to 1,
+            "shared/src/commonTest/kotlin/ch/monreleve/app/pilot/PilotFixture.kt" to 1,
             // IOS-MOVE-REMINDER R1290/R1291: the 19:00 fallback ported from java.time (one per function taking an
             // Instant: nextFallbackAt, bootFallbackAt, reachedFallbackTime) and the iOS plan built on it.
             "shared/src/commonMain/kotlin/ch/monreleve/app/reminder/EveningReminderPlan.kt" to 1,

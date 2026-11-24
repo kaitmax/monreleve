@@ -102,8 +102,6 @@ private class Source(
 
     val label: String = file.invariantSeparatorsPath.substringAfterLast("android/").removePrefix("../")
 
-    val isShared: Boolean = "/shared/src/commonMain/" in file.canonicalFile.invariantSeparatorsPath
-
     fun lineOf(offset: Int): Int = text.substring(0, offset).count { it == '\n' } + 1
 
     /** (name, body open, body close) of every function with a brace body, in source order. */
@@ -126,9 +124,10 @@ private class CallSite(
     val offset: Int,
     // The discovered screen whose body holds this call, or null when it sits in no screen.
     val enclosingScreen: String?,
-    // The outermost function holding this call when NO Android shipped source calls that function - iOS's own
-    // host (pilot/AujourdhuiPilot, called only from iosMain) - so this call is not an Android destination.
-    val offAndroidHost: String? = null,
+    // IOS-POLISH R1402: the off-Android exemption (offAndroidHost) is REMOVED. Its one instance was
+    // pilot/AujourdhuiPilot, which left commonMain for iosTest; the census on 958faea5 printed an empty "NOT ANDROID
+    // DESTINATIONS" list, so every call site in the shipped sources now counts, and a screen called from an unwrapped
+    // place fails.
 ) {
     override fun toString(): String = "${source.label}:${source.lineOf(offset)}"
 }
@@ -225,30 +224,8 @@ class EdgeToEdgeCensusTest {
                     // An overload delegating to its namesake proves nothing about where the screen is shown.
                     if (enclosing.lastOrNull() == screen) return@mapNotNull null
                     val inScreen = enclosing.lastOrNull { it in screens && it != screen }
-                    val outer = enclosing.firstOrNull()
-                    // ONLY in :shared. An :app function can be a framework entry point - CallbackActivity's onCreate
-                    // has no caller in any source, the framework calls it (R246) - and this census's own first run
-                    // classed CallbackScreen as off-Android on exactly that. commonMain holds no framework entry
-                    // point: every activity the manifest names is resolved under :app's src/main/kotlin by
-                    // manifestActivities (subjectFile fails otherwise). IOS-MOVE-CORE R1303: this line used to read
-                    // "Nothing outside :app enters commonMain", which stopped being true when the shell's platform-free
-                    // files (AppRoot among them) moved there; they are entered by calls from :app's activities, which
-                    // is what this census counts.
-                    val offAndroid =
-                        outer?.takeIf { inScreen == null && source.isShared && !calledFrom(it, sources) }
-                    CallSite(source, m.range.first, inScreen, offAndroid)
+                    CallSite(source, m.range.first, inScreen)
                 }.toList()
-        }
-
-    /** Whether any shipped Android source calls [function] (its own declaration excluded). */
-    private fun calledFrom(
-        function: String,
-        sources: List<Source>,
-    ): Boolean =
-        sources.any { source ->
-            Regex("""(?<![\w.:])$function\s*\(""").findAll(source.code).any { m ->
-                !source.code.substring(0, m.range.first).trimEnd().endsWith("fun")
-            }
         }
 
     @Test
@@ -257,9 +234,7 @@ class EdgeToEdgeCensusTest {
         val roots = manifestActivities().map { (name, source) -> Triple(name, source, rootDefect(source)) }
         val wrappedFiles = roots.filter { it.third == null }.map { it.second.file.canonicalPath }.toSet()
         val screens = screens()
-        val all = screens.associateWith { callSites(it, screens, sources) }
-        val sites = all.mapValues { (_, list) -> list.filter { it.offAndroidHost == null } }
-        val offAndroid = all.values.flatten().filter { it.offAndroidHost != null }
+        val sites = screens.associateWith { callSites(it, screens, sources) }
 
         // A least fixed point: a screen hosted only through a screen that is not hosted is not hosted.
         val hosted = mutableSetOf<String>()
@@ -282,8 +257,6 @@ class EdgeToEdgeCensusTest {
                 appendLine("$FENCE (R1171): ${screens.size} screens, ${hosted.size} hosted by $WRAPPER.")
                 appendLine("ROOTS (the main manifest's activities):")
                 roots.forEach { (name, _, defect) -> appendLine("  $name: ${defect ?: "wrapped by $WRAPPER"}") }
-                appendLine("NOT ANDROID DESTINATIONS (inside a function no Android shipped source calls):")
-                offAndroid.forEach { appendLine("  $it in ${it.offAndroidHost}") }
             }
         // R133: the census states what it counted, so a pass is a statement about a number and not an absence.
         println(census)
