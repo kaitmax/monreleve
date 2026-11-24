@@ -304,8 +304,8 @@ only ever fail. curl now comes with `--no-install-recommends`, with the eight
 libraries apt requires for it (listed in `REPORT-FW-READY-GATE.txt`), in a
 layer of its own right after the Chromium one. It was split out on 2026-11-11
 because the pin then in the file, `156.0.8078.73-1~deb12u1`, had left the
-archive. That reason is gone: the pin is now `156.0.8078.79-1~deb12u1`, and the
-archive installed it the same day (`#12 DONE 132.0s`,
+archive. That reason is gone: the pin was bumped that day to
+`156.0.8078.79-1~deb12u1`, which the archive installed (`#12 DONE 132.0s`,
 `REPORT-FW-CHROMIUM-PIN-2.txt`). The layer stays where it is, for the reason the
 Dockerfile's R845 block gives (Queue Ruling 4). The image grows by 1 287 352
 bytes (`docker image inspect .Size`: 372 165 557 before, 373 452 909 after,
@@ -1057,6 +1057,11 @@ uses the page.
    - A build of either commit stops at the R249 guard unless that layer comes
      from the server's build cache. That cache has not been read, and Coolify's
      own cleanup prunes it (`app/Actions/Server/CleanupDocker.php` 160).
+   - The same holds since 2026-11-24 for every commit pinning `.79`, which
+     the archive withdrew that day (`REPORT-FW-CHROMIUM-PIN-3.txt`):
+     `e73c846d`, served until that day's promotion, among them. Which pin a
+     commit carries is read from its own `web/Dockerfile` (`ARG
+     CHROMIUM_VERSION`), never from this file.
 
    **So for those commits, the image on the server is the only way back.** A
    failed rebuild leaves the serving container as it was: the build (1182)

@@ -4,10 +4,11 @@ history). Pure ASCII by transport (R168); every French quotation lives in the fi
 below was read by the orchestrator, not recalled; where something is argued rather than tested, it says so.
 
 READ THIS FIRST (three lines)
-1. THE WEB IS LIVE AT 89ea2f63. On your words ("now commit push deploy"; the public texts "Ship as on main")
-   production was fast-forwarded from e73c846d at 10:34:36Z and every after-deploy check passed (section 2).
-   No rollback, no variable changed, no migration. main is one records commit further (158ad80a) and
-   this report's commit; neither changes the application.
+1. THE WEB IS LIVE AT d8db62c5. On your words ("now commit push deploy"; the public texts "Ship as on main")
+   the orchestrator promoted production from e73c846d to 89ea2f63 at 10:34:36Z, every after-deploy check
+   passed (section 2); in the afternoon another conversation of yours promoted d8db62c5 (FW-SEO-TITLES and
+   FW-SEO-ARTICLES on top; healthy, read-only check, section 7). No rollback, no variable changed, no
+   migration.
 2. F8 IS STILL OPEN AND AFFECTS THE LIVE PRODUCT: the sign-in e-mail's link IS the API callback. A GET of it
    consumes the one row holding both the link and the six-digit code and answers a token pair as JSON to
    whoever fetched it - a mail scanner that fetches the link ends the person's sign-in and holds a session.
@@ -20,7 +21,7 @@ READ THIS FIRST (three lines)
    orchestrator to read deployments.
 
 1. WHERE EACH PLATFORM STANDS
-- WEB. Complete per the plan and LIVE (89ea2f63): the privacy and terms pages, the dossier copy, the Android
+- WEB. Complete per the plan and LIVE (d8db62c5, which contains 89ea2f63 - section 7): the privacy and terms pages, the dossier copy, the Android
   minimum-version route, the FCM push client, the account export, and today's calculator redesign. Coolify
   deploys from the `production` branch only; a push to main deploys nothing.
 - ANDROID. Complete per the plan; the full :app:gate is the standing proof (floor 1562, :shared JVM 358).
@@ -146,8 +147,7 @@ READ THIS FIRST (three lines)
   FW-CALC-LCP found no allowed change worth making (the ceilings, no web font or no calculator script,
   only reach about 2130-2160 ms). Its report is on main.
 - PRODUCTION MOVED: another conversation of yours merged FW-SEO-TITLES and FW-SEO-ARTICLES to main and
-  promoted production to d8db62c5 (healthy, checked read-only). Production is therefore d8db62c5, not
-  89ea2f63 as section 1 says; it contains everything in section 2.
+  promoted production to d8db62c5 (healthy, checked read-only); it contains everything in section 2.
 - Candidate small task: tests/db/fw14-era-migration.test.ts uses a fixed scratch database name, so two
   database runs at once collide.
 

@@ -3537,3 +3537,26 @@ NOTICED: tests/db/fw14-era-migration.test.ts uses a fixed scratch database name
 (scratchDatabaseName('fw14_era_probe')), so two db runs at once on this machine collide - a
 candidate small task (a per-run suffix). Disclosed by FW-CALC-LCP: it wrote harness.patch into the
 orchestrator's scratchpad root without checking first; nothing of the orchestrator's was there.
+
+iOS Ruling 25 - THE OPERATOR'S STANDING INSTRUCTION, AND THE CLOSING LIST (2026-11-24)
+THE OPERATOR, verbatim: "for any question ask the advisor apply the solution proposed by the
+advisore, verify it if its ok pass the the next , apply this loop till you finish the project".
+THE ADVISOR'S PLAN, applied: finish what is in flight; then three code-side tasks, one at a time,
+each through the full chain - (a) the fw14-era scratch-database collision, (b) Q1's option (a) on a
+branch (relay/IOS-A11Y-SYNC.txt, R1431-R1436), (c) the stale deploy-doc lines; then a closing record
+and STOP. NOT done on delegated authority: any further production promotion ("now commit push deploy"
+was one approval), F8 (live sign-in, new copy, an Android release), the operator's own items (keys,
+the database password, Coolify variables, Play, Apple, Firebase), and what the operator ruled today
+(fw-lighthouse-calc parked, the 768 px rail).
+(a) DONE: a2f625cf. RED reproduced by two concurrent copies of the file ("terminating connection due
+    to administrator command"; "duplicate key value violates unique constraint
+    pg_database_datname_index"); GREEN with a per-process name (both 7/7); gate:changed PASSED (test
+    4366, test:db 911). The other scratch names checked (R267): gate:clone by commit under the heavy
+    lock, the iOS walk by CI run id.
+(c) DONE in this record's commit: docs/deploy.md l.307 no longer states the current pin as "now";
+    10.2 item 4 adds that every commit pinning .79 (e73c846d, served until 10:34Z, among them) can
+    no longer be rebuilt since the archive withdrew it - verified from each commit's web/Dockerfile
+    (e73c846d .79; 89ea2f63 and d8db62c5 .108). The Dockerfile's R845 comment narrates 2026-11-11
+    accurately and is left (a change would select test:container for no gain).
+(b) RUNNING in C:/wt/ios-a11y-sync. FINAL-REPORT-2026-11-24.txt's top lines corrected (production
+    is d8db62c5).

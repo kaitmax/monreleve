@@ -1,0 +1,40 @@
+IOS-A11Y-SYNC SESSION PROMPT - Mon Releve
+Q1, OPTION (a): THE ACCESSIBILITY TREE SYNCED ALWAYS, NOT ONLY UNDER VOICEOVER - AN EXPERIMENT ON A BRANCH (iOS)
+Written by the orchestrating session on 2026-11-24. The operator's standing instruction: questions go to the
+advisor, whose plan names this as the one code-side iOS ship blocker to try (iOS Ruling 25). Read first:
+REPORT-IOS-AUDIT.txt l.183-212 and Q1 (l.481-488); iOS Rulings 20-21 in relay/RULINGS-2026-11-16.txt; the walk's
+baseline run 45197427698 (9 pass, 10 known failures) and the IOS-POLISH walk 45296804003 (equal outcomes);
+android/shared/src/iosMain/kotlin/ch/monreleve/app/ios/MonReleveViewController.kt;
+.github/workflows/ios-shared.yml, ios-app.yml (R1353), ios-walk.yml; CLAUDE.md R154, R180, R349, R391, R573,
+R574; memory: a `git mv` of an edited file stages the pre-edit blob.
+Names: worktree C:/wt/ios-a11y-sync, branch ios-a11y-sync from origin/main, report REPORT-IOS-A11Y-SYNC.txt.
+Rulings R1431-R1436. YOUR OWN advisor may advise you. COMES BACK AS A QUESTION: a dependency change (a Compose
+upgrade is option (b) and is OUT), new French copy, a change to Android behaviour, loosening any fence.
+
+R1431. THE CHANGE IS ONE CONFIGURATION, AT ITS ONE HOME. MonReleveViewController.kt's ComposeUIViewController
+    gains configure { accessibilitySyncOptions = AccessibilitySyncOptions.Always(null) } (opt-in to the
+    experimental API stated where it is used; if the experimental-API allowlist fence must list it, the entry
+    is ADDED by name, never a pattern). Nothing else in the app changes.
+R1432. RED FIRST, STRUCTURALLY. An iosTest (or a :shared fence test) that fails on the base because the shipped
+    controller's configuration is the default WhenRequiredByAccessibilityServices, and passes after R1431 -
+    read from the configuration object the app actually builds, never from a source grep alone (R154).
+R1433. THE SIGNAL IS THE WALK. One ios-walk dispatch on the branch tip. Per-test outcomes (the
+    "Test Case '-[MonReleveWalkUITests.WalkUITests testNN_x]' passed|failed" lines) compared with
+    45197427698's, test by test, in a table. Success = at least one of the ten known failures (the zero-frame
+    class: rows scrolled in from below the fold, the tab bar after a scroll) now passes AND no test that
+    passed in the baseline fails. Measured, not argued; quote each changed test's message before and after.
+R1434. NOTHING ELSE REGRESSES. ios-shared (count from the JUnit XML: 534 + the new test(s), 0 failures) and
+    ios-app (the probe share PASS; R1353's OUTPUT line quoted) on the tip; Android: fastCheck per increment and
+    the FULL :app:gate on the tip (floor 1562; :shared JVM 358 + any new JVM test) under the heavy lock
+    (--min-free 8000, --no-daemon, never `gradlew --stop`). A performance note from ios-app's launch timing if
+    the workflow prints one (the option has a stated cost); do not build a new benchmark.
+R1435. LEAK SCANS on every job log and artifact (token prefix, bearer, callback with token, production host
+    outside R1353's lines, six-digit numbers, digit-labelled code boxes) with the counts. R574 holds: no
+    capture shows a sign-in code.
+R1436. THE VERDICT AND HANDBACK. If R1433's success condition holds: report it as MERGEABLE with the table. If
+    no known failure changes, report NOT WORTH MERGING with the table (the option then only adds cost) - do
+    not iterate into other fixes. Push every increment to the branch; DO NOT MERGE; no production. The secret
+    check before each push (first 12 characters of C:/Users/KAMXKAM/AppData/Local/Temp/cf/tok, never printed).
+    Report: SUMMARY / STATUS (R391) / R1431-R1436 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS /
+    QUESTIONS / PUSH PROOF. Lock removed last. Sessions do not write parking.md. The repository is PUBLIC.
+END OF IOS-A11Y-SYNC PROMPT
