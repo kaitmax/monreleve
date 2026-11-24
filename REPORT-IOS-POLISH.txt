@@ -32,14 +32,17 @@ SUMMARY
   - ios-shared 45285718054: 110 suites / 534 tests / 0 failures / 0 errors, from the XML.
   - ios-app 45285726070: probe share PASS; "R1353: RELEASE INSPECTION PASSED - every check and every control".
   - Leak scans are clean.
-- Android: fastCheck green per increment, and the FULL :app:gate GREEN on the code tip a505b731
-  (floor 1562, BUILD SUCCESSFUL, GATE_EXIT=0).
+- ios-walk was NOT run on the now-French bundle; two English system labels it taps are QUESTION 4.
+- Android: fastCheck green on 958faea5 and a505b731 (not on each earlier increment, see STATUS), and the FULL
+  :app:gate GREEN on the code tip a505b731 (floor 1562, BUILD SUCCESSFUL, GATE_EXIT=0).
 
 ================================================================================
 STATUS (R391)
 ================================================================================
-COMPLETE (R391), for the code tip a505b731.
-- The FULL :app:gate ran on a505b731 in this session, under the heavy lock (acquired at 8661 MB free):
+COMPLETE (R391), for the code tip a505b731, with R1403(b) PARTIAL and QUESTION 1 open. COMPLETE does not mean the
+share sheet turned French; only its "Copy" did.
+- The FULL :app:gate ran on a505b731 in this session, under the heavy lock
+  ("2026-11-23T23:58:05.716Z ACQUIRED holder=ios-polish commitFree=8659 line=8000"):
     "test floor OK: 1562 unit tests observed (>= 10)", "BUILD SUCCESSFUL in 7m 37s", GATE_EXIT=0,
     dirty-after=0. The release checks name HEAD a505b73169b23741321a590883a6c450adb4799b.
 - fastCheck --continue on a505b731 printed "BUILD SUCCESSFUL in 1m 4s", FASTCHECK_EXIT=0. On 958faea5 (with the two
@@ -148,7 +151,8 @@ GREEN on the tip's code, ios-app 45285726070 (958faea5):
   PASS  CONTROL (R1401): the same scan finds AujourdhuiScreen (79)
   R1353: RELEASE INSPECTION PASSED - every check and every control
 FINDING: AujourdhuiPilot was ALREADY absent from the base Release framework, and its row was never RED.
-  - It is a top-level @Composable with no caller, so the Release link drops it.
+  - It is a top-level @Composable with no caller. The 0 is MEASURED. That the Release link dropped it is INFERRED,
+    not shown.
   - Whether the scan could see a composable's name at all was the open question. Commit 958faea5 added
     AujourdhuiScreen, a production top-level @Composable, as a control of the same kind: found 79 times.
   - So the scan sees that kind of name, and AujourdhuiPilot's 0 on the base is an absence, not a blind spot.
@@ -235,7 +239,9 @@ R1404 - WHAT THE OPERATOR SHOULD KNOW
    language if it can't locate a resource for the user's preferred language."
    Bundle.developmentLocalization "corresponds to the value in the CFBundleDevelopmentRegion key"
    (developer.apple.com/documentation/foundation/bundle/developmentlocalization).
-   This app has no .lproj at all, so for an English-device user French is the fallback.
+   The project declares no localization: project.yml has no .lproj, CFBundleLocalizations or strings resource.
+   The tip run's three build logs (Debug xcodebuild, Release xcodebuild, job log) mention "lproj" 0 times. The
+   built .app was not listed file by file. On that record, an English-device user falls back to French.
 2. WHAT AN ENGLISH-DEVICE USER SEES, MEASURED (R1403(b)): on an en-US simulator, the in-app share sheet's "Copy" is
    "Copier", while the rest of the sheet stays English. The app's own text is French regardless, since Compose draws
    it from the app's French constants. Before this change, the same user saw "Copy".
@@ -243,14 +249,18 @@ R1404 - WHAT THE OPERATOR SHOULD KNOW
    - Apple DTS, Apple Developer Forums thread 813504 (Jan 2026, DTS Engineer, Worldwide Developer Relations): "The
      value of the `Languages` field in the App Store is determined by the existence of `.lproj` folders in your app
      bundle."
-   - App Store Connect Help ("Localize app information") separates that list from the listing's metadata languages,
-     which the operator chooses in App Store Connect.
+   - App Store Connect Help, "Localize app information"
+     (developer.apple.com/help/app-store-connect/manage-app-information/localize-app-information, read
+     2026-11-24): "Languages on the App Information page in App Store Connect are part of your app's metadata."
+     "This differs from adding languages to your app in Xcode when you localize your binary." The listing's
+     metadata languages are therefore the operator's choice in App Store Connect, separate from this key.
    - This change adds NO .lproj, so it adds nothing that list reads.
    - What the list shows for a bundle with no .lproj at all is NOT documented in what I found. Apple names no case
      for it, and no upload was made. I did not guess.
    - If the store must list "French", the documented route is a fr.lproj in the bundle. That is a new mechanism R1403
      excludes: QUESTION 2.
-4. InMemorySettingsStore, a test fake, STILL SHIPS in the Release framework.
+4. InMemorySettingsStore, a test fake, is EXPECTED to still ship in the Release framework. This session did NOT
+   count it; AujourdhuiPilot shows that such a premise can be wrong.
    - It is public in commonMain because :app's unit tests (ThresholdAlertPresenceTest, SessionEndSeamTest,
      ParametresWirePinTest) need it, and they cannot see :shared's commonTest.
    - The mechanism that would end this is a shared test-fixtures source: :shared publishing a test-only source set
@@ -304,7 +314,9 @@ LEAK SCANS, of every downloaded job log and artifact:
   - ios-app 45274815756 (RED, log + 14 files):
     - bearer 0, callback 0, six-digit 0, token prefix 0, code boxes 0;
     - production host 4, R1353's lines.
-  - No screen capture shows a code.
+  - Screen captures looked at: the tip run's launch-DEFAULT.png, launch-AX5.png and probe-share-sheet.png, plus
+    the RED and base runs' probe-share-sheet.png. Each shows the sign-in welcome screen ("Commencer") or the
+    sheet over it, and no code. The RED run's two launch PNGs were not opened.
   - Before each push, tools/tokcheck.mjs counted the token prefix in `git diff origin/main..HEAD` and the commit
     messages and would have refused on a hit. Every push read hits=0.
 DIFF CHECK: `git diff 8098a511 <tip> --name-only` lists only these files:
@@ -328,7 +340,9 @@ NOTICED BUT NOT TOUCHING
   sessions. A `cat >` of mine overwrote an existing junit.js there (1252 bytes, mtime 2026-11-23 12:34, author
   unknown - not this session), and its old content is lost. Everything of mine was then moved out to
   C:/wt/queue-evidence/i4-polish/tools/. The same command left an empty C:/Users/KAMXKAM/AppData/Local/junit.js,
-  which this session created and removed. No other pre-existing file was written, going by the directory's mtimes.
+  which this session created and removed. Likewise thirteen step*.sh files (a YAML syntax check) left in
+  C:/Users/KAMXKAM/AppData/Local/Temp at 21:54:17, created by this session and removed. No other pre-existing file
+  was written, going by the directory's mtimes.
 
 ================================================================================
 DEVIATIONS
@@ -363,11 +377,23 @@ Q2 (R1404.3 - the App Store language list). The store's Languages field reads .l
    store-facing claim, so it is not done.
 Q3 (R1404.4). Should InMemorySettingsStore leave the shipped framework through a test-fixtures source set or module?
    That is a build change, so it is not done.
+Q4 (ios-walk on the French bundle - affects the merge decision). project-walk.yml includes project.yml, so the walk
+   now builds a "fr" bundle. ios-walk was NOT run on it in this session.
+   - The walk taps some system labels by their English text:
+     - WalkSupport.swift:166 buttons["Continue"], the keyboard's first-use tip;
+     - WalkUITests.swift:673 ["Close", "Fermer", "Cancel"], the share sheet's close. It falls back to a swipe-down;
+       "Annuler" is not listed.
+   - Already bilingual: "Allow"/"Autoriser" (WalkUITests.swift:804) and the keyboard return-key list (:301).
+   - Whether "Continue" and "Cancel" now render in French under the "fr" region is unmeasured, since only the
+     share sheet's "Copy" was observed to change.
+   - Not edited (out of R1399-R1403's file list). One ios-walk dispatch on i4-polish would settle it before the
+     merge.
 
 ================================================================================
 PUSH PROOF
 ================================================================================
 Code tip a505b731, pushed to origin/i4-polish (git ls-remote read a505b73169b23741321a590883a6c450adb4799b after the
 gate-checked push). Every commit before it was pushed as well: 121f715d, 886917f8, 9f6e0561, db7ce1b6 and 958faea5.
-The report tip is the commit carrying this text. Its sha and a505b73169b23741321a590883a6c450adb4799b	refs/heads/i4-polish are in the handback.
+The first report commit was 59087525. This amended report is the commit carrying this text; its sha and the
+`git ls-remote origin i4-polish` reading are in the handback.
 NOT MERGED. The R349 lock (.session-lock.json, gitignored) is removed last.
