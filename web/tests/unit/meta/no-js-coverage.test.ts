@@ -139,6 +139,22 @@ const COVERAGE: Readonly<Record<string, string | { readonly why: string }>> = {
   // date typed with scripting off, and no reminder form.
   'app/(public)/calculateur-lamal-cmu/DeadlineHelper.tsx': 'comparateur.nojs.spec.ts',
 
+  // FW-CALC-REDESIGN (R1406, R1409): the comparator's explanations are native
+  // <details> accordions - server HTML that opens with no script. That spec
+  // opens the delay's by its summary and follows a fragment into a closed one
+  // ("Ce qui est définitif"), asserting the browser opens it.
+  'app/(public)/calculateur-lamal-cmu/page.tsx': 'comparateur.nojs.spec.ts',
+  'app/(public)/calculateur-lamal-cmu/ComparatorSections.tsx': 'comparateur.nojs.spec.ts',
+  // R1408: the rail's three cards are accordions too, but they exist only once
+  // a comparison is shown, and the comparison runs in the browser (R658).
+  'lib/ui/react/Comparison/ComparisonPanel.tsx': {
+    why:
+      'Its accordions (the insurers, the care cap, the franc) render only inside ' +
+      'a result, and a result exists only after the island has computed one in ' +
+      'the browser (R658): with scripting off there is no panel to open. ' +
+      'e2e/calc-redesign.spec.ts drives them with the keyboard.',
+  },
+
   // The alert sign-up: the calculator's POST form, and the journey the
   // operator named.
   'lib/ui/react/AlertCapture/AlertCapture.tsx': 'calculateur.nojs.spec.ts',

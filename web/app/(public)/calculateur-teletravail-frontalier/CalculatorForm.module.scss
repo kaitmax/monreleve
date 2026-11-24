@@ -16,6 +16,7 @@
 
 @use "../../../lib/ui/core/styles/breakpoints" as bp;
 @use "../../../lib/ui/react/ResultCard/frame";
+@use "../../../lib/ui/core/styles/calc-shell" as shell;
 
 // ---------------------------------------------------------------------------
 // FW-CALCS-A2, R724: THE TWO COLUMNS. The page's grid (calculateur.module.scss
@@ -32,15 +33,10 @@
 }
 
 // STICKY ON A WIDE SCREEN, so the answer stays in view while the form
-// scrolls. align-self: start is what lets it stick: a grid item stretched to
-// the row's height has nowhere to move. The shell's header is not sticky, so
-// the offset is a plain space token.
-@media (width >= bp.$breakpoint-md) {
-  .resultColumn {
-    position: sticky;
-    top: var(--space-6);
-    align-self: start;
-  }
+// scrolls: the family's rail (FW-CALC-REDESIGN, R1406, R1410), one partial
+// with the comparator's - lib/ui/core/styles/_calc-shell.scss.
+.resultColumn {
+  @include shell.rail;
 }
 
 // The form card (calculateur-a2): white, hairline, radius lg, roomier on a

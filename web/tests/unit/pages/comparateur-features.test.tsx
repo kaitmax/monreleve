@@ -214,17 +214,24 @@ describe('R745: the insurers, one dot each', () => {
     expect(panel.querySelector('[data-count-sentence]')?.textContent).toBe(sentence);
     expect(panel.querySelector('[data-chart] h3')?.textContent).toBe(COPY.result.chart.heading(count));
 
-    const chart = screen.getByRole('img');
-
-    expect(chart.getAttribute('aria-label')).toBe(
-      COPY.result.chart.label(
-        count,
-        formatEur(totals[0] ?? 0),
-        formatEur(totals[totals.length - 1] ?? 0),
-        formatEur(value.french.contributionEur),
-        sentence,
-      ),
+    // FW-CALC-REDESIGN (R1408): TWO pictures carry the one text alternative -
+    // the range bar under the panels and the dot chart in its accordion - so a
+    // reader who never opens the chart hears exactly what the chart says.
+    const pictures = screen.getAllByRole('img');
+    const label = COPY.result.chart.label(
+      count,
+      formatEur(totals[0] ?? 0),
+      formatEur(totals[totals.length - 1] ?? 0),
+      formatEur(value.french.contributionEur),
+      sentence,
     );
+
+    expect(pictures).toHaveLength(2);
+    expect(pictures.map((picture) => picture.closest('[data-range], [data-chart]')?.hasAttribute('data-range'))).toEqual([
+      true,
+      false,
+    ]);
+    for (const picture of pictures) expect(picture.getAttribute('aria-label')).toBe(label);
   });
 });
 

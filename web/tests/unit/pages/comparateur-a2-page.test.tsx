@@ -7,9 +7,11 @@
 //
 //   - every section the artboard draws is in the page, by id, under its own
 //     heading, and in the artboard's order;
-//   - the chips under the head link to those sections, in BOTH directions -
-//     every chip's target exists, and every section has a chip (R175: the
-//     space between "declared" and "served");
+//   - FW-CALC-REDESIGN (R1408): the chips under the head are gone - the
+//     accordions replace them - and every section id still resolves, once
+//     (tests/unit/pages/calc-redesign.test.tsx asserts each sits inside its
+//     accordion's content, and e2e/calc-redesign.spec.ts that a fragment
+//     opens it);
 //   - the figures the new sections state are DELIVERED from the data (R154),
 //     and the copy module types none (R147);
 //   - what the page never says (R673) holds over the WHOLE rendered page,
@@ -75,24 +77,27 @@ describe('the head, as the artboard sets it', () => {
     expect(text(pill)).toBe(COPY.title);
     expect(container.textContent).toContain(COPY.intro);
 
-    const nav = container.querySelector('[data-on-this-page]');
     const banner = container.querySelector('[data-banner="irrevocable"]');
 
-    expect(nav).not.toBeNull();
-    // The chips sit in the head, before the banner, as drawn.
-    expect(nav?.compareDocumentPosition(banner as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    // R1408: no chips any more; the banner follows the head directly.
+    expect(container.querySelector('[data-on-this-page]')).toBeNull();
+    expect(h1[0]?.compareDocumentPosition(banner as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
 
 describe('every section, by id, under its heading, in order', () => {
-  it('renders each section exactly once, holding its own heading', () => {
+  it('renders each section exactly once, under its own heading', () => {
     const { container } = render(<ComparateurPage />);
 
     for (const { id, heading } of SECTIONS) {
       const found = container.querySelectorAll(`[id="${id}"]`);
+      // R1409: a collapsed section's heading is its accordion's summary; the
+      // id is on the content it discloses. "Sources" holds its own h2.
+      const details = found[0]?.closest('details') ?? null;
+      const h2 = details === null ? (found[0]?.querySelector('h2') ?? null) : details.querySelector(':scope > summary h2');
 
       expect(found, `#${id}`).toHaveLength(1);
-      expect(text(found[0]?.querySelector('h2') ?? null), `#${id}'s heading`).toBe(heading);
+      expect(text(h2), `#${id}'s heading`).toBe(heading);
     }
     expect(container.querySelectorAll(`[id="${SECTION_ID.compare}"]`)).toHaveLength(1);
   });
@@ -111,19 +116,15 @@ describe('every section, by id, under its heading, in order', () => {
   });
 });
 
-describe('the chips (R1048)', () => {
-  it('link to the sections that exist, and every section has a chip', () => {
+describe('the chips are gone (R1408), and every section is still addressable', () => {
+  it('renders no chip navigation, and every id in section-ids.ts resolves exactly once', () => {
     const { container } = render(<ComparateurPage />);
-    const nav = screen.getByRole('navigation', { name: PAGE.onThisPage });
-    const targets = [...nav.querySelectorAll('a')].map((link) => link.getAttribute('href') ?? '');
 
-    // Every chip is an in-page fragment whose target exists...
-    for (const href of targets) {
-      expect(href.startsWith('#'), href).toBe(true);
-      expect(container.querySelector(`[id="${href.slice(1)}"]`), href).not.toBeNull();
+    expect(container.querySelector('[data-on-this-page]')).toBeNull();
+    expect(screen.queryByRole('navigation', { name: PAGE.onThisPage })).toBeNull();
+    for (const id of Object.values(SECTION_ID)) {
+      expect(container.querySelectorAll(`[id="${id}"]`), `#${id}`).toHaveLength(1);
     }
-    // ...and every section the page declares has its chip.
-    expect([...targets].sort()).toEqual(Object.values(SECTION_ID).map((id) => `#${id}`).sort());
   });
 });
 

@@ -130,14 +130,30 @@ const BEFORE_HYDRATION = { title: 'typed before the helper hydrates (R1041)', be
 
 type Typing = typeof AS_LOADED | typeof BEFORE_HYDRATION;
 
-/** Opens the comparator and runs `type`, in the order `typing` names. */
+/**
+ * FW-CALC-REDESIGN (R1409): "Le délai de trois mois" is a native accordion,
+ * closed by default, so a reader opens it before using the helper - and so
+ * does this spec. A <summary> toggles with no JavaScript, so this works
+ * before the helper hydrates as well as after.
+ */
+async function openDeadline(page: Page): Promise<void> {
+  await page.locator('[data-deadline] summary').click();
+  await expect(page.locator('[data-deadline] details')).toHaveJSProperty('open', true);
+}
+
+/** Opens the comparator, then the delay's accordion, and runs `type`, in the order `typing` names. */
 async function openAndType(page: Page, typing: Typing, type: () => Promise<void>): Promise<void> {
+  const opened = async (): Promise<void> => {
+    await openDeadline(page);
+    await type();
+  };
+
   if (typing.beforeHydration) {
     // The plant's evidence, in the run's output: which requests waited, and for how long.
-    console.log(`[R1041] ${test.info().title}: ${await typeBeforeHydration(page, type)}`);
+    console.log(`[R1041] ${test.info().title}: ${await typeBeforeHydration(page, opened)}`);
   } else {
     await page.goto(COMPARATOR_PATH);
-    await type();
+    await opened();
   }
 }
 

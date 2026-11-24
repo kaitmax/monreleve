@@ -94,6 +94,20 @@ async function compareAdult(page: import('@playwright/test').Page, income: strin
   await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
 }
 
+/**
+ * FW-CALC-REDESIGN (R1408, R1409): what a state photographs may now sit in a
+ * closed accordion - the insurers' dots, the care card, the franc slider in
+ * the rail; the three-month helper below. A reader opens it to see it, and so
+ * does the state, before it is confirmed and photographed: a picture named
+ * for the dots must show the dots.
+ */
+async function openFold(page: import('@playwright/test').Page, within: string): Promise<void> {
+  const details = page.locator(`${within} details`).first();
+
+  await details.locator(':scope > summary').click();
+  await expect(details).toHaveJSProperty('open', true);
+}
+
 const START = `${DEFAULT_YEAR}-03-01`;
 const EVENT = '2026-11-30';
 
@@ -208,19 +222,28 @@ const STATES: readonly VisualState[] = [
   {
     // R745: (12 225 - 12 225) x 8 % = 0 EUR - below all thirteen.
     id: 'points-inferieur',
-    reach: async (page) => compareAdult(page, '12225'),
+    reach: async (page) => {
+      await compareAdult(page, '12225');
+      await openFold(page, '[data-chart]');
+    },
     mustShow: countSentence(12225),
   },
   {
     // R745: (60 000 - 12 225) x 8 % = 3 822 EUR - among the totals.
     id: 'points-entre',
-    reach: async (page) => compareAdult(page, '60000'),
+    reach: async (page) => {
+      await compareAdult(page, '60000');
+      await openFold(page, '[data-chart]');
+    },
     mustShow: countSentence(60000),
   },
   {
     // R745: (1 000 000 - 12 225) x 8 % = 79 022 EUR - above all thirteen.
     id: 'points-superieur',
-    reach: async (page) => compareAdult(page, '1000000'),
+    reach: async (page) => {
+      await compareAdult(page, '1000000');
+      await openFold(page, '[data-chart]');
+    },
     mustShow: countSentence(1000000),
   },
   {
@@ -236,7 +259,8 @@ const STATES: readonly VisualState[] = [
       }
 
       await page.getByRole('button', { name: LAMAL_COPY.form.submit }).click();
-      await expect(page.locator('[data-children-cap]')).toHaveCount(1);
+      await openFold(page, '[data-care]');
+      await expect(page.locator('[data-children-cap]')).toBeVisible();
     },
     mustShow: LAMAL_COPY.result.care.apart,
   },
@@ -246,6 +270,7 @@ const STATES: readonly VisualState[] = [
     id: 'franc-deplace',
     reach: async (page) => {
       await compareAdult(page, '42000');
+      await openFold(page, '[data-franc]');
 
       const slider = page.locator('#cours-franc');
 
@@ -259,6 +284,7 @@ const STATES: readonly VisualState[] = [
     id: 'delai-sans-s3',
     clock: ON_THE_EVENT_DAY,
     reach: async (page) => {
+      await openFold(page, '[data-deadline]');
       await page.locator('#date-evenement').fill(EVENT);
       await expect(page.locator('[data-deadline-warning]')).toHaveText(LAMAL_COPY.deadline.warning);
       // R918: the reminder form under the helper, confirmed before photographed.
@@ -278,6 +304,7 @@ const STATES: readonly VisualState[] = [
           body: JSON.stringify({ status: REMINDER_STATUS.ok, message: RAPPEL_COPY.answers.ok }),
         }),
       );
+      await openFold(page, '[data-deadline]');
       await page.locator('#date-evenement').fill(EVENT);
       await page.getByLabel(RAPPEL_FORM_COPY.label).fill('rappel@monreleve.test');
       await page.getByRole('button', { name: RAPPEL_FORM_COPY.submit }).click();

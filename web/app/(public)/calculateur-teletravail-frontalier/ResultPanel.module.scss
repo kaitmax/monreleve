@@ -49,6 +49,31 @@
   border-radius: var(--radius-lg);
 }
 
+// FW-CALC-REDESIGN, R1410: THE TWO "JOURS RESTANTS" LEAD, the two "imposés"
+// follow. By position - the panel's order puts the two remaining-day tiles
+// first (result-panel-order.test.tsx) - so no class joins this module's map,
+// which ships in the calculator's client chunk. The lead figures a step up
+// to H1; the other two a step down to H3, on the canvas behind a hairline.
+// MetricTile itself is unchanged (the home page renders it too); these rules
+// are heavier than its single-class ones, so chunk order never decides
+// (R1011).
+.tiles > :nth-child(-n + 2) > p:last-child {
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line);
+}
+
+.tiles > :nth-child(n + 3) {
+  border-color: var(--colour-border-default);
+  background: var(--colour-canvas);
+}
+
+.tiles > :nth-child(n + 3) > p:last-child {
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line);
+}
+
 // THE ONE BREAKPOINT THERE IS. $breakpoint-md is the only breakpoint the
 // token layer authorises (R68) and it lives in a SASS partial rather than a
 // custom property, because a media condition is evaluated outside any element

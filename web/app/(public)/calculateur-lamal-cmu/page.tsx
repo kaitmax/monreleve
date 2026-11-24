@@ -12,12 +12,14 @@
 //
 // FW-COMPARATEUR-A2-PAGE (W20, R1046-R1050): the page is the droit d'option
 // page of the approved A2 artboard (docs/design/comparateur-lamal-a2.dc.html)
-// - the pill, the long h1, the lead and the chips in the head; then, after
+// - the pill, the long h1 and the lead in the head (FW-CALC-REDESIGN, R1408:
+// the chips that followed them are gone); then, after
 // the comparison and the delay, "Ce qui est définitif", "Qui suit votre
 // choix" beside "Ce que couvre l'option", the France and Suisse cards, the
 // limits, and "Sources". Every one of those is a server component
 // (ComparatorSections.tsx): they add no client JavaScript. The calculation,
-// the island and the delay helper are untouched (R1050).
+// the island and the delay helper are untouched (R1050). Since
+// FW-CALC-REDESIGN (R1409) each of them but "Sources" is a native accordion.
 //
 // STATIC, AND IT NEVER READS searchParams. Nothing the reader types reaches a
 // URL (R658), so there is nothing to read; and the calculator's page records
@@ -49,7 +51,7 @@ import {
   DeadlineSource,
   FamilyAndScope,
   FinalSection,
-  OnThisPage,
+  Fold,
   SourcesSection,
   ToolPill,
 } from './ComparatorSections';
@@ -88,7 +90,9 @@ export default function ComparateurPage() {
         the IRREVOCABILITY BANNER directly under it (above the form and the
         result, R642), then two columns: the form card and the result.
         W20: the head carries the pill (the tool's name), the artboard's h1
-        and lead, and the chips - each a link to a section below.
+        and lead. FW-CALC-REDESIGN (R1406, R1408): the result column is the
+        sticky verdict rail (ComparatorForm, _calc-shell.scss), and the chips
+        are gone - the accordions below replace them.
       */}
       <Container width="public">
         <header className={`${styles.head} ${styles.a2}`}>
@@ -98,7 +102,6 @@ export default function ComparateurPage() {
           <noscript>
             <p className={styles.note}>{COPY.noScript}</p>
           </noscript>
-          <OnThisPage />
         </header>
 
         <IrrevocabilityBanner />
@@ -109,87 +112,84 @@ export default function ComparateurPage() {
       </Container>
 
       {/*
-        FW-CALCS-A2, R748: "Le délai de trois mois", as the design draws it -
-        the period and the four events that open it (rows D1-D6, the banner's
-        own list), and the helper beside them. The text is the server's; the
-        helper is a small island that keeps nothing from the comparison (R750)
-        and offers the reminder form once a date is computed (FW-DELAI-RAPPEL,
-        R918). The reminder links land here: ReminderOutcomes renders their
-        outcomes hidden, and the fragment reveals one (lib/rappel/landing.ts).
-        W20: the section's id (a chip's target) and its source line.
+        FW-CALC-REDESIGN (R1406, R1409): THE EXPLANATIONS, AS NATIVE
+        ACCORDIONS, in the artboard's order - each closed, its summary the
+        section's own heading, its text in the served HTML (no JavaScript).
+        Open by default are only the form, the result and the banner above,
+        and "Sources" below.
+
+        "Le délai de trois mois" (FW-CALCS-A2, R748): its text and the four
+        events - server HTML - and the helper beside them, a small island
+        that keeps nothing from the comparison (R750) and offers the reminder
+        form once a date is computed (FW-DELAI-RAPPEL, R918).
+
+        THE REMINDER LANDINGS STAY OUTSIDE EVERY ACCORDION. The links in a
+        reminder message land here with a fragment, and CSS :target reveals
+        the outcome it names (ReminderOutcomes, lib/rappel/landing.ts) - an
+        outcome inside a closed <details> would be revealed into nothing.
       */}
-      <section
-        className={`${styles.deadline} ${styles.a2}`}
-        id={SECTION_ID.deadline}
-        data-a2-anchor="true"
-        aria-labelledby="delai-titre"
-        data-deadline="true"
-      >
+      <div className={styles.a2} data-a2-band="canvas">
         <Container width="public">
           <ReminderOutcomes />
-          <div className={styles.deadlineLayout}>
-            <div>
-              <h2 className={styles.deadlineHeading} id="delai-titre">
-                {COPY.deadline.heading}
-              </h2>
-              <p className={styles.deadlineIntro}>{COPY.deadline.intro}</p>
-              <ul className={styles.eventList}>
-                {COPY.deadline.events.map((event) => (
-                  <li key={event}>{event}</li>
-                ))}
+          <div data-a2="folds">
+            <Fold
+              id={SECTION_ID.deadline}
+              headingId="delai-titre"
+              heading={COPY.deadline.heading}
+              hook={{ 'data-deadline': 'true' }}
+            >
+              <div className={styles.deadlineLayout}>
+                <div>
+                  <p className={styles.deadlineIntro}>{COPY.deadline.intro}</p>
+                  <ul className={styles.eventList}>
+                    {COPY.deadline.events.map((event) => (
+                      <li key={event}>{event}</li>
+                    ))}
+                  </ul>
+                  <DeadlineSource />
+                </div>
+                <DeadlineHelper />
+              </div>
+            </Fold>
+
+            <FinalSection />
+            <FamilyAndScope />
+            <ChoiceCards year={newest} />
+
+            {/*
+              R732: "CE QUE CE COMPARATIF NE COMPARE PAS" - columns of items
+              under a hairline each, a bold lead per item - with EVERY item in
+              its full text. The lead is SPLIT from the item
+              (lib/content/lead.ts), never retyped: lead, one space, rest is
+              the item, character for character.
+            */}
+            <Fold
+              id={SECTION_ID.limits}
+              headingId="ne-compare-pas"
+              heading={COPY.limitsHeading}
+              hook={{ 'data-limits': 'true' }}
+            >
+              <ul className={styles.limitList}>
+                {COPY.limits(franchise, formatDate(EXCHANGE_RATE.date)).map((item) => {
+                  const { lead, rest } = splitLead(item);
+
+                  return (
+                    <li className={styles.limit} key={item}>
+                      <strong className={styles.limitLead}>{lead}</strong>
+                      {rest === '' ? null : (
+                        <>
+                          {' '}
+                          <span className={styles.limitRest}>{rest}</span>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
-              <DeadlineSource />
-            </div>
-            <DeadlineHelper />
+            </Fold>
           </div>
         </Container>
-      </section>
-
-      <FinalSection />
-      <FamilyAndScope />
-      <ChoiceCards year={newest} />
-
-      {/*
-        R732: "CE QUE CE COMPARATIF NE COMPARE PAS", as the design sets it -
-        a white band, columns of items under a hairline each, a bold lead
-        per item - with EVERY item in its full text (eight since FW-CALCS-A2's
-        addendum 2 took out the joint return and the incomplete year, which
-        the form now asks). The lead is SPLIT
-        from the item (lib/content/lead.ts), never retyped: lead, one space,
-        rest is the item, character for character.
-        W20: its id (a chip's target); the link to /sources moved to
-        "Sources" below, and the guide's link is the banner's, as drawn.
-      */}
-      <section
-        className={`${styles.band} ${styles.a2}`}
-        id={SECTION_ID.limits}
-        data-a2-anchor="true"
-        aria-labelledby="ne-compare-pas"
-        data-limits="true"
-      >
-        <Container width="public">
-          <h2 className={styles.limitsHeading} id="ne-compare-pas">
-            {COPY.limitsHeading}
-          </h2>
-          <ul className={styles.limitList}>
-            {COPY.limits(franchise, formatDate(EXCHANGE_RATE.date)).map((item) => {
-              const { lead, rest } = splitLead(item);
-
-              return (
-                <li className={styles.limit} key={item}>
-                  <strong className={styles.limitLead}>{lead}</strong>
-                  {rest === '' ? null : (
-                    <>
-                      {' '}
-                      <span className={styles.limitRest}>{rest}</span>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </Container>
-      </section>
+      </div>
 
       <SourcesSection />
     </main>
