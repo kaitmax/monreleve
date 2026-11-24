@@ -128,7 +128,7 @@ describe('the sitemap lists what exists and nothing else', () => {
     expect([...sitemapPaths()].sort()).toEqual([...liveRoutes().map((r) => r.path)].sort());
   });
 
-  it('lists the nineteen routes that exist and may be seen today', () => {
+  it('lists the twenty-one routes that exist and may be seen today', () => {
     // FOUR UNTIL FW11, five with the calculator, six with /sources. The
     // calculator joined when its page was built AND the Checkpoint A review
     // was recorded - two independent conditions, both of which had to be
@@ -192,6 +192,10 @@ describe('the sitemap lists what exists and nothing else', () => {
       '/confidentialite',
       '/guides',
       '/guides/attestation-employeur-teletravail',
+      // FW-SEO-ARTICLES: the two health-insurance guides, one per side of the
+      // droit d'option, written on the sources R664-R673 already cleared.
+      '/guides/cotisation-cmu-frontalier',
+      '/guides/cout-lamal-frontalier',
       '/guides/declaration-impots-frontalier',
       '/guides/droit-option-lamal-cmu',
       '/guides/geneve',
