@@ -245,6 +245,20 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
     priority: 0.7,
   },
   {
+    path: '/guides/cotisation-cmu-frontalier',
+    status: 'live',
+    task: 'FW-SEO-ARTICLES',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  },
+  {
+    path: '/guides/cout-lamal-frontalier',
+    status: 'live',
+    task: 'FW-SEO-ARTICLES',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  },
+  {
     path: '/guides/declaration-impots-frontalier',
     status: 'live',
     task: 'FW18',

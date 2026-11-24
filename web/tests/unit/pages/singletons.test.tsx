@@ -316,6 +316,8 @@ const COUNTED_IN_E2E: readonly string[] = [
   '/guides/declaration-impots-frontalier',
   '/guides/geneve',
   '/guides/droit-option-lamal-cmu',
+  '/guides/cotisation-cmu-frontalier',
+  '/guides/cout-lamal-frontalier',
 ];
 
 describe('the census covers every live public route (R119)', () => {

@@ -1,0 +1,177 @@
+---
+title: "Coût de la LAMal pour un frontalier suisse : les primes"
+description: "Ce que coûte l’assurance maladie suisse au frontalier résidant en France : les primes publiées par l’OFSP, par classe d’âge, de la plus basse à la plus élevée."
+slug: cout-lamal-frontalier
+breadcrumbLabel: "Le coût de la LAMal"
+cluster: cluster
+related:
+  - teletravail-frontalier-40-pourcent
+  - droit-option-lamal-cmu
+  - cotisation-cmu-frontalier
+lastReviewed: "2026-11-24"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "La prime dépend-elle de mon canton de travail ?"
+    answer: "Non. Pour une personne qui réside en France, la prime est calculée selon l’État de résidence et non selon le canton. Deux frontaliers qui travaillent dans deux cantons différents et résident en France se voient proposer les mêmes primes."
+  - question: "La prime dépend-elle de mon salaire ?"
+    answer: "Non. Elle dépend de la classe d’âge, de l’assureur et de la couverture accidents. C’est la différence de logique avec la cotisation française, qui est calculée sur le revenu."
+  - question: "Les montants publiés sont-ils mensuels ou annuels ?"
+    answer: "Mensuels. La prime est le montant payé chaque mois à l’assureur ; le coût d’une année s’obtient en la multipliant par le nombre de mois."
+  - question: "Pourquoi ce guide ne nomme-t-il aucun assureur ?"
+    answer: "Parce que nommer un assureur reviendrait à le recommander, ce que ce site ne fait pas. Les primes de chaque assureur sont publiées par l’Office fédéral de la santé publique, et le site officiel de comparaison des primes permet de choisir."
+  - question: "Faut-il prendre la couverture accidents ?"
+    answer: "Un salarié couvert par l’assurance accidents de son employeur peut demander à suspendre cette couverture, ce qui réduit la prime. Les deux tableaux de ce guide donnent les primes avec et sans."
+  - question: "Ce guide me dit-il s’il vaut mieux choisir la Suisse ou la France ?"
+    answer: "Non. Il explique un seul des deux côtés. Le comparateur LAMal / CMU met les deux coûts en regard pour votre foyer, sur une année, sans dire lequel choisir."
+claims:
+  - key: lamalPremiumData
+    says: "L’Office fédéral de la santé publique publie les primes de chaque assureur pour les personnes qui résident en France, par classe d’âge et selon la couverture accidents."
+  - key: lamalPremiumMonthly
+    says: "La prime publiée est le montant payé chaque mois à l’assureur."
+  - key: lamalPremiumByState
+    says: "Pour une personne qui réside dans un État de l’Union européenne, la prime est calculée selon l’État de résidence, et non selon le canton."
+  - key: lamalAgeClasses
+    says: "Les primes distinguent trois classes, les enfants, les jeunes adultes et les adultes, et la classe suit l’année de naissance."
+  - key: lamalAccidentCover
+    says: "La couverture accidents peut être suspendue, à sa demande, pour une personne entièrement couverte par l’assurance accidents obligatoire."
+---
+
+{/*
+  CLUSTER, FW-SEO-ARTICLES (the operator, 24.11.2026). Written because Search
+  Console showed queries on the COST of the Swiss insurance for a frontalier
+  and no page that answered them.
+
+  THIS REVERSES ONE THING ON PURPOSE. The droit d'option guide says a cost is
+  computed for a household rather than read in an article, and carries no
+  amount. That stays true of a household's cost. What this page prints is
+  the published premium range per person, which is a fact of the dataset.
+
+  WHAT THE RULINGS FIX, AND THIS PAGE OBEYS:
+    R668  three figures, never one: the lowest, the median, the highest;
+    R673  no insurer named, no verdict, no "recommandé";
+    R664  the OFSP attribution, with its link, under the figures;
+    R672  nothing converted: every premium stays in francs;
+    R671  one year, named in the heading of the table.
+
+  EVERY FIGURE IS AN EXPRESSION from lib/guides/scope.ts, which reads the
+  generated OFSP table the comparator reads. The age bounds of the three
+  classes are NOT printed: they are bare numbers inside lib/lamal today, and
+  typing them here would be a second copy (R181). The page names the classes
+  and says the class follows the year of birth.
+*/}
+
+Un frontalier qui choisit le système suisse pour son assurance maladie paie
+une prime à un assureur. Cette prime ne dépend pas de son salaire : elle
+dépend de son âge, de l’assureur qu’il choisit et de la couverture accidents.
+
+Ce guide donne les primes publiées pour les personnes qui résident en France.
+Il ne dit pas s’il vaut mieux choisir la Suisse ou la France :
+[le comparateur LAMal / CMU](/calculateur-lamal-cmu) met les deux coûts en
+regard pour votre foyer.
+
+<Encadre titre="En bref">
+
+- Ce qui fixe la prime : la classe d’âge, l’assureur, la couverture accidents
+- Ce qui ne la change pas : le salaire, et le canton de travail
+- Prime mensuelle d’un adulte en {healthYear}, sans accidents : de {lamalAdultLowest} à {lamalAdultHighest}
+- Nombre d’assureurs dans les données : {lamalInsurerCount}
+- Le foyer : une prime par personne assurée
+
+</Encadre>
+
+## Selon l’État de résidence, pas selon le canton
+
+Pour un frontalier, la prime ne dépend pas du canton : lorsque l’assuré réside
+dans un État de l’Union européenne, elle est calculée selon cet État, et non
+selon le canton où il travaille.
+
+Les primes de ce guide sont donc celles des personnes qui résident en France,
+quel que soit le canton de leur employeur.
+
+## Trois classes d’âge
+
+Les primes distinguent trois classes : les enfants, les jeunes adultes et les
+adultes. La classe suit l’année de naissance, et non la date d’anniversaire :
+on change de classe au début d’une année, pas en cours d’année.
+
+[Le comparateur](/calculateur-lamal-cmu) demande l’année de naissance de
+chaque personne et en déduit la classe.
+
+## Les primes, de la plus basse à la plus élevée
+
+Les primes diffèrent beaucoup d’un assureur à l’autre. Le tableau donne donc
+trois montants par classe d’âge : la prime la plus basse, la prime médiane et
+la prime la plus élevée, pour l’année {healthYear}, sans la couverture
+accidents.
+
+<DataGrid
+  caption="Prime mensuelle par classe d’âge, sans la couverture accidents"
+  columns={[
+    { key: "classe", header: "Classe d’âge" },
+    { key: "basse", header: "La plus basse", numeric: true },
+    { key: "mediane", header: "Médiane", numeric: true },
+    { key: "haute", header: "La plus élevée", numeric: true },
+  ]}
+  rows={lamalPremiumRows}
+/>
+
+Ces montants sont mensuels, en francs suisses, et portent sur les
+{lamalInsurerCount} assureurs présents dans les données. Les primes d’un
+adulte y sont publiées pour une franchise de {lamalFranchise}.
+
+Source : {lamalDatasetAuthor}, <a href={lamalDatasetUrl}>« {lamalDatasetTitle} »</a>, primes {healthYear}.
+
+Ce guide ne nomme aucun assureur. Pour connaître la prime de chacun et en
+choisir un, le site officiel de comparaison des primes est
+<a href={priminfoUrl}>priminfo.admin.ch</a>.
+
+## Avec ou sans la couverture accidents
+
+La prime comprend par défaut une couverture en cas d’accident. Un salarié
+entièrement couvert par l’assurance accidents obligatoire de son employeur
+peut demander à suspendre cette couverture, ce qui réduit la prime.
+
+C’est pourquoi le tableau précédent est donné sans accidents. Voici les mêmes
+primes avec la couverture accidents, pour la même année.
+
+<DataGrid
+  caption="Prime mensuelle par classe d’âge, avec la couverture accidents"
+  columns={[
+    { key: "classe", header: "Classe d’âge" },
+    { key: "basse", header: "La plus basse", numeric: true },
+    { key: "mediane", header: "Médiane", numeric: true },
+    { key: "haute", header: "La plus élevée", numeric: true },
+  ]}
+  rows={lamalAccidentRows}
+/>
+
+## Sur une année, pour un foyer
+
+La prime se paie chaque mois, et pour chaque personne assurée. Le coût d’une
+année pour un foyer est donc la somme des primes mensuelles de chacun,
+multipliée par le nombre de mois.
+
+C’est la différence de logique la plus nette avec le système français, où une
+seule cotisation, calculée sur le revenu, couvre le frontalier et ses ayants
+droit :
+[le guide de la cotisation CMU](/guides/cotisation-cmu-frontalier) détaille ce
+côté-là.
+
+## Ce que ce guide ne dit pas
+
+Il ne dit pas lequel des deux systèmes choisir, ni quel assureur retenir. Il
+ne traite que des primes : les frais de santé qui restent à votre charge ne
+sont pas dans ces tableaux.
+
+Le choix entre les deux systèmes ne se fait qu’une fois.
+[Le guide du droit d’option](/guides/droit-option-lamal-cmu) explique son
+délai et ses conditions, et le comparateur dit ce qu’il ne compare pas.
+
+Le télétravail, lui, relève d’autres textes :
+[le guide du plafond fiscal](/guides/teletravail-frontalier-40-pourcent) s’en
+charge.
+
+Ce qui est vérifié sur cette page, et à quelle date, est publié sur la page
+[sources et vérifications](/sources).
+
+<CarteCalculateur />

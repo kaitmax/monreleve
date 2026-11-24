@@ -1,0 +1,202 @@
+---
+title: "Cotisation CMU frontalier suisse : le calcul"
+description: "Comment se calcule la cotisation maladie d’un frontalier affilié en France : le revenu retenu, l’abattement, le taux, et un tableau par niveau de revenu."
+slug: cotisation-cmu-frontalier
+breadcrumbLabel: "La cotisation CMU"
+cluster: cluster
+related:
+  - teletravail-frontalier-40-pourcent
+  - droit-option-lamal-cmu
+  - cout-lamal-frontalier
+lastReviewed: "2026-11-24"
+reviewer: "l’équipe frontalier"
+faq:
+  - question: "Sur quel revenu la cotisation est-elle calculée ?"
+    answer: "Sur le revenu fiscal de référence, au sens du code général des impôts, de la dernière année pour laquelle il est connu : en pratique, celui de l’avant-dernière année. C’est le montant qui figure sur votre avis d’imposition, et non votre salaire du mois."
+  - question: "La cotisation dépend-elle du nombre de personnes dans mon foyer ?"
+    answer: "Non. Il y a une cotisation par frontalier affilié en France, et ses ayants droit peuvent lui être rattachés sans cotisation supplémentaire. C’est l’inverse de la logique suisse, où chaque personne assurée paie sa propre prime."
+  - question: "Que se passe-t-il si mon revenu est inférieur à l’abattement ?"
+    answer: "La formule donne alors un résultat négatif, que ce site affiche comme une cotisation nulle. Aucun des textes lus ne fixe de montant minimal, et ce point attend une confirmation : il est signalé sur la page des sources."
+  - question: "Et si je ne suis affilié qu’une partie de l’année ?"
+    answer: "La cotisation est réduite au prorata du nombre de jours. Le tableau de ce guide porte sur une année entière ; le comparateur LAMal / CMU fait le calcul à partir d’une date de début."
+  - question: "Le plafond de la sécurité sociale de l’année en cours est-il définitif ?"
+    answer: "Pas toujours. Le plafond d’une année est d’abord annoncé, puis fixé par un arrêté. Le tableau de ce guide dit, pour chaque année, si le montant est définitif ou seulement annoncé."
+  - question: "Ce guide me dit-il s’il vaut mieux choisir la France ou la Suisse ?"
+    answer: "Non. Il explique un seul des deux côtés. Le comparateur LAMal / CMU met les deux coûts en regard pour votre foyer, sur une année, sans dire lequel choisir."
+claims:
+  - key: cmuContributionFormula
+    says: "La cotisation maladie du frontalier affilié en France est un pourcentage de ses revenus, après un abattement égal à une part du plafond annuel de la sécurité sociale, pour une année civile."
+  - key: cmuIncomeBase
+    says: "Le revenu retenu est celui que définit le code général des impôts pour le revenu fiscal de référence, pris pour la dernière année civile pour laquelle il est connu, en pratique l’avant-dernière."
+  - key: cmuProrata
+    says: "Pour une période d’affiliation inférieure à l’année, la cotisation est réduite au prorata du nombre de jours."
+  - key: cmuRounding
+    says: "L’assiette et la cotisation sont arrondies à l’euro le plus proche."
+  - key: cmuHousehold
+    says: "Il y a une déclaration et une cotisation par frontalier ; ses ayants droit peuvent lui être rattachés sans cotisation distincte."
+  - key: pass2026
+    says: "Le plafond annuel de la sécurité sociale de l’année est celui que publie l’Urssaf, et il est définitif."
+  - key: pass2027
+    says: "Le plafond annuel de la sécurité sociale de l’année suivante est celui que l’Urssaf a annoncé, dans l’attente de l’arrêté qui le fixe."
+---
+
+{/*
+  CLUSTER, FW-SEO-ARTICLES (the operator, 24.11.2026). Written because Search
+  Console showed queries on the CALCULATION of the French contribution and no
+  page that answered them: the comparator computes it, and the droit d'option
+  guide deliberately carries no amount.
+
+  EVERY FIGURE HERE IS AN EXPRESSION. The rate, the allowance share, the
+  ceiling, the worked example and both tables come from lib/guides/scope.ts,
+  which reads the comparator's own year table (lib/lamal/years.ts) and its
+  own formula (lib/lamal/compare.ts). Nothing is typed, so next autumn's
+  refresh moves this page with the comparator (R147, R163, R181).
+
+  THE TABLE IS THE TOOL. A second calculator would compete with the
+  comparator for the same queries and compute the same thing; a table a
+  reader can place themselves in needs no script and links to the one place
+  the household calculation is done.
+
+  THE ZERO IS A DISPLAY CHOICE, NOT A RULE (R669). No text read states a
+  minimum; the page says so in those words and links /sources.
+
+  IT NEVER SAYS WHICH OPTION TO CHOOSE (R673).
+*/}
+
+Un frontalier qui choisit le système français pour son assurance maladie paie
+une cotisation à l’Urssaf, que l’on appelle couramment la « CMU frontalier ».
+Son calcul tient en une ligne, et il dépend d’un seul chiffre qui vous est
+propre : votre revenu fiscal de référence.
+
+Ce guide explique cette ligne, puis l’applique à plusieurs niveaux de revenu.
+Il ne dit pas s’il vaut mieux choisir la France ou la Suisse :
+[le comparateur LAMal / CMU](/calculateur-lamal-cmu) met les deux coûts en
+regard pour votre foyer.
+
+<Encadre titre="En bref">
+
+- Le taux : {cmuRate}
+- L’abattement : {cmuAllowanceShare} du plafond annuel de la sécurité sociale
+- Le plafond {healthYear} : {cmuPass}, soit un abattement de {cmuAllowance}
+- Le revenu retenu : votre revenu fiscal de référence
+- Le foyer : une seule cotisation, quel que soit le nombre de personnes rattachées
+
+</Encadre>
+
+## La formule
+
+La cotisation d’une année civile est égale à {cmuRate} de votre revenu, après
+déduction d’un abattement. Cet abattement vaut {cmuAllowanceShare} du plafond
+annuel de la sécurité sociale, un montant que l’Urssaf publie chaque année.
+
+Autrement dit : on retire l’abattement de votre revenu, et l’on applique le
+taux à ce qui reste. La formule figure à l’article D380-2 du code de la
+sécurité sociale.
+
+Le résultat de la soustraction et la cotisation sont chacun arrondis à l’euro
+le plus proche.
+
+## Le revenu retenu
+
+Le revenu qui entre dans le calcul n’est pas votre salaire du mois, ni celui
+de l’année en cours. C’est votre revenu fiscal de référence, tel que le
+définit le code général des impôts, pour la dernière année civile pour
+laquelle il est connu : en pratique, celui de l’avant-dernière année.
+
+Ce montant figure sur votre avis d’imposition. C’est lui qu’il faut avoir sous
+les yeux pour faire le calcul, et c’est lui que
+[le comparateur](/calculateur-lamal-cmu) vous demande.
+
+## Le plafond de la sécurité sociale, année par année
+
+L’abattement suit le plafond annuel de la sécurité sociale, qui change chaque
+année. Le plafond d’une année est d’abord annoncé, puis fixé par un arrêté :
+le tableau dit où en est chacun.
+
+<DataGrid
+  caption="Plafond annuel de la sécurité sociale et abattement, par année"
+  columns={[
+    { key: "annee", header: "Année" },
+    { key: "plafond", header: "Plafond annuel", numeric: true },
+    { key: "abattement", header: "Abattement", numeric: true },
+    { key: "statut", header: "Statut du plafond" },
+  ]}
+  rows={cmuYearRows}
+/>
+
+Une cotisation se calcule avec le plafond de sa propre année : les chiffres de
+deux années ne se mélangent pas.
+
+## Un exemple, pas à pas
+
+Prenons un revenu fiscal de référence de {cmuWorkedIncome} et l’année
+{healthYear}.
+
+- L’abattement est de {cmuAllowance}.
+- Le revenu, une fois l’abattement retiré, est de {cmuWorkedBase}.
+- La cotisation de l’année est de {cmuRate} de ce montant, soit {cmuWorkedContribution}.
+
+## Ce que cela donne selon le revenu
+
+Le tableau applique la même formule à plusieurs revenus, pour une année
+entière, avec le plafond {healthYear}. Repérez la ligne la plus proche de
+votre revenu fiscal de référence.
+
+<DataGrid
+  caption="Cotisation annuelle selon le revenu fiscal de référence"
+  columns={[
+    { key: "revenu", header: "Revenu fiscal de référence", numeric: true },
+    { key: "assiette", header: "Revenu après abattement", numeric: true },
+    { key: "cotisation", header: "Cotisation de l’année", numeric: true },
+  ]}
+  rows={cmuIncomeRows}
+/>
+
+Ces montants sont des illustrations de la formule, pas un devis :
+[le comparateur LAMal / CMU](/calculateur-lamal-cmu) fait le calcul pour votre
+revenu exact.
+
+<Avertissement>
+
+Lorsque le revenu est inférieur à l’abattement, la formule donne un résultat
+négatif. Ce site l’affiche comme une cotisation nulle, ce que montre la
+première ligne du tableau. Aucun des textes que nous avons lus ne fixe de
+montant minimal, et ce point attend la confirmation d’un spécialiste : voir
+[sources et vérifications](/sources).
+
+</Avertissement>
+
+## Une année incomplète
+
+Si vous n’êtes affilié en France qu’une partie de l’année, la cotisation est
+réduite au prorata du nombre de jours. Le tableau ci-dessus porte sur une
+année entière ; le comparateur fait le calcul à partir de la date de début que
+vous indiquez.
+
+## Une cotisation pour le foyer
+
+Il y a une déclaration et une cotisation par frontalier affilié en France. Ses
+ayants droit, conjoint ou enfants, peuvent lui être rattachés sans cotisation
+supplémentaire.
+
+C’est la différence de logique la plus nette avec le système suisse, où chaque
+personne assurée paie sa propre prime :
+[le guide du coût de la LAMal](/guides/cout-lamal-frontalier) détaille ce
+côté-là. Un conjoint qui travaille relève en revanche de sa propre
+affiliation, comme l’explique
+[le guide du droit d’option](/guides/droit-option-lamal-cmu).
+
+## Ce que ce guide ne dit pas
+
+Il ne dit pas lequel des deux systèmes choisir. Le choix ne se fait qu’une
+fois, et il engage au-delà d’une année de cotisation : le comparateur met les
+deux coûts côte à côte et dit ce qu’il ne compare pas.
+
+Il ne traite pas non plus du télétravail, qui relève d’autres textes :
+[le guide du plafond fiscal](/guides/teletravail-frontalier-40-pourcent) s’en
+charge.
+
+Ce qui est vérifié sur cette page, et à quelle date, est publié sur la page
+[sources et vérifications](/sources).
+
+<CarteCalculateur />
