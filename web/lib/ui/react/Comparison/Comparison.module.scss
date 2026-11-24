@@ -1,4 +1,4 @@
-@use "../../core/styles/breakpoints" as bp;
+@use "../../core/styles/calc-shell" as shell;
 
 // web/lib/ui/react/Comparison/Comparison.module.scss
 //
@@ -42,18 +42,16 @@
   line-height: var(--type-body-m-line);
 }
 
-// Side by side from the md breakpoint, one above the other on a phone: two
-// columns of 160 px each cannot hold "10 691 € par an".
+// FW-CALC-REDESIGN, R1408: the two panels side by side whenever two fit in
+// the rail - a fifth of the public measure each at the least, the
+// unit the limits grid takes a quarter of - so "10 691 € par an" always has
+// room - and one under the other below that,
+// whatever the window: the rail is a column, so its width, not the
+// viewport's, decides.
 .columns {
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: 1fr;
-}
-
-@media (width >= bp.$breakpoint-md) {
-  .columns {
-    grid-template-columns: 1fr 1fr;
-  }
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--layout-public) / 5)), 1fr));
 }
 
 .sideHeading {
@@ -255,4 +253,165 @@
   color: var(--colour-text-secondary);
   font-size: var(--type-caption-size);
   line-height: var(--type-caption-line);
+}
+
+// ---- FW-CALC-REDESIGN, R1408: the verdict rail ---------------------------------
+//
+// THE PANELS IN THEIR COUNTRY'S TOKENS - small indicators only, never flags
+// (DESIGN-SYSTEM.md 1): a dot before the side's name, the name in its
+// text colour, and the figures on its soft fill. Everything ON the soft
+// fill is text-primary or the side's own text colour: secondary grey reads
+// about 4,4:1 on either soft fill, under the 4,5 normal text needs (R57's
+// split - the colour on the rule and the fill, the words in a colour that
+// passes).
+
+// The side's dot before its name - the design system's country indicator,
+// a dot and the word, never the colour alone.
+[data-panels] > [data-side] > .sideHeading::before {
+  content: "";
+  display: inline-block;
+  width: var(--size-dot-lg);
+  height: var(--size-dot-lg);
+  margin-inline-end: var(--space-2);
+  border-radius: var(--radius-pill);
+  vertical-align: middle;
+}
+
+[data-side="france"] > .sideHeading::before {
+  background: var(--colour-france);
+}
+
+[data-side="switzerland"] > .sideHeading::before {
+  background: var(--colour-switzerland);
+}
+
+[data-side="france"] > .sideHeading {
+  color: var(--colour-france-text);
+}
+
+[data-side="switzerland"] > .sideHeading {
+  color: var(--colour-switzerland-text);
+}
+
+[data-panels] .figures {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+[data-side="france"] .figures {
+  background: var(--colour-france-soft);
+}
+
+[data-side="switzerland"] .figures {
+  background: var(--colour-switzerland-soft);
+}
+
+[data-side="france"] .figures :is(.figureLabel, .perYear, .converted) {
+  color: var(--colour-france-text);
+}
+
+[data-side="switzerland"] .figures :is(.figureLabel, .perYear, .converted) {
+  color: var(--colour-switzerland-text);
+}
+
+// The three Swiss totals a step up from the card's own figures: they are the
+// answer, as the French one is.
+[data-side="switzerland"] .amount {
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line);
+}
+
+// THE RANGE BAR: the axis the chart already draws, and on it the Swiss band
+// from the lowest total to the highest - the progress bar's height and pill,
+// in the Swiss colour. The French line is the chart's own mark.
+.axis[data-swiss-range] {
+  height: var(--size-progress-height);
+  border-radius: var(--radius-pill);
+  background: var(--colour-switzerland);
+}
+
+// THE RAIL'S ACCORDIONS: a ResultCard already draws the frame, so only the
+// summary is the shared fold's (_calc-shell.scss) - the marker in the brand
+// colour, the 44 px target, the card's heading on one line with it.
+.panel details {
+  @include shell.fold-summary("body-m");
+}
+
+.panel details[open] > summary {
+  margin-bottom: var(--space-3);
+}
+
+// A closed card in the rail is one line: its summary is the 44 px target, so
+// the card's own block padding steps down - the rail stays short enough to
+// keep the verdict in view - and comes back under what an open card discloses.
+.panel article:has(> details) {
+  padding-block: var(--space-1);
+}
+
+// The summary centres its one line in the target: body-m's 22 px line and
+// two 12 px steps make 46, over the 44 the design system asks.
+.panel details > summary {
+  padding-block: var(--space-3);
+}
+
+.panel details[open] {
+  padding-bottom: var(--space-4);
+}
+
+// ---- FW-CALC-REDESIGN ADDENDUM, R1415: the rail fits the window -------------
+//
+// For one adult the rail was 1 174 px, then 1 020 once the source and legal
+// lines left it - taller than a 900 px window, so it scrolled away instead of
+// sticking. Nothing is removed from it; its spacing steps down a token each
+// (the rail's own stack, the panels' padding and their figure blocks, the
+// case sentence, the bar's lead-in) and its three accordions share ONE card.
+// Every value is still a token.
+
+// The comparison only: the refusal state keeps its spacing (and every
+// workbench specimen below it keeps its place on the page).
+.panel[data-panel="comparison"] {
+  gap: var(--space-3);
+}
+
+.panel [data-panels] > [data-side] {
+  padding: var(--space-4) var(--space-5);
+}
+
+[data-panels] .sideHeading {
+  margin-bottom: var(--space-2);
+}
+
+[data-panels] .figures {
+  padding: var(--space-2) var(--space-4);
+}
+
+[data-panels] .figure + .figure {
+  margin-top: var(--space-2);
+}
+
+.panel > .caseSentence {
+  padding: var(--space-3) var(--space-5);
+}
+
+.plot[data-range] {
+  margin-top: 0;
+}
+
+// The three accordions in one card: the frame on the group, a hairline
+// between the cards, the cards themselves flat inside it.
+.panel [data-rail-folds] {
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--colour-surface);
+}
+
+.panel [data-rail-folds] > article {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.panel [data-rail-folds] > article + article {
+  border-top: var(--size-rule) solid var(--colour-border-default);
 }

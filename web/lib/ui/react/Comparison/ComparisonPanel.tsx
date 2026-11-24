@@ -30,6 +30,7 @@
 // Every euro figure here is read from the Comparison, whose rate IS the
 // slider's (lib/lamal/scenario.ts): move it and every figure follows.
 
+import type { ReactNode } from 'react';
 import { formatDate } from '@/lib/ui/core';
 import { MONTHS_PER_YEAR } from '@/lib/lamal/compare';
 import { FRANC_SHIFT_LIMIT_PERCENT, convertAt } from '@/lib/lamal/convert';
@@ -120,8 +121,13 @@ function Figure({ label, centimes, eur, per }: { label: string; centimes: number
   );
 }
 
-/** R745: the insurers' totals as dots, the French contribution as a labelled line. */
-function InsurerChart({ value, months }: { value: Comparison; months: number }) {
+/**
+ * What the insurers' chart and the range bar both draw from: the household's
+ * total at every insurer, sorted, the French contribution, the counting
+ * sentence and the one text alternative (R745) - computed ONCE, so the bar and
+ * the chart cannot say different things.
+ */
+function placed(value: Comparison, months: number) {
   const totals = householdTotals(value, months).map((total) => total.eur);
   const french = value.french.contributionEur;
   const { above, below, count } = countAgainst(totals, french);
@@ -131,23 +137,99 @@ function InsurerChart({ value, months }: { value: Comparison; months: number }) 
     SCALE_STEP_EUR,
     Math.ceil((Math.max(highest, french) * SCALE_MARGIN) / SCALE_STEP_EUR) * SCALE_STEP_EUR,
   );
-  const at = (eur: number): string => `${((eur / scaleMax) * 100).toFixed(2)}%`;
   const sentence = COPY.result.chart.sentence(above, below, count);
+
+  return {
+    totals,
+    french,
+    above,
+    count,
+    lowest,
+    highest,
+    scaleMax,
+    sentence,
+    at: (eur: number): string => `${((eur / scaleMax) * 100).toFixed(2)}%`,
+    label: COPY.result.chart.label(count, formatEur(lowest), formatEur(highest), formatEur(french), sentence),
+  };
+}
+
+/** The French figure's label under its line: it slides with the line and never leaves the card. */
+function MarkLabel({ at, french }: { at: string; french: number }) {
+  return (
+    <p className={styles.markRow} aria-hidden="true">
+      <span className={styles.markLabel} style={{ marginInlineStart: at, translate: `-${at} 0` }}>
+        {COPY.result.chart.french(formatEur(french))}
+      </span>
+    </p>
+  );
+}
+
+/**
+ * FW-CALC-REDESIGN, R1408: ONE RANGE BAR under the two panels - the Swiss
+ * totals from the lowest to the highest as one band, the French contribution
+ * a marked line, on the insurers' chart's own scale. Its text alternative is
+ * the chart's (COPY.result.chart.label): the count, the lowest, the highest,
+ * the French figure and the counting sentence - what an assistive technology
+ * reads from the chart today - so a reader who never opens the chart loses
+ * nothing. The chart itself stays, in an accordion below: its words are about
+ * dots (R165). The euros on the bar are converted from francs, so the rate
+ * and its date sit beside them (R672).
+ */
+function RangeBar({ value, months }: { value: Comparison; months: number }) {
+  const { at, french, lowest, highest, scaleMax, label } = placed(value, months);
+
+  return (
+    <div className={styles.plot} data-range="true">
+      <div className={styles.track} role="img" aria-label={label}>
+        <span className={styles.axis} />
+        <span
+          className={styles.axis}
+          data-swiss-range="true"
+          style={{ insetInlineStart: at(lowest), insetInlineEnd: `calc(100% - ${at(highest)})` }}
+        />
+        <span className={styles.frenchMark} style={{ insetInlineStart: at(french) }} />
+      </div>
+      <MarkLabel at={at(french)} french={french} />
+      <p className={styles.scale} aria-hidden="true">
+        <span>{formatEur(0)}</span>
+        <span>{formatEur(scaleMax)}</span>
+      </p>
+      <p className={styles.note}>{rateSentence(value)}</p>
+    </div>
+  );
+}
+
+/**
+ * A card of the rail as a native accordion (R1408): the card's heading is its
+ * summary, closed by default, the rest disclosed. No JavaScript of its own -
+ * the island's state (the franc slider's) lives above it, so closing the card
+ * loses nothing.
+ */
+function Folded({ id, heading, children }: { id: string; heading: string; children: ReactNode }) {
+  return (
+    <details>
+      <summary>
+        <h3 className={styles.sideHeading} id={id}>
+          {heading}
+        </h3>
+      </summary>
+      {children}
+    </details>
+  );
+}
+
+/** R745: the insurers' totals as dots, the French contribution as a labelled line. */
+function InsurerChart({ value, months }: { value: Comparison; months: number }) {
+  const { totals, french, above, count, at, scaleMax, sentence, label } = placed(value, months);
   // CA12: a tie is not-below, so nothing strictly above reads as 'none'.
   const caseName = above === count ? 'all' : above === 0 ? 'none' : 'some';
 
   return (
     <ResultCard element="article" aria-labelledby="assureurs-titre" data-chart="insurers">
-      <h3 className={styles.sideHeading} id="assureurs-titre">
-        {COPY.result.chart.heading(count)}
-      </h3>
+      <Folded id="assureurs-titre" heading={COPY.result.chart.heading(count)}>
       <p className={styles.note}>{COPY.result.chart.intro}</p>
 
-      <div
-        className={styles.plot}
-        role="img"
-        aria-label={COPY.result.chart.label(count, formatEur(lowest), formatEur(highest), formatEur(french), sentence)}
-      >
+      <div className={styles.plot} role="img" aria-label={label}>
         <div className={styles.track} aria-hidden="true">
           <span className={styles.axis} />
           {totals.map((eur, index) => (
@@ -163,11 +245,7 @@ function InsurerChart({ value, months }: { value: Comparison; months: number }) 
           it is left-aligned at 0, right-aligned at the scale's end, and never
           leaves the card.
         */}
-        <p className={styles.markRow} aria-hidden="true">
-          <span className={styles.markLabel} style={{ marginInlineStart: at(french), translate: `-${at(french)} 0` }}>
-            {COPY.result.chart.french(formatEur(french))}
-          </span>
-        </p>
+        <MarkLabel at={at(french)} french={french} />
         <p className={styles.scale} aria-hidden="true">
           <span>{formatEur(0)}</span>
           <span>{formatEur(scaleMax)}</span>
@@ -178,6 +256,7 @@ function InsurerChart({ value, months }: { value: Comparison; months: number }) 
         {sentence}
       </p>
       <p className={styles.note}>{rateSentence(value)}</p>
+      </Folded>
     </ResultCard>
   );
 }
@@ -189,9 +268,7 @@ function CareCard({ value }: { value: Comparison }) {
 
   return (
     <ResultCard element="article" aria-labelledby="soins-titre" data-care="true">
-      <h3 className={styles.sideHeading} id="soins-titre">
-        {COPY.result.care.heading}
-      </h3>
+      <Folded id="soins-titre" heading={COPY.result.care.heading}>
       <p className={styles.note}>{COPY.result.care.intro}</p>
       <p className={styles.figureLabel}>{COPY.result.care.label}</p>
       <p className={styles.amountLine}>
@@ -215,6 +292,7 @@ function CareCard({ value }: { value: Comparison }) {
       <p className={styles.note}>{COPY.result.care.apart}</p>
       <p className={styles.note}>{rateSentence(value)}</p>
       <p className={styles.source}>{COPY.result.care.source}</p>
+      </Folded>
     </ResultCard>
   );
 }
@@ -232,9 +310,7 @@ function FrancCard({ value, franc, totals }: { value: Comparison; franc: FrancCo
 
   return (
     <ResultCard element="article" aria-labelledby="franc-titre" data-franc="true">
-      <h3 className={styles.sideHeading} id="franc-titre">
-        {COPY.result.franc.heading}
-      </h3>
+      <Folded id="franc-titre" heading={COPY.result.franc.heading}>
       <p className={styles.note}>{COPY.result.franc.intro}</p>
 
       <label className={styles.rangeLabel} htmlFor={FRANC_INPUT_ID}>
@@ -270,6 +346,7 @@ function FrancCard({ value, franc, totals }: { value: Comparison; franc: FrancCo
       <p className={styles.source} id={noteId}>
         {COPY.result.franc.reference(formatRate(EXCHANGE_RATE.chfPerEurTenThousandths), formatDate(EXCHANGE_RATE.date))}
       </p>
+      </Folded>
     </ResultCard>
   );
 }
@@ -296,47 +373,18 @@ function ComparisonBody({
 
   return (
     <>
-      {/* R731: the two cards side by side, then the case sentence. */}
-      <div className={styles.columns}>
-        <ResultCard element="article" data-side="switzerland" aria-labelledby="cote-suisse">
-          <h3 className={styles.sideHeading} id="cote-suisse">
-            {COPY.result.swiss.heading}
-          </h3>
-
-          {noSwiss ? (
-            <p className={styles.note} data-too-short="true">
-              {COPY.result.swiss.tooShort}
-            </p>
-          ) : (
-            <>
-              <dl className={styles.figures}>
-                <Figure label={COPY.result.swiss.lowest} centimes={swiss.lowestCentimes} eur={swiss.lowestEur} per={swissPer} />
-                <Figure label={COPY.result.swiss.median} centimes={swiss.medianCentimes} eur={swiss.medianEur} per={swissPer} />
-                <Figure label={COPY.result.swiss.highest} centimes={swiss.highestCentimes} eur={swiss.highestEur} per={swissPer} />
-              </dl>
-
-              <p className={styles.note}>
-                {COPY.result.swiss.basis(
-                  months,
-                  swiss.insurerCount,
-                  formatChf(franchise.adult * 100),
-                  formatChf(franchise.child * 100),
-                )}
-              </p>
-            </>
-          )}
-          {period === null ? null : (
-            <p className={styles.note} data-start-month="true">
-              {COPY.result.swiss.startMonth}
-            </p>
-          )}
-          {noSwiss ? null : (
-            <p className={styles.note} data-conversion="true">
-              {rateSentence(value)}
-            </p>
-          )}
-        </ResultCard>
-
+      {/*
+        FW-CALC-REDESIGN, R1408: THE VERDICT RAIL. Two large panels side by
+        side - France first, ONE figure; Suisse, the lowest, the median and
+        the highest, never one (R668) - each in its country tokens through
+        its data-side hook; then ONE range bar from the lowest to the highest
+        Swiss total with the French figure marked on it; then the case
+        sentence (R674 - no badge); then the cards a reader opens when they
+        want them, as accordions. The hooks R751 reads are unchanged: two
+        [data-side] cards with the same dt/dd pairs, one [data-case-sentence],
+        [data-floored], [data-pass] and [data-conversion] once each.
+      */}
+      <div className={styles.columns} data-panels="true">
         <ResultCard element="article" data-side="france" aria-labelledby="cote-france">
           <h3 className={styles.sideHeading} id="cote-france">
             {COPY.result.french.heading}
@@ -378,14 +426,48 @@ function ComparisonBody({
           <p className={styles.note}>{COPY.result.french.household}</p>
           <p className={styles.source}>{COPY.result.french.source}</p>
         </ResultCard>
+
+        <ResultCard element="article" data-side="switzerland" aria-labelledby="cote-suisse">
+          <h3 className={styles.sideHeading} id="cote-suisse">
+            {COPY.result.swiss.heading}
+          </h3>
+
+          {noSwiss ? (
+            <p className={styles.note} data-too-short="true">
+              {COPY.result.swiss.tooShort}
+            </p>
+          ) : (
+            <>
+              <dl className={styles.figures}>
+                <Figure label={COPY.result.swiss.lowest} centimes={swiss.lowestCentimes} eur={swiss.lowestEur} per={swissPer} />
+                <Figure label={COPY.result.swiss.median} centimes={swiss.medianCentimes} eur={swiss.medianEur} per={swissPer} />
+                <Figure label={COPY.result.swiss.highest} centimes={swiss.highestCentimes} eur={swiss.highestEur} per={swissPer} />
+              </dl>
+
+              <p className={styles.note}>
+                {COPY.result.swiss.basis(
+                  months,
+                  swiss.insurerCount,
+                  formatChf(franchise.adult * 100),
+                  formatChf(franchise.child * 100),
+                )}
+              </p>
+            </>
+          )}
+          {period === null ? null : (
+            <p className={styles.note} data-start-month="true">
+              {COPY.result.swiss.startMonth}
+            </p>
+          )}
+          {noSwiss ? null : (
+            <p className={styles.note} data-conversion="true">
+              {rateSentence(value)}
+            </p>
+          )}
+        </ResultCard>
       </div>
 
-      {noSwiss ? null : <InsurerChart value={value} months={months} />}
-
-      <div className={styles.columns}>
-        <CareCard value={value} />
-        {franc === undefined ? null : <FrancCard value={value} franc={franc} totals={!noSwiss} />}
-      </div>
+      {noSwiss ? null : <RangeBar value={value} months={months} />}
 
       {noSwiss ? null : (
         <p className={styles.caseSentence} data-case-sentence={cheaper}>
@@ -394,16 +476,39 @@ function ComparisonBody({
       )}
 
       {/*
-        R731: the OFSP attribution (R664's mandatory credit, under the Swiss
-        figures), the priminfo link and the legal line - as the page carried
-        them, below the comparison rather than inside the Swiss card.
+        R1415: the rail's three accordions as ONE card, a hairline between
+        them - three separate cards spent a gap and two borders each, and the
+        rail has to fit a 900 px window for one adult.
       */}
+      <div data-rail-folds="true">
+        {noSwiss ? null : <InsurerChart value={value} months={months} />}
+        <CareCard value={value} />
+        {franc === undefined ? null : <FrancCard value={value} franc={franc} totals={!noSwiss} />}
+      </div>
+    </>
+  );
+}
+
+/**
+ * R731: the OFSP attribution (R664's mandatory credit, under the Swiss
+ * figures), the priminfo link and the legal line, below the comparison rather
+ * than inside the Swiss card.
+ *
+ * FW-CALC-REDESIGN ADDENDUM, R1415: THEIR OWN COMPONENT, so the island can
+ * set them UNDER BOTH COLUMNS - out of the sticky rail, which they made taller
+ * than the window for one adult, so it scrolled away instead of sticking. The
+ * same three paragraphs, the same strings, the same order; only the place.
+ * Rendered only with a comparison, as before (never with a refusal).
+ */
+export function ComparisonSources({ year }: { readonly year: number }) {
+  return (
+    <>
       <p className={styles.source} data-attribution="true">
         {COPY.result.swiss.attributionBefore}
         <a href={PREMIUM_DATASET_URL} rel="noreferrer">
           {PREMIUM_DATASET.title}
         </a>
-        {COPY.result.swiss.attributionAfter(year.year)}
+        {COPY.result.swiss.attributionAfter(year)}
       </p>
       <p className={styles.source}>
         {COPY.result.swiss.priminfo.lead}

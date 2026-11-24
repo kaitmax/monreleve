@@ -1,9 +1,10 @@
 // web/app/(public)/calculateur-lamal-cmu/section-ids.ts
 //
-// The droit d'option page's section ids, in reading order - the targets of
-// the chips under its head (FW-COMPARATEUR-A2-PAGE, W20, R1048). ONE LIST:
-// ComparatorSections.tsx builds the chips from it and puts the ids on its
-// sections, page.tsx puts them on the sections it renders itself, and the
+// The droit d'option page's section ids, in reading order (FW-COMPARATEUR-A2-
+// PAGE, W20, R1048). They were the chips' targets; since FW-CALC-REDESIGN
+// (R1408) the chips are gone and each id sits on its accordion's content, so
+// a fragment still lands and opens it. ONE LIST: ComparatorSections.tsx and
+// page.tsx put the ids on what they render, and the
 // unit and e2e tests read it rather than retyping a fragment (R171).
 //
 // A plain module rather than an export of ComparatorSections.tsx, because the

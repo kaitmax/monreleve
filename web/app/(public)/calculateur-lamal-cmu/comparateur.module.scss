@@ -1,4 +1,5 @@
 @use "../../../lib/ui/core/styles/breakpoints" as bp;
+@use "../../../lib/ui/core/styles/calc-shell" as shell;
 
 // web/app/(public)/calculateur-lamal-cmu/comparateur.module.scss
 //
@@ -6,6 +7,12 @@
 // arrangement - the head, the banner, two columns (the form card, the
 // result), then the white "ne compare pas" band - with the design system's
 // type scale and radii, as the calculator and the home page use them.
+//
+// FW-CALC-REDESIGN (R1406): the skeleton the two calculator pages share is
+// lib/ui/core/styles/_calc-shell.scss, @included here into the classes and
+// hooks this page already has - the head, the two columns, the sticky rail,
+// the folds - so the family is one partial and this module's class map, which
+// ships in the comparator's client chunk, gains no name.
 
 .page {
   padding-top: var(--space-12);
@@ -19,20 +26,13 @@
 }
 
 .title {
-  max-width: var(--layout-narrow);
-  margin: 0 0 var(--space-3);
-  font-size: var(--type-hero-size);
-  font-weight: var(--type-hero-weight);
-  line-height: var(--type-hero-line);
+  @include shell.title;
 }
 
 .lead {
-  max-width: var(--layout-article);
+  @include shell.lead;
+
   margin: 0;
-  color: var(--colour-text-secondary);
-  font-size: var(--type-body-l-size);
-  font-weight: var(--type-body-l-weight);
-  line-height: var(--type-body-l-line);
 }
 
 .note {
@@ -49,25 +49,38 @@
 // empty - still in the page, so it announces what arrives (aria-live) - and
 // the form keeps the narrow measure rather than half a page beside nothing.
 .layout {
-  display: grid;
-  gap: var(--space-6);
   margin-top: var(--space-6);
   padding-bottom: var(--space-16);
+}
 
-  @media (width >= bp.$breakpoint-md) {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    align-items: start;
-  }
+// R1415: the two columns are the island's own grid inside the layout, so the
+// sticky rail's range ends where the columns end.
+.layout > [data-result-columns] {
+  @include shell.columns(5fr, 7fr);
 }
 
 @media (width >= bp.$breakpoint-md) {
-  .layout:has(.result:empty) {
+  .layout > [data-result-columns]:has(.result:empty) {
     grid-template-columns: minmax(0, var(--layout-narrow));
   }
 }
 
+// R1408: THE VERDICT RAIL - sticky on a wide screen, in the flow on a phone.
 .result {
+  @include shell.rail;
+}
+
+// R1415: the source and legal lines under both columns, out of the rail.
+.layout > [data-result-sources] {
   min-width: 0;
+  max-width: var(--layout-article);
+  margin-top: var(--space-6);
+}
+
+// The legal line kept the rail's gap above it there; here it takes the
+// source lines' own step.
+.layout > [data-result-sources] > [data-legal] {
+  margin-top: var(--space-2);
 }
 
 // ---- the form card ---------------------------------------------------------
@@ -255,13 +268,6 @@
 
 // ---- R748: the three-month period and its helper ----------------------------
 
-// On the canvas, like the form's row: no fill of its own, so nothing here
-// is a container the contrast audit would resolve a text rule to (R121).
-.deadline {
-  padding-block: var(--space-16);
-  border-top: var(--size-rule) solid var(--colour-border-default);
-}
-
 .deadlineLayout {
   display: grid;
   gap: var(--space-8);
@@ -270,13 +276,6 @@
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     align-items: start;
   }
-}
-
-.deadlineHeading {
-  margin: 0 0 var(--space-4);
-  font-size: var(--type-h1-size);
-  font-weight: var(--type-h1-weight);
-  line-height: var(--type-h1-line);
 }
 
 .deadlineIntro {
@@ -363,19 +362,6 @@
 }
 
 // ---- what the comparison leaves out (R732) ---------------------------------
-
-.band {
-  padding-block: var(--space-16);
-  border-top: var(--size-rule) solid var(--colour-border-default);
-  background: var(--colour-surface);
-}
-
-.limitsHeading {
-  margin: 0 0 var(--space-8);
-  font-size: var(--type-h1-size);
-  font-weight: var(--type-h1-weight);
-  line-height: var(--type-h1-line);
-}
 
 // Each item under a hairline, in as many columns as fit, as the artboard sets
 // them (W20): one on a phone, two at the md breakpoint, three at 1440. A
@@ -548,48 +534,7 @@
 // no such token (PARK-CA4), so it is the calculator's year badge: brand text
 // on a surface pill.
 .a2 [data-a2="pill"] {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 var(--space-4);
-  padding: var(--space-1) var(--space-3);
-  border: var(--size-input-border) solid var(--colour-border-default);
-  border-radius: var(--radius-pill);
-  background: var(--colour-surface);
-  color: var(--colour-brand);
-  font-size: var(--type-caption-size);
-  font-weight: var(--weight-semibold);
-  line-height: var(--type-caption-line);
-}
-
-.a2 [data-a2="chips"] {
-  margin-top: var(--space-6);
-}
-
-.a2 [data-a2="chip-list"] {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-// A link drawn as a chip: a touch target's height, the pill radius, the
-// primary text without an underline - the border and the shape say "link"
-// here, and the focus ring is the base layer's.
-.a2 [data-a2="chip"] {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--size-touch-target-web);
-  padding: 0 var(--space-4);
-  border: var(--size-input-border) solid var(--colour-border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--colour-surface);
-  color: var(--colour-text-primary);
-  font-size: var(--type-label-size);
-  font-weight: var(--weight-medium);
-  line-height: var(--type-label-line);
-  text-decoration: none;
+  @include shell.eyebrow;
 }
 
 .a2 [data-a2="heading"] {
@@ -624,12 +569,6 @@
   }
 }
 
-// Two text columns rather than two cards: the artboard's wider gap, which
-// also parts them when they stack on a phone.
-.a2 [data-a2-gap="wide"] {
-  gap: var(--space-10);
-}
-
 .a2 [data-a2="card"] {
   padding: var(--space-6);
   border: var(--size-card-border) solid var(--colour-border-default);
@@ -661,18 +600,6 @@
   line-height: var(--type-caption-line);
 }
 
-// The two cards: France, Suisse.
-.a2 [data-a2="choice"] {
-  padding: var(--space-7);
-  border: var(--size-card-border) solid var(--colour-border-default);
-  border-radius: var(--radius-xl);
-  background: var(--colour-surface);
-}
-
-.a2 [data-a2="choice"] [data-a2="list"] {
-  gap: var(--space-3);
-}
-
 // The side's name with its colour dot. The name is the label; the dot only
 // repeats it (SPEC 16: never colour alone).
 .a2 [data-a2="side"] {
@@ -698,13 +625,6 @@
 
 .a2 [data-a2-side="switzerland"] {
   background: var(--colour-switzerland);
-}
-
-.a2 [data-a2="choice-heading"] {
-  margin: 0 0 var(--space-4);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-line);
 }
 
 // Sources: the source on the left, what it sources on the right; one under
@@ -740,4 +660,38 @@
   margin: var(--space-6) 0 0;
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
+}
+
+// ---- FW-CALC-REDESIGN (R1406, R1409): the explanations as accordions --------
+//
+// The shared fold (_calc-shell.scss) on the comparator's hooks: a stack of
+// <details> cards on the canvas band, each summary the section's h2 at the
+// h3 step, the content under a hairline. The cards inside "Ce qui est
+// définitif" sit on the canvas inside the fold's white, so they still read as
+// two cards.
+
+.a2 [data-a2="folds"] {
+  @include shell.stack;
+}
+
+.a2 [data-a2="fold"] {
+  @include shell.fold("h3");
+}
+
+.a2 [data-a2="fold-body"] {
+  @include shell.fold-body;
+}
+
+// A fragment names the CONTENT (the browser opens a closed <details> only for
+// that), so the jump keeps room above it for the summary it sits under: the
+// summary is one to three h3 lines plus its padding - 60 px on a wide
+// screen, about 116 px for the longest at 320 (measured in the walkthrough) -
+// and the 24 px anchor margin alone left the title cut off. 144 px clears
+// three lines. Heavier than the anchor rule, so it wins whatever the order.
+.a2 [data-a2="fold-body"][data-a2-anchor] {
+  scroll-margin-top: calc(var(--space-20) + var(--space-16));
+}
+
+.a2 [data-a2="fold-body"] [data-a2="card"] {
+  background: var(--colour-canvas);
 }

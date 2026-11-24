@@ -57,7 +57,7 @@ import { jointIncomeEur, scenario, type ScenarioInput } from '@/lib/lamal/scenar
 import { AVAILABLE_YEARS, DEFAULT_YEAR } from '@/lib/lamal/years';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
 import { FieldGroup } from '@/lib/ui/react/FieldGroup/FieldGroup';
-import { ComparisonPanel, type PanelState } from '@/lib/ui/react/Comparison/ComparisonPanel';
+import { ComparisonPanel, ComparisonSources, type PanelState } from '@/lib/ui/react/Comparison/ComparisonPanel';
 import { SegmentedButtons } from '@/lib/ui/react/SegmentedButtons/SegmentedButtons';
 import styles from './comparateur.module.scss';
 
@@ -298,6 +298,14 @@ export function ComparatorForm() {
 
   return (
     <>
+      {/*
+        R1415: the form and the rail in a grid of their own, so the rail's
+        sticky range ends with the two columns - a sticky element is held
+        inside its containing block, and with the source lines as a second
+        row of the same grid the rail slid down over them while the page
+        scrolled (seen in the regenerated baselines).
+      */}
+      <div data-result-columns="true">
       <form className={styles.form} onSubmit={onSubmit} noValidate aria-labelledby={ID.form}>
         <h2 className={styles.formHeading} id={ID.form}>
           {COPY.form.heading}
@@ -519,6 +527,18 @@ export function ComparatorForm() {
       <div className={styles.result} aria-live="polite" data-result-region="true">
         {panel === null ? null : <ComparisonPanel state={panel} />}
       </div>
+      </div>
+
+      {/*
+        FW-CALC-REDESIGN ADDENDUM (R1415): the source and legal lines UNDER
+        BOTH COLUMNS, after the columns' grid, so the rail above holds only
+        the verdict and sticks for one adult.
+      */}
+      {panel?.kind === 'comparison' ? (
+        <div data-result-sources="true">
+          <ComparisonSources year={panel.value.year.year} />
+        </div>
+      ) : null}
     </>
   );
 }

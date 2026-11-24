@@ -2,7 +2,7 @@
 //
 // The STATIC sections of the droit d'option page, as the approved A2 artboard
 // lays them out (docs/design/comparateur-lamal-a2.dc.html; FW-COMPARATEUR-A2-
-// PAGE, W20, R1048): the pill and the chips in the head, the delay's source
+// PAGE, W20, R1048): the pill in the head, the delay's source
 // line, "Ce qui est définitif", "Qui suit votre choix" beside "Ce que couvre
 // l'option", the France and Suisse cards, and "Sources".
 //
@@ -20,10 +20,15 @@
 // no fill of its own, so the contrast audit resolves each text rule against
 // the page's surfaces rather than a container (R121).
 //
-// EVERY CHIP IS A LINK TO A SECTION THAT EXISTS (R1048): the ids are one list
-// (section-ids.ts), the chips are built from it, and page.tsx puts the same
-// ids on the sections it renders itself - comparateur-a2-page.test.tsx
-// asserts both directions.
+// FW-CALC-REDESIGN (R1406, R1409): THE EXPLANATIONS ARE NATIVE ACCORDIONS.
+// Each section is a <details> card (Fold, below) - closed, its text in the
+// served HTML, no JavaScript - whose summary is the section's own heading.
+// The chips under the head are gone (R1408: the accordions replace them).
+// The section ids are still one list (section-ids.ts) and each still
+// resolves: it sits on the accordion's CONTENT, because a browser reveals a
+// closed <details> for a fragment that points inside its content and not
+// for one on the <details> itself (measured in e2e/calc-redesign.spec.ts).
+// "Sources" stays open, after the accordions.
 
 import { formatDate } from '@/lib/ui/core';
 import { COMPARATOR_PASS } from '@/lib/content/sources';
@@ -32,22 +37,10 @@ import { PRIMINFO_URL } from '@/lib/lamal/years';
 import type { ComparatorYear } from '@/lib/lamal/types';
 import { LAMAL_COPY as COPY } from '@/lib/fr/lamal';
 import { LAMAL_PAGE_COPY as PAGE } from '@/lib/fr/lamal-page';
+import type { ReactNode } from 'react';
 import { Container } from '@/lib/ui/react/Container/Container';
 import { SECTION_ID } from './section-ids';
 import styles from './comparateur.module.scss';
-
-/** One chip per section, labelled by the section's own heading where it has one (R206). */
-const CHIPS: readonly { readonly id: string; readonly label: string }[] = [
-  { id: SECTION_ID.compare, label: PAGE.chips.compare },
-  { id: SECTION_ID.deadline, label: COPY.deadline.heading },
-  { id: SECTION_ID.final, label: PAGE.final.heading },
-  { id: SECTION_ID.family, label: PAGE.family.heading },
-  { id: SECTION_ID.scope, label: PAGE.scope.heading },
-  { id: SECTION_ID.france, label: PAGE.chips.france },
-  { id: SECTION_ID.switzerland, label: PAGE.chips.switzerland },
-  { id: SECTION_ID.limits, label: COPY.limitsHeading },
-  { id: SECTION_ID.sources, label: PAGE.sources.heading },
-];
 
 /** The day every source of the October collection was read (rows L1-L14's pass). */
 const READ_ON = formatDate(COMPARATOR_PASS);
@@ -55,23 +48,6 @@ const READ_ON = formatDate(COMPARATOR_PASS);
 /** The pill above the h1: the tool's name, as the artboard sets it. Inside page.tsx's `.a2` head. */
 export function ToolPill() {
   return <p data-a2="pill">{COPY.title}</p>;
-}
-
-/** "Sur cette page": the chips, each a link to its section. Inside page.tsx's `.a2` head. */
-export function OnThisPage() {
-  return (
-    <nav data-a2="chips" aria-label={PAGE.onThisPage} data-on-this-page="true">
-      <ul data-a2="chip-list">
-        {CHIPS.map(({ id, label }) => (
-          <li key={id}>
-            <a data-a2="chip" href={`#${id}`}>
-              {label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
 }
 
 /** The source line under "Le délai de trois mois" (rows D1, D2). Inside page.tsx's `.a2` section. */
@@ -89,118 +65,125 @@ function List({ items }: { readonly items: readonly string[] }) {
   );
 }
 
-/** "Ce qui est définitif" (rows D3-D5). */
-export function FinalSection() {
+/**
+ * ONE ACCORDION (R1406, R1409): a <details> card - the shared fold of
+ * lib/ui/core/styles/_calc-shell.scss, through the comparator's `.a2` hooks -
+ * whose summary holds the section's existing heading as its h2, and whose
+ * content carries the section's id (see the note at the top of this file).
+ * The section around it keeps its name (aria-labelledby, the h2) and any hook
+ * the tests read. Closed by default: no `open`.
+ */
+export function Fold({
+  id,
+  headingId,
+  heading,
+  hook,
+  children,
+}: {
+  readonly id: string;
+  readonly headingId: string;
+  readonly heading: string;
+  /** A data-* hook on the section, as the section carried before (data-deadline, data-limits). */
+  readonly hook?: Readonly<Record<`data-${string}`, string>>;
+  readonly children: ReactNode;
+}) {
   return (
-    <section
-      id={SECTION_ID.final}
-      className={styles.a2}
-      data-a2-band="canvas"
-      data-a2-anchor="true"
-      aria-labelledby="definitif-titre"
-    >
-      <Container width="public">
-        <h2 data-a2="heading" id="definitif-titre">
-          {PAGE.final.heading}
-        </h2>
-        <p data-a2="lead">{PAGE.final.lead}</p>
-        <div data-a2="pair">
-          <div data-a2="card">
-            <h3 data-a2="card-heading">{PAGE.final.reopensHeading}</h3>
-            <List items={PAGE.final.reopens} />
-          </div>
-          <div data-a2="card">
-            <h3 data-a2="card-heading">{PAGE.final.closedHeading}</h3>
-            <List items={PAGE.final.closed} />
-          </div>
+    <section aria-labelledby={headingId} {...hook}>
+      <details data-a2="fold">
+        <summary>
+          <h2 id={headingId}>{heading}</h2>
+        </summary>
+        <div id={id} data-a2="fold-body" data-a2-anchor="true">
+          {children}
         </div>
-        <p data-a2="source">{PAGE.final.source(READ_ON)}</p>
-      </Container>
+      </details>
     </section>
   );
 }
 
-/** "Qui suit votre choix" (row D8) beside "Ce que couvre l'option" (row L18). */
+/** "Ce qui est définitif" (rows D3-D5). Inside page.tsx's `.a2` fold area. */
+export function FinalSection() {
+  return (
+    <Fold id={SECTION_ID.final} headingId="definitif-titre" heading={PAGE.final.heading}>
+      <p data-a2="lead">{PAGE.final.lead}</p>
+      <div data-a2="pair">
+        <div data-a2="card">
+          <h3 data-a2="card-heading">{PAGE.final.reopensHeading}</h3>
+          <List items={PAGE.final.reopens} />
+        </div>
+        <div data-a2="card">
+          <h3 data-a2="card-heading">{PAGE.final.closedHeading}</h3>
+          <List items={PAGE.final.closed} />
+        </div>
+      </div>
+      <p data-a2="source">{PAGE.final.source(READ_ON)}</p>
+    </Fold>
+  );
+}
+
+/** "Qui suit votre choix" (row D8), then "Ce que couvre l'option" (row L18). */
 export function FamilyAndScope() {
   return (
-    <div className={styles.a2} data-a2-band="surface">
-      <Container width="public">
-        <div data-a2="pair" data-a2-gap="wide">
-          <section id={SECTION_ID.family} data-a2-anchor="true" aria-labelledby="famille-titre">
-            <h2 data-a2="heading" id="famille-titre">
-              {PAGE.family.heading}
-            </h2>
-            {PAGE.family.body.map((paragraph) => (
-              <p data-a2="paragraph" key={paragraph}>
-                {paragraph}
-              </p>
-            ))}
-            <p data-a2="source">{PAGE.family.source(READ_ON)}</p>
-          </section>
-          <section id={SECTION_ID.scope} data-a2-anchor="true" aria-labelledby="couverture-titre">
-            <h2 data-a2="heading" id="couverture-titre">
-              {PAGE.scope.heading}
-            </h2>
-            {PAGE.scope.body.map((paragraph) => (
-              <p data-a2="paragraph" key={paragraph}>
-                {paragraph}
-              </p>
-            ))}
-            <p data-a2="source">{PAGE.scope.source(READ_ON)}</p>
-          </section>
-        </div>
-      </Container>
-    </div>
+    <>
+      <Fold id={SECTION_ID.family} headingId="famille-titre" heading={PAGE.family.heading}>
+        {PAGE.family.body.map((paragraph) => (
+          <p data-a2="paragraph" key={paragraph}>
+            {paragraph}
+          </p>
+        ))}
+        <p data-a2="source">{PAGE.family.source(READ_ON)}</p>
+      </Fold>
+      <Fold id={SECTION_ID.scope} headingId="couverture-titre" heading={PAGE.scope.heading}>
+        {PAGE.scope.body.map((paragraph) => (
+          <p data-a2="paragraph" key={paragraph}>
+            {paragraph}
+          </p>
+        ))}
+        <p data-a2="source">{PAGE.scope.source(READ_ON)}</p>
+      </Fold>
+    </>
   );
 }
 
 /**
- * The two cards: what each choice implies (rows L1-L11, L19-L21). The rate
- * and the allowance are the newest year's, from the data (R147).
+ * The two choices: what each implies (rows L1-L11, L19-L21), each its own
+ * accordion. The side's dot and name open the content (the country colour
+ * tokens, a dot and the word - never colour alone). The rate and the
+ * allowance are the newest year's, from the data (R147).
  */
 export function ChoiceCards({ year }: { readonly year: ComparatorYear }) {
   return (
-    <div className={styles.a2} data-a2-band="canvas">
-      <Container width="public">
-        <div data-a2="pair">
-          <article id={SECTION_ID.france} data-a2="choice" data-a2-anchor="true" aria-labelledby="france-titre">
-            <p data-a2="side">
-              <span data-a2="dot" data-a2-side="france" aria-hidden="true" />
-              {PAGE.france.label}
-            </p>
-            <h2 data-a2="choice-heading" id="france-titre">
-              {PAGE.france.heading}
-            </h2>
-            <List
-              items={PAGE.france.items(formatWholePercent(year.ratePercent), formatWholePercent(year.allowancePercentOfPass))}
-            />
-            <p data-a2="source">{PAGE.france.source(READ_ON)}</p>
-          </article>
-          <article id={SECTION_ID.switzerland} data-a2="choice" data-a2-anchor="true" aria-labelledby="suisse-titre">
-            <p data-a2="side">
-              <span data-a2="dot" data-a2-side="switzerland" aria-hidden="true" />
-              {PAGE.switzerland.label}
-            </p>
-            <h2 data-a2="choice-heading" id="suisse-titre">
-              {PAGE.switzerland.heading}
-            </h2>
-            <ul data-a2="list">
-              {PAGE.switzerland.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-              <li>
-                {PAGE.switzerland.priminfoLead}
-                <a href={PRIMINFO_URL} rel="noreferrer">
-                  {PAGE.switzerland.priminfoText}
-                </a>
-                {PAGE.switzerland.priminfoAfter}
-              </li>
-            </ul>
-            <p data-a2="source">{PAGE.switzerland.source(READ_ON)}</p>
-          </article>
-        </div>
-      </Container>
-    </div>
+    <>
+      <Fold id={SECTION_ID.france} headingId="france-titre" heading={PAGE.france.heading}>
+        <p data-a2="side">
+          <span data-a2="dot" data-a2-side="france" aria-hidden="true" />
+          {PAGE.france.label}
+        </p>
+        <List
+          items={PAGE.france.items(formatWholePercent(year.ratePercent), formatWholePercent(year.allowancePercentOfPass))}
+        />
+        <p data-a2="source">{PAGE.france.source(READ_ON)}</p>
+      </Fold>
+      <Fold id={SECTION_ID.switzerland} headingId="suisse-titre" heading={PAGE.switzerland.heading}>
+        <p data-a2="side">
+          <span data-a2="dot" data-a2-side="switzerland" aria-hidden="true" />
+          {PAGE.switzerland.label}
+        </p>
+        <ul data-a2="list">
+          {PAGE.switzerland.items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+          <li>
+            {PAGE.switzerland.priminfoLead}
+            <a href={PRIMINFO_URL} rel="noreferrer">
+              {PAGE.switzerland.priminfoText}
+            </a>
+            {PAGE.switzerland.priminfoAfter}
+          </li>
+        </ul>
+        <p data-a2="source">{PAGE.switzerland.source(READ_ON)}</p>
+      </Fold>
+    </>
   );
 }
 

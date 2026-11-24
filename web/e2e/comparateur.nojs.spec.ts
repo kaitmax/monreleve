@@ -89,6 +89,9 @@ test.describe('with JavaScript disabled', () => {
 
     expect((await page.locator('main').textContent()) ?? '').toContain(LAMAL_COPY.noScript);
 
+    // R1409: the delay is a native accordion; a <summary> opens it with no script.
+    await page.locator('[data-deadline] summary').click();
+    await expect(page.locator('[data-deadline] details')).toHaveJSProperty('open', true);
     await page.locator('#date-evenement').fill('2026-11-30');
 
     await expect(page.locator('[data-deadline-helper]')).toHaveCount(1);
@@ -96,10 +99,12 @@ test.describe('with JavaScript disabled', () => {
   });
 
   // FW-COMPARATEUR-A2-PAGE (W20, R1048): the artboard's static sections are
-  // server HTML. With scripting off the reader still gets the long h1, every
-  // section under its heading, and chips that are real in-page links - one
-  // is followed, and the address bar and the target show it worked.
-  test('the A2 sections and their chips are served without JavaScript', async ({ page }) => {
+  // server HTML. With scripting off the reader still gets the long h1 and
+  // every section under its heading. FW-CALC-REDESIGN (R1408, R1409): the
+  // chips are gone and the sections are native accordions; a fragment into
+  // one still lands - the browser opens the accordion with no script - and
+  // the address bar and the target show it worked.
+  test('the A2 sections are served without JavaScript, and a fragment opens its accordion', async ({ page }) => {
     await page.goto(COMPARATOR_PATH);
 
     expect((await page.locator('h1').textContent()) ?? '').toBe(LAMAL_PAGE_COPY.heading);
@@ -117,17 +122,27 @@ test.describe('with JavaScript disabled', () => {
       expect(main, heading).toContain(heading);
     }
 
-    const chips = page.getByRole('navigation', { name: LAMAL_PAGE_COPY.onThisPage }).getByRole('link');
-    const hrefs = await chips.evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
-
-    expect(hrefs.length).toBe(Object.keys(SECTION_ID).length);
-    for (const href of hrefs) {
-      await expect(page.locator(href), href).toHaveCount(1);
+    // R1416: the chips' words are deleted from lib/fr, so the check is by hook
+    // and by target: no chip list, and no in-page link to a section.
+    await expect(page.locator('[data-on-this-page]')).toHaveCount(0);
+    for (const id of Object.values(SECTION_ID)) {
+      await expect(page.locator(`main a[href="#${id}"]`), id).toHaveCount(0);
+    }
+    for (const id of Object.values(SECTION_ID)) {
+      await expect(page.locator(`[id="${id}"]`), id).toHaveCount(1);
     }
 
-    // Follow one: "Sources", the last section, far below the fold.
-    await chips.filter({ hasText: LAMAL_PAGE_COPY.sources.heading }).click();
-    await expect(page).toHaveURL(new RegExp(`#${SECTION_ID.sources}$`, 'u'));
+    // Follow one: "Ce qui est définitif", closed until the fragment names it.
+    const final = page.locator(`[id="${SECTION_ID.final}"]`);
+
+    await expect(final.locator('xpath=ancestor::details[1]')).toHaveJSProperty('open', false);
+    await page.goto(`${COMPARATOR_PATH}#${SECTION_ID.final}`);
+    await expect(page).toHaveURL(new RegExp(`#${SECTION_ID.final}$`, 'u'));
+    await expect(final.locator('xpath=ancestor::details[1]')).toHaveJSProperty('open', true);
+    await expect(final).toBeInViewport();
+
+    // And "Sources", the last section, open and far below the fold.
+    await page.goto(`${COMPARATOR_PATH}#${SECTION_ID.sources}`);
     await expect(page.locator(`#${SECTION_ID.sources}`)).toBeInViewport();
   });
 
