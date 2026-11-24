@@ -39,7 +39,15 @@ const FW14_MIGRATIONS = [
 // R877: named through the scratch pattern's one home. It used to be
 // `frontalier_fw14_era_probe` - the `frontalier_test` near miss, living inside
 // the suite the guard protects.
-const SCRATCH_DATABASE = scratchDatabaseName('fw14_era_probe');
+//
+// ONE DATABASE PER RUN, by the process id. A fixed name collided whenever two
+// db runs overlapped on this machine (2026-11-24, iOS Ruling 24): this file's
+// `DROP DATABASE ... WITH (FORCE)` ended the other run's connections
+// ("terminating connection due to administrator command") and its CREATE hit
+// "duplicate key value violates unique constraint pg_database_datname_index".
+// The cost: a run killed before afterAll leaves its own database behind, since
+// dropping another run's probe database is the collision itself.
+const SCRATCH_DATABASE = scratchDatabaseName(`fw14_era_probe_${String(process.pid)}`);
 
 /**
  * Every state an AlertSubscriber row can be in, because the one that gets
