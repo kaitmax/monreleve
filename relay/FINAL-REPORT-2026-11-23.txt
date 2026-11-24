@@ -98,16 +98,18 @@ READ THIS FIRST (two lines)
   step but not the end) - BEFORE TestFlight; the export's share sheet, the comparison and Licences (not
   reachable by the walk, Q1); the iOS lock-screen text and sound; the transient-notice presentation.
 
-5. NEXT TASK, PROPOSED (no prompt written yet): IOS-POLISH - CFBundleDevelopmentRegion "fr" (system alerts and pickers
-   in French; project.yml only, verified by one ios-app launch in French), delete the commonMain pilot with
-   no production caller (AujourdhuiPilot, PilotFixture, PilotScenario), and, if you choose it, the
-   always-on accessibility sync experiment for Q1.
+5. IOS-POLISH - DONE, merged as d69577a8 (iOS Ruling 21, 2026-11-24): the bundle's development region is
+   French (project.yml, one key; ios-app refuses any other value); the pilot moved to test scope and out of the
+   Release framework (ios-app refuses its symbols, with a control). Partial: on an English simulator only the
+   share sheet's "Copy" turned French. Q1's accessibility experiment was NOT run (not chosen). Three questions
+   are yours: a fr.lproj (the rest of the share sheet; the App Store listing's language list), and the test
+   fake InMemorySettingsStore still in the Release framework (a build change to remove).
 
 6. HOUSEKEEPING LEFT
 - C:/wt/i3-gate (the orchestrator's gate checkout for IOS-AUDIT) - removed after the merge.
 - C:/wt/walk-db/web (untracked leftover of a removed worktree).
 - The :3900 dev server - restarted for you at the end.
 
-Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-20),
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-21),
 relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the repository root, evidence under C:/wt/queue-evidence/.
 END OF FINAL REPORT

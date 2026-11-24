@@ -1,0 +1,89 @@
+FW-CALC-REDESIGN SESSION PROMPT - Mon Releve
+THE TWO CALCULATOR PAGES, REDESIGNED: A STICKY VERDICT RAIL, THE EXPLANATIONS IN ACCORDIONS (web)
+Written by the orchestrating session on 2026-11-23. THE OPERATOR'S DECISIONS, taken in conversation the same day
+(recorded here; they are the scope):
+  D-a. Both pages: /calculateur-lamal-cmu and /calculateur-teletravail-frontalier, as one family.
+  D-b. What must change: the pages look plain / dated; the LAMal page is too long and hard to scan (about 5 800 px
+       on desktop, 10 000 px at 390 px); the result is not prominent.
+  D-c. The LAMal explanation sections are KEPT ON THE PAGE but COLLAPSED (native accordions); open by default are
+       only the form, the result and the irrevocability warning (and the Sources list at the end).
+  D-d. EXISTING TOKENS AND EXISTING COPY ONLY: no token added to DESIGN-SYSTEM.md or tokens.scss, no new French
+       string in lib/fr. Layout, hierarchy and the use of the France / Switzerland colour tokens change.
+  D-e. The layout: "sticky verdict rail" - form left, result right in a rail that stays in view (desktop); on a
+       phone form then result, with a compact result summary at the top once calculated if the budget allows.
+Read first: DESIGN-SYSTEM.md whole (section 1 tokens, 2 overrides, 4.1 radius); SPEC-frontalier-web.md 9.6 and the
+calculator's own section; web/app/(public)/calculateur-lamal-cmu/ whole and
+web/app/(public)/calculateur-teletravail-frontalier/ whole (and the components they import); the e2e and visual
+specs that load either route (grep e2e/ for both paths); the R664-R678 block in CLAUDE.md (the comparator's
+rulings - R668 the insurer spread, R672 the rate and its date, R673 what the page never says, R674 no badge);
+CLAUDE.md R2 (budgets), R85, R127, R135, R154, R159, R169, R170, R173, R176, R177, R179, R184, R206, R207, R225,
+R349, R391; relay/QUEUE-STATE.md for the GATE A headroom on the calculator page (Queue Rulings 22-27: it was
+measured at a few dozen bytes - read the current figure, do not assume it).
+Names: worktree C:/wt/fw-calc-redesign, branch fw-calc-redesign, report REPORT-FW-CALC-REDESIGN.txt. Ruling
+numbers: R1406-R1414. YOUR OWN advisor may advise you. Your dev server's port is 3950 (FRONTALIER_PORT=3950 /
+PORT=3950); 3000, 3100 and 3200 belong to another project and 3900 is the orchestrator's - never stop either.
+COMES BACK AS A QUESTION: a new token, a new French string or a changed one, a new dependency, raising a budget,
+any change to a calculation, a figure, a source line or what R664-R678 require, removing any text from either
+page, and any third-party script.
+BASE: origin/main as your brief states.
+
+R1406. THE SHARED SKELETON. Header block (eyebrow, H1, lead); on wide screens (the breakpoint from the existing
+    token/mixin set) two columns - the form, and the result in a rail held by CSS position: sticky (NO JS for
+    the stickiness); on a phone a single column: form, result, then the rest. Below: one area of native
+    <details>/<summary> accordions (zero JS, the text stays in the served HTML), then Sources, open. One
+    component or one shared stylesheet partial for what both pages share - not two copies (R206).
+R1407. LAMAL: THE IRREVOCABILITY WARNING STAYS PROMINENT. It stays an error-coloured block under the H1 (SPEC
+    9.6 requires a prominent banner stating irrevocable and three months). It may be shortened VISUALLY - its
+    title and first sentence visible, the rest of the SAME text behind a native disclosure - but no word of
+    it is removed, and "irrevocable" and the three-month window must both be in the visible part; assert that
+    on the rendered page (R225).
+R1408. LAMAL: THE RESULT RAIL. Two large panels side by side: France (france-soft / france-text tokens), ONE
+    figure; Suisse (switzerland tokens), the LOWEST, MEDIAN and HIGHEST - never one figure (R668). Under them
+    ONE range bar from the lowest to the highest Swiss total with the French figure marked on it; it replaces
+    the separate per-insurer dot chart only if it carries the same information an assistive-technology user
+    gets today (state what that is, and keep its text alternative; if the dot chart's per-insurer count
+    sentence would be lost, keep the dot chart inside an accordion instead). Then the verdict sentence chosen
+    by case (R674 - no badge), the rate and its date beside every converted figure (R672), the source lines.
+    The "beaucoup de soins" and "si le franc varie" cards become accordions INSIDE the rail; the franc
+    slider keeps working inside one. The anchor-pill navigation is removed (the accordions replace it);
+    every id in section-ids.ts that something links to (grep the whole web/ tree and content/) keeps
+    resolving - a link to a section inside a closed accordion must open it (measure the browser's behaviour
+    on a fragment into a closed <details>; if it does not open, the smallest fix, stated).
+R1409. LAMAL: WHAT IS COLLAPSED. Le delai de trois mois (the deadline tool inside it, working), Ce qui est
+    definitif, Qui suit votre choix, Ce que couvre l'option, Si vous choisissez la France, Si vous restez en
+    Suisse, Ce que ce comparatif ne compare pas. Each summary is the section's EXISTING heading string. Text
+    unchanged: a test asserts every lib/fr string the page rendered before is still in the served HTML
+    (derive the list from the base's rendered page, not by hand - R181).
+R1410. TELEWORK: THE RESULT RAIL. Sticky; the percentage figure larger; the threshold bar thicker; of the four
+    tiles the two "jours restants" lead and the two "imposes" are secondary; the app card and the e-mail
+    capture stay below the result. "Les deux seuils" and the FAQ keep their text and take the shared card
+    language. The calculation, the copy, the share link and the URL state are untouched.
+R1411. THE PHONE SUMMARY (D-e), ONLY IF IT FITS. After a calculation, a compact result line at the top of the
+    phone layout using EXISTING strings only. If it needs new copy or breaks GATE A, it is NOT built: say so
+    with the measured bytes.
+R1412. INVARIANTS, ASSERTED. Tokens only and the closed radius set (the existing guards green); no horizontal page
+    scroll at 320 px on either page with the result shown and with every accordion open (R127); every
+    rendered anchor styled (R173); GATE A and GATE B measured in a CLEAN CLONE (memory: a working-tree size
+    after a gate reads a stale .next) with the before/after figures; reduced motion respected for any
+    transition; keyboard: every summary reachable and toggled by Enter/Space, the focus order form -> result
+    -> accordions.
+R1413. TESTS AND BASELINES. e2e specs that read text now inside an accordion open it first (never weaken an
+    assertion to pass); new tests for R1407, R1408 (three Swiss figures + one French, rate and date present),
+    R1409 and R1412, each RED first. Baselines: before regenerating, LIST the files you expect to change and
+    why (R207); the run must produce exactly that list; every regenerated image cropped and LOOKED AT, and
+    the report carries the list with what changed (R135, R184's commit and dirty line).
+R1414. GATES AND THE WALKTHROUGH. gate:changed on the tip with its verdict line quoted from the log, then
+    gate:clone before the push (R199) with its claim line - each verdict read INSIDE the chain that commits or
+    pushes. The heavy lock: node C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 5000 --wait-min 600,
+    released after; never lower the line, never touch another process. WALKTHROUGH (R176) against pnpm dev on
+    3950: both pages at 320, 390 and 1280 px - empty, calculated, every accordion opened, the LAMal fragment
+    links, the franc slider, the deadline tool - with screenshots under C:/wt/queue-evidence/fw-calc-redesign/
+    that you look at, and what each showed.
+
+THE WORK: worktree + lock (R349); test-first; push every increment; do not merge; do not deploy or touch
+production; sessions do not write parking.md; the repository is PUBLIC (no address, code or token in any
+committed file or log); before each push a script checks the outgoing diff for the first 12 characters of
+C:/Users/KAMXKAM/AppData/Local/Temp/cf/tok and refuses on a hit (never print the file); lock removed last.
+REPORT: SUMMARY / STATUS (R391) / R1406-R1414 with evidence / WALKTHROUGH / BASELINES REGENERATED / NOTICED BUT
+NOT TOUCHING / DEVIATIONS / QUESTIONS / PUSH PROOF
+END OF FW-CALC-REDESIGN PROMPT

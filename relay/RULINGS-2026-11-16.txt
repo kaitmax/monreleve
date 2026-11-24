@@ -3392,3 +3392,50 @@ QUESTIONS:
   Parametres switch row goes on the S9 list (argued: the row does not merge).
 THE iOS PHASE IS COMPLETE AS PLANNED (I1-I3). iOS cannot ship until F8, Q1 and
 the operator's Apple items are settled (relay/FINAL-REPORT-2026-11-23.txt).
+
+iOS Ruling 21 - IOS-POLISH, 2026-11-24 (the operator: "run the IOS-POLISH
+follow-up"; prompt relay/IOS-POLISH.txt, R1399-R1405). LANDED: main d69577a8
+(merge of i4-polish 945b704c; code tip a505b731; main unmoved at 8098a511).
+SCOPE: Q5 and Q7 of REPORT-IOS-AUDIT. Q1's always-on sync experiment NOT run -
+the operator had not chosen it.
+WHAT LANDED: options.developmentLanguage fr in ios/project.yml (project-walk.yml
+includes it); AujourdhuiPilot.kt to iosTest (R100), PilotFixture.kt to
+commonTest (R096: InMemorySettingsStore cut verbatim into its own commonMain
+file, because :app's unit tests use it); R1353 extended - CFBundleDevelopmentRegion
+must read "fr" (Debug and Release) and the pilot's symbols must be absent, with
+AujourdhuiScreen as the same-kind control; EdgeToEdgeCensusTest's offAndroidHost
+exemption removed (no instance left; a plant failed the census by name).
+FINDING: AujourdhuiPilot already counted 0 in the base Release framework (the
+compiler dropped the unused composable); PilotFixture, PilotScenario and the
+pilot InMemoryEntryDao did ship - Q7 was true for three of four names.
+VERDICTS, EACH READ BY THE ORCHESTRATOR:
+- the session's :app:gate on a505b731: floor 1562, BUILD SUCCESSFUL in 7m 37s,
+  GATE_EXIT=0; :shared JVM 358 / 0;
+- ios-shared 45285718054 on 958faea5: 110 suites / 534 tests / 0 failures;
+  ios-app 45285726070 on 958faea5: success, R1353 PASSED; nothing under
+  android/shared, ios or .github changed after 958faea5 (diff empty) - R573 met;
+- planted RED: ios-app 45274815756 on 121f715d (base + the new checks) failed by
+  name (PilotFixture, PilotScenario, the pilot InMemoryEntryDao; 'en');
+- ios-walk 45296804003 on 945b704c (the French bundle, the session's Q4): the
+  per-test outcomes equal 45197427698's exactly (9 pass, the known 10 fail);
+  test27's message moved from "not on screen" to a zero-frame "2025" button -
+  Q1's class, not language; log + 95 artifacts scanned clean (token prefix 0,
+  bearer 0, production host 0, callback-with-token 0, six-digit codes 0);
+- gate:changed on the staged merge: "Tests 4294 passed (4294)" / "GATE PASSED
+  for the paths changed".
+THE FLOOR STAYS 1562; :shared JVM 358; iOS SHARED 534.
+R1403(b) PARTIAL, ACCEPTED AS MEASURED: on a simulator reading AppleLanguages
+en-US, the share sheet's "Copy" became "Copier"; Save to Files, Reminders, More
+and Text Document stayed English. The notification prompt was not measured
+(ios-app does not raise it).
+QUESTIONS, THE OPERATOR'S: (1) a fr.lproj (or CFBundleLocalizations) for the
+rest of the system UI - a new mechanism; (2) the App Store listing's language
+list reads .lproj folders (Apple DTS, cited in the report), so it will not name
+French without one; (3) InMemorySettingsStore, a test fake, still ships in the
+Release framework (not counted) - a test-fixtures source set or module is a
+build change.
+NOTICED: the session overwrote a stale orchestrator helper (junit.js) in the
+orchestrator's scratchpad; nothing of the project lost.
+ALSO RECORDED: relay/FW-CALC-REDESIGN.txt (R1406-R1414), the operator's
+calculator redesign of 2026-11-23 (decisions D-a..D-e), running in
+C:/wt/fw-calc-redesign.

@@ -1,0 +1,81 @@
+IOS-POLISH SESSION PROMPT - Mon Releve
+THE BUNDLE SPEAKS FRENCH; THE PILOT LEAVES THE RELEASE FRAMEWORK (iOS phase, after I3)
+Written by the orchestrating session on 2026-11-23 at the operator's request ("run the IOS-POLISH follow-up";
+relay/FINAL-REPORT-2026-11-23.txt section 5). Read first: iOS Ruling 20 in relay/RULINGS-2026-11-16.txt;
+REPORT-IOS-AUDIT.txt Q5 and Q7 (l.497-506); ios/project.yml whole (and ios/project-walk.yml - find whether it is a
+separate project that sets its own keys); .github/workflows/ios-app.yml, the R1353 step (l.268-389);
+android/shared/src/commonMain/kotlin/ch/monreleve/app/pilot/ both files; android/shared/build.gradle.kts l.205;
+android/app/src/test/kotlin/ch/monreleve/app/fences/ExperimentalTimeOptInAllowlistTest.kt and
+EdgeToEdgeCensusTest.kt (offAndroidHost, ~l.128-131); CLAUDE.md R154, R169, R178, R180, R206, R268, R349, R391,
+R573, R574; memory: a `git mv` of an edited file stages the PRE-edit blob - verify every move against the
+committed blob, not the working tree.
+Names: worktree C:/wt/i4-polish, branch i4-polish (NOT ios-*), report REPORT-IOS-POLISH.txt. Ruling numbers:
+R1399-R1405. YOUR OWN advisor may advise you. A new dependency, a new Gradle source set or module, a new
+mechanism beyond the one Info.plist key (CFBundleLocalizations, a fr.lproj, InfoPlist.strings), new French copy,
+or a change that LOOSENS what a fence accepts comes back to the orchestrator as a QUESTION.
+BASE: origin/main 8098a511 (or later, as your brief states).
+NOT IN SCOPE: Q1 (the accessibility sync - the operator has not chosen it), F8, the icon, the privacy answers,
+export compliance, renaming the `pilot` package, the iosTest files that merely live in package `pilot`.
+
+R1399. WHAT Q7 MEASURED, AND THE SPLIT IT FORCES. AujourdhuiPilot, PilotFixture, PilotScenario and the pilot's
+    InMemoryEntryDao (PilotFixture.kt l.65 - NOT data/sync's, which is DownloadRig.kt's own) are used ONLY by
+    :shared's tests (PilotFixtureTest in commonTest; AujourdhuiPilotIosTest and LaunchSpeechIosTest in iosTest).
+    InMemorySettingsStore (PilotFixture.kt l.105) is ALSO used by :app's unit tests (ThresholdAlertPresenceTest,
+    SessionEndSeamTest, ParametresWirePinTest), which cannot see :shared's commonTest. So: the first four LEAVE
+    commonMain; InMemorySettingsStore STAYS in commonMain, same package, cut VERBATIM into its own file. Re-run
+    the usage census yourself first (unfiltered, every source set, both modules) and paste it; if it differs
+    from this paragraph, stop and ask.
+R1400. A MOVE, NOT A DELETE. No test is deleted and no assertion changes: AujourdhuiPilotIosTest is the only
+    iOS test of the Aujourdhui screen, and LaunchSpeechIosTest is the iOS twin of R702/R704 on production
+    ChoiceCard semantics. AujourdhuiPilot.kt and PilotFixture.kt (less InMemorySettingsStore) move with `git
+    mv` to the NARROWEST EXISTING test source set that compiles every user (commonTest unless measured
+    otherwise), same package. Evidence: `git show --stat -M` of the move commit shows 100% renames for the
+    moved file(s) on the COMMITTED blobs; the split file's lines equal the cut lines (a script asserts it,
+    R180). COUNTS UNCHANGED: :app floor 1562, :shared JVM 358 (from the XML), ios-shared 534 / 0 failures (from
+    the JUnit XML) - a count that moved is a finding, never a rounding.
+R1401. THE RELEASE FRAMEWORK NO LONGER CARRIES THEM - PROVEN BY PRESENCE OF A CONTROL. Extend R1353's Release
+    inspection with the pilot's names (AujourdhuiPilot, PilotFixture, PilotScenario, the pilot InMemoryEntryDao
+    by its package-qualified name) ABSENT, and a production symbol of the same kind (e.g. AujourdhuiController)
+    PRESENT through the SAME scan, so an empty scan cannot pass (R154, R169's corollary). Planted (R180, each
+    verified landed): run the extended check against a Release binary built from the BASE (pilot still in
+    commonMain) and quote it FAILING by name - one ios-app dispatch on a throwaway commit is enough, or argue
+    a cheaper equivalent in DEVIATIONS.
+R1402. THE FENCES FOLLOW THE FILES. ExperimentalTimeOptInAllowlistTest: the two commonMain pilot entries move to
+    the moved paths (counts unchanged). EdgeToEdgeCensusTest: once AujourdhuiPilot is out of the shipped
+    sources, the offAndroidHost exemption is checked for any remaining instance; if none, it is REMOVED (a
+    tightening) and the census passes; if one remains, say which. build.gradle.kts l.205 and every comment
+    naming a moved path is updated. Nothing else in a fence changes.
+R1403. Q5: THE BUNDLE'S REGION IS FRENCH, AT ITS ONE HOME. Find where "en" comes from today (XcodeGen's default
+    developmentLanguage, presumably - show it in the generated Info.plist or the project, from a runner log)
+    and set French THERE, once (R206), in project.yml - and in project-walk.yml only if it is a separate
+    project that would otherwise stay English. Proof, both on the runner: (a) the built .app's Info.plist
+    reads CFBundleDevelopmentRegion "fr", Debug and Release, as a check in ios-app.yml that FAILS otherwise;
+    (b) the EFFECT: a system-rendered string the app triggers (the notification permission alert, or the share
+    sheet) captured in FRENCH on a simulator whose language is PRINTED as non-French (AppleLanguages read
+    back). The date picker does not count - its language is forced in code. No screen capture may show a
+    sign-in code (R574). If (b) does not turn French with the key alone, that is a QUESTION, not a second key.
+R1404. WHAT THE OPERATOR SHOULD KNOW, IN THE REPORT. The App Store effects of a French development region (the
+    listing's language list, what an English-device user sees in system UI) as measured or as Apple documents
+    them - CITED, not recalled; and that InMemorySettingsStore, a test fake, still ships in the Release
+    framework because :app's tests need it (a test-fixtures mechanism would be a build change - name it, do
+    not build it).
+R1405. GATES. Android: fastCheck per increment and the FULL :app:gate on the tip, each under the heavy lock;
+    if memory never allows it, the report reads "Increments green under fast check. FULL GATE NOT RUN on <sha>"
+    (R391) and the orchestrator runs it before merging. iOS (R573, :shared changes): ONE ios-shared run and ONE
+    ios-app run on the pushed tip, counted from the JUnit XML; ios-app's probe share PASS and R1353's OUTPUT
+    line quoted (not the echoed source); the job logs and artifacts scanned (token prefix, bearer, callback with
+    token, production host outside R1353's Release-URL lines, six-digit numbers, digit-labelled code boxes) with
+    the counts. Before hand-back, `git diff <base> <tip> --name-only` lists only what R1399-R1403 name and your
+    report.
+
+THE WORK: worktree + lock (R349); copy android/local.properties from the main checkout (gitignored; without it
+Gradle says "SDK location not found" - NO RESULT); test-first where a check is new (R1401's and R1403(a)'s RED
+before the change they guard); PUSH EVERY INCREMENT (a session that dies at its limit is relaunched from your
+pushed tip); the heavy lock: node C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 8000 --wait-min 600,
+release after; the operator's applications may hold memory - wait, never lower the line, never touch their
+processes; every Gradle run --no-daemon, NEVER `gradlew --stop`; a verdict is read from the LOG inside the
+chain that commits or pushes, never from a wrapper's exit 0; push the branch (DO NOT MERGE); report; push; lock
+removed last. Sessions do not write parking.md. The repository is PUBLIC.
+REPORT: SUMMARY / STATUS (R391) / R1399-R1405 with evidence / NOTICED BUT NOT TOUCHING / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF IOS-POLISH PROMPT
