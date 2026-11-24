@@ -1,0 +1,239 @@
+REPORT-FW-CALC-LCP - the calculator's mobile LCP under 2.5 s on slow 4G, with margin
+
+Session: FW-CALC-LCP. Worktree C:/wt/fw-calc-lcp, branch fw-calc-lcp, cut
+from origin/main 17674bb3. Prompt: relay/FW-CALC-LCP.txt (the orchestrator's,
+read from C:/wt/web-orch). Rulings R1425-R1430. Port 3950.
+
+SUMMARY
+  NO PRODUCT CHANGE. The 2300 ms margin was NOT reached by any change this
+  brief allows, so nothing is proposed for merge; this branch carries this
+  report only. The LCP element is the server-rendered h1; the dominant phase
+  is render delay (81 %); the cause is that Lighthouse's simulated LCP
+  (lantern) counts every download that finished before the OBSERVED paint
+  on localhost - all ~131 KB of JS and the 48.5 KB font - although the h1
+  needs neither. In one sitting (one lock hold, quiet host) the control read
+  2332.8 and 2323.3 ms; removing the web font entirely read 2129.6 ms and
+  removing the calculator island entirely read 2156.9 ms. Neither removal is
+  shippable, and the smaller versions of each are questions (a new tool, a
+  SPEC 17 line, the instrument). QUESTIONS 1-4.
+
+STATUS (R391)
+  NO PRODUCT CHANGE; report-only branch, pending the operator's reading -
+  not merged, not on main, not on production. gate:changed ran on this
+  report's tree (verdict line under PUSH PROOF). gate:clone runs on the
+  report commit before the push; its claim line is in the handback, because
+  this file cannot carry the result of a run on the commit that contains it.
+
+R1425 - THE INSTRUMENT
+  - The branch's harness was brought in WITHOUT merging: `git merge
+    --no-commit --no-ff origin/fw-lighthouse-calc` (5482b800), then
+    seven-runs.patch from C:/wt/queue-evidence/fw-lighthouse-calc-merge/.
+    The merge state was then quit (`git merge --quit`, `git reset`) so the
+    harness sat as uncommitted files only. At the end both were reverse-
+    applied (seven-runs.patch, then the saved harness diff); `git status
+    --porcelain` was empty before this report was written. Nothing of the
+    harness is committed here.
+  - The A/B/A runs used a scratch driver (instruments/measure.mjs in the
+    evidence folder) rather than `pnpm lighthouse`, so that three builds
+    could be served back to back without rebuilding: each build in its own
+    NEXT_DIST_DIR (.next-lcp-a, -b1, -b2), `next start -p 3950`. It imports
+    the branch's lighthouse-plan.mjs and uses ITS mobileRc() (NUMBER_OF_RUNS
+    7, the stated MOBILE_SETTINGS) and ITS lcpVerdict() on the results, so
+    the conditions are read back from every result exactly as the gate does
+    (R345). Before measuring it checks /api/health names monreleve (R169)
+    and that the page's stylesheets carry --colour-brand (R177); it refuses
+    a busy port and kills the tree it spawned with taskkill /T (R179). It
+    prints commit-free and free physical memory and a WMI CPU snapshot
+    (total and the top six processes) before and after each 7-run set.
+  - Every build's tsconfig.json / next-env.d.ts edit (Next adds the distDir
+    types) was restored after the build; the three dist dirs were deleted
+    before the gate.
+
+R1426 - THE LCP ELEMENT AND WHAT DELAYS IT (A0, 2026-11-24 17:00Z, run 1;
+confirmed on every sample since)
+  Element: h1.calculateur_title__2uvas, "Calculateur de teletravail
+  frontalier", text, in the server HTML (main > Container > header > h1).
+  Lighthouse's phases (simulated): TTFB 476 ms (19 %), load delay 0, load
+  time 0, RENDER DELAY 1975 ms (81 %). Dominant phase: render delay.
+  Render-blocking: three stylesheets, transfer 2 154 + 6 987 + 8 659 B
+  (raw 5 124 + 42 045 + 57 599 B).
+  Bytes that finished before the observed first paint, by transfer size:
+    HTML        12 503 B
+    CSS         17 800 B  (3 files)
+    font        48 538 B  (/fonts/inter-latin-wght-normal.woff2, preloaded)
+    JS         130 630 B  (8 files: 07a4fdd4 54 797, 5355 47 113, page
+                           15 035, 2188 3 993, 571 3 932, (account)/layout
+                           2 635, webpack 2 218, main-app 907)
+    manifest       663 B
+    logo         2 477 B  (low-priority image: lantern leaves it out)
+    total      212 611 B  (of 214 954 for the whole load)
+  Why the render delay is downloads: simulated FCP is ~920 ms on every
+  sample while simulated LCP is ~2300-2600 ms for an element present at
+  FCP. trace_engine 0.0.53 lantern/metrics/LargestContentfulPaint.js builds
+  both its optimistic and pessimistic graphs from EVERY request that is not
+  a low-priority image and ended before the OBSERVED LCP, plus the
+  EvaluateScript task of each such script. On localhost every script ended
+  at 71-297 ms and the observed paint came at 190-490 ms, so the whole JS
+  set and the font enter the simulated LCP. Simulated long tasks place the
+  framework chunks' evaluation (07a4fdd4 / 5355 / main-app) at ~2280-2330
+  ms - the end of the simulated LCP.
+  THE CONTROL IS BIMODAL, and the trace says why. In sitting 1 the A
+  samples fall in two clusters: 2267-2333 ms where the observed paint came
+  at 224-277 ms, and 2449-2582 ms where it came at 1253-2266 ms (headless
+  Chrome sometimes paints the first frame 1-2 s late on this host; seen in
+  every route probed, including /cgu). A late observed paint lets more CPU
+  work start before the cutoff. Each A median sat at the top of the lower
+  cluster, one sample from reading ~2460.
+  First layout: 100-170 ms observed on this page, 50-190 ms on /, /cgu and
+  /guides (probe, n=5, overlapping - NO RESULT as a page-specific finding).
+
+R1427 - CANDIDATES EVALUATED (none applied)
+  Offline what-ifs: lantern re-run in audit mode (-A) on three gathered
+  runs of A with requests removed or rescaled in the devtools log. ESTIMATES
+  only; single drops disagreed between gathers (571: 0 vs -116 ms).
+    font removed            -150 to -230 ms
+    3 stylesheets removed    -80 to -120 (FCP -270)
+    one merged stylesheet     -2 to -44
+    CSS, page-chunk or HTML bytes x0.5     0
+    route JS removed (page, 2188, 571, layout)   -220 to -245
+    all JS removed          -760
+    manifest removed          -5 to -60
+  So bytes in the critical files barely matter; the number of requests and
+  the two large downloads (font, framework JS) do, and neither the font
+  file nor the framework is reducible inside this brief:
+  - render-blocking CSS: inlining (Next experimental.inlineCss) is site-
+    wide and the harness's assertStyled refuses a page with no linked
+    stylesheet (R177); merging the files is worth 2-44 ms. Not pursued.
+  - font: subset already in place (latin only) and preloaded, display swap.
+    The served file is the smallest @fontsource-variable/inter ships
+    (48 256 B; opsz/standard are 72 920 B). Smaller needs a subsetting /
+    axis-instancing tool (a new dependency) or dropping the preload, which
+    SPEC 17 requires ("must be subset and preloaded"). QUESTION 1.
+  - client JS / hydration: the h1 is already server-rendered and never
+    re-rendered by the island; the island's JS counts only because it
+    downloads before the observed paint. Stubbing the island entirely is
+    the bound (B2 below). QUESTION 2.
+  No visual change was made; no baseline moved.
+
+R1428 - THE MEASUREMENTS (7 runs each, median [samples], ms)
+  A0 - base 17674bb3, 17:00-17:04Z, NO same-sitting control: a diagnosis
+  source only. Host: commit free 5 215 -> 3 058 MB, phys free 2 314 -> 1 250
+  MB, CPU total 99 % -> 100 % (top: node processes not all attributable to
+  this session, MsMpEng 81 %).
+    2451.5 [2451.5 2414.9 2662.1 2409.5 2489.5 2431.5 2491.7]
+    perf [80 86 83 88 83 85 81]  FCP [952 934 933 932 929 932 953]
+
+  SITTING 1 - ONE heavy-lock hold, 17:51:37Z-17:59:04Z, in this order:
+  S1-A (control, base 17674bb3)            2332.8
+    [2274.5 2288.1 2266.7 2582.5 2449.3 2332.8 2468.2]
+    perf [98 98 99 93 95 98 96]  FCP [940 925 918 933 922 918 917]
+    host: commit free 6 675 -> 6 820 MB, phys 2 369 -> 2 238, CPU 21 % -> 10 %
+  S1-B1 (CEILING: no web font - preload and both @font-face removed;
+  throwaway, visual change, never committed)  2129.6
+    [2290.4 2054.6 2139.2 2129.6 2131.8 2083.7 2032.6]
+    perf [95 98 97 97 97 98 99]  FCP [962 920 918 957 921 917 926]
+    host: 6 724 -> 6 762 MB, phys 2 168 -> 2 260, CPU 11 % -> 8 %
+  S1-B2 (CEILING: CalculatorForm removed from page.tsx, AppCard kept;
+  throwaway, removes the calculator, never committed)  2156.9
+    [2209.4 2138.0 2163.5 2156.9 2257.7 2137.5 2156.1]
+    perf [97 98 98 98 96 98 97]  FCP [1084 1072 1070 1068 1073 1066 1067]
+    host: 6 617 -> 6 772 MB, phys 2 177 -> 2 382, CPU 5 % -> 23 %
+    NOT A CLEAN BOUND: this build served 4 stylesheets (CSS chunking moved
+    with the island gone) and its simulated FCP rose ~150 ms.
+  S1-A2 (control again, same build as S1-A)  2323.3
+    [2312.3 2470.0 2307.9 2497.2 2323.3 2492.2 2317.0]
+    perf [98 95 98 93 98 94 98]  FCP [925 922 919 921 916 929 917]
+    host: 6 649 -> 6 766 MB, phys 2 319 -> 2 353, CPU 4 % -> 4 %
+  Plants verified before reading (R180): served HTML of B1 has 0 font
+  preloads and its CSS 0 @font-face; B2's HTML has 1 <form> (the capture
+  card) against A's 2; B1/B2 edits asserted exactly one anchor each.
+
+  VERDICT: the 2300 ms margin was NOT reached. The control itself reads
+  ~2325-2335 on a quiet host and 2451 (A0) to 2808 (the evidence folder)
+  under load. Even the two unshippable ceilings sit only 170-200 ms below
+  their control; that they would fail under load is arithmetic from A0 and
+  the earlier 2695-2808, not a measurement.
+
+R1429 - NOTHING ELSE MOVES
+  The product diff is empty: `git diff 17674bb3 HEAD` touches this report
+  only. GATE A/B, the desktop floor, 320 px and R173 are therefore unchanged
+  by construction; no clean-clone size reading and no desktop Lighthouse run
+  were made, because there is no change for them to measure (the advisor's
+  ruling, recorded under DEVIATIONS).
+
+R1430 - GATES AND HANDBACK
+  gate:changed on this report's tree inside the heavy lock (verdict under
+  PUSH PROOF), the commit made in the same chain only on GATE PASSED;
+  gate:clone on the commit before the push; secret check before the push;
+  branch pushed, not merged, never production.
+
+WALKTHROUGH
+  No page changed, so the walkthrough is what the instruments drove: the
+  production build of the base served on 3950; /api/health named monreleve
+  on every start; /calculateur-teletravail-frontalier answered 200 with
+  3 stylesheets (104 768 B) carrying --colour-brand; the page was loaded
+  28 times by Lighthouse (A0, S1-A, S1-A2, plus 7 traced/gathered) and 45
+  times by the Chrome probe, and the LCP element in every result is the h1.
+  No R169/R177 refusal, no NO RESULT in the sitting.
+
+BASELINES
+  None regenerated, none moved.
+
+NOTICED BUT NOT TOUCHING
+  - The route ships a chunk named app/(account)/layout-*.js (2 635 B
+    transfer) on a public page; its contents are PublicShell's client
+    classes. Probably a naming artefact of shared chunks, not a leak.
+  - <link rel="manifest"> is fetched at Medium priority before the first
+    paint and so sits in the simulated LCP set (what-if -5 to -60 ms).
+  - The first layout of a fresh headless Chrome on this host costs 50-190
+    ms on every route probed, and the first frame is sometimes 1-2 s late;
+    both scale x4 in the simulation and are the host, not the page.
+
+DEVIATIONS
+  - A0 has no same-sitting control; it is used for the diagnosis only.
+  - The A/B/A runs used the scratch driver described under R1425 instead of
+    `pnpm lighthouse` (same lhci collect, same mobileRc, same lcpVerdict).
+    With no product change, the full harness run (desktop floor + LCP) on a
+    tip was skipped on the advisor's ruling: there is nothing for it to
+    measure that the empty diff does not already state.
+  - The first variant probe (n=5, nine HTML variants) is NO RESULT: the
+    variants overlap.
+  - R334 DISCLOSURE: the saved harness diff was first written by a shell
+    redirect to harness.patch in the scratchpad ROOT, which is shared with
+    the orchestrator's conversation; I did not check beforehand that no
+    file of that name existed there, so a file of the orchestrator's with
+    that name, if there was one, may have been overwritten. It was moved to
+    a subfolder of mine afterwards. Every instrument is now also copied to
+    C:/wt/queue-evidence/fw-calc-lcp/instruments/.
+  - The per-process CPU snapshot cannot always tell this session's own
+    next-start / Chrome processes from others' (A0's node processes).
+
+QUESTIONS
+  1. THE FONT. The single largest lever this brief cannot pull: removing
+     the font entirely read 2129.6 against 2332.8 / 2323.3. A smaller file
+     (instancing the wght axis to the weights the tokens use, and/or a
+     narrower codepoint set) needs a subsetting tool - a new (dev)
+     dependency - and dropping the preload conflicts with SPEC 17's "must
+     be subset and preloaded" (and its effect was never measured). Which,
+     if either, may the next task do?
+  2. THE ISLAND'S JS. Removing the whole island read 2156.9 (a contaminated
+     bound, above). No partial lever was found: the bytes inside the route
+     chunks barely move the estimate; the request count does. Is a chunking
+     change (fewer, larger client chunks via next.config) in scope, given
+     it touches every route's GATE A/B reading?
+  3. THE INSTRUMENT. The h1 is in the server HTML and paints at simulated
+     FCP (~920 ms); lantern adds every localhost download that beat the
+     observed paint, and the control flips between two clusters ~150-250
+     ms apart on headless first-frame timing. Options for the operator:
+     (a) this collection uses applied (devtools) throttling, which measures
+     the paint rather than reconstructing it; (b) keep simulate and accept
+     the flake; (c) a different threshold or statistic. Each is a criterion
+     or harness change (R952, R954), so not done.
+  4. fw-lighthouse-calc. On these numbers its 2500 ms assertion passes on
+     a quiet host (2323-2333) and fails under load (2808): it stays a coin
+     flip whose side is chosen by the host. Does it stay parked?
+
+PUSH PROOF
+  gate:changed: GATE PASSED for the paths changed. GATE_EXIT=0 (2026-11-24T18:06:52Z to 2026-11-24T18:14:49Z); selection: suites: typecheck, lint, test, build
+  gate:clone and ls-remote: in the handback (this file cannot carry a run
+  on its own commit).
