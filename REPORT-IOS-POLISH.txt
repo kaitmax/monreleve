@@ -1,0 +1,373 @@
+REPORT-IOS-POLISH - THE BUNDLE SPEAKS FRENCH; THE PILOT LEAVES THE RELEASE FRAMEWORK (R1399-R1405)
+Session: IOS-POLISH, worktree C:/wt/i4-polish, branch i4-polish (base origin/main 8098a511). NOT MERGED (sessions do
+not merge). Evidence: C:/wt/queue-evidence/i4-polish/ (run logs, artifacts, the gate and fast-check logs, and the
+session's scripts under tools/).
+
+================================================================================
+SUMMARY
+================================================================================
+- The pilot is out of commonMain (R1399, R1400).
+  - AujourdhuiPilot.kt moved to iosTest. Its only users are iosTest.
+  - PilotFixture.kt moved to commonTest. It holds PilotFixture, PilotScenario, the pilot InMemoryEntryDao and
+    PILOT_ACCOUNT.
+  - Both moves are `git mv` renames at R100, with identical blob ids.
+  - InMemorySettingsStore stays in commonMain, same package, cut verbatim into its own file. A script asserted the
+    cut.
+- The Release framework no longer carries the pilot (R1401).
+  - RED first on the base, ios-app 45274815756: PilotFixture 138, PilotScenario 83,
+    ch.monreleve.app.pilot.InMemoryEntryDao 216.
+  - GREEN on the tip, ios-app 45285726070, with three PRESENT controls through the same scan.
+  - FINDING: AujourdhuiPilot counted 0 even on the base. Q7 held for the other three names, not for this one.
+- The fences follow the files (R1402).
+  - The allowlist's two pilot paths moved, counts unchanged.
+  - EdgeToEdgeCensusTest's off-Android exemption had no instance left, so it is REMOVED (a tightening).
+  - A plant showed the census now fails by name where the exemption used to excuse.
+- The bundle's region is French (R1403(a)). `options.developmentLanguage: fr` in project.yml is the one home of the
+  old "en". The new check FAILED on "en" (Debug and Release), then PASSED on "fr".
+- THE EFFECT IS PARTIAL (R1403(b)), and that is QUESTION 1.
+  - The simulator read back AppleLanguages ("en-US").
+  - On it, the share sheet's "Copy" became "Copier".
+  - "Save to Files", "Reminders", "More" and "Text Document - 38 bytes" stayed English.
+- iOS (R1405):
+  - ios-shared 45285718054: 110 suites / 534 tests / 0 failures / 0 errors, from the XML.
+  - ios-app 45285726070: probe share PASS; "R1353: RELEASE INSPECTION PASSED - every check and every control".
+  - Leak scans are clean.
+- Android: fastCheck green per increment, and the FULL :app:gate GREEN on the code tip a505b731
+  (floor 1562, BUILD SUCCESSFUL, GATE_EXIT=0).
+
+================================================================================
+STATUS (R391)
+================================================================================
+COMPLETE (R391), for the code tip a505b731.
+- The FULL :app:gate ran on a505b731 in this session, under the heavy lock (acquired at 8661 MB free):
+    "test floor OK: 1562 unit tests observed (>= 10)", "BUILD SUCCESSFUL in 7m 37s", GATE_EXIT=0,
+    dirty-after=0. The release checks name HEAD a505b73169b23741321a590883a6c450adb4799b.
+- fastCheck --continue on a505b731 printed "BUILD SUCCESSFUL in 1m 4s", FASTCHECK_EXIT=0. On 958faea5 (with the two
+  fence tests) it printed "BUILD SUCCESSFUL in 5m 14s", FASTCHECK_EXIT=0.
+- gate:clone does not apply: no web/ path changed.
+- The iOS proof is on 958faea5; the two commits after it touch no iOS input (DEVIATION 1).
+- Increments 1-4 were committed before any fast check ran, because the 8000 MB line was unmet from 21:59 to
+  23:58. Increments 2a-4 were pushed unchecked at 958faea5 (R1405 PUSH EVERY INCREMENT). 958faea5 was then
+  fast-checked green.
+
+================================================================================
+R1399 - WHAT Q7 MEASURED, AND THE SPLIT IT FORCES
+================================================================================
+The usage census was re-run before any edit: base 8098a511, `git grep -c -w <name>` over android/, ios/ and .github/,
+every source set of both modules. No path filter; the declaring files are included.
+  AujourdhuiPilot       app/test/fences/EdgeToEdgeCensusTest.kt:1 (a comment)
+                        app/test/fences/ExperimentalTimeOptInAllowlistTest.kt:1 (the allowlist path)
+                        shared/commonMain/pilot/AujourdhuiPilot.kt:1 (declaration)
+                        shared/iosTest/pilot/AujourdhuiPilotIosTest.kt:8
+                        shared/iosTest/pilot/LaunchSpeechIosTest.kt:2
+  PilotFixture          app/test/fences/ExperimentalTimeOptInAllowlistTest.kt:1 (the allowlist path)
+                        shared/commonMain/pilot/AujourdhuiPilot.kt:2
+                        shared/commonMain/pilot/PilotFixture.kt:1 (declaration)
+                        shared/commonTest/pilot/PilotFixtureTest.kt:4
+  PilotScenario         shared/commonMain/pilot/AujourdhuiPilot.kt:1, PilotFixture.kt:11 (declaration)
+                        shared/commonTest/pilot/PilotFixtureTest.kt:14
+                        shared/iosTest/pilot/AujourdhuiPilotIosTest.kt:7, LaunchSpeechIosTest.kt:2
+  InMemoryEntryDao      shared/commonMain/pilot/PilotFixture.kt:2 (the PILOT's, declaration)
+                        shared/commonTest/pilot/PilotFixtureTest.kt:3 (package pilot - resolves to the pilot's)
+                        shared/commonTest/data/sync/DownloadRig.kt:2 (data/sync's OWN declaration), and its users
+                        MainGraphWiringPinTest.kt:3, data/repo/GranularityRuleTest.kt:6 and
+                        data/sync/YearDownloadsPinTest.kt:2, each importing ch.monreleve.app.data.sync.InMemoryEntryDao
+  InMemorySettingsStore app/test: ThresholdAlertPresenceTest.kt:2, auth/SessionEndSeamTest.kt:6,
+                        parametres/ParametresWirePinTest.kt:2
+                        shared/commonMain/pilot/PilotFixture.kt:2 (declaration + the fixture's own use)
+                        shared/commonTest: calendar/CalendarControllerPinTest.kt:5, forecast/ForecastControllerPinTest.kt:3,
+                        forecast/SimulationControllerPinTest.kt:3, parametres/ParametresControllerPinTest.kt:3,
+                        parametres/ParametresStartDatePinTest.kt:2
+                        shared/iosTest: ios/ShellTestDoubles.kt:2, pilot/CalendrierReleveScreensIosTest.kt:1,
+                        pilot/SignInScreensIosTest.kt:1, pilot/ZParametresScreensIosTest.kt:1
+  PILOT_ACCOUNT         shared/commonMain/pilot/PilotFixture.kt:4 (declaration), commonTest/pilot/PilotFixtureTest.kt:1
+  ios/ and .github/: no occurrence of any of the six.
+It AGREES with the paragraph, which is why the session did not stop. Two things the paragraph did not list:
+  1. InMemorySettingsStore is ALSO used by :shared commonTest and iosTest. That does not change the split: :app's
+     three tests still need it outside commonTest.
+  2. PILOT_ACCOUNT is a fifth declaration in PilotFixture.kt. It moves with the file; only PilotFixtureTest uses it.
+The cut, commit 886917f8. Script tools/split.mjs asserted its anchors before writing and, after writing, two things:
+the new file's tail equals the cut lines, and PilotFixture.kt equals the original less those lines, the blank after
+them, and `import ch.monreleve.app.settings.SettingsStore`, which only the cut class used. Its output:
+  "SPLIT OK: cut 12 lines (orig 104-115) + 1 blank; removed 1 import; PilotFixture.kt 247 -> 233 lines"
+The new file is InMemorySettingsStore.kt. It holds the package line, two imports (Settings, SettingsStore), a
+three-line English comment naming R1399/R1404, then the 12 lines verbatim. No new French copy.
+
+================================================================================
+R1400 - A MOVE, NOT A DELETE
+================================================================================
+Commit 9f6e0561. `git diff-tree -r -M --find-renames=100% 9f6e0561`, on the COMMITTED blobs:
+  :100644 100644 7075e01e... 7075e01e... R100  commonMain/.../pilot/PilotFixture.kt     -> commonTest/.../pilot/PilotFixture.kt
+  :100644 100644 87064844... 87064844... R100  commonMain/.../pilot/AujourdhuiPilot.kt  -> iosTest/.../pilot/AujourdhuiPilot.kt
+`git show --stat -M` lists both moved files with 0 changed lines.
+The target is chosen per file, by "the narrowest existing test source set that compiles every user":
+  - AujourdhuiPilot.kt's users are AujourdhuiPilotIosTest and LaunchSpeechIosTest, both iosTest, so iosTest. This is
+    the "measured otherwise" case.
+  - PilotFixture.kt's users are PilotFixtureTest (commonTest) and the iosTest pair. iosTest sees commonTest, so
+    commonTest.
+No test was deleted and no assertion changed. COUNTS (each read from its XML or log, not a summary):
+  - :shared JVM: 358 tests / 0 failures in 67 suites, from build/test-results/testDebugUnitTest on 958faea5's fast
+    check. Base: 358. PilotFixtureTest still has 3 tests.
+  - ios-shared 45285718054: 110 suites / 534 testcases / 0 failures / 0 errors / 0 skipped, from the JUnit XML.
+    Base 45243668348 is the same 110 / 534 / 0 / 0.
+    Per suite: AujourdhuiPilotIosTest 7, LaunchSpeechIosTest 2, PilotFixtureTest 3, as on the base.
+  - :app floor: 1562 unit tests in 210 suites, 0 failures, from the :app:gate run on a505b731 (the gate's own line and
+    the XML agree). Base: 1562.
+
+================================================================================
+R1401 - THE RELEASE FRAMEWORK NO LONGER CARRIES THEM
+================================================================================
+The check is check (6) of R1353's Release step in ios-app.yml.
+  - Each name is counted in `strings -a` plus `nm -a`.
+  - The subjects are the Release Kotlin framework, a static archive found under
+    android/shared/build/xcode-frameworks/Release/ (`file` does not call an archive Mach-O, so it is named and
+    asserted found), plus the Release app's Mach-O files.
+  - The pilot names must be ABSENT: AujourdhuiPilot, PilotFixture, PilotScenario, and
+    ch.monreleve.app.pilot.InMemoryEntryDao.
+  - The controls must be PRESENT through the SAME function over the SAME files: AujourdhuiController,
+    ch.monreleve.app.aujourdhui.AujourdhuiController and AujourdhuiScreen.
+RED FIRST. The check alone was committed (121f715d) on the unchanged base and run as ios-app 45274815756. OUTPUT
+lines, from the log (not the echoed source):
+  --- R1401 subjects: android/shared/build/xcode-frameworks/Release/iphonesimulator26.0/Shared.framework/Shared MonReleve
+  PASS  R1401: the Release framework and app carry no AujourdhuiPilot
+  FAIL  R1401: the Release framework and app carry PilotFixture (138)
+  FAIL  R1401: the Release framework and app carry PilotScenario (83)
+  FAIL  R1401: the Release framework and app carry ch.monreleve.app.pilot.InMemoryEntryDao (216)
+  PASS  CONTROL (R1401): the same scan finds AujourdhuiController (307)
+  PASS  CONTROL (R1401): the same scan finds ch.monreleve.app.aujourdhui.AujourdhuiController (292)
+  R1353: RELEASE INSPECTION FAILED
+That one dispatch was also R1403(a)'s RED, below. It was the planted run R1401 asks for: the plant is the base
+itself, verified landed because the "subjects" line names the Release framework file.
+GREEN on the tip's code, ios-app 45285726070 (958faea5):
+  PASS  R1401: the Release framework and app carry no AujourdhuiPilot
+  PASS  R1401: the Release framework and app carry no PilotFixture
+  PASS  R1401: the Release framework and app carry no PilotScenario
+  PASS  R1401: the Release framework and app carry no ch.monreleve.app.pilot.InMemoryEntryDao
+  PASS  CONTROL (R1401): the same scan finds AujourdhuiController (285)
+  PASS  CONTROL (R1401): the same scan finds ch.monreleve.app.aujourdhui.AujourdhuiController (270)
+  PASS  CONTROL (R1401): the same scan finds AujourdhuiScreen (79)
+  R1353: RELEASE INSPECTION PASSED - every check and every control
+FINDING: AujourdhuiPilot was ALREADY absent from the base Release framework, and its row was never RED.
+  - It is a top-level @Composable with no caller, so the Release link drops it.
+  - Whether the scan could see a composable's name at all was the open question. Commit 958faea5 added
+    AujourdhuiScreen, a production top-level @Composable, as a control of the same kind: found 79 times.
+  - So the scan sees that kind of name, and AujourdhuiPilot's 0 on the base is an absence, not a blind spot.
+  - REPORT-IOS-AUDIT Q7 ("they still ship ... in the Release framework") was true of PilotFixture, PilotScenario and
+    the pilot InMemoryEntryDao, not of AujourdhuiPilot.
+The AujourdhuiController count fell from 307 to 285, and the qualified form from 292 to 270. PilotFixture.controller
+built one, and that code left the framework with the pilot.
+
+================================================================================
+R1402 - THE FENCES FOLLOW THE FILES
+================================================================================
+- ExperimentalTimeOptInAllowlistTest (9f6e0561): the two pilot entries now name
+  shared/src/iosTest/.../pilot/AujourdhuiPilot.kt (1) and shared/src/commonTest/.../pilot/PilotFixture.kt (1). The
+  counts are unchanged; one comment line names the move. The fence discovers iosTest and commonTest already, so no
+  root changed. Run on 958faea5: 3 tests, 0 failures.
+- EdgeToEdgeCensusTest:
+  - CHECKED FIRST on 958faea5 (pilot moved, exemption still in). The test's own system-out, from its XML:
+      EdgeToEdgeCensusTest (R1171): 23 screens, 23 hosted by AppRoot.
+      ROOTS (the main manifest's activities):
+        .MainActivity: wrapped by AppRoot
+        .CallbackActivity: wrapped by AppRoot
+      NOT ANDROID DESTINATIONS (inside a function no Android shipped source calls):
+      (empty)
+  - NO instance remains, so the exemption is REMOVED (a505b731). That means the offAndroidHost field and its
+    computation, calledFrom and Source.isShared (each used only by it), and the census line that listed it.
+  - It is a tightening: every call site in the shipped sources now counts.
+  - PLANTED (R180), never committed: a commonMain file, ui/shell/PlantOffAndroidHost.kt, whose
+    PlantOffAndroidHost() calls ResolvingScreen(null) {} and is called by nothing. It was printed back before the run
+    to show it landed. The census then FAILED by name:
+      "UNHOSTED SCREENS (1) ... ResolvingScreen <- .../ShellRoutes.kt:306 (inside ResolvingRoute, not hosted),
+       .../ui/shell/PlantOffAndroidHost.kt:8 (not under a wrapped root)"
+    The removed code would have exempted that very site. Then the plant was removed and the census passes (gate
+    below).
+- build.gradle.kts, at old l.205: two comment lines say where AujourdhuiPilot.kt (iosTest) and PilotFixture.kt
+  (commonTest) now live. No other comment in android/, ios/ or .github/ named a moved path; the census above shows
+  where the names appear.
+- Nothing else in a fence changed.
+
+================================================================================
+R1403 - Q5: THE BUNDLE'S REGION IS FRENCH, AT ITS ONE HOME
+================================================================================
+WHERE "en" CAME FROM, from runner logs:
+  - Base run 45243674835, "Generate the Xcode project": the generated Info.plist carries
+      "CFBundleDevelopmentRegion" => "$(DEVELOPMENT_LANGUAGE)"
+    The built .app's Info.plist ("What the .app carries", and the Release step) reads "en".
+  - RED run 45274815756: the new print of the generated project shows `developmentRegion = en;`. That is XcodeGen's
+    options.developmentLanguage default, which Xcode turns into DEVELOPMENT_LANGUAGE.
+THE CHANGE (db7ce1b6): `options.developmentLanguage: fr` in ios/project.yml, once.
+  - It adds no CFBundleLocalizations, no .lproj and no InfoPlist.strings.
+  - project-walk.yml is NOT a separate project. It `include:`s project.yml whole and adds only a UI-test target and
+    a scheme. The walk's build therefore inherits the region, and project-walk.yml is untouched.
+(a) THE CHECK, in the R1353 step (check 7): CFBundleDevelopmentRegion must equal "fr" in the Debug and the Release
+    Info.plist. Its control is a planted copy of the Debug Info.plist set to "en".
+    RED (45274815756, base):
+      FAIL  R1403: Release CFBundleDevelopmentRegion = 'en', not fr
+      FAIL  R1403: Debug CFBundleDevelopmentRegion = 'en', not fr
+      PASS  CONTROL (R1403): the check reads the planted copy as 'en', not fr
+    GREEN (45285726070, 958faea5): the generated project's `developmentRegion = fr;`, then
+      PASS  R1403: Release CFBundleDevelopmentRegion = fr
+      PASS  R1403: Debug CFBundleDevelopmentRegion = fr
+      PASS  CONTROL (R1403): the check reads the planted copy as 'en', not fr
+(b) THE EFFECT. The probe launch's share sheet, a UIActivityViewController the app presents, is photographed
+    (probe-share-sheet.png) right after the simulator's language is printed:
+      SIMULATOR LANGUAGE (read back): AppleLanguages=("en-US") AppleLocale=en_US
+    The same line appears in BOTH runs.
+    The two captures, read by eye:
+      - base / RED (region "en"): Copy, Save to Files, Reminders, More, "Text Document - 38 bytes".
+      - tip (region "fr"): Copier, Save to Files, Reminders, More, "Text Document - 38 bytes".
+    Only "Copier" turned French. The rest of the sheet - the activity list, the app row and the file header - stayed
+    English. The key reaches UIKit's own Copy activity, but not the rest, which the share sheet's out-of-process
+    service draws in the device's language. That is an inference from the measurement, not a documented mechanism.
+    Per R1403 this is QUESTION 1, NOT a second key.
+    Captures: C:/wt/queue-evidence/i4-polish/app-45274815756-RED/probe-share-sheet.png and
+    app-45285726070/ios-app/probe-share-sheet.png. Both show the sign-in welcome screen beneath the sheet; no code
+    is on screen (R574).
+    The notification prompt was not captured: ios-app does not trigger it.
+
+================================================================================
+R1404 - WHAT THE OPERATOR SHOULD KNOW
+================================================================================
+1. WHAT CFBundleDevelopmentRegion IS, per Apple's documentation
+   (developer.apple.com/documentation/bundleresources/information-property-list/cfbundledevelopmentregion, read
+   2026-11-23): "The default language and region for the bundle, as a language ID. The system uses this key as the
+   language if it can't locate a resource for the user's preferred language."
+   Bundle.developmentLocalization "corresponds to the value in the CFBundleDevelopmentRegion key"
+   (developer.apple.com/documentation/foundation/bundle/developmentlocalization).
+   This app has no .lproj at all, so for an English-device user French is the fallback.
+2. WHAT AN ENGLISH-DEVICE USER SEES, MEASURED (R1403(b)): on an en-US simulator, the in-app share sheet's "Copy" is
+   "Copier", while the rest of the sheet stays English. The app's own text is French regardless, since Compose draws
+   it from the app's French constants. Before this change, the same user saw "Copy".
+3. THE APP STORE'S LANGUAGE LIST.
+   - Apple DTS, Apple Developer Forums thread 813504 (Jan 2026, DTS Engineer, Worldwide Developer Relations): "The
+     value of the `Languages` field in the App Store is determined by the existence of `.lproj` folders in your app
+     bundle."
+   - App Store Connect Help ("Localize app information") separates that list from the listing's metadata languages,
+     which the operator chooses in App Store Connect.
+   - This change adds NO .lproj, so it adds nothing that list reads.
+   - What the list shows for a bundle with no .lproj at all is NOT documented in what I found. Apple names no case
+     for it, and no upload was made. I did not guess.
+   - If the store must list "French", the documented route is a fr.lproj in the bundle. That is a new mechanism R1403
+     excludes: QUESTION 2.
+4. InMemorySettingsStore, a test fake, STILL SHIPS in the Release framework.
+   - It is public in commonMain because :app's unit tests (ThresholdAlertPresenceTest, SessionEndSeamTest,
+     ParametresWirePinTest) need it, and they cannot see :shared's commonTest.
+   - The mechanism that would end this is a shared test-fixtures source: :shared publishing a test-only source set
+     (a KMP equivalent of Gradle's java-test-fixtures, for example a dedicated test-support module or source set
+     that :app's testImplementation depends on).
+   - That is a build change, so it is named and not built.
+   - It is harmless at run time (nothing in the app constructs it) but it is shipped code.
+
+================================================================================
+R1405 - GATES
+================================================================================
+Android, under the heavy lock (node C:/wt/.run-tools/heavy-lock.mjs acquire ios-polish --min-free 8000):
+  - Waited from 21:59 to 23:58 (readings 2140-6062 MB free). The line was not lowered and no process was touched.
+  - fastCheck on 958faea5, with :app:testDebugUnitTest --tests EdgeToEdgeCensusTest and
+    ExperimentalTimeOptInAllowlistTest: BUILD SUCCESSFUL in 5m 14s, FASTCHECK_EXIT=0, the two fences 3/0 and 3/0.
+    :shared ktlint covered CommonTest and IosTest; :shared detekt ran.
+  - The R1402 plant run, :app:testDebugUnitTest EdgeToEdgeCensusTest: "3 tests completed, 1 failed", BUILD
+    FAILED, as planted.
+  - fastCheck on a505b731: BUILD SUCCESSFUL in 1m 4s, FASTCHECK_EXIT=0.
+  - :app:gate on a505b731: "test floor OK: 1562 unit tests observed (>= 10)", "BUILD SUCCESSFUL in 7m 37s",
+    GATE_EXIT=0, dirty-after=0. The XML gives :app 1562 tests / 210 suites / 0 failures, and :shared JVM
+    358 / 67 / 0. EdgeToEdgeCensusTest 3/0: "23 screens, 23 hosted by AppRoot", with no off-Android section.
+  - Logs: queue-evidence/i4-polish/fastcheck-958faea5.log, plant-r1402.log, fastcheck-a505b731.log and
+    gate-a505b731.log.
+  - The lock was released at 00:17:28Z.
+iOS (R573), ONE run of each on 958faea5:
+  - ios-shared 45285718054: SUCCESS. 110 suites / 534 tests / 0 failures / 0 errors / 0 skipped, from the JUnit XML
+    (tools/junit.js over the downloaded ios-shared-test-results).
+  - ios-app 45285726070: SUCCESS.
+    - "share.result=PASS".
+    - R1353's OUTPUT line: "R1353: RELEASE INSPECTION PASSED - every check and every control".
+    - The tip of a505b731 differs from 958faea5 only in android/app/src/test/.../EdgeToEdgeCensusTest.kt
+      (`git diff 958faea5 a505b731 --name-only`). Neither iOS workflow builds or runs that file, so the two runs
+      stand for the tip's iOS input (DEVIATION 1).
+  - The planted run: ios-app 45274815756 on 121f715d. FAILURE, by design (R1401/R1403 RED).
+LEAK SCANS, of every downloaded job log and artifact:
+  - Method: the R1388 scanner (queue-evidence/i2-walk/leakscan.py), run with `py -3 -I`. A second script,
+    tools/leakscan2.py, adds three counts: the token file's 12-character prefix (counted, never printed), each
+    production-host line, and digit-labelled code boxes.
+  - ios-app 45285726070 (log + 14 files):
+    - bearer 0, callback 0, six-digit 0, token prefix 0, code boxes 0;
+    - production host 4, all R1353's Release-URL lines: its two source lines echoed in the step header, the printed
+      Info.plist key, and the PASS line;
+    - token-shaped 16: Xcode module-cache names (MonReleve-ExecutorLinkFi..., UserNotifications-..., _Builtin_...).
+  - ios-shared 45285718054 (log + 258 files):
+    - bearer 0, token prefix 0, production host 0, code boxes 0;
+    - callback 2: the wire fixture `token=t+o+k&email=a%40b.ch`, in requests.jsonl and the log, as in every earlier
+      run;
+    - six-digit 7: an ls byte count, two upload sizes, and four CSS colours;
+    - token-shaped 22: test names and results.bin.
+  - ios-app 45274815756 (RED, log + 14 files):
+    - bearer 0, callback 0, six-digit 0, token prefix 0, code boxes 0;
+    - production host 4, R1353's lines.
+  - No screen capture shows a code.
+  - Before each push, tools/tokcheck.mjs counted the token prefix in `git diff origin/main..HEAD` and the commit
+    messages and would have refused on a hit. Every push read hits=0.
+DIFF CHECK: `git diff 8098a511 <tip> --name-only` lists only these files:
+  .github/workflows/ios-app.yml (R1401, R1403), android/app/src/test/.../fences/EdgeToEdgeCensusTest.kt and
+  ExperimentalTimeOptInAllowlistTest.kt (R1402), android/shared/build.gradle.kts (R1402),
+  android/shared/src/commonMain/.../pilot/InMemorySettingsStore.kt (R1399),
+  android/shared/src/commonTest/.../pilot/PilotFixture.kt and android/shared/src/iosTest/.../pilot/AujourdhuiPilot.kt
+  (R1400), ios/project.yml (R1403), and this report.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+- The moved AujourdhuiPilot.kt and PilotFixture.kt still say they are what "iOS's AujourdhuiPilotViewController
+  hosts". That view controller is gone (R1350). The comment was not edited, to keep R1400's byte-identical move; it
+  is for a later edit.
+- IosProjectKeysTest (androidUnitTest) asserts project.yml's keys but not `developmentLanguage`. The runner check
+  added by R1403(a) covers the built result; a JVM-side presence assertion would be a separate, cheap addition.
+- AujourdhuiPilotIosTest and LaunchSpeechIosTest now test a composable that lives in iosTest itself. They remain the
+  only iOS test of the Aujourd'hui screen and the iOS twin of R702/R704 respectively, unchanged.
+- SCRATCHPAD COLLISION (my error, reported): the scratchpad this session was handed is shared with other live
+  sessions. A `cat >` of mine overwrote an existing junit.js there (1252 bytes, mtime 2026-11-23 12:34, author
+  unknown - not this session), and its old content is lost. Everything of mine was then moved out to
+  C:/wt/queue-evidence/i4-polish/tools/. The same command left an empty C:/Users/KAMXKAM/AppData/Local/junit.js,
+  which this session created and removed. No other pre-existing file was written, going by the directory's mtimes.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. The ios-shared and ios-app runs are on 958faea5, not on the final tip. Two commits came after them:
+   - a505b731, EdgeToEdgeCensusTest only, which is an :app JVM test;
+   - the report.
+   `git diff 958faea5 <tip> --name-only` lists nothing under android/shared, ios/ or .github/. Re-running both would
+   cost about 85 macOS-minutes and test identical input. If the orchestrator reads R573's "on the commit that will
+   become main" strictly, one more pair on the tip settles it.
+2. R1401's "planted" run is the RED-first run of the check on the unchanged base, not a separate throwaway commit.
+   It is the same evidence, and it saved a dispatch.
+3. AujourdhuiPilot.kt went to iosTest, not commonTest. R1400's own rule ("narrowest ... unless measured otherwise")
+   is what moved it there.
+4. After the RED run, a third R1401 control (AujourdhuiScreen) was added (958faea5). It answers whether the scan can
+   see a composable function's name, the question AujourdhuiPilot's 0 raised. It was added rather than argued.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1 (R1403(b) - the key alone is only partly French).
+   - With CFBundleDevelopmentRegion "fr", an en-US device shows "Copier" but an otherwise English share sheet.
+   - Two options:
+     (A) accept that: system UI outside the app follows the device;
+     (B) try a second mechanism. CFBundleLocalizations [fr], and/or a fr.lproj, is the candidate. Whether either
+         reaches the share service is unmeasured.
+   - The notification prompt was not measured, because ios-app does not raise it. Measuring it would mean a walk run
+     or a new probe line (a new mechanism).
+   - Operator's or orchestrator's call; nothing was added.
+Q2 (R1404.3 - the App Store language list). The store's Languages field reads .lproj folders (Apple DTS), and this
+   bundle has none. Should a fr.lproj be added so the listing names French explicitly? It is a new mechanism and a
+   store-facing claim, so it is not done.
+Q3 (R1404.4). Should InMemorySettingsStore leave the shipped framework through a test-fixtures source set or module?
+   That is a build change, so it is not done.
+
+================================================================================
+PUSH PROOF
+================================================================================
+Code tip a505b731, pushed to origin/i4-polish (git ls-remote read a505b73169b23741321a590883a6c450adb4799b after the
+gate-checked push). Every commit before it was pushed as well: 121f715d, 886917f8, 9f6e0561, db7ce1b6 and 958faea5.
+The report tip is the commit carrying this text. Its sha and a505b73169b23741321a590883a6c450adb4799b	refs/heads/i4-polish are in the handback.
+NOT MERGED. The R349 lock (.session-lock.json, gitignored) is removed last.
