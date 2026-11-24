@@ -1,6 +1,7 @@
 package ch.monreleve.app.ios
 
 import androidx.compose.runtime.ExperimentalComposeApi
+import androidx.compose.ui.platform.AccessibilitySyncOptions
 import androidx.compose.ui.uikit.ComposeUIViewControllerConfiguration
 import androidx.compose.ui.window.ComposeUIViewController
 import ch.monreleve.app.fr.ParametresCopy
@@ -22,8 +23,14 @@ private var processShell: IosShell? = null
 
 // IOS-A11Y-SYNC R1431/R1432. THE CONFIGURATION THE APP'S ONE ComposeUIViewController IS BUILT WITH - one home, passed
 // as `configure` below and read by IosAccessibilitySyncIosTest from this value (R154: the object, not the source).
+// The accessibility tree is synced ALWAYS: Compose 1.7.3's default syncs only while VoiceOver runs
+// (Accessibility.uikit.kt:990), so Voice Control, Switch Control and Full Keyboard Access may meet an empty tree
+// (REPORT-IOS-AUDIT F1, Q1 option (a)). Compose states a cost: a significant overhead that can degrade the app's
+// visual performance. No debug logger (null).
 @OptIn(ExperimentalComposeApi::class) // R1431: the configuration's accessibility sync option (CMP 1.7.3).
-internal val monReleveControllerConfiguration: ComposeUIViewControllerConfiguration.() -> Unit = {}
+internal val monReleveControllerConfiguration: ComposeUIViewControllerConfiguration.() -> Unit = {
+    accessibilitySyncOptions = AccessibilitySyncOptions.Always(debugLogger = null)
+}
 
 /** The app's view controller - what MonReleveApp.swift hosts with .ignoresSafeArea() (R1170). */
 @OptIn(ExperimentalTime::class) // KMP-DT R590: startIosShell's signature names kotlin.time.Clock - on the allowlist.
