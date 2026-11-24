@@ -1,0 +1,307 @@
+REPORT-FW-CHROMIUM-PIN-3
+========================
+
+The Chromium pin, a third time. Prompt: relay/FW-CHROMIUM-PIN-3.txt (with
+relay/FW-CHROMIUM-PIN-2.txt's R852-R855, restated as R1419-R1422). Branch
+fw-chromium-pin-3, worktree C:/wt/fw-chromium-pin-3 (R349 lock written at
+start, gitignored), cut from origin/main
+5d7c2ccf59090a3a5549f510efdb50d1851e5e22. Code commit
+9dfdac6f54ba42b05133ce911f5621217ad5e54e, pushed; this report is the commit
+on top of it. Evidence: C:/wt/fw-chromium-pin-3/.pin3-evidence/
+(gitignored), one log per heavy step, every heavy step under
+C:/wt/.run-tools/heavy-lock.mjs (--min-free 5000).
+
+SUMMARY
+-------
+Debian no longer offers chromium 156.0.8078.79-1~deb12u1. The pin moves to
+156.0.8078.108-1~deb12u1, the only bookworm-security build on
+2026-11-24 08:03 UTC, same major (156). One line of web/Dockerfile changed.
+
+- gate:changed PASSED. Its test:container installed .108 from the
+  archive, not from cache (#8 DONE 263.9s), and read
+  "Chromium 156.0.8078.108" from the running image. 28 checks passed.
+- test:container:e2e PASSED END TO END for the first time in this task's
+  history: 389 Playwright tests passed, and the vitest step ran 34 tests
+  with 0 refusals, the image's PDF tests among them by name
+  ("[pdf] image: 164857 bytes, 9 pages"). home.spec.ts:197 no longer stops
+  it (see NOTICED). The fallback was not needed.
+- test:visual: 176 passed, photographed 9dfdac6f on a clean tree, no
+  baseline moved.
+- gate:clone PASSED on 9dfdac6f, alone, verdict read inside the chain that
+  pushed.
+
+STATUS (R391)
+-------------
+COMPLETE for the web gate this task owns. gate:clone PASSED on 9dfdac6f,
+the code tip, in this session, STEP_EXIT=0
+(.pin3-evidence/gate-clone-1.log):
+
+  GATE:CLONE PASSED
+
+    CI readiness: ready - the repository is public and CI_FULL is unset - jobs will skip.
+    commit  9dfdac6f54ba42b05133ce911f5621217ad5e54e
+    clone   C:\Users\KAMXKAM\AppData\Local\Temp\monreleve-clone-3vOFcd (removed)
+    ran     register-coverage, fixture-coverage, install, typecheck, lint, test (4294 of 4294 tests passed, 253 files), build, size (24 routes measured), db:deploy, test:db (911 of 939 tests passed, 28 skipped, 66 files), test:container:write (10 checks passed)
+
+    claim   this commit builds and passes register-coverage, fixture-coverage, install, typecheck, lint, test (4294 of 4294 tests passed, 253 files), build, size (24 routes measured), db:deploy, test:db (911 of 939 tests passed, 28 skipped, 66 files), test:container:write (10 checks passed) from a clean checkout -
+
+test:container:write is the step that failed on ad1d236c (FW-CALC-REDESIGN,
+R249's refusal); it passes here with 10 checks.
+
+The report commit on top changes only REPORT-FW-CHROMIUM-PIN-3.txt. It ran
+under gate:changed (base chain), NOT under a second gate:clone, following
+FW-CHROMIUM-PIN-2's precedent and the prompt's step order (report after
+gate:clone). For that commit: gate:changed only; FULL gate:clone NOT RUN on
+the report commit. No Android code changed, so no :app:gate applies.
+
+R1419 - RED FIRST, FROM TODAY'S ARCHIVE
+---------------------------------------
+1. `apt-cache madison chromium` in node:22-bookworm-slim
+   (sha256:170fab707454b1350981adcdc2f536ec21f24d06d7f008e8d40064afeacb8a94,
+   the local image, not re-pulled), 2026-11-24T08:03:03Z,
+   apt-get update exit=0 (.pin3-evidence/r1419.log):
+
+     chromium | 156.0.8078.108-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+     chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+
+2. R249's refusal on 5d7c2ccf, clean tree, 2026-11-24T08:03:18Z:
+
+     docker build --progress=plain --target runner --no-cache-filter runner \
+       --build-arg NEXT_PUBLIC_SITE_URL=https://container-check.example .
+
+   BUILD_EXIT=1. No -t, so no image was tagged. The runner's chromium step
+   (#8, runner 3/12) EXECUTED, because --no-cache-filter reads past the
+   cache without deleting it:
+
+     #8 8.255 E: Version '156.0.8078.79-1~deb12u1' for 'chromium' was not found
+     #8 8.256 R249: chromium 156.0.8078.79-1~deb12u1 is not installable from this archive.
+     #8 8.256 + apt-cache madison chromium
+     #8 8.832   chromium | 156.0.8078.108-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
+     #8 8.832   chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
+     #8 ERROR: process "/bin/sh -c set -eux; ..." did not complete successfully: exit code: 1
+
+   The listing matches the one FW-CALC-REDESIGN measured.
+
+R1420 - THE PIN
+---------------
+web/Dockerfile:65, the one line, commit 9dfdac6f:
+  - ARG CHROMIUM_VERSION=156.0.8078.79-1~deb12u1
+  + ARG CHROMIUM_VERSION=156.0.8078.108-1~deb12u1
+
+The version comes from the madison read above. The major is the same
+(156), so this is not a STOP. The edit asserted exactly one match before
+writing (R211), and the diff is 1 file, +1/-1. No test transcribes the
+version.
+
+gate:changed, started 2026-11-24T08:03:46Z (commit free 7 451 MB), ended
+08:17:31Z, STEP_EXIT=0 (.pin3-evidence/gate-changed-1.log). The commit
+ran in the same chain, only after "GATE PASSED" and STEP_EXIT=0 were read
+from the log and the tree was exactly " M web/Dockerfile"
+(.pin3-evidence/r1420-commit.sh):
+
+  gate selection (R132):
+    1 path(s) matched:
+      web/Dockerfile  ->  the container, and what decides whether it serves (R251)
+    suites: typecheck, lint, test, build, test:container
+    measured:
+      typecheck: exit 0 (no count to check)
+      lint: exit 0 (no count to check)
+      test: 4294 passed
+      build: exit 0 (no count to check)
+      test:container: 28 passed
+  GATE PASSED for the paths changed.
+
+test:container's own lines:
+  #8 [runner  3/12] RUN ... "chromium=156.0.8078.108-1~deb12u1" ...
+  #8 DONE 263.9s                      (executed, not CACHED)
+  pinned at build : 156.0.8078.108-1~deb12u1
+  live --version  : Chromium 156.0.8078.108 built on Debian GNU/Linux 12 (bookworm)
+  ok    the binary is the pinned build (156.0.8078.108)
+  ok    curl present (R845)
+  Container checks  28 passed (28)
+
+R1421 - THE PDF THROUGH THE IMAGE'S CHROMIUM
+--------------------------------------------
+`pnpm test:container:e2e` with FRONTALIER_PORT=3950 and
+CONTAINER_IMAGE=monreleve:pin3-e2e, HEAD 9dfdac6f, 08:17:56Z-08:23:52Z,
+STEP_EXIT=0 (.pin3-evidence/container-e2e-1.log). The image's chromium
+layer came from the cache that gate:changed had just built from the
+archive (#7 CACHED).
+
+  /api/health names: monreleve (status ok)
+  --- pnpm test:e2e against the container: 32 spec files ---
+  Running 389 tests using 4 workers
+    389 passed (2.1m)
+  --- the vitest step, pass 1 (no verification origin) ---
+   ok tests/db/container-pdf.test.ts > R249: the PDF, in the image and here > the IMAGE renders a real PDF, with its own Chromium 1772ms
+   [pdf] image: 164857 bytes, 9 pages, 595.92x842.88pt x9; here: 199909 bytes, 9 pages, 595.92x842.88pt x9
+   ok tests/db/container-pdf.test.ts > ... > BOTH renderers produce a document, and their difference is the finding 3333ms
+   ok tests/db/container-pdf.test.ts > ... > R991: the @page size the image SERVES is the paper the renderer asks for 100ms
+   (and the seven container-auth.test.ts tests, all ok)
+   Test Files  4 passed (4)
+        Tests  33 passed | 1 skipped (34)
+  --- the vitest step, pass 2 (MONRELEVE_VERIFICATION_ORIGIN set) ---
+   Test Files  1 passed (1)
+        Tests  1 passed | 1 skipped (2)
+  --- every test the vitest step ran, and the pass it passed in (R981) ---
+    34 tests; refusals: 0
+  Database-stopped checks  67 passed (67)
+  CONTAINER E2E PASSED - the deployed artefact served the whole suite (R249).
+
+R133: the pass count is NON-ZERO (33 in pass 1, 1 in pass 2, 34 accounted
+for with 0 refusals by R981's per-test verdict), and both image PDF tests
+pass by name. Each skip in a pass is the verification-origin test of the
+other pass, which is why both files appear in both. Since the harness
+reached its PDF step, the R854 fallback was NOT run.
+
+The renderer in that image, read with `docker run --rm --entrypoint sh`
+(.pin3-evidence/image-version.log), image
+sha256:5fd0f2748610728790222a68c36afff5bd8a987de0c1df29a2440c97c42bd0e9:
+  pin file: 156.0.8078.108-1~deb12u1
+  binary:   Chromium 156.0.8078.108 built on Debian GNU/Linux 12 (bookworm)
+
+R1422 - BASELINES
+-----------------
+The gate did not select test:visual. `pnpm test:visual`, 08:24:20Z-08:27:45Z,
+VISUAL_EXIT=0 (.pin3-evidence/visual-1.log):
+
+  photographed: 9dfdac6f, clean tree
+    176 passed (3.2m)
+  visual suite: 176 passed
+
+`git status --porcelain` afterwards was empty: no baseline moved and
+nothing was regenerated. R855's start-time measurement was not repeated,
+as the prompt says.
+
+MEMORY
+------
+Every heavy step acquired the heavy lock at commit free >= 5 000 MB:
+  step                    acquired at (commit free)
+  R1419 madison + RED     7 711 MB
+  gate:changed            7 451 MB
+  test:container:e2e      5 834 MB
+  test:visual             6 344 MB
+  gate:clone              5 988 MB
+  image version read      7 726 MB
+No worker died, no step timed out, no "fetch failed" appeared, and each
+step ran once.
+
+NOTICED BUT NOT TOUCHING
+------------------------
+- e2e/home.spec.ts:197 NO LONGER STOPS test:container:e2e. The file now
+  branches on a launcher declaration (FRONTALIER_SERVER_IS_SERVING) that
+  container-e2e.mjs sets; its own comment credits FW-HEALTH-IMAGE (R930).
+  The harness ran all 389 tests and reached its PDF step without the
+  fallback. home.spec.ts was not edited. The question both earlier pin
+  reports raised (QUESTION 1: is it its own task?) looks answered by that
+  task. Closing it is the orchestrator's call.
+
+- THE CADENCE. The pin has broken three times in three weeks:
+    .47 -> .73    FW-CHROMIUM-PIN, RED measured 2026-11-02
+    .73 -> .79    FW-CHROMIUM-PIN-2, measured 2026-11-11
+    .79 -> .108   this task, measured 2026-11-24 (FW-CALC-REDESIGN's gate:clone)
+  Debian keeps only the newest point release in bookworm-security. Each new
+  Chromium build there turns every uncached build into R249's refusal until
+  a one-line commit lands, and this time it blocked every gate:clone, and
+  so every push, through test:container:write. The options, NOT chosen here
+  (the same list as REPORT-FW-CHROMIUM-PIN-2.txt):
+    (a) keep the exact pin and bump it on each release. This is the current
+        practice: a renderer change is always a commit, at the cost of a
+        build and push outage between Debian's release and the bump.
+    (b) keep (a) and add a scheduled read-only check (`apt-cache madison`
+        against the ARG) that reports the drift before a deploy or a
+        gate:clone hits it.
+    (c) install the pinned .deb from snapshot.debian.org. The version stays
+        installable, but security fixes arrive only when someone bumps it.
+    (d) a base image with Chromium preinstalled, built once and referenced
+        by digest. Stable and fast, but it needs a registry and its own
+        refresh process.
+    (e) verify the major only and record the resolved version in the image.
+        This relaxes R249's "the browser cannot move without a commit".
+    (f) render with Playwright's own Chromium, pinned through the lockfile,
+        instead of Debian's package. The pin moves into the lockfile, at the
+        cost of image size and of R229's packaging decision.
+
+- docs/deploy.md:306-308 is stale again. It says "the pin is now
+  `156.0.8078.79-1~deb12u1`, and the archive installed it the same day".
+  The pin is now .108 and the archive no longer offers .79.
+
+- docs/deploy.md:1049-1058 (rollback, item 4) lists the commits whose
+  rebuild hits R249: 52caca8 and b4df928, which pin .73. Every main commit
+  from FW-CHROMIUM-PIN-2's merge up to 5d7c2ccf pins .79, so the same now
+  holds for those commits: a rebuild of any of them stops at R249 unless
+  the chromium layer comes from a warm cache.
+
+- web/Dockerfile:253-260, R845's comment, says FW-CHROMIUM-PIN-2 "bumped the
+  pin the same day to a build the archive installed". That is true of
+  history but no longer of the archive. The hard boundary allowed only the
+  ARG line.
+
+- The harnesses' fixed tags were rebuilt again, as in every gate run:
+  monreleve:fw28 (now a9d9a3d351eb) by test:container, and monreleve:write
+  (now 4b18e1573cbc) by gate:clone's test:container:write. Nothing was
+  pruned.
+
+PARKED
+------
+None. Sessions do not write parking.md.
+
+DEVIATIONS
+----------
+1. No scratch database of this session's own was created, and no web/.env
+   was copied. Neither step needed one:
+   - test:container:e2e creates and drops its own monreleve_container_e2e.
+   - gate:clone creates and drops monreleve_gate_clone_9dfdac6f.
+   - gate:clone's admin DATABASE_URL was passed in the environment. It names
+     the `postgres` maintenance database on localhost:5436, with the
+     credentials read from C:/wt/web-orch/web/.env inside the script and
+     never printed. This is PIN-2's deviation 3: never the shared
+     `frontalier` database, and not the orchestrator's monreleve_web_orch.
+   - pg_database afterwards lists neither harness database.
+2. node:22-bookworm-slim was not re-pulled for the madison read: the local
+   image (digest above) was used, so the base layer under other sessions'
+   build caches did not move.
+3. CONTAINER_IMAGE=monreleve:pin3-e2e instead of the harness default
+   monreleve:e2e, so the existing monreleve:e2e (9a05b5d2d736, 2 days old,
+   not this session's) was left untouched. pin3-e2e is removed at cleanup.
+
+QUESTIONS
+---------
+1. The cadence: which of (a)-(f), if any? This was the third break in three
+   weeks, and the first to block every push rather than only deploys.
+2. home.spec.ts:197: may the open question from the two earlier pin reports
+   be closed as answered by FW-HEALTH-IMAGE (R930)? test:container:e2e ran
+   end to end here.
+
+PUSH PROOF
+----------
+1. gate:clone ran ALONE on 9dfdac6f and PASSED (lines under STATUS). The
+   push ran in the same chain (.pin3-evidence/clone-and-push.sh), only
+   after:
+   - "GATE:CLONE PASSED" and STEP_EXIT=0 were read from the log;
+   - the log's commit line was checked to equal `git rev-parse HEAD`;
+   - the token check refused nothing. It fails closed on an unreadable or
+     short needle, and the needle is never printed. It printed
+     "TOKEN CHECK: clean over origin/main..HEAD (1 commit(s))".
+2. `git push -u origin fw-chromium-pin-3` printed
+   "* [new branch]        fw-chromium-pin-3 -> fw-chromium-pin-3", PUSH_EXIT=0.
+   `git ls-remote --heads origin fw-chromium-pin-3` printed:
+     9dfdac6f54ba42b05133ce911f5621217ad5e54e	refs/heads/fw-chromium-pin-3
+3. Only the branch was pushed: never main, never production, and nothing
+   was merged.
+4. This report commit goes to the same branch after its own gate:changed
+   and the same token check. Its sha and push result are stated in the
+   hand-back, not here.
+
+CLEANUP
+-------
+- The image tag monreleve:pin3-e2e, which this session created, is removed
+  after this report is pushed (stated in the hand-back).
+- No containers of this session's remain. The harnesses removed theirs
+  (monreleve-e2e and the monreleve-dbstop-* pair, "left by this run:
+  nothing").
+- No scratch database of this session's remains (DEVIATIONS 1).
+- No web/.env was copied.
+- No other project's container was started, stopped or modified. No prune
+  of any kind.
+- The session lock is removed last, after the final push.
