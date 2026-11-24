@@ -1,0 +1,144 @@
+FINAL REPORT - Mon Releve: web, Android, iOS - 2026-11-24
+Written by the orchestrating session for the operator. Supersedes relay/FINAL-REPORT-2026-11-23.txt (kept as
+history). Pure ASCII by transport (R168); every French quotation lives in the files it names. Every claim
+below was read by the orchestrator, not recalled; where something is argued rather than tested, it says so.
+
+READ THIS FIRST (three lines)
+1. THE WEB IS LIVE AT 89ea2f63. On your words ("now commit push deploy"; the public texts "Ship as on main")
+   production was fast-forwarded from e73c846d at 10:34:36Z and every after-deploy check passed (section 2).
+   No rollback, no variable changed, no migration. main is one records commit further (158ad80a) and
+   this report's commit; neither changes the application.
+2. F8 IS STILL OPEN AND AFFECTS THE LIVE PRODUCT: the sign-in e-mail's link IS the API callback. A GET of it
+   consumes the one row holding both the link and the six-digit code and answers a token pair as JSON to
+   whoever fetched it - a mail scanner that fetches the link ends the person's sign-in and holds a session.
+   No evidence of misuse; nothing tested against production. Your decision (options A-D, section 4); a ship
+   blocker for iOS. Top of relay/QUEUE-STATE.md.
+3. THE 2026-11-17 SECURITY INCIDENT IS NOT CONTAINED UNTIL YOU ACT: the old image's history carried
+   RESEND_API_KEY and FCM_PRIVATE_KEY. The serving image counts 0 for every secret name (checked today), but
+   the old keys stay valid until you rotate and revoke them (P2 item 5), and the Coolify API token used
+   today still exists (C:/Users/KAMXKAM/AppData/Local/Temp/cf/tok) - revoke it when you no longer want the
+   orchestrator to read deployments.
+
+1. WHERE EACH PLATFORM STANDS
+- WEB. Complete per the plan and LIVE (89ea2f63): the privacy and terms pages, the dossier copy, the Android
+  minimum-version route, the FCM push client, the account export, and today's calculator redesign. Coolify
+  deploys from the `production` branch only; a push to main deploys nothing.
+- ANDROID. Complete per the plan; the full :app:gate is the standing proof (floor 1562, :shared JVM 358).
+  release/android-v1 is 11582623. The Play release needs your account and release key (section 5).
+- iOS. Built and proven on the macOS simulator (ios-shared 534/0, ios-app probe, ios-walk end to end
+  against a throwaway server): the SwiftUI shell hosting the common Compose UI, code sign-in, onboarding,
+  the four tabs, calendar, releve and export, Parametres, employer comparison, the evening reminder,
+  foreground sync, year downloads. Since today the bundle's development region is French and the pilot
+  code is out of the Release framework. It CANNOT SHIP yet: F8, accessibility Q1, the app icon, the
+  privacy answers, your Apple account (sections 4-5; docs/ios-release.md).
+
+2. WHAT HAPPENED TODAY (2026-11-24), IN ORDER
+   IOS-POLISH       d69577a8  merged (iOS Ruling 21). French development region (project.yml, one key;
+                              ios-app refuses any other value); AujourdhuiPilot and PilotFixture moved to
+                              test scope, ios-app refuses their symbols with a production control. Counts
+                              unchanged (1562 / 358 / 534). Partial: on an English simulator only the share
+                              sheet's "Copy" turned French.
+   FW-CHROMIUM-PIN-3 057306d7 fast-forwarded (iOS Ruling 22). Debian withdrew chromium 156.0.8078.79, which
+                              blocked EVERY push (gate:clone builds the image). One ARG line to
+                              156.0.8078.108-1~deb12u1 (same major); test:container:e2e passed with both image
+                              PDF tests by name; no visual baseline moved; gate:clone PASSED.
+   FW-CALC-REDESIGN c8557183  merged (iOS Ruling 22). Your decisions of 2026-11-23 (both calculators, sticky
+                              verdict rail, explanations in native accordions, existing tokens and copy only)
+                              and your answers of today ("Yes, move them", "Accept as is", "Delete them").
+                              The LAMal page at 390 px: about 10 000 px -> about 4 800 px. The rail sticks
+                              for one adult at 1280x900 (test RED on the earlier tip at 1174 px, green now).
+                              The four unused chip strings deleted, a test asserts they stay gone. All 65
+                              changed baselines looked at, one line each (the session's report, ADDENDUM).
+                              Merge gate: test 4307, e2e 429, visual 176, late 10; gate:clone PASSED.
+   RECORDS          89ea2f63  gate:clone PASSED; pushed to main.
+   THE PROMOTION    89ea2f63  docs/deploy.md 10.1 top to bottom (iOS Ruling 23):
+                              0 PREVIOUS e73c846d, one healthy container, its image on the server;
+                              2 madison offers the pinned .108; 3 no migration;
+                              4 fast-forward to production 10:34:36Z;
+                              5 followed by GET only: one deployment (7solsfbmaciriupksh3i5vzg), built,
+                                healthy on attempt 1, rolling update completed;
+                              6 /api/health 200 naming monreleve; /api/ready 200 (site-origin, database);
+                                one container on 89ea2f63 (all 40), Docker "healthy"; ready from inside 200;
+                                chromium .108; baked origin https://monreleve.ch; image history 0 for every
+                                secret name (control 6); /, both calculators, /confidentialite, /cgu,
+                                /sources, /mon-releve/connexion all 200.
+                              6.6 (a PDF made ON production) NOT RUN, as at the last promotion: no
+                              @monreleve.test account exists there and making one writes to production
+                              outside the product's flow. The image's PDF was proven the same morning in
+                              FW-CHROMIUM-PIN-3's container run (9 pages).
+   CLEANUP                    21 finished worktrees under C:/wt removed (each checked first: no lock, no
+                              change, every commit on main or release/android-v1); the orchestrator's 110
+                              logs moved to C:/wt/queue-evidence/orch-logs/ (records cite some).
+
+   TWO GATE FAILURES TODAY, BOTH THE ORCHESTRATOR'S OWN SET-UP, BOTH CAUGHT BEFORE ANY COMMIT:
+   - the merge gate failed 3 account e2e tests ("etat=indisponible"): the orchestrator's local web/.env had
+     no AUTH_SECRET. A random local value was added (gitignored); the gate was re-run on the same tree.
+   - a records gate failed at `pnpm build`: the :3900 dev server shares web/.next with the build. The dev
+     server is now stopped during every gate and restarted after.
+   No red commit reached main today; every commit's verdict was read from its log inside the chain.
+
+3. THE iOS PHASE (all on main)
+   IOS-SHELL-1 06ec1c0c, IOS-MOVE-TABS f2f230bb, IOS-SHELL-2 68d47e47, IOS-SHELL-3 de4ac091, IOS-WALK
+   985c37f5 (after the red 89eea7c3 and its revert b276b71f on 2026-11-23), IOS-AUDIT 43170a09 (with the
+   orchestrator's lint fix b3cec346), IOS-POLISH d69577a8. Details: relay/FINAL-REPORT-2026-11-23.txt
+   section 2 and iOS Rulings 1-21.
+
+4. DECISIONS THAT ARE YOURS
+- F8 (above). Options, none taken: (A) a code-only mail for iOS (new mail copy); (B) the app's exchange
+  sends a header the server requires for the JSON answer and every other GET gets a page that consumes
+  nothing (an Android release first, a window accepting both, new page copy); (C) link and code consumed
+  independently (the code survives a fetch; a fetcher still gets a session); (D) keep it and tell iOS
+  users not to open the link.
+- Q1, ACCESSIBILITY ON iOS: Compose 1.7.3 keeps the accessibility tree in sync only while VoiceOver runs,
+  so Voice Control, Switch Control and keyboard users may meet an empty app. Candidates: the experimental
+  always-on sync option (RED first) or a Compose upgrade (a dependency change). Only real VoiceOver on an
+  iPhone settles it.
+- IOS-POLISH's three: a fr.lproj (or CFBundleLocalizations) for the rest of the system UI; the App Store
+  listing's language list reads .lproj folders, so it will not name French without one; the test fake
+  InMemorySettingsStore still ships in the Release framework (removing it is a build change).
+- THE CHROMIUM PIN'S CADENCE: three breaks in three weeks, today's the first to block every push. Options
+  (a)-(f) in REPORT-FW-CHROMIUM-PIN-3.txt, none chosen. Until then each break is a one-line task like today's.
+- May the old home.spec.ts:197 question be closed as answered by R930 (REPORT-FW-CHROMIUM-PIN-3.txt Q2)?
+- A1: at 768 px the calculator rail does not stick (392 px column, 1292 px rail). A second breakpoint
+  token or less in the rail would fix it. Recommendation: leave it.
+- TWO OLD WORKTREES HOLD A SESSION LOCK AND ONE UNMERGED, PUSHED COMMIT EACH, untouched since 2026-11-17
+  (the ownership rule forbids the orchestrator to touch them):
+  C:/wt/fw-lighthouse-calc (5482b800, R950-R954, its report uncommitted in the worktree) and
+  C:/wt/fw-wt-cleanup (97fefbf9, R1036-R1040, a merged-worktree cleanup script). Merge, re-run or drop each.
+
+5. WHAT YOU OWE (carried, minus what today closed)
+- CLOSED TODAY: the copy approvals A4, A5, A13-A16 for the web texts (you shipped them as on main) and the
+  production promotion of main's web work.
+- Security: rotate RESEND_API_KEY and FCM_PRIVATE_KEY and revoke the old ones (P2 item 5), then remove the
+  old images (P2 item 4, keeping the serving image and e73c846d's as the rollback target); revoke the
+  Coolify API token; C3, the database password rotation (relay/DB-ROTATION-PLAN.md, never executed).
+- Play: the developer account and the release signing key (R250: none exists here); assetlinks.json.
+- Firebase: the iOS/Android config and the key rotations.
+- Apple: the developer account, team id and signing, the bundle id, TestFlight, the App Store Connect
+  listing, the universal link (AASA + Associated Domains), export compliance, the app icon (a 1024 px
+  PNG), the privacy answers.
+- The expert reviewer (Checkpoint E); the client-IP logs answer; CLAUDE.md R248 still says CI is off and
+  the repository private - it is PUBLIC since 2026-11-20.
+- parking.md closures PARK-D3 and PARK-IF4; SPEC l.887 and the two entries comments (schema.prisma l.337,
+  lib/entries/schema.ts l.128).
+- On your Galaxy S9: back from the employer comparison; TalkBack on a Parametres switch row.
+- On an iPhone (docs/ios-release.md): message:// opening Mail; a real 19:00 reminder delivered and TAPPED;
+  background sync; the universal link; a Release build logging without a crash; new-account onboarding to
+  the end - BEFORE TestFlight; the export's share sheet, the comparison and Licences; the lock-screen text
+  and sound; the transient-notice presentation.
+- Stale docs noticed by FW-CHROMIUM-PIN-3, not touched: docs/deploy.md l.306-308 still names the .79 pin; a stale R845 comment
+  in web/Dockerfile l.253-260.
+
+6. HOUSEKEEPING
+- Left for you: the empty folder chain C:\c (a session made it by mistake; the safety check refused the
+  orchestrator's removal) - `Remove-Item C:\c -Recurse`. C:/wt/play-assets and C:/wt/fc-size-before.txt are
+  of unknown origin and were left.
+- Kept as you asked: C:/wt/als-a, als-b, fw-web-account, fw-calc-bytes, queue-evidence. Your untracked
+  relay/ and android/scripts/ files in the main checkout are untouched.
+- The orchestrator's checkout C:/wt/web-orch is clean; the :3900 dev server runs for you.
+- The shared local database `frontalier` is two migrations behind (reported by FW-CALC-REDESIGN) (deadline_reminder, web_session); the
+  gates use their own databases.
+
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-23), relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the
+repository root, evidence under C:/wt/queue-evidence/.
+END OF FINAL REPORT

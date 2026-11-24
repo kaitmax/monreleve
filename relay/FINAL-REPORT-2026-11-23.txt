@@ -1,4 +1,5 @@
 FINAL REPORT - Mon Releve: web, Android, iOS - 2026-11-23
+SUPERSEDED by relay/FINAL-REPORT-2026-11-24.txt (kept as history).
 Written by the orchestrating session for the operator. Pure ASCII by transport (R168); every French
 quotation lives in the files it names. Every claim below was read by the orchestrator, not recalled;
 where something is argued rather than tested, it says so.
