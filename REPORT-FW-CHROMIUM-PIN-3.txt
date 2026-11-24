@@ -58,8 +58,16 @@ R1419 - RED FIRST, FROM TODAY'S ARCHIVE
 ---------------------------------------
 1. `apt-cache madison chromium` in node:22-bookworm-slim
    (sha256:170fab707454b1350981adcdc2f536ec21f24d06d7f008e8d40064afeacb8a94,
-   the local image, not re-pulled), 2026-11-24T08:03:03Z,
-   apt-get update exit=0 (.pin3-evidence/r1419.log):
+   image created 2026-11-24T04:43:18Z), 2026-11-24T08:03:03Z,
+   apt-get update exit=0 (.pin3-evidence/r1419.log). The image store had
+   no node:22-bookworm-slim tag, so `docker run` PULLED it (see
+   DEVIATIONS 2):
+
+     Unable to find image 'node:22-bookworm-slim' locally
+     22-bookworm-slim: Pulling from library/node
+     Status: Downloaded newer image for node:22-bookworm-slim
+
+   The listing:
 
      chromium | 156.0.8078.108-1~deb12u1 | http://deb.debian.org/debian-security bookworm-security/main amd64 Packages
      chromium | 150.0.7871.100-1~deb12u1 | http://deb.debian.org/debian bookworm/main amd64 Packages
@@ -183,8 +191,9 @@ Every heavy step acquired the heavy lock at commit free >= 5 000 MB:
   test:visual             6 344 MB
   gate:clone              5 988 MB
   image version read      7 726 MB
-No worker died, no step timed out, no "fetch failed" appeared, and each
-step ran once.
+Each step ran once and none timed out. `grep -i -E 'fetch failed|worker.*
+(exit|died)|Killed|heap out of memory'` over every .pin3-evidence/*.log
+matched nothing.
 
 NOTICED BUT NOT TOUCHING
 ------------------------
@@ -258,9 +267,20 @@ DEVIATIONS
      never printed. This is PIN-2's deviation 3: never the shared
      `frontalier` database, and not the orchestrator's monreleve_web_orch.
    - pg_database afterwards lists neither harness database.
-2. node:22-bookworm-slim was not re-pulled for the madison read: the local
-   image (digest above) was used, so the base layer under other sessions'
-   build caches did not move.
+2. CORRECTION. The first version of this report (e5fbfb52) said here that
+   node:22-bookworm-slim was "not re-pulled" for the madison read. That was
+   wrong:
+   - My script dropped its explicit `docker pull` so that the local image
+     would be used.
+   - But the image store held no node:22-bookworm-slim tag (the script's own
+     `docker image inspect` printed "No such image"), so `docker run` pulled
+     it. The pull's lines are pasted under R1419.
+   - The pulled image, sha256:170fab70..., created 2026-11-24T04:43:18Z, is
+     left in place. It is a tagged base image, not a session artefact.
+   - The Dockerfile's FROM names the same tag. Builds on this machine after
+     08:03Z, mine and other sessions', may therefore start from this image,
+     not from whatever base the builder had resolved before. Whether the
+     builder had resolved a different digest before was NOT established.
 3. CONTAINER_IMAGE=monreleve:pin3-e2e instead of the harness default
    monreleve:e2e, so the existing monreleve:e2e (9a05b5d2d736, 2 days old,
    not this session's) was left untouched. pin3-e2e is removed at cleanup.
@@ -289,8 +309,11 @@ PUSH PROOF
      9dfdac6f54ba42b05133ce911f5621217ad5e54e	refs/heads/fw-chromium-pin-3
 3. Only the branch was pushed: never main, never production, and nothing
    was merged.
-4. This report commit goes to the same branch after its own gate:changed
-   and the same token check. Its sha and push result are stated in the
+4. The first version of this report, e5fbfb52, was pushed after its own
+   gate:changed (base chain, test: 4294 passed, GATE PASSED) and the same
+   token check: "9dfdac6f..e5fbfb52  fw-chromium-pin-3 -> fw-chromium-pin-3".
+5. This correction (DEVIATIONS 2, R1419 item 1, the MEMORY grep) goes to the
+   same branch the same way. Its sha and push result are stated in the
    hand-back, not here.
 
 CLEANUP
