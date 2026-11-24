@@ -3439,3 +3439,34 @@ orchestrator's scratchpad; nothing of the project lost.
 ALSO RECORDED: relay/FW-CALC-REDESIGN.txt (R1406-R1414), the operator's
 calculator redesign of 2026-11-23 (decisions D-a..D-e), running in
 C:/wt/fw-calc-redesign.
+
+iOS Ruling 22 - FW-CHROMIUM-PIN-3 and FW-CALC-REDESIGN, merged, 2026-11-24
+(web; recorded here to keep one counter)
+THE PIN. FW-CALC-REDESIGN's gate:clone on ad1d236c failed in test:container:write at
+R249's refusal: Debian dropped chromium 156.0.8078.79-1~deb12u1 (the third break in
+three weeks, the first to block every push). By precedent (FW-CHROMIUM-PIN, -PIN-2) the
+bump ran as its own task, relay/FW-CHROMIUM-PIN-3.txt (R1419-R1422): the ARG line only,
+156.0.8078.108-1~deb12u1 (same major). Verified by the orchestrator: the diff is that one
+line plus the report; the session's gate:changed (test 4294, test:container 28),
+test:container:e2e (Playwright 389, the image's PDF tests passed by name), test:visual 176
+with no baseline moved, gate:clone PASSED on 9dfdac6f. Fast-forwarded to 057306d7.
+Its questions are the operator's: the cadence (options a-f, none chosen); closing the
+old home.spec.ts:197 question as answered by R930. Noticed: docs/deploy.md:306-308 and a
+Dockerfile R845 comment are stale. The madison read pulled node:22-bookworm-slim.
+THE REDESIGN. Addendum relay/FW-CALC-REDESIGN-ADDENDUM.txt (R1415-R1418, the operator's
+answers "Yes, move them" / "Accept as is" / "Delete them"). Verified by the orchestrator:
+the source and legal lines under both columns, same strings (looked at, 1280); R1415's
+e2e RED on 61154975 ("the rail is 1174 px tall"), green on ad1d236c; the four chip keys
+deleted, the inventory test asserting they no longer resolve (exactly four); the 65
+baselines differing from 8098a511 each given a line (lookat-lines.txt), the key images
+looked at by the orchestrator. Merged as c8557183 onto 057306d7: gate:changed on the
+staged merge "GATE PASSED for the paths changed" (test 4307, test:e2e 429, test:visual
+176, test:late 10). The first run of that gate failed 3 account e2e tests
+(etat=indisponible): the orchestrator worktree's local web/.env had no AUTH_SECRET; a
+random local value was added to the gitignored file, the three passed alone, and the
+gate was re-run on the unchanged staged tree.
+OPEN, THE OPERATOR'S: QUESTION A1 - at 768 px the rail does not stick (392 px column,
+1292 px rail); a second breakpoint token or less in the rail would fix it. Orchestrator's
+recommendation: leave it. Empty directories left by the session under
+C:\c\wt\queue-evidence\fw-calc-redesign\baseline-crops\ are safe to delete (yours).
+Nothing deployed; production promotion stays the operator's.

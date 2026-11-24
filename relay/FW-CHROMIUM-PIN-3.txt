@@ -1,0 +1,47 @@
+FW-CHROMIUM-PIN-3 SESSION PROMPT - Mon Releve
+THE CHROMIUM PIN, A THIRD TIME (web, Dockerfile ARG only)
+Written by the orchestrating session on 2026-11-24. Same task, same shape as relay/FW-CHROMIUM-PIN-2.txt -
+READ IT WHOLE FIRST; its rulings R852-R855 apply here under the numbers below, with the changes stated.
+YOUR OWN advisor may advise you. Reserved items (dependencies, production, Coolify, the server) come back
+to the orchestrator as a QUESTION.
+
+WHY (measured by FW-CALC-REDESIGN on 2026-11-24, C:/wt/queue-evidence/fw-calc-redesign/container-write-
+alone.log l.71-94): gate:clone on ad1d236c failed in `pnpm test:container:write` at R249's refusal -
+"E: Version '156.0.8078.79-1~deb12u1' for 'chromium' was not found"; apt-cache madison then listed
+156.0.8078.108-1~deb12u1 (bookworm-security) and 150.0.7871.100-1~deb12u1 (bookworm). The Dockerfile is
+untouched on main, so EVERY gate:clone - every push - is blocked until this lands. Third time:
+.47 -> .73 (2026-11-03), .73 -> .79 (2026-11-11), .79 -> now.
+
+Names: worktree C:/wt/fw-chromium-pin-3, branch fw-chromium-pin-3 cut from origin/main 5d7c2ccf, your R349
+lock in it; report REPORT-FW-CHROMIUM-PIN-3.txt. Ruling numbers R1419-R1422 (R1423-R1424 spare; grep
+relay/ REPORT-*.txt CLAUDE.md docs for them before committing). Port: FRONTALIER_PORT=3950 if you need one
+(3000/3100/3200 are another project's, 3900 the orchestrator's - never stop either). Heavy steps under the
+heavy lock: node C:/wt/.run-tools/heavy-lock.mjs acquire <id> --min-free 5000 --wait-min 600, released
+after; never lower the line. NO PRUNE of any kind; a build that must not use the cache uses --no-cache or
+--no-cache-filter. Scratch databases only (never the shared `frontalier` one - it is two migrations behind
+anyway); drop yours at the end. HARD BOUNDARY: the ONE line ARG CHROMIUM_VERSION in web/Dockerfile, nothing
+else in it; no route, engine, copy or test change; e2e/home.spec.ts not edited.
+
+R1419 (= R852). RED FIRST FROM TODAY'S ARCHIVE: `apt-cache madison chromium` in node:22-bookworm-slim at run
+    time (never this prompt's number), and R249's refusal on 5d7c2ccf from a build that does not use the
+    cache for the runner's Chromium layer. Both pasted.
+R1420 (= R853). THE PIN: the newest bookworm-security version with the SAME major (156). A different major is
+    a STOP: hand it back as a QUESTION with the listing, change nothing. gate:changed (it selects
+    test:container, R251) with its verdict read INSIDE the committing chain, then commit.
+R1421 (= R854). THE PDF THROUGH THE IMAGE'S CHROMIUM: `pnpm test:container:e2e`; if it stops before its PDF
+    step (home.spec.ts:197, known), the fallback exactly as R854 states it, with the NON-ZERO pass count
+    pasted (R133: both files skip silently without CONTAINER_BASE_URL).
+R1422 (= R855, first half only). `pnpm test:visual` if the gate did not select it: expected no baseline moves.
+    If ANY moves, STOP before regenerating and hand back the list (R207). The start-time measurement of
+    R855's second half is NOT repeated.
+
+THE WORK: 0 worktree, lock, scratch DB; 1 R1419; 2 R1420; 3 R1421; 4 R1422; 5 gate:clone ALONE on the tip
+(a memory death is NO RESULT, re-run once; two in a row: stop) with GATE:CLONE PASSED and the commit line
+read in the chain that pushes; before each push a script checks the outgoing diff for the first 12
+characters of C:/Users/KAMXKAM/AppData/Local/Temp/cf/tok and refuses on a hit (never print the file). Push
+the branch ONLY - DO NOT MERGE; never main, never production; sessions do not write parking.md; the
+repository is PUBLIC. 6 report, commit, push; lock removed last.
+REPORT: SUMMARY / STATUS (R391) / R1419-R1422 with evidence / NOTICED BUT NOT TOUCHING (home.spec.ts:197;
+the cadence - three breaks in three weeks - and the options, without choosing one) / DEVIATIONS / QUESTIONS /
+PUSH PROOF
+END OF FW-CHROMIUM-PIN-3 PROMPT

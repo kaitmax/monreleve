@@ -105,11 +105,17 @@ READ THIS FIRST (two lines)
    are yours: a fr.lproj (the rest of the share sheet; the App Store listing's language list), and the test
    fake InMemorySettingsStore still in the Release framework (a build change to remove).
 
-6. HOUSEKEEPING LEFT
+6. THE CALCULATOR REDESIGN - DONE, merged as c8557183 (iOS Ruling 22, 2026-11-24): both calculator
+   pages with a sticky verdict rail and the explanations in accordions, existing tokens and copy only; the LAMal
+   page at 390 px went from about 10 000 px to about 4 800 px. Landed on the Chromium pin bump 057306d7
+   (FW-CHROMIUM-PIN-3, the third in three weeks - its cadence is your question). Not live: promotion is yours.
+   Open: at 768 px the rail does not stick (question A1).
+
+7. HOUSEKEEPING LEFT
 - C:/wt/i3-gate (the orchestrator's gate checkout for IOS-AUDIT) - removed after the merge.
 - C:/wt/walk-db/web (untracked leftover of a removed worktree).
 - The :3900 dev server - restarted for you at the end.
 
-Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-21),
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-22),
 relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the repository root, evidence under C:/wt/queue-evidence/.
 END OF FINAL REPORT

@@ -1,0 +1,35 @@
+FW-CALC-REDESIGN ADDENDUM - the operator's answers of 2026-11-24, and one increment
+Written by the orchestrating session after reading REPORT-FW-CALC-REDESIGN.txt (tip 61154975) and the walkthrough.
+Same worktree discipline as the prompt (C:/wt/fw-calc-redesign, branch fw-calc-redesign, R349 lock, heavy lock
+--min-free 5000, port 3950, secret check before each push, do not merge). Ruling numbers: R1415-R1418.
+
+THE OPERATOR'S ANSWERS (verbatim choices, recorded):
+  - Q8 (the rail taller than the window for one adult): "Yes, move them" - the source and legal lines leave the
+    rail and sit under both columns, same text, new position.
+  - Telework look: "Accept as is" - no second pass, no new token.
+  - Q3 (the unused chip strings): "Delete them".
+THE ORCHESTRATOR'S RULINGS ON THE REST (they follow from D-d, existing tokens and copy only):
+  Q1 leave the rate at --type-display; Q2 keep the 8 px bar; Q4 the banner stays whole; Q5 the phone summary is
+  dropped; Q6 accepted as is; Q7 Chromium-only measurement accepted, recorded; Q9 /resultat keeps the shared tiles.
+
+R1415. THE RAIL STICKS FOR THE COMMON CASE. On /calculateur-lamal-cmu the source line(s), the "aucun assureur
+    n'est nomme" line and the legal estimate note move OUT of the rail to a block under both columns (same
+    strings, same order, the same component - no copy). What STAYS in the rail: the two panels, the range bar,
+    the verdict sentence, the rate-and-date line beside the converted figures (R672) and the three accordions.
+    Assert on the rendered page at 1280x900, ONE adult, calculated: the rail's height is below the viewport's
+    and, after scrolling to the foot of the form, the rail's top is still in view (sticky works) - RED first on
+    the current tip. Also at 768 if the two-column layout applies there.
+R1416. THE CHIP STRINGS DELETED. chips.compare, chips.france, chips.switzerland, onThisPage (and any sibling
+    left with no reader) are removed from lib/fr; a grep of web/ shows no reader remains; every census or guard
+    that listed them (forbidden forms, inventories, calc-pages-inventory.json) updated to match - never loosened.
+R1417. BASELINES, ALL LOOKED AT. State the expected list before the run (R207); the run must produce exactly it.
+    Then THE OWED HALF OF R1413: every baseline that differs from the BASE 8098a511 (the 65 plus any this
+    increment adds) is opened and looked at - by contact sheets if that is how you can see them all - and the
+    report lists, per file, one line of what it shows and whether anything is wrong. "Checked by hash" is not
+    "looked at".
+R1418. GATES AND HANDBACK. gate:changed on the tip (verdict read inside the committing chain), gate:clone on the
+    tip before the push; the walkthrough at 1280 and 390 for LAMal one adult calculated, scrolled; the report
+    gains an ADDENDUM section (R1415-R1418 with evidence). Also note in it whether the telework page's dev
+    "1 issue" indicator seen in telework-1280-2-calculated.png appears on a FRESH load of the tip (it is in the
+    screenshot; say what it was if you can see it, without chasing it further).
+END OF ADDENDUM
