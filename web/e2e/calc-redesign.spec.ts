@@ -214,6 +214,38 @@ test.describe('R1406: the rail is sticky on a wide screen', () => {
   });
 });
 
+// FW-CALC-REDESIGN ADDENDUM, R1415: sticky in CSS is not the same as sticking.
+// A rail taller than the window scrolls away with the page, which is what the
+// first tip did for one adult (1174 px against 900). So: the rail fits the
+// window, and with the page scrolled to the foot of the form its top is still
+// in view. One adult, the common case.
+test.describe('R1415: the comparator rail sticks for one adult at 1280 x 900', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('it is shorter than the window, and still in view at the foot of the form', async ({ page }) => {
+    await open(page, COMPARATOR_PATH);
+    await compare(page);
+
+    const rail = page.locator('[data-result-region]');
+    const height = await rail.evaluate((node) => node.getBoundingClientRect().height);
+
+    expect(height, `the rail is ${height} px tall`).toBeLessThan(900);
+
+    await page.evaluate(() => {
+      const form = document.querySelector('main form');
+      const bottom = (form?.getBoundingClientRect().bottom ?? 0) + window.scrollY;
+
+      window.scrollTo(0, Math.max(0, bottom - window.innerHeight));
+    });
+
+    const top = await rail.evaluate((node) => node.getBoundingClientRect().top);
+
+    expect(await page.evaluate(() => window.scrollY), 'the page did scroll').toBeGreaterThan(0);
+    expect(top, `the rail's top at ${top} px`).toBeGreaterThanOrEqual(0);
+    expect(top).toBeLessThan(900);
+  });
+});
+
 test.describe('on a phone the rail is not sticky', () => {
   test.use({ viewport: { width: 390, height: 800 } });
 

@@ -264,9 +264,11 @@ type Inventory = Readonly<Record<string, readonly string[]>>;
 
 /**
  * Removed on purpose by R1408, which removes the chip navigation: the three
- * chip labels that are not a section heading, and the navigation's name.
- * ASSERTED EXACT, so a fourth removal must survive its own argument (R206's
- * corollary) - and raised as a QUESTION in the report.
+ * chip labels that are not a section heading, and the navigation's name -
+ * and DELETED from lib/fr by the addendum's R1416 (the operator: "Delete
+ * them"). ASSERTED EXACT, so a fifth removal must survive its own argument
+ * (R206's corollary), and asserted GONE from lib/fr, so none comes back
+ * without a reader.
  */
 const REMOVED_WITH_THE_CHIPS = [
   'lamal-page:LAMAL_PAGE_COPY.chips.compare',
@@ -300,8 +302,11 @@ function served(container: HTMLElement): string {
 describe('every lib/fr string the base pages rendered is still served', () => {
   const inventory = INVENTORY as unknown as Inventory;
 
-  it('the exemption list is exactly the chips R1408 removes, each present in the base inventory', () => {
-    for (const key of REMOVED_WITH_THE_CHIPS) expect(inventory['lamal-empty']).toContain(key);
+  it('the exemption list is exactly the chips R1408 removes, each in the base inventory and deleted from lib/fr', async () => {
+    for (const key of REMOVED_WITH_THE_CHIPS) {
+      expect(inventory['lamal-empty']).toContain(key);
+      await expect(resolve(key), key).rejects.toThrow();
+    }
     expect(REMOVED_WITH_THE_CHIPS).toHaveLength(4);
   });
 

@@ -43,19 +43,9 @@ export const LAMAL_PAGE_COPY = {
   /** The artboard's h1. LAMAL_COPY.title stays the pill above it and the JSON-LD name. */
   heading: `Le droit d’option des frontaliers${n(':')} LAMal ou assurance maladie française`,
 
-  // ---- "Sur cette page": the chips, each a link to its section ---------
-
-  onThisPage: 'Sur cette page',
-
-  /**
-   * The chips that are not a section heading. The others are the heading
-   * itself, by key (R206): one text, one home.
-   */
-  chips: {
-    compare: 'Comparer les coûts',
-    france: 'Si vous choisissez la France',
-    switzerland: 'Si vous restez en Suisse',
-  },
+  // "Sur cette page" and its chips were here until FW-CALC-REDESIGN removed
+  // the chips (R1408) and its addendum deleted their words (R1416): the
+  // accordions below carry the sections' own headings.
 
   // ---- "Le délai de trois mois": its source line (D1, D2; §7a, §7b) ------
 

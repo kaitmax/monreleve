@@ -49,14 +49,18 @@
 // empty - still in the page, so it announces what arrives (aria-live) - and
 // the form keeps the narrow measure rather than half a page beside nothing.
 .layout {
-  @include shell.columns(5fr, 7fr);
-
   margin-top: var(--space-6);
   padding-bottom: var(--space-16);
 }
 
+// R1415: the two columns are the island's own grid inside the layout, so the
+// sticky rail's range ends where the columns end.
+.layout > [data-result-columns] {
+  @include shell.columns(5fr, 7fr);
+}
+
 @media (width >= bp.$breakpoint-md) {
-  .layout:has(.result:empty) {
+  .layout > [data-result-columns]:has(.result:empty) {
     grid-template-columns: minmax(0, var(--layout-narrow));
   }
 }
@@ -64,6 +68,19 @@
 // R1408: THE VERDICT RAIL - sticky on a wide screen, in the flow on a phone.
 .result {
   @include shell.rail;
+}
+
+// R1415: the source and legal lines under both columns, out of the rail.
+.layout > [data-result-sources] {
+  min-width: 0;
+  max-width: var(--layout-article);
+  margin-top: var(--space-6);
+}
+
+// The legal line kept the rail's gap above it there; here it takes the
+// source lines' own step.
+.layout > [data-result-sources] > [data-legal] {
+  margin-top: var(--space-2);
 }
 
 // ---- the form card ---------------------------------------------------------

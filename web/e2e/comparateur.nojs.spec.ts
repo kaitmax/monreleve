@@ -122,7 +122,12 @@ test.describe('with JavaScript disabled', () => {
       expect(main, heading).toContain(heading);
     }
 
-    await expect(page.getByRole('navigation', { name: LAMAL_PAGE_COPY.onThisPage })).toHaveCount(0);
+    // R1416: the chips' words are deleted from lib/fr, so the check is by hook
+    // and by target: no chip list, and no in-page link to a section.
+    await expect(page.locator('[data-on-this-page]')).toHaveCount(0);
+    for (const id of Object.values(SECTION_ID)) {
+      await expect(page.locator(`main a[href="#${id}"]`), id).toHaveCount(0);
+    }
     for (const id of Object.values(SECTION_ID)) {
       await expect(page.locator(`[id="${id}"]`), id).toHaveCount(1);
     }

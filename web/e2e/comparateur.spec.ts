@@ -43,8 +43,9 @@ test('compares the household: both sides, three Swiss figures, the banner above 
   expect(conversion).toContain(formatRate(EXCHANGE_RATE.chfPerEurTenThousandths));
   expect(conversion).toContain(formatDate(EXCHANGE_RATE.date));
 
-  // R664: the attribution, with its link to the dataset.
-  await expect(panel.locator('[data-attribution] a')).toHaveAttribute(
+  // R664: the attribution, with its link to the dataset - under both
+  // columns since FW-CALC-REDESIGN's addendum (R1415), out of the rail.
+  await expect(page.locator('[data-result-sources] [data-attribution] a')).toHaveAttribute(
     'href',
     'https://opendata.swiss/fr/dataset/health-insurance-premiums',
   );

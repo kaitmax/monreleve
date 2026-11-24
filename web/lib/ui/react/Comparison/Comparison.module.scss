@@ -358,3 +358,60 @@
 .panel details[open] {
   padding-bottom: var(--space-4);
 }
+
+// ---- FW-CALC-REDESIGN ADDENDUM, R1415: the rail fits the window -------------
+//
+// For one adult the rail was 1 174 px, then 1 020 once the source and legal
+// lines left it - taller than a 900 px window, so it scrolled away instead of
+// sticking. Nothing is removed from it; its spacing steps down a token each
+// (the rail's own stack, the panels' padding and their figure blocks, the
+// case sentence, the bar's lead-in) and its three accordions share ONE card.
+// Every value is still a token.
+
+// The comparison only: the refusal state keeps its spacing (and every
+// workbench specimen below it keeps its place on the page).
+.panel[data-panel="comparison"] {
+  gap: var(--space-3);
+}
+
+.panel [data-panels] > [data-side] {
+  padding: var(--space-4) var(--space-5);
+}
+
+[data-panels] .sideHeading {
+  margin-bottom: var(--space-2);
+}
+
+[data-panels] .figures {
+  padding: var(--space-2) var(--space-4);
+}
+
+[data-panels] .figure + .figure {
+  margin-top: var(--space-2);
+}
+
+.panel > .caseSentence {
+  padding: var(--space-3) var(--space-5);
+}
+
+.plot[data-range] {
+  margin-top: 0;
+}
+
+// The three accordions in one card: the frame on the group, a hairline
+// between the cards, the cards themselves flat inside it.
+.panel [data-rail-folds] {
+  border: var(--size-card-border) solid var(--colour-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--colour-surface);
+}
+
+.panel [data-rail-folds] > article {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.panel [data-rail-folds] > article + article {
+  border-top: var(--size-rule) solid var(--colour-border-default);
+}

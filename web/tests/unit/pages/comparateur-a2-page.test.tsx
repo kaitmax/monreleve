@@ -121,7 +121,10 @@ describe('the chips are gone (R1408), and every section is still addressable', (
     const { container } = render(<ComparateurPage />);
 
     expect(container.querySelector('[data-on-this-page]')).toBeNull();
-    expect(screen.queryByRole('navigation', { name: PAGE.onThisPage })).toBeNull();
+    // R1416: the chips' words are deleted from lib/fr; no in-page link to a section remains.
+    for (const id of Object.values(SECTION_ID)) {
+      expect(container.querySelector(`main a[href="#${id}"], a[href="#${id}"]`), id).toBeNull();
+    }
     for (const id of Object.values(SECTION_ID)) {
       expect(container.querySelectorAll(`[id="${id}"]`), `#${id}`).toHaveLength(1);
     }

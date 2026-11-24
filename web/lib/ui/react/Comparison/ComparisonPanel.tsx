@@ -475,21 +475,40 @@ function ComparisonBody({
         </p>
       )}
 
-      {noSwiss ? null : <InsurerChart value={value} months={months} />}
-      <CareCard value={value} />
-      {franc === undefined ? null : <FrancCard value={value} franc={franc} totals={!noSwiss} />}
-
       {/*
-        R731: the OFSP attribution (R664's mandatory credit, under the Swiss
-        figures), the priminfo link and the legal line - as the page carried
-        them, below the comparison rather than inside the Swiss card.
+        R1415: the rail's three accordions as ONE card, a hairline between
+        them - three separate cards spent a gap and two borders each, and the
+        rail has to fit a 900 px window for one adult.
       */}
+      <div data-rail-folds="true">
+        {noSwiss ? null : <InsurerChart value={value} months={months} />}
+        <CareCard value={value} />
+        {franc === undefined ? null : <FrancCard value={value} franc={franc} totals={!noSwiss} />}
+      </div>
+    </>
+  );
+}
+
+/**
+ * R731: the OFSP attribution (R664's mandatory credit, under the Swiss
+ * figures), the priminfo link and the legal line, below the comparison rather
+ * than inside the Swiss card.
+ *
+ * FW-CALC-REDESIGN ADDENDUM, R1415: THEIR OWN COMPONENT, so the island can
+ * set them UNDER BOTH COLUMNS - out of the sticky rail, which they made taller
+ * than the window for one adult, so it scrolled away instead of sticking. The
+ * same three paragraphs, the same strings, the same order; only the place.
+ * Rendered only with a comparison, as before (never with a refusal).
+ */
+export function ComparisonSources({ year }: { readonly year: number }) {
+  return (
+    <>
       <p className={styles.source} data-attribution="true">
         {COPY.result.swiss.attributionBefore}
         <a href={PREMIUM_DATASET_URL} rel="noreferrer">
           {PREMIUM_DATASET.title}
         </a>
-        {COPY.result.swiss.attributionAfter(year.year)}
+        {COPY.result.swiss.attributionAfter(year)}
       </p>
       <p className={styles.source}>
         {COPY.result.swiss.priminfo.lead}

@@ -444,3 +444,201 @@ PUSH PROOF
   is pushed only after its own gate:changed (above), gate:clone and the same
   scan; the handback carries that gate:clone line and the final tip.
 - Not merged, main untouched, nothing deployed.
+
+ADDENDUM (relay/FW-CALC-REDESIGN-ADDENDUM.txt, R1415-R1418)
+-----------------------------------------------------------
+The operator's answers of 2026-11-24 and the orchestrator's rulings close
+QUESTIONS 1-9 above as recorded there: Q8 "Yes, move them"; Q3 "Delete
+them"; telework "Accept as is"; Q1 the rate stays at --type-display; Q2 the
+bar stays 8 px; Q4 the banner stays whole; Q5 the phone summary is dropped;
+Q6 accepted; Q7 Chromium-only accepted; Q9 /resultat keeps the shared tiles.
+- Worktree C:/wt/fw-calc-redesign recreated in place (same branch, tip
+  61154975, clean); lock written 2026-11-24T06:55:10Z; web/.env copied from
+  the main checkout, never staged, pointed at a re-created scratch database
+  monreleve_fw_calc_redesign (17 migrations). A base worktree of my own,
+  C:/wt/fcr-red2 (detached at 61154975, its own lock), held the RED run.
+  Nothing of main 5d7c2ccf merged.
+
+STATUS OF THE ADDENDUM (R391): COMPLETE for the code - the FULL gate:changed
+  passed on this increment in this session (below); its gate:clone runs on the
+  commit before the push and is in the handback. R1415 is met at 1280 and NOT at
+  768 (QUESTION A1); R1417's look is COMPLETE (65 of 65 opened).
+
+R1415 THE RAIL STICKS FOR THE COMMON CASE.
+  - The attribution, the priminfo line ("Aucun assureur n'est nomme ici...")
+    and the legal note moved out of ComparisonPanel's body into their own
+    exported component, ComparisonSources (same three paragraphs, same
+    strings, same order, same data hooks), which the island renders AFTER
+    the columns ([data-result-sources]). The columns became the island's own
+    grid ([data-result-columns]) so the sticky rail's range ends with them:
+    with the source block as a second row of the same grid, the rail slid
+    down over it while the page scrolled - seen in the first regeneration
+    (run 3) and fixed before any baseline was kept.
+  - The source block alone did not bring the rail under 900 px (1 174 ->
+    1 020 px), so the rail's spacing steps down a token each (its stack gap,
+    on the comparison only; the panels' padding; the figure blocks; the case
+    sentence; the bar's lead-in) and the three rail accordions share ONE card
+    with hairlines between them ([data-rail-folds]). Nothing removed.
+  - Test, RED first: e2e/calc-redesign.spec.ts "R1415: the comparator rail
+    sticks for one adult at 1280 x 900" - the rail shorter than the window,
+    and after scrolling to the foot of the form its top in view. RED on the
+    tip 61154975 (red-r1415.log): "Error: the rail is 1174 px tall /
+    Expected: < 900 / Received: 1174". GREEN on the final tree
+    (green-r1415-4.log: 36 passed with comparateur.spec and
+    comparateur.nojs.spec).
+  - Walkthrough (walkthrough-addendum/notes.txt; one adult at 60 000,
+    calculated, scrolled to the foot of the form):
+      1280x900  rail 644x862 px, sticky; scrollY 739 -> rail top 24 px (stuck)
+      768x900   rail 392x1292 px, sticky in CSS but TALLER than the window;
+                scrollY 999 -> rail top -352 px: it does NOT stick at 768
+      390x844   one column, rail static (as designed)
+    Opened: lamal-1280-scrolled-foot-of-form.png (the whole rail beside the
+    foot of the form) and lamal-1280-sources-crop.png (the source and legal
+    lines under both columns, on the article measure).
+  - NOT MET AT 768: the rail is 392 px wide there, the two panels stack and
+    the notes wrap - 1 292 px. Fitting it would need a second two-column
+    breakpoint for this page (only $breakpoint-md exists: a new token) or
+    more taken out of the rail - QUESTION A1. The e2e test asserts 1280.
+R1416 THE CHIP STRINGS DELETED. LAMAL_PAGE_COPY.onThisPage and
+  LAMAL_PAGE_COPY.chips (compare, france, switzerland) removed from
+  lib/fr/lamal-page.ts; no sibling was left without a reader. A grep of web/
+  and content/ for the keys and the strings finds no reader (the one "Sur
+  cette page" left is GUIDES_COPY.tocLabel, the guides' own string).
+  Updated, never loosened: calc-redesign.test.tsx's exemption list now ALSO
+  asserts each of the four keys no longer resolves in lib/fr, so one that
+  came back would fail; comparateur-a2-page.test.tsx and
+  comparateur.nojs.spec.ts, which read the navigation's name, now assert by
+  hook and by target (no chip list, no in-page link to any section id).
+  calc-pages-inventory.json is the BASE record (8098a511) and keeps the four
+  keys as base facts; the test exempts exactly those four and asserts them
+  deleted. No forbidden-forms or accents list named them (grep).
+R1417 BASELINES, ALL LOOKED AT.
+  - Run 3: expectation stated before the run (baseline-expectation-3.txt,
+    26): the 12 comparator result states x 2, composants-comparison-panel and
+    composants-comparison-refusal. Run 3 produced 31 - the 26 plus FIVE NOT
+    EXPECTED: composants-home-counter-compliant, -home-counter-social,
+    -home-faq-pair, -home-phone-android and -shell-desktop (6 to 79 px each,
+    channel deltas 1-40). Investigated, not kept (R207): the refusal specimen
+    sits above them on /dev/composants and my .panel gap change shortened it,
+    moving every specimen below. Fixed by scoping that gap to
+    [data-panel="comparison"]; the five and the refusal image restored from
+    HEAD (their run-3 copies kept in run3-unexpected/). A
+    `pnpm test:visual e2e/composants.visual.spec.ts` run then still failed
+    those five against HEAD (expected: the page still carried the shift at
+    that moment); run 4 (expectation: nothing further) wrote nothing ("R208:
+    REGENERATION WROTE NOTHING", 176 passed), so after the scoping every
+    composants image matched HEAD.
+  - The grid fix came after run 4. Run 5: expectation
+    (baseline-expectation-5.txt, 24) the 12 comparator result states x 2;
+    run 5 ("photographed: 61154975 plus 35 uncommitted path(s)", 176 passed)
+    changed EXACTLY those 24.
+  - Regenerated in this increment against 61154975: the 24 comparator result
+    states (adulte-seul, annee-partielle, commune, franc-deplace, inferieur,
+    plancher, points-entre, points-inferieur, points-superieur, rempli, soins,
+    superieur; desktop and mobile) and composants-comparison-panel.png - 25.
+    Against the BASE 8098a511 the set that differs is the same 65 as
+    increment 1 (differs-from-base.txt).
+  - THE OWED LOOK: all 65 OPENED, as 33 contact sheets (each state's desktop
+    beside its mobile, scaled to one height) in
+    C:/wt/queue-evidence/fw-calc-redesign/sheets/, built from the images
+    committed here; the 12 sheets run 5 changed were opened again after it.
+    One line per file:
+    calculateur-capture-erreur-desktop.png | head, form, empty result card and app card in the rail, capture card with its field error, thresholds as two cards on the canvas band, FAQ as three closed accordion cards, footer. Nothing wrong.
+    calculateur-capture-erreur-mobile.png | one column: form, empty result card, app card, capture with error, threshold cards, FAQ cards. Nothing wrong.
+    calculateur-capture-succes-desktop.png | as capture-erreur with the capture card's success sentence in place of its form. Nothing wrong.
+    calculateur-capture-succes-mobile.png | one column, the success sentence in the capture card. Nothing wrong.
+    calculateur-erreur-desktop.png | form with the invalid-input error on its field and the error list under Calculer; the rail shows the result card's stale state. Nothing wrong.
+    calculateur-erreur-mobile.png | one column, the field error and the list, the result card below. Nothing wrong.
+    calculateur-faq-ouverte-desktop.png | the three FAQ accordion cards open, each answer inside its card under a hairline. Nothing wrong.
+    calculateur-faq-ouverte-mobile.png | the same at 390, answers wrap inside the cards, no overflow. Nothing wrong.
+    calculateur-lien-invalide-desktop.png | the link notice above the share row, the result in the rail, tiles 2 lead / 2 secondary. Nothing wrong.
+    calculateur-lien-invalide-mobile.png | one column, the notice above the share row, then the result. Nothing wrong.
+    calculateur-lien-partage-desktop.png | a shared-link result: rate, rail bar, two lead tiles at H1, two taxed tiles on the canvas, warnings, app card. Nothing wrong.
+    calculateur-lien-partage-mobile.png | one column, the panel stacked, one tile per row. Nothing wrong.
+    calculateur-missions-ouvertes-desktop.png | missions answered Oui, the two mission steppers open; the empty result card in the rail. Nothing wrong.
+    calculateur-missions-ouvertes-mobile.png | one column, the steppers stacked. Nothing wrong.
+    calculateur-panneau-avis-provisoire-desktop.png | the provisional notice with its readings above the panel, the panel and warnings in the rail. Nothing wrong.
+    calculateur-panneau-avis-provisoire-mobile.png | one column, the notice then the panel. Nothing wrong.
+    calculateur-panneau-bascule-sociale-desktop.png | the social-switch state: error-coloured rate and negative tiles, the warning list. Nothing wrong.
+    calculateur-panneau-bascule-sociale-mobile.png | one column, the same. Nothing wrong.
+    calculateur-panneau-conforme-desktop.png | the compliant state: green rate, "Sous les deux seuils", tiles 2 lead / 2 secondary. Nothing wrong.
+    calculateur-panneau-conforme-mobile.png | one column, the same. Nothing wrong.
+    calculateur-panneau-regime-perdu-desktop.png | the regime-lost state with its warnings and the A1 note. Nothing wrong.
+    calculateur-panneau-regime-perdu-mobile.png | one column, the same. Nothing wrong.
+    calculateur-projection-desktop.png | 16,66 %, tiles 56 / 79,5 lead, 240 / 0 on the canvas, the projection line under the panel. Nothing wrong.
+    calculateur-projection-mobile.png | one column, the same. Nothing wrong.
+    calculateur-rempli-desktop.png | Geneva case: 39,16 %, tiles 2 and 25,5 at H1, 226 / 14 on the canvas, three warnings, the app card below the result. Nothing wrong.
+    calculateur-rempli-mobile.png | one column, the same panel stacked. Nothing wrong.
+    calculateur-vide-desktop.png | empty: form left, the empty result card and app card right, capture, threshold cards, FAQ cards. Nothing wrong.
+    calculateur-vide-mobile.png | one column, the same. Nothing wrong.
+    comparateur-adulte-seul-desktop.png | one adult at 42 000: France 2 382 EUR beside Suisse 2 718 / 6 355 / 10 691 EUR, the bar with the French mark left of the band, the "below the lowest" sentence, the three rail accordions in ONE card, the source and legal lines under both columns, seven closed folds, Sources. The rail starts about 90 px below the form's top in this full-page capture (the click scrolled the page and sticky holds the rail); stable between runs. Nothing wrong.
+    comparateur-adulte-seul-mobile.png | one column: banner, form, panels stacked, bar, sentence, rail card, source lines, folds, Sources. Nothing wrong.
+    comparateur-annee-partielle-desktop.png | affiliation from 1 March: the dated heading, "pour 306 jours" / "pour 9 mois", the prorata line and the start-month note. Nothing wrong.
+    comparateur-annee-partielle-mobile.png | one column, the same figures and notes. Nothing wrong.
+    comparateur-commune-desktop.png | joint return: the two income fields and the live base (42 000 EUR), the result as adulte-seul. Nothing wrong.
+    comparateur-commune-mobile.png | one column, the same. Nothing wrong.
+    comparateur-delai-rappel-envoye-desktop.png | the delay fold open: intro, four events, source line, the helper with its date, steps and warning, and the server's confirmation sentence in place of the reminder form; the other six folds closed. Nothing wrong.
+    comparateur-delai-rappel-envoye-mobile.png | one column, the same. Nothing wrong.
+    comparateur-delai-sans-s3-desktop.png | the delay fold open with the reminder form under the helper; the date field shows its day segment selected (focus), stable. Nothing wrong.
+    comparateur-delai-sans-s3-mobile.png | one column, the same. Nothing wrong.
+    comparateur-erreur-desktop.png | the two field errors (income, birth year), no result, the folds and Sources. Nothing wrong.
+    comparateur-erreur-mobile.png | one column, the same. Nothing wrong.
+    comparateur-franc-deplace-desktop.png | the franc accordion open, slider at +5 %, 1 EUR = 0,8799 CHF, Swiss totals 2 854 / 6 673 / 11 225 EUR, the hypothesis line in the Swiss panel and under the bar. Nothing wrong.
+    comparateur-franc-deplace-mobile.png | one column, the slider inside its open card. Nothing wrong.
+    comparateur-inferieur-desktop.png | income at the allowance: France 0 EUR, the French mark at the bar's left end, the "below the lowest" sentence. Nothing wrong.
+    comparateur-inferieur-mobile.png | one column, the same. Nothing wrong.
+    comparateur-plancher-desktop.png | France 0 EUR with the floored note under the formula. Nothing wrong.
+    comparateur-plancher-mobile.png | one column, the same. Nothing wrong.
+    comparateur-points-entre-desktop.png | 60 000: France 3 822 EUR inside the band, the between sentence, the insurers accordion open with the dots, the French line and the counting sentence. Nothing wrong.
+    comparateur-points-entre-mobile.png | one column, the dot chart inside its open card. Nothing wrong.
+    comparateur-points-inferieur-desktop.png | France 0 EUR, the chart open with the French line at 0 left of every dot. Nothing wrong.
+    comparateur-points-inferieur-mobile.png | one column, the same. Nothing wrong.
+    comparateur-points-superieur-desktop.png | 1 000 000: France 79 022 EUR at the bar's right end (scale to 87 000 EUR), the chart open, every dot left of the line. Nothing wrong.
+    comparateur-points-superieur-mobile.png | one column, the same. Nothing wrong.
+    comparateur-rappel-confirme-desktop.png | the confirmation outcome revealed by its fragment, ABOVE the closed folds (outside them); the form empty. Nothing wrong.
+    comparateur-rappel-confirme-mobile.png | one column, the outcome above the folds. Nothing wrong.
+    comparateur-rempli-desktop.png | adult + child: France 3 822 EUR, Suisse 3 390 / 9 213 / 14 133 EUR, the between sentence, the rail card, the source lines under the columns. Nothing wrong.
+    comparateur-rempli-mobile.png | one column, the second person's block in the form, the same result. Nothing wrong.
+    comparateur-soins-desktop.png | adult + three children: the care accordion open with the 2 000,00 CHF cap, the children's joint cap note, the rule lines. Nothing wrong.
+    comparateur-soins-mobile.png | one column, the open care card. Nothing wrong.
+    comparateur-superieur-desktop.png | 1 000 000: France 79 022 EUR, the "above the highest" sentence, the mark at the bar's right end with its label inside the card. Nothing wrong.
+    comparateur-superieur-mobile.png | one column, the same. Nothing wrong.
+    comparateur-vide-desktop.png | empty: head, the whole banner, the form at the narrow measure (no rail before a result), seven closed folds, Sources. Nothing wrong.
+    comparateur-vide-mobile.png | one column, the same. Nothing wrong.
+    composants-comparison-panel.png | the workbench panel: France / Suisse panels with dots and soft fills, bar, rate line, sentence, two closed cards in one frame (the workbench passes no slider, so no franc card); no source lines (they are the island's now). Nothing wrong.
+    resultat-resultat-desktop.png | /resultat: 39,16 %, tiles 2 / 25,5 at H1 and 226 / 14 on the canvas (the shared ResultPanel), warnings, app card, "Modifier mes chiffres". Nothing wrong.
+    resultat-resultat-mobile.png | one column, the same. Nothing wrong.
+R1418 GATES, WALKTHROUGH, THE "1 issue".
+  - gate:changed on this increment: below, filled inside the committing
+    chain. gate:clone on the pushed tip: in the handback.
+  - The walkthrough at 1280 and 390 (and 768): R1415 above.
+  - The telework "1 issue" dev indicator: on a FRESH load of the final tree at
+    1280 there is no indicator and 0 console errors
+    (walkthrough-addendum/telework-1280-fresh-load.png, opened; notes.txt
+    "telework fresh load 1280: console errors 0"; probe-tip.log the same). In
+    the first walkthrough the indicator counted one console error, React's
+    "A tree hydrated but some attributes of the server rendered HTML didn't
+    match the client properties", logged only when the telework page was
+    opened in a tab that had just used the comparator. Not chased further.
+
+gate:changed, addendum commit:
+  (gate-changed-6.log, on the working tree of 61154975 + this increment,
+  before the commit was made inside the same chain; no baseline beyond the 25):
+    start 2026-11-24T07:35:45Z
+    GATE PASSED for the paths changed.
+      measured:
+        typecheck: exit 0 (no count to check)
+        lint: exit 0 (no count to check)
+        test: 4307 passed
+        build: exit 0 (no count to check)
+        test:e2e: 429 passed
+        test:visual: 176 passed
+        test:late: 10 passed
+    GATE_EXIT=0
+    end 2026-11-24T07:45:55Z
+
+QUESTIONS (addendum)
+  A1. R1415 at 768: the rail is 1 292 px in a 392 px column and does not
+      stick. Accept (it sticks where the two panels sit side by side), add a
+      wider two-column breakpoint token for this page, or move more out of
+      the rail (the Swiss basis note, for one)?
