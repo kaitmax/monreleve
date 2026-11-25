@@ -91,9 +91,12 @@ READ THIS FIRST (three lines)
   independently (the code survives a fetch; a fetcher still gets a session); (D) keep it and tell iOS
   users not to open the link.
 - Q1, ACCESSIBILITY ON iOS: Compose 1.7.3 keeps the accessibility tree in sync only while VoiceOver runs,
-  so Voice Control, Switch Control and keyboard users may meet an empty app. Candidates: the experimental
-  always-on sync option (RED first) or a Compose upgrade (a dependency change). Only real VoiceOver on an
-  iPhone settles it.
+  so Voice Control, Switch Control and keyboard users may meet an empty app. The always-on sync option was
+  tried on a branch (section 8): it does NOT fix the walk's failures, which happen with VoiceOver on and the
+  tree already synced, and it was not merged. Still yours: (1) whether to measure the option with VoiceOver
+  off (a walk variant, an ios-walk.yml change), or decide it on the argument plus Compose's stated cost;
+  (2) a Compose upgrade (a dependency change) for the zero-size elements. Only real VoiceOver on an iPhone
+  settles it.
 - IOS-POLISH's three: a fr.lproj (or CFBundleLocalizations) for the rest of the system UI; the App Store
   listing's language list reads .lproj folders, so it will not name French without one; the test fake
   InMemorySettingsStore still ships in the Release framework (removing it is a build change).
@@ -127,8 +130,8 @@ READ THIS FIRST (three lines)
   background sync; the universal link; a Release build logging without a crash; new-account onboarding to
   the end - BEFORE TestFlight; the export's share sheet, the comparison and Licences; the lock-screen text
   and sound; the transient-notice presentation.
-- Stale docs noticed by FW-CHROMIUM-PIN-3, not touched: docs/deploy.md l.306-308 still names the .79 pin; a stale R845 comment
-  in web/Dockerfile l.253-260.
+- Stale docs noticed by FW-CHROMIUM-PIN-3: docs/deploy.md CORRECTED in 4df9057c (section 8); the R845 comment
+  in web/Dockerfile l.253-260 narrates 2026-11-11 accurately and was left.
 
 6. HOUSEKEEPING
 - Left for you: the empty folder chain C:\c (a session made it by mistake; the safety check refused the
@@ -149,8 +152,26 @@ READ THIS FIRST (three lines)
 - PRODUCTION MOVED: another conversation of yours merged FW-SEO-TITLES and FW-SEO-ARTICLES to main and
   promoted production to d8db62c5 (healthy, checked read-only); it contains everything in section 2.
 - Candidate small task: tests/db/fw14-era-migration.test.ts uses a fixed scratch database name, so two
-  database runs at once collide.
+  database runs at once collide. DONE in a2f625cf (section 8).
 
-Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-24), relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the
+8. THE EVENING AND THE CLOSE (iOS Rulings 25-26)
+Your instruction: "for any question ask the advisor apply the solution proposed by the advisore, verify it
+if its ok pass the the next , apply this loop till you finish the project". The advisor's plan was three
+small code tasks, then this record, then STOP. All three are done:
+- (a) a2f625cf, on main: the fw14 migration test now names its scratch database per process; two database
+  runs at once no longer collide (reproduced red, then green, gate passed).
+- (c) 4df9057c, on main: docs/deploy.md no longer calls the .79 Chromium pin current, and says every commit
+  pinning .79 (e73c846d among them) can no longer be rebuilt.
+- (b) NOT MERGED: the always-on accessibility sync (branch ios-a11y-sync, code 9f5333ab; report on main,
+  REPORT-IOS-A11Y-SYNC.txt). The iOS tests and the app check pass with it, but the walk is unchanged, test
+  for test (9 passed, 8 failed, as before). The walk runs with VoiceOver on, so the tree was already synced:
+  the option is ruled out as the cause of those failures and is untested for Voice Control, Switch Control
+  and keyboard users. No Android gate ran on that branch (memory, then not worth it for a branch that will
+  not merge). The branch and C:/wt/ios-a11y-sync are kept; removing them is yours.
+Not done on delegated authority, and waiting for you: any production promotion, F8, every item in section
+5, Q1's two remaining choices (section 4), the Chromium cadence, fw-lighthouse-calc (parked), the 768 px
+rail. Production is still d8db62c5; nothing was promoted after section 7.
+
+Records: relay/RULINGS-2026-11-16.txt (iOS Rulings 1-26), relay/QUEUE-STATE.md, each REPORT-<TASK>.txt at the
 repository root, evidence under C:/wt/queue-evidence/.
 END OF FINAL REPORT

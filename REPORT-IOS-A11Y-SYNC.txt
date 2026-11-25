@@ -1,0 +1,253 @@
+REPORT-IOS-A11Y-SYNC - Mon Releve
+Q1 OPTION (a): THE ACCESSIBILITY TREE SYNCED ALWAYS (AccessibilitySyncOptions.Always) - AN EXPERIMENT ON A BRANCH
+Session: IOS-A11Y-SYNC, 2026-11-24/25. Prompt: relay/IOS-A11Y-SYNC.txt (R1431-R1436). Worktree C:/wt/ios-a11y-sync,
+branch ios-a11y-sync from origin/main cb901c94. NOT MERGED (R1436).
+
+================================================================================
+SUMMARY
+================================================================================
+- VERDICT: NOT WORTH MERGING. On the walk, every test has the same outcome as baseline 45197427698 and as the
+  IOS-POLISH walk 45296804003. None of the known failures passes, and no passing test fails. R1433's success
+  condition is NOT met.
+- WHY THE WALK COULD NOT MOVE (read from the source, and the measurement agrees): ios-walk.yml sets the simulator's
+  VoiceOverTouchEnabled to true, and the walk's probe logs voiceOverRunning=true, in this run as in the baseline.
+  Under that setting, Compose 1.7.3's default (WhenRequiredByAccessibilityServices) already syncs. The option is read
+  in exactly one place, AccessibilitySyncOptions.shouldPerformSync (Accessibility.uikit.kt:986-991), so under the
+  walk Always and the default take the same code path. The zero frames (F2) therefore come from somewhere else, not
+  from the sync being off. This result says NOTHING about F1, meaning Voice Control, Switch Control and Full Keyboard
+  Access users, where VoiceOver is off and the option DOES change behaviour (QUESTION 1).
+- R1432 red, then green, both measured: ios-shared 45472617561 on bb61bb34 FAILED by name, with 536 tests and
+  1 failure: "R1432: the app's controller is configured with WhenRequiredByAccessibilityServices, not Always".
+  ios-shared 45508135062 on 9f5333ab passed: 111 suites, 536 tests, 0 failures.
+- ios-app 45508140283 on 9f5333ab: success. probe share.result=PASS, and "R1353: RELEASE INSPECTION PASSED - every
+  check and every control".
+- Leak scans: bearer 0, token prefix 0, callback-with-token 0 outside the known wire fixture, and no production
+  host outside R1353's lines. The six-digit hits are byte counts and CSS colours. No digit-valued code box.
+  R574 holds.
+
+================================================================================
+STATUS (R391)
+================================================================================
+FAST CHECK NOT RUN and FULL GATE NOT RUN on 9f5333ab (the code tip).
+- The fastCheck for increment A waited on the heavy lock from 19:40 UTC to 00:15 UTC and never acquired it.
+  - The memory line was the reason: 481 polls read below the 8000 MB line, ranging from 821 to 6674 MB.
+  - For stretches in between, the lock was HELD by the orchestrator (orch-rec25, then orch-clone-rec25).
+  - No Gradle process started. That is NO RESULT, not a pass and not a fail.
+- At about 00:14 UTC the orchestrator ruled: "Do not run the full Android :app:gate for a branch that will not merge.
+  Instead, state it in STATUS in R391's shape".
+- Stopping my own waiters (R179: only the tree this session spawned):
+  - First, TaskStop on the three background shells, then pid 17484 (the fastCheck's node acquire) by name.
+  - TaskStop did NOT kill gate.sh. Killing 17484 wrote "LOCK NOT ACQUIRED" into fastcheck-A.log, which is the
+    signal gate.sh polled for, so gate.sh started its own acquire (pid 27828) at 00:20.
+  - Found by a process census at 00:21, and stopped: bash 7864 and 11380 (gate.sh) first, then node 27828.
+  - That acquire never held the lock: the lock read FREE before and after, memory stayed below the line, and no
+    java.exe was running. gate-tip.log holds only "waiting" lines.
+  - The census after the stops shows 0 processes of mine. No :app:gate ran.
+- What does stand on the code tip, measured in the cloud:
+  - :shared's iOS sources compile and link, for iosSimulatorArm64 and iosArm64 (ios-app's debug frameworks and
+    ios-shared's test run).
+  - The iOS suites are 536/0.
+- What is NOT verified for the two changed files:
+  - :shared:ktlintCheck and :shared:detekt.
+  - The JVM suites. :shared JVM 358 is unchanged by construction, because no JVM or common source changed, but it
+    was not run. The floor of 1562 was not observed in this session.
+
+================================================================================
+R1431 - THE ONE CONFIGURATION, AT ITS ONE HOME
+================================================================================
+- android/shared/src/iosMain/kotlin/ch/monreleve/app/ios/MonReleveViewController.kt:
+    @OptIn(ExperimentalComposeApi::class)
+    internal val monReleveControllerConfiguration: ComposeUIViewControllerConfiguration.() -> Unit = {
+        accessibilitySyncOptions = AccessibilitySyncOptions.Always(debugLogger = null)
+    }
+    ... ComposeUIViewController(configure = monReleveControllerConfiguration) { IosShellRoot(shell) }
+- Nothing else in the app changes: `git diff cb901c94 9f5333ab --name-only` lists this file and the new iosTest only.
+- The opt-in is stated where it is used, on that one declaration. The FENCE: the only opt-in allowlist,
+  ExperimentalTimeOptInAllowlistTest, matches `OptIn(ExperimentalTime::class)` alone. No fence names
+  ExperimentalComposeApi, so there is NO allowlist entry. The file's ExperimentalTime count stays 1, because the
+  Compose opt-in is a separate annotation; merging the two into one annotation would have dropped that count to 0.
+  Not run locally (see STATUS).
+- The cost, stated by Compose on Always: "a significant overhead associated with doing it that can degrade the
+  visual performance of the app".
+
+================================================================================
+R1432 - RED FIRST, STRUCTURALLY
+================================================================================
+- Test file: android/shared/src/iosTest/kotlin/ch/monreleve/app/ios/IosAccessibilitySyncIosTest.kt (2 tests).
+  - theAppsControllerConfigurationSyncsTheTreeAlways reads
+    ComposeUIViewControllerConfiguration().apply(monReleveControllerConfiguration).accessibilitySyncOptions. That is
+    the same expression Compose runs inside ComposeUIViewController(configure, content). It reads the object, not
+    the source (R154).
+  - aFreshConfigurationCarriesTheVoiceOverOnlyDefault is the control: it proves the assertion can tell the two
+    options apart.
+- Commit A, bb61bb34: the seam holds the default (an empty lambda, so behaviour is identical to the base) plus the
+  test. ios-shared 45472617561 completed with conclusion failure, and the failure is the intended one:
+  - "ch.monreleve.app.ios.IosAccessibilitySyncIosTest tests=2 failures=1 errors=0"
+  - "kotlin.AssertionError: R1432: the app's controller is configured with WhenRequiredByAccessibilityServices,
+    not Always"
+  - iOS SIMULATOR TESTS EXECUTED: 536 (534 + 2). The control passed.
+- Commit B, 9f5333ab: the configuration is flipped to Always. ios-shared 45508135062 completed with success:
+  - "IosAccessibilitySyncIosTest tests=2 failures=0 errors=0", 111 suites, EXECUTED 536.
+  - No suite has failures or errors above 0.
+- THE GAP, stated: the test proves the lambda, not that monReleveViewController passes it. The hosting controller
+  keeps its configuration private, and the function needs a bundle's MonReleveApiBaseUrl. The link is the one
+  `configure =` argument, in the same file as the lambda.
+
+================================================================================
+R1433 - THE SIGNAL IS THE WALK
+================================================================================
+ios-walk 45508145807 on 9f5333ab (conclusion failure, as in every baseline). The outcome lines come from the step's
+"Test Case '-[MonReleveWalkUITests.WalkUITests testNN_x]' passed|failed" lines, per track.
+
+  track     test                        45197427698 (baseline)   45508145807 (Always)   changed
+  new       test01_firstLaunch          passed                   passed                 no
+  new       test02_signInNew            passed                   passed                 no
+  new       test03_onboarding           failed                   failed                 no
+  existing  test01_firstLaunch          passed                   passed                 no
+  existing  test21_signInExisting       passed                   passed                 no
+  existing  test22_yearsLanded          passed                   passed                 no
+  existing  test23_todayAndForeground   passed                   passed                 no
+  existing  test24_calendar             passed                   passed                 no
+  existing  test25_serverEntries        passed                   passed                 no
+  existing  test26_export               failed                   failed                 no
+  existing  test27_comparison           failed                   failed                 no (message: see below)
+  existing  test28_datePicker           passed                   passed                 no
+  existing  test29_evening              passed                   passed                 no
+  existing  test30_licences             failed                   failed                 no
+  existing  test31_signOut              failed                   failed                 no
+  existing  test32_signInAgain          failed                   failed                 no
+  existing  test33_reminderTap          failed                   failed                 no
+  existing  test34_accountDeletion      failed                   failed                 no
+
+- Totals: 18 outcome lines, 10 passed and 8 failed. Over 17 distinct tests (test01 runs once per track), that is 9
+  passed and 8 failed. The list of outcomes is identical (a `diff` of the two extracted lists is empty).
+  45296804003 (IOS-POLISH) is identical too.
+- Failure messages: identical to the baseline for test03, 26, 30, 31, 32, 33 and 34. test27's message differs from
+  45197427698, but it is the same as IOS-POLISH's:
+  - before (45197427698): "failed - not on screen: Comparer avec mon employeur"
+  - IOS-POLISH (45296804003) and this run: "Failed to not hittable: Button, {{0.0, 0.0}, {0.0, 0.0}}, label: '2025'"
+  That move happened at IOS-POLISH (the French bundle), not in this run. It is the same zero-frame class, one step
+  later.
+- The zero-frame class, measured directly: the R1390 frame lines are identical in both runs. "Exporter en PDF",
+  "Licences" and "Se deconnecter" each read "0/0" on all 12 upward drags, with on screen=false.
+  26-export-drag-last.png (looked at) shows "Exporter en PDF" and "Comparer avec mon employeur" drawn on screen,
+  exactly as F2 describes.
+- The probe's reading: "voiceOverRunning=true" on both first launches, in this run and in the baseline.
+- SUCCESS CONDITION: not met. No known failure passes; no passing test fails.
+
+================================================================================
+R1434 - NOTHING ELSE REGRESSES
+================================================================================
+- ios-shared 45508135062 on 9f5333ab: 111 suites, 536 tests, 0 failures, 0 errors (534 + 2 new). It ran on the
+  JUnit XML, through the workflow's own "Results" step.
+- ios-app 45508140283 on 9f5333ab: success.
+  - probe: share.presentedClass=UIActivityViewController, share.inWindow=true, share.result=PASS.
+  - R1353's OUTPUT line: "R1353: RELEASE INSPECTION PASSED - every check and every control".
+  - Screenshots looked at: launch-DEFAULT.png and launch-AX5.png (Bienvenue, with the text scaled at AX5), and
+    probe-share-sheet.png (the sheet over Bienvenue). No code is shown in any of them.
+- PERFORMANCE NOTE: ios-app prints no launch timing. It prints "ALIVE after 15 s" twice, which both launches met,
+  and "RELEASE BUILT in 1395 s", which is build time, not runtime. So no discriminating timing exists, and none was
+  built (R1434). ios-app.yml sets no VoiceOver preference: a grep for VoiceOver and Accessibility in it finds
+  nothing. Under that setting Always is the only option that syncs, and in this run the app launched, stayed alive,
+  and the probe share passed.
+- Android: FAST CHECK and :app:gate NOT RUN (see STATUS). Floor 1562 and :shared JVM 358 were not observed in this
+  session.
+
+================================================================================
+R1435 - LEAK SCANS (every job log and artifact of this session's runs)
+================================================================================
+Method: the R1388 scanner and the R1405 additions, read from C:/wt/queue-evidence/i4-polish/tools (leakscan.py,
+leakscan2.py), run with `py -3 -I` against the production host monreleve.ch. The token prefix is the first 12
+characters of the cf/tok file, counted and never printed.
+- ios-shared 45472617561 (RED; log + 259 files):
+  - bearer 0, token prefix 0, production host 0, code boxes 0.
+  - callback 2: both are "auth/callback?token=t+o+k&email=a%40b.ch", the wire fixture, in requests.jsonl and the
+    log. Printed from this run's files.
+  - six-digit 7: an ls byte count (109159), two upload sizes, and four CSS colours.
+  - token-shaped 22, printed from this run's files: four test names, each repeated across the XML, the HTML and
+    results.bin.
+    - step2AtLargeTextTheListsCheckboxSelectsADay
+    - step4TheLearnMoreSheetOpensExpandsAndCloses
+    - theParisDayAndClaimAcrossTheMarch2026Change
+    - anIdIsALowerCaseVersion4UuidInCanonicalForm
+- ios-shared 45508135062 (log + 259 files): the same counts and the same explanations as the RED run.
+- ios-app 45508140283 (log + 13 text files + 3 PNG):
+  - bearer 0, callback 0, six-digit 0, token prefix 0, code boxes 0.
+  - production host 4, all R1353's lines: the two source lines echoed in the step header, the printed Info.plist
+    key, and the PASS line.
+  - token-shaped 16, printed from this run's files: Xcode module-cache names (_DarwinFoundation3-...,
+    _Builtin_inttypes-..., UserNotifications-...) and MonReleve-ExecutorLinkFileList-normal-arm64.
+- ios-walk 45508145807 (log + 44 text files + 52 PNG):
+  - bearer 0, token-shaped 0, callback 0, six-digit 0, production host 0, token prefix 0.
+  - masked (***) 47: the run's own masks.
+  - "Chiffre N sur 6" labels 328. The digit-valued regex matched 208, all in app.log, and ALL are false positives:
+    the label ends a line ("Chiffre 1 sur 6"'`) and the next line's timestamp begins "2026-11-25". Shown by
+    printing each match with 40 characters after it. No box label carries a digit.
+- The push-triggered runs 45472609679 and 45508116941 were cancelled. Their logs are 28 bytes each, and every count
+  is 0.
+- R574: the walk's 52 PNG names include no code-screen capture. The four sign-in captures were opened:
+  - 02-signin.png and 21-signin.png show the e-mail step, with its placeholder only;
+  - 02-after-signin.png and 21-after-signin.png show the onboarding name step and Aujourd'hui.
+  - Opened besides: 26-export-drag-last.png. The other 47 PNGs were not opened.
+  - The code screen's tree dumps (02-code-empty, 21-code-empty) carry only the 'Chiffre N sur 6' labels.
+
+================================================================================
+R1436 - VERDICT AND HANDBACK
+================================================================================
+NOT WORTH MERGING. No known failure changed outcome, so under the walk the option only adds Compose's stated cost.
+I did not iterate into other fixes. The branch is pushed and NOT merged; production is not touched.
+
+================================================================================
+NOTICED BUT NOT TOUCHING
+================================================================================
+1. The walk cannot discriminate this option: the VoiceOver preference forces the default path to sync. Measuring F1
+   needs a walk variant with VoiceOverTouchEnabled false. That is a workflow change and a new measurement, so it is
+   QUESTION 1, not done.
+2. The zero frames persist with the tree synced. That is consistent with F2 lying in how Compose 1.7.3 computes or
+   refreshes the bounds of nodes scrolled in from below the fold, rather than in whether a sync runs. That points at
+   option (b), a Compose upgrade, which is OUT of this prompt.
+3. Each push started a push-triggered ios-shared run (45472609679, 45508116941). Both were cancelled; the cause was
+   not read. Recorded for the run count.
+
+================================================================================
+DEVIATIONS
+================================================================================
+1. FAST CHECK per increment was NOT RUN: the 8000 MB line was unmet for the whole session (NO RESULT). After that,
+   the FULL :app:gate was not run, by the orchestrator's ruling (STATUS).
+2. The brief's baseline reads "9 pass, 10 known failures". The baseline log has 18 outcome lines, 10 passed and 8
+   failed, which is 17 distinct tests: 9 passed and 8 failed. The table is built from the log lines, not from the
+   brief's figure.
+3. Increment A (bb61bb34) was pushed before any fastCheck, so that the RED ios-shared run could proceed while the
+   lock waited.
+4. My own gate.sh outlived TaskStop and started a second lock acquire after I killed the first (see STATUS). It was
+   found by a process census and stopped before it acquired anything. The memory note "TaskStop kills the shell,
+   not the tree" applied, and my first check, taken 2 s after the kill, was too early to see it.
+
+================================================================================
+QUESTIONS
+================================================================================
+Q1. Option (a) answers F1, not F2. With VoiceOver off, the default syncs nothing, and that is the Voice Control,
+    Switch Control and Full Keyboard Access case. The walk cannot see it, because it forces VoiceOver on. Should a
+    walk variant with VoiceOverTouchEnabled false measure Always against the default? With the default, that
+    variant would presumably reproduce run 45055507141's empty tree. Or is Q1 decided on F1's argument plus
+    Compose's stated cost, without a walk?
+Q2. F2, the zero frames, is untouched by the sync option. Option (b), a Compose upgrade, is the remaining candidate,
+    and it is a dependency change. It is the operator's to open.
+
+================================================================================
+PUSH PROOF
+================================================================================
+- Commits on ios-a11y-sync:
+  - bb61bb34 (R1432 RED)
+  - 9f5333ab (R1431, the code tip every run tested)
+  - this report's commit (tip: see `git ls-remote`, in the handback)
+- No file under android/, ios/ or .github/ changes between 9f5333ab and the report tip (checked before the push).
+- Secret check before each push: the token file's 12-character prefix was counted in `git log -p` of the outgoing
+  commits and in `git grep` of HEAD, never printed. Each push read hits=0.
+- Run ids:
+  - ios-shared: 45472617561 (RED, bb61bb34), 45508135062 (GREEN, 9f5333ab)
+  - ios-app: 45508140283 (9f5333ab)
+  - ios-walk: 45508145807 (9f5333ab)
+  - push-triggered and cancelled: 45472609679, 45508116941
+- The R349 lock (C:/wt/ios-a11y-sync/.session-lock.json, gitignored) is removed last.
+END OF REPORT-IOS-A11Y-SYNC

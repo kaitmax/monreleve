@@ -3560,3 +3560,30 @@ the database password, Coolify variables, Play, Apple, Firebase), and what the o
     accurately and is left (a change would select test:container for no gain).
 (b) RUNNING in C:/wt/ios-a11y-sync. FINAL-REPORT-2026-11-24.txt's top lines corrected (production
     is d8db62c5).
+
+iOS Ruling 26 - IOS-A11Y-SYNC NOT MERGED, AND THE CLOSING RECORD (2026-11-25)
+(b) REPORTED, NOT MERGED (R1436's letter: no known walk failure changed outcome). Branch ios-a11y-sync,
+    code tip 9f5333ab (R1432 RED bb61bb34, report 8465a66f), worktree C:/wt/ios-a11y-sync kept, clean,
+    lock removed; removing either is the operator's. Only REPORT-IOS-A11Y-SYNC.txt is brought to main.
+    Read by the orchestrator, not taken from the handback:
+    - ios-shared 45472617561 on bb61bb34: 536 tests, 1 failed, by the intended message. 45508135062 on
+      9f5333ab: success. ios-app 45508140283: success.
+    - ios-walk 45508145807 against 45197427698 (base) and 45296804003 (IOS-POLISH): all 17 tests, the
+      same outcome in all three - 9 passed, 8 failed. The suite has exactly 17 test methods; the
+      brief's "10 known failures" is not reproduced by any of the three logs and stays UNRECONCILED.
+    - test27's message moved AT IOS-POLISH (45296804003), not on this branch: "not on screen: Comparer
+      avec mon employeur" before, "Failed to not hittable: Button, {{0.0, 0.0}, {0.0, 0.0}}, label:
+      '2025'" in both later walks. The orchestrator first told the operator it moved on this branch;
+      that was wrong and is corrected here.
+    - voiceOverRunning=true in all three walks (ios-walk.yml l.275 sets VoiceOverTouchEnabled).
+    WHAT IT SETTLES: the walk's zero-frame failures happen with the tree already synced, so sync mode is
+    RULED OUT as their cause. WHAT IT DOES NOT: Voice Control, Switch Control and Full Keyboard Access
+    (VoiceOver off), where the option does change behaviour, are NOT MEASURED. The session reads the
+    option at one site in Compose 1.7.3 (Accessibility.uikit.kt:986-991); that reading is the session's.
+    STATUS (R391): FAST CHECK NOT RUN and FULL GATE NOT RUN on 9f5333ab - the 8000 MB line was never met
+    (NO RESULT), then the orchestrator ruled no :app:gate for a branch that will not merge.
+    NOT DONE ON DELEGATED AUTHORITY (the advisor): a walk variant with VoiceOver off. It cannot turn a
+    known failure green, needs an ios-walk.yml change, and the option carries Compose's stated cost; it
+    is the report's Q1, the operator's, beside Q2 (a Compose upgrade, a dependency change).
+THE CLOSING LIST OF iOS Ruling 25 IS DONE: (a) a2f625cf, (c) 4df9057c, (b) reported here. The loop stops
+with this record. Production unchanged (d8db62c5); nothing promoted.
